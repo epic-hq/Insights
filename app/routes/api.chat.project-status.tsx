@@ -5,6 +5,12 @@ import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { z } from "zod";
 import {
+	buildHowtoContractPatchText,
+	buildHowtoFallbackResponse,
+	evaluateHowtoResponseContract,
+} from "~/features/project-chat/howto-contract";
+import { detectHowtoPromptMode } from "~/features/project-chat/howto-routing";
+import {
 	clearActiveBillingContext,
 	estimateOpenAICost,
 	openai as instrumentedOpenai,
@@ -37,15 +43,34 @@ function getLastUserText(messages: Array<{ role?: string; content?: unknown; par
 	return "";
 }
 
-const routingTargetAgents = ["projectStatusAgent", "chiefOfStaffAgent", "researchAgent", "projectSetupAgent"] as const;
+const routingTargetAgents = [
+	"projectStatusAgent",
+	"chiefOfStaffAgent",
+	"researchAgent",
+	"projectSetupAgent",
+	"howtoAgent",
+] as const;
 type RoutingTargetAgent = (typeof routingTargetAgents)[number];
-type RoutingResponseMode = "normal" | "fast_standardized" | "theme_people_snapshot" | "survey_quick_create";
+type RoutingResponseMode =
+	| "normal"
+	| "fast_standardized"
+	| "theme_people_snapshot"
+	| "survey_quick_create"
+	| "ux_research_mode"
+	| "gtm_mode";
 
 const intentRoutingSchema = z.object({
 	targetAgentId: z.enum(routingTargetAgents),
 	confidence: z.number().min(0).max(1),
 	responseMode: z
-		.enum(["normal", "fast_standardized", "theme_people_snapshot", "survey_quick_create"])
+		.enum([
+			"normal",
+			"fast_standardized",
+			"theme_people_snapshot",
+			"survey_quick_create",
+			"ux_research_mode",
+			"gtm_mode",
+		])
 		.default("normal" satisfies RoutingResponseMode),
 	rationale: z.string().max(240).optional(),
 });
@@ -63,6 +88,7 @@ const MAX_STEPS_BY_AGENT: Record<RoutingTargetAgent, number> = {
 	chiefOfStaffAgent: 4,
 	researchAgent: 5,
 	projectSetupAgent: 5,
+	howtoAgent: 4,
 };
 
 const BILLING_MODEL_BY_AGENT: Record<RoutingTargetAgent, string> = {
@@ -70,6 +96,7 @@ const BILLING_MODEL_BY_AGENT: Record<RoutingTargetAgent, string> = {
 	chiefOfStaffAgent: "gpt-4o-mini",
 	researchAgent: "gpt-4o",
 	projectSetupAgent: "gpt-5.1",
+	howtoAgent: "gpt-4o-mini",
 };
 
 type FastGuidanceCacheEntry = {
@@ -87,6 +114,7 @@ const fastGuidanceCache = new Map<string, FastGuidanceCacheEntry>();
 type StickyRoutingEntry = { agentId: RoutingTargetAgent; timestamp: number };
 const lastRoutedAgentMap = new Map<string, StickyRoutingEntry>();
 const STICKY_ROUTING_TTL_MS = 10 * 60 * 1000; // 10 minutes
+type RoutingSource = "deterministic" | "classifier" | "fallback";
 
 function hashString(input: string): string {
 	let hash = 2166136261;
@@ -168,6 +196,10 @@ function augmentStreamForReliability(
 		targetAgentId: RoutingTargetAgent;
 		targetMaxSteps: number;
 		responseMode: RoutingResponseMode;
+		accountId: string;
+		projectId: string;
+		routingSource: RoutingSource;
+		routingConfidence: number | null;
 	}
 ) {
 	if (!stream || typeof (stream as { pipeThrough?: unknown }).pipeThrough !== "function") {
@@ -179,6 +211,9 @@ function augmentStreamForReliability(
 	let injectedSafetyMessage = false;
 	let appendedDebugTrace = false;
 	let sawFinishChunk = false;
+	let appendedHowtoContractPatch = false;
+	let accumulatedAssistantText = "";
+	let loggedHowtoTelemetry = false;
 
 	const enqueueAssistantText = (
 		controller: TransformStreamDefaultController<Record<string, unknown>>,
@@ -197,9 +232,23 @@ function augmentStreamForReliability(
 
 	const maybeEnqueueSafetyMessage = (controller: TransformStreamDefaultController<Record<string, unknown>>) => {
 		if (!sawTextDelta && !injectedSafetyMessage) {
-			enqueueAssistantText(controller, FALLBACK_EMPTY_RESPONSE_TEXT, "fallback");
+			const fallbackText =
+				options.targetAgentId === "howtoAgent"
+					? buildHowtoFallbackResponse(options.accountId, options.projectId)
+					: FALLBACK_EMPTY_RESPONSE_TEXT;
+			enqueueAssistantText(controller, fallbackText, "fallback");
+			accumulatedAssistantText += `\n${fallbackText}`;
 			injectedSafetyMessage = true;
 		}
+	};
+
+	const maybeEnqueueHowtoContractPatch = (controller: TransformStreamDefaultController<Record<string, unknown>>) => {
+		if (options.targetAgentId !== "howtoAgent" || appendedHowtoContractPatch) return;
+		const patchText = buildHowtoContractPatchText(accumulatedAssistantText, options.accountId, options.projectId);
+		if (!patchText) return;
+		enqueueAssistantText(controller, patchText, "howto-contract");
+		accumulatedAssistantText += patchText;
+		appendedHowtoContractPatch = true;
 	};
 
 	const maybeEnqueueDebugTrace = (controller: TransformStreamDefaultController<Record<string, unknown>>) => {
@@ -217,11 +266,29 @@ function augmentStreamForReliability(
 		appendedDebugTrace = true;
 	};
 
+	const maybeLogHowtoStreamTelemetry = () => {
+		if (options.targetAgentId !== "howtoAgent" || loggedHowtoTelemetry) return;
+		const quality = evaluateHowtoResponseContract(accumulatedAssistantText);
+		consola.info("project-status: howto stream telemetry", {
+			responseMode: options.responseMode,
+			routingSource: options.routingSource,
+			routingConfidence: options.routingConfidence,
+			responseChars: accumulatedAssistantText.trim().length,
+			contractPatched: appendedHowtoContractPatch,
+			fallbackInjected: injectedSafetyMessage,
+			contractPassed: quality.passes,
+			missingSections: quality.missingSections,
+			hasMarkdownLink: quality.hasMarkdownLink,
+		});
+		loggedHowtoTelemetry = true;
+	};
+
 	const transformed = (stream as StreamLike).pipeThrough(
 		new TransformStream<Record<string, unknown>, Record<string, unknown>>({
 			transform(chunk, controller) {
 				if (chunk?.type === "text-delta" && typeof chunk.delta === "string" && chunk.delta.trim().length > 0) {
 					sawTextDelta = true;
+					accumulatedAssistantText += chunk.delta;
 				}
 
 				if (chunk?.type === "tool-input-available" && typeof chunk.toolName === "string") {
@@ -235,14 +302,18 @@ function augmentStreamForReliability(
 				if (chunk?.type === "finish") {
 					sawFinishChunk = true;
 					maybeEnqueueSafetyMessage(controller);
+					maybeEnqueueHowtoContractPatch(controller);
 					maybeEnqueueDebugTrace(controller);
+					maybeLogHowtoStreamTelemetry();
 				}
 
 				controller.enqueue(chunk);
 			},
 			flush(controller) {
 				maybeEnqueueSafetyMessage(controller);
+				maybeEnqueueHowtoContractPatch(controller);
 				maybeEnqueueDebugTrace(controller);
+				maybeLogHowtoStreamTelemetry();
 				if (!sawFinishChunk) {
 					controller.enqueue({ type: "finish", finishReason: "stop" });
 				}
@@ -257,6 +328,15 @@ function routeByDeterministicPrompt(lastUserText: string): z.infer<typeof intent
 	const prompt = lastUserText.trim().toLowerCase();
 	if (!prompt) return null;
 	const hasAny = (...tokens: string[]) => tokens.some((token) => prompt.includes(token));
+	const howtoRouting = detectHowtoPromptMode(prompt);
+	if (howtoRouting.isHowto) {
+		return {
+			targetAgentId: "howtoAgent",
+			confidence: 1,
+			responseMode: howtoRouting.responseMode,
+			rationale: "deterministic routing for how-to guidance prompts",
+		};
+	}
 
 	const asksForTopThemesWithPeople =
 		hasAny("theme", "themes") && hasAny("top", "most common") && hasAny("who", "people");
@@ -470,12 +550,15 @@ Choose exactly one target:
 - projectSetupAgent: onboarding, setup, research goals, company context capture.
 - chiefOfStaffAgent: strategic guidance and prioritization only (for "what should I do next", sequencing, focus).
 - researchAgent: creating/managing surveys, interview prompts, interview operations.
+- howtoAgent: procedural "how do I / where do I / best way to / teach me" coaching requests.
 - projectStatusAgent: data lookups and factual status questions (themes, ICP counts/distribution, people, evidence, interviews).
 
 Set responseMode="fast_standardized" only when the user asks broad strategic guidance without asking for execution details.
 Set responseMode="theme_people_snapshot" when user asks for top/common themes and who has those themes.
 Never set responseMode="theme_people_snapshot" for people-comparison prompts (e.g., "what do X and Y have in common", "compare these two people", "how are they different"). For those, use responseMode="normal".
 Set responseMode="survey_quick_create" when user asks to create/build/generate a survey or waitlist.
+Set responseMode="gtm_mode" when howtoAgent request is primarily go-to-market (positioning, messaging, launch, distribution, sales).
+Set responseMode="ux_research_mode" for howtoAgent requests about UX, product discovery/research, or general product how-to prompts.
 Message: """${prompt.slice(0, 1200)}"""`,
 		});
 		return result.object;
@@ -554,6 +637,11 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		routeDecision && routeDecision.confidence >= ROUTING_CONFIDENCE_THRESHOLD
 			? routeDecision.targetAgentId
 			: "projectStatusAgent";
+	const routingSource: RoutingSource = !routeDecision
+		? "fallback"
+		: routeDecision.rationale?.startsWith("deterministic")
+			? "deterministic"
+			: "classifier";
 	const isFastStandardized = targetAgentId === "chiefOfStaffAgent" && resolvedResponseMode === "fast_standardized";
 	const targetMaxSteps = isFastStandardized
 		? Math.min(MAX_STEPS_BY_AGENT[targetAgentId], FAST_STANDARDIZED_MAX_STEPS)
@@ -581,11 +669,23 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		targetAgentId,
 		targetMaxSteps,
 		isFastStandardized,
+		routingSource,
 		routingConfidence: routeDecision?.confidence ?? null,
 		responseMode: resolvedResponseMode,
 		rawResponseMode: routeDecision?.responseMode ?? "normal",
 		rationale: routeDecision?.rationale ?? null,
 	});
+
+	if (targetAgentId === "howtoAgent") {
+		consola.info("project-status: howto routing telemetry", {
+			projectId,
+			accountId,
+			resourceId,
+			responseMode: resolvedResponseMode,
+			routingSource,
+			routingConfidence: routeDecision?.confidence ?? null,
+		});
+	}
 
 	const threads = await memory.listThreadsByResourceId({
 		resourceId,
@@ -618,6 +718,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		requestContext.set("user_timezone", userTimezone);
 	}
 	requestContext.set("response_mode", resolvedResponseMode);
+	requestContext.set("routing_source", routingSource);
 	if (debugRequested) {
 		requestContext.set("debug_mode", true);
 	}
@@ -819,6 +920,24 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				});
 			}
 
+			if (targetAgentId === "howtoAgent") {
+				const rawQuality = evaluateHowtoResponseContract(data.text ?? "");
+				consola.info("project-status: howto model telemetry", {
+					projectId,
+					accountId,
+					responseMode: resolvedResponseMode,
+					routingSource,
+					routingConfidence: routeDecision?.confidence ?? null,
+					finishReason: data.finishReason ?? null,
+					inputTokens: usage?.inputTokens ?? 0,
+					outputTokens: usage?.outputTokens ?? 0,
+					rawResponseChars: (data.text ?? "").trim().length,
+					rawContractPassed: rawQuality.passes,
+					rawMissingSections: rawQuality.missingSections,
+					rawHasMarkdownLink: rawQuality.hasMarkdownLink,
+				});
+			}
+
 			clearActiveBillingContext();
 
 			consola.debug("project-status: finished", {
@@ -893,6 +1012,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		targetAgentId,
 		targetMaxSteps,
 		responseMode: resolvedResponseMode,
+		accountId,
+		projectId,
+		routingSource,
+		routingConfidence: routeDecision?.confidence ?? null,
 	});
 
 	return createUIMessageStreamResponse({ stream: reliableStream });
