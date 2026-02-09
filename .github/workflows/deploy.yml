@@ -33,13 +33,17 @@ jobs:
         run: pnpm run test:agents
 
       - name: Run integration DB tests (when TEST_SUPABASE secrets are configured)
-        if: ${{ secrets.TEST_SUPABASE_URL != '' && secrets.TEST_SUPABASE_ANON_KEY != '' && secrets.TEST_SUPABASE_SERVICE_ROLE_KEY != '' }}
-        run: pnpm vitest run --config vitest.integration.config.ts
         env:
           TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
           TEST_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
           TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
           TEST_SUPABASE_PROJECT_REF: ${{ secrets.TEST_SUPABASE_PROJECT_REF }}
+        run: |
+          if [ -n "$TEST_SUPABASE_URL" ] && [ -n "$TEST_SUPABASE_ANON_KEY" ] && [ -n "$TEST_SUPABASE_SERVICE_ROLE_KEY" ]; then
+            pnpm vitest run --config vitest.integration.config.ts
+          else
+            echo "Skipping integration DB tests: TEST_SUPABASE_* secrets are not fully configured."
+          fi
 
   deploy:
     needs: [agent-smoke-tests]
