@@ -75,7 +75,9 @@ function LensHighlightCard({ highlight }: { highlight: PersonLensHighlight }) {
 						{highlight.fields.slice(0, 4).map((field) => (
 							<div key={field.key} className="flex gap-2 text-xs">
 								<span className="min-w-0 flex-shrink-0 font-medium text-muted-foreground">{field.name}:</span>
-								<span className="min-w-0 truncate text-foreground">{field.value}</span>
+								<span className="min-w-0 whitespace-pre-wrap break-words text-foreground [overflow-wrap:anywhere]">
+									{field.value}
+								</span>
 							</div>
 						))}
 					</div>
@@ -163,7 +165,7 @@ export function PersonAnalysisSheet({ person, open, onOpenChange, routes }: Shee
 									{person.keyPains.map((pain) => (
 										<li key={pain} className="flex items-start gap-2 text-sm">
 											<span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-red-400" />
-											<span className="text-muted-foreground">{pain}</span>
+											<span className="break-words text-muted-foreground [overflow-wrap:anywhere]">{pain}</span>
 										</li>
 									))}
 								</ul>
@@ -181,7 +183,7 @@ export function PersonAnalysisSheet({ person, open, onOpenChange, routes }: Shee
 									{person.keyGoals.map((goal) => (
 										<li key={goal} className="flex items-start gap-2 text-sm">
 											<span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-green-400" />
-											<span className="text-muted-foreground">{goal}</span>
+											<span className="break-words text-muted-foreground [overflow-wrap:anywhere]">{goal}</span>
 										</li>
 									))}
 								</ul>
