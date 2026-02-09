@@ -1827,11 +1827,15 @@ export async function extractEvidenceAndPeopleCore({
 	}
 
 	if (insertedEvidenceIds.length) {
+		const evidenceIdsByPersonId = new Map<string, string[]>();
 		for (let idx = 0; idx < insertedEvidenceIds.length; idx++) {
 			const evId = insertedEvidenceIds[idx];
 			const key = personKeyForEvidence[idx];
 			const targetPersonId = (key && personIdByKey.get(key)) || primaryPersonId;
 			if (!targetPersonId) continue;
+			const evidenceIds = evidenceIdsByPersonId.get(targetPersonId) ?? [];
+			evidenceIds.push(evId);
+			evidenceIdsByPersonId.set(targetPersonId, evidenceIds);
 			const role = targetPersonId ? personRoleById.get(targetPersonId) : null;
 			const { error: epErr } = await db.from("evidence_people").insert({
 				evidence_id: evId,
@@ -1842,6 +1846,25 @@ export async function extractEvidenceAndPeopleCore({
 			});
 			if (epErr && !epErr.message?.includes("duplicate")) {
 				consola.warn(`Failed linking evidence ${evId} to person ${targetPersonId}: ${epErr.message}`);
+			}
+		}
+
+		// Keep evidence_facet.person_id aligned with evidence_people at ingestion time.
+		// This ensures theme/person attribution can use evidence_facet directly.
+		if (evidenceFacetRowsToInsert.length && evidenceIdsByPersonId.size) {
+			for (const [personId, evidenceIds] of evidenceIdsByPersonId.entries()) {
+				const uniqueEvidenceIds = Array.from(new Set(evidenceIds));
+				const { error: facetPersonUpdateError } = await db
+					.from("evidence_facet")
+					.update({ person_id: personId })
+					.in("evidence_id", uniqueEvidenceIds)
+					.is("person_id", null);
+
+				if (facetPersonUpdateError) {
+					consola.warn(
+						`Failed setting evidence_facet.person_id for person ${personId} across ${uniqueEvidenceIds.length} evidence rows: ${facetPersonUpdateError.message}`
+					);
+				}
 			}
 		}
 	}

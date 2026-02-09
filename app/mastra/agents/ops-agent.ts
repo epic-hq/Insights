@@ -6,6 +6,7 @@ import { TokenLimiterProcessor } from "@mastra/core/processors";
 import consola from "consola";
 import { openai } from "../../lib/billing/instrumented-openai.server";
 import { generateProjectRoutesTool } from "../tools/generate-project-routes";
+import { importOpportunitiesFromTableTool } from "../tools/import-opportunities-from-table";
 import { manageAnnotationsTool } from "../tools/manage-annotations";
 import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities";
 import { researchOrganizationTool } from "../tools/research-organization";
@@ -36,6 +37,7 @@ If the request is about interviews, surveys, people, tasks, or documents, return
 - When giving guidance, cite specific opportunities (stage, amount, close date) and include links.
 - Provide at most 2-3 specific suggestions.
 - Use createOpportunity/updateOpportunity for pipeline changes.
+- Use importOpportunitiesFromTable for CRM-style opportunity imports from parsed tables.
 
 # Organizations
 - Use researchOrganization when user requests company research or enrichment.
@@ -61,6 +63,7 @@ If the request is about interviews, surveys, people, tasks, or documents, return
 		fetchOpportunities: fetchOpportunitiesTool,
 		createOpportunity: createOpportunityTool,
 		updateOpportunity: updateOpportunityTool,
+		importOpportunitiesFromTable: importOpportunitiesFromTableTool,
 		researchOrganization: researchOrganizationTool,
 		manageAnnotations: manageAnnotationsTool,
 		generateProjectRoutes: generateProjectRoutesTool,

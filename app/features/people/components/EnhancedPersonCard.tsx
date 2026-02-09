@@ -251,7 +251,13 @@ export default function EnhancedPersonCard({
 }
 
 // Make a MiniPersonCard that shows the person's name, avatar, persona, & segment
-export function MiniPersonCard({ person }: { person: PersonWithPersonas }) {
+export function MiniPersonCard({
+	person,
+	disableLinks = false,
+}: {
+	person: PersonWithPersonas;
+	disableLinks?: boolean;
+}) {
 	const currentProjectContext = useCurrentProject();
 	const routes = useProjectRoutes(currentProjectContext?.projectPath);
 
@@ -267,24 +273,34 @@ export function MiniPersonCard({ person }: { person: PersonWithPersonas }) {
 			.slice(0, 2) || "?";
 	// consola.log("MiniPersonCard person: ", person, persona)
 
+	const Wrapper = disableLinks ? "span" : Link;
+	const avatarLinkProps = disableLinks ? {} : { to: routes.people.detail(person.id) };
+	const nameLinkProps = disableLinks ? {} : { to: routes.people.detail(person.id) };
+
 	return (
 		<div className="flex items-center gap-2">
-			<Link to={routes.people.detail(person.id)}>
+			<Wrapper {...avatarLinkProps}>
 				<Avatar className="h-8 w-8">
 					{person.image_url && <AvatarImage src={person.image_url} alt={person.name} />}
 					<AvatarFallback className="font-medium text-sm text-white" style={{ backgroundColor: themeColor }}>
 						{initials}
 					</AvatarFallback>
 				</Avatar>
-			</Link>
+			</Wrapper>
 			<div className="flex flex-col">
-				<Link to={routes.people.detail(person.id)}>
+				<Wrapper {...nameLinkProps}>
 					<h3 className="font-medium text-sm">{person.name}</h3>
-				</Link>
+				</Wrapper>
 				{persona?.name && "id" in persona && persona.id && (
-					<Link to={routes.personas.detail(persona.id)}>
-						<div className="rounded-sm border p-2 text-foreground text-xs">{persona.name}</div>
-					</Link>
+					<>
+						{disableLinks ? (
+							<div className="rounded-sm border p-2 text-foreground text-xs">{persona.name}</div>
+						) : (
+							<Link to={routes.personas.detail(persona.id)}>
+								<div className="rounded-sm border p-2 text-foreground text-xs">{persona.name}</div>
+							</Link>
+						)}
+					</>
 				)}
 			</div>
 		</div>

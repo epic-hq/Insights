@@ -451,6 +451,7 @@ export async function action({ request }: ActionFunctionArgs) {
 							role: string | null;
 							confidence: number;
 						}> = [];
+						const evidenceIdsByPersonId = new Map<string, string[]>();
 
 						for (const row of evidenceRows || []) {
 							const anchors = Array.isArray(row.anchors) ? row.anchors : [];
@@ -479,6 +480,9 @@ export async function action({ request }: ActionFunctionArgs) {
 								role: "speaker",
 								confidence: 0.9,
 							});
+							const evidenceIds = evidenceIdsByPersonId.get(personId) ?? [];
+							evidenceIds.push(row.id);
+							evidenceIdsByPersonId.set(personId, evidenceIds);
 						}
 
 						if (evidencePeopleRows.length > 0) {
@@ -490,6 +494,22 @@ export async function action({ request }: ActionFunctionArgs) {
 								consola.warn("[desktop-finalize] Failed to upsert evidence_people:", evidencePeopleError.message);
 							} else {
 								results.evidence_people_linked = evidencePeopleRows.length;
+
+								// Keep evidence_facet.person_id aligned with evidence_people linkage.
+								for (const [personId, evidenceIds] of evidenceIdsByPersonId.entries()) {
+									const uniqueEvidenceIds = Array.from(new Set(evidenceIds));
+									const { error: facetPersonError } = await supabase
+										.from("evidence_facet")
+										.update({ person_id: personId })
+										.in("evidence_id", uniqueEvidenceIds)
+										.is("person_id", null);
+
+									if (facetPersonError) {
+										consola.warn(
+											`[desktop-finalize] Failed to backfill evidence_facet.person_id for person ${personId}: ${facetPersonError.message}`
+										);
+									}
+								}
 							}
 						}
 					}

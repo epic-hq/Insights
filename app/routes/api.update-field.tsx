@@ -3,13 +3,14 @@ import type { ActionFunctionArgs } from "react-router";
 import { updateInsight } from "~/features/insights/db";
 import { updateInterview } from "~/features/interviews/db";
 import { getServerClient } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
 
 /**
  * Generalized API endpoint for updating single fields across supported entities
  * POST /api/update-field
  *
  * Form data expected:
- * - entity: "interview" | "insight"
+ * - entity: "interview" | "insight" | "evidence"
  * - entityId: string (ID of the entity to update)
  * - accountId: string (for RLS)
  * - projectId: string (for project scoping)
@@ -42,11 +43,13 @@ export async function action({ request }: ActionFunctionArgs) {
 		});
 
 		if (!entity || !entityId || !accountId || !fieldName) {
-			return { error: "Missing required parameters: entity, entityId, accountId, fieldName" };
+			return {
+				error: "Missing required parameters: entity, entityId, accountId, fieldName",
+			};
 		}
 
 		// Check for projectId when required by entity
-		if ((entity === "interview" || entity === "insight") && !projectId) {
+		if ((entity === "interview" || entity === "insight" || entity === "evidence") && !projectId) {
 			return { error: `projectId is required for ${entity} updates` };
 		}
 
@@ -102,8 +105,39 @@ export async function action({ request }: ActionFunctionArgs) {
 				});
 				break;
 
+			case "evidence": {
+				if (!projectId) {
+					return { error: "projectId required for evidence updates" };
+				}
+				const EVIDENCE_EDITABLE_FIELDS = [
+					"verbatim",
+					"gist",
+					"chunk",
+					"topic",
+					"support",
+					"confidence",
+					"journey_stage",
+				];
+				if (!EVIDENCE_EDITABLE_FIELDS.includes(fieldName)) {
+					return {
+						error: `Field '${fieldName}' is not editable on evidence`,
+					};
+				}
+				const { data, error } = await supabase
+					.from("evidence")
+					.update(updateData as Database["public"]["Tables"]["evidence"]["Update"])
+					.eq("id", entityId)
+					.eq("project_id", projectId)
+					.select()
+					.single();
+				result = { data, error };
+				break;
+			}
+
 			default:
-				return { error: `Unsupported entity type: ${entity}. Currently supports: interview, insight` };
+				return {
+					error: `Unsupported entity type: ${entity}. Currently supports: interview, insight, evidence`,
+				};
 		}
 
 		if (result.error) {

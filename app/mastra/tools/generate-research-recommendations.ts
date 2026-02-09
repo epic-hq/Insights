@@ -27,22 +27,22 @@ const RecommendationSchema = z.object({
 	title: z.string().describe("Short action-oriented title"),
 	description: z.string().describe("Detailed explanation of what to do"),
 	reasoning: z.string().describe("Why this recommendation is important, with evidence context"),
-	confidence_current: z.number().optional().describe("Current confidence score 0-1"),
-	confidence_target: z.number().optional().describe("Target confidence score 0-1"),
+	confidence_current: z.number().nullish().describe("Current confidence score 0-1"),
+	confidence_target: z.number().nullish().describe("Target confidence score 0-1"),
 	evidence_refs: z
 		.array(
 			z.object({
 				interview_id: z.string(),
-				evidence_id: z.string().optional(),
-				quote_snippet: z.string().optional(),
-				timestamp: z.string().optional(),
+				evidence_id: z.string().nullish(),
+				quote_snippet: z.string().nullish(),
+				timestamp: z.string().nullish(),
 			})
 		)
-		.optional()
+		.nullish()
 		.describe("Supporting evidence with traceability"),
 	action_type: z.enum(["schedule_interview", "create_survey", "validate_theme", "follow_up_contact", "review_data"]),
-	action_data: z.record(z.unknown()).optional().describe("Data needed to execute action"),
-	navigateTo: z.string().optional().describe("Route to navigate user to"),
+	action_data: z.record(z.unknown()).nullish().describe("Data needed to execute action"),
+	navigateTo: z.string().nullish().describe("Route to navigate user to"),
 });
 
 const OutputSchema = z.object({
@@ -71,7 +71,7 @@ Use this tool to answer:
 Returns recommendations sorted by priority (1 = highest) with full reasoning and evidence links.`,
 	inputSchema: z.object({
 		projectId: z.string().describe("Project ID to generate recommendations for"),
-		accountId: z.string().optional().describe("Account ID (can be extracted from context)"),
+		accountId: z.string().nullish().describe("Account ID (can be extracted from context)"),
 		maxRecommendations: z.number().default(3).describe("Maximum number of recommendations to return"),
 	}),
 	outputSchema: OutputSchema,

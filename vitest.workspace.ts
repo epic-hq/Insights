@@ -6,6 +6,7 @@ export default [
 			environment: "node",
 			// Include generic .test files that should work anywhere and .server.test files for server only, ignore .browser.test
 			include: ["./**/*.server.test.{ts,tsx}", "!./**/*.browser.test.{ts,tsx}", "./**/*.test.{ts,tsx}"],
+			exclude: ["./app/test/integration/**", "./tests/e2e/**", "./**/*.browser.test.{ts,tsx}"],
 		},
 	},
 	{
@@ -23,6 +24,7 @@ export default [
 			includeTaskLocation: true,
 			// Include generic .test files that should work anywhere and .browser.test files for browser only, ignore .server.test
 			include: ["./**/*.test.{ts,tsx}", "./**/*.browser.test.{ts,tsx}", "!./**/*.server.test.{ts,tsx}"],
+			exclude: ["./app/test/integration/**", "./tests/e2e/**", "./**/*.server.test.{ts,tsx}"],
 			setupFiles: ["./tests/setup.browser.tsx"],
 			name: "browser tests",
 

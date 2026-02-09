@@ -9,7 +9,10 @@ import { createSurveyTool } from "../tools/create-survey";
 import { deleteSurveyTool } from "../tools/delete-survey";
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context";
 import { fetchSurveysTool } from "../tools/fetch-surveys";
+import { fetchWebContentTool } from "../tools/fetch-web-content";
 import { generateProjectRoutesTool } from "../tools/generate-project-routes";
+import { importVideoFromUrlTool } from "../tools/import-video-from-url";
+import { manageDocumentsTool } from "../tools/manage-documents";
 import {
 	createInterviewPromptTool,
 	deleteInterviewPromptTool,
@@ -18,8 +21,12 @@ import {
 } from "../tools/manage-interview-prompts";
 import { manageInterviewsTool } from "../tools/manage-interviews";
 import { navigateToPageTool } from "../tools/navigate-to-page";
+import { parseSpreadsheetTool } from "../tools/parse-spreadsheet";
+import { findSimilarPagesTool, webResearchTool } from "../tools/research-web";
+import { saveTableToAssetsTool } from "../tools/save-table-to-assets";
 import { searchSurveyResponsesTool } from "../tools/search-survey-responses";
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
+import { updateTableAssetTool } from "../tools/update-table-asset";
 
 export const researchAgent = new Agent({
 	id: "research-agent",
@@ -74,6 +81,9 @@ For FEEDBACK:
 - deleteSurvey: Archive or delete a survey
 - Interview prompts: Use fetch/create/update/deleteInterviewPrompt tools
 - Interviews: Use manageInterviews, fetchInterviewContext
+- URL ingestion/research: fetchWebContent, importVideoFromUrl, webResearch, findSimilarPages
+- Documents: manageDocuments for meeting notes/strategy docs
+- Tables: parseSpreadsheet, saveTableToAssets, updateTableAsset
 
 # Linking & Navigation
 - When referencing surveys, interviews, or people, format as \`[Name](url)\` markdown link.
@@ -102,6 +112,14 @@ For FEEDBACK:
 		searchSurveyResponses: searchSurveyResponsesTool,
 		createSurvey: createSurveyTool,
 		deleteSurvey: deleteSurveyTool,
+		fetchWebContent: fetchWebContentTool,
+		importVideoFromUrl: importVideoFromUrlTool,
+		webResearch: webResearchTool,
+		findSimilarPages: findSimilarPagesTool,
+		manageDocuments: manageDocumentsTool,
+		parseSpreadsheet: parseSpreadsheetTool,
+		saveTableToAssets: saveTableToAssetsTool,
+		updateTableAsset: updateTableAssetTool,
 		navigateToPage: navigateToPageTool,
 		generateProjectRoutes: generateProjectRoutesTool,
 	}),

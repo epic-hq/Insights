@@ -220,6 +220,14 @@ export const finalizeInterviewTaskV2 = task({
           consola.info(
             `[finalizeInterview] Triggered generateThumbnail for video ${interviewId}`,
           );
+
+          // Also generate per-evidence thumbnails at each anchor timestamp
+          const { generateEvidenceThumbnails } =
+            await import("../../generate-evidence-thumbnails");
+          await generateEvidenceThumbnails.trigger({ interviewId });
+          consola.info(
+            `[finalizeInterview] Triggered generateEvidenceThumbnails for ${interviewId}`,
+          );
         }
       } catch (thumbError) {
         consola.warn("Failed to trigger generateThumbnail:", thumbError);

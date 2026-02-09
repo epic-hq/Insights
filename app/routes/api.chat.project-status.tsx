@@ -22,8 +22,6 @@ import { getLangfuseClient } from "~/lib/langfuse.server";
 import { mastra } from "~/mastra";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
-import { createSurveyTool } from "~/mastra/tools/create-survey";
-import { fetchTopThemesWithPeopleTool } from "~/mastra/tools/fetch-top-themes-with-people";
 import { navigateToPageTool } from "~/mastra/tools/navigate-to-page";
 import { switchAgentTool } from "~/mastra/tools/switch-agent";
 import { userContext } from "~/server/user-context";
@@ -82,6 +80,7 @@ const MAX_SYSTEM_CONTEXT_CHARS = 3000;
 const MAX_FAST_SYSTEM_CONTEXT_CHARS = 800;
 const DEBUG_PREFIX_REGEX = /^\s*\/debug\b[:\s-]*/i;
 const FALLBACK_EMPTY_RESPONSE_TEXT = "Sorry, I couldn't answer that just now. Please try again.";
+const MARKDOWN_LINK_REGEX = /\[[^\]]+\]\((?:\/|https?:\/\/|#|mailto:)[^)]+\)/;
 
 const MAX_STEPS_BY_AGENT: Record<RoutingTargetAgent, number> = {
 	projectStatusAgent: 6,
@@ -187,6 +186,34 @@ function normalizeMessagesForExecution(
 	});
 }
 
+export function buildQuickLinksMarkdown(options: {
+	accountId: string;
+	projectId: string;
+	lastUserText: string;
+	targetAgentId: RoutingTargetAgent;
+}) {
+	const { accountId, projectId, lastUserText, targetAgentId } = options;
+	if (!accountId || !projectId) return "";
+
+	const base = `/a/${accountId}/${projectId}`;
+	const normalizedPrompt = lastUserText.toLowerCase();
+	const mentionsPeople = /\b(people|person|contact|contacts|icp)\b/.test(normalizedPrompt);
+	const mentionsSurvey = /\b(survey|ask link|ask|questionnaire|responses?)\b/.test(normalizedPrompt);
+	const mentionsThemes = /\b(theme|insight|insights|evidence)\b/.test(normalizedPrompt);
+
+	const links: string[] = [];
+	if (mentionsPeople) links.push(`[People](${base}/lenses?tab=people)`);
+	if (mentionsSurvey || targetAgentId === "researchAgent") links.push(`[Ask](${base}/ask)`);
+	if (mentionsThemes || targetAgentId === "projectStatusAgent") links.push(`[Insights](${base}/insights/table)`);
+
+	if (links.length === 0) {
+		links.push(`[Insights](${base}/insights/table)`);
+		links.push(`[People](${base}/lenses?tab=people)`);
+	}
+
+	return `Quick links: ${links.join(" · ")}`;
+}
+
 type StreamLike = ReadableStream<Record<string, unknown>>;
 
 function augmentStreamForReliability(
@@ -198,6 +225,7 @@ function augmentStreamForReliability(
 		responseMode: RoutingResponseMode;
 		accountId: string;
 		projectId: string;
+		lastUserText: string;
 		routingSource: RoutingSource;
 		routingConfidence: number | null;
 	}
@@ -210,6 +238,7 @@ function augmentStreamForReliability(
 	let sawTextDelta = false;
 	let injectedSafetyMessage = false;
 	let appendedDebugTrace = false;
+	let appendedQuickLinks = false;
 	let sawFinishChunk = false;
 	let appendedHowtoContractPatch = false;
 	let accumulatedAssistantText = "";
@@ -266,6 +295,21 @@ function augmentStreamForReliability(
 		appendedDebugTrace = true;
 	};
 
+	const maybeEnqueueQuickLinks = (controller: TransformStreamDefaultController<Record<string, unknown>>) => {
+		if (appendedQuickLinks) return;
+		if (!sawTextDelta) return;
+		if (MARKDOWN_LINK_REGEX.test(accumulatedAssistantText)) return;
+		const quickLinks = buildQuickLinksMarkdown({
+			accountId: options.accountId,
+			projectId: options.projectId,
+			lastUserText: options.lastUserText,
+			targetAgentId: options.targetAgentId,
+		});
+		if (!quickLinks) return;
+		enqueueAssistantText(controller, quickLinks, "links");
+		appendedQuickLinks = true;
+	};
+
 	const maybeLogHowtoStreamTelemetry = () => {
 		if (options.targetAgentId !== "howtoAgent" || loggedHowtoTelemetry) return;
 		const quality = evaluateHowtoResponseContract(accumulatedAssistantText);
@@ -303,6 +347,7 @@ function augmentStreamForReliability(
 					sawFinishChunk = true;
 					maybeEnqueueSafetyMessage(controller);
 					maybeEnqueueHowtoContractPatch(controller);
+					maybeEnqueueQuickLinks(controller);
 					maybeEnqueueDebugTrace(controller);
 					maybeLogHowtoStreamTelemetry();
 				}
@@ -312,6 +357,7 @@ function augmentStreamForReliability(
 			flush(controller) {
 				maybeEnqueueSafetyMessage(controller);
 				maybeEnqueueHowtoContractPatch(controller);
+				maybeEnqueueQuickLinks(controller);
 				maybeEnqueueDebugTrace(controller);
 				maybeLogHowtoStreamTelemetry();
 				if (!sawFinishChunk) {
@@ -424,95 +470,6 @@ function routeByDeterministicPrompt(lastUserText: string): z.infer<typeof intent
 	return null;
 }
 
-function buildDeterministicSurveyDraft(prompt: string) {
-	const lower = prompt.toLowerCase();
-	const isWaitlist = lower.includes("waitlist") || lower.includes("beta");
-	const isMissingProfileData =
-		lower.includes("missing data") ||
-		lower.includes("without data") ||
-		(lower.includes("icp") && (lower.includes("missing") || lower.includes("unscored")));
-
-	if (isMissingProfileData) {
-		return {
-			name: "Profile Completion Survey",
-			description: "Collect missing profile data and a short context update to improve ICP scoring.",
-			questions: [
-				{
-					prompt: "What is your current job title?",
-					type: "short_text",
-					required: true,
-				},
-				{
-					prompt: "What company are you currently at?",
-					type: "short_text",
-					required: true,
-				},
-				{
-					prompt: "What is your primary goal right now related to this problem?",
-					type: "auto",
-					required: false,
-				},
-				{
-					prompt: "How urgent is solving this in the next 3 months?",
-					type: "likert",
-					likertScale: 10,
-					required: false,
-				},
-			],
-		};
-	}
-
-	if (isWaitlist) {
-		return {
-			name: "Beta Waitlist Survey",
-			description: "Qualify waitlist signups and understand urgency and expected outcomes.",
-			questions: [
-				{
-					prompt: "What is your biggest challenge right now?",
-					type: "auto",
-					required: true,
-				},
-				{
-					prompt: "How urgent is this problem for you today?",
-					type: "likert",
-					likertScale: 10,
-					likertLabels: { low: "Not urgent", high: "Very urgent" },
-					required: true,
-				},
-				{
-					prompt: "What outcome would make this an obvious win for you?",
-					type: "auto",
-					required: false,
-				},
-			],
-		};
-	}
-
-	return {
-		name: "Customer Discovery Survey",
-		description: "Gather structured feedback from target users.",
-		questions: [
-			{
-				prompt: "What problem are you trying to solve right now?",
-				type: "auto",
-				required: true,
-			},
-			{
-				prompt: "What are you using today to solve it?",
-				type: "auto",
-				required: false,
-			},
-			{
-				prompt: "How painful is this problem for you?",
-				type: "likert",
-				likertScale: 10,
-				likertLabels: { low: "Low pain", high: "Severe pain" },
-				required: false,
-			},
-		],
-	};
-}
-
 async function routeAgentByIntent(
 	lastUserText: string,
 	resourceId?: string
@@ -559,6 +516,7 @@ Never set responseMode="theme_people_snapshot" for people-comparison prompts (e.
 Set responseMode="survey_quick_create" when user asks to create/build/generate a survey or waitlist.
 Set responseMode="gtm_mode" when howtoAgent request is primarily go-to-market (positioning, messaging, launch, distribution, sales).
 Set responseMode="ux_research_mode" for howtoAgent requests about UX, product discovery/research, or general product how-to prompts.
+Use responseMode="normal" for all other requests.
 Message: """${prompt.slice(0, 1200)}"""`,
 		});
 		return result.object;
@@ -721,71 +679,6 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	requestContext.set("routing_source", routingSource);
 	if (debugRequested) {
 		requestContext.set("debug_mode", true);
-	}
-
-	if (resolvedResponseMode === "theme_people_snapshot") {
-		const topThemesResult = await fetchTopThemesWithPeopleTool.execute(
-			{
-				projectId,
-				limit: 2,
-				peoplePerTheme: 6,
-			},
-			{ requestContext }
-		);
-
-		const message = topThemesResult.success
-			? topThemesResult.topThemes.length > 0
-				? `Top themes right now:\n${topThemesResult.topThemes
-						.map((theme, index) => {
-							const people = theme.people
-								.map((person) => person.name ?? "Unknown")
-								.filter((name) => name.trim().length > 0)
-								.slice(0, 6)
-								.join(", ");
-							const themeLabel = theme.url ? `[${theme.name}](${theme.url})` : theme.name;
-							return `${index + 1}. ${themeLabel} (${theme.evidenceCount} mentions)${people ? ` — People: ${people}` : ""}`;
-						})
-						.join("\n")}`
-				: "I couldn't find any themes with evidence links yet in this project."
-			: "I couldn't load theme data right now. Please try again.";
-
-		const debugSuffix = debugRequested
-			? "\n\nDebug Trace:\n- routed_to: deterministic_theme_people_snapshot\n- tool_calls: fetchTopThemesWithPeople\n- max_steps: 0"
-			: "";
-
-		return createUIMessageStreamResponse({
-			stream: streamPlainAssistantText(`${message}${debugSuffix}`),
-		});
-	}
-
-	if (resolvedResponseMode === "survey_quick_create") {
-		const draft = buildDeterministicSurveyDraft(lastUserText);
-		const surveyResult = await createSurveyTool.execute(
-			{
-				projectId,
-				name: draft.name,
-				description: draft.description,
-				questions: draft.questions,
-				isLive: true,
-			},
-			{ requestContext }
-		);
-
-		const message = surveyResult.success
-			? `Created **${draft.name}** with ${draft.questions.length} questions.${
-					surveyResult.editUrl ? `\n\nEdit it here: [Open Survey](${surveyResult.editUrl})` : ""
-				}`
-			: `I couldn't create the survey automatically right now. ${
-					surveyResult.message || "Please try again."
-				}\n\nI can still draft it manually for you:\n1. Job title\n2. Company\n3. Current goal\n4. Urgency (1-10)`;
-
-		const debugSuffix = debugRequested
-			? "\n\nDebug Trace:\n- routed_to: deterministic_survey_quick_create\n- response_mode: survey_quick_create\n- max_steps: 0\n- tool_calls: createSurvey"
-			: "";
-
-		return createUIMessageStreamResponse({
-			stream: streamPlainAssistantText(`${message}${debugSuffix}`),
-		});
 	}
 
 	const fastGuidanceCacheKey =
@@ -1014,6 +907,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		responseMode: resolvedResponseMode,
 		accountId,
 		projectId,
+		lastUserText,
 		routingSource,
 		routingConfidence: routeDecision?.confidence ?? null,
 	});

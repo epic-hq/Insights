@@ -1,14 +1,8 @@
-import { useChat } from "@ai-sdk/react";
 import { convertMessages } from "@mastra/core/agent";
-import {
-  DefaultChatTransport,
-  lastAssistantMessageIsCompleteWithToolCalls,
-} from "ai";
 import consola from "consola";
 import {
   AlertTriangle,
   ArrowUpRight,
-  BotMessageSquare,
   Briefcase,
   Edit2,
   Loader2,
@@ -33,7 +27,6 @@ import {
   useNavigation,
   useRevalidator,
 } from "react-router";
-import { Streamdown } from "streamdown";
 import type { Database } from "~/../supabase/types";
 import {
   AlertDialog,
@@ -67,13 +60,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "~/components/ui/popover";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
-import { Textarea } from "~/components/ui/textarea";
 import { useCurrentProject } from "~/contexts/current-project-context";
 import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList";
 import {
@@ -90,14 +76,16 @@ import {
   loadLensTemplates,
 } from "~/features/lenses/lib/loadLensAnalyses.server";
 import type { InterviewLensView } from "~/features/lenses/types";
+import { getVoteCountsForEntities } from "~/features/annotations/db";
+import {
+  getPeopleOptions,
+  verifyPersonBelongsToProject,
+} from "~/features/people/db";
 import { syncTitleToJobTitleFacet } from "~/features/people/syncTitleToFacet.server";
 import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu";
 import { useInterviewProgress } from "~/hooks/useInterviewProgress";
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
-import {
-  useProjectRoutes,
-  useProjectRoutesFromIds,
-} from "~/hooks/useProjectRoutes";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 import { getPostHogServerClient } from "~/lib/posthog.server";
 import { getSupabaseClient } from "~/lib/supabase/client";
 import { cn } from "~/lib/utils";
@@ -105,14 +93,21 @@ import { memory } from "~/mastra/memory";
 import type { UpsightMessage } from "~/mastra/message-types";
 import { userContext } from "~/server/user-context";
 import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server";
+import { useCustomLensDefaults } from "../hooks/useCustomLensDefaults";
+import { useEmpathySpeakers } from "../hooks/useEmpathySpeakers";
+import { usePersonalFacetSummary } from "../hooks/usePersonalFacetSummary";
+import { useTranscriptSpeakers } from "../hooks/useTranscriptSpeakers";
+import { parseConversationAnalysis } from "../lib/parseConversationAnalysis.server";
+import { processEmpathyMap } from "../lib/processEmpathyMap.server";
 import { DocumentViewer } from "../components/DocumentViewer";
-import { InterviewQuestionsAccordion } from "../components/InterviewQuestionsAccordion";
-import { LazyTranscriptResults } from "../components/LazyTranscriptResults";
-import { ManagePeopleAssociations } from "../components/ManagePeopleAssociations";
+import { EvidenceVerificationDrawer } from "../components/EvidenceVerificationDrawer";
 import { InterviewInsights } from "../components/InterviewInsights";
+import { InterviewQuestionsAccordion } from "../components/InterviewQuestionsAccordion";
 import { InterviewRecommendations } from "../components/InterviewRecommendations";
 import { InterviewScorecard } from "../components/InterviewScorecard";
 import { InterviewSourcePanel } from "../components/InterviewSourcePanel";
+import { LazyTranscriptResults } from "../components/LazyTranscriptResults";
+import { ManagePeopleAssociations } from "../components/ManagePeopleAssociations";
 import { NoteViewer } from "../components/NoteViewer";
 
 // Helper to parse full name into first and last
@@ -257,24 +252,6 @@ function extractAnalysisFromInterview(
   };
 }
 
-type ConversationAnalysisForDisplay = {
-  summary: string | null;
-  keyTakeaways: Array<{
-    priority: "high" | "medium" | "low";
-    summary: string;
-    evidenceSnippets: string[];
-  }>;
-  openQuestions: string[];
-  recommendations: Array<{
-    focusArea: string;
-    action: string;
-    rationale: string;
-  }>;
-  status: "pending" | "processing" | "completed" | "failed";
-  updatedAt: string | null;
-  customLenses: Record<string, { summary?: string; notes?: string }>;
-};
-
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   return [
     { title: `${data?.interview?.title || "Interview"} | Insights` },
@@ -338,26 +315,12 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
         }
 
         // Guard: ensure selected person belongs to this project
-        const { data: personRow, error: personErr } = await supabase
-          .from("people")
-          .select("id, project_id")
-          .eq("id", personId)
-          .single();
-        if (personErr || !personRow) {
-          return Response.json(
-            { ok: false, error: "Selected person not found" },
-            { status: 400 },
-          );
-        }
-        if (personRow.project_id !== projectId) {
-          return Response.json(
-            {
-              ok: false,
-              error: "Selected person belongs to a different project",
-            },
-            { status: 400 },
-          );
-        }
+        const verifyResult = await verifyPersonBelongsToProject({
+          supabase,
+          personId,
+          projectId,
+        });
+        if (!verifyResult.ok) return verifyResult.response;
 
         const { error } = await supabase
           .from("interview_people")
@@ -464,26 +427,12 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 
         // Guard: ensure selected person belongs to this project (skip if we just created it)
         if (!createPerson) {
-          const { data: personRow, error: personErr } = await supabase
-            .from("people")
-            .select("id, project_id")
-            .eq("id", personId)
-            .single();
-          if (personErr || !personRow) {
-            return Response.json(
-              { ok: false, error: "Selected person not found" },
-              { status: 400 },
-            );
-          }
-          if (personRow.project_id !== projectId) {
-            return Response.json(
-              {
-                ok: false,
-                error: "Selected person belongs to a different project",
-              },
-              { status: 400 },
-            );
-          }
+          const verifyResult = await verifyPersonBelongsToProject({
+            supabase,
+            personId,
+            projectId,
+          });
+          if (!verifyResult.ok) return verifyResult.response;
         }
 
         const { error } = await supabase.from("interview_people").insert({
@@ -747,6 +696,16 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
           opportunityId: opportunity.id,
         });
       }
+      case "generate-evidence-thumbnails": {
+        const { tasks } = await import("@trigger.dev/sdk");
+        type GenEvThumb =
+          typeof import("~/../../src/trigger/generate-evidence-thumbnails").generateEvidenceThumbnails;
+        await tasks.trigger<GenEvThumb>("generate-evidence-thumbnails", {
+          interviewId,
+          force: formData.get("force") === "true",
+        });
+        return Response.json({ ok: true });
+      }
       default:
         return Response.json(
           { ok: false, error: "Unknown intent" },
@@ -824,119 +783,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
       sourceType: interviewData.source_type,
     });
 
-    const conversationAnalysis = (() => {
-      const raw = interviewData.conversation_analysis as
+    const conversationAnalysis = parseConversationAnalysis(
+      interviewData.conversation_analysis as
         | Record<string, unknown>
         | null
-        | undefined;
-      if (!raw || typeof raw !== "object") return null;
-
-      const parseStringArray = (value: unknown): string[] => {
-        if (!Array.isArray(value)) return [];
-        return value
-          .map((item) => (typeof item === "string" ? item.trim() : null))
-          .filter((item): item is string => Boolean(item && item.length > 0));
-      };
-
-      const parseKeyTakeaways =
-        (): ConversationAnalysisForDisplay["keyTakeaways"] => {
-          const value = raw.key_takeaways as unknown;
-          if (!Array.isArray(value)) return [];
-          return value
-            .map((item) => {
-              if (!item || typeof item !== "object") return null;
-              const entry = item as { [key: string]: unknown };
-              const summary =
-                typeof entry.summary === "string" ? entry.summary.trim() : "";
-              if (!summary) return null;
-              const priority =
-                entry.priority === "high" ||
-                entry.priority === "medium" ||
-                entry.priority === "low"
-                  ? entry.priority
-                  : "medium";
-              const evidenceSnippets = parseStringArray(
-                entry.evidence_snippets,
-              );
-              return { priority, summary, evidenceSnippets };
-            })
-            .filter(
-              (
-                item,
-              ): item is {
-                priority: "high" | "medium" | "low";
-                summary: string;
-                evidenceSnippets: string[];
-              } => item !== null,
-            );
-        };
-
-      const parseRecommendations =
-        (): ConversationAnalysisForDisplay["recommendations"] => {
-          const value = raw.recommended_next_steps as unknown;
-          if (!Array.isArray(value)) return [];
-          return value
-            .map((item) => {
-              if (!item || typeof item !== "object") return null;
-              const entry = item as { [key: string]: unknown };
-              const focusArea =
-                typeof entry.focus_area === "string"
-                  ? entry.focus_area.trim()
-                  : "";
-              const action =
-                typeof entry.action === "string" ? entry.action.trim() : "";
-              const rationale =
-                typeof entry.rationale === "string"
-                  ? entry.rationale.trim()
-                  : "";
-              if (!focusArea && !action && !rationale) return null;
-              return { focusArea, action, rationale };
-            })
-            .filter(
-              (
-                item,
-              ): item is {
-                focusArea: string;
-                action: string;
-                rationale: string;
-              } => item !== null,
-            );
-        };
-
-      const parseCustomLenses =
-        (): ConversationAnalysisForDisplay["customLenses"] => {
-          const value = raw.custom_lenses as unknown;
-          if (!value || typeof value !== "object") return {};
-          const entries = Object.entries(
-            value as Record<string, unknown>,
-          ).reduce(
-            (acc, [key, data]) => {
-              if (!data || typeof data !== "object") return acc;
-              const entry = data as { [field: string]: unknown };
-              const summary =
-                typeof entry.summary === "string" ? entry.summary : undefined;
-              const notes =
-                typeof entry.notes === "string" ? entry.notes : undefined;
-              acc[key] = {};
-              if (summary) acc[key].summary = summary;
-              if (notes) acc[key].notes = notes;
-              return acc;
-            },
-            {} as Record<string, { summary?: string; notes?: string }>,
-          );
-          return entries;
-        };
-
-      return {
-        summary: typeof raw.overview === "string" ? raw.overview : null,
-        keyTakeaways: parseKeyTakeaways(),
-        openQuestions: parseStringArray(raw.open_questions),
-        recommendations: parseRecommendations(),
-        status: "completed" as const,
-        updatedAt: interviewData.updated_at,
-        customLenses: parseCustomLenses(),
-      };
-    })();
+        | undefined,
+      interviewData.updated_at,
+    );
 
     // Fetch participant data separately to avoid junction table query issues
     let participants: Array<{
@@ -1022,11 +875,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
       });
     }
 
-    const { data: peopleOptions, error: peopleError } = await supabase
-      .from("people")
-      .select("id, name, segment, person_type")
-      .or(`project_id.eq.${projectId},account_id.eq.${accountId}`)
-      .order("name", { ascending: true });
+    const { data: peopleOptions, error: peopleError } = await getPeopleOptions({
+      supabase,
+      accountId,
+      projectId,
+    });
 
     if (peopleError) {
       consola.warn(
@@ -1237,139 +1090,19 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
       consola.warn("Could not fetch evidence:", evidenceError.message);
     }
 
-    // Process empathy map data in the loader for better performance
-    type EmpathyMapItem = {
-      text: string;
-      evidenceId: string;
-      anchors?: unknown;
-      personId?: string;
-      personName?: string;
-    };
-    const empathyMap = {
-      says: [] as EmpathyMapItem[],
-      does: [] as EmpathyMapItem[],
-      thinks: [] as EmpathyMapItem[],
-      feels: [] as EmpathyMapItem[],
-      pains: [] as EmpathyMapItem[],
-      gains: [] as EmpathyMapItem[],
-    };
-
-    if (evidence) {
-      evidence.forEach((e) => {
-        const evidenceId = e.id;
-        // Extract person info from evidence_people junction
-        const personData =
-          Array.isArray(e.evidence_people) && e.evidence_people.length > 0
-            ? e.evidence_people[0]
-            : null;
-        const personId = personData?.people?.id;
-        const personName = personData?.people?.name;
-
-        // Process each empathy map category
-        if (Array.isArray(e.says)) {
-          e.says.forEach((item: string) => {
-            if (typeof item === "string" && item.trim()) {
-              empathyMap.says.push({
-                text: item.trim(),
-                evidenceId,
-                anchors: e.anchors,
-                personId,
-                personName,
-              });
-            }
-          });
-        }
-
-        if (Array.isArray(e.does)) {
-          e.does.forEach((item: string) => {
-            if (typeof item === "string" && item.trim()) {
-              empathyMap.does.push({
-                text: item.trim(),
-                evidenceId,
-                anchors: e.anchors,
-                personId,
-                personName,
-              });
-            }
-          });
-        }
-
-        if (Array.isArray(e.thinks)) {
-          e.thinks.forEach((item: string) => {
-            if (typeof item === "string" && item.trim()) {
-              empathyMap.thinks.push({
-                text: item.trim(),
-                evidenceId,
-                anchors: e.anchors,
-                personId,
-                personName,
-              });
-            }
-          });
-        }
-
-        if (Array.isArray(e.feels)) {
-          e.feels.forEach((item: string) => {
-            if (typeof item === "string" && item.trim()) {
-              empathyMap.feels.push({
-                text: item.trim(),
-                evidenceId,
-                anchors: e.anchors,
-                personId,
-                personName,
-              });
-            }
-          });
-        }
-
-        if (Array.isArray(e.pains)) {
-          e.pains.forEach((item: string) => {
-            if (typeof item === "string" && item.trim()) {
-              empathyMap.pains.push({
-                text: item.trim(),
-                evidenceId,
-                anchors: e.anchors,
-                personId,
-                personName,
-              });
-            }
-          });
-        }
-
-        if (Array.isArray(e.gains)) {
-          e.gains.forEach((item: string) => {
-            if (typeof item === "string" && item.trim()) {
-              empathyMap.gains.push({
-                text: item.trim(),
-                evidenceId,
-                anchors: e.anchors,
-                personId,
-                personName,
-              });
-            }
-          });
-        }
-      });
-    }
-
-    // Deduplicate while preserving order and limit results
-    const deduplicateAndLimit = (items: EmpathyMapItem[], limit = 8) => {
-      const seen = new Set<string>();
-      return items
-        .filter((item) => {
-          if (seen.has(item.text)) return false;
-          seen.add(item.text);
-          return true;
+    // Batch-fetch vote counts for all evidence in one query
+    const evidenceIds = (evidence || []).map((e) => e.id);
+    const { data: evidenceVoteCounts } = evidenceIds.length
+      ? await getVoteCountsForEntities({
+          supabase,
+          projectId,
+          entityType: "evidence",
+          entityIds: evidenceIds,
+          userId: ctx.claims.sub,
         })
-        .slice(0, limit);
-    };
+      : { data: {} };
 
-    empathyMap.says = deduplicateAndLimit(empathyMap.says);
-    empathyMap.does = deduplicateAndLimit(empathyMap.does);
-    empathyMap.thinks = deduplicateAndLimit(empathyMap.thinks);
-    empathyMap.feels = deduplicateAndLimit(empathyMap.feels);
-    empathyMap.pains = deduplicateAndLimit(empathyMap.pains);
-    empathyMap.gains = deduplicateAndLimit(empathyMap.gains);
+    const empathyMap = processEmpathyMap(evidence as any);
 
     // Fetch creator's name from user_settings
     let creatorName = "Unknown";
@@ -1423,6 +1156,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
       interview,
       insights,
       evidence: evidence || [],
+      evidenceVoteCounts: evidenceVoteCounts || {},
       empathyMap,
       peopleOptions: peopleOptions || [],
       creatorName,
@@ -1502,6 +1236,7 @@ export default function InterviewDetail({
     interview,
     insights,
     evidence,
+    evidenceVoteCounts,
     empathyMap,
     peopleOptions,
     creatorName,
@@ -1569,6 +1304,10 @@ export default function InterviewDetail({
   const [regeneratePopoverOpen, setRegeneratePopoverOpen] = useState(false);
   const [regenerateInstructions, setRegenerateInstructions] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [verifyDrawerOpen, setVerifyDrawerOpen] = useState(false);
+  const [selectedEvidenceId, setSelectedEvidenceId] = useState<string | null>(
+    null,
+  );
 
   // Create evidence map for lens timestamp hydration
   const evidenceMap = useMemo(() => {
@@ -1645,6 +1384,28 @@ export default function InterviewDetail({
     );
   };
 
+  const handleEvidenceSelect = (evidenceId: string) => {
+    setSelectedEvidenceId(evidenceId);
+    setVerifyDrawerOpen(true);
+  };
+
+  const selectedEvidence = useMemo(() => {
+    if (!selectedEvidenceId) return null;
+    const item = evidence.find((e) => e.id === selectedEvidenceId);
+    if (!item) return null;
+    return {
+      id: item.id,
+      verbatim: item.verbatim ?? null,
+      gist: item.gist ?? null,
+      topic: item.topic ?? null,
+      support: item.support ?? null,
+      confidence: item.confidence ?? null,
+      anchors: item.anchors,
+      thumbnail_url:
+        (item as { thumbnail_url?: string | null }).thumbnail_url ?? null,
+    };
+  }, [selectedEvidenceId, evidence]);
+
   useEffect(() => {
     const prevState = fetcherPrevStateRef.current;
     fetcherPrevStateRef.current = fetcher.state;
@@ -1715,57 +1476,9 @@ export default function InterviewDetail({
   const _primaryParticipant = participants[0]?.people;
 
   // Calculate transcript speakers for the Manage Participants dialog
-  // Derive from transcript_formatted utterances/speaker_transcripts
-  const transcriptSpeakers = useMemo(() => {
-    const transcriptData = interview.transcript_formatted as
-      | {
-          utterances?: Array<{ speaker: string }>;
-          speaker_transcripts?: Array<{ speaker: string }>;
-        }
-      | null
-      | undefined;
-
-    const utterances =
-      (Array.isArray(transcriptData?.utterances) &&
-        transcriptData.utterances) ||
-      (Array.isArray(transcriptData?.speaker_transcripts) &&
-        transcriptData.speaker_transcripts) ||
-      [];
-
-    if (!utterances.length) {
-      return [];
-    }
-
-    // Extract unique speakers from utterances
-    const uniqueSpeakers = new Set<string>();
-    for (const utterance of utterances) {
-      if (utterance.speaker) {
-        uniqueSpeakers.add(utterance.speaker);
-      }
-    }
-
-    // Convert to TranscriptSpeaker format with proper labels
-    return Array.from(uniqueSpeakers).map((key) => {
-      // Generate a display label based on the speaker key format
-      let label = key;
-      // participant-0, participant-1 -> Speaker A, B
-      if (/^participant-\d+$/i.test(key)) {
-        const num = Number.parseInt(key.split("-")[1], 10);
-        const letter = String.fromCharCode(65 + num); // 0 -> A, 1 -> B
-        label = `Speaker ${letter}`;
-      } else if (/^[A-Z]$/i.test(key)) {
-        label = `Speaker ${key.toUpperCase()}`;
-      } else if (/^speaker[\s_-]?(\d+)$/i.test(key)) {
-        const match = key.match(/(\d+)/);
-        if (match) {
-          const num = Number.parseInt(match[1], 10);
-          const letter = String.fromCharCode(64 + num); // 1 -> A, 2 -> B
-          label = `Speaker ${letter}`;
-        }
-      }
-      return { key, label };
-    });
-  }, [interview.transcript_formatted]);
+  const transcriptSpeakers = useTranscriptSpeakers(
+    interview.transcript_formatted,
+  );
   const aiKeyTakeaways = conversationAnalysis?.keyTakeaways ?? [];
   const conversationUpdatedLabel =
     conversationAnalysis?.updatedAt &&
@@ -1816,53 +1529,7 @@ export default function InterviewDetail({
     () => normalizeMultilineText(interview.observations_and_notes).trim(),
     [interview.observations_and_notes],
   );
-  const personalFacetSummary = useMemo(() => {
-    if (!participants.length) return "";
-
-    const lines = participants
-      .map((participant) => {
-        const person =
-          (participant.people as {
-            name?: string | null;
-            segment?: string | null;
-            people_personas?: Array<{
-              personas?: { name?: string | null } | null;
-            }>;
-          } | null) || null;
-        const personaNames = Array.from(
-          new Set(
-            (person?.people_personas || [])
-              .map((entry) => entry?.personas?.name)
-              .filter(
-                (name): name is string =>
-                  typeof name === "string" && name.trim(),
-              ),
-          ),
-        );
-
-        const facets: string[] = [];
-        if (participant.role) facets.push(`Role: ${participant.role}`);
-        if (person?.segment) facets.push(`Segment: ${person.segment}`);
-        if (personaNames.length > 0)
-          facets.push(`Personas: ${personaNames.join(", ")}`);
-
-        const displayName =
-          person?.name ||
-          participant.display_name ||
-          (participant.transcript_key
-            ? `Speaker ${participant.transcript_key}`
-            : null);
-
-        if (!displayName && facets.length === 0) {
-          return null;
-        }
-
-        return `- ${(displayName || "Participant").trim()}${facets.length ? ` (${facets.join("; ")})` : ""}`;
-      })
-      .filter((line): line is string => Boolean(line));
-
-    return lines.slice(0, 8).join("\n");
-  }, [participants]);
+  const personalFacetSummary = usePersonalFacetSummary(participants);
 
   const _interviewSystemContext = useMemo(() => {
     const sections: string[] = [];
@@ -1910,162 +1577,14 @@ export default function InterviewDetail({
         : "bg-muted text-muted-foreground"
     : "";
 
-  const uniqueSpeakers = useMemo(() => {
-    const speakerMap = new Map<
-      string,
-      { id: string; name: string; count: number }
-    >();
+  const { uniqueSpeakers, personLenses: _personLenses } =
+    useEmpathySpeakers(empathyMap);
 
-    // Collect all speakers from empathy map items
-    const allItems = [
-      ...empathyMap.says,
-      ...empathyMap.does,
-      ...empathyMap.thinks,
-      ...empathyMap.feels,
-      ...empathyMap.pains,
-      ...empathyMap.gains,
-    ];
-
-    allItems.forEach((item) => {
-      if (item.personId && item.personName) {
-        const existing = speakerMap.get(item.personId);
-        if (existing) {
-          existing.count++;
-        } else {
-          speakerMap.set(item.personId, {
-            id: item.personId,
-            name: item.personName,
-            count: 1,
-          });
-        }
-      }
-    });
-
-    // Sort by count (most evidence first), then by name
-    return Array.from(speakerMap.values()).sort((a, b) => {
-      if (b.count !== a.count) return b.count - a.count;
-      return a.name.localeCompare(b.name);
-    });
-  }, [empathyMap]);
-
-  const _personLenses = useMemo(() => {
-    return uniqueSpeakers.map((speaker) => {
-      const filterByPerson = (items: typeof empathyMap.says) => {
-        return items
-          .filter((item) => item.personId === speaker.id)
-          .map((item) => ({
-            text: item.text,
-            evidenceId: item.evidenceId,
-            anchors: item.anchors,
-          }));
-      };
-
-      return {
-        id: speaker.id,
-        name: speaker.name,
-        painsAndGoals: {
-          pains: filterByPerson(empathyMap.pains),
-          gains: filterByPerson(empathyMap.gains),
-        },
-        empathyMap: {
-          says: filterByPerson(empathyMap.says),
-          does: filterByPerson(empathyMap.does),
-          thinks: filterByPerson(empathyMap.thinks),
-          feels: filterByPerson(empathyMap.feels),
-        },
-      };
-    });
-  }, [uniqueSpeakers, empathyMap]);
-
-  const _customLensDefaults = useMemo<
-    Record<string, { summary?: string; notes?: string; highlights?: string[] }>
-  >(() => {
-    const firstNonEmpty = (...values: Array<string | null | undefined>) => {
-      for (const value of values) {
-        if (typeof value === "string" && value.trim().length > 0)
-          return value.trim();
-      }
-      return undefined;
-    };
-
-    const highImpactThemes = Array.isArray(interview.high_impact_themes)
-      ? (interview.high_impact_themes as string[]).filter(
-          (item) => typeof item === "string" && item.trim().length > 0,
-        )
-      : [];
-
-    const engineeringRecommendation = (
-      conversationAnalysis?.recommendations ?? []
-    ).find((rec) =>
-      /(tech|engineering|product|integration)/i.test(
-        `${rec.focusArea} ${rec.action} ${rec.rationale}`,
-      ),
-    );
-
-    const empathyPains = empathyMap.pains
-      .map((item) => item.text)
-      .filter((text): text is string => Boolean(text?.trim()));
-    const empathyFeels = empathyMap.feels
-      .map((item) => item.text)
-      .filter((text): text is string => Boolean(text?.trim()));
-    const empathyGains = empathyMap.gains
-      .map((item) => item.text)
-      .filter((text): text is string => Boolean(text?.trim()));
-
-    const openQuestions = (conversationAnalysis?.openQuestions ?? []).filter(
-      (item) => item && item.trim().length > 0,
-    );
-    const nervousTakeaway = conversationAnalysis?.keyTakeaways.find(
-      (takeaway) => takeaway.priority === "low",
-    );
-
-    return {
-      productImpact: {
-        summary: firstNonEmpty(
-          highImpactThemes[0],
-          engineeringRecommendation?.action,
-          conversationAnalysis?.keyTakeaways.find(
-            (takeaway) => takeaway.priority === "high",
-          )?.summary,
-        ),
-        notes: firstNonEmpty(
-          engineeringRecommendation
-            ? `${engineeringRecommendation.focusArea}: ${engineeringRecommendation.action}`
-            : undefined,
-          interview.observations_and_notes ?? undefined,
-        ),
-        highlights: highImpactThemes.slice(0, 4),
-      },
-      customerService: {
-        summary: firstNonEmpty(
-          empathyPains[0],
-          empathyGains[0],
-          conversationAnalysis?.summary ?? undefined,
-        ),
-        notes: firstNonEmpty(empathyFeels[0], empathyGains[1]),
-        highlights: empathyPains.slice(0, 4),
-      },
-      pessimistic: {
-        summary: firstNonEmpty(
-          openQuestions[0],
-          interview.open_questions_and_next_steps ?? undefined,
-        ),
-        notes: firstNonEmpty(openQuestions[1], nervousTakeaway?.summary),
-        highlights: openQuestions.slice(0, 4),
-      },
-    };
-  }, [
-    conversationAnalysis?.keyTakeaways,
-    conversationAnalysis?.openQuestions,
-    conversationAnalysis?.recommendations,
-    conversationAnalysis?.summary,
-    empathyMap.feels,
-    empathyMap.gains,
-    empathyMap.pains,
-    interview.high_impact_themes,
-    interview.observations_and_notes,
-    interview.open_questions_and_next_steps,
-  ]);
+  const _customLensDefaults = useCustomLensDefaults(
+    conversationAnalysis,
+    empathyMap,
+    interview,
+  );
 
   useEffect(() => {
     setCustomLensOverrides(conversationAnalysis?.customLenses ?? {});
@@ -2423,9 +1942,11 @@ export default function InterviewDetail({
             <InterviewSourcePanel
               interview={interview}
               evidence={evidence}
+              evidenceVoteCounts={evidenceVoteCounts}
               accountId={accountId}
               projectId={projectId}
               onSpeakerClick={() => setParticipantsDialogOpen(true)}
+              onEvidenceSelect={handleEvidenceSelect}
             />
           </div>
         </div>
@@ -2500,192 +2021,26 @@ export default function InterviewDetail({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Evidence Verification Drawer */}
+      <EvidenceVerificationDrawer
+        open={verifyDrawerOpen}
+        onOpenChange={setVerifyDrawerOpen}
+        selectedEvidence={selectedEvidence}
+        allEvidence={evidence.map((e) => ({
+          id: e.id,
+          verbatim: e.verbatim ?? null,
+          gist: e.gist ?? null,
+          topic: e.topic ?? null,
+          support: e.support ?? null,
+          confidence: e.confidence ?? null,
+          anchors: e.anchors,
+          thumbnail_url:
+            (e as { thumbnail_url?: string | null }).thumbnail_url ?? null,
+        }))}
+        interview={interview}
+        evidenceDetailRoute={routes.evidence.detail}
+      />
     </>
-  );
-}
-
-function _InterviewCopilotDrawer({
-  open,
-  onOpenChange,
-  accountId,
-  projectId,
-  interviewId,
-  interviewTitle,
-  systemContext,
-  initialPrompt,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  accountId: string;
-  projectId: string;
-  interviewId: string;
-  interviewTitle: string;
-  systemContext: string;
-  initialPrompt: string;
-}) {
-  const [input, setInput] = useState("");
-  const [initialMessageSent, setInitialMessageSent] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const routes = useProjectRoutesFromIds(accountId, projectId);
-  const { messages, sendMessage, status } = useChat<UpsightMessage>({
-    transport: new DefaultChatTransport({
-      api: routes.api.chat.interview(interviewId),
-      body: { system: systemContext },
-    }),
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-  });
-
-  const visibleMessages = useMemo(
-    () => (messages ?? []).slice(-20),
-    [messages],
-  );
-
-  useEffect(() => {
-    if (open && !initialMessageSent && visibleMessages.length === 0) {
-      sendMessage({ text: initialPrompt });
-      setInitialMessageSent(true);
-    }
-  }, [
-    open,
-    initialMessageSent,
-    visibleMessages.length,
-    sendMessage,
-    initialPrompt,
-  ]);
-
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, []);
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const trimmed = input.trim();
-    if (!trimmed) return;
-    sendMessage({ text: trimmed });
-    setInput("");
-  };
-
-  const isBusy = status === "streaming" || status === "submitted";
-  const isError = status === "error";
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex w-full flex-col gap-0 p-0 sm:max-w-lg"
-      >
-        <SheetHeader className="border-border border-b bg-muted/40 p-4">
-          <SheetTitle className="flex items-center gap-2 text-lg">
-            <BotMessageSquare className="h-4 w-4 text-primary" />
-            UpSight Assistant
-          </SheetTitle>
-        </SheetHeader>
-        <div className="flex flex-1 flex-col gap-4 p-4">
-          <div className="flex-1 p-3">
-            {visibleMessages.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                Gathering the latest takeaways from this interview…
-              </p>
-            ) : (
-              <div className="space-y-3 text-sm">
-                {visibleMessages.map((message, index) => {
-                  const key = message.id || `${message.role}-${index}`;
-                  const isUser = message.role === "user";
-                  const textParts =
-                    message.parts?.map((part) => {
-                      if (part.type === "text") return part.text;
-                      if (part.type === "tool-call") {
-                        return `Calling tool: ${part.toolName ?? "unknown"}`;
-                      }
-                      if (part.type === "tool-result") {
-                        return `Tool result: ${part.toolName ?? "unknown"}`;
-                      }
-                      return "";
-                    }) ?? [];
-                  const messageText = textParts
-                    .filter(Boolean)
-                    .join("\n")
-                    .trim();
-                  return (
-                    <div
-                      key={key}
-                      className={cn(
-                        "flex",
-                        isUser ? "justify-end" : "justify-start",
-                      )}
-                    >
-                      <div className="max-w-[90%]">
-                        <div className="mb-1 text-[10px] text-muted-foreground uppercase tracking-wide">
-                          {isUser ? "You" : "Assistant"}
-                        </div>
-                        <div
-                          className={cn(
-                            "whitespace-pre-wrap rounded-lg px-3 py-2 text-sm shadow-sm",
-                            isUser
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-card text-foreground ring-1 ring-border/60",
-                          )}
-                        >
-                          {messageText ? (
-                            isUser ? (
-                              <span className="whitespace-pre-wrap">
-                                {messageText}
-                              </span>
-                            ) : (
-                              <Streamdown className="prose prose-sm max-w-none text-foreground [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                                {messageText}
-                              </Streamdown>
-                            )
-                          ) : !isUser ? (
-                            <span className="text-muted-foreground italic">
-                              Thinking...
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">
-                              (No text response)
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
-            )}
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-2">
-            <Textarea
-              value={input}
-              onChange={(event) => setInput(event.currentTarget.value)}
-              placeholder="Ask about evidence, themes, or next steps"
-              rows={3}
-              disabled={isBusy}
-            />
-            <div className="flex items-center justify-between gap-2">
-              <span
-                className="text-muted-foreground text-xs"
-                aria-live="polite"
-              >
-                {isError
-                  ? "Something went wrong. Try again."
-                  : isBusy
-                    ? "Thinking…"
-                    : "Keep questions short and specific."}
-              </span>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={!input.trim() || isBusy}
-              >
-                Send
-              </Button>
-            </div>
-          </form>
-        </div>
-      </SheetContent>
-    </Sheet>
   );
 }

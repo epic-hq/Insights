@@ -138,7 +138,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			person_id: s.person_id as string,
 			name: p?.name || "Unknown",
 			title: p?.title || null,
-			company: null,
+			company: org?.name || null,
 			job_function: p?.job_function || null,
 			seniority_level: p?.seniority_level || null,
 			default_organization_id: orgId,
@@ -155,7 +155,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Data quality stats for warning
 	const totalPeople = pageData.people.length;
 	const peopleWithTitle = pageData.people.filter((p) => p.title).length;
-	const peopleWithCompany = pageData.people.filter((p) => p.org_name).length;
+	const peopleWithCompany = pageData.people.filter((p) => p.company && p.company !== "").length;
 
 	return {
 		overview: pageData.overview,

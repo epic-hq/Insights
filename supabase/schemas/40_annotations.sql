@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.annotations (
   project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
 
   -- Entity reference (polymorphic)
-  entity_type TEXT NOT NULL CHECK (entity_type IN ('insight', 'persona', 'opportunity', 'interview', 'person', 'project', 'organization', 'task')),
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('insight', 'persona', 'opportunity', 'interview', 'person', 'project', 'organization', 'task', 'evidence')),
   entity_id UUID NOT NULL,
 
   -- Annotation metadata
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS public.votes (
   project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
 
   -- Entity reference (polymorphic)
-  entity_type TEXT NOT NULL CHECK (entity_type IN ('insight', 'persona', 'opportunity', 'interview', 'person', 'project', 'organization', 'task')),
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('insight', 'persona', 'opportunity', 'interview', 'person', 'project', 'organization', 'task', 'evidence')),
   entity_id UUID NOT NULL,
 
   -- Vote data - use auth.uid() for user_id to support multi-user accounts
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS public.entity_flags (
   project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
 
   -- Entity reference (polymorphic)
-  entity_type TEXT NOT NULL CHECK (entity_type IN ('insight', 'persona', 'opportunity', 'interview', 'person', 'project', 'organization', 'task')),
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('insight', 'persona', 'opportunity', 'interview', 'person', 'project', 'organization', 'task', 'evidence')),
   entity_id UUID NOT NULL,
 
   -- Flag data - use auth.uid() for user_id to support multi-user accounts
