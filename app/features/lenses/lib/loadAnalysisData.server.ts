@@ -171,10 +171,12 @@ export async function loadAnalysisPageData(
 			.eq("research_links.project_id", projectId)
 			.eq("completed", true),
 
-		// 6. People in project with basic info
+		// 6. People in project with basic info (join org for company name)
 		db
 			.from("people")
-			.select("id, firstname, lastname, name, title, company, image_url, created_at")
+			.select(
+				"id, firstname, lastname, name, title, image_url, created_at, default_organization:organizations!default_organization_id(name)"
+			)
 			.eq("project_id", projectId)
 			.order("created_at", { ascending: false }),
 
@@ -501,7 +503,7 @@ export async function loadAnalysisPageData(
 			firstname: p.firstname,
 			lastname: p.lastname,
 			title: p.title,
-			company: p.company,
+			company: (p as any).default_organization?.name ?? "",
 			imageUrl: normalizedPersonImages.get(p.id) ?? null,
 			interviewCount: personInterviewCount,
 			surveyResponseCount: surveyCountByPerson.get(p.id) || 0,
@@ -606,9 +608,11 @@ function isAbsoluteHttpUrl(value: string): boolean {
 	return /^https?:\/\//i.test(value);
 }
 
-async function resolvePersonImageUrl(
-	rawValue: string | null
-): Promise<{ url: string | null; normalizedKey: string | null; shouldClear: boolean }> {
+async function resolvePersonImageUrl(rawValue: string | null): Promise<{
+	url: string | null;
+	normalizedKey: string | null;
+	shouldClear: boolean;
+}> {
 	if (!rawValue) {
 		return { url: null, normalizedKey: null, shouldClear: false };
 	}

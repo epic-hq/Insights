@@ -97,7 +97,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const { data: icpScores } = await supabase
 		.from("person_scale")
 		.select(
-			"band, score, confidence, person_id, people(name, title, company, job_function, seniority_level, default_organization_id)"
+			"band, score, confidence, person_id, people(name, title, job_function, seniority_level, default_organization_id)"
 		)
 		.eq("kind_slug", "icp_match")
 		.eq("project_id", projectId)
@@ -138,7 +138,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			person_id: s.person_id as string,
 			name: p?.name || "Unknown",
 			title: p?.title || null,
-			company: p?.company || null,
+			company: org?.name || null,
 			job_function: p?.job_function || null,
 			seniority_level: p?.seniority_level || null,
 			default_organization_id: orgId,
