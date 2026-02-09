@@ -32,6 +32,15 @@ jobs:
       - name: Run agent domain tests
         run: pnpm run test:agents
 
+      - name: Run integration DB tests (when TEST_SUPABASE secrets are configured)
+        if: ${{ secrets.TEST_SUPABASE_URL != '' && secrets.TEST_SUPABASE_ANON_KEY != '' && secrets.TEST_SUPABASE_SERVICE_ROLE_KEY != '' }}
+        run: pnpm vitest run --config vitest.integration.config.ts
+        env:
+          TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+          TEST_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+          TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_SUPABASE_PROJECT_REF: ${{ secrets.TEST_SUPABASE_PROJECT_REF }}
+
   deploy:
     needs: [agent-smoke-tests]
     if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip deploy]') }}

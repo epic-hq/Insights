@@ -15,24 +15,44 @@ const getEnvVar = (key: string): string => {
 	return "";
 };
 
-// Use TEST_ prefixed variables if available, otherwise fall back to regular ones
-const SUPABASE_URL = getEnvVar("TEST_SUPABASE_URL") || getEnvVar("SUPABASE_URL");
-const SUPABASE_ANON_KEY = getEnvVar("TEST_SUPABASE_ANON_KEY") || getEnvVar("SUPABASE_ANON_KEY");
+const TEST_SUPABASE_URL = getEnvVar("TEST_SUPABASE_URL");
+const TEST_SUPABASE_ANON_KEY = getEnvVar("TEST_SUPABASE_ANON_KEY");
+const TEST_SUPABASE_PROJECT_REF = getEnvVar("TEST_SUPABASE_PROJECT_REF");
+const SUPABASE_URL = getEnvVar("SUPABASE_URL");
+
+function parseProjectRefFromSupabaseUrl(url: string): string | null {
+	try {
+		const hostname = new URL(url).hostname;
+		if (!hostname.endsWith(".supabase.co")) return null;
+		const [projectRef] = hostname.split(".");
+		return projectRef || null;
+	} catch {
+		return null;
+	}
+}
 
 // Ensure test environment variables are available (server-side only)
 if (typeof process !== "undefined" && process.env) {
-	if (!SUPABASE_URL) {
-		throw new Error("SUPABASE_URL or TEST_SUPABASE_URL environment variable is required for integration tests");
+	if (!TEST_SUPABASE_URL) {
+		throw new Error("TEST_SUPABASE_URL environment variable is required for integration tests");
 	}
-	if (!SUPABASE_ANON_KEY) {
-		throw new Error(
-			"SUPABASE_ANON_KEY or TEST_SUPABASE_ANON_KEY environment variable is required for integration tests"
-		);
+	if (!TEST_SUPABASE_ANON_KEY) {
+		throw new Error("TEST_SUPABASE_ANON_KEY environment variable is required for integration tests");
+	}
+
+	if (SUPABASE_URL && TEST_SUPABASE_URL === SUPABASE_URL) {
+		throw new Error("Refusing to run integration tests: TEST_SUPABASE_URL matches SUPABASE_URL (production/default)");
+	}
+
+	const defaultRef = SUPABASE_URL ? parseProjectRefFromSupabaseUrl(SUPABASE_URL) : null;
+	const testRef = TEST_SUPABASE_PROJECT_REF || parseProjectRefFromSupabaseUrl(TEST_SUPABASE_URL);
+	if (defaultRef && testRef && defaultRef === testRef) {
+		throw new Error("Refusing to run integration tests: TEST and default Supabase project refs are identical");
 	}
 }
 
 // Test database connection using basic primitives
-export const testDb = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const testDb = createClient<Database>(TEST_SUPABASE_URL, TEST_SUPABASE_ANON_KEY);
 
 // Test account for consistent seeding
 export const TEST_ACCOUNT_ID = `${crypto.randomUUID()}`;

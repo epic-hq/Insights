@@ -14,15 +14,20 @@
 import { createClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-// Create admin client directly from env vars (not from testDb which points to local)
-const SUPABASE_URL = process.env.SUPABASE_URL!;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// Create admin client directly from test DB env vars
+const TEST_SUPABASE_URL = process.env.TEST_SUPABASE_URL!;
+const TEST_SUPABASE_SERVICE_ROLE_KEY = process.env.TEST_SUPABASE_SERVICE_ROLE_KEY!;
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-	throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set. Run with: dotenvx run -- vitest run ...");
+if (!TEST_SUPABASE_URL || !TEST_SUPABASE_SERVICE_ROLE_KEY) {
+	throw new Error(
+		"TEST_SUPABASE_URL and TEST_SUPABASE_SERVICE_ROLE_KEY must be set. Run with: dotenvx run -- vitest run ..."
+	);
+}
+if (process.env.SUPABASE_URL && process.env.TEST_SUPABASE_URL === process.env.SUPABASE_URL) {
+	throw new Error("Refusing to run integration test against default SUPABASE_URL");
 }
 
-const adminDb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+const adminDb = createClient(TEST_SUPABASE_URL, TEST_SUPABASE_SERVICE_ROLE_KEY);
 
 // Mock supabase client factory to return our admin client
 vi.mock("~/lib/supabase/client.server", () => ({

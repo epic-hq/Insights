@@ -42,7 +42,7 @@ Our testing approach prioritizes **business logic validation** and **database in
 
 - **Target**: Database operations, loaders, actions, complex queries, schema changes, edge functions, job queues, AI/LLM/BAML services
 - **Location**: `app/test/integration/`
-- **Real Database**: Tests run against a dedicated non-production Supabase test/staging instance using `TEST_SUPABASE_URL` and `TEST_SUPABASE_SERVICE_ROLE_KEY` via `dotenvx`
+- **Real Database**: Tests run against a dedicated non-production Supabase test/staging instance using `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, and (for admin flows) `TEST_SUPABASE_SERVICE_ROLE_KEY` via `dotenvx`
 - **Examples**: Survey response save workflow (`survey-response-save.integration.test.ts`), interview upload, backfill operations
 - **Runtime**: ~500ms per test, focuses on high-risk areas
 - **Pattern**: Each test creates unique test data (UUIDs, timestamped slugs), cleans up in `afterAll`
@@ -63,6 +63,7 @@ Goal: run integration tests against a dedicated non-production Supabase project.
 ### Environment Variables
 
 - `TEST_SUPABASE_URL` - URL for dedicated test/staging Supabase project
+- `TEST_SUPABASE_ANON_KEY` - anon/publishable key for that project
 - `TEST_SUPABASE_SERVICE_ROLE_KEY` - service role key for that project
 - Optional: `TEST_SUPABASE_PROJECT_REF` for explicit safety checks/logging
 
@@ -112,7 +113,7 @@ vi.mock("~/lib/supabase/client.server", () => ({
 }));
 ```
 
-**Note**: The `testDb` helper in `app/test/utils/testDb.ts` should target `TEST_SUPABASE_URL` and never fall back to production `SUPABASE_URL` for integration runs.
+**Note**: The `testDb` helper in `app/test/utils/testDb.ts` is TEST-only now (`TEST_SUPABASE_URL` + `TEST_SUPABASE_ANON_KEY`) and refuses runs when TEST and default project refs/URLs overlap.
 
 ## Running Tests
 
