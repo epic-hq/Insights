@@ -45,17 +45,20 @@ export function isPlaceholderPerson(name: string): boolean {
 }
 
 /**
- * Upsert person with company-aware conflict handling and optional person_type.
- * Uses try-insert-then-find pattern since the unique index includes email.
+ * Upsert person with org-aware conflict handling and optional person_type.
+ * Uses try-insert-then-find pattern since the unique index includes org FK.
+ *
+ * Phase 3: Index is uniq_people_account_name_org_email using
+ * COALESCE(default_organization_id::text, '') instead of company text.
  *
  * Schema: company is NOT NULL with default '', primary_email is nullable
  */
-export async function upsertPersonWithCompanyAwareConflict(
+export async function upsertPersonWithOrgAwareConflict(
 	db: SupabaseClient<Database>,
 	payload: PeopleInsert,
 	personType?: PeopleInsert["person_type"]
 ) {
-	// Normalize company - use empty string for missing (schema: NOT NULL DEFAULT '')
+	// Normalize company - keep for backwards compat, but org FK is the real constraint
 	const normalizedCompany =
 		typeof payload.company === "string" && payload.company.trim().length > 0
 			? payload.company.trim().toLowerCase()
@@ -67,10 +70,13 @@ export async function upsertPersonWithCompanyAwareConflict(
 			? payload.primary_email.trim().toLowerCase()
 			: null;
 
+	const orgId = payload.default_organization_id ?? null;
+
 	const insertPayload: PeopleInsert = {
 		...payload,
 		company: normalizedCompany,
 		primary_email: normalizedEmail,
+		default_organization_id: orgId,
 		person_type: personType ?? payload.person_type ?? null,
 	};
 
@@ -82,19 +88,19 @@ export async function upsertPersonWithCompanyAwareConflict(
 		if ((error as { code?: string })?.code === "23505") {
 			const nameHash = computeNameHash(insertPayload);
 
-			// Find existing by name_hash, company, and email (matching the unique index)
-			// The index uses COALESCE(lower(company), '') so empty string matches empty
+			// Find existing by name_hash, org FK, and email (matching the unique index)
+			// The index uses COALESCE(default_organization_id::text, '')
 			let findQuery = db
 				.from("people")
 				.select("id, name")
 				.eq("account_id", insertPayload.account_id!)
 				.eq("name_hash", nameHash);
 
-			// Match company (empty string or value)
-			if (normalizedCompany) {
-				findQuery = findQuery.ilike("company", normalizedCompany);
+			// Match org FK (null or value)
+			if (orgId) {
+				findQuery = findQuery.eq("default_organization_id", orgId);
 			} else {
-				findQuery = findQuery.eq("company", "");
+				findQuery = findQuery.is("default_organization_id", null);
 			}
 
 			// Match email (null or value)
@@ -108,14 +114,19 @@ export async function upsertPersonWithCompanyAwareConflict(
 
 			if (findError || !existing?.id) {
 				// Try broader search without email constraint for interview participants
-				const { data: broadMatch } = await db
+				let broadQuery = db
 					.from("people")
 					.select("id, name")
 					.eq("account_id", insertPayload.account_id!)
-					.eq("name_hash", nameHash)
-					.eq("company", normalizedCompany)
-					.limit(1)
-					.single();
+					.eq("name_hash", nameHash);
+
+				if (orgId) {
+					broadQuery = broadQuery.eq("default_organization_id", orgId);
+				} else {
+					broadQuery = broadQuery.is("default_organization_id", null);
+				}
+
+				const { data: broadMatch } = await broadQuery.limit(1).single();
 
 				if (broadMatch?.id) {
 					return { id: broadMatch.id, name: broadMatch.name ?? null };
@@ -134,3 +145,9 @@ export async function upsertPersonWithCompanyAwareConflict(
 
 	return { id: data.id, name: data.name ?? null };
 }
+
+/**
+ * @deprecated Use upsertPersonWithOrgAwareConflict instead.
+ * Kept as alias for callers that haven't been updated yet.
+ */
+export const upsertPersonWithCompanyAwareConflict = upsertPersonWithOrgAwareConflict;

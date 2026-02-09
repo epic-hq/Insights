@@ -19,6 +19,7 @@ WHERE company IS NOT NULL
     'tbd', 'test', 'testing', 'asdf', 'xxx', 'abc', 'company'
   )
   AND default_organization_id IS NULL;
+
 -- Step 2: Normalize company text casing/whitespace for better org matching.
 -- Trim leading/trailing whitespace and collapse internal whitespace.
 UPDATE people
@@ -26,6 +27,7 @@ SET company = trim(regexp_replace(company, '\s+', ' ', 'g'))
 WHERE company != ''
   AND company IS NOT NULL
   AND company != trim(regexp_replace(company, '\s+', ' ', 'g'));
+
 -- Step 3: Create organizations for company names that don't have matching orgs.
 -- Uses DISTINCT ON to avoid duplicate org creation per account.
 -- Tags auto-created orgs for rollback identification.
@@ -45,6 +47,7 @@ WHERE p.company != ''
   )
 ORDER BY p.account_id, lower(trim(p.company)), p.created_at ASC
 ON CONFLICT DO NOTHING;
+
 -- Step 4: Link people to their matching organizations via default_organization_id.
 -- Match by normalized name (case-insensitive, trimmed).
 -- Use the most recently updated org if multiple matches exist.
@@ -60,6 +63,7 @@ SET default_organization_id = (
 WHERE p.company != ''
   AND p.company IS NOT NULL
   AND p.default_organization_id IS NULL;
+
 -- Step 5: Create people_organizations junction rows for any missing links.
 -- Only for people who now have a default_organization_id but no junction row.
 INSERT INTO people_organizations (account_id, person_id, organization_id, is_primary)
@@ -76,6 +80,7 @@ WHERE p.default_organization_id IS NOT NULL
       AND po.organization_id = p.default_organization_id
   )
 ON CONFLICT DO NOTHING;
+
 -- Step 6: Backfill industry from people to their default organization.
 -- Only fills in where the org doesn't already have an industry set.
 UPDATE organizations o
@@ -85,6 +90,7 @@ WHERE p.default_organization_id = o.id
   AND p.industry IS NOT NULL
   AND p.industry != ''
   AND (o.industry IS NULL OR o.industry = '');
+
 -- Verification queries (run manually after migration):
 --
 -- Must return 0 (no people with company text but no org link):
@@ -102,4 +108,4 @@ WHERE p.default_organization_id = o.id
 -- SELECT count(*) FROM (
 --   SELECT account_id, name_hash, COALESCE(default_organization_id::text, ''), COALESCE(lower(primary_email), '')
 --   FROM people GROUP BY 1,2,3,4 HAVING count(*) > 1
--- ) new_dupes;;
+-- ) new_dupes;

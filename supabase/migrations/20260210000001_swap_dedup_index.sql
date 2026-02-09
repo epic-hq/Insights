@@ -18,8 +18,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS uniq_people_account_name_org_email
     COALESCE(default_organization_id::text, ''),
     COALESCE(lower(primary_email), '')
   );
+
 -- Step 2: Drop old company-based index
 DROP INDEX IF EXISTS uniq_people_account_name_company_email;
+
 -- Step 3: Change FK from ON DELETE SET NULL to ON DELETE RESTRICT
 -- This prevents org deletion when people reference it, avoiding index violations.
 ALTER TABLE people DROP CONSTRAINT IF EXISTS people_default_organization_id_fkey;
@@ -27,6 +29,7 @@ ALTER TABLE people ADD CONSTRAINT people_default_organization_id_fkey
   FOREIGN KEY (default_organization_id)
   REFERENCES organizations(id)
   ON DELETE RESTRICT;
+
 -- Add a comment explaining the constraint
 COMMENT ON CONSTRAINT people_default_organization_id_fkey ON people IS
   'ON DELETE RESTRICT: Cannot delete organization while people reference it. Reassign people first.';

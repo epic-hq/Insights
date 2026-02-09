@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Person Detail Page — UX Mockup</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b;
+      --bg-card: #18181b;
+      --bg-card-hover: #1f1f23;
+      --bg-muted: #27272a;
+      --bg-accent: rgba(99, 102, 241, 0.08);
+      --border: #27272a;
+      --border-subtle: #1f1f23;
+      --fg: #fafafa;
+      --fg-muted: #a1a1aa;
+      --fg-subtle: #71717a;
+      --primary: #818cf8;
+      --primary-fg: #c7d2fe;
+      --green: #34d399;
+      --green-bg: rgba(52, 211, 153, 0.1);
+      --green-border: rgba(52, 211, 153, 0.2);
+      --amber: #fbbf24;
+      --amber-bg: rgba(251, 191, 36, 0.1);
+      --amber-border: rgba(251, 191, 36, 0.2);
+      --rose: #fb7185;
+      --rose-bg: rgba(251, 113, 133, 0.1);
+      --rose-border: rgba(251, 113, 133, 0.2);
+      --indigo: #818cf8;
+      --indigo-bg: rgba(129, 140, 248, 0.1);
+      --persona-color: #818cf8;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Page Container */
+    .page { max-width: 880px; margin: 0 auto; padding: 24px 16px 120px; }
+
+    /* Back Button */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--fg-muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 20px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .back-btn:hover { color: var(--fg); background: var(--bg-muted); }
+
+    /* ===== SCORECARD HERO ===== */
+    .scorecard {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 0;
+    }
+
+    .scorecard-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--persona-color), #6366f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+      border: 2px solid var(--persona-color);
+    }
+
+    .scorecard-identity { flex: 1; min-width: 0; }
+
+    .scorecard-name {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--fg);
+      line-height: 1.2;
+      margin-bottom: 2px;
+    }
+
+    .scorecard-title-org {
+      font-size: 14px;
+      color: var(--fg-muted);
+    }
+    .scorecard-title-org a { color: var(--primary); text-decoration: none; }
+    .scorecard-title-org a:hover { text-decoration: underline; }
+
+    .scorecard-meta {
+      font-size: 13px;
+      color: var(--fg-subtle);
+      margin-top: 4px;
+    }
+
+    .persona-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--indigo-bg);
+      color: var(--primary);
+      margin-top: 6px;
+    }
+
+    /* ICP Badge */
+    .icp-badge {
+      flex-shrink: 0;
+      text-align: center;
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--green-border);
+      background: var(--green-bg);
+    }
+    .icp-badge .icp-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--green);
+    }
+    .icp-badge .icp-band {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--green);
+    }
+    .icp-badge .icp-score {
+      font-size: 11px;
+      color: var(--fg-subtle);
+      margin-top: 2px;
+    }
+
+    /* Stat Chips Row */
+    .stat-chips {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .stat-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-muted);
+      border: 1px solid var(--border);
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+    .stat-chip:hover { background: var(--bg-card-hover); border-color: var(--fg-subtle); }
+    .stat-chip .stat-icon { font-size: 16px; }
+    .stat-chip .stat-count { font-weight: 700; color: var(--fg); }
+    .stat-chip .stat-label { color: var(--fg-muted); font-size: 12px; }
+
+    .stat-chip.ghost {
+      opacity: 0.4;
+      border-style: dashed;
+    }
+
+    .last-contact {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--fg-muted);
+      margin-left: auto;
+      padding: 8px 14px;
+    }
+    .last-contact .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+    /* Quick Actions */
+    .quick-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      background: var(--bg-muted);
+      color: var(--fg);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn:hover { background: var(--bg-card-hover); border-color: var(--fg-subtle); }
+
+    .btn-primary {
+      background: var(--indigo-bg);
+      border-color: rgba(129, 140, 248, 0.3);
+      color: var(--primary);
+    }
+    .btn-primary:hover { background: rgba(129, 140, 248, 0.15); }
+
+    .btn-ghost {
+      background: transparent;
+      border-color: transparent;
+      color: var(--fg-muted);
+    }
+    .btn-ghost:hover { background: var(--bg-muted); color: var(--fg); }
+
+    /* ===== STICKY NAV ===== */
+    .anchor-nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(9, 9, 11, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      margin: 0 -16px;
+      padding: 0 16px;
+      margin-top: 1px;
+    }
+
+    .anchor-nav-inner {
+      display: flex;
+      gap: 4px;
+      padding: 8px 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .anchor-nav-inner::-webkit-scrollbar { display: none; }
+
+    .anchor-pill {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--fg-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+      text-decoration: none;
+      position: relative;
+    }
+    .anchor-pill:hover { color: var(--fg); background: var(--bg-muted); }
+    .anchor-pill.active {
+      color: var(--primary);
+      background: var(--indigo-bg);
+    }
+    .anchor-pill.active::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 14px;
+      right: 14px;
+      height: 2px;
+      background: var(--primary);
+      border-radius: 1px;
+    }
+
+    /* ===== SECTIONS ===== */
+    .section {
+      margin-top: 32px;
+      scroll-margin-top: 56px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--fg);
+    }
+    .section-title .icon { font-size: 18px; opacity: 0.7; }
+
+    /* ===== INSIGHTS SECTION ===== */
+    .insights-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+    }
+
+    .ai-summary {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--fg);
+      opacity: 0.9;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+
+    .next-steps-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--fg-muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .next-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      font-size: 13px;
+      color: var(--fg);
+    }
+    .next-step .step-arrow {
+      color: var(--primary);
+      font-weight: 600;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+    .next-step .step-context {
+      color: var(--fg-subtle);
+      font-size: 12px;
+    }
+
+    /* Themes */
+    .themes-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 16px;
+    }
+
+    .theme-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--bg-muted);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .theme-pill:hover { border-color: var(--primary); background: var(--indigo-bg); }
+    .theme-pill .theme-count { color: var(--fg-subtle); font-size: 11px; }
+
+    .show-more {
+      font-size: 12px;
+      color: var(--fg-subtle);
+      cursor: pointer;
+      padding: 5px 12px;
+    }
+    .show-more:hover { color: var(--fg-muted); }
+
+    /* ===== ACTIVITY TIMELINE ===== */
+    .filter-pills {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .filter-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--fg-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-pill:hover { border-color: var(--fg-subtle); color: var(--fg); }
+    .filter-pill.active {
+      background: var(--indigo-bg);
+      border-color: rgba(129, 140, 248, 0.3);
+      color: var(--primary);
+    }
+    .filter-pill .pill-count {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: var(--bg-muted);
+    }
+    .filter-pill.active .pill-count {
+      background: rgba(129, 140, 248, 0.15);
+    }
+
+    .timeline-item {
+      display: flex;
+      gap: 14px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      background: var(--bg-card);
+      transition: all 0.15s;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+    }
+    .timeline-item:hover {
+      border-color: rgba(129, 140, 248, 0.3);
+      background: var(--bg-card-hover);
+    }
+
+    .timeline-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .timeline-content { flex: 1; min-width: 0; }
+
+    .timeline-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .timeline-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    .type-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--bg-muted);
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .timeline-excerpt {
+      font-size: 13px;
+      color: var(--fg-subtle);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .timeline-date {
+      font-size: 12px;
+      color: var(--fg-subtle);
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+
+    .show-more-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: var(--fg-subtle);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .show-more-bar:hover { border-color: var(--fg-subtle); color: var(--fg-muted); }
+
+    /* ===== PROFILE SECTION ===== */
+    .profile-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+    }
+
+    .profile-subsection {
+      margin-bottom: 20px;
+    }
+    .profile-subsection:last-child { margin-bottom: 0; }
+
+    .subsection-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .subsection-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .edit-link {
+      font-size: 12px;
+      color: var(--primary);
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .edit-link:hover { text-decoration: underline; }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .demo-item { }
+    .demo-item .demo-label {
+      font-size: 11px;
+      color: var(--fg-subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .demo-item .demo-value {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    /* Attribute Lens Rows */
+    .lens-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .lens-row:hover { background: var(--bg-card-hover); border-color: var(--border); }
+
+    .lens-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .lens-icon.pain { background: var(--rose-bg); }
+    .lens-icon.goal { background: var(--green-bg); }
+    .lens-icon.workflow { background: var(--amber-bg); }
+
+    .lens-content { flex: 1; min-width: 0; }
+    .lens-kind {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--fg-muted);
+      text-transform: capitalize;
+    }
+    .lens-summary {
+      font-size: 13px;
+      color: var(--fg-subtle);
+      line-height: 1.4;
+      margin-top: 2px;
+    }
+
+    .lens-expand {
+      color: var(--fg-subtle);
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    /* Org row */
+    .org-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+    }
+    .org-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: var(--bg-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      color: var(--fg-muted);
+    }
+    .org-name { font-size: 14px; font-weight: 500; color: var(--fg); }
+    .org-role { font-size: 12px; color: var(--fg-subtle); margin-left: 4px; }
+    .org-primary {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--green-bg);
+      color: var(--green);
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    /* ===== CONTACT SECTION ===== */
+    .contact-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 24px;
+    }
+
+    .contact-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .contact-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--fg);
+      text-decoration: none;
+    }
+    .contact-item:hover { color: var(--primary); }
+    .contact-item .contact-icon { color: var(--fg-subtle); font-size: 15px; }
+    .contact-sep { color: var(--fg-subtle); font-size: 10px; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 640px) {
+      .scorecard-top { flex-wrap: wrap; }
+      .icp-badge { width: 100%; margin-top: 12px; text-align: left; display: flex; gap: 12px; align-items: center; }
+      .demo-grid { grid-template-columns: repeat(2, 1fr); }
+      .stat-chips { gap: 6px; }
+      .stat-chip { padding: 6px 10px; }
+      .last-contact { margin-left: 0; }
+    }
+
+    /* Subtle animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .section { animation: fadeIn 0.3s ease-out both; }
+    .section:nth-child(2) { animation-delay: 0.05s; }
+    .section:nth-child(3) { animation-delay: 0.1s; }
+    .section:nth-child(4) { animation-delay: 0.15s; }
+    .section:nth-child(5) { animation-delay: 0.2s; }
+
+    /* Mode Toggle */
+    .mode-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 100;
+      display: flex;
+      gap: 4px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px;
+    }
+    .mode-btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      background: transparent;
+      color: var(--fg-muted);
+      transition: all 0.15s;
+    }
+    .mode-btn.active { background: var(--bg-muted); color: var(--fg); }
+
+    /* Light mode */
+    body.light {
+      --bg: #fafafa;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f4f4f5;
+      --bg-muted: #f4f4f5;
+      --bg-accent: rgba(99, 102, 241, 0.06);
+      --border: #e4e4e7;
+      --border-subtle: #f4f4f5;
+      --fg: #09090b;
+      --fg-muted: #71717a;
+      --fg-subtle: #a1a1aa;
+      --primary: #6366f1;
+      --primary-fg: #4338ca;
+      --green: #059669;
+      --green-bg: rgba(5, 150, 105, 0.08);
+      --green-border: rgba(5, 150, 105, 0.2);
+      --amber: #d97706;
+      --amber-bg: rgba(217, 119, 6, 0.08);
+      --amber-border: rgba(217, 119, 6, 0.2);
+      --rose: #e11d48;
+      --rose-bg: rgba(225, 29, 72, 0.06);
+      --rose-border: rgba(225, 29, 72, 0.2);
+      --indigo: #6366f1;
+      --indigo-bg: rgba(99, 102, 241, 0.06);
+    }
+    body.light .anchor-nav {
+      background: rgba(250, 250, 250, 0.85);
+    }
+    body.light .mode-btn.active { background: #e4e4e7; color: #09090b; }
+  </style>
+</head>
+<body>
+  <!-- Mode Toggle -->
+  <div class="mode-toggle">
+    <button class="mode-btn active" onclick="setMode('dark')">Dark</button>
+    <button class="mode-btn" onclick="setMode('light')">Light</button>
+  </div>
+
+  <div class="page">
+    <!-- Back Button -->
+    <a href="#" class="back-btn">
+      <span>&#8592;</span> People
+    </a>
+
+    <!-- ===== SCORECARD HERO ===== -->
+    <div class="scorecard" id="scorecard">
+      <div class="scorecard-top">
+        <div class="avatar">JS</div>
+        <div class="scorecard-identity">
+          <div class="scorecard-name">Jane Smith</div>
+          <div class="scorecard-title-org">VP of Product @ <a href="#">Acme Inc</a></div>
+          <div class="scorecard-meta">Product Management &middot; VP-Level &middot; SaaS</div>
+          <div class="persona-pill">&#9632; Power User</div>
+        </div>
+        <div class="icp-badge">
+          <div class="icp-label">ICP Match</div>
+          <div class="icp-band">Strong</div>
+          <div class="icp-score">Score: 87%</div>
+        </div>
+      </div>
+
+      <!-- Stat Chips -->
+      <div class="stat-chips">
+        <div class="stat-chip">
+          <span class="stat-icon">&#x1F4F9;</span>
+          <span class="stat-count">4</span>
+          <span class="stat-label">Conversations</span>
+        </div>
+        <div class="stat-chip">
+          <span class="stat-icon">&#x1F4CB;</span>
+          <span class="stat-count">2</span>
+          <span class="stat-label">Surveys</span>
+        </div>
+        <div class="stat-chip">
+          <span class="stat-icon">&#x1F4DD;</span>
+          <span class="stat-count">1</span>
+          <span class="stat-label">Notes</span>
+        </div>
+        <div class="stat-chip ghost">
+          <span class="stat-icon">&#x1F4AC;</span>
+          <span class="stat-count">0</span>
+          <span class="stat-label">Chats</span>
+        </div>
+        <div class="last-contact">
+          <span class="dot"></span>
+          Last contact: 3 days ago
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <button class="btn btn-primary">&#x1F399; Quick Update</button>
+        <button class="btn">&#x1F4CB; Send Survey</button>
+        <button class="btn">&#x1F4DD; Log Note</button>
+        <button class="btn btn-ghost">&hellip;</button>
+      </div>
+    </div>
+
+    <!-- ===== STICKY ANCHOR NAV ===== -->
+    <nav class="anchor-nav" id="anchor-nav">
+      <div class="anchor-nav-inner">
+        <a class="anchor-pill active" href="#scorecard" onclick="scrollToSection(event, 'scorecard')">Overview</a>
+        <a class="anchor-pill" href="#insights" onclick="scrollToSection(event, 'insights')">Insights</a>
+        <a class="anchor-pill" href="#activity" onclick="scrollToSection(event, 'activity')">Activity</a>
+        <a class="anchor-pill" href="#profile" onclick="scrollToSection(event, 'profile')">Profile</a>
+        <a class="anchor-pill" href="#contact" onclick="scrollToSection(event, 'contact')">Contact</a>
+      </div>
+    </nav>
+
+    <!-- ===== INSIGHTS & NEXT STEPS ===== -->
+    <div class="section" id="insights">
+      <div class="section-header">
+        <div class="section-title">
+          <span class="icon">&#10024;</span> Insights
+        </div>
+        <button class="btn btn-ghost" style="font-size: 12px;">&#x21BB; Refresh</button>
+      </div>
+
+      <div class="insights-card">
+        <div class="ai-summary">
+          Jane is a high-value prospect with clear pain around reporting workflows. Across 4 conversations, she's consistently expressed frustration with data export limitations and manual reconciliation processes. Her engagement is strong &mdash; she's responded to 2 surveys and actively participated in product feedback sessions. She aligns well with our ICP criteria for the Enterprise segment, particularly on company size (200-500) and decision-making authority (VP-level).
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="next-steps-title">&#x1F3AF; Recommended Next Steps</div>
+        <div class="next-step">
+          <span class="step-arrow">&rarr;</span>
+          <div>
+            Schedule a follow-up call
+            <span class="step-context">&mdash; last contact was 3 days ago, momentum is strong</span>
+          </div>
+        </div>
+        <div class="next-step">
+          <span class="step-arrow">&rarr;</span>
+          <div>
+            Share the reporting automation case study
+            <span class="step-context">&mdash; directly addresses her top pain point</span>
+          </div>
+        </div>
+        <div class="next-step">
+          <span class="step-arrow">&rarr;</span>
+          <div>
+            Review her Q1 survey responses
+            <span class="step-context">&mdash; 2 completed surveys with actionable feedback</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="font-size: 13px; font-weight: 600; color: var(--fg-muted); margin-bottom: 8px;">Themes</div>
+        <div class="themes-row">
+          <span class="theme-pill">Reporting Pain <span class="theme-count">&middot;6</span></span>
+          <span class="theme-pill">Data Export <span class="theme-count">&middot;4</span></span>
+          <span class="theme-pill">Manual Process <span class="theme-count">&middot;3</span></span>
+          <span class="theme-pill">Workflow Friction <span class="theme-count">&middot;2</span></span>
+          <span class="theme-pill">Enterprise Needs <span class="theme-count">&middot;2</span></span>
+          <span class="show-more">+4 more</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ACTIVITY TIMELINE ===== -->
+    <div class="section" id="activity">
+      <div class="section-header">
+        <div class="section-title">
+          <span class="icon">&#x1F4CB;</span> Activity
+        </div>
+      </div>
+
+      <div class="filter-pills">
+        <span class="filter-pill active">All <span class="pill-count">7</span></span>
+        <span class="filter-pill">&#x1F4F9; Interviews <span class="pill-count">4</span></span>
+        <span class="filter-pill">&#x1F4CB; Surveys <span class="pill-count">2</span></span>
+        <span class="filter-pill">&#x1F4DD; Notes <span class="pill-count">1</span></span>
+      </div>
+
+      <a class="timeline-item" href="#">
+        <span class="timeline-icon">&#x1F4F9;</span>
+        <div class="timeline-content">
+          <div class="timeline-top">
+            <span class="timeline-title">Product Feedback Deep Dive</span>
+            <span class="type-badge">Interview</span>
+          </div>
+          <div class="timeline-excerpt">"Reporting is our biggest bottleneck — we spend 2 hours every Monday just pulling data together..."</div>
+        </div>
+        <span class="timeline-date">Feb 7</span>
+      </a>
+
+      <a class="timeline-item" href="#">
+        <span class="timeline-icon">&#x1F4CB;</span>
+        <div class="timeline-content">
+          <div class="timeline-top">
+            <span class="timeline-title">Q1 Customer Satisfaction Survey</span>
+            <span class="type-badge">Survey</span>
+          </div>
+          <div class="timeline-excerpt">Satisfaction: 4/5 &middot; Would recommend: Yes &middot; Top request: "Better export options"</div>
+        </div>
+        <span class="timeline-date">Feb 3</span>
+      </a>
+
+      <a class="timeline-item" href="#">
+        <span class="timeline-icon">&#x1F4DD;</span>
+        <div class="timeline-content">
+          <div class="timeline-top">
+            <span class="timeline-title">Call Notes — Enterprise Interest</span>
+            <span class="type-badge">Note</span>
+          </div>
+          <div class="timeline-excerpt">"Interested in enterprise tier pricing, asked about SSO and team seats..."</div>
+        </div>
+        <span class="timeline-date">Jan 28</span>
+      </a>
+
+      <a class="timeline-item" href="#">
+        <span class="timeline-icon">&#x1F4F9;</span>
+        <div class="timeline-content">
+          <div class="timeline-top">
+            <span class="timeline-title">Workflow Analysis Session</span>
+            <span class="type-badge">Interview</span>
+          </div>
+          <div class="timeline-excerpt">"Our team of 12 uses spreadsheets for everything — it's painful but switching costs feel high..."</div>
+        </div>
+        <span class="timeline-date">Jan 15</span>
+      </a>
+
+      <a class="timeline-item" href="#">
+        <span class="timeline-icon">&#x1F4F9;</span>
+        <div class="timeline-content">
+          <div class="timeline-top">
+            <span class="timeline-title">Initial Discovery Call</span>
+            <span class="type-badge">Interview</span>
+          </div>
+          <div class="timeline-excerpt">"We're evaluating tools to replace our manual reporting process..."</div>
+        </div>
+        <span class="timeline-date">Jan 8</span>
+      </a>
+
+      <div class="show-more-bar">
+        Show 2 more items
+      </div>
+    </div>
+
+    <!-- ===== PROFILE & ATTRIBUTES ===== -->
+    <div class="section" id="profile">
+      <div class="section-header">
+        <div class="section-title">
+          <span class="icon">&#x1F464;</span> Profile
+        </div>
+      </div>
+
+      <div class="profile-card">
+        <!-- Demographics -->
+        <div class="profile-subsection">
+          <div class="subsection-header">
+            <span class="subsection-title">Demographics</span>
+            <a class="edit-link" href="#">Edit &rarr;</a>
+          </div>
+          <div class="demo-grid">
+            <div class="demo-item">
+              <div class="demo-label">Function</div>
+              <div class="demo-value">Product Mgmt</div>
+            </div>
+            <div class="demo-item">
+              <div class="demo-label">Seniority</div>
+              <div class="demo-value">VP</div>
+            </div>
+            <div class="demo-item">
+              <div class="demo-label">Industry</div>
+              <div class="demo-value">SaaS</div>
+            </div>
+            <div class="demo-item">
+              <div class="demo-label">Company Size</div>
+              <div class="demo-value">200&ndash;500</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Attribute Lenses -->
+        <div class="profile-subsection">
+          <div class="subsection-header">
+            <span class="subsection-title">Attribute Lenses</span>
+            <a class="edit-link" href="#">Expand all &rarr;</a>
+          </div>
+
+          <div class="lens-row">
+            <div class="lens-icon pain">&#x1F494;</div>
+            <div class="lens-content">
+              <div class="lens-kind">Pain</div>
+              <div class="lens-summary">Reporting bottlenecks, manual data exports, time-consuming reconciliation, lack of real-time dashboards</div>
+            </div>
+            <div class="lens-expand">&#x276F;</div>
+          </div>
+
+          <div class="lens-row">
+            <div class="lens-icon goal">&#x1F3AF;</div>
+            <div class="lens-content">
+              <div class="lens-kind">Goals</div>
+              <div class="lens-summary">Automate weekly reporting, reduce manual reconciliation by 80%, enable self-serve data access for team</div>
+            </div>
+            <div class="lens-expand">&#x276F;</div>
+          </div>
+
+          <div class="lens-row">
+            <div class="lens-icon workflow">&#x2699;&#xFE0F;</div>
+            <div class="lens-content">
+              <div class="lens-kind">Workflow</div>
+              <div class="lens-summary">Spreadsheet-heavy process, weekly Monday reporting cadence, 12-person team with cross-department coordination</div>
+            </div>
+            <div class="lens-expand">&#x276F;</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Organizations -->
+        <div class="profile-subsection">
+          <div class="subsection-header">
+            <span class="subsection-title">Organizations</span>
+            <a class="edit-link" href="#">Manage &rarr;</a>
+          </div>
+
+          <div class="org-row">
+            <div class="org-icon">&#x1F3E2;</div>
+            <span class="org-name">Acme Inc</span>
+            <span class="org-role">&middot; VP of Product</span>
+            <span class="org-primary">Primary</span>
+          </div>
+          <div class="org-row">
+            <div class="org-icon">&#x1F3E2;</div>
+            <span class="org-name">StartupBoard Advisory</span>
+            <span class="org-role">&middot; Advisor</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CONTACT ===== -->
+    <div class="section" id="contact">
+      <div class="section-header">
+        <div class="section-title">
+          <span class="icon">&#x1F4EC;</span> Contact
+        </div>
+        <a class="edit-link" href="#">Edit &rarr;</a>
+      </div>
+
+      <div class="contact-card">
+        <div class="contact-row">
+          <a class="contact-item" href="mailto:jane@acme.com">
+            <span class="contact-icon">&#x2709;</span>
+            jane@acme.com
+          </a>
+          <span class="contact-sep">&middot;</span>
+          <a class="contact-item" href="tel:+15551234567">
+            <span class="contact-icon">&#x1F4DE;</span>
+            (555) 123-4567
+          </a>
+          <span class="contact-sep">&middot;</span>
+          <a class="contact-item" href="https://linkedin.com/in/janesmith" target="_blank">
+            <span class="contact-icon">&#x1F517;</span>
+            in/janesmith
+          </a>
+          <span class="contact-sep">&middot;</span>
+          <a class="contact-item" href="https://x.com/janesmith" target="_blank">
+            <span class="contact-icon">&#x1D54F;</span>
+            @janesmith
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Dark/Light mode toggle
+    function setMode(mode) {
+      document.body.className = mode === 'light' ? 'light' : '';
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.trim().toLowerCase() === mode);
+      });
+    }
+
+    // Smooth scroll to section
+    function scrollToSection(e, id) {
+      e.preventDefault();
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    // Scroll spy — highlight active anchor
+    const sections = ['scorecard', 'insights', 'activity', 'profile', 'contact'];
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id;
+          document.querySelectorAll('.anchor-pill').forEach(pill => {
+            pill.classList.toggle('active', pill.getAttribute('href') === '#' + id);
+          });
+        }
+      });
+    }, {
+      rootMargin: '-80px 0px -66% 0px',
+      threshold: 0
+    });
+
+    sections.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+
+    // Filter pill toggle (demo only)
+    document.querySelectorAll('.filter-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>
