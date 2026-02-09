@@ -271,13 +271,18 @@ export function PersonScorecard({
             <TooltipContent>Coming soon</TooltipContent>
           </Tooltip>
 
-          {/* Send Survey */}
-          <Button variant="outline" size="sm" asChild>
-            <Link to={routes.interviews.upload()}>
-              <ClipboardList className="size-4" />
-              Send Survey
-            </Link>
-          </Button>
+          {/* Send Survey - Phase 2 placeholder */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span tabIndex={0}>
+                <Button variant="outline" size="sm" disabled>
+                  <ClipboardList className="size-4" />
+                  Send Survey
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Coming soon</TooltipContent>
+          </Tooltip>
 
           {/* Log Note */}
           <Button variant="outline" size="sm" onClick={onLogNote}>

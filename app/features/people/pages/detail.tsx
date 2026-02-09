@@ -1029,8 +1029,6 @@ export default function PersonDetail() {
         open={noteDialogOpen}
         onOpenChange={setNoteDialogOpen}
         onSave={handleSaveNote}
-        projectId={projectId}
-        defaultAssociations={{ people: [person.id] }}
       />
     </div>
   );
