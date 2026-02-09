@@ -15,19 +15,38 @@ import {
   Star,
   ThumbsDown,
   ThumbsUp,
+  Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { LoaderFunctionArgs } from "react-router";
-import { useFetcher, useLoaderData } from "react-router-dom";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { redirect, useFetcher, useLoaderData } from "react-router-dom";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
 import { PageContainer } from "~/components/layout/PageContainer";
 import { BackButton } from "~/components/ui/back-button";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Textarea } from "~/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 import { useEntityFlags, useVoting } from "~/features/annotations/hooks";
 import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu";
 import { cn } from "~/lib/utils";
 import { userContext } from "~/server/user-context";
+import { createProjectRoutes } from "~/utils/routes.server";
 import {
   getAnchorStartSeconds,
   type MediaAnchor,
@@ -417,6 +436,36 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
   };
 }
 
+export async function action({ request, params, context }: ActionFunctionArgs) {
+  const { supabase } = context.get(userContext);
+  const { accountId, projectId, evidenceId } = params;
+
+  if (!accountId || !projectId || !evidenceId) {
+    throw new Response("Missing required params", { status: 400 });
+  }
+
+  const formData = await request.formData();
+  const intent = formData.get("_action");
+
+  if (intent === "delete-evidence") {
+    const { error } = await supabase
+      .from("evidence")
+      .delete()
+      .eq("id", evidenceId)
+      .eq("project_id", projectId);
+
+    if (error) {
+      consola.error("Failed to delete evidence:", error);
+      return { error: "Failed to delete evidence" };
+    }
+
+    const routes = createProjectRoutes(accountId, projectId);
+    return redirect(routes.evidence.index());
+  }
+
+  return { error: "Unknown action" };
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Chapter Card Component
 // ────────────────────────────────────────────────────────────────────────────
@@ -721,6 +770,7 @@ export default function EvidenceDetail() {
 
   const [isEditing, setIsEditing] = useState(false);
   const fieldFetcher = useFetcher();
+  const deleteFetcher = useFetcher();
 
   const saveField = useCallback(
     (fieldName: string, fieldValue: string) => {
@@ -772,81 +822,164 @@ export default function EvidenceDetail() {
         )}
 
         {/* Grooming Toolbar */}
-        <div className="mb-4 flex items-center gap-1.5">
-          {/* Verify / Reject */}
-          <Button
-            variant={userVote === 1 ? "default" : "outline"}
-            size="sm"
-            onClick={() => (userVote === 1 ? removeVote() : upvote())}
-            className="gap-1.5"
-          >
-            <ThumbsUp className="h-3.5 w-3.5" />
-            {voteCounts.upvotes > 0 && (
-              <span className="text-xs">{voteCounts.upvotes}</span>
+        <TooltipProvider delayDuration={300}>
+          <div className="mb-4 flex items-center gap-1.5">
+            {/* Verify */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={userVote === 1 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => (userVote === 1 ? removeVote() : upvote())}
+                  className="gap-1.5"
+                >
+                  <ThumbsUp className="h-3.5 w-3.5" />
+                  {voteCounts.upvotes > 0 && (
+                    <span className="text-xs">{voteCounts.upvotes}</span>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Verify — confirm this evidence is accurate
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Reject */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={userVote === -1 ? "destructive" : "outline"}
+                  size="sm"
+                  onClick={() => (userVote === -1 ? removeVote() : downvote())}
+                  className="gap-1.5"
+                >
+                  <ThumbsDown className="h-3.5 w-3.5" />
+                  {voteCounts.downvotes > 0 && (
+                    <span className="text-xs">{voteCounts.downvotes}</span>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Reject — flag this evidence as inaccurate
+              </TooltipContent>
+            </Tooltip>
+
+            <div className="mx-1 h-5 w-px bg-border" />
+
+            {/* Edit toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={isEditing ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="gap-1.5"
+                >
+                  {isEditing ? (
+                    <Check className="h-3.5 w-3.5" />
+                  ) : (
+                    <Edit2 className="h-3.5 w-3.5" />
+                  )}
+                  {isEditing ? "Done" : "Edit"}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Edit — modify the gist, verbatim, or metadata
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Star */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={flags.starred ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => toggleFlag("starred")}
+                  className="gap-1.5"
+                >
+                  <Star
+                    className={cn(
+                      "h-3.5 w-3.5",
+                      flags.starred && "fill-amber-400 text-amber-400",
+                    )}
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Star — mark as important for quick reference
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Archive */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={flags.archived ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => toggleFlag("archived")}
+                  className="gap-1.5"
+                >
+                  <Archive className="h-3.5 w-3.5" />
+                  {flags.archived ? "Archived" : "Archive"}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Archive — hide from default views without deleting
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Delete */}
+            <AlertDialog>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </AlertDialogTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Delete — permanently remove this evidence
+                </TooltipContent>
+              </Tooltip>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete evidence?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently remove this evidence and cannot be
+                    undone. Any links to themes or insights will also be
+                    removed.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => {
+                      deleteFetcher.submit(
+                        { _action: "delete-evidence" },
+                        { method: "post" },
+                      );
+                    }}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Status badges */}
+            {flags.archived && (
+              <Badge variant="secondary" className="ml-1 text-xs">
+                Archived
+              </Badge>
             )}
-          </Button>
-          <Button
-            variant={userVote === -1 ? "destructive" : "outline"}
-            size="sm"
-            onClick={() => (userVote === -1 ? removeVote() : downvote())}
-            className="gap-1.5"
-          >
-            <ThumbsDown className="h-3.5 w-3.5" />
-            {voteCounts.downvotes > 0 && (
-              <span className="text-xs">{voteCounts.downvotes}</span>
-            )}
-          </Button>
-
-          <div className="mx-1 h-5 w-px bg-border" />
-
-          {/* Edit toggle */}
-          <Button
-            variant={isEditing ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => setIsEditing(!isEditing)}
-            className="gap-1.5"
-          >
-            {isEditing ? (
-              <Check className="h-3.5 w-3.5" />
-            ) : (
-              <Edit2 className="h-3.5 w-3.5" />
-            )}
-            {isEditing ? "Done" : "Edit"}
-          </Button>
-
-          {/* Star */}
-          <Button
-            variant={flags.starred ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => toggleFlag("starred")}
-            className="gap-1.5"
-          >
-            <Star
-              className={cn(
-                "h-3.5 w-3.5",
-                flags.starred && "fill-amber-400 text-amber-400",
-              )}
-            />
-          </Button>
-
-          {/* Archive */}
-          <Button
-            variant={flags.archived ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => toggleFlag("archived")}
-            className="gap-1.5"
-          >
-            <Archive className="h-3.5 w-3.5" />
-            {flags.archived ? "Archived" : "Archive"}
-          </Button>
-
-          {/* Status badges */}
-          {flags.archived && (
-            <Badge variant="secondary" className="ml-1 text-xs">
-              Archived
-            </Badge>
-          )}
-        </div>
+          </div>
+        </TooltipProvider>
 
         {/* Edit Panel */}
         {isEditing && (
