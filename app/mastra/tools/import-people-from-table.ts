@@ -854,7 +854,7 @@ The tool will:
 							linkedin_url: getValue(row, mapping.linkedin),
 							title: getValue(row, mapping.title),
 							company: companyName || "", // NOT NULL with default '' - must provide value
-							// role: DEPRECATED - role data flows to people_organizations.job_title instead
+						// role: DEPRECATED - role data flows to people_organizations.job_title instead
 							industry: getValue(row, mapping.industry),
 							location: getValue(row, mapping.location),
 							segment: getValue(row, mapping.segment),
