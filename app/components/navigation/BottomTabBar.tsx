@@ -56,7 +56,7 @@ function TabItem({
         <div
           className={cn(
             "relative flex items-center justify-center",
-            "-mt-5 h-14 w-14 rounded-full",
+            "-mt-7 h-14 w-14 rounded-full",
             "bg-primary text-primary-foreground shadow-lg",
             "transition-all hover:bg-primary/90 active:scale-95",
           )}
@@ -119,7 +119,7 @@ export function BottomTabBar({ routes, className }: BottomTabBarProps) {
         className,
       )}
     >
-      <div className="flex items-end justify-around px-6 py-1">
+      <div className="flex items-center justify-around px-6 py-1">
         {/* AI Chat (left) */}
         <TabItem
           to={routes.chat}

@@ -156,7 +156,7 @@ export function SplitPaneLayout({
           {showMobileNav && (
             <BottomTabBar
               routes={{
-                chat: routes.projects.projectChat(),
+                chat: routes.projects.assistant(),
                 upload: routes.interviews.upload(),
                 people: routes.people.index(),
               }}
