@@ -76,6 +76,7 @@ import {
   loadLensTemplates,
 } from "~/features/lenses/lib/loadLensAnalyses.server";
 import type { InterviewLensView } from "~/features/lenses/types";
+import { getVoteCountsForEntities } from "~/features/annotations/db";
 import {
   getPeopleOptions,
   verifyPersonBelongsToProject,
@@ -695,6 +696,16 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
           opportunityId: opportunity.id,
         });
       }
+      case "generate-evidence-thumbnails": {
+        const { tasks } = await import("@trigger.dev/sdk");
+        type GenEvThumb =
+          typeof import("~/../../src/trigger/generate-evidence-thumbnails").generateEvidenceThumbnails;
+        await tasks.trigger<GenEvThumb>("generate-evidence-thumbnails", {
+          interviewId,
+          force: formData.get("force") === "true",
+        });
+        return Response.json({ ok: true });
+      }
       default:
         return Response.json(
           { ok: false, error: "Unknown intent" },
@@ -1080,6 +1091,18 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
       consola.warn("Could not fetch evidence:", evidenceError.message);
     }
 
+    // Batch-fetch vote counts for all evidence in one query
+    const evidenceIds = (evidence || []).map((e) => e.id);
+    const { data: evidenceVoteCounts } = evidenceIds.length
+      ? await getVoteCountsForEntities({
+          supabase,
+          projectId,
+          entityType: "evidence",
+          entityIds: evidenceIds,
+          userId: ctx.claims.sub,
+        })
+      : { data: {} };
+
     const empathyMap = processEmpathyMap(evidence as any);
 
     // Fetch creator's name from user_settings
@@ -1134,6 +1157,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
       interview,
       insights,
       evidence: evidence || [],
+      evidenceVoteCounts: evidenceVoteCounts || {},
       empathyMap,
       peopleOptions: peopleOptions || [],
       creatorName,
@@ -1213,6 +1237,7 @@ export default function InterviewDetail({
     interview,
     insights,
     evidence,
+    evidenceVoteCounts,
     empathyMap,
     peopleOptions,
     creatorName,
@@ -1918,6 +1943,7 @@ export default function InterviewDetail({
             <InterviewSourcePanel
               interview={interview}
               evidence={evidence}
+              evidenceVoteCounts={evidenceVoteCounts}
               accountId={accountId}
               projectId={projectId}
               onSpeakerClick={() => setParticipantsDialogOpen(true)}
