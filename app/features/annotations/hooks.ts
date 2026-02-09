@@ -206,11 +206,13 @@ export function useVoting({
   entityType: EntityType;
   entityId: string;
 }) {
-  const fetcher = useFetcher();
+  const loadFetcher = useFetcher();
+  const voteFetcher = useFetcher();
   const { projectPath } = useCurrentProject();
   const routes = useProjectRoutes(projectPath);
 
-  const [voteCounts, setVoteCounts] = useState<VoteCounts>({
+  // Server-confirmed vote counts (updated after each successful load or mutation)
+  const [serverCounts, setServerCounts] = useState<VoteCounts>({
     upvotes: 0,
     downvotes: 0,
     total_votes: 0,
@@ -218,85 +220,112 @@ export function useVoting({
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Fix: Remove routes from deps to prevent infinite loop - routes is a new object every render
+
   const votesEndpoint = useMemo(
     () => (projectPath ? routes.api.votes() : null),
     [projectPath, routes.api.votes],
   );
 
-  // Fetch vote counts on mount and when parameters change
+  // Fetch vote counts on mount and when entity changes
   useEffect(() => {
     if (!entityId || !votesEndpoint) return;
-
     setIsLoading(true);
     setError(null);
+    const searchParams = new URLSearchParams({ entityType, entityId });
+    loadFetcher.load(`${votesEndpoint}?${searchParams}`);
+  }, [entityType, entityId, votesEndpoint, loadFetcher.load]);
 
-    const searchParams = new URLSearchParams({
-      entityType,
-      entityId,
-    });
-    fetcher.load(`${votesEndpoint}?${searchParams}`);
-    // Depend only on stable inputs to avoid loops
-  }, [entityType, entityId, votesEndpoint, fetcher.load]);
-
-  // Handle fetcher state changes
+  // Sync server state from initial load
   useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data) {
-      if (fetcher.data.error) {
-        setError(fetcher.data.error.message || "Failed to fetch votes");
-      } else {
-        setVoteCounts(
-          fetcher.data.voteCounts || {
-            upvotes: 0,
-            downvotes: 0,
-            total_votes: 0,
-            user_vote: 0,
-          },
-        );
-        setError(null);
-      }
-      setIsLoading(false);
-    } else if (fetcher.state === "loading") {
-      setIsLoading(true);
+    if (loadFetcher.state !== "idle" || !loadFetcher.data) return;
+    if (loadFetcher.data.error) {
+      setError(loadFetcher.data.error.message || "Failed to fetch votes");
+    } else {
+      const counts = loadFetcher.data.voteCounts || {
+        upvotes: 0,
+        downvotes: 0,
+        total_votes: 0,
+        user_vote: 0,
+      };
+      setServerCounts(counts);
+      setError(null);
     }
-  }, [fetcher.state, fetcher.data]);
+    setIsLoading(false);
+  }, [loadFetcher.state, loadFetcher.data]);
 
-  const vote = useMemo(() => {
-    let timeoutId: NodeJS.Timeout | null = null;
+  // Sync server state from mutation responses
+  useEffect(() => {
+    if (voteFetcher.state !== "idle" || !voteFetcher.data) return;
+    if (voteFetcher.data.error) {
+      setError(voteFetcher.data.error.message || "Vote failed");
+    } else if (voteFetcher.data.voteCounts) {
+      setServerCounts(voteFetcher.data.voteCounts);
+      setError(null);
+    }
+  }, [voteFetcher.state, voteFetcher.data]);
 
-    return (voteValue: 1 | -1) => {
-      // Prevent rapid duplicate calls
-      if (fetcher.state === "submitting") return;
+  // Derive optimistic vote counts from in-flight formData (React Router 7 pattern)
+  const voteCounts = useMemo(() => {
+    const formData = voteFetcher.formData;
+    if (!formData) return serverCounts;
 
-      // Clear any pending vote submission
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
+    const action = formData.get("action") as string;
+    if (action === "upsert-vote") {
+      const voteValue = Number.parseInt(
+        formData.get("voteValue") as string,
+        10,
+      ) as 1 | -1;
+      // If user already has this vote, no change
+      if (serverCounts.user_vote === voteValue) return serverCounts;
+      return {
+        upvotes:
+          serverCounts.upvotes +
+          (voteValue === 1 ? 1 : 0) +
+          (serverCounts.user_vote === 1 ? -1 : 0),
+        downvotes:
+          serverCounts.downvotes +
+          (voteValue === -1 ? 1 : 0) +
+          (serverCounts.user_vote === -1 ? -1 : 0),
+        total_votes:
+          serverCounts.total_votes + (serverCounts.user_vote === 0 ? 1 : 0),
+        user_vote: voteValue,
+      };
+    }
+    if (action === "remove-vote") {
+      return {
+        upvotes:
+          serverCounts.user_vote === 1
+            ? serverCounts.upvotes - 1
+            : serverCounts.upvotes,
+        downvotes:
+          serverCounts.user_vote === -1
+            ? serverCounts.downvotes - 1
+            : serverCounts.downvotes,
+        total_votes:
+          serverCounts.user_vote !== 0
+            ? serverCounts.total_votes - 1
+            : serverCounts.total_votes,
+        user_vote: 0,
+      };
+    }
+    return serverCounts;
+  }, [voteFetcher.formData, serverCounts]);
 
-      // Debounce server submission to prevent race conditions
-      timeoutId = setTimeout(() => {
-        fetcher.submit(
-          {
-            action: "upsert-vote",
-            entityType,
-            entityId,
-            voteValue: voteValue.toString(),
-          },
-          { method: "POST", action: routes.api.votes() },
-        );
-      }, 200); // Increased debounce to 200ms
-    };
-  }, [fetcher, entityType, entityId, routes]);
-
-  const removeVote = () => {
-    if (fetcher.state === "submitting") return;
-
-    fetcher.submit(
+  const vote = (voteValue: 1 | -1) => {
+    voteFetcher.submit(
       {
-        action: "remove-vote",
+        action: "upsert-vote",
         entityType,
         entityId,
+        voteValue: voteValue.toString(),
       },
+      { method: "POST", action: routes.api.votes() },
+    );
+  };
+
+  const removeVote = () => {
+    voteFetcher.submit(
+      { action: "remove-vote", entityType, entityId },
       { method: "POST", action: routes.api.votes() },
     );
   };
@@ -314,11 +343,8 @@ export function useVoting({
     downvote,
     refetch: () => {
       if (!votesEndpoint) return;
-      const searchParams = new URLSearchParams({
-        entityType,
-        entityId,
-      });
-      fetcher.load(`${votesEndpoint}?${searchParams}`);
+      const searchParams = new URLSearchParams({ entityType, entityId });
+      loadFetcher.load(`${votesEndpoint}?${searchParams}`);
     },
   };
 }

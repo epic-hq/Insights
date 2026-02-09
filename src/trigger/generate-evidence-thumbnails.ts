@@ -83,22 +83,22 @@ export const generateEvidenceThumbnails = schemaTask({
 
     const supabase = getSupabase();
 
-    // 1. Fetch interview media_key
+    // 1. Fetch interview media_url (R2 object key)
     const { data: interview, error: intErr } = await supabase
       .from("interviews")
-      .select("id, media_key, media_url")
+      .select("id, media_url")
       .eq("id", interviewId)
       .single();
     if (intErr || !interview) {
       throw new Error(`Interview not found: ${interviewId}`);
     }
 
-    const mediaKey = interview.media_key;
+    const mediaKey = interview.media_url;
     if (!mediaKey) {
       return {
         success: false,
         skipped: true,
-        reason: "no-media-key",
+        reason: "no-media-url",
         interviewId,
       };
     }

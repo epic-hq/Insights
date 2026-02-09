@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
-import { useVoting } from "~/features/annotations/hooks";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -31,6 +30,7 @@ import {
   SheetTitle,
 } from "~/components/ui/sheet";
 import { useCurrentProject } from "~/contexts/current-project-context";
+import { useVoting } from "~/features/annotations/hooks";
 import { cn } from "~/lib/utils";
 import type { NormalizedUtterance } from "~/utils/transcript/normalizeUtterances";
 import { normalizeTranscriptUtterances } from "~/utils/transcript/normalizeUtterances";
@@ -176,13 +176,7 @@ export function EvidenceVerificationDrawer({
   }, [selectedEvidence?.thumbnail_url]);
 
   // Inline voting for the selected evidence
-  const {
-    voteCounts,
-    upvote,
-    downvote,
-    removeVote,
-    isLoading: voteLoading,
-  } = useVoting({
+  const { voteCounts, upvote, downvote, removeVote } = useVoting({
     entityType: "evidence",
     entityId: selectedEvidence?.id ?? "",
   });
@@ -486,7 +480,6 @@ export function EvidenceVerificationDrawer({
                         }
                         size="sm"
                         className="h-7 gap-1 px-2 text-xs"
-                        disabled={voteLoading}
                         onClick={() =>
                           voteCounts.user_vote === 1 ? removeVote() : upvote()
                         }
@@ -507,7 +500,6 @@ export function EvidenceVerificationDrawer({
                         }
                         size="sm"
                         className="h-7 gap-1 px-2 text-xs"
-                        disabled={voteLoading}
                         onClick={() =>
                           voteCounts.user_vote === -1
                             ? removeVote()
