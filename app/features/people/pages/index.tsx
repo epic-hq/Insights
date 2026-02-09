@@ -1,8 +1,8 @@
 import consola from "consola";
-import { GitMerge, LayoutGrid, Sparkles, Table as TableIcon, UserCircle } from "lucide-react";
-import { useMemo, useState } from "react";
+import { GitMerge, LayoutGrid, MoreHorizontal, Sparkles, Table as TableIcon, UserCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData, useNavigate, useSearchParams } from "react-router";
-import { Link, useFetcher, useParams, useRevalidator } from "react-router-dom";
+import { Link, useParams, useRevalidator } from "react-router-dom";
 import { PageContainer } from "~/components/layout/PageContainer";
 import {
 	AlertDialog,
@@ -16,6 +16,12 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { Input } from "~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
@@ -25,6 +31,7 @@ import EnhancedPersonCard from "~/features/people/components/EnhancedPersonCard"
 import { PeopleDataTable, type PersonTableRow } from "~/features/people/components/PeopleDataTable";
 import { getPeople } from "~/features/people/db";
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav";
+import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 import { getFacetCatalog } from "~/lib/database/facets.server";
 import { getServerClient } from "~/lib/supabase/client.server";
@@ -109,6 +116,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 export default function PeopleIndexPage() {
 	const { people, catalog, evidence_counts, scope, organizationsList } = useLoaderData<typeof loader>();
 	const currentProjectContext = useCurrentProject();
+	const { isMobile } = useDeviceDetection();
 	const { accountId, projectId } = useParams();
 	const navigate = useNavigate();
 	const [searchParams] = useSearchParams();
@@ -140,7 +148,7 @@ export default function PeopleIndexPage() {
 	const [isMerging, setIsMerging] = useState(false);
 
 	const handleFindDuplicates = async () => {
-		const url = routes.people.index() + "/api/deduplicate";
+		const url = `${routes.people.index()}/api/deduplicate`;
 		consola.info("[Find Duplicates] Triggering:", url);
 		setIsFindingDuplicates(true);
 		try {
@@ -175,7 +183,7 @@ export default function PeopleIndexPage() {
 	};
 
 	const handleMergeDuplicates = async (primaryId: string, duplicateIds: string[]) => {
-		const url = routes.people.index() + "/api/deduplicate";
+		const url = `${routes.people.index()}/api/deduplicate`;
 		setIsMerging(true);
 		try {
 			const response = await fetch(url, {
@@ -207,7 +215,7 @@ export default function PeopleIndexPage() {
 	};
 
 	const handleAutoMergeDuplicates = async () => {
-		const url = routes.people.index() + "/api/deduplicate";
+		const url = `${routes.people.index()}/api/deduplicate`;
 		setIsMerging(true);
 		try {
 			const response = await fetch(url, {
@@ -234,7 +242,7 @@ export default function PeopleIndexPage() {
 	};
 
 	const handleEnrichSegments = async () => {
-		const url = routes.people.index() + "/api/infer-segments";
+		const url = `${routes.people.index()}/api/infer-segments`;
 		consola.info("[Enrich Segments] Triggering:", url);
 		setIsEnriching(true);
 		try {
@@ -300,11 +308,11 @@ export default function PeopleIndexPage() {
 	}, [people, facetsById]);
 
 	const [searchQuery, setSearchQuery] = useState("");
-	const [organizationFilter, setOrganizationFilter] = useState<string>("all");
-	const [stakeholderFilter, setStakeholderFilter] = useState<string>("all");
+	const [organizationFilter] = useState<string>("all");
+	const [stakeholderFilter] = useState<string>("all");
 	const [icpFilter, setIcpFilter] = useState<string>("all");
 
-	const organizations = useMemo(() => {
+	const _organizations = useMemo(() => {
 		const seen = new Set<string>();
 		for (const { person } of peopleWithFacets) {
 			const primaryOrgLink =
@@ -316,7 +324,7 @@ export default function PeopleIndexPage() {
 		return Array.from(seen).sort((a, b) => a.localeCompare(b));
 	}, [peopleWithFacets]);
 
-	const stakeholder_statuses = useMemo(() => {
+	const _stakeholder_statuses = useMemo(() => {
 		const seen = new Set<string>();
 		for (const { person } of peopleWithFacets) {
 			const primaryOrgLink =
@@ -412,8 +420,16 @@ export default function PeopleIndexPage() {
 		});
 	}, [evidence_counts, filteredPeopleWithFacets]);
 
-	// Default to table view when there are more than 10 people
+	// Default to table view when there are more than 10 people.
+	// On mobile we flip to cards after mount for better readability.
 	const [viewMode, setViewMode] = useState<"cards" | "table">(() => (people.length > 10 ? "table" : "cards"));
+	const [hasManualViewSelection, setHasManualViewSelection] = useState(false);
+
+	useEffect(() => {
+		if (!hasManualViewSelection && isMobile && viewMode === "table") {
+			setViewMode("cards");
+		}
+	}, [hasManualViewSelection, isMobile, viewMode]);
 
 	return (
 		<>
@@ -431,7 +447,7 @@ export default function PeopleIndexPage() {
 							</div>
 						</div>
 					</div>
-					<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+					<div className="flex flex-wrap items-center gap-2 sm:gap-3">
 						{/* Scope toggle - Project vs Account */}
 						<ToggleGroup
 							type="single"
@@ -443,7 +459,7 @@ export default function PeopleIndexPage() {
 									navigate(`?${newParams.toString()}`, { replace: true });
 								}
 							}}
-							className="w-full sm:w-auto"
+							className="w-auto"
 							variant="outline"
 							size="sm"
 						>
@@ -459,8 +475,12 @@ export default function PeopleIndexPage() {
 						<ToggleGroup
 							type="single"
 							value={viewMode}
-							onValueChange={(value) => value && setViewMode(value as "cards" | "table")}
-							className="w-full sm:w-auto"
+							onValueChange={(value) => {
+								if (!value) return;
+								setHasManualViewSelection(true);
+								setViewMode(value as "cards" | "table");
+							}}
+							className="w-auto"
 							variant="outline"
 							size="sm"
 						>
@@ -471,27 +491,39 @@ export default function PeopleIndexPage() {
 								<TableIcon className="h-4 w-4" />
 							</ToggleGroupItem>
 						</ToggleGroup>
-						<Button asChild variant="outline" className="w-full sm:w-auto">
-							<Link to={routes.people.new()}>Add Person</Link>
+						<Button asChild size="sm" className="h-8 px-3 text-xs sm:text-sm">
+							<Link to={routes.people.new()}>
+								<span className="sm:hidden">Add</span>
+								<span className="hidden sm:inline">Add Person</span>
+							</Link>
 						</Button>
-						<Button
-							variant="outline"
-							className="w-full sm:w-auto"
-							onClick={handleEnrichSegments}
-							disabled={isEnriching}
-						>
-							<Sparkles className="mr-2 h-4 w-4" />
-							{isEnriching ? "Enriching..." : "Enrich Segments"}
-						</Button>
-						<Button
-							variant="outline"
-							className="w-full sm:w-auto"
-							onClick={handleFindDuplicates}
-							disabled={isFindingDuplicates}
-						>
-							<GitMerge className="mr-2 h-4 w-4" />
-							{isFindingDuplicates ? "Finding..." : "Find Duplicates"}
-						</Button>
+
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button variant="outline" size="sm" className="h-8 gap-1.5 px-2.5 text-xs sm:text-sm">
+									Actions
+									<MoreHorizontal className="h-3.5 w-3.5" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="w-52">
+								<DropdownMenuItem
+									onClick={handleEnrichSegments}
+									disabled={isEnriching}
+									className="flex items-center gap-2"
+								>
+									<Sparkles className="h-4 w-4" />
+									{isEnriching ? "Enriching..." : "Enrich Segments"}
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									onClick={handleFindDuplicates}
+									disabled={isFindingDuplicates}
+									className="flex items-center gap-2"
+								>
+									<GitMerge className="h-4 w-4" />
+									{isFindingDuplicates ? "Finding..." : "Find Duplicates"}
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					</div>
 				</div>
 
@@ -564,7 +596,7 @@ export default function PeopleIndexPage() {
 				) : viewMode === "table" ? (
 					<PeopleDataTable rows={tableRows} organizations={organizationsList} />
 				) : (
-					<div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+					<div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
 						{filteredPeopleWithFacets.map(({ person, facets }) => {
 							const personScale = (person as Record<string, unknown>).person_scale as
 								| Array<{
@@ -613,7 +645,7 @@ export default function PeopleIndexPage() {
 					</AlertDialogHeader>
 
 					<div className="space-y-4 py-4">
-						{duplicateGroups.map((group, groupIndex) => (
+						{duplicateGroups.map((group, _groupIndex) => (
 							<div key={group.key} className="rounded-lg border bg-muted/20 p-4">
 								<div className="mb-2 flex items-center gap-2">
 									<Badge variant="outline">

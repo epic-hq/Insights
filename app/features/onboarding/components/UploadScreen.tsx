@@ -930,7 +930,7 @@ export default function UploadScreen({
 							<h2 className="font-semibold text-base text-slate-900 dark:text-white">
 								{isCheckingQuestions ? "Checking..." : "Record"}
 							</h2>
-							<p className="mt-1 text-muted-foreground text-xs">Live recording</p>
+							{/* <p className="mt-1 text-muted-foreground text-xs">Live recording</p> */}
 						</div>
 					</button>
 
