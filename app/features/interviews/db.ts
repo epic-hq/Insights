@@ -186,6 +186,7 @@ export const getInterviewParticipants = async ({
 				person_type,
 				description,
 				contact_info,
+				default_organization:organizations!default_organization_id(name),
 				people_personas (
 					persona_id,
 					personas (

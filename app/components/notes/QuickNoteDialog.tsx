@@ -43,6 +43,7 @@ interface Person {
 	id: string;
 	name: string | null;
 	company?: string | null;
+	default_organization?: { name: string | null } | null;
 }
 
 interface QuickNoteDialogProps {
@@ -104,7 +105,7 @@ export function QuickNoteDialog({
 			setIsLoadingPeople(true);
 			supabase
 				.from("people")
-				.select("id, name, company")
+				.select("id, name, default_organization:organizations!default_organization_id(name)")
 				.eq("project_id", projectId)
 				.order("name")
 				.then(({ data }) => {
@@ -213,9 +214,12 @@ export function QuickNoteDialog({
 	// Filter people based on search
 	const filteredPeople = searchQuery.trim()
 		? people.filter(
-				(p) =>
-					p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-					p.company?.toLowerCase().includes(searchQuery.toLowerCase())
+				(p) => {
+					return (
+						p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+						p.default_organization?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+					);
+				}
 			)
 		: people.slice(0, 8);
 
@@ -320,8 +324,8 @@ export function QuickNoteDialog({
 													</div>
 													<div className="min-w-0 flex-1">
 														<p className="truncate font-medium text-sm">{person.name}</p>
-														{person.company && (
-															<p className="truncate text-muted-foreground text-xs">{person.company}</p>
+														{person.default_organization?.name && (
+															<p className="truncate text-muted-foreground text-xs">{person.default_organization?.name}</p>
 														)}
 													</div>
 													{isSelected && <CheckCircle className="h-5 w-5 flex-shrink-0 text-blue-500" />}

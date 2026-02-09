@@ -4,6 +4,7 @@ import { Mastra } from "@mastra/core/mastra";
 import { PinoLogger } from "@mastra/loggers";
 import { createClient } from "@supabase/supabase-js";
 import { chiefOfStaffAgent } from "./agents/chief-of-staff-agent";
+import { howtoAgent } from "./agents/howto-agent";
 import { insightsAgent } from "./agents/insights-agent";
 import { interviewStatusAgent } from "./agents/interview-status-agent";
 import { mainAgent } from "./agents/main-agent";
@@ -56,6 +57,7 @@ const agents = {
 	signupAgent,
 	projectSetupAgent,
 	projectStatusAgent,
+	howtoAgent,
 	chiefOfStaffAgent,
 	peopleAgent,
 	researchAgent,

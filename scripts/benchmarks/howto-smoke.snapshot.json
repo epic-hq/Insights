@@ -1,0 +1,114 @@
+{
+	"generatedAt": "2026-02-09T17:54:35.794Z",
+	"accountId": "acct-benchmark",
+	"projectId": "project-benchmark",
+	"summary": {
+		"totalCases": 5,
+		"passedCases": 5,
+		"failedCases": 0,
+		"averageLatencyMs": 0.08,
+		"averageInputTokensApprox": 13,
+		"averageOutputTokensApprox": 187.8,
+		"emptyResponses": 0,
+		"contractFailures": 0,
+		"fallbackCount": 1,
+		"patchCount": 4
+	},
+	"results": [
+		{
+			"id": "ux-interviews",
+			"expectedMode": "ux_research_mode",
+			"detectedMode": "ux_research_mode",
+			"isHowto": true,
+			"latencyMs": 0.31,
+			"inputTokensApprox": 12,
+			"outputTokensApprox": 191,
+			"responseChars": 764,
+			"usedFallback": false,
+			"contractPatched": true,
+			"quality": {
+				"isNonEmpty": true,
+				"hasMarkdownLink": true,
+				"missingSections": [],
+				"passes": true
+			},
+			"passed": true
+		},
+		{
+			"id": "gtm-positioning",
+			"expectedMode": "gtm_mode",
+			"detectedMode": "gtm_mode",
+			"isHowto": true,
+			"latencyMs": 0.05,
+			"inputTokensApprox": 17,
+			"outputTokensApprox": 188,
+			"responseChars": 750,
+			"usedFallback": false,
+			"contractPatched": true,
+			"quality": {
+				"isNonEmpty": true,
+				"hasMarkdownLink": true,
+				"missingSections": [],
+				"passes": true
+			},
+			"passed": true
+		},
+		{
+			"id": "ux-where-to-start",
+			"expectedMode": "ux_research_mode",
+			"detectedMode": "ux_research_mode",
+			"isHowto": true,
+			"latencyMs": 0.02,
+			"inputTokensApprox": 13,
+			"outputTokensApprox": 190,
+			"responseChars": 758,
+			"usedFallback": false,
+			"contractPatched": true,
+			"quality": {
+				"isNonEmpty": true,
+				"hasMarkdownLink": true,
+				"missingSections": [],
+				"passes": true
+			},
+			"passed": true
+		},
+		{
+			"id": "gtm-teach-me",
+			"expectedMode": "gtm_mode",
+			"detectedMode": "gtm_mode",
+			"isHowto": true,
+			"latencyMs": 0.01,
+			"inputTokensApprox": 14,
+			"outputTokensApprox": 191,
+			"responseChars": 762,
+			"usedFallback": false,
+			"contractPatched": true,
+			"quality": {
+				"isNonEmpty": true,
+				"hasMarkdownLink": true,
+				"missingSections": [],
+				"passes": true
+			},
+			"passed": true
+		},
+		{
+			"id": "fallback-empty",
+			"expectedMode": "ux_research_mode",
+			"detectedMode": "ux_research_mode",
+			"isHowto": true,
+			"latencyMs": 0.02,
+			"inputTokensApprox": 9,
+			"outputTokensApprox": 179,
+			"responseChars": 713,
+			"usedFallback": true,
+			"contractPatched": false,
+			"quality": {
+				"isNonEmpty": true,
+				"hasMarkdownLink": true,
+				"missingSections": [],
+				"passes": true
+			},
+			"passed": true
+		}
+	]
+}

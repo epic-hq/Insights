@@ -110,7 +110,7 @@ export function PersonAnalysisSheet({ person, open, onOpenChange, routes }: Shee
 								<div className="min-w-0 flex-1">
 									<SheetTitle className="text-xl">{person.name}</SheetTitle>
 									<SheetDescription>
-										{[person.title, person.company].filter(Boolean).join(" @ ") || "No title"}
+										{person.title || "No title"}
 									</SheetDescription>
 									<div className="mt-2 flex items-center gap-2">
 										{person.interviewCount > 0 && (

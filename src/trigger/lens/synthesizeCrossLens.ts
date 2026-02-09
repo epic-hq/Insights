@@ -147,7 +147,7 @@ export const synthesizeCrossLensTask = schemaTask({
     // 7. Load people context
     const { data: people } = await (client as any)
       .from("people")
-      .select("id, name, title, company")
+      .select("id, name, title, default_organization:organizations!default_organization_id(name)")
       .eq("project_id", projectId)
       .limit(50);
 
@@ -157,7 +157,7 @@ export const synthesizeCrossLensTask = schemaTask({
             people.map((p: any) => ({
               name: p.name,
               role: p.title,
-              company: p.company,
+              company: p.default_organization?.name ?? null,
             })),
           )
         : null;

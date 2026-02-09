@@ -339,7 +339,7 @@ Please extract insights that specifically address these research questions and h
 		if (personIdToResolve) {
 			const { data: person, error: personError } = await supabase
 				.from("people")
-				.select("id, name, project_id, company")
+				.select("id, name, project_id")
 				.eq("id", personIdToResolve)
 				.maybeSingle();
 
@@ -373,7 +373,6 @@ Please extract insights that specifically address these research questions and h
 				consola.info("Resolved linked person:", {
 					id: person.id,
 					name: person.name,
-					company: person.company,
 				});
 			}
 		}
