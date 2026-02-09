@@ -15,6 +15,7 @@ import {
   Maximize2,
   Minimize2,
   Quote,
+  ScanLine,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
@@ -138,6 +139,7 @@ export function EvidenceVerificationDrawer({
   const [utterances, setUtterances] = useState<NormalizedUtterance[]>([]);
   const [loading, setLoading] = useState(false);
   const [transcriptLoaded, setTranscriptLoaded] = useState(false);
+  const [auditMode, setAuditMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
   const currentProject = useCurrentProject();
@@ -227,13 +229,22 @@ export function EvidenceVerificationDrawer({
     return findBestUtteranceIndex(selectedRange, utterances);
   }, [selectedRange, utterances]);
 
-  // All evidence highlights map (for full transcript view)
+  // All evidence highlights map (for full transcript view + audit stats)
   const allHighlightsMap = useMemo(() => {
     if (view !== "transcript" || utterances.length === 0) {
       return new Map<number, string[]>();
     }
     return buildUtteranceEvidenceMap(allEvidence, utterances);
   }, [view, allEvidence, utterances]);
+
+  // Coverage stats for audit mode
+  const coverageStats = useMemo(() => {
+    if (view !== "transcript" || utterances.length === 0)
+      return { coded: 0, total: 0, pct: 0 };
+    const coded = allHighlightsMap.size;
+    const total = utterances.length;
+    return { coded, total, pct: Math.round((coded / total) * 100) };
+  }, [view, allHighlightsMap, utterances]);
 
   // Context range: 3 utterances before and after the highlighted ones
   const contextRange = useMemo(() => {
@@ -253,6 +264,7 @@ export function EvidenceVerificationDrawer({
       idx: number,
       isHighlighted: boolean,
       isSelected: boolean,
+      isUncoded?: boolean,
     ) => {
       const speakerName = getSpeakerName(u.speaker, interview.participants);
       const isRefTarget = isSelected && idx === bestIndex;
@@ -269,7 +281,9 @@ export function EvidenceVerificationDrawer({
             isHighlighted &&
               !isSelected &&
               "border-l-4 border-amber-400 bg-amber-50 dark:bg-amber-900/20",
-            !isHighlighted && "hover:bg-muted/30",
+            !isHighlighted && !isUncoded && "hover:bg-muted/30",
+            isUncoded &&
+              "border-l-4 border-dashed border-muted-foreground/20 bg-muted/10 opacity-60",
           )}
         >
           <div className="mb-1 flex items-center gap-2">
@@ -299,41 +313,58 @@ export function EvidenceVerificationDrawer({
               <Eye className="h-4 w-4 text-primary" />
               Verify Evidence
             </SheetTitle>
-            {/* View toggle */}
-            <div className="flex items-center gap-1 rounded-md border bg-background p-0.5">
-              <button
-                onClick={() => setView("focused")}
-                className={cn(
-                  "rounded px-2 py-1 text-xs transition-colors",
-                  view === "focused"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <Quote className="h-3 w-3" />
-              </button>
-              <button
-                onClick={() => setView("context")}
-                className={cn(
-                  "rounded px-2 py-1 text-xs transition-colors",
-                  view === "context"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <Minimize2 className="h-3 w-3" />
-              </button>
-              <button
-                onClick={() => setView("transcript")}
-                className={cn(
-                  "rounded px-2 py-1 text-xs transition-colors",
-                  view === "transcript"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <Maximize2 className="h-3 w-3" />
-              </button>
+            {/* View toggle + audit mode */}
+            <div className="flex items-center gap-2">
+              {view === "transcript" && (
+                <button
+                  onClick={() => setAuditMode((prev) => !prev)}
+                  className={cn(
+                    "flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors",
+                    auditMode
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:text-foreground",
+                  )}
+                  title="Toggle audit mode — show coverage gaps"
+                >
+                  <ScanLine className="h-3 w-3" />
+                  Audit
+                </button>
+              )}
+              <div className="flex items-center gap-1 rounded-md border bg-background p-0.5">
+                <button
+                  onClick={() => setView("focused")}
+                  className={cn(
+                    "rounded px-2 py-1 text-xs transition-colors",
+                    view === "focused"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Quote className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={() => setView("context")}
+                  className={cn(
+                    "rounded px-2 py-1 text-xs transition-colors",
+                    view === "context"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Minimize2 className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={() => setView("transcript")}
+                  className={cn(
+                    "rounded px-2 py-1 text-xs transition-colors",
+                    view === "transcript"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Maximize2 className="h-3 w-3" />
+                </button>
+              </div>
             </div>
           </div>
         </SheetHeader>
@@ -479,17 +510,51 @@ export function EvidenceVerificationDrawer({
 
                   {view === "transcript" && (
                     <div className="space-y-1">
+                      {auditMode && (
+                        <div className="mb-3 space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium text-foreground">
+                              Evidence Coverage
+                            </span>
+                            <span className="text-muted-foreground">
+                              {coverageStats.coded}/{coverageStats.total}{" "}
+                              utterances coded ({coverageStats.pct}%)
+                            </span>
+                          </div>
+                          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-primary transition-all"
+                              style={{
+                                width: `${coverageStats.pct}%`,
+                              }}
+                            />
+                          </div>
+                          <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <span className="inline-block h-2 w-2 rounded-sm border-l-2 border-amber-400 bg-amber-50" />
+                              Coded
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span className="inline-block h-2 w-2 rounded-sm border-l-2 border-dashed border-muted-foreground/20 bg-muted/10" />
+                              Uncoded (gap)
+                            </span>
+                          </div>
+                        </div>
+                      )}
                       {utterances.map((u, idx) => {
                         const highlightEvidenceIds =
                           allHighlightsMap.get(idx) || [];
                         const isSelectedHighlight = overlappingIndices.has(idx);
                         const isAnyHighlight = highlightEvidenceIds.length > 0;
+                        const isUncoded =
+                          auditMode && !isAnyHighlight && !isSelectedHighlight;
 
                         return renderUtterance(
                           u,
                           idx,
                           isAnyHighlight,
                           isSelectedHighlight,
+                          isUncoded,
                         );
                       })}
                     </div>
@@ -507,13 +572,18 @@ export function EvidenceVerificationDrawer({
               <span>
                 {utterances.length} utterances &middot; {allEvidence.length}{" "}
                 evidence items
+                {auditMode &&
+                  view === "transcript" &&
+                  ` · ${coverageStats.pct}% coded`}
               </span>
               <span>
                 {view === "focused"
                   ? "Showing matched utterances"
                   : view === "context"
                     ? "Showing surrounding context"
-                    : "Full transcript"}
+                    : auditMode
+                      ? "Audit: showing coverage"
+                      : "Full transcript"}
               </span>
             </div>
           </div>
