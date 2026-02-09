@@ -63,6 +63,8 @@ async function generateConversationTakeaways(
                         `,
       )
       .eq("interview_id", interviewId)
+      .is("deleted_at", null)
+      .eq("is_archived", false)
       .order("created_at", { ascending: true });
 
     if (evidenceError) {

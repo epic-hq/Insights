@@ -1866,6 +1866,7 @@ export type Database = {
           context_summary: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           does: string[] | null
           embedding: string | null
           embedding_generated_at: string | null
@@ -1876,6 +1877,7 @@ export type Database = {
           id: string
           independence_key: string | null
           interview_id: string | null
+          is_archived: boolean
           is_question: boolean | null
           journey_stage: string | null
           method: string | null
@@ -1890,6 +1892,7 @@ export type Database = {
           source_type: string | null
           support: string | null
           thinks: string[] | null
+          thumbnail_url: string | null
           topic: string | null
           updated_at: string
           updated_by: string | null
@@ -1906,6 +1909,7 @@ export type Database = {
           context_summary?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           does?: string[] | null
           embedding?: string | null
           embedding_generated_at?: string | null
@@ -1916,6 +1920,7 @@ export type Database = {
           id?: string
           independence_key?: string | null
           interview_id?: string | null
+          is_archived?: boolean
           is_question?: boolean | null
           journey_stage?: string | null
           method?: string | null
@@ -1930,6 +1935,7 @@ export type Database = {
           source_type?: string | null
           support?: string | null
           thinks?: string[] | null
+          thumbnail_url?: string | null
           topic?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -1946,6 +1952,7 @@ export type Database = {
           context_summary?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           does?: string[] | null
           embedding?: string | null
           embedding_generated_at?: string | null
@@ -1956,6 +1963,7 @@ export type Database = {
           id?: string
           independence_key?: string | null
           interview_id?: string | null
+          is_archived?: boolean
           is_question?: boolean | null
           journey_stage?: string | null
           method?: string | null
@@ -1970,6 +1978,7 @@ export type Database = {
           source_type?: string | null
           support?: string | null
           thinks?: string[] | null
+          thumbnail_url?: string | null
           topic?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -4039,7 +4048,6 @@ export type Database = {
           account_id: string | null
           age: number | null
           age_range: string | null
-          company: string
           contact_info: Json | null
           created_at: string
           default_organization_id: string | null
@@ -4050,7 +4058,6 @@ export type Database = {
           id: string
           image_url: string | null
           income: number | null
-          industry: string | null
           job_function: string | null
           languages: string[] | null
           lastname: string | null
@@ -4060,7 +4067,6 @@ export type Database = {
           location: string | null
           name: string | null
           name_hash: string | null
-          occupation: string | null
           person_type: string | null
           preferences: string | null
           primary_email: string | null
@@ -4080,7 +4086,6 @@ export type Database = {
           account_id?: string | null
           age?: number | null
           age_range?: string | null
-          company?: string
           contact_info?: Json | null
           created_at?: string
           default_organization_id?: string | null
@@ -4091,7 +4096,6 @@ export type Database = {
           id?: string
           image_url?: string | null
           income?: number | null
-          industry?: string | null
           job_function?: string | null
           languages?: string[] | null
           lastname?: string | null
@@ -4101,7 +4105,6 @@ export type Database = {
           location?: string | null
           name?: string | null
           name_hash?: string | null
-          occupation?: string | null
           person_type?: string | null
           preferences?: string | null
           primary_email?: string | null
@@ -4121,7 +4124,6 @@ export type Database = {
           account_id?: string | null
           age?: number | null
           age_range?: string | null
-          company?: string
           contact_info?: Json | null
           created_at?: string
           default_organization_id?: string | null
@@ -4132,7 +4134,6 @@ export type Database = {
           id?: string
           image_url?: string | null
           income?: number | null
-          industry?: string | null
           job_function?: string | null
           languages?: string[] | null
           lastname?: string | null
@@ -4142,7 +4143,6 @@ export type Database = {
           location?: string | null
           name?: string | null
           name_hash?: string | null
-          occupation?: string | null
           person_type?: string | null
           preferences?: string | null
           primary_email?: string | null

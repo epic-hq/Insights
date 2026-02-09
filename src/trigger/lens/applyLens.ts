@@ -479,6 +479,8 @@ export const applyLensTask = task({
       .from("evidence")
       .select("id, gist, verbatim, chunk, anchors, created_at")
       .eq("interview_id", interviewId)
+      .is("deleted_at", null)
+      .eq("is_archived", false)
       .order("created_at", { ascending: true })) as {
       data: EvidenceRow[] | null;
       error: any;
@@ -498,6 +500,8 @@ export const applyLensTask = task({
         .eq("project_id", effectiveProject)
         .not("research_link_response_id", "is", null)
         .is("interview_id", null)
+        .is("deleted_at", null)
+        .eq("is_archived", false)
         .order("created_at", { ascending: true })
         .limit(100)) as { data: EvidenceRow[] | null; error: any };
 

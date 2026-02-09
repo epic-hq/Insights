@@ -269,7 +269,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				)
 			`,
     )
-    .eq("project_id", projectId);
+    .eq("project_id", projectId)
+    .is("deleted_at", null)
+    .eq("is_archived", false);
 
   // Apply evidence ID filter if we have one from person or RQ filtering
   if (evidenceIdFilter) {

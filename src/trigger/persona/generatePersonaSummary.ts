@@ -97,7 +97,9 @@ export const generatePersonaSummaryTask = task({
     const { data: evidenceData, error: evidenceError } = await supabase
       .from("evidence")
       .select<Tables<"evidence">>("*")
-      .eq("project_id", projectId);
+      .eq("project_id", projectId)
+      .is("deleted_at", null)
+      .eq("is_archived", false);
     if (evidenceError) {
       throw new Error(
         `Failed to fetch evidence for persona refresh: ${evidenceError.message}`,
