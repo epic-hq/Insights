@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evidence Correction Flow — UpSight Interactive Mockup</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      background: #0f1117;
+      color: #e5e7eb;
+      overflow-x: hidden;
+      min-height: 100vh;
+      padding-bottom: 100px;
+    }
+
+    /* Layout */
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0;
+      position: relative;
+    }
+
+    .step {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out;
+    }
+
+    .step.active {
+      display: block;
+      animation: fadeIn 0.4s ease-in-out forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes pulseGreen {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+    }
+
+    @keyframes slideInRight {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+
+    /* Header */
+    .page-header {
+      padding: 24px 32px;
+      border-bottom: 1px solid #2a2d37;
+      background: #1a1d27;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .page-header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: transparent;
+      border: 1px solid #2a2d37;
+      border-radius: 8px;
+      color: #9ca3af;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .back-button:hover {
+      background: #2a2d37;
+      color: #e5e7eb;
+    }
+
+    /* Interview Detail (Steps 1 & 4) */
+    .interview-content {
+      padding: 32px;
+      max-width: 800px;
+    }
+
+    .card {
+      background: #1a1d27;
+      border: 1px solid #2a2d37;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .badge.high {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge.medium {
+      background: rgba(245, 158, 11, 0.15);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge.low {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .badge.success {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .badge.neutral {
+      background: rgba(156, 163, 175, 0.15);
+      color: #9ca3af;
+      border: 1px solid rgba(156, 163, 175, 0.3);
+    }
+
+    .insight-item {
+      padding: 12px 0;
+      border-bottom: 1px solid #2a2d37;
+    }
+
+    .insight-item:last-child {
+      border-bottom: none;
+    }
+
+    .insight-text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #e5e7eb;
+      margin-bottom: 8px;
+    }
+
+    /* Evidence Card */
+    .evidence-card {
+      background: #1a1d27;
+      border: 1px solid #2a2d37;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+      transition: all 0.3s;
+    }
+
+    .evidence-card.highlighted {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    .evidence-card.updated {
+      animation: pulseGreen 2s ease-in-out;
+      border-color: #22c55e;
+    }
+
+    .evidence-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .evidence-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #e5e7eb;
+      line-height: 1.5;
+      flex: 1;
+    }
+
+    .evidence-quote {
+      background: rgba(59, 130, 246, 0.08);
+      border-left: 3px solid #3b82f6;
+      padding: 12px;
+      margin: 12px 0;
+      font-size: 13px;
+      font-style: italic;
+      color: #9ca3af;
+      line-height: 1.6;
+    }
+
+    .evidence-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .evidence-meta a {
+      color: #3b82f6;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.2s;
+    }
+
+    .evidence-meta a:hover {
+      color: #60a5fa;
+    }
+
+    .evidence-meta a.primary {
+      font-weight: 500;
+      position: relative;
+    }
+
+    .evidence-meta a.primary::after {
+      content: '';
+      position: absolute;
+      right: -8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 6px;
+      height: 6px;
+      background: #3b82f6;
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Callout */
+    .callout {
+      position: absolute;
+      background: #3b82f6;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      max-width: 280px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      z-index: 100;
+    }
+
+    .callout::after {
+      content: '';
+      position: absolute;
+      width: 0;
+      height: 0;
+      border: 8px solid transparent;
+    }
+
+    .callout.bottom-left::after {
+      border-bottom-color: #3b82f6;
+      top: -16px;
+      left: 24px;
+    }
+
+    .callout.top-right::after {
+      border-top-color: #3b82f6;
+      bottom: -16px;
+      right: 24px;
+    }
+
+    .callout.left::after {
+      border-left-color: #3b82f6;
+      right: -16px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    /* Drawer (Step 2) */
+    .split-view {
+      display: flex;
+      position: relative;
+      min-height: calc(100vh - 100px);
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 32px;
+      max-width: 800px;
+    }
+
+    .drawer {
+      position: fixed;
+      right: 0;
+      top: 0;
+      bottom: 80px;
+      width: 45%;
+      background: #1a1d27;
+      border-left: 1px solid #2a2d37;
+      box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
+      overflow-y: auto;
+      animation: slideInRight 0.3s ease-out;
+      z-index: 50;
+    }
+
+    .drawer-header {
+      position: sticky;
+      top: 0;
+      background: #1a1d27;
+      border-bottom: 1px solid #2a2d37;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .drawer-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .drawer-content {
+      padding: 24px;
+    }
+
+    .drawer-evidence-card {
+      background: #0f1117;
+      border: 1px solid #3b82f6;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid;
+    }
+
+    .btn.verify {
+      background: transparent;
+      border-color: #22c55e;
+      color: #22c55e;
+    }
+
+    .btn.verify:hover {
+      background: rgba(34, 197, 94, 0.1);
+    }
+
+    .btn.edit {
+      background: transparent;
+      border-color: #3b82f6;
+      color: #3b82f6;
+    }
+
+    .btn.edit:hover {
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    .btn.reject {
+      background: transparent;
+      border-color: #2a2d37;
+      color: #6b7280;
+    }
+
+    .btn.reject:hover {
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+
+    .btn.primary {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: white;
+    }
+
+    .btn.primary:hover {
+      background: #2563eb;
+    }
+
+    .btn.secondary {
+      background: transparent;
+      border-color: #2a2d37;
+      color: #9ca3af;
+    }
+
+    .btn.secondary:hover {
+      background: #2a2d37;
+    }
+
+    /* Transcript */
+    .transcript {
+      background: #0f1117;
+      border: 1px solid #2a2d37;
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .transcript-passage {
+      margin-bottom: 16px;
+      padding-left: 12px;
+      border-left: 2px solid transparent;
+      opacity: 0.5;
+      transition: opacity 0.2s;
+    }
+
+    .transcript-passage.highlighted {
+      border-left-color: #f59e0b;
+      background: rgba(245, 158, 11, 0.05);
+      opacity: 1;
+      padding: 12px;
+      margin-left: -12px;
+      border-radius: 6px;
+    }
+
+    .transcript-passage.other-evidence {
+      border-left-color: #3b82f6;
+      opacity: 0.7;
+    }
+
+    .speaker-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #9ca3af;
+      margin-bottom: 4px;
+    }
+
+    .timestamp {
+      color: #6b7280;
+      font-size: 12px;
+    }
+
+    .passage-text {
+      font-size: 14px;
+      line-height: 1.7;
+      color: #e5e7eb;
+    }
+
+    /* Evidence Detail (Step 3) */
+    .detail-page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px;
+    }
+
+    .detail-header {
+      margin-bottom: 32px;
+    }
+
+    .detail-header h1 {
+      font-size: 28px;
+      font-weight: 600;
+      margin: 16px 0;
+      color: #e5e7eb;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section {
+      background: #1a1d27;
+      border: 1px solid #2a2d37;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #e5e7eb;
+    }
+
+    .source-box {
+      background: rgba(59, 130, 246, 0.08);
+      border-left: 3px solid #3b82f6;
+      padding: 16px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+    }
+
+    .source-text {
+      font-size: 14px;
+      line-height: 1.7;
+      color: #e5e7eb;
+      font-style: italic;
+      margin-bottom: 12px;
+    }
+
+    .source-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .audio-player {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #0f1117;
+      border: 1px solid #2a2d37;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+
+    .play-button {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #3b82f6;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: white;
+      transition: background 0.2s;
+    }
+
+    .play-button:hover {
+      background: #2563eb;
+    }
+
+    .waveform {
+      flex: 1;
+      height: 32px;
+      background: linear-gradient(90deg,
+        rgba(59, 130, 246, 0.3) 0%,
+        rgba(59, 130, 246, 0.3) 30%,
+        rgba(59, 130, 246, 0.1) 30%,
+        rgba(59, 130, 246, 0.1) 100%);
+      border-radius: 4px;
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #9ca3af;
+      margin-bottom: 8px;
+    }
+
+    .form-select {
+      width: 100%;
+      background: #0f1117;
+      border: 1px solid #2a2d37;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #e5e7eb;
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .form-select:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .form-select.changed {
+      border-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #2a2d37;
+      border: 1px solid #3a3d47;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #e5e7eb;
+    }
+
+    .tag.new {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: #3b82f6;
+    }
+
+    .tag.removed {
+      opacity: 0.4;
+      text-decoration: line-through;
+    }
+
+    .tag-remove {
+      cursor: pointer;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+
+    .tag-remove:hover {
+      opacity: 1;
+    }
+
+    .textarea {
+      width: 100%;
+      background: #0f1117;
+      border: 1px solid #2a2d37;
+      border-radius: 8px;
+      padding: 12px;
+      color: #e5e7eb;
+      font-size: 14px;
+      font-family: inherit;
+      line-height: 1.6;
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .info-box {
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 20px;
+    }
+
+    .info-box-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #3b82f6;
+      margin-bottom: 12px;
+    }
+
+    .info-box ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .info-box li {
+      font-size: 13px;
+      color: #9ca3af;
+      margin-bottom: 8px;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .info-box li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: #3b82f6;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #e5e7eb;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+
+    /* Action Footer */
+    .action-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 24px;
+      border-top: 1px solid #2a2d37;
+      margin-top: 32px;
+    }
+
+    .action-footer .left {
+      display: flex;
+      gap: 12px;
+    }
+
+    .danger-link {
+      color: #ef4444;
+      font-size: 13px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .danger-link:hover {
+      opacity: 0.8;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1a1d27;
+      border: 1px solid #22c55e;
+      border-radius: 10px;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      animation: slideUp 0.3s ease-out;
+      z-index: 1000;
+    }
+
+    @keyframes slideUp {
+      from {
+        bottom: 80px;
+        opacity: 0;
+      }
+      to {
+        bottom: 120px;
+        opacity: 1;
+      }
+    }
+
+    .toast-icon {
+      color: #22c55e;
+    }
+
+    .toast-text {
+      font-size: 14px;
+      color: #e5e7eb;
+    }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #1a1d27;
+      border-top: 1px solid #2a2d37;
+      padding: 20px 32px;
+      z-index: 100;
+    }
+
+    .stepper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .step-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid #2a2d37;
+      background: #1a1d27;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: #6b7280;
+      transition: all 0.3s;
+    }
+
+    .step-circle.active {
+      border-color: #3b82f6;
+      background: #3b82f6;
+      color: white;
+    }
+
+    .step-circle.completed {
+      border-color: #22c55e;
+      background: #22c55e;
+      color: white;
+    }
+
+    .step-label {
+      font-size: 13px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .step-label.active {
+      color: #3b82f6;
+    }
+
+    .step-label.completed {
+      color: #22c55e;
+    }
+
+    .step-line {
+      width: 60px;
+      height: 2px;
+      background: #2a2d37;
+      transition: background 0.3s;
+    }
+
+    .step-line.completed {
+      background: #22c55e;
+    }
+
+    .nav-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .nav-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid #2a2d37;
+      background: transparent;
+      color: #9ca3af;
+    }
+
+    .nav-button:hover:not(:disabled) {
+      background: #2a2d37;
+      color: #e5e7eb;
+    }
+
+    .nav-button.primary {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: white;
+    }
+
+    .nav-button.primary:hover {
+      background: #2563eb;
+    }
+
+    .nav-button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* Updated elements in Step 4 */
+    .updated-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      animation: fadeInScale 0.5s ease-out;
+    }
+
+    @keyframes fadeInScale {
+      from {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .new-lens-card {
+      animation: fadeInScale 0.5s ease-out;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Step 1: See the Insight -->
+  <div class="step active" id="step1">
+    <div class="page-header">
+      <button class="back-button">
+        <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+        Back to interviews
+      </button>
+    </div>
+
+    <div class="interview-content">
+      <h1 style="font-size: 28px; margin-bottom: 8px;">Bryan Rill • Feb 7, 2026</h1>
+      <p style="color: #6b7280; font-size: 14px; margin-bottom: 32px;">45:32 · Research Methodology · 12 evidence items</p>
+
+      <!-- Key Insights Card -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Key Insights</h2>
+        </div>
+        <div class="insight-item">
+          <div style="display: flex; align-items: start; gap: 12px; margin-bottom: 8px;">
+            <span class="badge high">HIGH</span>
+            <p class="insight-text">Primary concern about AI replacing qualitative research methodology — trust in outputs remains the critical barrier</p>
+          </div>
+        </div>
+        <div class="insight-item">
+          <div style="display: flex; align-items: start; gap: 12px; margin-bottom: 8px;">
+            <span class="badge medium">MEDIUM</span>
+            <p class="insight-text">Partnership interest confirmed with specific integration requirements for existing workflow tools</p>
+          </div>
+        </div>
+        <div class="insight-item">
+          <div style="display: flex; align-items: start; gap: 12px; margin-bottom: 8px;">
+            <span class="badge low">LOW</span>
+            <p class="insight-text">Positive feedback on "receipts" concept as validation mechanism for AI-generated insights</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Research Methodology Lens -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Research Methodology</h2>
+          <span class="badge neutral">3 evidence</span>
+        </div>
+
+        <!-- Highlighted Evidence Card -->
+        <div class="evidence-card highlighted" style="position: relative;">
+          <div class="evidence-header">
+            <div style="flex: 1;">
+              <p class="evidence-title">Primary concern about AI replacing qualitative research methodology</p>
+              <span class="badge high" style="margin-top: 8px;">HIGH</span>
+            </div>
+          </div>
+          <div class="evidence-quote">
+            "AI is causing more problems than it's solving... leading to false conclusions"
+          </div>
+          <div class="evidence-meta">
+            <span class="timestamp">23:54</span>
+            <a href="#" class="primary" onclick="goToStep(2); return false;">
+              See source
+              <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+            </a>
+            <a href="#">
+              View evidence
+              <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i>
+            </a>
+          </div>
+
+          <!-- Callout -->
+          <div class="callout bottom-left" style="top: 100%; left: 50%; margin-top: 16px; transform: translateX(-50%);">
+            Click "See source" to verify this in the transcript
+          </div>
+        </div>
+
+        <!-- Other Evidence Cards (collapsed) -->
+        <div class="evidence-card">
+          <div class="evidence-header">
+            <div style="flex: 1;">
+              <p class="evidence-title">Manual coding still preferred over automated analysis for nuanced interpretation</p>
+              <span class="badge medium" style="margin-top: 8px;">MEDIUM</span>
+            </div>
+          </div>
+          <div class="evidence-meta">
+            <span class="timestamp">18:22</span>
+            <a href="#">See source</a>
+            <a href="#">View evidence</a>
+          </div>
+        </div>
+
+        <div class="evidence-card">
+          <div class="evidence-header">
+            <div style="flex: 1;">
+              <p class="evidence-title">Time constraints driving interest in automation despite quality concerns</p>
+              <span class="badge low" style="margin-top: 8px;">LOW</span>
+            </div>
+          </div>
+          <div class="evidence-meta">
+            <span class="timestamp">32:15</span>
+            <a href="#">See source</a>
+            <a href="#">View evidence</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Verify in Context -->
+  <div class="step" id="step2">
+    <div class="split-view">
+      <!-- Main Content (same as Step 1, slightly dimmed) -->
+      <div class="main-content" style="opacity: 0.6;">
+        <h1 style="font-size: 28px; margin-bottom: 8px;">Bryan Rill • Feb 7, 2026</h1>
+        <p style="color: #6b7280; font-size: 14px; margin-bottom: 32px;">45:32 · Research Methodology · 12 evidence items</p>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Research Methodology</h2>
+            <span class="badge neutral">3 evidence</span>
+          </div>
+          <div class="evidence-card">
+            <p class="evidence-title">Primary concern about AI replacing qualitative research methodology</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transcript Drawer -->
+      <div class="drawer">
+        <div class="drawer-header">
+          <h3 class="drawer-title">Source Context</h3>
+          <button class="back-button" style="padding: 6px;">
+            <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+          </button>
+        </div>
+
+        <div class="drawer-content">
+          <!-- Evidence Card with Actions -->
+          <div class="drawer-evidence-card">
+            <p class="evidence-title" style="margin-bottom: 12px;">Primary concern about AI replacing qualitative research methodology</p>
+            <span class="badge high">HIGH</span>
+            <div class="evidence-quote" style="margin-top: 12px;">
+              "AI is causing more problems than it's solving... leading to false conclusions"
+            </div>
+            <div class="evidence-meta" style="margin-top: 12px;">
+              <span class="timestamp">23:54 - 24:34</span>
+              <a href="#">Open full evidence →</a>
+            </div>
+
+            <div class="action-buttons">
+              <button class="btn verify">
+                <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+                Verify
+              </button>
+              <button class="btn edit" onclick="goToStep(3)">
+                <i data-lucide="pencil" style="width: 16px; height: 16px;"></i>
+                Edit
+              </button>
+              <button class="btn reject">
+                <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+                Reject
+              </button>
+            </div>
+          </div>
+
+          <!-- Transcript -->
+          <div class="transcript">
+            <div class="transcript-passage other-evidence">
+              <div class="speaker-label">Speaker B (Rick) <span class="timestamp">[23:12]</span></div>
+              <p class="passage-text">So you mentioned earlier that you're skeptical about AI tools. Can you tell me more about that?</p>
+            </div>
+
+            <div class="transcript-passage highlighted">
+              <div class="speaker-label">Speaker A (Bryan) <span class="timestamp">[23:54]</span></div>
+              <p class="passage-text">Yeah, I mean, AI is causing more problems than it's solving. It's leading to false conclusions. It is creating more work rather than saving work because of the need to audit it so much. And it's also devaluing the role of a researcher. Like, the whole point is the human interpretation, right? The pattern recognition that comes from experience.</p>
+            </div>
+
+            <div class="transcript-passage">
+              <div class="speaker-label">Speaker B (Rick) <span class="timestamp">[24:34]</span></div>
+              <p class="passage-text">Yeah, no, I hear you. So that's how I started here, right? I was building a different product and I was doing customer interviews, and I found that I was spending 80% of my time doing analysis and synthesis rather than having conversations.</p>
+            </div>
+
+            <div class="transcript-passage">
+              <div class="speaker-label">Speaker A (Bryan) <span class="timestamp">[25:10]</span></div>
+              <p class="passage-text">So...</p>
+            </div>
+
+            <div class="transcript-passage other-evidence">
+              <div class="speaker-label">Speaker B (Rick) <span class="timestamp">[25:13]</span></div>
+              <p class="passage-text">I'm absolutely down with putting that back in as an advanced mode. I think you bring up a huge issue, which is trust. Like, you don't trust it. And I totally get that. I wouldn't trust something I couldn't verify either.</p>
+            </div>
+          </div>
+
+          <!-- Thought Bubble Callout -->
+          <div class="callout top-right" style="position: absolute; top: 420px; right: 24px;">
+            Hmm, this is actually about AI trust concerns, not research methodology replacement. Let me correct this.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Correct the Evidence -->
+  <div class="step" id="step3">
+    <div class="page-header">
+      <button class="back-button">
+        <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+        Back to interview
+      </button>
+    </div>
+
+    <div class="detail-page">
+      <div class="detail-header">
+        <h1>Primary concern about AI replacing qualitative research methodology</h1>
+        <div class="status-row">
+          <span class="badge neutral">AI-generated</span>
+          <span style="font-size: 13px; color: #6b7280;">Confidence: 87%</span>
+        </div>
+      </div>
+
+      <!-- Source Section -->
+      <div class="section">
+        <h3 class="section-title">Source</h3>
+        <div class="source-box">
+          <p class="source-text">"AI is causing more problems than it's solving. It's leading to false conclusions. It is creating more work rather than saving work because of the need to audit it so much. And it's also devaluing the role of a researcher."</p>
+          <div class="source-meta">
+            <a href="#" style="color: #3b82f6; text-decoration: none;">
+              <i data-lucide="clock" style="width: 14px; height: 14px; display: inline;"></i>
+              23:54 - 24:34
+            </a>
+            <span>Bryan Rill</span>
+          </div>
+        </div>
+
+        <div class="audio-player">
+          <button class="play-button">
+            <i data-lucide="play" style="width: 16px; height: 16px;"></i>
+          </button>
+          <div class="waveform"></div>
+          <span style="font-size: 12px; color: #6b7280;">0:40</span>
+        </div>
+
+        <details style="margin-top: 16px;">
+          <summary style="cursor: pointer; color: #3b82f6; font-size: 13px; font-weight: 500;">Show in full transcript</summary>
+        </details>
+      </div>
+
+      <!-- Classification Section -->
+      <div class="section" style="border: 2px solid #3b82f6; background: rgba(59, 130, 246, 0.03);">
+        <h3 class="section-title">Classification</h3>
+
+        <div style="background: #0f1117; border: 1px solid #2a2d37; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+          <p style="font-size: 13px; font-weight: 600; color: #9ca3af; margin-bottom: 12px;">CURRENT</p>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 13px;">
+            <div>
+              <span style="color: #6b7280;">Lens:</span>
+              <span style="color: #e5e7eb; font-weight: 500; margin-left: 8px;">Research Methodology</span>
+            </div>
+            <div>
+              <span style="color: #6b7280;">Priority:</span>
+              <span class="badge high" style="margin-left: 8px;">HIGH</span>
+            </div>
+            <div>
+              <span style="color: #6b7280;">Tags:</span>
+              <span style="color: #e5e7eb; margin-left: 8px;">pain-point, ai-skepticism</span>
+            </div>
+            <div>
+              <span style="color: #6b7280;">Sentiment:</span>
+              <span style="color: #e5e7eb; margin-left: 8px;">Negative</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: rgba(59, 130, 246, 0.05); border: 2px solid #3b82f6; border-radius: 8px; padding: 20px;">
+          <p style="font-size: 13px; font-weight: 600; color: #3b82f6; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i>
+            YOUR CORRECTION
+          </p>
+
+          <div class="form-group">
+            <label class="form-label">Lens</label>
+            <select class="form-select changed">
+              <option>Research Methodology</option>
+              <option selected>AI Trust & Adoption</option>
+              <option>Product Feedback</option>
+              <option>Partnership</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Tags</label>
+            <div class="tag-list">
+              <span class="tag removed">
+                pain-point
+                <i data-lucide="x" class="tag-remove" style="width: 14px; height: 14px;"></i>
+              </span>
+              <span class="tag">
+                ai-skepticism
+                <i data-lucide="x" class="tag-remove" style="width: 14px; height: 14px;"></i>
+              </span>
+              <span class="tag new">
+                trust-barrier
+                <i data-lucide="x" class="tag-remove" style="width: 14px; height: 14px;"></i>
+              </span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Why this change?</label>
+            <textarea class="textarea">This is about trust in AI outputs, not about methodology being replaced. Bryan is describing the gap between AI capability and researcher confidence.</textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="form-select">
+              <option selected>HIGH</option>
+              <option>MEDIUM</option>
+              <option>LOW</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="info-box">
+          <p class="info-box-title">What happens next</p>
+          <ul>
+            <li>This evidence will move from "Research Methodology" lens to "AI Trust & Adoption" lens</li>
+            <li>The interview takeaway referencing this evidence will be updated</li>
+            <li>Your correction helps improve future AI classifications</li>
+          </ul>
+          <label class="checkbox-label">
+            <input type="checkbox" style="width: 16px; height: 16px; cursor: pointer;">
+            Apply similar corrections to related evidence in this interview
+          </label>
+        </div>
+
+        <!-- Callout -->
+        <div class="callout left" style="position: absolute; top: 50%; left: -300px; transform: translateY(-50%);">
+          Corrections are safe and reversible. The system learns from your expertise.
+        </div>
+      </div>
+
+      <div class="action-footer">
+        <div class="left">
+          <button class="btn primary" onclick="goToStep(4)">
+            <i data-lucide="save" style="width: 16px; height: 16px;"></i>
+            Save Correction
+          </button>
+          <button class="btn secondary">Cancel</button>
+        </div>
+        <a href="#" class="danger-link">Reject this evidence entirely</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4: See the Update -->
+  <div class="step" id="step4">
+    <div class="page-header">
+      <button class="back-button">
+        <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+        Back to interviews
+      </button>
+    </div>
+
+    <div class="interview-content">
+      <h1 style="font-size: 28px; margin-bottom: 8px;">Bryan Rill • Feb 7, 2026</h1>
+      <p style="color: #6b7280; font-size: 14px; margin-bottom: 32px;">45:32 · Research Methodology · 12 evidence items</p>
+
+      <!-- Key Insights Card (Updated) -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Key Insights</h2>
+        </div>
+        <div class="insight-item">
+          <div style="display: flex; align-items: start; gap: 12px; margin-bottom: 8px;">
+            <span class="badge high">HIGH</span>
+            <p class="insight-text">Expert researchers identify AI trust as the primary barrier to adoption — no platform has earned confidence for qualitative coding
+              <span class="updated-badge" style="margin-left: 8px;">
+                <i data-lucide="refresh-cw" style="width: 10px; height: 10px;"></i>
+                Updated
+              </span>
+            </p>
+          </div>
+        </div>
+        <div class="insight-item">
+          <div style="display: flex; align-items: start; gap: 12px; margin-bottom: 8px;">
+            <span class="badge medium">MEDIUM</span>
+            <p class="insight-text">Partnership interest confirmed with specific integration requirements for existing workflow tools</p>
+          </div>
+        </div>
+        <div class="insight-item">
+          <div style="display: flex; align-items: start; gap: 12px; margin-bottom: 8px;">
+            <span class="badge low">LOW</span>
+            <p class="insight-text">Positive feedback on "receipts" concept as validation mechanism for AI-generated insights</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Research Methodology Lens (now 2 evidence) -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Research Methodology</h2>
+          <span class="badge neutral">2 evidence</span>
+        </div>
+
+        <div class="evidence-card">
+          <div class="evidence-header">
+            <div style="flex: 1;">
+              <p class="evidence-title">Manual coding still preferred over automated analysis for nuanced interpretation</p>
+              <span class="badge medium" style="margin-top: 8px;">MEDIUM</span>
+            </div>
+          </div>
+          <div class="evidence-meta">
+            <span class="timestamp">18:22</span>
+            <a href="#">See source</a>
+            <a href="#">View evidence</a>
+          </div>
+        </div>
+
+        <div class="evidence-card">
+          <div class="evidence-header">
+            <div style="flex: 1;">
+              <p class="evidence-title">Time constraints driving interest in automation despite quality concerns</p>
+              <span class="badge low" style="margin-top: 8px;">LOW</span>
+            </div>
+          </div>
+          <div class="evidence-meta">
+            <span class="timestamp">32:15</span>
+            <a href="#">See source</a>
+            <a href="#">View evidence</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEW: AI Trust & Adoption Lens -->
+      <div class="card new-lens-card">
+        <div class="card-header">
+          <h2 class="card-title">AI Trust & Adoption</h2>
+          <span class="badge success">1 evidence</span>
+        </div>
+
+        <div class="evidence-card updated">
+          <div class="evidence-header">
+            <div style="flex: 1;">
+              <p class="evidence-title">Primary concern about AI replacing qualitative research methodology</p>
+              <span class="badge high" style="margin-top: 8px;">HIGH</span>
+            </div>
+          </div>
+          <div class="evidence-quote">
+            "AI is causing more problems than it's solving... leading to false conclusions"
+          </div>
+          <div class="evidence-meta">
+            <span class="timestamp">23:54</span>
+            <a href="#">See source</a>
+            <a href="#">View evidence</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toast Notification -->
+      <div class="toast">
+        <i data-lucide="check-circle" class="toast-icon" style="width: 20px; height: 20px;"></i>
+        <span class="toast-text">Evidence reclassified. 1 insight updated, 1 lens rebalanced.</span>
+      </div>
+
+      <!-- Final Callout -->
+      <div class="callout bottom-left" style="bottom: 200px; left: 50%; transform: translateX(-50%);">
+        Your correction flows through the system. Insights update, lenses rebalance, and future analysis improves.
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div class="bottom-nav">
+    <div class="stepper">
+      <div class="step-indicator" onclick="goToStep(1)">
+        <div class="step-circle" id="circle1">1</div>
+        <span class="step-label" id="label1">See Insight</span>
+      </div>
+      <div class="step-line" id="line1"></div>
+      <div class="step-indicator" onclick="goToStep(2)">
+        <div class="step-circle" id="circle2">2</div>
+        <span class="step-label" id="label2">Verify Source</span>
+      </div>
+      <div class="step-line" id="line2"></div>
+      <div class="step-indicator" onclick="goToStep(3)">
+        <div class="step-circle" id="circle3">3</div>
+        <span class="step-label" id="label3">Correct</span>
+      </div>
+      <div class="step-line" id="line3"></div>
+      <div class="step-indicator" onclick="goToStep(4)">
+        <div class="step-circle" id="circle4">4</div>
+        <span class="step-label" id="label4">Updated</span>
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="nav-button" id="prevBtn" onclick="prevStep()">
+        <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i>
+        Previous
+      </button>
+      <button class="nav-button primary" id="nextBtn" onclick="nextStep()">
+        Next
+        <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    let currentStep = 1;
+
+    function updateStepper() {
+      // Update circles and labels
+      for (let i = 1; i <= 4; i++) {
+        const circle = document.getElementById(`circle${i}`);
+        const label = document.getElementById(`label${i}`);
+        const line = document.getElementById(`line${i}`);
+
+        circle.classList.remove('active', 'completed');
+        label.classList.remove('active', 'completed');
+        if (line) line.classList.remove('completed');
+
+        if (i < currentStep) {
+          circle.classList.add('completed');
+          label.classList.add('completed');
+          circle.innerHTML = '<i data-lucide="check" style="width: 16px; height: 16px;"></i>';
+          if (line) line.classList.add('completed');
+        } else if (i === currentStep) {
+          circle.classList.add('active');
+          label.classList.add('active');
+          circle.textContent = i;
+        } else {
+          circle.textContent = i;
+        }
+      }
+
+      // Reinitialize Lucide icons
+      lucide.createIcons();
+
+      // Update navigation buttons
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+
+      prevBtn.disabled = currentStep === 1;
+      nextBtn.disabled = currentStep === 4;
+
+      if (currentStep === 4) {
+        nextBtn.textContent = 'Finish';
+        nextBtn.innerHTML = 'Finish <i data-lucide="check" style="width: 16px; height: 16px;"></i>';
+        lucide.createIcons();
+      } else {
+        nextBtn.innerHTML = 'Next <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>';
+        lucide.createIcons();
+      }
+    }
+
+    function goToStep(step) {
+      // Hide current step
+      document.getElementById(`step${currentStep}`).classList.remove('active');
+
+      // Update current step
+      currentStep = step;
+
+      // Show new step
+      document.getElementById(`step${currentStep}`).classList.add('active');
+
+      // Update stepper UI
+      updateStepper();
+
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function nextStep() {
+      if (currentStep < 4) {
+        goToStep(currentStep + 1);
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 1) {
+        goToStep(currentStep - 1);
+      }
+    }
+
+    // Initialize
+    updateStepper();
+    lucide.createIcons();
+  </script>
+</body>
+</html>
