@@ -53,6 +53,8 @@ Jot notes here as you work. Close beads with `bd close`. When you ask me to upda
 2/8
 - **people-org schema confusion** needs to be cleared up. this is impacting facets, ICP functions - no bead or doc yet. Claude analysis https://claude.ai/code/session_01M8nLXmam7dhmxrzpM1oRyw 
   - phase 3e currently removing old references to fields (2/9)
+  - there may be some functions referring to old code
+  - merging PR now (2/9)
 
 ## Monday 2/9
 ```

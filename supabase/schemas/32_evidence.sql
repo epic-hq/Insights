@@ -47,6 +47,8 @@ create table if not exists evidence (
   pains text[] default '{}',
   gains text[] default '{}',
 
+  thumbnail_url text, -- R2 key for video frame thumbnail at evidence anchor timestamp
+
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   created_by uuid references auth.users (id) on delete cascade,
