@@ -3,8 +3,10 @@
  */
 import { Agent } from "@mastra/core/agent";
 import { TokenLimiterProcessor } from "@mastra/core/processors";
+import { Memory } from "@mastra/memory";
 import consola from "consola";
 import { openai } from "../../lib/billing/instrumented-openai.server";
+import { getSharedPostgresStore } from "../storage/postgres-singleton";
 import { createSurveyTool } from "../tools/create-survey";
 import { deleteSurveyTool } from "../tools/delete-survey";
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context";
@@ -101,6 +103,9 @@ For FEEDBACK:
 		}
 	},
 	model: openai("gpt-4o"),
+	memory: new Memory({
+		storage: getSharedPostgresStore(),
+	}),
 	tools: wrapToolsWithStatusEvents({
 		fetchInterviewContext: fetchInterviewContextTool,
 		manageInterviews: manageInterviewsTool,

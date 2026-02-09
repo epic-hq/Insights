@@ -78,6 +78,7 @@ const FAST_STANDARDIZED_MAX_STEPS = 2;
 const FAST_STANDARDIZED_CACHE_TTL_MS = 3 * 60 * 1000;
 const MAX_SYSTEM_CONTEXT_CHARS = 3000;
 const MAX_FAST_SYSTEM_CONTEXT_CHARS = 800;
+const MAX_RESEARCH_SYSTEM_CONTEXT_CHARS = 1200;
 const DEBUG_PREFIX_REGEX = /^\s*\/debug\b[:\s-]*/i;
 const FALLBACK_EMPTY_RESPONSE_TEXT = "Sorry, I couldn't answer that just now. Please try again.";
 const MARKDOWN_LINK_REGEX = /\[[^\]]+\]\((?:\/|https?:\/\/|#|mailto:)[^)]+\)/;
@@ -85,7 +86,7 @@ const MARKDOWN_LINK_REGEX = /\[[^\]]+\]\((?:\/|https?:\/\/|#|mailto:)[^)]+\)/;
 const MAX_STEPS_BY_AGENT: Record<RoutingTargetAgent, number> = {
 	projectStatusAgent: 6,
 	chiefOfStaffAgent: 4,
-	researchAgent: 5,
+	researchAgent: 4,
 	projectSetupAgent: 5,
 	howtoAgent: 4,
 };
@@ -587,8 +588,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const debugRequested = DEBUG_PREFIX_REGEX.test(lastUserTextRaw);
 	const lastUserText = debugRequested ? stripDebugPrefix(lastUserTextRaw) : lastUserTextRaw;
 	const runtimeMessagesForExecution = normalizeMessagesForExecution(runtimeMessages, debugRequested);
-	const resourceId = `projectStatusAgent-${userId}-${projectId}`;
-	const routeDecision = await routeAgentByIntent(lastUserText, resourceId);
+	const routingResourceId = `project-chat-${userId}-${projectId}`;
+	const routeDecision = await routeAgentByIntent(lastUserText, routingResourceId);
 	const resolvedResponseMode: RoutingResponseMode =
 		(routeDecision?.responseMode as RoutingResponseMode | undefined) ?? "normal";
 	const targetAgentId: RoutingTargetAgent =
@@ -604,10 +605,13 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const targetMaxSteps = isFastStandardized
 		? Math.min(MAX_STEPS_BY_AGENT[targetAgentId], FAST_STANDARDIZED_MAX_STEPS)
 		: MAX_STEPS_BY_AGENT[targetAgentId];
-	const systemContext =
-		typeof system === "string"
-			? system.slice(0, isFastStandardized ? MAX_FAST_SYSTEM_CONTEXT_CHARS : MAX_SYSTEM_CONTEXT_CHARS)
-			: "";
+	const systemContextLimit = isFastStandardized
+		? MAX_FAST_SYSTEM_CONTEXT_CHARS
+		: targetAgentId === "researchAgent"
+			? MAX_RESEARCH_SYSTEM_CONTEXT_CHARS
+			: MAX_SYSTEM_CONTEXT_CHARS;
+	const systemContext = typeof system === "string" ? system.slice(0, systemContextLimit) : "";
+	const threadResourceId = `${targetAgentId}-${userId}-${projectId}`;
 
 	if (typeof system === "string" && system.length > systemContext.length) {
 		consola.debug("project-status: truncated system context", {
@@ -618,7 +622,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	}
 
 	// Store routing decision for sticky routing
-	lastRoutedAgentMap.set(resourceId, {
+	lastRoutedAgentMap.set(routingResourceId, {
 		agentId: targetAgentId,
 		timestamp: Date.now(),
 	});
@@ -638,7 +642,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		consola.info("project-status: howto routing telemetry", {
 			projectId,
 			accountId,
-			resourceId,
+			resourceId: threadResourceId,
 			responseMode: resolvedResponseMode,
 			routingSource,
 			routingConfidence: routeDecision?.confidence ?? null,
@@ -646,7 +650,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	}
 
 	const threads = await memory.listThreadsByResourceId({
-		resourceId,
+		resourceId: threadResourceId,
 		orderBy: { field: "createdAt", direction: "DESC" },
 		page: 0,
 		perPage: 1,
@@ -655,8 +659,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	let threadId = "";
 	if (!(threads?.total && threads.total > 0)) {
 		const newThread = await memory.createThread({
-			resourceId,
-			title: `Project Status ${projectId}`,
+			resourceId: threadResourceId,
+			title: `${targetAgentId} ${projectId}`,
 			metadata: {
 				user_id: userId,
 				project_id: projectId,
@@ -729,8 +733,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 		// Create a fresh thread
 		const freshThread = await memory.createThread({
-			resourceId,
-			title: `Project Status ${projectId}`,
+			resourceId: threadResourceId,
+			title: `${targetAgentId} ${projectId}`,
 			metadata: {
 				user_id: userId,
 				project_id: projectId,
@@ -747,10 +751,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			navigateToPage: navigateToPageTool,
 			switchAgent: switchAgentTool,
 		},
-		memory: {
-			thread: useThreadId,
-			resource: resourceId,
-		},
+			memory: {
+				thread: useThreadId,
+				resource: threadResourceId,
+			},
 		requestContext,
 		context: [
 			...(system
@@ -863,7 +867,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 						mastra,
 						agentId: targetAgentId,
 						params: buildAgentParams(threadId),
-						sendReasoning: targetAgentId === "researchAgent" && !isFastStandardized,
+						sendReasoning: false,
 						sendSources: !isFastStandardized,
 					});
 	} catch (error) {
@@ -882,7 +886,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 							mastra,
 							agentId: targetAgentId,
 							params: buildAgentParams(threadId),
-							sendReasoning: targetAgentId === "researchAgent" && !isFastStandardized,
+							sendReasoning: false,
 							sendSources: !isFastStandardized,
 						});
 		} else {
