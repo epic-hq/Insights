@@ -333,7 +333,7 @@ describe("api.chat.project-status", () => {
 		expect(call.agentId).toBe("projectStatusAgent");
 		expect(call.params.requestContext.get("response_mode")).toBe("normal");
 		const routingPrompt = (mockedGenerateObject.mock.calls.at(-1)?.[0] as any)?.prompt as string;
-		expect(routingPrompt).toContain('Use responseMode="normal" for all other requests.');
+		expect(routingPrompt).toContain("- normal: everything else.");
 	});
 
 	it("routes ICP lookup prompts to projectStatusAgent via deterministic routing", async () => {

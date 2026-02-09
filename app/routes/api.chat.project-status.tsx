@@ -79,6 +79,25 @@ const FAST_STANDARDIZED_CACHE_TTL_MS = 3 * 60 * 1000;
 const MAX_SYSTEM_CONTEXT_CHARS = 3000;
 const MAX_FAST_SYSTEM_CONTEXT_CHARS = 800;
 const MAX_RESEARCH_SYSTEM_CONTEXT_CHARS = 1200;
+const ROUTING_CLASSIFIER_MAX_PROMPT_CHARS = 700;
+const ROUTING_CLASSIFIER_INSTRUCTIONS = `Route the user message to one agent and mode.
+
+Agents:
+- projectSetupAgent: onboarding, setup, research goals, company context.
+- chiefOfStaffAgent: strategic prioritization / "what should I do next".
+- researchAgent: create/manage surveys, interview prompts, interview operations.
+- howtoAgent: procedural guidance ("how do I", "best way", "teach me", "where do I").
+- projectStatusAgent: factual status/data lookup (themes, ICP, people, evidence, interviews).
+
+Modes:
+- fast_standardized: only broad strategic guidance.
+- theme_people_snapshot: top/common themes + who has them.
+- survey_quick_create: explicit create/build/generate survey/waitlist requests.
+- gtm_mode: howtoAgent prompts about positioning, launch, distribution, sales.
+- ux_research_mode: howtoAgent prompts about UX or product research/how-to.
+- normal: everything else.
+
+Rule: For people comparisons ("what do X and Y have in common", "compare these people"), use mode="normal", not theme_people_snapshot.`;
 const DEBUG_PREFIX_REGEX = /^\s*\/debug\b[:\s-]*/i;
 const FALLBACK_EMPTY_RESPONSE_TEXT = "Sorry, I couldn't answer that just now. Please try again.";
 const MARKDOWN_LINK_REGEX = /\[[^\]]+\]\((?:\/|https?:\/\/|#|mailto:)[^)]+\)/;
@@ -502,23 +521,8 @@ async function routeAgentByIntent(
 			model: instrumentedOpenai("gpt-4o-mini"),
 			schema: intentRoutingSchema,
 			temperature: 0,
-			prompt: `Classify this user message for agent routing.
-
-Choose exactly one target:
-- projectSetupAgent: onboarding, setup, research goals, company context capture.
-- chiefOfStaffAgent: strategic guidance and prioritization only (for "what should I do next", sequencing, focus).
-- researchAgent: creating/managing surveys, interview prompts, interview operations.
-- howtoAgent: procedural "how do I / where do I / best way to / teach me" coaching requests.
-- projectStatusAgent: data lookups and factual status questions (themes, ICP counts/distribution, people, evidence, interviews).
-
-Set responseMode="fast_standardized" only when the user asks broad strategic guidance without asking for execution details.
-Set responseMode="theme_people_snapshot" when user asks for top/common themes and who has those themes.
-Never set responseMode="theme_people_snapshot" for people-comparison prompts (e.g., "what do X and Y have in common", "compare these two people", "how are they different"). For those, use responseMode="normal".
-Set responseMode="survey_quick_create" when user asks to create/build/generate a survey or waitlist.
-Set responseMode="gtm_mode" when howtoAgent request is primarily go-to-market (positioning, messaging, launch, distribution, sales).
-Set responseMode="ux_research_mode" for howtoAgent requests about UX, product discovery/research, or general product how-to prompts.
-Use responseMode="normal" for all other requests.
-Message: """${prompt.slice(0, 1200)}"""`,
+			prompt: `${ROUTING_CLASSIFIER_INSTRUCTIONS}
+Message: """${prompt.slice(0, ROUTING_CLASSIFIER_MAX_PROMPT_CHARS)}"""`,
 		});
 		return result.object;
 	} catch (error) {
@@ -751,10 +755,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			navigateToPage: navigateToPageTool,
 			switchAgent: switchAgentTool,
 		},
-			memory: {
-				thread: useThreadId,
-				resource: threadResourceId,
-			},
+		memory: {
+			thread: useThreadId,
+			resource: threadResourceId,
+		},
 		requestContext,
 		context: [
 			...(system
