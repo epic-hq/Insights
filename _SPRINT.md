@@ -70,9 +70,11 @@ Jot notes here as you work. Close beads with `bd close`. When you ask me to upda
 - UI Refactoring with BMAD UX for mobile & person page to make more insightful & actionable
   
 DJ
-- survey responses. column people
+- survey responses. column people not found.
+  - user wants to capture company and other info. how do we allow users to specify fields they can collect? need to allow for some existing fields we need to have special rules about (title, industry, etc) bc organizations is linked record, and some custom
 - url uploads
 - not deleting
+
 ```
 
 ## Parking Lot (not this sprint)
