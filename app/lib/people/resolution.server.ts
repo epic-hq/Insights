@@ -6,12 +6,15 @@
  * - BAML extraction
  * - Manual import
  *
- * Match priority: email > platform_id > name_company > create
+ * Match priority: email > platform_id > name+org > create
+ *
+ * Phase 3: Uses default_organization_id FK for identity matching.
+ * Company text is resolved to an org UUID before person creation.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~/../supabase/types";
-import { upsertPersonWithCompanyAwareConflict } from "~/features/interviews/peopleNormalization.server";
+import { upsertPersonWithOrgAwareConflict } from "~/features/interviews/peopleNormalization.server";
 
 type PeopleInsert = Database["public"]["Tables"]["people"]["Insert"];
 
@@ -104,30 +107,63 @@ async function findByPlatformId(
 }
 
 /**
- * Find person by name + company (fuzzy match)
+ * Find person by name + organization FK
+ * Phase 3: Uses default_organization_id instead of company text
  */
-async function findByNameCompany(
+async function findByNameOrg(
 	supabase: SupabaseClient<Database>,
 	accountId: string,
 	name: string,
-	company?: string
+	orgId?: string | null
 ): Promise<{ id: string; name: string | null } | null> {
 	const normalizedName = name.trim().toLowerCase();
-	const normalizedCompany = company ? company.trim().toLowerCase() : "";
 
 	let query = supabase.from("people").select("id, name").eq("account_id", accountId).ilike("name", normalizedName);
 
-	// Match company if provided
-	if (normalizedCompany) {
-		query = query.ilike("company", normalizedCompany);
+	if (orgId) {
+		query = query.eq("default_organization_id", orgId);
 	} else {
-		query = query.eq("company", "");
+		query = query.is("default_organization_id", null);
 	}
 
 	const { data, error } = await query.limit(1).single();
 
 	if (error || !data) return null;
 	return data;
+}
+
+/**
+ * Resolve company text to an organization UUID.
+ * Creates the organization if it doesn't exist.
+ */
+async function resolveOrganization(
+	supabase: SupabaseClient<Database>,
+	accountId: string,
+	companyName: string
+): Promise<string | null> {
+	const normalized = companyName.trim();
+	if (!normalized) return null;
+
+	// Try case-insensitive exact match
+	const { data: existing } = await supabase
+		.from("organizations")
+		.select("id")
+		.eq("account_id", accountId)
+		.ilike("name", normalized)
+		.order("updated_at", { ascending: false })
+		.limit(1)
+		.single();
+
+	if (existing) return existing.id;
+
+	// Create new organization
+	const { data: newOrg } = await supabase
+		.from("organizations")
+		.insert({ account_id: accountId, name: normalized })
+		.select("id")
+		.single();
+
+	return newOrg?.id ?? null;
 }
 
 /**
@@ -171,10 +207,13 @@ export async function resolveOrCreatePerson(
 		}
 	}
 
-	// 3. Name + company fuzzy match
+	// 3. Resolve company text -> org UUID (needed for matching and creation)
+	const orgId = input.company ? await resolveOrganization(supabase, accountId, input.company) : null;
+
+	// 4. Name + org match
 	const name = input.name || `${input.firstname || ""} ${input.lastname || ""}`.trim();
 	if (name) {
-		const existing = await findByNameCompany(supabase, accountId, name, input.company);
+		const existing = await findByNameOrg(supabase, accountId, name, orgId);
 		if (existing) {
 			return {
 				person: { ...existing, created: false },
@@ -183,7 +222,7 @@ export async function resolveOrCreatePerson(
 		}
 	}
 
-	// 4. Create new person with full data
+	// 5. Create new person with org FK
 	const insertPayload: PeopleInsert = {
 		account_id: accountId,
 		project_id: projectId,
@@ -192,9 +231,9 @@ export async function resolveOrCreatePerson(
 		name,
 		primary_email: input.primary_email,
 		primary_phone: input.primary_phone,
-		company: input.company || "",
+		company: input.company || "", // Mirror text for backwards compat
+		default_organization_id: orgId,
 		title: input.title,
-		role: input.role,
 		person_type: input.person_type,
 		source: input.source,
 		// Store platform user ID in contact_info JSONB
@@ -205,7 +244,7 @@ export async function resolveOrCreatePerson(
 			: null,
 	};
 
-	const person = await upsertPersonWithCompanyAwareConflict(supabase, insertPayload, input.person_type);
+	const person = await upsertPersonWithOrgAwareConflict(supabase, insertPayload, input.person_type);
 
 	return {
 		person: { ...person, created: true },

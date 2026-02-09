@@ -92,7 +92,7 @@ create table if not exists people (
   lifecycle_stage text,
   timezone text,
   pronouns text,
-  default_organization_id uuid references public.organizations(id) on delete set null,
+  default_organization_id uuid references public.organizations(id) on delete restrict,
   project_id uuid references projects(id) on delete cascade,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -129,14 +129,14 @@ EXECUTE PROCEDURE accounts.trigger_set_user_tracking();
 
 create index if not exists idx_people_account_id on public.people using btree (account_id) tablespace pg_default;
 
--- Unique index for deduplication by normalized name+company+email within account
--- Allows same name at same company if emails differ (different people can have same name)
--- Expression index for constraint enforcement (handles null normalization)
-create unique index if not exists uniq_people_account_name_company_email
+-- Unique index for deduplication by normalized name+org+email within account
+-- Allows same name at same org if emails differ (different people can have same name)
+-- Uses default_organization_id FK instead of company text for stable identity
+create unique index if not exists uniq_people_account_name_org_email
   on public.people (
     account_id,
     name_hash,
-    COALESCE(lower(company), ''),
+    COALESCE(default_organization_id::text, ''),
     COALESCE(lower(primary_email), '')
   );
 
