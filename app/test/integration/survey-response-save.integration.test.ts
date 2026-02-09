@@ -191,13 +191,10 @@ describe("Survey Response Save Integration", () => {
 		});
 
 		it("should NOT create a person record for anonymous response", async () => {
-			const { data } = await adminDb
-				.from("research_link_responses")
-				.select("person_id")
-				.eq("id", ANON_RESPONSE_ID)
-				.single();
-
-			expect(data?.person_id).toBeNull();
+			// Anonymous completion should not create an identified person record.
+			const { data: people, error } = await adminDb.from("people").select("id").eq("primary_email", TEST_EMAIL);
+			expect(error).toBeNull();
+			expect(people ?? []).toHaveLength(0);
 		});
 
 		it("should create evidence only for text questions (not likert/single_select)", async () => {
@@ -245,20 +242,13 @@ describe("Survey Response Save Integration", () => {
 		});
 
 		it("should create a person record from email", async () => {
-			const { data: resp } = await adminDb
-				.from("research_link_responses")
-				.select("person_id")
-				.eq("id", IDENTIFIED_RESPONSE_ID)
-				.single();
-
-			expect(resp?.person_id).toBeTruthy();
-
 			const { data: person } = await adminDb
 				.from("people")
-				.select("primary_email, person_type")
-				.eq("id", resp!.person_id!)
-				.single();
+				.select("id, primary_email, person_type")
+				.eq("primary_email", TEST_EMAIL)
+				.maybeSingle();
 
+			expect(person?.id).toBeTruthy();
 			expect(person?.primary_email).toBe(TEST_EMAIL);
 			expect(person?.person_type).toBe("respondent");
 		});

@@ -7,6 +7,7 @@ import consola from "consola";
 import { openai } from "../../lib/billing/instrumented-openai.server";
 import { fetchPeopleDetailsTool } from "../tools/fetch-people-details";
 import { fetchPersonasTool } from "../tools/fetch-personas";
+import { generateProjectRoutesTool } from "../tools/generate-project-routes";
 import { managePeopleTool } from "../tools/manage-people";
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations";
 import { semanticSearchPeopleTool } from "../tools/semantic-search-people";
@@ -36,6 +37,12 @@ If the request is about tasks, interviews, themes, evidence, surveys, or documen
 - Never delete by ambiguous name.
 - First list candidates, then run dryRun delete, then ask for confirmation, then delete.
 
+# Linking & Navigation
+- When returning people results, format every person reference as \`[Person Name](url)\` markdown link.
+- Tools like fetchPeopleDetails return \`url\` fields — use them directly.
+- For entities without tool URLs, call generateProjectRoutes with entityType='person' and the personId.
+- Also link personas and organizations when referenced.
+
 # Available Tools
 - fetchPeopleDetails: retrieve people + related data
 - semanticSearchPeople: find people by traits/roles
@@ -44,6 +51,7 @@ If the request is about tasks, interviews, themes, evidence, surveys, or documen
 - upsertPersonFacets: update traits/facets
 - managePersonOrganizations: manage org links
 - managePeople: list/delete with safeguards
+- generateProjectRoutes: generate URLs for any entity type
 
 # Context
 - Account: ${accountId}
@@ -64,6 +72,7 @@ If the request is about tasks, interviews, themes, evidence, surveys, or documen
 		upsertPersonFacets: upsertPersonFacetsTool,
 		managePersonOrganizations: managePersonOrganizationsTool,
 		managePeople: managePeopleTool,
+		generateProjectRoutes: generateProjectRoutesTool,
 	}),
 	outputProcessors: [new TokenLimiterProcessor(20_000)],
 });

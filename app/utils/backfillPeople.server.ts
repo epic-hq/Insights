@@ -4,6 +4,7 @@
  */
 
 import consola from "consola";
+import { upsertPersonWithCompanyAwareConflict } from "~/features/interviews/peopleNormalization.server";
 import { getServerClient } from "~/lib/supabase/client.server";
 import type { InterviewPeopleInsert, PeopleInsert } from "~/types";
 
@@ -96,6 +97,7 @@ export async function backfillMissingPeople(request: Request, options: BackfillO
 			.from("interviews")
 			.select(`
         id,
+        project_id,
         title,
         participant_pseudonym,
         segment,
@@ -157,20 +159,21 @@ export async function backfillMissingPeople(request: Request, options: BackfillO
 				const { firstname, lastname } = parseFullName(personName);
 				const personData: PeopleInsert = {
 					account_id: accountId,
+					project_id: interview.project_id ?? null,
 					firstname: firstname || null,
 					lastname: lastname || null,
+					company: "",
 					segment: interview.segment || null,
 					description: `Backfilled from interview: ${interview.title || interview.id}`,
 				};
 
-				const { data: createdPerson, error: personError } = await db
-					.from("people")
-					.upsert(personData, { onConflict: "account_id,name_hash" })
-					.select("id")
-					.single();
-
-				if (personError) {
-					const errorMsg = `Failed to create person for interview ${interview.id}: ${personError.message}`;
+				let createdPerson: { id: string } | null = null;
+				try {
+					createdPerson = await upsertPersonWithCompanyAwareConflict(db, personData);
+				} catch (personError) {
+					const errorMsg = `Failed to create person for interview ${interview.id}: ${
+						personError instanceof Error ? personError.message : "Unknown error"
+					}`;
 					result.errors.push(errorMsg);
 					consola.error(errorMsg);
 					continue;
@@ -250,10 +253,14 @@ export async function getInterviewPeopleStats(
 		.eq("account_id", accountId);
 
 	// Get interviews with people (via junction table)
-	const { data: linkedInterviews } = await db
-		.from("interview_people")
-		.select("interview_id")
-		.in("interview_id", db.from("interviews").select("id").eq("account_id", accountId));
+	const { data: accountInterviews } = await db.from("interviews").select("id").eq("account_id", accountId);
+	const interviewIds = accountInterviews?.map((row) => row.id) || [];
+
+	let linkedInterviews: Array<{ interview_id: string }> = [];
+	if (interviewIds.length > 0) {
+		const { data } = await db.from("interview_people").select("interview_id").in("interview_id", interviewIds);
+		linkedInterviews = data || [];
+	}
 
 	const interviewsWithPeople = new Set(linkedInterviews?.map((l) => l.interview_id) || []).size;
 	const interviewsWithoutPeople = (totalInterviews || 0) - interviewsWithPeople;
@@ -263,8 +270,9 @@ export async function getInterviewPeopleStats(
 
 	const nameCount = new Map<string, number>();
 	peopleNames?.forEach((person) => {
-		const count = nameCount.get(person.name) || 0;
-		nameCount.set(person.name, count + 1);
+		const normalizedName = person.name || "";
+		const count = nameCount.get(normalizedName) || 0;
+		nameCount.set(normalizedName, count + 1);
 	});
 
 	const duplicatePeople = Array.from(nameCount.values()).filter((count) => count > 1).length;

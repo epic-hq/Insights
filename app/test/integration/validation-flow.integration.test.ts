@@ -2,7 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loader as validationLoader } from "~/features/projects/pages/ValidationStatus";
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server";
 import { userContext } from "~/server/user-context";
-import { cleanupTestData, seedTestData, TEST_ACCOUNT_ID, TEST_PROJECT_ID, testDb } from "~/test/utils/testDb";
+import {
+	cleanupTestData,
+	seedTestData,
+	TEST_ACCOUNT_ID,
+	TEST_INTERVIEW_1_ID,
+	TEST_PROJECT_ID,
+	testDb,
+} from "~/test/utils/testDb";
 
 vi.mock("~/../baml_client", () => ({
 	b: {
@@ -72,7 +79,7 @@ describe("Validation Flow Integration", () => {
 			id: crypto.randomUUID(),
 			account_id: TEST_ACCOUNT_ID,
 			project_id: TEST_PROJECT_ID,
-			interview_id: "interview-1",
+			interview_id: TEST_INTERVIEW_1_ID,
 			verbatim: `Evidence ${index + 1} for ${rq.slug}`,
 			chunk: `Chunk ${index + 1}`,
 			gist: `Gist ${index + 1}`,

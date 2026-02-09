@@ -9,6 +9,7 @@ import { createSurveyTool } from "../tools/create-survey";
 import { deleteSurveyTool } from "../tools/delete-survey";
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context";
 import { fetchSurveysTool } from "../tools/fetch-surveys";
+import { generateProjectRoutesTool } from "../tools/generate-project-routes";
 import {
 	createInterviewPromptTool,
 	deleteInterviewPromptTool,
@@ -74,10 +75,15 @@ For FEEDBACK:
 - Interview prompts: Use fetch/create/update/deleteInterviewPrompt tools
 - Interviews: Use manageInterviews, fetchInterviewContext
 
+# Linking & Navigation
+- When referencing surveys, interviews, or people, format as \`[Name](url)\` markdown link.
+- Tools may return \`url\` fields — use them directly.
+- For entities without tool URLs, call generateProjectRoutes with entityType (survey, interview, person) and the entityId.
+- Never fabricate URLs - only use URLs returned by tools or generateProjectRoutes.
+
 # Rules
 - ALWAYS use tools to take action. Never just describe what you would do.
 - After creating anything, use navigateToPage to take the user there.
-- Never fabricate URLs - only use URLs returned by tools.
 `;
 		} catch (error) {
 			consola.error("Error in research agent instructions:", error);
@@ -97,6 +103,7 @@ For FEEDBACK:
 		createSurvey: createSurveyTool,
 		deleteSurvey: deleteSurveyTool,
 		navigateToPage: navigateToPageTool,
+		generateProjectRoutes: generateProjectRoutesTool,
 	}),
 	outputProcessors: [new TokenLimiterProcessor(20_000)],
 });

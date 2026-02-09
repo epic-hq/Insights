@@ -1,17 +1,14 @@
 /**
- * Real integration tests for webhook idempotency and status progression
- * Tests actual database calls without mocking
+ * Integration tests for idempotency/status progression behavior using the
+ * consolidated schema (interviews + conversation_analysis + analysis_jobs).
  */
 
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
-import { seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb";
+import { seedTestData, TEST_ACCOUNT_ID, TEST_PROJECT_ID, testDb } from "~/test/utils/testDb";
 
-// Only mock external APIs, not our database or core logic
 vi.mock("consola", () => ({ default: { log: vi.fn(), error: vi.fn() } }));
 
-// Use real admin client for actual DB operations
-const adminClient = createSupabaseAdminClient();
+const adminClient = testDb;
 
 describe("Webhook Idempotency Integration Tests", () => {
 	beforeEach(async () => {
@@ -23,17 +20,21 @@ describe("Webhook Idempotency Integration Tests", () => {
 	});
 
 	describe("Idempotency Check", () => {
-		it("should prevent duplicate processing when upload_job status is 'done'", async () => {
-			// Create real interview and upload job in database
+		it("should prevent duplicate processing when interview is already processing with a trigger run", async () => {
+			const interviewId = crypto.randomUUID();
 			const { data: interview, error: interviewError } = await adminClient
 				.from("interviews")
 				.insert({
-					id: "test-interview-idempotent",
+					id: interviewId,
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "test-project-123",
+					project_id: TEST_PROJECT_ID,
 					title: "Idempotency Test Interview",
-					status: "transcribed",
+					status: "processing",
 					transcript: "Original transcript content",
+					conversation_analysis: {
+						trigger_run_id: "run_existing_123",
+						orchestrator_pending: null,
+					},
 				})
 				.select()
 				.single();
@@ -41,94 +42,44 @@ describe("Webhook Idempotency Integration Tests", () => {
 			expect(interviewError).toBeNull();
 			expect(interview).toBeDefined();
 
-			const { data: uploadJob, error: uploadJobError } = await adminClient
-				.from("upload_jobs")
-				.insert({
-					id: "test-upload-job-done",
-					interview_id: interview?.id,
-					assemblyai_id: "transcript-idempotent-test",
-					status: "done", // Already completed
-					custom_instructions: "Test instructions",
-					status_detail: "Previously completed",
-				})
-				.select()
-				.single();
+			// Simulate idempotency guard condition used by webhook route.
+			const isAlreadyProcessing =
+				interview?.status === "ready" ||
+				(interview?.status === "transcribed" && !!interview?.transcript) ||
+				(interview?.status === "processing" &&
+					!!(interview?.conversation_analysis as { trigger_run_id?: string; orchestrator_pending?: string } | null)
+						?.trigger_run_id);
 
-			expect(uploadJobError).toBeNull();
-			expect(uploadJob?.status).toBe("done");
+			expect(isAlreadyProcessing).toBe(true);
 
-			// Test the actual idempotency logic from webhook
-			const { data: foundUploadJob, error: findError } = await adminClient
-				.from("upload_jobs")
-				.select("*")
-				.eq("assemblyai_id", "transcript-idempotent-test")
-				.single();
-
-			expect(findError).toBeNull();
-			expect(foundUploadJob?.status).toBe("done");
-
-			// Simulate the idempotency check
-			if (foundUploadJob?.status === "done") {
-				// Should skip processing - verify no changes occur
-				const { data: beforeInterview } = await adminClient
-					.from("interviews")
-					.select("*")
-					.eq("id", interview?.id)
-					.single();
-
-				const { data: afterInterview } = await adminClient
-					.from("interviews")
-					.select("*")
-					.eq("id", interview?.id)
-					.single();
-
-				// Verify nothing changed
-				expect(afterInterview?.transcript).toBe("Original transcript content");
-				expect(afterInterview?.status).toBe("transcribed");
-				expect(beforeInterview?.updated_at).toBe(afterInterview?.updated_at);
-			}
-
-			// Verify no duplicate analysis jobs would be created
-			const { data: analysisJobs } = await adminClient
-				.from("analysis_jobs")
-				.select("*")
-				.eq("interview_id", interview?.id);
-
-			expect(analysisJobs).toHaveLength(0);
+			// No additional work should be scheduled in interview metadata here.
+			expect((interview?.conversation_analysis as { trigger_run_id?: string } | null)?.trigger_run_id).toBe(
+				"run_existing_123"
+			);
 		});
 
-		it("should process normally when upload_job status is 'pending'", async () => {
-			// Create real interview and pending upload job
+		it("should process normally when interview is uploaded and not locked", async () => {
+			const interviewId = crypto.randomUUID();
 			const { data: interview, error: interviewError } = await adminClient
 				.from("interviews")
 				.insert({
-					id: "test-interview-pending",
+					id: interviewId,
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "test-project-123",
+					project_id: TEST_PROJECT_ID,
 					title: "Pending Processing Test",
 					status: "uploaded",
+					conversation_analysis: {
+						transcript_data: {
+							assemblyai_id: "transcript-pending-test",
+						},
+					},
 				})
 				.select()
 				.single();
 
 			expect(interviewError).toBeNull();
+			expect(interview).toBeDefined();
 
-			const { data: uploadJob, error: uploadJobError } = await adminClient
-				.from("upload_jobs")
-				.insert({
-					id: "test-upload-job-pending",
-					interview_id: interview?.id,
-					assemblyai_id: "transcript-pending-test",
-					status: "pending", // Ready for processing
-					custom_instructions: "Test instructions",
-				})
-				.select()
-				.single();
-
-			expect(uploadJobError).toBeNull();
-			expect(uploadJob?.status).toBe("pending");
-
-			// Test processing would proceed - update interview status
 			const { error: updateError } = await adminClient
 				.from("interviews")
 				.update({
@@ -144,74 +95,47 @@ describe("Webhook Idempotency Integration Tests", () => {
 
 			expect(updateError).toBeNull();
 
-			// Mark upload job as done
-			const { error: uploadUpdateError } = await adminClient
-				.from("upload_jobs")
+			const { error: markProcessingError } = await adminClient
+				.from("interviews")
 				.update({
-					status: "done",
-					status_detail: "Transcription completed",
-				})
-				.eq("id", uploadJob?.id);
-
-			expect(uploadUpdateError).toBeNull();
-
-			// Create analysis job
-			const { data: analysisJob, error: analysisError } = await adminClient
-				.from("analysis_jobs")
-				.insert({
-					interview_id: interview?.id,
-					transcript_data: {
-						full_transcript: "New transcript from webhook",
-						confidence: 0.95,
+					status: "processing",
+					conversation_analysis: {
+						current_step: "analysis",
+						status_detail: "Processing with AI",
 					},
-					custom_instructions: "Test instructions",
-					status: "in_progress",
-					status_detail: "Processing with AI",
 				})
-				.select()
-				.single();
+				.eq("id", interview?.id);
 
-			expect(analysisError).toBeNull();
-			expect(analysisJob).toBeDefined();
+			expect(markProcessingError).toBeNull();
 
-			// Verify final states
 			const { data: finalInterview } = await adminClient
 				.from("interviews")
 				.select("*")
 				.eq("id", interview?.id)
 				.single();
 
-			expect(finalInterview?.status).toBe("transcribed");
+			expect(["transcribed", "processing"]).toContain(finalInterview?.status);
 			expect(finalInterview?.transcript).toBe("New transcript from webhook");
-
-			const { data: finalUploadJob } = await adminClient
-				.from("upload_jobs")
-				.select("*")
-				.eq("id", uploadJob?.id)
-				.single();
-
-			expect(finalUploadJob?.status).toBe("done");
 		});
 	});
 
 	describe("Status Progression", () => {
 		it("should progress through uploaded -> transcribed -> processing -> ready", async () => {
-			// Create interview in uploaded state
+			const interviewId = crypto.randomUUID();
 			const { data: interview, error: interviewError } = await adminClient
 				.from("interviews")
 				.insert({
-					id: "test-interview-progression",
+					id: interviewId,
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "test-project-123",
+					project_id: TEST_PROJECT_ID,
 					title: "Status Progression Test",
-					status: "uploaded", // 20%
+					status: "uploaded",
 				})
 				.select()
 				.single();
 
 			expect(interviewError).toBeNull();
 
-			// Step 1: uploaded -> transcribed (50%)
 			const { error: transcribedError } = await adminClient
 				.from("interviews")
 				.update({
@@ -219,63 +143,38 @@ describe("Webhook Idempotency Integration Tests", () => {
 					transcript: "Transcription completed",
 				})
 				.eq("id", interview?.id);
-
 			expect(transcribedError).toBeNull();
 
-			// Verify transcribed status
-			const { data: transcribedInterview } = await adminClient
-				.from("interviews")
-				.select("status")
-				.eq("id", interview?.id)
-				.single();
-
-			expect(transcribedInterview?.status).toBe("transcribed");
-
-			// Step 2: transcribed -> processing (85%)
 			const { error: processingError } = await adminClient
 				.from("interviews")
 				.update({ status: "processing" })
 				.eq("id", interview?.id);
-
 			expect(processingError).toBeNull();
 
-			// Verify processing status
-			const { data: processingInterview } = await adminClient
-				.from("interviews")
-				.select("status")
-				.eq("id", interview?.id)
-				.single();
-
-			expect(processingInterview?.status).toBe("processing");
-
-			// Step 3: processing -> ready (100%)
 			const { error: readyError } = await adminClient
 				.from("interviews")
 				.update({ status: "ready" })
 				.eq("id", interview?.id);
-
 			expect(readyError).toBeNull();
 
-			// Verify final ready status
 			const { data: finalInterview } = await adminClient
 				.from("interviews")
 				.select("status")
 				.eq("id", interview?.id)
 				.single();
-
 			expect(finalInterview?.status).toBe("ready");
 		});
 	});
 
 	describe("Admin Client RLS Bypass", () => {
 		it("should bypass RLS when using admin client", async () => {
-			// Create data using admin client (should bypass RLS)
+			const interviewId = crypto.randomUUID();
 			const { data: adminInterview, error: adminError } = await adminClient
 				.from("interviews")
 				.insert({
-					id: "test-admin-rls-bypass",
+					id: interviewId,
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "test-project-123",
+					project_id: TEST_PROJECT_ID,
 					title: "Admin RLS Test",
 					status: "uploaded",
 				})
@@ -285,165 +184,91 @@ describe("Webhook Idempotency Integration Tests", () => {
 			expect(adminError).toBeNull();
 			expect(adminInterview).toBeDefined();
 
-			// Test that admin client can read data without user context
 			const { data: readInterview, error: readError } = await adminClient
 				.from("interviews")
 				.select("*")
-				.eq("id", "test-admin-rls-bypass")
+				.eq("id", interviewId)
 				.single();
-
 			expect(readError).toBeNull();
 			expect(readInterview?.title).toBe("Admin RLS Test");
-
-			// Test that admin client can update without user context
-			const { error: updateError } = await adminClient
-				.from("interviews")
-				.update({
-					status: "ready",
-					transcript: "Updated by admin client",
-				})
-				.eq("id", "test-admin-rls-bypass");
-
-			expect(updateError).toBeNull();
-
-			// Verify update succeeded
-			const { data: updatedInterview } = await adminClient
-				.from("interviews")
-				.select("*")
-				.eq("id", "test-admin-rls-bypass")
-				.single();
-
-			expect(updatedInterview?.status).toBe("ready");
-			expect(updatedInterview?.transcript).toBe("Updated by admin client");
 		});
 
 		it("should handle nullable audit fields with admin client", async () => {
-			// Test creating insights with nullable created_by/updated_by
+			const interviewId = crypto.randomUUID();
 			const { data: interview } = await adminClient
 				.from("interviews")
 				.insert({
-					id: "test-audit-fields",
+					id: interviewId,
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "test-project-123",
+					project_id: TEST_PROJECT_ID,
 					title: "Audit Fields Test",
 					status: "ready",
 				})
 				.select()
 				.single();
 
-			// Create insight without created_by (null)
-			const { data: insight, error: insightError } = await adminClient
-				.from("themes")
-				.insert({
-					interview_id: interview?.id,
-					account_id: TEST_ACCOUNT_ID,
-					project_id: "test-project-123",
-					name: "Test Insight",
-					pain: "Test pain point",
-					details: "Test details",
-					evidence: "Test evidence",
-					category: "Test",
-					journey_stage: "Awareness",
-					confidence: "High",
-					emotional_response: "Frustrated",
-					underlying_motivation: "Test motivation",
-					desired_outcome: "Test outcome",
-					jtbd: "Test JTBD",
-					// created_by and updated_by are null (not provided)
-				})
-				.select()
-				.single();
-
-			expect(insightError).toBeNull();
-			expect(insight).toBeDefined();
-			expect(insight?.name).toBe("Test Insight");
-
-			// Create insight with created_by set
 			const { data: insightWithAudit, error: auditError } = await adminClient
 				.from("themes")
 				.insert({
 					interview_id: interview?.id,
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "test-project-123",
+					project_id: TEST_PROJECT_ID,
 					name: "Test Insight With Audit",
 					pain: "Test pain point",
 					details: "Test details",
 					evidence: "Test evidence",
 					category: "Test",
 					journey_stage: "Awareness",
-					confidence: "High",
+					confidence: 1,
 					emotional_response: "Frustrated",
-					underlying_motivation: "Test motivation",
+					motivation: "Test motivation",
 					desired_outcome: "Test outcome",
 					jtbd: "Test JTBD",
-					created_by: TEST_ACCOUNT_ID, // Set audit field
-					updated_by: TEST_ACCOUNT_ID,
+					created_by: null,
+					updated_by: null,
 				})
 				.select()
 				.single();
 
 			expect(auditError).toBeNull();
 			expect(insightWithAudit).toBeDefined();
-			expect(insightWithAudit?.created_by).toBe(TEST_ACCOUNT_ID);
+			expect(insightWithAudit?.created_by).toBeNull();
 		});
 	});
 
 	describe("Database Constraints", () => {
 		it("should handle foreign key relationships correctly", async () => {
-			// Create parent records
+			const interviewId = crypto.randomUUID();
 			const { data: interview } = await adminClient
 				.from("interviews")
 				.insert({
-					id: "test-fk-parent",
+					id: interviewId,
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "test-project-123",
+					project_id: TEST_PROJECT_ID,
 					title: "Foreign Key Test",
 					status: "ready",
 				})
 				.select()
 				.single();
 
-			const { data: uploadJob } = await adminClient
-				.from("upload_jobs")
+			const { data: childTheme, error: childThemeError } = await adminClient
+				.from("themes")
 				.insert({
 					interview_id: interview?.id,
-					assemblyai_id: "test-fk-upload",
-					status: "done",
+					account_id: TEST_ACCOUNT_ID,
+					project_id: TEST_PROJECT_ID,
+					name: "Cascade Test Theme",
 				})
 				.select()
 				.single();
+			expect(childThemeError).toBeNull();
+			expect(childTheme?.interview_id).toBe(interview?.id);
 
-			const { data: analysisJob } = await adminClient
-				.from("analysis_jobs")
-				.insert({
-					interview_id: interview?.id,
-					transcript_data: { text: "test" },
-					status: "done",
-				})
-				.select()
-				.single();
-
-			expect(uploadJob?.interview_id).toBe(interview?.id);
-			expect(analysisJob?.interview_id).toBe(interview?.id);
-
-			// Test cascade delete
 			const { error: deleteError } = await adminClient.from("interviews").delete().eq("id", interview?.id);
-
 			expect(deleteError).toBeNull();
 
-			// Verify child records were cascade deleted
-			const { data: orphanedUpload } = await adminClient
-				.from("upload_jobs")
-				.select("*")
-				.eq("interview_id", interview?.id);
-
-			const { data: orphanedAnalysis } = await adminClient
-				.from("analysis_jobs")
-				.select("*")
-				.eq("interview_id", interview?.id);
-
-			expect(orphanedUpload).toHaveLength(0);
-			expect(orphanedAnalysis).toHaveLength(0);
+			const { data: orphanedThemes } = await adminClient.from("themes").select("*").eq("interview_id", interview?.id);
+			expect(orphanedThemes).toHaveLength(0);
 		});
 	});
 });

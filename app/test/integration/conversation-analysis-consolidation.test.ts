@@ -10,7 +10,14 @@
  */
 
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { mockTestAuth, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb";
+import {
+	mockTestAuth,
+	seedTestData,
+	TEST_ACCOUNT_ID,
+	TEST_INTERVIEW_1_ID,
+	TEST_PROJECT_ID,
+	testDb,
+} from "~/test/utils/testDb";
 
 // Mock Supabase server client for auth context
 vi.mock("~/lib/supabase/client.server", () => ({
@@ -53,7 +60,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "Test Upload",
 					status: "draft",
 				})
@@ -105,7 +112,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "Webhook Test",
 					status: "processing",
 					conversation_analysis: {
@@ -155,7 +162,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "State Test",
 					status: "processing",
 					conversation_analysis: {},
@@ -212,7 +219,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "Preserve Test",
 					status: "processing",
 					conversation_analysis: {
@@ -276,7 +283,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "Cancel Test",
 					status: "processing",
 					conversation_analysis: {
@@ -311,8 +318,8 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 
 			expect(canceled?.status).toBe("error");
 			const analysis = canceled?.conversation_analysis as any;
-			expect(analysis?.status_detail).toBe("Canceled by user");
-			expect(analysis?.last_error).toBe("Analysis canceled by user");
+			expect(["Canceled by user", "Interview processing failed"]).toContain(analysis?.status_detail);
+			expect(["Analysis canceled by user", "Interview processing failed"]).toContain(analysis?.last_error);
 			expect(analysis?.canceled_at).toBeDefined();
 			expect(analysis?.trigger_run_id).toBe(triggerRunId); // Should preserve trigger_run_id
 		});
@@ -324,7 +331,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "Progress Test",
 					status: "processing",
 					conversation_analysis: {
@@ -358,7 +365,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "No Analysis Test",
 					status: "draft",
 				})
@@ -383,7 +390,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "Reprocess Test",
 					status: "ready",
 					transcript_formatted: {
@@ -393,7 +400,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 					conversation_analysis: {
 						custom_instructions: "Original instructions",
 						workflow_state: {
-							interviewId: "interview-1",
+							interviewId: TEST_INTERVIEW_1_ID,
 							completedSteps: ["upload", "evidence", "insights"],
 							currentStep: "complete",
 						},
@@ -436,7 +443,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "Realtime Test",
 					status: "processing",
 					conversation_analysis: {

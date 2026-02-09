@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { action as webhookAction } from "~/routes/api.assemblyai-webhook";
 import { action as onboardingAction } from "~/routes/api.onboarding-start";
-import { mockTestAuth, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb";
+import { mockTestAuth, seedTestData, TEST_ACCOUNT_ID, TEST_PROJECT_ID, testDb } from "~/test/utils/testDb";
 
 // Mock dependencies that require external services
 vi.mock("~/lib/supabase/client.server", () => ({
@@ -14,16 +14,16 @@ vi.mock("~/utils/processInterview.server", () => ({
 		success: true,
 		insights: [
 			{
-				id: "test-insight-1",
+				id: "00000000-0000-0000-0000-00000000a001",
 				name: "Test Insight",
 				pain: "Test pain point",
 				details: "Test details",
 				evidence: "Test evidence",
 				category: "Test",
 				journey_stage: "Awareness",
-				confidence: "High",
+				confidence: 0.9,
 				emotional_response: "Frustrated",
-				underlying_motivation: "Test motivation",
+				motivation: "Test motivation",
 				desired_outcome: "Test outcome",
 				jtbd: "Test JTBD",
 				values: ["test_value"],
@@ -32,7 +32,7 @@ vi.mock("~/utils/processInterview.server", () => ({
 		],
 		people: [
 			{
-				id: "test-person-1",
+				id: "00000000-0000-0000-0000-00000000b001",
 				name: "Test Person",
 				description: "Test description",
 				segment: "Test Segment",
@@ -197,12 +197,14 @@ describe("Onboarding Pipeline Integration", () => {
 
 		it("should handle webhook idempotency correctly", async () => {
 			// Create an interview with completed upload job
+			const interviewId = crypto.randomUUID();
+			const uploadJobId = crypto.randomUUID();
 			const { data: interview } = await testDb
 				.from("interviews")
 				.insert({
-					id: "test-interview-idempotent",
+					id: interviewId,
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "test-project-123",
+					project_id: TEST_PROJECT_ID,
 					title: "Idempotency Test",
 					status: "ready",
 					transcript: "Existing transcript",
@@ -211,7 +213,7 @@ describe("Onboarding Pipeline Integration", () => {
 				.single();
 
 			await testDb.from("upload_jobs").insert({
-				id: "test-upload-job-idempotent",
+				id: uploadJobId,
 				interview_id: interview?.id,
 				assemblyai_id: "transcript-456",
 				status: "done", // Already completed
@@ -252,12 +254,14 @@ describe("Onboarding Pipeline Integration", () => {
 
 		it("should progress through correct status transitions", async () => {
 			// Create interview in uploaded state
+			const interviewId = crypto.randomUUID();
+			const uploadJobId = crypto.randomUUID();
 			const { data: interview } = await testDb
 				.from("interviews")
 				.insert({
-					id: "test-interview-status",
+					id: interviewId,
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "test-project-123",
+					project_id: TEST_PROJECT_ID,
 					title: "Status Test",
 					status: "uploaded",
 				})
@@ -265,7 +269,7 @@ describe("Onboarding Pipeline Integration", () => {
 				.single();
 
 			await testDb.from("upload_jobs").insert({
-				id: "test-upload-job-status",
+				id: uploadJobId,
 				interview_id: interview?.id,
 				assemblyai_id: "transcript-789",
 				status: "pending",
@@ -324,12 +328,14 @@ describe("Onboarding Pipeline Integration", () => {
 	describe("Error Scenarios", () => {
 		it("should handle transcription failures gracefully", async () => {
 			// Create interview with pending upload job
+			const interviewId = crypto.randomUUID();
+			const uploadJobId = crypto.randomUUID();
 			const { data: interview } = await testDb
 				.from("interviews")
 				.insert({
-					id: "test-interview-error",
+					id: interviewId,
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "test-project-123",
+					project_id: TEST_PROJECT_ID,
 					title: "Error Test",
 					status: "uploaded",
 				})
@@ -337,7 +343,7 @@ describe("Onboarding Pipeline Integration", () => {
 				.single();
 
 			await testDb.from("upload_jobs").insert({
-				id: "test-upload-job-error",
+				id: uploadJobId,
 				interview_id: interview?.id,
 				assemblyai_id: "transcript-error",
 				status: "pending",

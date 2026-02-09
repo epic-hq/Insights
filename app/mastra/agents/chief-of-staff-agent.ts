@@ -8,6 +8,7 @@ import consola from "consola";
 import { openai } from "../../lib/billing/instrumented-openai.server";
 import { getSharedPostgresStore } from "../storage/postgres-singleton";
 import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context";
+import { generateProjectRoutesTool } from "../tools/generate-project-routes";
 import { fetchTasksTool } from "../tools/manage-tasks";
 import { recommendNextActionsTool } from "../tools/recommend-next-actions";
 import { suggestionTool } from "../tools/suggestion-tool";
@@ -42,6 +43,7 @@ You are the Chief of Staff for project ${projectId}. Produce a fast, standardize
   1) <single-line action + why>
   2) <single-line action + why>
 - No preamble, no headings, no long analysis.
+- Format entity references as \`[Name](url)\`. Use generateProjectRoutes if URL not in tool output.
 
 # Context
 - Account: ${accountId}
@@ -79,11 +81,18 @@ You are the Chief of Staff for project ${projectId}. Your job is to orient the u
 - Each list item must be a single line (no wrapped lines).
 - Ask one clarifying question only if data is missing or ambiguous.
 
+# Linking & Navigation
+- Format every entity reference as \`[Name](url)\` markdown link.
+- Tools may return \`url\` fields — use them directly.
+- For entities without tool URLs, call generateProjectRoutes with the entityType (person, theme, evidence, interview, organization, survey) and entityId.
+- Supported entity types: person, theme, evidence, interview, organization, opportunity, survey, persona, segment.
+
 # Tools
 - fetchProjectStatusContext
 - fetchTasks
 - recommendNextActions
 - suggestNextSteps
+- generateProjectRoutes
 
 # Context
 - Account: ${accountId}
@@ -103,6 +112,7 @@ You are the Chief of Staff for project ${projectId}. Your job is to orient the u
 		// Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
 		"recommend-next-actions": recommendNextActionsTool,
 		suggestNextSteps: suggestionTool,
+		generateProjectRoutes: generateProjectRoutesTool,
 	}),
 	memory: new Memory({
 		storage: getSharedPostgresStore(),

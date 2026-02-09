@@ -75,6 +75,7 @@ export const fetchTopThemesWithPeopleTool = createTool({
 						personId: z.string(),
 						name: z.string().nullable(),
 						mentionCount: z.number(),
+						url: z.string().nullable(),
 					})
 				),
 			})
@@ -291,6 +292,7 @@ export const fetchTopThemesWithPeopleTool = createTool({
 						personId,
 						name: peopleById.get(personId)?.name ?? null,
 						mentionCount,
+						url: routes ? `${HOST}${routes.people.detail(personId)}` : null,
 					}));
 
 				return {

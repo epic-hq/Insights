@@ -3,8 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
 import { supabaseAdmin } from "~/lib/supabase/client.server";
+import { HOST } from "~/paths";
 import { evidenceDetailSchema } from "~/schemas";
 import type { Database, Evidence, Insight, Interview } from "~/types";
+import { createRouteDefinitions } from "~/utils/route-definitions";
 
 const DEFAULT_EVIDENCE_LIMIT = 50;
 
@@ -332,27 +334,37 @@ export const fetchEvidenceTool = createTool({
 				}
 			}
 
+			// Build routes for URL generation
+			const projectPath = accountId && projectIdStr ? `/a/${accountId}/${projectIdStr}` : "";
+			const routes = projectPath ? createRouteDefinitions(projectPath) : null;
+
 			// Build the final result
-			const evidence = evidenceRows.map((row) => ({
-				id: row.id,
-				projectId: row.project_id,
-				interviewId: row.interview_id,
-				verbatim: row.verbatim,
-				gist: row.gist,
-				contextSummary: row.context_summary,
-				modality: row.modality,
-				confidence: row.confidence,
-				createdAt: normalizeDate(row.created_at),
-				updatedAt: normalizeDate(row.updated_at),
-				// Simplified related data
-				interviewTitle: row.interview_id ? (interviewsById.get(row.interview_id)?.title ?? null) : null,
-				interviewDate: row.interview_id ? (interviewsById.get(row.interview_id)?.interviewDate ?? null) : null,
-				interviewStatus: row.interview_id ? (interviewsById.get(row.interview_id)?.status ?? null) : null,
-				personName: row.interview_id ? (peopleByInterviewId.get(row.interview_id)?.[0]?.name ?? null) : null,
-				personRole: row.interview_id ? (peopleByInterviewId.get(row.interview_id)?.[0]?.role ?? null) : null,
-				insightCount: row.interview_id ? (insightsByInterviewId.get(row.interview_id)?.length ?? 0) : 0,
-				url: null,
-			}));
+			const evidence = evidenceRows.map((row) => {
+				const person = row.interview_id ? (peopleByInterviewId.get(row.interview_id)?.[0] ?? null) : null;
+				return {
+					id: row.id,
+					projectId: row.project_id,
+					interviewId: row.interview_id,
+					verbatim: row.verbatim,
+					gist: row.gist,
+					contextSummary: row.context_summary,
+					modality: row.modality,
+					confidence: row.confidence,
+					createdAt: normalizeDate(row.created_at),
+					updatedAt: normalizeDate(row.updated_at),
+					// Simplified related data
+					interviewTitle: row.interview_id ? (interviewsById.get(row.interview_id)?.title ?? null) : null,
+					interviewDate: row.interview_id ? (interviewsById.get(row.interview_id)?.interviewDate ?? null) : null,
+					interviewStatus: row.interview_id ? (interviewsById.get(row.interview_id)?.status ?? null) : null,
+					personName: person?.name ?? null,
+					personId: person?.id ?? null,
+					personRole: person?.role ?? null,
+					insightCount: row.interview_id ? (insightsByInterviewId.get(row.interview_id)?.length ?? 0) : 0,
+					url: routes ? `${HOST}${routes.evidence.detail(row.id)}` : null,
+					interviewUrl: routes && row.interview_id ? `${HOST}${routes.interviews.detail(row.interview_id)}` : null,
+					personUrl: routes && person?.id ? `${HOST}${routes.people.detail(person.id)}` : null,
+				};
+			});
 
 			const message = sanitizedEvidenceSearch
 				? `Found ${evidence.length} evidence records matching "${sanitizedEvidenceSearch}".`
