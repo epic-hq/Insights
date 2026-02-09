@@ -29,9 +29,9 @@ Use hardDelete=true only when explicitly requested to permanently remove the sur
 		success: z.boolean(),
 		message: z.string(),
 		deleted: z.boolean().describe("Whether the survey was deleted"),
-		surveyId: z.string().optional(),
-		surveyName: z.string().optional(),
-		responseCount: z.number().optional().describe("Number of responses that were affected"),
+		surveyId: z.string().nullish(),
+		surveyName: z.string().nullish(),
+		responseCount: z.number().nullish().describe("Number of responses that were affected"),
 	}),
 	execute: async (input, context?) => {
 		const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server");

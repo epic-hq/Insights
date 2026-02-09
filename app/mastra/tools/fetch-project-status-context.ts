@@ -42,13 +42,13 @@ type ThemeEvidenceRow = Database["public"]["Tables"]["theme_evidence"]["Row"] & 
 };
 type ProjectPeopleRow = Database["public"]["Tables"]["project_people"]["Row"] & {
 	person?:
-		| (Database["public"]["Tables"]["people"]["Row"] & {
-				people_personas?: Array<{
-					persona_id: string | null;
-					personas?: Database["public"]["Tables"]["personas"]["Row"] | null;
-				}> | null;
-		  })
-		| null;
+	| (Database["public"]["Tables"]["people"]["Row"] & {
+		people_personas?: Array<{
+			persona_id: string | null;
+			personas?: Database["public"]["Tables"]["personas"]["Row"] | null;
+		}> | null;
+	})
+	| null;
 };
 type PersonaRow = Database["public"]["Tables"]["personas"]["Row"];
 type PeoplePersonaRow = Database["public"]["Tables"]["people_personas"]["Row"] & {
@@ -101,13 +101,13 @@ const projectStatusSchema = z.object({
 	keyInsights: z.array(z.string()),
 	completionScore: z.number(),
 	lastUpdated: z.string().nullable(),
-	analysisId: z.string().nullable().optional(),
+	analysisId: z.string().nullable().nullish(),
 	hasAnalysis: z.boolean(),
 	nextSteps: z.array(z.string()),
-	nextAction: z.string().nullable().optional(),
+	nextAction: z.string().nullable().nullish(),
 	keyDiscoveries: z.array(z.string()),
-	confidenceScore: z.number().nullable().optional(),
-	confidenceLevel: z.number().nullable().optional(),
+	confidenceScore: z.number().nullable().nullish(),
+	confidenceLevel: z.number().nullable().nullish(),
 	followUpRecommendations: z.array(z.string()),
 	suggestedInterviewTopics: z.array(z.string()),
 	answeredInsights: z.array(z.string()),
@@ -116,11 +116,11 @@ const projectStatusSchema = z.object({
 	questionAnswers: z.array(
 		z.object({
 			question: z.string(),
-			answer_summary: z.string().nullable().optional(),
-			evidence: z.array(z.string()).optional(),
-			confidence: z.number().optional(),
-			insights_found: z.array(z.string()).optional(),
-			related_insight_ids: z.array(z.string()).optional(),
+			answer_summary: z.string().nullable().nullish(),
+			evidence: z.array(z.string()).nullish(),
+			confidence: z.number().nullish(),
+			insights_found: z.array(z.string()).nullish(),
+			related_insight_ids: z.array(z.string()).nullish(),
 		})
 	),
 });
@@ -147,11 +147,11 @@ const insightSchema = z.object({
 	confidence: z.string().nullable(),
 	impact: z.number().nullable(),
 	novelty: z.number().nullable(),
-	opportunity_ideas: z.array(z.string()).optional(),
-	related_tags: z.array(z.string()).optional(),
-	tags: z.array(z.string()).optional(),
-	vote_count: z.number().nullable().optional(),
-	priority: z.number().nullable().optional(),
+	opportunity_ideas: z.array(z.string()).nullish(),
+	related_tags: z.array(z.string()).nullish(),
+	tags: z.array(z.string()).nullish(),
+	vote_count: z.number().nullable().nullish(),
+	priority: z.number().nullable().nullish(),
 	interview_id: z.string().nullable(),
 	project_id: z.string().nullable(),
 	created_at: z.string().nullable(),
@@ -173,13 +173,13 @@ const evidenceSchema = z.object({
 	project_id: z.string().nullable(),
 	created_at: z.string().nullable(),
 	updated_at: z.string().nullable(),
-	says: z.array(z.string()).optional(),
-	does: z.array(z.string()).optional(),
-	thinks: z.array(z.string()).optional(),
-	feels: z.array(z.string()).optional(),
-	pains: z.array(z.string()).optional(),
-	gains: z.array(z.string()).optional(),
-	anchors: z.unknown().optional(),
+	says: z.array(z.string()).nullish(),
+	does: z.array(z.string()).nullish(),
+	thinks: z.array(z.string()).nullish(),
+	feels: z.array(z.string()).nullish(),
+	pains: z.array(z.string()).nullish(),
+	gains: z.array(z.string()).nullish(),
+	anchors: z.unknown().nullish(),
 	url: z.string().nullable(),
 });
 
@@ -189,11 +189,11 @@ const themeSchema = z.object({
 	statement: z.string().nullable(),
 	inclusion_criteria: z.string().nullable(),
 	exclusion_criteria: z.string().nullable(),
-	synonyms: z.array(z.string()).optional(),
-	anti_examples: z.array(z.string()).optional(),
+	synonyms: z.array(z.string()).nullish(),
+	anti_examples: z.array(z.string()).nullish(),
 	created_at: z.string().nullable(),
 	updated_at: z.string().nullable(),
-	evidenceCount: z.number().optional(),
+	evidenceCount: z.number().nullish(),
 	evidence: z
 		.array(
 			z.object({
@@ -208,7 +208,7 @@ const themeSchema = z.object({
 				rationale: z.string().nullable(),
 			})
 		)
-		.optional(),
+		.nullish(),
 	url: z.string().nullable(),
 });
 
@@ -246,8 +246,8 @@ const personSchema = z.object({
 				color_hex: z.string().nullable(),
 			})
 		)
-		.optional(),
-	contactInfo: z.unknown().nullable().optional(),
+		.nullish(),
+	contactInfo: z.unknown().nullable().nullish(),
 	interviews: z
 		.array(
 			z.object({
@@ -258,8 +258,8 @@ const personSchema = z.object({
 				evidenceCount: z.number(),
 			})
 		)
-		.optional(),
-	evidence: z.array(personEvidenceSchema).optional(),
+		.nullish(),
+	evidence: z.array(personEvidenceSchema).nullish(),
 	icpMatch: z
 		.object({
 			band: z.string().nullable(),
@@ -267,7 +267,7 @@ const personSchema = z.object({
 			confidence: z.number().nullable(),
 		})
 		.nullable()
-		.optional(),
+		.nullish(),
 	url: z.string().nullable(),
 });
 
@@ -276,25 +276,25 @@ const personaSchema = z.object({
 	name: z.string(),
 	description: z.string().nullable(),
 	segment: z.string().nullable(),
-	goals: z.array(z.string()).optional(),
-	pains: z.array(z.string()).optional(),
-	motivations: z.array(z.string()).optional(),
-	roles: z.array(z.string()).optional(),
-	values: z.array(z.string()).optional(),
-	tags: z.array(z.string()).optional(),
+	goals: z.array(z.string()).nullish(),
+	pains: z.array(z.string()).nullish(),
+	motivations: z.array(z.string()).nullish(),
+	roles: z.array(z.string()).nullish(),
+	values: z.array(z.string()).nullish(),
+	tags: z.array(z.string()).nullish(),
 	percentage: z.number().nullable(),
 	primary_goal: z.string().nullable(),
-	secondary_goals: z.array(z.string()).optional(),
-	quotes: z.array(z.string()).optional(),
+	secondary_goals: z.array(z.string()).nullish(),
+	quotes: z.array(z.string()).nullish(),
 	color_hex: z.string().nullable(),
-	behaviors: z.array(z.string()).optional(),
-	differentiators: z.array(z.string()).optional(),
-	frustrations: z.array(z.string()).optional(),
-	tools_used: z.array(z.string()).optional(),
-	sources: z.array(z.string()).optional(),
+	behaviors: z.array(z.string()).nullish(),
+	differentiators: z.array(z.string()).nullish(),
+	frustrations: z.array(z.string()).nullish(),
+	tools_used: z.array(z.string()).nullish(),
+	sources: z.array(z.string()).nullish(),
 	created_at: z.string().nullable(),
 	updated_at: z.string().nullable(),
-	linkedInsights: z.array(z.string()).optional(),
+	linkedInsights: z.array(z.string()).nullish(),
 	linkedPeople: z
 		.array(
 			z.object({
@@ -304,7 +304,7 @@ const personaSchema = z.object({
 				role: z.string().nullable(),
 			})
 		)
-		.optional(),
+		.nullish(),
 	url: z.string().nullable(),
 });
 
@@ -404,31 +404,31 @@ export const fetchProjectStatusContextTool = createTool({
 	outputSchema: z.object({
 		success: z.boolean(),
 		message: z.string(),
-		projectId: z.string().nullable().optional(),
-		projectName: z.string().nullable().optional(),
+		projectId: z.string().nullable().nullish(),
+		projectName: z.string().nullable().nullish(),
 		scopes: z.array(z.enum(detailScopes)),
 		data: z
 			.object({
 				accountContext: z
 					.object({
-						website_url: z.string().nullable().optional(),
-						company_description: z.string().nullable().optional(),
-						customer_problem: z.string().nullable().optional(),
-						offerings: z.array(z.string()).nullable().optional(),
-						target_orgs: z.array(z.string()).nullable().optional(),
-						target_roles: z.array(z.string()).nullable().optional(),
-						competitors: z.array(z.string()).nullable().optional(),
-						industry: z.string().nullable().optional(),
+						website_url: z.string().nullable().nullish(),
+						company_description: z.string().nullable().nullish(),
+						customer_problem: z.string().nullable().nullish(),
+						offerings: z.array(z.string()).nullable().nullish(),
+						target_orgs: z.array(z.string()).nullable().nullish(),
+						target_roles: z.array(z.string()).nullable().nullish(),
+						competitors: z.array(z.string()).nullable().nullish(),
+						industry: z.string().nullable().nullish(),
 					})
-					.optional(),
-				status: projectStatusSchema.optional(),
-				sections: z.array(sectionSchema).optional(),
-				insights: z.array(insightSchema).optional(),
-				evidence: z.array(evidenceSchema).optional(),
-				themes: z.array(themeSchema).optional(),
-				people: z.array(personSchema).optional(),
-				personas: z.array(personaSchema).optional(),
-				interviews: z.array(interviewSchema).optional(),
+					.nullish(),
+				status: projectStatusSchema.nullish(),
+				sections: z.array(sectionSchema).nullish(),
+				insights: z.array(insightSchema).nullish(),
+				evidence: z.array(evidenceSchema).nullish(),
+				themes: z.array(themeSchema).nullish(),
+				people: z.array(personSchema).nullish(),
+				personas: z.array(personaSchema).nullish(),
+				interviews: z.array(interviewSchema).nullish(),
 				icpSummary: z
 					.object({
 						scored: z.number(),
@@ -441,9 +441,9 @@ export const fetchProjectStatusContextTool = createTool({
 						}),
 						missingDataCount: z.number(),
 					})
-					.optional(),
+					.nullish(),
 			})
-			.optional(),
+			.nullish(),
 	}),
 	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>;
@@ -1014,10 +1014,10 @@ export const fetchProjectStatusContextTool = createTool({
 							evidence: evidenceSnippets,
 							icpMatch: icpByPerson.get(personId)
 								? {
-										band: icpByPerson.get(personId)!.band,
-										score: icpByPerson.get(personId)!.score,
-										confidence: icpByPerson.get(personId)!.confidence,
-									}
+									band: icpByPerson.get(personId)!.band,
+									score: icpByPerson.get(personId)!.score,
+									confidence: icpByPerson.get(personId)!.confidence,
+								}
 								: null,
 							url: projectPath ? `${HOST}${routes.people.detail(personId)}` : null,
 						};
@@ -1200,13 +1200,13 @@ export const fetchProjectStatusContextTool = createTool({
 					const interviewIds = interviews?.map((i) => i.id) || [];
 					const [evidenceRows, insightRows] = interviewIds.length
 						? await Promise.all([
-								supabase.from("evidence").select("id, interview_id").in("interview_id", interviewIds),
-								supabase.from("themes").select("id, interview_id").in("interview_id", interviewIds),
-							])
+							supabase.from("evidence").select("id, interview_id").in("interview_id", interviewIds),
+							supabase.from("themes").select("id, interview_id").in("interview_id", interviewIds),
+						])
 						: [
-								{ data: [], error: null },
-								{ data: [], error: null },
-							];
+							{ data: [], error: null },
+							{ data: [], error: null },
+						];
 
 					const evidenceMap = new Map<string, number>();
 					evidenceRows?.data?.forEach((row) => {

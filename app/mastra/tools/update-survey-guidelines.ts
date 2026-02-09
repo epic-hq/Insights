@@ -56,7 +56,7 @@ If the confidence is low, it will suggest clarifications.`,
 	inputSchema: z.object({
 		surveyId: z.string().describe("ID of the survey to update"),
 		guidelines: z.string().describe("Natural language guidelines to parse and add"),
-		questionIds: z.array(z.string()).optional().describe("Specific question IDs to apply guidelines to (optional)"),
+		questionIds: z.array(z.string()).nullish().describe("Specific question IDs to apply guidelines to (optional)"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
