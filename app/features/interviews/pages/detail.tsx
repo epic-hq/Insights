@@ -435,14 +435,20 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
           if (!verifyResult.ok) return verifyResult.response;
         }
 
-        const { error } = await supabase.from("interview_people").insert({
-          interview_id: interviewId,
-          project_id: projectId,
-          person_id: personId,
-          role,
-          transcript_key: transcriptKey,
-          display_name: displayName,
-        });
+        // Use upsert to handle case where person is already linked
+        const { error } = await supabase.from("interview_people").upsert(
+          {
+            interview_id: interviewId,
+            project_id: projectId,
+            person_id: personId,
+            role,
+            transcript_key: transcriptKey,
+            display_name: displayName,
+          },
+          {
+            onConflict: "interview_id,person_id",
+          },
+        );
         if (error) throw new Error(error.message);
         return Response.json({ ok: true, created: true, personId });
       }
