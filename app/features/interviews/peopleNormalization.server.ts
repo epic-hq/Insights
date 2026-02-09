@@ -50,20 +50,12 @@ export function isPlaceholderPerson(name: string): boolean {
  *
  * Phase 3: Index is uniq_people_account_name_org_email using
  * COALESCE(default_organization_id::text, '') instead of company text.
- *
- * Schema: company is NOT NULL with default '', primary_email is nullable
  */
 export async function upsertPersonWithOrgAwareConflict(
 	db: SupabaseClient<Database>,
 	payload: PeopleInsert,
 	personType?: PeopleInsert["person_type"]
 ) {
-	// Normalize company - keep for backwards compat, but org FK is the real constraint
-	const normalizedCompany =
-		typeof payload.company === "string" && payload.company.trim().length > 0
-			? payload.company.trim().toLowerCase()
-			: "";
-
 	// Normalize email - use null for missing (schema: nullable)
 	const normalizedEmail =
 		typeof payload.primary_email === "string" && payload.primary_email.trim().length > 0
@@ -74,7 +66,6 @@ export async function upsertPersonWithOrgAwareConflict(
 
 	const insertPayload: PeopleInsert = {
 		...payload,
-		company: normalizedCompany,
 		primary_email: normalizedEmail,
 		default_organization_id: orgId,
 		person_type: personType ?? payload.person_type ?? null,

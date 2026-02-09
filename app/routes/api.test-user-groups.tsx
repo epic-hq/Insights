@@ -36,7 +36,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				// Get sample people from this group
 				const { data: samplePeople, error } = await supabase
 					.from("people")
-					.select("id, name, role, segment, company")
+					.select("id, name, role, segment")
 					.in("id", group.member_ids.slice(0, 3));
 
 				if (error) {

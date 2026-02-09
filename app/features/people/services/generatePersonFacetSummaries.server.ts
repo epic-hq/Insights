@@ -56,11 +56,12 @@ function buildQuickFacts(person: PersonRecord): string[] {
 		facts.push(`${label}: ${trimmed}`);
 	};
 
+	const primaryOrg = person.people_organizations?.find((po: { is_primary?: boolean | null }) => po.is_primary)?.organization ?? person.people_organizations?.[0]?.organization;
 	append("Segment", person.segment);
 	append("Title", person.title || person.role);
 	append("Role", person.role && person.role !== person.title ? person.role : null);
-	append("Company", person.company);
-	append("Industry", person.industry);
+	append("Company", (primaryOrg as { name?: string | null } | null)?.name ?? null);
+	append("Industry", (primaryOrg as { industry?: string | null } | null)?.industry ?? null);
 	append("Location", person.location);
 
 	return facts;
@@ -212,12 +213,13 @@ export async function generatePersonFacetSummaries({
 		interviewLookup,
 	});
 
+	const primaryOrgForPayload = person.people_organizations?.find((po: { is_primary?: boolean | null }) => po.is_primary)?.organization ?? person.people_organizations?.[0]?.organization;
 	const payload = {
 		person: {
 			person_id: person.id,
 			name: person.name ?? null,
 			title: person.title ?? person.role ?? null,
-			company: person.company ?? null,
+			company: (primaryOrgForPayload as { name?: string | null } | null)?.name ?? null,
 			segment: person.segment ?? null,
 			persona: person.people_personas?.[0]?.personas?.name ?? null,
 			quick_facts: buildQuickFacts(person),

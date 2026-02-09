@@ -29,7 +29,6 @@ type PersonWithOrg = {
 	name: string | null;
 	title: string | null;
 	role: string | null;
-	company: string | null;
 	organizations: {
 		id: string;
 		name: string | null;
@@ -106,16 +105,14 @@ function scoreRoleMatch(person: PersonWithOrg, targetRoles: string[]): Dimension
  * Returns score + whether person has data for this dimension
  */
 function scoreOrgMatch(person: PersonWithOrg, targetOrgs: string[]): DimensionResult {
-	const hasCompany = !!person.company;
 	const hasOrg = !!person.organizations;
-	const hasData = hasCompany || hasOrg;
 
-	if (targetOrgs.length === 0 || !hasData) {
-		return { score: 0, hasData };
+	if (targetOrgs.length === 0 || !hasOrg) {
+		return { score: 0, hasData: hasOrg };
 	}
 
 	const industry = person.organizations?.industry?.toLowerCase() || "";
-	const companyName = (person.company || person.organizations?.name || "").toLowerCase();
+	const companyName = (person.organizations?.name || "").toLowerCase();
 
 	// Exact industry match (1.0)
 	for (const targetOrg of targetOrgs) {
@@ -264,7 +261,6 @@ export async function calculateICPScore(opts: {
 			name,
 			title,
 			role,
-			company,
 			organizations:default_organization_id (
 				id,
 				name,

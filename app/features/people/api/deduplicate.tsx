@@ -46,7 +46,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 							name: p.name,
 							primary_email: p.primary_email,
 							linkedin_url: p.linkedin_url,
-							company: p.company,
+							company: (p as any).people_organizations?.[0]?.organization?.name ?? null,
 							title: p.title,
 							created_at: p.created_at,
 						})),

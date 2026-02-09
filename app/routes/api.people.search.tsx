@@ -36,7 +36,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 	let query = ctx.supabase
 		.from("people")
-		.select("id, name, primary_email, company, project_id")
+		.select("id, name, primary_email, project_id, default_organization:organizations!default_organization_id(name)")
 		.eq("account_id", ctx.account_id)
 		.order("updated_at", { ascending: false })
 		.limit(limit);
@@ -47,6 +47,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 	if (search) {
 		const escaped = search.replace(/%/g, "\\%").replace(/_/g, "\\_");
+		// Still search company text column for backwards compatibility during transition
 		query = query.or([`name.ilike.%${escaped}%`, primaryEmailClause(escaped), `company.ilike.%${escaped}%`].join(","), {
 			foreignTable: undefined,
 		});
@@ -60,13 +61,16 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 	}
 
 	return Response.json({
-		people: (data ?? []).map((person) => ({
-			id: person.id,
-			name: person.name,
-			email: person.primary_email,
-			company: person.company,
-			projectId: person.project_id,
-		})),
+		people: (data ?? []).map((person) => {
+			const orgName = (person.default_organization as { name: string | null } | null)?.name;
+			return {
+				id: person.id,
+				name: person.name,
+				email: person.primary_email,
+				company: orgName ?? null,
+				projectId: person.project_id,
+			};
+		}),
 	});
 }
 

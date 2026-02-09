@@ -976,7 +976,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
               id: string;
               name: string | null;
               segment: string | null;
-              company: string | null;
               project_id: string | null;
               person_type?: string | null;
               people_personas?: Array<{
@@ -991,7 +990,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
               id: person.id,
               name: person.name,
               segment: person.segment,
-              company: person.company,
+              company: (person as any).default_organization?.name ?? null,
               project_id: person.project_id,
               person_type: person.person_type ?? null,
               people_personas: Array.isArray(person.people_personas)

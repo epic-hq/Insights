@@ -57,10 +57,7 @@ Person Data:
 - Name: ${person.name || "N/A"}
 - Role: ${person.role || "N/A"}
 - Title: ${person.title || "N/A"}
-- Occupation: ${person.occupation || "N/A"}
 - Current Segment: ${person.segment || "N/A"}
-- Industry: ${person.industry || "N/A"}
-- Company: ${person.company || "N/A"}
 - Age: ${person.age || "N/A"}
 
 Guidelines:
@@ -178,7 +175,7 @@ async function migratePeopleToFacets(options: { projectId?: string; dryRun?: boo
 	// Load people
 	const baseQuery = supabase
 		.from("people")
-		.select("id, name, role, title, occupation, segment, industry, company, age, project_id, account_id")
+		.select("id, name, role, title, segment, age, project_id, account_id")
 		.order("created_at", { ascending: true });
 
 	let query = baseQuery;

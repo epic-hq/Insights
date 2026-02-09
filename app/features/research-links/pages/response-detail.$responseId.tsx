@@ -50,7 +50,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 	// Fetch the response with person data
 	const { data: response, error: responseError } = await supabase
 		.from("research_link_responses")
-		.select("*, person:people(id, name, primary_email, title, company)")
+		.select("*, person:people(id, name, primary_email, title, default_organization:organizations!default_organization_id(name))")
 		.eq("id", responseId)
 		.eq("research_link_id", listId)
 		.maybeSingle();
@@ -216,7 +216,7 @@ export default function ResponseDetailPage() {
 								{person.title && (
 									<p className="text-muted-foreground text-sm">
 										{person.title}
-										{person.company && ` at ${person.company}`}
+										{(person as any).default_organization?.name && ` at ${(person as any).default_organization?.name}`}
 									</p>
 								)}
 								{person.primary_email && <p className="text-muted-foreground text-sm">{person.primary_email}</p>}
