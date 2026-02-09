@@ -1,9 +1,14 @@
 /**
  * InterviewSourcePanel — right column of the 2-col interview detail layout.
  * Contains: media player, evidence timeline (chapters), transcript, and questions.
+ * Evidence items include "Verify" affordance that opens the verification drawer.
  */
+import { Clock, Eye } from "lucide-react";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import { MediaPlayer } from "~/components/ui/MediaPlayer";
 import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList";
+import { cn } from "~/lib/utils";
 import type { Evidence } from "~/types";
 import { InterviewQuestionsAccordion } from "./InterviewQuestionsAccordion";
 import { LazyTranscriptResults } from "./LazyTranscriptResults";
@@ -48,6 +53,35 @@ function deriveMediaFormat(
   return null;
 }
 
+function extractAnchorSeconds(anchors: unknown): number | null {
+  const arr = Array.isArray(anchors)
+    ? (anchors as Array<Record<string, unknown>>)
+    : [];
+  const anchor = arr.find((a) => a && typeof a === "object");
+  if (!anchor) return null;
+
+  const rawStart =
+    (anchor.start_ms as number) ??
+    (anchor.startMs as number) ??
+    (anchor.start_seconds as number) ??
+    (anchor.startSeconds as number) ??
+    (anchor.start_sec as number) ??
+    (anchor.start as number) ??
+    (anchor.start_time as number);
+
+  if (typeof rawStart === "number" && Number.isFinite(rawStart)) {
+    return rawStart > 500 ? rawStart / 1000 : rawStart;
+  }
+  return null;
+}
+
+function formatTimestamp(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 interface Participant {
   id: number;
   role: string | null;
@@ -76,6 +110,8 @@ interface InterviewSourcePanelProps {
   accountId: string;
   projectId: string;
   onSpeakerClick: () => void;
+  /** Called when user clicks "Verify" on an evidence item */
+  onEvidenceSelect?: (evidenceId: string) => void;
 }
 
 export function InterviewSourcePanel({
@@ -84,6 +120,7 @@ export function InterviewSourcePanel({
   accountId,
   projectId,
   onSpeakerClick,
+  onEvidenceSelect,
 }: InterviewSourcePanelProps) {
   return (
     <div className="space-y-6">
@@ -105,6 +142,55 @@ export function InterviewSourcePanel({
 
       {/* Evidence Timeline (Chapters) */}
       {evidence.length > 0 && <PlayByPlayTimeline evidence={evidence} />}
+
+      {/* Evidence items with verification affordance */}
+      {evidence.length > 0 && onEvidenceSelect && (
+        <div className="space-y-2">
+          <h3 className="font-semibold text-foreground text-lg">
+            Evidence ({evidence.length})
+          </h3>
+          <div className="max-h-[400px] space-y-1.5 overflow-y-auto">
+            {evidence.slice(0, 50).map((item) => {
+              const seconds = extractAnchorSeconds(item.anchors);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onEvidenceSelect(item.id)}
+                  className="group flex w-full items-start gap-2 rounded-md border border-transparent px-3 py-2 text-left transition-colors hover:border-border hover:bg-muted/40"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-foreground text-sm">
+                      {item.gist || item.verbatim || "Evidence"}
+                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      {item.topic && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] leading-tight"
+                        >
+                          {item.topic}
+                        </Badge>
+                      )}
+                      {seconds !== null && (
+                        <span className="flex items-center gap-0.5 text-muted-foreground text-[10px]">
+                          <Clock className="h-2.5 w-2.5" />
+                          {formatTimestamp(seconds)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Eye
+                    className={cn(
+                      "mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground/0 transition-colors group-hover:text-primary",
+                    )}
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Transcript */}
       <div>

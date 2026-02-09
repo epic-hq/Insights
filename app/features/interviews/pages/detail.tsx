@@ -109,6 +109,7 @@ import { DocumentViewer } from "../components/DocumentViewer";
 import { InterviewQuestionsAccordion } from "../components/InterviewQuestionsAccordion";
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults";
 import { ManagePeopleAssociations } from "../components/ManagePeopleAssociations";
+import { EvidenceVerificationDrawer } from "../components/EvidenceVerificationDrawer";
 import { InterviewInsights } from "../components/InterviewInsights";
 import { InterviewRecommendations } from "../components/InterviewRecommendations";
 import { InterviewScorecard } from "../components/InterviewScorecard";
@@ -1570,6 +1571,10 @@ export default function InterviewDetail({
   const [regeneratePopoverOpen, setRegeneratePopoverOpen] = useState(false);
   const [regenerateInstructions, setRegenerateInstructions] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [verifyDrawerOpen, setVerifyDrawerOpen] = useState(false);
+  const [selectedEvidenceId, setSelectedEvidenceId] = useState<string | null>(
+    null,
+  );
 
   // Create evidence map for lens timestamp hydration
   const evidenceMap = useMemo(() => {
@@ -1645,6 +1650,26 @@ export default function InterviewDetail({
       { method: "post", action: "/api/update-field" },
     );
   };
+
+  const handleEvidenceSelect = (evidenceId: string) => {
+    setSelectedEvidenceId(evidenceId);
+    setVerifyDrawerOpen(true);
+  };
+
+  const selectedEvidence = useMemo(() => {
+    if (!selectedEvidenceId) return null;
+    const item = evidence.find((e) => e.id === selectedEvidenceId);
+    if (!item) return null;
+    return {
+      id: item.id,
+      verbatim: item.verbatim ?? null,
+      gist: item.gist ?? null,
+      topic: item.topic ?? null,
+      support: item.support ?? null,
+      confidence: item.confidence ?? null,
+      anchors: item.anchors,
+    };
+  }, [selectedEvidenceId, evidence]);
 
   useEffect(() => {
     const prevState = fetcherPrevStateRef.current;
@@ -2427,6 +2452,7 @@ export default function InterviewDetail({
               accountId={accountId}
               projectId={projectId}
               onSpeakerClick={() => setParticipantsDialogOpen(true)}
+              onEvidenceSelect={handleEvidenceSelect}
             />
           </div>
         </div>
@@ -2501,6 +2527,24 @@ export default function InterviewDetail({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Evidence Verification Drawer */}
+      <EvidenceVerificationDrawer
+        open={verifyDrawerOpen}
+        onOpenChange={setVerifyDrawerOpen}
+        selectedEvidence={selectedEvidence}
+        allEvidence={evidence.map((e) => ({
+          id: e.id,
+          verbatim: e.verbatim ?? null,
+          gist: e.gist ?? null,
+          topic: e.topic ?? null,
+          support: e.support ?? null,
+          confidence: e.confidence ?? null,
+          anchors: e.anchors,
+        }))}
+        interview={interview}
+        evidenceDetailRoute={routes.evidence.detail}
+      />
     </>
   );
 }
