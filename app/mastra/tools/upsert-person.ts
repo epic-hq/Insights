@@ -479,7 +479,7 @@ export const upsertPersonTool = createTool({
 					id: result.id,
 					name: result.name,
 					title: result.title,
-					company: result.company,
+					company: organization_linked?.name || result.company,
 					primaryEmail: result.primary_email,
 					primaryPhone: result.primary_phone,
 				},

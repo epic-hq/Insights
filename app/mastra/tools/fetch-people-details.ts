@@ -208,7 +208,7 @@ export const fetchPeopleDetailsTool = createTool({
 			// First try project-scoped search using project_people junction table
 			const { data: projectPeopleData, error: peopleError } = await supabase
 				.from("people")
-				.select("*, project_people!inner(project_id)")
+				.select("*, project_people!inner(project_id), default_organization:organizations!default_organization_id(name)")
 				.eq("project_people.project_id", projectId)
 				.eq("account_id", accountId || "")
 				.limit(sanitizedPersonSearch ? 100 : peopleLimit);
@@ -224,7 +224,7 @@ export const fetchPeopleDetailsTool = createTool({
 					searchTerm: sanitizedPersonSearch,
 				});
 
-				const accountQuery = await supabase.from("people").select("*").eq("account_id", accountId).limit(100);
+				const accountQuery = await supabase.from("people").select("*, default_organization:organizations!default_organization_id(name)").eq("account_id", accountId).limit(100);
 
 				if (accountQuery.data && accountQuery.data.length > 0) {
 					peopleData = accountQuery.data as Person[];
@@ -270,7 +270,8 @@ export const fetchPeopleDetailsTool = createTool({
 				people = people.filter((person) => {
 					const nameMatch = person.name?.toLowerCase().includes(searchLower);
 					const titleMatch = person.title?.toLowerCase().includes(searchLower);
-					const companyMatch = person.company?.toLowerCase().includes(searchLower);
+					const orgName = (person as any).default_organization?.name;
+					const companyMatch = orgName?.toLowerCase().includes(searchLower) || person.company?.toLowerCase().includes(searchLower);
 					const roleMatch = person.role?.toLowerCase().includes(searchLower);
 
 					return nameMatch || titleMatch || companyMatch || roleMatch;
@@ -503,7 +504,7 @@ export const fetchPeopleDetailsTool = createTool({
 						gender: person.gender,
 						pronouns: person.pronouns,
 						title: person.title,
-						company: person.company,
+						company: (person as any).default_organization?.name || person.company,
 						occupation: person.occupation,
 						role: person.role,
 						segment: person.segment,

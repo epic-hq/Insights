@@ -161,7 +161,10 @@ export const enrichPeopleBatchTask = task({
       const person = people[i];
 
       // Skip people who already have all key fields
-      if (person.title && person.company) {
+      const personOrgName = person.default_organization_id
+          ? (orgNameMap.get(person.default_organization_id) ?? null)
+          : null;
+      if (person.title && (personOrgName || person.company)) {
         result.skipped++;
         result.processed++;
         continue;
@@ -185,7 +188,7 @@ export const enrichPeopleBatchTask = task({
             [person.firstname, person.lastname].filter(Boolean).join(" ") ||
             null,
           knownEmail: person.primary_email,
-          knownCompany: person.company || orgName,
+          knownCompany: orgName || person.company,
           knownTitle: person.title,
           knownLinkedIn: person.linkedin_url,
         });

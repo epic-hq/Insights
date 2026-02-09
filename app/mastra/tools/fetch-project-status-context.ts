@@ -838,7 +838,7 @@ export const fetchProjectStatusContextTool = createTool({
 					let peopleQuery = supabase
 						.from("project_people")
 						.select(
-							"id, person_id, role, interview_count, first_seen_at, last_seen_at, created_at, updated_at, person:person_id(id, name, segment, role, title, company, description, location, image_url, contact_info, people_personas(persona_id, personas(id, name, color_hex)))"
+							"id, person_id, role, interview_count, first_seen_at, last_seen_at, created_at, updated_at, person:person_id(id, name, segment, role, title, company, description, location, image_url, contact_info, default_organization:organizations!default_organization_id(name), people_personas(persona_id, personas(id, name, color_hex)))"
 						)
 						.eq("project_id", projectId);
 
@@ -1001,7 +1001,7 @@ export const fetchProjectStatusContextTool = createTool({
 							segment: person?.segment ?? null,
 							role: row.role ?? person?.role ?? null,
 							title: (person as { title?: string | null })?.title ?? null,
-							company: (person as { company?: string | null })?.company ?? null,
+							company: (person as any)?.default_organization?.name ?? (person as { company?: string | null })?.company ?? null,
 							description: person?.description ?? null,
 							location: person?.location ?? null,
 							image_url: person?.image_url ?? null,
@@ -1028,7 +1028,7 @@ export const fetchProjectStatusContextTool = createTool({
 					// Build ICP summary from full project people, not the limited/filtered people payload.
 					const { data: summaryPeopleRows, error: summaryPeopleError } = await supabase
 						.from("project_people")
-						.select("person_id, person:person_id(id, title, company)")
+						.select("person_id, person:person_id(id, title, company, default_organization:organizations!default_organization_id(name))")
 						.eq("project_id", projectId);
 					if (summaryPeopleError) {
 						consola.warn("fetch-project-status-context: failed to load full people summary scope", summaryPeopleError);
@@ -1054,7 +1054,7 @@ export const fetchProjectStatusContextTool = createTool({
 
 					const missingDataCount = summaryPeople.filter((person) => {
 						const title = person.person?.title;
-						const company = person.person?.company;
+						const company = (person.person as any)?.default_organization?.name || person.person?.company;
 						return !title || !company;
 					}).length;
 					const scored = uniqueScoredPeople.size;

@@ -174,7 +174,7 @@ export async function loadAnalysisPageData(
 		// 6. People in project with basic info
 		db
 			.from("people")
-			.select("id, firstname, lastname, name, title, company, image_url, created_at")
+			.select("id, firstname, lastname, name, title, company, image_url, created_at, default_organization:organizations!default_organization_id(name)")
 			.eq("project_id", projectId)
 			.order("created_at", { ascending: false }),
 
