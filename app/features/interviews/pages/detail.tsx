@@ -1097,7 +1097,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
     }
 
     // Batch-fetch vote counts for all evidence in one query
-    const evidenceIds = (evidence || []).map((e) => e.id);
+    // Filter out any evidence items without valid IDs
+    const evidenceIds = (evidence || [])
+      .map((e) => e.id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0);
     const { data: evidenceVoteCounts } = evidenceIds.length
       ? await getVoteCountsForEntities({
           supabase,
@@ -2033,17 +2036,19 @@ export default function InterviewDetail({
         open={verifyDrawerOpen}
         onOpenChange={setVerifyDrawerOpen}
         selectedEvidence={selectedEvidence}
-        allEvidence={evidence.map((e) => ({
-          id: e.id,
-          verbatim: e.verbatim ?? null,
-          gist: e.gist ?? null,
-          topic: e.topic ?? null,
-          support: e.support ?? null,
-          confidence: e.confidence ?? null,
-          anchors: e.anchors,
-          thumbnail_url:
-            (e as { thumbnail_url?: string | null }).thumbnail_url ?? null,
-        }))}
+        allEvidence={evidence
+          .filter((e) => e.id && typeof e.id === "string")
+          .map((e) => ({
+            id: e.id,
+            verbatim: e.verbatim ?? null,
+            gist: e.gist ?? null,
+            topic: e.topic ?? null,
+            support: e.support ?? null,
+            confidence: e.confidence ?? null,
+            anchors: e.anchors,
+            thumbnail_url:
+              (e as { thumbnail_url?: string | null }).thumbnail_url ?? null,
+          }))}
         interview={interview}
         evidenceDetailRoute={routes.evidence.detail}
       />
