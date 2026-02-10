@@ -177,15 +177,14 @@ export const getInterviewParticipants = async ({
 			id,
 			transcript_key,
 			display_name,
-			people(
-				project_id,
-				id,
-				name,
-				segment,
-				company,
-				person_type,
-				description,
-				contact_info,
+				people(
+					project_id,
+					id,
+					name,
+					segment,
+					person_type,
+					description,
+					contact_info,
 				default_organization:organizations!default_organization_id(name),
 				people_personas (
 					persona_id,

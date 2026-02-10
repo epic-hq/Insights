@@ -337,7 +337,6 @@ export function InterviewScorecard({
 								id: string;
 								name: string;
 								segment?: string | null;
-								company?: string | null;
 							};
 							return (
 								<span key={participant.id} className="inline-flex items-center gap-1.5">
@@ -345,7 +344,6 @@ export function InterviewScorecard({
 									<Link to={routes.people.detail(person.id)} className="font-medium text-foreground hover:underline">
 										{person.name}
 									</Link>
-									{person.company && <span className="text-muted-foreground">({person.company})</span>}
 									{person.segment && person.segment !== "Unknown" && (
 										<Badge variant="outline" className="text-xs">
 											{person.segment}

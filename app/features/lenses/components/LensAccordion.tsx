@@ -128,8 +128,7 @@ function RerunLensButton({
 	const isSubmitting = fetcher.state !== "idle";
 	const isRunning = isSubmitting || isProcessing;
 
-	const handleRerun = (e: React.MouseEvent) => {
-		e.stopPropagation(); // Don't toggle accordion
+	const triggerRerun = () => {
 		fetcher.submit(
 			{ interview_id: interviewId, template_key: templateKey },
 			{ method: "POST", action: "/api/apply-lens" }
@@ -141,9 +140,30 @@ function RerunLensButton({
 		<TooltipProvider>
 			<Tooltip>
 				<TooltipTrigger asChild>
-					<Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRerun} disabled={isRunning}>
+					<span
+						role="button"
+						tabIndex={isRunning ? -1 : 0}
+						aria-disabled={isRunning}
+						className={cn(
+							"inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+							isRunning ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-muted"
+						)}
+						onClick={(e) => {
+							e.stopPropagation();
+							if (isRunning) return;
+							triggerRerun();
+						}}
+						onKeyDown={(e) => {
+							if (isRunning) return;
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault();
+								e.stopPropagation();
+								triggerRerun();
+							}
+						}}
+					>
 						<RefreshCw className={cn("h-3.5 w-3.5", isRunning && "animate-spin")} />
-					</Button>
+					</span>
 				</TooltipTrigger>
 				<TooltipContent>
 					<p>Re-analyze with {templateName}</p>

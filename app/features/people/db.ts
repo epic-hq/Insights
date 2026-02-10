@@ -405,8 +405,8 @@ export const verifyPersonBelongsToProject = async ({
 };
 
 /**
- * Lightweight people list for dropdowns (participant assignment, linking).
- * Returns people visible to the project or account, ordered by name.
+ * Lightweight people list for participant assignment.
+ * Restrict to current project so selection aligns with server-side validation.
  */
 export const getPeopleOptions = async ({
 	supabase,
@@ -417,10 +417,11 @@ export const getPeopleOptions = async ({
 	accountId: string;
 	projectId: string;
 }) => {
+	void accountId;
 	return supabase
 		.from("people")
 		.select("id, name, segment, person_type")
-		.or(`project_id.eq.${projectId},account_id.eq.${accountId}`)
+		.eq("project_id", projectId)
 		.order("name", { ascending: true });
 };
 

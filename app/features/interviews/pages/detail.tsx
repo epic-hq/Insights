@@ -14,7 +14,7 @@ import {
 	Users,
 	XCircle,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	type ActionFunctionArgs,
 	Link,
@@ -325,6 +325,36 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 					const { firstname, lastname } = personFirst
 						? { firstname: personFirst, lastname: personLast }
 						: parseFullName(personName || "");
+
+					let defaultOrganizationId: string | null = null;
+					if (personCompany) {
+						const { data: existingOrg, error: existingOrgError } = await supabase
+							.from("organizations")
+							.select("id")
+							.eq("project_id", projectId)
+							.eq("name", personCompany)
+							.maybeSingle();
+						if (existingOrgError) throw new Error(existingOrgError.message);
+
+						if (existingOrg?.id) {
+							defaultOrganizationId = existingOrg.id;
+						} else {
+							const { data: createdOrg, error: createOrgError } = await supabase
+								.from("organizations")
+								.insert({
+									account_id: accountId,
+									project_id: projectId,
+									name: personCompany,
+								})
+								.select("id")
+								.single();
+							if (createOrgError || !createdOrg) {
+								throw new Error(createOrgError?.message || "Failed to create organization");
+							}
+							defaultOrganizationId = createdOrg.id;
+						}
+					}
+
 					const { data: newPerson, error: createError } = await supabase
 						.from("people")
 						.insert({
@@ -332,7 +362,7 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 							project_id: projectId,
 							firstname,
 							lastname,
-							company: personCompany,
+							default_organization_id: defaultOrganizationId,
 							title: personTitle,
 						})
 						.select()
@@ -348,6 +378,19 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 						project_id: projectId,
 						person_id: newPerson.id,
 					});
+
+					if (defaultOrganizationId) {
+						await supabase.from("people_organizations").upsert(
+							{
+								account_id: accountId,
+								project_id: projectId,
+								person_id: newPerson.id,
+								organization_id: defaultOrganizationId,
+								is_primary: true,
+							},
+							{ onConflict: "person_id,organization_id" }
+						);
+					}
 
 					personId = newPerson.id;
 				}
@@ -691,11 +734,14 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		} | null = null;
 
 		try {
-			const { data: participantData } = await getInterviewParticipants({
+			const { data: participantData, error: participantError } = await getInterviewParticipants({
 				supabase,
 				projectId,
 				interviewId: interviewId,
 			});
+			if (participantError) {
+				throw new Error(participantError.message);
+			}
 
 			participants = (participantData || []).map((row) => {
 				const person = row.people as
@@ -1214,6 +1260,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		setSelectedEvidenceId(evidenceId);
 		setVerifyDrawerOpen(true);
 	};
+	const handleParticipantsUpdated = useCallback(() => {
+		revalidator.revalidate();
+	}, [revalidator]);
 
 	const selectedEvidence = useMemo(() => {
 		if (!selectedEvidenceId) return null;
@@ -1746,9 +1795,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							person_type: (p as any).person_type,
 						}))}
 						transcriptSpeakers={transcriptSpeakers}
-						onUpdate={() => {
-							revalidator.revalidate();
-						}}
+						onUpdate={handleParticipantsUpdated}
 					/>
 				</DialogContent>
 			</Dialog>

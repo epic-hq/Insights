@@ -73,8 +73,12 @@ export function ManagePeopleAssociations({
 	const [searchInput, setSearchInput] = useState("");
 	const [addDialogMode, setAddDialogMode] = useState<"search" | "create">("search");
 	const [addSearchInput, setAddSearchInput] = useState("");
+	const [submitError, setSubmitError] = useState<string | null>(null);
 	const isSubmitting = fetcher.state !== "idle";
 	const voiceStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const shouldNotifyOnIdleRef = useRef(false);
+	const onUpdateRef = useRef(onUpdate);
+	const pendingAddDialogCloseRef = useRef(false);
 
 	// Calculate which transcript speakers are not yet assigned to a participant
 	const unassignedSpeakers = useMemo(() => {
@@ -83,12 +87,42 @@ export function ManagePeopleAssociations({
 	}, [participants, transcriptSpeakers]);
 
 	useEffect(() => {
-		if (fetcher.state === "idle" && fetcher.data && onUpdate) {
-			onUpdate();
+		onUpdateRef.current = onUpdate;
+	}, [onUpdate]);
+
+	useEffect(() => {
+		if (fetcher.state !== "idle") {
+			shouldNotifyOnIdleRef.current = true;
+			return;
 		}
-	}, [fetcher.state, fetcher.data, onUpdate]);
+		if (shouldNotifyOnIdleRef.current && fetcher.data) {
+			shouldNotifyOnIdleRef.current = false;
+			const result = fetcher.data as { ok?: boolean; error?: string } | undefined;
+			if (result?.ok === false) {
+				setSubmitError(result.error || "Failed to update participant");
+				pendingAddDialogCloseRef.current = false;
+				return;
+			}
+			setSubmitError(null);
+			onUpdateRef.current?.();
+			if (pendingAddDialogCloseRef.current) {
+				pendingAddDialogCloseRef.current = false;
+				setShowAddPersonDialog(false);
+				setAddDialogMode("search");
+				setAddSearchInput("");
+				setSelectedSpeakerKey(null);
+				setNewPersonName("");
+				setNewPersonFirst("");
+				setNewPersonLast("");
+				setNewPersonOrg("");
+				setNewPersonTitle("");
+			}
+		}
+	}, [fetcher.state, fetcher.data]);
 
 	const linkPerson = (participantId: string, personId: string) => {
+		setSubmitError(null);
+		pendingAddDialogCloseRef.current = false;
 		fetcher.submit(
 			{
 				participant_id: participantId,
@@ -102,6 +136,8 @@ export function ManagePeopleAssociations({
 	const unlinkPerson = (participantId: string) => {
 		// Remove the participant-person link by deleting the participant row.
 		// We use the page action so RLS/account scoping stays consistent.
+		setSubmitError(null);
+		pendingAddDialogCloseRef.current = false;
 		fetcher.submit(
 			{
 				intent: "remove-participant",
@@ -113,6 +149,8 @@ export function ManagePeopleAssociations({
 	};
 
 	const createAndLinkPerson = (participantId: string, name: string) => {
+		setSubmitError(null);
+		pendingAddDialogCloseRef.current = false;
 		fetcher.submit(
 			{
 				participant_id: participantId,
@@ -128,6 +166,8 @@ export function ManagePeopleAssociations({
 
 	// Add an existing person as a new participant
 	const addExistingParticipant = (personId: string) => {
+		setSubmitError(null);
+		pendingAddDialogCloseRef.current = true;
 		fetcher.submit(
 			{
 				intent: "add-participant",
@@ -136,10 +176,6 @@ export function ManagePeopleAssociations({
 			},
 			{ method: "post" }
 		);
-		setShowAddPersonDialog(false);
-		setAddDialogMode("search");
-		setAddSearchInput("");
-		setSelectedSpeakerKey(null);
 	};
 
 	// Add a brand new participant to the interview (not linking an existing speaker)
@@ -151,6 +187,8 @@ export function ManagePeopleAssociations({
 		const fallbackName = name.trim();
 		if (!first && !fallbackName) return;
 		const submitName = first && last ? `${first} ${last}` : first || fallbackName;
+		setSubmitError(null);
+		pendingAddDialogCloseRef.current = true;
 		fetcher.submit(
 			{
 				intent: "add-participant",
@@ -165,15 +203,6 @@ export function ManagePeopleAssociations({
 			},
 			{ method: "post" }
 		);
-		setShowAddPersonDialog(false);
-		setAddDialogMode("search");
-		setAddSearchInput("");
-		setNewPersonName("");
-		setNewPersonFirst("");
-		setNewPersonLast("");
-		setNewPersonOrg("");
-		setNewPersonTitle("");
-		setSelectedSpeakerKey(null);
 		setVoiceStatus("idle");
 		stopVoiceFill();
 	};
@@ -300,6 +329,11 @@ export function ManagePeopleAssociations({
 	return (
 		<>
 			<div className="space-y-3">
+				{submitError && (
+					<div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
+						{submitError}
+					</div>
+				)}
 				<div className="space-y-2">
 					{participants.map((participant, idx) => {
 						let speakerLabel = formatSpeakerLabel(participant.transcript_key, idx);
@@ -469,9 +503,11 @@ export function ManagePeopleAssociations({
 				onOpenChange={(open) => {
 					setShowAddPersonDialog(open);
 					if (!open) {
+						setSubmitError(null);
 						setAddDialogMode("search");
 						setAddSearchInput("");
 						setSelectedSpeakerKey(null);
+						pendingAddDialogCloseRef.current = false;
 					}
 				}}
 			>
