@@ -611,6 +611,8 @@ export default function EvidenceIndex() {
   const confidence = searchParams.get("confidence") || "";
   const method = searchParams.get("method") || "";
   const [searchQuery, setSearchQuery] = useState("");
+  const [semanticResults, setSemanticResults] = useState<typeof evidence>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const updateParam = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams);
@@ -619,8 +621,37 @@ export default function EvidenceIndex() {
     setSearchParams(next);
   };
 
-  // Client-side search filtering
-  const filteredEvidence = searchQuery
+  // Debounced semantic search
+  useEffect(() => {
+    if (!searchQuery || searchQuery.length < 3) {
+      setSemanticResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `/api/evidence/semantic-search?query=${encodeURIComponent(searchQuery)}&projectId=${currentProject?.projectId}&matchThreshold=0.5&matchCount=20`,
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setSemanticResults(data.evidence || []);
+        }
+      } catch (error) {
+        console.error("[Evidence Search] Semantic search error:", error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, currentProject?.projectId]);
+
+  // Client-side keyword filtering (instant)
+  const keywordMatches = searchQuery
     ? evidence.filter((item) => {
         const query = searchQuery.toLowerCase();
         return (
@@ -630,6 +661,15 @@ export default function EvidenceIndex() {
           item.people.some((p) => p.name?.toLowerCase().includes(query))
         );
       })
+    : evidence;
+
+  // Merge keyword and semantic results (deduplicate by ID)
+  const filteredEvidence = searchQuery
+    ? (() => {
+        const seenIds = new Set(keywordMatches.map((e) => e.id));
+        const semanticOnly = semanticResults.filter((e) => !seenIds.has(e.id));
+        return [...keywordMatches, ...semanticOnly];
+      })()
     : evidence;
 
   return (
@@ -683,9 +723,15 @@ export default function EvidenceIndex() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search evidence by quote, topic, or person..."
-          className="w-full rounded-lg border border-input bg-background px-4 py-2.5 pl-10 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          placeholder="Search evidence by meaning or keywords..."
+          className="w-full rounded-lg border border-input bg-background px-4 py-2.5 pl-10 pr-20 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         />
+        {isSearching && (
+          <div className="absolute right-12 top-1/2 flex -translate-y-1/2 items-center gap-1 text-muted-foreground text-xs">
+            <span>🧠</span>
+            <span>Searching...</span>
+          </div>
+        )}
         <svg
           className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
           fill="none"
