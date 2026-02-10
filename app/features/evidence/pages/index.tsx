@@ -759,7 +759,7 @@ export default function EvidenceIndex() {
     <div className="space-y-4 p-4 sm:p-6">
       {/* Mobile-friendly header */}
       <BackButton />
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex-1 font-semibold text-xl">
           <span className="l">Evidence</span>
           {filteredByRQ && (
@@ -798,10 +798,23 @@ export default function EvidenceIndex() {
             </Badge>
           )}
         </div>
+
+        {/* Regenerate button */}
+        <fetcher.Form method="post">
+          <input type="hidden" name="intent" value="regenerate" />
+          <Button
+            type="submit"
+            variant="secondary"
+            size="sm"
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? "Regenerating…" : "Regenerate Evidence"}
+          </Button>
+        </fetcher.Form>
       </div>
 
       {/* Search bar */}
-      <div className="relative">
+      <div className="relative max-w-3xl">
         <input
           type="text"
           value={searchQuery}
@@ -851,46 +864,7 @@ export default function EvidenceIndex() {
         )}
       </div>
 
-      {/* Modern controls */}
-      <div className="space-y-3">
-        {/* View mode and regenerate */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <fetcher.Form method="post">
-            <input type="hidden" name="intent" value="regenerate" />
-            <Button
-              type="submit"
-              variant="secondary"
-              size="sm"
-              disabled={isRegenerating}
-            >
-              {isRegenerating ? "Regenerating…" : "Regenerate Evidence"}
-            </Button>
-          </fetcher.Form>
-
-          <ToggleGroup
-            type="single"
-            value={viewMode}
-            onValueChange={(value) =>
-              value && setViewMode(value as "mini" | "expanded")
-            }
-            variant="outline"
-            size="sm"
-          >
-            <ToggleGroupItem value="mini" className="flex items-center gap-2">
-              <Grid3X3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Mini</span>
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              value="expanded"
-              className="flex items-center gap-2"
-            >
-              <List className="h-4 w-4" />
-              <span className="hidden sm:inline">Expanded</span>
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-
-        {/* Compact filters row */}
+      {/* Compact filters row */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* Left: JTBD Quick Filters + Toggle filters */}
           <div className="flex flex-wrap items-center gap-2">
@@ -1029,6 +1003,31 @@ export default function EvidenceIndex() {
               <option value="secondary">Secondary</option>
             </select>
           </div>
+        </div>
+
+        {/* View mode toggle */}
+        <div className="flex justify-end">
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={(value) =>
+              value && setViewMode(value as "mini" | "expanded")
+            }
+            variant="outline"
+            size="sm"
+          >
+            <ToggleGroupItem value="mini" className="flex items-center gap-2">
+              <Grid3X3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Mini</span>
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="expanded"
+              className="flex items-center gap-2"
+            >
+              <List className="h-4 w-4" />
+              <span className="hidden sm:inline">Expanded</span>
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </div>
 
