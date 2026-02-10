@@ -1282,6 +1282,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	// Calculate transcript speakers for the Manage Participants dialog
 	const transcriptSpeakers = useTranscriptSpeakers(interview.transcript_formatted);
+
 	// Match takeaways to evidence for "See source" linking
 	const aiKeyTakeaways = useMemo(() => {
 		const takeaways = conversationAnalysis?.keyTakeaways ?? [];
@@ -1659,7 +1660,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					{/* Left column: Insights & Analysis */}
 					<div className="space-y-6">
 						<InterviewInsights
-							aiKeyTakeaways={conversationAnalysis?.keyTakeaways ?? []}
+							aiKeyTakeaways={aiKeyTakeaways}
 							conversationUpdatedLabel={conversationUpdatedLabel}
 							onSourceClick={handleSourceClick}
 						/>
