@@ -145,7 +145,7 @@ export function InterviewSourcePanel({
 		const clearTimer = setTimeout(() => {
 			console.log("[SourcePanel] Clearing highlight");
 			onClearHighlight?.();
-		}, 2500);
+		}, 5000);
 
 		return () => {
 			clearTimeout(timer);
@@ -175,7 +175,7 @@ export function InterviewSourcePanel({
 			{evidence.length > 0 && onEvidenceSelect && (
 				<div className="space-y-3">
 					<h3 className="font-semibold text-base text-foreground">Evidence ({evidence.length})</h3>
-					<div className="space-y-2" id="evidence-scroll-container">
+					<div className="max-h-[400px] space-y-2 overflow-y-auto pr-1" id="evidence-scroll-container">
 						{evidence.map((item) => {
 							const seconds = extractAnchorSeconds(item.anchors);
 							const votes = evidenceVoteCounts?.[item.id];
