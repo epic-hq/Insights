@@ -632,13 +632,31 @@ export default function EvidenceIndex() {
     setIsSearching(true);
     const timer = setTimeout(async () => {
       try {
-        const response = await fetch(
-          `/api/evidence/semantic-search?query=${encodeURIComponent(searchQuery)}&projectId=${currentProject?.projectId}&matchThreshold=0.5&matchCount=20`,
-        );
+        console.log("[Semantic Search] Starting search for:", searchQuery);
+        const url = `/api/evidence/semantic-search?query=${encodeURIComponent(searchQuery)}&projectId=${currentProject?.projectId}&matchThreshold=0.5&matchCount=20`;
+        console.log("[Semantic Search] URL:", url);
+
+        const response = await fetch(url);
 
         if (response.ok) {
           const data = await response.json();
+          console.log("[Semantic Search] Results received:", {
+            totalCount: data.totalCount,
+            threshold: data.threshold,
+            resultsPreview: data.evidence?.slice(0, 3).map((e: any) => ({
+              id: e.id,
+              similarity: e.similarity,
+              verbatim: e.verbatim?.substring(0, 100),
+            })),
+          });
           setSemanticResults(data.evidence || []);
+        } else {
+          const errorData = await response.json();
+          console.error(
+            "[Semantic Search] API error:",
+            response.status,
+            errorData,
+          );
         }
       } catch (error) {
         console.error("[Evidence Search] Semantic search error:", error);
@@ -668,6 +686,12 @@ export default function EvidenceIndex() {
     ? (() => {
         const seenIds = new Set(keywordMatches.map((e) => e.id));
         const semanticOnly = semanticResults.filter((e) => !seenIds.has(e.id));
+        console.log("[Evidence Filter] Merging results:", {
+          keywordMatches: keywordMatches.length,
+          semanticResults: semanticResults.length,
+          semanticOnly: semanticOnly.length,
+          total: keywordMatches.length + semanticOnly.length,
+        });
         return [...keywordMatches, ...semanticOnly];
       })()
     : evidence;
@@ -919,6 +943,37 @@ export default function EvidenceIndex() {
           </div>
         </div>
       </div>
+
+      {/* Search Results Breakdown (Debug) */}
+      {searchQuery && (
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+          <div className="flex items-center gap-4 text-sm">
+            <span className="font-medium">Search Results:</span>
+            <span className="text-muted-foreground">
+              🔍 {keywordMatches.length} keyword matches
+            </span>
+            {semanticResults.length > 0 && (
+              <>
+                <span className="text-muted-foreground">•</span>
+                <span className="text-muted-foreground">
+                  🧠{" "}
+                  {
+                    semanticResults.filter(
+                      (r) => !keywordMatches.some((k) => k.id === r.id),
+                    ).length
+                  }{" "}
+                  semantic matches
+                </span>
+              </>
+            )}
+            <span className="text-muted-foreground">•</span>
+            <span className="font-medium">
+              Total: {filteredEvidence.length}
+            </span>
+          </div>
+        </div>
+      )}
+
       {fetcher.data?.ok && (
         <p className="text-muted-foreground text-xs">
           Refreshed {fetcher.data.processed} interview
