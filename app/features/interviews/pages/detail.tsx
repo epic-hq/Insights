@@ -5,8 +5,10 @@ import {
 	ArrowUpRight,
 	Briefcase,
 	Edit2,
+	Filter,
 	Loader2,
 	MoreVertical,
+	Pencil,
 	RefreshCw,
 	Sparkles,
 	Trash2,
@@ -27,6 +29,7 @@ import {
 	useNavigation,
 	useRevalidator,
 } from "react-router";
+import { toast } from "sonner";
 import type { Database } from "~/../supabase/types";
 import {
 	AlertDialog,
@@ -91,111 +94,28 @@ import { useCustomLensDefaults } from "../hooks/useCustomLensDefaults";
 import { useEmpathySpeakers } from "../hooks/useEmpathySpeakers";
 import { usePersonalFacetSummary } from "../hooks/usePersonalFacetSummary";
 import { useTranscriptSpeakers } from "../hooks/useTranscriptSpeakers";
-import { parseConversationAnalysis } from "../lib/parseConversationAnalysis.server";
+import type { AnalysisJobSummary, EvidenceRecord } from "../lib/interviewDetailHelpers";
+import {
+	deriveMediaFormat,
+	extractAnalysisFromInterview,
+	matchTakeawaysToEvidence,
+	normalizeMultilineText,
+	parseFullName,
+} from "../lib/interviewDetailHelpers";
+import {
+	CONVERSATION_OVERVIEW_TEMPLATE_KEY,
+	parseConversationAnalysisLegacy,
+	parseConversationOverviewLens,
+} from "../lib/parseConversationAnalysis.server";
 import { processEmpathyMap } from "../lib/processEmpathyMap.server";
 
-// Helper to parse full name into first and last
-function parseFullName(fullName: string): {
-	firstname: string;
-	lastname: string | null;
-} {
-	const trimmed = fullName.trim();
-	if (!trimmed) return { firstname: "", lastname: null };
-	const parts = trimmed.split(/\s+/);
-	if (parts.length === 1) {
-		return { firstname: parts[0], lastname: null };
-	}
-	return {
-		firstname: parts[0],
-		lastname: parts.slice(1).join(" "),
-	};
-}
+// parseFullName imported from ../lib/interviewDetailHelpers
 
-// Normalize potentially awkwardly stored text fields (array, JSON string, or plain string)
-function normalizeMultilineText(value: unknown): string {
-	try {
-		if (Array.isArray(value)) {
-			const lines = value.filter((v) => typeof v === "string" && v.trim()) as string[];
-			return lines
-				.map((line) => {
-					const t = (typeof line === "string" ? line : String(line)).trim();
-					if (/^([-*+]|\d+\.)\s+/.test(t)) return t;
-					return `- ${t}`;
-				})
-				.join("\n");
-		}
-		if (typeof value === "string") {
-			// Try to parse stringified JSON arrays: "[\"a\",\"b\"]"
-			const parsed = JSON.parse(value);
-			if (Array.isArray(parsed)) {
-				const lines = parsed.filter((v) => typeof v === "string" && v.trim()) as string[];
-				return lines
-					.map((line) => {
-						const t = (typeof line === "string" ? line : String(line)).trim();
-						if (/^([-*+]|\d+\.)\s+/.test(t)) return t;
-						return `- ${t}`;
-					})
-					.join("\n");
-			}
-			return value;
-		}
-		return "";
-	} catch {
-		// If JSON.parse fails, treat it as plain text
-		return typeof value === "string" ? value : "";
-	}
-}
+// normalizeMultilineText imported from ../lib/interviewDetailHelpers
 
-// Derive media format (audio/video) from file_extension and source_type
-// This is different from media_type which is a semantic category (interview, voice_memo, etc.)
-const AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "aac", "ogg", "flac", "wma", "webm"];
-const VIDEO_EXTENSIONS = ["mp4", "mov", "avi", "mkv", "m4v"];
+// deriveMediaFormat imported from ../lib/interviewDetailHelpers
 
-function deriveMediaFormat(
-	fileExtension: string | null | undefined,
-	sourceType: string | null | undefined,
-	mediaType: string | null | undefined
-): "audio" | "video" | null {
-	// 1. Check file extension first (most reliable)
-	if (fileExtension) {
-		const ext = fileExtension.toLowerCase().replace(/^\./, "");
-		if (AUDIO_EXTENSIONS.includes(ext)) return "audio";
-		if (VIDEO_EXTENSIONS.includes(ext)) return "video";
-		// webm can be audio or video, check source_type
-		if (ext === "webm") {
-			if (sourceType === "audio_upload" || sourceType === "audio_url") return "audio";
-			if (sourceType === "video_upload" || sourceType === "video_url") return "video";
-			// Default webm to video (more common)
-			return "video";
-		}
-	}
-
-	// 2. Check source_type
-	if (sourceType) {
-		if (sourceType.includes("audio")) return "audio";
-		if (sourceType.includes("video")) return "video";
-		// Recall recordings are typically video
-		if (sourceType === "recall") return "video";
-		// Desktop realtime recordings are mp4 captures in current pipeline
-		if (sourceType === "realtime_recording") return "video";
-	}
-
-	// 3. Check semantic media_type for hints
-	if (mediaType === "voice_memo") return "audio";
-
-	// 4. Default to video (shows larger player, user can resize)
-	return null;
-}
-
-type AnalysisJobSummary = {
-	id: string; // interviewId
-	status: Database["public"]["Enums"]["job_status"] | null;
-	status_detail: string | null;
-	progress: number | null;
-	trigger_run_id: string | null;
-	created_at: string | null;
-	updated_at: string | null;
-};
+// AnalysisJobSummary type and extractAnalysisFromInterview imported from ../lib/interviewDetailHelpers
 
 const ACTIVE_ANALYSIS_STATUSES = new Set<Database["public"]["Enums"]["job_status"]>([
 	"pending",
@@ -203,23 +123,6 @@ const ACTIVE_ANALYSIS_STATUSES = new Set<Database["public"]["Enums"]["job_status
 	"retry",
 ]);
 const TERMINAL_ANALYSIS_STATUSES = new Set<Database["public"]["Enums"]["job_status"]>(["done", "error"]);
-
-function extractAnalysisFromInterview(
-	interview: Database["public"]["Tables"]["interviews"]["Row"]
-): AnalysisJobSummary | null {
-	const conversationAnalysis = interview.conversation_analysis as any;
-	if (!conversationAnalysis) return null;
-
-	return {
-		id: interview.id,
-		status: conversationAnalysis.status || null,
-		status_detail: conversationAnalysis.status_detail || null,
-		progress: conversationAnalysis.progress || null,
-		trigger_run_id: conversationAnalysis.trigger_run_id || null,
-		created_at: interview.created_at,
-		updated_at: interview.updated_at,
-	};
-}
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -703,11 +606,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			sourceType: interviewData.source_type,
 		});
 
-		const conversationAnalysis = parseConversationAnalysis(
-			interviewData.conversation_analysis as Record<string, unknown> | null | undefined,
-			interviewData.updated_at
-		);
-
 		// Fetch participant data separately to avoid junction table query issues
 		let participants: Array<{
 			id: number;
@@ -879,6 +777,20 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				error,
 			});
 		}
+
+		// Read conversation analysis from the conversation-overview lens (primary)
+		// with fallback to legacy JSONB blob for un-migrated interviews
+		const overviewLens = lensAnalyses[CONVERSATION_OVERVIEW_TEMPLATE_KEY];
+		const conversationAnalysis =
+			overviewLens?.status === "completed"
+				? parseConversationOverviewLens(
+						overviewLens.analysis_data as Record<string, unknown>,
+						overviewLens.processed_at
+					)
+				: parseConversationAnalysisLegacy(
+						interviewData.conversation_analysis as Record<string, unknown> | null | undefined,
+						interviewData.updated_at
+					);
 
 		// Check transcript availability without loading the actual content
 		const { data: transcriptMeta, error: transcriptError } = await supabase
@@ -1053,6 +965,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			}
 		}
 
+		// Match key takeaway evidence snippets to actual evidence records
+		if (conversationAnalysis?.keyTakeaways && evidence?.length) {
+			matchTakeawaysToEvidence(conversationAnalysis.keyTakeaways, evidence as EvidenceRecord[]);
+		}
+
 		const loaderResult = {
 			accountId,
 			projectId,
@@ -1156,6 +1073,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		(interview?.source_type === "transcript" && interview?.media_type !== "interview");
 
 	const fetcher = useFetcher();
+	const notesFetcher = useFetcher();
 	const deleteFetcher = useFetcher<{
 		success?: boolean;
 		redirectTo?: string;
@@ -1181,7 +1099,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	} | null>(null);
 	const [tokenErrorRunId, setTokenErrorRunId] = useState<string | null>(null);
 	const [_customLensOverrides, setCustomLensOverrides] = useState<Record<string, { summary?: string; notes?: string }>>(
-		conversationAnalysis?.customLenses ?? {}
+		{}
 	);
 	const [_isChatOpen, _setIsChatOpen] = useState(() => assistantMessages.length > 0);
 	const [participantsDialogOpen, setParticipantsDialogOpen] = useState(false);
@@ -1190,6 +1108,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [verifyDrawerOpen, setVerifyDrawerOpen] = useState(false);
 	const [selectedEvidenceId, setSelectedEvidenceId] = useState<string | null>(null);
+	const [highlightedEvidenceId, setHighlightedEvidenceId] = useState<string | null>(null);
 
 	// Create evidence map for lens timestamp hydration
 	const evidenceMap = useMemo(() => {
@@ -1243,7 +1162,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const takeawaysPollTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
 	const submitInterviewFieldUpdate = (field_name: string, field_value: string) => {
-		fetcher.submit(
+		const target = field_name === "observations_and_notes" ? notesFetcher : fetcher;
+		target.submit(
 			{
 				entity: "interview",
 				entityId: interview.id,
@@ -1260,6 +1180,16 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		setSelectedEvidenceId(evidenceId);
 		setVerifyDrawerOpen(true);
 	};
+
+	const handleSourceClick = useCallback((evidenceId: string) => {
+		setHighlightedEvidenceId(evidenceId);
+		const el = document.getElementById(`evidence-${evidenceId}`);
+		if (el) {
+			el.scrollIntoView({ behavior: "smooth", block: "center" });
+		}
+		// Clear highlight after 2.5s
+		setTimeout(() => setHighlightedEvidenceId(null), 2500);
+	}, []);
 	const handleParticipantsUpdated = useCallback(() => {
 		revalidator.revalidate();
 	}, [revalidator]);
@@ -1326,6 +1256,14 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			navigate(redirectTo);
 		}
 	}, [deleteFetcher.state, deleteFetcher.data, navigate]);
+
+	useEffect(() => {
+		if (notesFetcher.state !== "idle") return;
+		const data = notesFetcher.data as { success?: boolean; error?: string } | undefined;
+		if (data && !data.success) {
+			toast.error(data.error ?? "Failed to save notes");
+		}
+	}, [notesFetcher.state, notesFetcher.data]);
 
 	// Helper function for date formatting
 	function formatReadable(dateString: string) {
@@ -1436,8 +1374,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const _customLensDefaults = useCustomLensDefaults(conversationAnalysis, empathyMap, interview);
 
 	useEffect(() => {
-		setCustomLensOverrides(conversationAnalysis?.customLenses ?? {});
-	}, [conversationAnalysis?.customLenses]);
+		setCustomLensOverrides({});
+	}, [conversationAnalysis]);
 
 	// Sync interview state when loader data changes (navigation to different interview)
 	useEffect(() => {
@@ -1709,19 +1647,14 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					onOpenParticipantsDialog={() => setParticipantsDialogOpen(true)}
 				/>
 
-				{/* 2-column layout: Insights (left) + Sources (right) */}
-				<div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1fr]">
+				{/* 2-column layout: Insights (left ~58%) + Sources (right ~42%) */}
+				<div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
 					{/* Left column: Insights & Analysis */}
 					<div className="space-y-6">
 						<InterviewInsights
-							interviewId={interview.id}
-							accountId={accountId}
-							projectId={projectId}
 							aiKeyTakeaways={conversationAnalysis?.keyTakeaways ?? []}
 							conversationUpdatedLabel={conversationUpdatedLabel}
-							keyTakeaways={(interview.key_takeaways as string) ?? ""}
-							observationsAndNotes={(interview.observations_and_notes as string) ?? ""}
-							onFieldUpdate={submitInterviewFieldUpdate}
+							onSourceClick={handleSourceClick}
 						/>
 
 						<InterviewRecommendations
@@ -1730,8 +1663,11 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						/>
 
 						{/* Conversation Lenses */}
-						<div className="space-y-4">
-							<h3 className="font-semibold text-foreground text-lg">Conversation Lenses</h3>
+						<div className="space-y-3 rounded-xl border bg-card p-5 shadow-sm">
+							<div className="flex items-center gap-2">
+								<Filter className="h-5 w-5 text-amber-500" />
+								<h3 className="font-semibold text-base text-foreground">Conversation Lenses</h3>
+							</div>
 							{lensTemplates.length > 0 ? (
 								<LensAccordion
 									interviewId={interview.id}
@@ -1748,6 +1684,28 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								</div>
 							)}
 						</div>
+
+						{/* Notes */}
+						<div className="space-y-3 rounded-xl border bg-card p-5 shadow-sm">
+							<div className="flex items-center gap-2">
+								<Pencil className="h-5 w-5 text-amber-500" />
+								<h3 className="font-semibold text-base text-foreground">Notes</h3>
+							</div>
+							<InlineEdit
+								textClassName="text-foreground"
+								value={(interview.observations_and_notes as string) ?? ""}
+								multiline
+								markdown
+								placeholder="Add your notes here..."
+								onSubmit={(value) => {
+									try {
+										submitInterviewFieldUpdate("observations_and_notes", value);
+									} catch (error) {
+										consola.error("Failed to update notes:", error);
+									}
+								}}
+							/>
+						</div>
 					</div>
 
 					{/* Right column: Sources (sticky) */}
@@ -1760,6 +1718,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							projectId={projectId}
 							onSpeakerClick={() => setParticipantsDialogOpen(true)}
 							onEvidenceSelect={handleEvidenceSelect}
+							highlightedEvidenceId={highlightedEvidenceId}
 						/>
 					</div>
 				</div>
