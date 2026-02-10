@@ -610,6 +610,7 @@ export default function EvidenceIndex() {
   const support = searchParams.get("support") || "";
   const confidence = searchParams.get("confidence") || "";
   const method = searchParams.get("method") || "";
+  const [searchQuery, setSearchQuery] = useState("");
 
   const updateParam = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams);
@@ -617,6 +618,19 @@ export default function EvidenceIndex() {
     else next.delete(key);
     setSearchParams(next);
   };
+
+  // Client-side search filtering
+  const filteredEvidence = searchQuery
+    ? evidence.filter((item) => {
+        const query = searchQuery.toLowerCase();
+        return (
+          item.verbatim?.toLowerCase().includes(query) ||
+          item.gist?.toLowerCase().includes(query) ||
+          item.topic?.toLowerCase().includes(query) ||
+          item.people.some((p) => p.name?.toLowerCase().includes(query))
+        );
+      })
+    : evidence;
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
@@ -661,6 +675,51 @@ export default function EvidenceIndex() {
             </Badge>
           )}
         </div>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search evidence by quote, topic, or person..."
+          className="w-full rounded-lg border border-input bg-background px-4 py-2.5 pl-10 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        />
+        <svg
+          className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Modern controls */}
@@ -828,9 +887,14 @@ export default function EvidenceIndex() {
         <div className="rounded-lg border border-border border-dashed px-6 py-12 text-center text-muted-foreground text-sm">
           No evidence yet.
         </div>
+      ) : filteredEvidence.length === 0 ? (
+        <div className="rounded-lg border border-border border-dashed px-6 py-12 text-center text-muted-foreground text-sm">
+          No evidence found matching "{searchQuery}". Try a different search
+          term.
+        </div>
       ) : (
         <div className={listClassName}>
-          {evidence.map((item) => (
+          {filteredEvidence.map((item) => (
             <Link
               key={item.id}
               to={item.id}
