@@ -419,14 +419,35 @@ export async function extractEvidenceAndPeopleCore({
     PersonFacetObservation[]
   >();
   const facetObservationDedup = new Map<string, Set<string>>();
+  const accountId =
+    (typeof metadata.accountId === "string" && metadata.accountId.trim()) ||
+    (typeof interviewRecord.account_id === "string"
+      ? interviewRecord.account_id
+      : "");
+  const projectId =
+    metadata.projectId ??
+    (typeof interviewRecord.project_id === "string"
+      ? interviewRecord.project_id
+      : undefined);
+  const normalizedMetadata: InterviewMetadata = {
+    ...metadata,
+    accountId,
+    projectId,
+  };
+
+  if (!accountId) {
+    throw new Error(
+      `Missing accountId for interview ${interviewRecord.id} during evidence extraction`,
+    );
+  }
 
   const facetCatalog = await resolveFacetCatalog(
     db,
-    metadata.accountId,
-    metadata.projectId,
+    accountId,
+    projectId,
   );
   const facetLookup = buildFacetLookup(facetCatalog);
-  const facetResolver = new FacetResolver(db, metadata.accountId);
+  const facetResolver = new FacetResolver(db, accountId);
   const langfuse = getLangfuseClient();
   const lfTrace = (
     langfuse as unknown as {
@@ -435,8 +456,8 @@ export async function extractEvidenceAndPeopleCore({
   )?.trace?.({
     name: "baml.extract-evidence",
     metadata: {
-      accountId: metadata.accountId,
-      projectId: metadata.projectId ?? null,
+      accountId,
+      projectId: projectId ?? null,
       interviewId: interviewRecord.id ?? null,
     },
   });
@@ -558,9 +579,9 @@ export async function extractEvidenceAndPeopleCore({
       );
 
       // Record usage and spend credits for billing
-      if (metadata.accountId && usageSummary.totalCostUsd) {
+      if (usageSummary.totalCostUsd) {
         const billingCtx = createTaskBillingContext(
-          metadata,
+          normalizedMetadata,
           "interview_extraction",
         );
         const model =
@@ -623,7 +644,7 @@ export async function extractEvidenceAndPeopleCore({
   if (!evidenceResponse) {
     return {
       personData: {
-        id: await ensureFallbackPerson(db, metadata, interviewRecord),
+        id: await ensureFallbackPerson(db, normalizedMetadata, interviewRecord),
       },
       primaryPersonName: null,
       primaryPersonRole: null,
@@ -778,9 +799,9 @@ export async function extractEvidenceAndPeopleCore({
       );
 
       // Record usage and spend credits for billing
-      if (metadata.accountId && synthesisUsage.totalCostUsd) {
+      if (synthesisUsage.totalCostUsd) {
         const billingCtx = createTaskBillingContext(
-          metadata,
+          normalizedMetadata,
           "persona_synthesis",
         );
         const model =
@@ -1002,7 +1023,7 @@ export async function extractEvidenceAndPeopleCore({
   if (!evidenceUnits.length) {
     return {
       personData: {
-        id: await ensureFallbackPerson(db, metadata, interviewRecord),
+        id: await ensureFallbackPerson(db, normalizedMetadata, interviewRecord),
       },
       primaryPersonName: null,
       primaryPersonRole: null,
@@ -1140,7 +1161,7 @@ export async function extractEvidenceAndPeopleCore({
 
     const kindSlugSet = new Set<string>();
     const mentionDedup = new Set<number>();
-    const projectIdForInsert = metadata.projectId ?? null;
+    const projectIdForInsert = projectId ?? null;
 
     for (const mention of facetMentions) {
       if (!mention || typeof mention !== "object") continue;
@@ -1183,7 +1204,7 @@ export async function extractEvidenceAndPeopleCore({
 
       // Build evidence_facet row directly
       evidenceFacetRowsToInsert.push({
-        account_id: metadata.accountId,
+        account_id: accountId,
         project_id: projectIdForInsert,
         evidence_index: idx,
         kind_slug: kindRaw,
@@ -1337,8 +1358,8 @@ export async function extractEvidenceAndPeopleCore({
       });
     }
     const row: EvidenceInsert = {
-      account_id: metadata.accountId,
-      project_id: metadata.projectId,
+      account_id: accountId,
+      project_id: projectId ?? null,
       interview_id: interviewRecord.id,
       source_type: "primary",
       method: "interview",
@@ -1409,7 +1430,7 @@ export async function extractEvidenceAndPeopleCore({
   if (!evidenceRows.length) {
     return {
       personData: {
-        id: await ensureFallbackPerson(db, metadata, interviewRecord),
+        id: await ensureFallbackPerson(db, normalizedMetadata, interviewRecord),
       },
       primaryPersonName: null,
       primaryPersonRole: null,
@@ -1502,15 +1523,15 @@ export async function extractEvidenceAndPeopleCore({
   const internalPerson = metadata.userId
     ? await resolveInternalPerson({
         supabase: db,
-        accountId: metadata.accountId,
-        projectId: metadata.projectId ?? null,
+        accountId,
+        projectId: projectId ?? null,
         userId: metadata.userId,
       })
     : null;
   let internalPersonLinked = false;
   let internalPersonHasTranscriptKey = false;
 
-  if (metadata.projectId) {
+  if (projectId) {
     const { data: existingInterviewPeople } = await db
       .from("interview_people")
       .select("person_id, transcript_key, display_name, role")
@@ -1551,8 +1572,8 @@ export async function extractEvidenceAndPeopleCore({
 
     const { firstname, lastname } = parseFullName(fullName);
     const payload: PeopleInsert = {
-      account_id: metadata.accountId,
-      project_id: metadata.projectId,
+      account_id: accountId,
+      project_id: projectId,
       firstname: firstname || null,
       lastname: lastname || null,
       description: overrides.description ?? null,
@@ -1784,7 +1805,7 @@ export async function extractEvidenceAndPeopleCore({
     const linkPayload: InterviewPeopleInsert = {
       interview_id: interviewRecord.id,
       person_id: personId,
-      project_id: metadata.projectId ?? null,
+      project_id: projectId ?? null,
       role,
       transcript_key: transcriptKey,
       display_name: finalDisplayName,
@@ -1901,7 +1922,7 @@ export async function extractEvidenceAndPeopleCore({
               {
                 interview_id: interviewRecord.id,
                 person_id: internalPerson.id,
-                project_id: metadata.projectId ?? null,
+                project_id: projectId ?? null,
                 role: "interviewer",
                 transcript_key: internalTranscriptKey,
                 display_name: internalPerson.name,
@@ -1953,8 +1974,8 @@ export async function extractEvidenceAndPeopleCore({
       const { error: epErr } = await db.from("evidence_people").insert({
         evidence_id: evId,
         person_id: targetPersonId,
-        account_id: metadata.accountId,
-        project_id: metadata.projectId,
+        account_id: accountId,
+        project_id: projectId ?? null,
         role: role || "speaker",
       });
       if (epErr && !epErr.message?.includes("duplicate")) {
@@ -1991,7 +2012,7 @@ export async function extractEvidenceAndPeopleCore({
     }
   }
 
-  if (metadata.projectId) {
+  if (projectId) {
     // Use Phase 2 synthesized persona facets instead of raw Phase 1 mentions
     const observationInputs: Array<{
       personId: string;
@@ -2108,8 +2129,8 @@ export async function extractEvidenceAndPeopleCore({
     if (observationInputs.length) {
       await persistFacetObservations({
         db,
-        accountId: metadata.accountId,
-        projectId: metadata.projectId,
+        accountId,
+        projectId,
         observations: observationInputs,
         evidenceIds: insertedEvidenceIds,
       });
