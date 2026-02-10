@@ -7,7 +7,7 @@ export default defineConfig({
 		globals: true,
 		css: true,
 		environment: "node",
-		include: ["app/**/*.test.{ts,tsx}", "tests/**/*.test.{ts,tsx}"],
+		include: ["app/**/*.test.{ts,tsx}", "tests/**/*.test.{ts,tsx}", "src/**/*.test.{ts,tsx}"],
 		exclude: ["app/test/integration/**", "tests/e2e/**", "**/*.browser.test.{ts,tsx}"],
 		coverage: {
 			all: false,

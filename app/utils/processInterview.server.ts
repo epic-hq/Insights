@@ -8,7 +8,6 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
-import posthog from "posthog-js";
 import { b } from "~/../baml_client";
 import type {
 	FacetCatalog,
@@ -31,6 +30,7 @@ import type { ConversationAnalysis } from "~/lib/conversation-analyses/schema";
 import { FacetResolver, getFacetCatalog, persistFacetObservations } from "~/lib/database/facets.server";
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server";
 import { getLangfuseClient } from "~/lib/langfuse.server";
+import { getPostHogServerClient } from "~/lib/posthog.server";
 import { getServerClient } from "~/lib/supabase/client.server";
 import type { Database, InsightInsert, Interview, InterviewInsert } from "~/types";
 import { batchExtractEvidence } from "~/utils/batchEvidence";
@@ -2022,6 +2022,16 @@ export async function analyzeThemesAndPersonaCore({
 	evidenceResult: ExtractEvidenceResult;
 	interviewInsights?: InterviewExtraction;
 }): Promise<AnalyzeThemesAndPersonaResult> {
+	// Defensive backfill: if metadata is missing accountId/projectId, pull from the interview record
+	if (!metadata.accountId && interviewRecord.account_id) {
+		consola.warn("[analyzeThemesAndPersonaCore] Backfilling accountId from interview record");
+		metadata.accountId = interviewRecord.account_id;
+	}
+	if (!metadata.projectId && interviewRecord.project_id) {
+		consola.warn("[analyzeThemesAndPersonaCore] Backfilling projectId from interview record");
+		metadata.projectId = interviewRecord.project_id;
+	}
+
 	try {
 		await autoGroupThemesAndApply({
 			supabase: db,
@@ -2081,18 +2091,24 @@ export async function analyzeThemesAndPersonaCore({
 
 	// Note: Themes table has been simplified - only stores name and metadata
 	// The rich insight data (category, jtbd, etc.) should be stored elsewhere
-	const rows = insights.map((i) => ({
-		account_id: metadata.accountId,
-		project_id: metadata.projectId,
-		name: i.name,
-		statement: i.details ?? null, // Use details as statement
-		inclusion_criteria: i.evidence ?? null, // Use evidence as inclusion criteria
-		created_by: metadata.userId,
-		updated_by: metadata.userId,
-	}));
+	let data: Awaited<ReturnType<typeof db.from<"themes">>>["data"] = null;
+	if (!metadata.accountId) {
+		consola.warn("[analyzeThemesAndPersonaCore] Skipping theme insert — accountId is missing");
+	} else {
+		const rows = insights.map((i) => ({
+			account_id: metadata.accountId,
+			project_id: metadata.projectId,
+			name: i.name,
+			statement: i.details ?? null, // Use details as statement
+			inclusion_criteria: i.evidence ?? null, // Use evidence as inclusion criteria
+			created_by: metadata.userId,
+			updated_by: metadata.userId,
+		}));
 
-	const { data, error } = await db.from("themes").insert(rows).select();
-	if (error) throw new Error(`Failed to insert themes: ${error.message}`);
+		const result = await db.from("themes").insert(rows).select();
+		if (result.error) throw new Error(`Failed to insert themes: ${result.error.message}`);
+		data = result.data;
+	}
 
 	const generateFallbackName = (): string => {
 		if (metadata.fileName) {
@@ -2552,31 +2568,43 @@ export async function attributeAnswersAndFinalizeCore({
 					: "text"
 			: undefined;
 
-		posthog.capture("interview_added", {
-			interview_id: interviewRecord.id,
-			project_id: metadata.projectId,
-			account_id: metadata.accountId,
-			source,
-			duration_s: interviewRecord.duration_sec || 0,
-			file_type: fileType,
-			has_transcript: Boolean(fullTranscript),
-			evidence_count: insertedEvidenceIds.length,
-			insights_count: storedInsights.length,
-			$insert_id: `interview:${interviewRecord.id}:analysis`,
-		});
+		const posthog = getPostHogServerClient();
+		if (!posthog) {
+			consola.debug("[processInterview] PostHog not configured, skipping tracking");
+		} else {
+			const distinctId = metadata.userId || "anonymous";
 
-		if (metadata.userId) {
-			const { count: interviewCount } = await db
-				.from("interviews")
-				.select("id", { count: "exact", head: true })
-				.eq("account_id", metadata.accountId);
+			posthog.capture({
+				distinctId,
+				event: "interview_added",
+				properties: {
+					interview_id: interviewRecord.id,
+					project_id: metadata.projectId,
+					account_id: metadata.accountId,
+					source,
+					duration_s: interviewRecord.duration_sec || 0,
+					file_type: fileType,
+					has_transcript: Boolean(fullTranscript),
+					evidence_count: insertedEvidenceIds.length,
+					insights_count: storedInsights.length,
+					$insert_id: `interview:${interviewRecord.id}:analysis`,
+				},
+			});
 
-			if ((interviewCount || 0) <= 3) {
-				posthog.identify(metadata.userId, {
-					$set: {
-						interview_count: interviewCount || 1,
-					},
-				});
+			if (metadata.userId) {
+				const { count: interviewCount } = await db
+					.from("interviews")
+					.select("id", { count: "exact", head: true })
+					.eq("account_id", metadata.accountId);
+
+				if ((interviewCount || 0) <= 3) {
+					posthog.identify({
+						distinctId: metadata.userId,
+						properties: {
+							interview_count: interviewCount || 1,
+						},
+					});
+				}
 			}
 		}
 	} catch (trackingError) {
@@ -2743,6 +2771,20 @@ export async function uploadMediaAndTranscribeCore({
 			interviewId: interviewRecord.id,
 			status: interviewRecord.status,
 		});
+
+		// Backfill metadata from the DB record when the payload was missing them (common on retries)
+		if (!normalizedMetadata.accountId && interviewRecord.account_id) {
+			consola.warn("uploadMediaAndTranscribeCore: backfilling accountId from existing interview", {
+				interviewAccountId: interviewRecord.account_id,
+			});
+			normalizedMetadata.accountId = interviewRecord.account_id;
+		}
+		if (!normalizedMetadata.projectId && interviewRecord.project_id) {
+			consola.warn("uploadMediaAndTranscribeCore: backfilling projectId from existing interview", {
+				interviewProjectId: interviewRecord.project_id,
+			});
+			normalizedMetadata.projectId = interviewRecord.project_id;
+		}
 	} else {
 		const interviewData: InterviewInsert = {
 			account_id: normalizedMetadata.accountId,
@@ -2939,15 +2981,18 @@ export async function processInterviewTranscriptWithClient({
 			},
 		});
 
-		const normalizedConversationAnalysis = {
-			overview: conversationAnalysis.overview,
-			duration_estimate: conversationAnalysis.duration_estimate ?? null,
-			questions: conversationAnalysis.questions,
-			participant_goals: conversationAnalysis.participant_goals,
-			key_takeaways: conversationAnalysis.key_takeaways,
-			open_questions: conversationAnalysis.open_questions,
-			recommended_next_steps: conversationAnalysis.recommended_next_steps,
-		};
+		// Upsert structured analysis into the lens pipeline (conversation-overview lens)
+		const { upsertConversationOverviewLens } = await import(
+			"~/lib/conversation-analyses/upsertConversationOverviewLens.server"
+		);
+		await upsertConversationOverviewLens({
+			db,
+			interviewId: analysisResult.interview.id,
+			accountId: analysisResult.interview.account_id,
+			projectId: analysisResult.interview.project_id,
+			analysis: conversationAnalysis,
+			computedBy: metadata.userId,
+		});
 
 		const existingThemes = Array.isArray(analysisResult.interview.high_impact_themes)
 			? (analysisResult.interview.high_impact_themes ?? []).filter(
@@ -2969,22 +3014,21 @@ export async function processInterviewTranscriptWithClient({
 			? conversationAnalysis.open_questions.map((item, idx) => `${idx + 1}. ${item}`).join("\n")
 			: (analysisResult.interview.open_questions_and_next_steps ?? null);
 
+		// Update legacy text columns (high_impact_themes, open_questions_and_next_steps)
+		// but do NOT overwrite conversation_analysis — that's workflow state only now.
 		const { data: updatedInterview, error: analysisUpdateError } = await db
 			.from("interviews")
 			.update({
-				conversation_analysis: normalizedConversationAnalysis,
 				high_impact_themes: takeawayStrings.length ? takeawayStrings : null,
 				open_questions_and_next_steps: openQuestionsText,
 			})
 			.eq("id", analysisResult.interview.id)
-			.select("conversation_analysis, high_impact_themes, open_questions_and_next_steps")
+			.select("high_impact_themes, open_questions_and_next_steps")
 			.single();
 
 		if (analysisUpdateError) {
 			consola.warn("Failed to persist conversation analysis on interview", analysisUpdateError);
 		} else {
-			analysisResult.interview.conversation_analysis =
-				updatedInterview?.conversation_analysis ?? normalizedConversationAnalysis;
 			analysisResult.interview.high_impact_themes = updatedInterview?.high_impact_themes ?? takeawayStrings;
 			analysisResult.interview.open_questions_and_next_steps =
 				updatedInterview?.open_questions_and_next_steps ?? openQuestionsText ?? null;

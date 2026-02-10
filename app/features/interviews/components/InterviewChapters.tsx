@@ -4,10 +4,12 @@
  * Replaces the older PlayByPlayTimeline with a more visual, scannable design.
  */
 
-import { List } from "lucide-react";
-import { useState } from "react";
+import { ChevronLeft, ChevronRight, List } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { cn } from "~/lib/utils";
 import type { Evidence } from "~/types";
+
+const PAGE_SIZE = 5;
 
 interface InterviewChaptersProps {
 	evidence: Evidence[];
@@ -53,6 +55,7 @@ type Chapter = {
 
 export function InterviewChapters({ evidence, onChapterClick, className }: InterviewChaptersProps) {
 	const [activeIndex, setActiveIndex] = useState<number | null>(null);
+	const [pageStart, setPageStart] = useState(0);
 
 	// Sort evidence chronologically
 	const sortedEvidence = [...evidence].sort(
@@ -96,10 +99,27 @@ export function InterviewChapters({ evidence, onChapterClick, className }: Inter
 		return aTime - bTime;
 	});
 
-	const handleChapterClick = (index: number, time: number | null) => {
-		setActiveIndex(index);
-		onChapterClick?.(time);
-	};
+	const totalChapters = chapters.length;
+	const pageEnd = Math.min(pageStart + PAGE_SIZE, totalChapters);
+	const visibleChapters = useMemo(() => chapters.slice(pageStart, pageEnd), [chapters, pageStart, pageEnd]);
+	const hasPrev = pageStart > 0;
+	const hasNext = pageEnd < totalChapters;
+
+	const handleChapterClick = useCallback(
+		(globalIndex: number, time: number | null) => {
+			setActiveIndex(globalIndex);
+			onChapterClick?.(time);
+		},
+		[onChapterClick]
+	);
+
+	const handlePrev = useCallback(() => {
+		setPageStart((prev) => Math.max(0, prev - PAGE_SIZE));
+	}, []);
+
+	const handleNext = useCallback(() => {
+		setPageStart((prev) => Math.min(totalChapters - PAGE_SIZE, prev + PAGE_SIZE));
+	}, [totalChapters]);
 
 	if (chapters.length === 0) {
 		return null;
@@ -107,21 +127,49 @@ export function InterviewChapters({ evidence, onChapterClick, className }: Inter
 
 	return (
 		<div className={cn("space-y-4", className)}>
-			{/* Section header */}
-			<div className="flex items-center gap-2">
-				<List className="h-4 w-4 text-muted-foreground" />
-				<h3 className="font-semibold text-base text-foreground">Chapters</h3>
+			{/* Section header with count and pagination controls */}
+			<div className="flex items-center justify-between">
+				<div className="flex items-center gap-2">
+					<List className="h-4 w-4 text-muted-foreground" />
+					<h3 className="font-semibold text-base text-foreground">Chapters</h3>
+					<span className="text-muted-foreground text-xs">
+						{pageStart + 1}–{pageEnd} of {totalChapters}
+					</span>
+				</div>
+				{totalChapters > PAGE_SIZE && (
+					<div className="flex items-center gap-1">
+						<button
+							type="button"
+							onClick={handlePrev}
+							disabled={!hasPrev}
+							className="inline-flex h-6 w-6 items-center justify-center rounded border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+							aria-label="Previous chapters"
+						>
+							<ChevronLeft className="h-3.5 w-3.5" />
+						</button>
+						<button
+							type="button"
+							onClick={handleNext}
+							disabled={!hasNext}
+							className="inline-flex h-6 w-6 items-center justify-center rounded border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+							aria-label="Next chapters"
+						>
+							<ChevronRight className="h-3.5 w-3.5" />
+						</button>
+					</div>
+				)}
 			</div>
 
-			{/* Chapter cards */}
-			<div className="space-y-1.5">
-				{chapters.map((chapter, index) => {
-					const isActive = activeIndex === index;
+			{/* Chapter cards — windowed */}
+			<div className="max-h-[280px] space-y-1.5 overflow-y-auto">
+				{visibleChapters.map((chapter, localIndex) => {
+					const globalIndex = pageStart + localIndex;
+					const isActive = activeIndex === globalIndex;
 					return (
 						<button
-							key={`${chapter.topic}-${index}`}
+							key={`${chapter.topic}-${globalIndex}`}
 							type="button"
-							onClick={() => handleChapterClick(index, chapter.time)}
+							onClick={() => handleChapterClick(globalIndex, chapter.time)}
 							className={cn(
 								"group w-full rounded-md border px-3 py-2 text-left transition-all",
 								isActive

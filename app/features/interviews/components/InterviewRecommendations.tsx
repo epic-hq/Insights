@@ -3,7 +3,6 @@
  * from conversation analysis with focus tags and rationale quotes.
  */
 import { HelpCircle, Lightbulb } from "lucide-react";
-import { Badge } from "~/components/ui/badge";
 
 interface Recommendation {
 	focusArea: string;
@@ -34,24 +33,24 @@ export function InterviewRecommendations({ recommendations, openQuestions }: Int
 		<div className="space-y-4">
 			{/* Recommendations / Next Steps */}
 			{recommendations.length > 0 && (
-				<div className="space-y-3 rounded-lg border border-muted/60 bg-card p-5">
-					<label className="flex items-center gap-2 font-semibold text-foreground text-lg">
+				<div className="space-y-3 rounded-xl border bg-card p-5 shadow-sm">
+					<div className="flex items-center gap-2">
 						<Lightbulb className="h-5 w-5 text-amber-500" />
-						Recommendations
-					</label>
-					<div className="space-y-3">
+						<h3 className="font-semibold text-base text-foreground">Recommendations</h3>
+					</div>
+					<div className="space-y-2.5">
 						{recommendations.map((rec, index) => (
-							<div key={`${rec.focusArea}-${index}`} className="rounded-lg border border-muted/60 bg-muted/20 p-3">
-								<div className="mb-2 flex items-center gap-2">
+							<div key={`${rec.focusArea}-${index}`} className="rounded-lg border border-border bg-muted/20 p-3.5">
+								<div className="mb-2 flex items-start gap-2">
 									<span
-										className={`inline-flex items-center rounded px-2 py-0.5 font-semibold text-[11px] uppercase tracking-wide ${getFocusAreaColor(rec.focusArea)}`}
+										className={`mt-0.5 inline-flex shrink-0 items-center rounded px-2 py-0.5 font-semibold text-[11px] uppercase tracking-wider ${getFocusAreaColor(rec.focusArea)}`}
 									>
 										{rec.focusArea}
 									</span>
-									<p className="flex-1 font-medium text-foreground text-sm">{rec.action}</p>
+									<p className="flex-1 font-medium text-foreground text-sm leading-relaxed">{rec.action}</p>
 								</div>
 								{rec.rationale && (
-									<p className="text-muted-foreground text-xs italic leading-relaxed">{rec.rationale}</p>
+									<p className="text-[13px] text-muted-foreground italic leading-relaxed">{rec.rationale}</p>
 								)}
 							</div>
 						))}
@@ -59,14 +58,17 @@ export function InterviewRecommendations({ recommendations, openQuestions }: Int
 
 					{/* Open Questions */}
 					{openQuestions.length > 0 && (
-						<div className="mt-5 space-y-3 border-muted/60 border-t pt-5">
-							<label className="flex items-center gap-2 font-semibold text-sm">
+						<div className="mt-4 space-y-2.5 border-border border-t pt-4">
+							<div className="flex items-center gap-2">
 								<HelpCircle className="h-4 w-4 text-blue-500" />
-								Open Questions
-							</label>
-							<div className="space-y-2">
+								<h4 className="font-semibold text-foreground text-sm">Open Questions</h4>
+							</div>
+							<div className="space-y-1.5">
 								{openQuestions.map((question, index) => (
-									<div key={`q-${index}`} className="rounded-md bg-muted/20 px-3 py-2 text-muted-foreground text-sm">
+									<div
+										key={`q-${index}`}
+										className="rounded-md bg-muted/30 px-3 py-2.5 text-muted-foreground text-sm leading-relaxed"
+									>
 										{question}
 									</div>
 								))}

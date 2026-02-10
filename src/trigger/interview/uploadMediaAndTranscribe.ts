@@ -272,6 +272,45 @@ export const uploadMediaAndTranscribeTask = task({
 				throw new Error("Interview analysis completed without a result payload.")
 			}
 
+			// Generate structured conversation analysis (key takeaways, recommendations, open questions)
+			// and persist to conversation_lens_analyses for the detail page UI
+			metadata.set("stageLabel", "Generating conversation analysis")
+			metadata.set("progressPercent", 90)
+
+			try {
+				const { generateConversationAnalysis } = await import("~/utils/conversationAnalysis.server")
+				const { upsertConversationOverviewLens } = await import(
+					"~/lib/conversation-analyses/upsertConversationOverviewLens.server"
+				)
+
+				const attendees = [
+					payloadMetadata.interviewerName,
+					payloadMetadata.participantName,
+				].filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+
+				const conversationAnalysis = await generateConversationAnalysis({
+					transcript: uploadResult.fullTranscript,
+					context: {
+						meetingTitle: payloadMetadata.interviewTitle || interviewForAnalysis.title || undefined,
+						attendees: attendees.length ? attendees : undefined,
+					},
+				})
+
+				await upsertConversationOverviewLens({
+					db: client,
+					interviewId: interviewForAnalysis.id,
+					accountId: interviewForAnalysis.account_id,
+					projectId: interviewForAnalysis.project_id,
+					analysis: conversationAnalysis,
+					computedBy: payloadMetadata.userId,
+				})
+
+				console.log("✅ Conversation analysis generated and stored as conversation-overview lens")
+			} catch (convAnalysisErr) {
+				// Non-fatal — the rest of the pipeline already succeeded
+				console.error("⚠️ Conversation analysis generation failed (non-fatal):", convAnalysisErr)
+			}
+
 			metadata.set("stageLabel", "Analysis pipeline complete")
 			metadata.set("progressPercent", 100)
 

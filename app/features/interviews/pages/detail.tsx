@@ -1159,7 +1159,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const refreshTriggeredRef = useRef(false);
 	const fetcherPrevStateRef = useRef(fetcher.state);
 	const takeawaysPollTaskIdRef = useRef<string | null>(null);
-	const takeawaysPollTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+	const takeawaysPollTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>();
 
 	const submitInterviewFieldUpdate = (field_name: string, field_value: string) => {
 		const target = field_name === "observations_and_notes" ? notesFetcher : fetcher;
@@ -1183,11 +1183,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	const handleSourceClick = useCallback((evidenceId: string) => {
 		setHighlightedEvidenceId(evidenceId);
-		const el = document.getElementById(`evidence-${evidenceId}`);
-		if (el) {
-			el.scrollIntoView({ behavior: "smooth", block: "center" });
-		}
-		// Clear highlight after 2.5s
 		setTimeout(() => setHighlightedEvidenceId(null), 2500);
 	}, []);
 	const handleParticipantsUpdated = useCallback(() => {
@@ -1287,7 +1282,19 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	// Calculate transcript speakers for the Manage Participants dialog
 	const transcriptSpeakers = useTranscriptSpeakers(interview.transcript_formatted);
-	const aiKeyTakeaways = conversationAnalysis?.keyTakeaways ?? [];
+	// Match takeaways to evidence for "See source" linking
+	const aiKeyTakeaways = useMemo(() => {
+		const takeaways = conversationAnalysis?.keyTakeaways ?? [];
+		if (!takeaways.length || !evidence?.length) return takeaways;
+
+		// Create mutable copies and match them to evidence
+		const takeawaysWithEvidence = takeaways.map((t) => ({ ...t }));
+		matchTakeawaysToEvidence(
+			takeawaysWithEvidence,
+			evidence.map((e) => ({ id: e.id, verbatim: e.verbatim, gist: e.gist }))
+		);
+		return takeawaysWithEvidence;
+	}, [conversationAnalysis?.keyTakeaways, evidence]);
 	const conversationUpdatedLabel =
 		conversationAnalysis?.updatedAt && !Number.isNaN(new Date(conversationAnalysis.updatedAt).getTime())
 			? formatReadable(conversationAnalysis.updatedAt)
@@ -1709,7 +1716,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					</div>
 
 					{/* Right column: Sources (sticky) */}
-					<div className="lg:sticky lg:top-4 lg:self-start">
+					<div className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
 						<InterviewSourcePanel
 							interview={interview}
 							evidence={evidence}
@@ -1719,6 +1726,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							onSpeakerClick={() => setParticipantsDialogOpen(true)}
 							onEvidenceSelect={handleEvidenceSelect}
 							highlightedEvidenceId={highlightedEvidenceId}
+							onClearHighlight={() => setHighlightedEvidenceId(null)}
 						/>
 					</div>
 				</div>
@@ -1785,7 +1793,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				</AlertDialogContent>
 			</AlertDialog>
 
-			{/* Evidence Verification Drawer */}
 			<EvidenceVerificationDrawer
 				open={verifyDrawerOpen}
 				onOpenChange={setVerifyDrawerOpen}

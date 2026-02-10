@@ -208,9 +208,6 @@ export function LensAccordion({
 		[sortedTemplates, analyses]
 	);
 
-	// Default to first template with data expanded
-	const defaultValue = templatesWithData[0]?.template_key;
-
 	if (templates.length === 0) {
 		return (
 			<div className="py-12 text-center text-muted-foreground">
@@ -240,7 +237,7 @@ export function LensAccordion({
 
 	return (
 		<div className={cn("space-y-4", className)}>
-			<Accordion type="single" collapsible defaultValue={defaultValue} className="space-y-3">
+			<Accordion type="single" collapsible className="space-y-3">
 				{templatesWithData.map((template) => {
 					const analysis = analyses[template.template_key];
 					return (

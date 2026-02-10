@@ -52,9 +52,9 @@ Jot notes here as you work. Close beads with `bd close`. When you ask me to upda
 ## Sunday 2/8
 2/8
 - **people-org schema confusion** needs to be cleared up. this is impacting facets, ICP functions - no bead or doc yet. Claude analysis https://claude.ai/code/session_01M8nLXmam7dhmxrzpM1oRyw 
-  - phase 3e currently removing old references to fields (2/9)
-  - there may be some functions referring to old code
-  - merging PR now (2/9)
+  - phase 3e currently removing old references to fields (2/9) (DONE)
+  - there may be some functions referring to old code (Found a few DONE?)
+  - merged PR  (2/9)
 
 ## Monday 2/9
 ```
@@ -64,18 +64,30 @@ Jot notes here as you work. Close beads with `bd close`. When you ask me to upda
 - Bryan Rill UX Researcher feedback digestion into plan
   - taxonomy architecture audit (Codex)
     [ux-research-party-mode-analysis-2026-02-09.md](app://-/index.html# "/Users/richardmoy/Code/ai/Insights/_bmad-output/ux-research-party-mode-analysis-2026-02-09.md (line 1)")
-	- UI refactor Interview page monolith, light touch on Evidence Correction in this (r713 and 64cp)
-	  **MAJOR** doing now
+	- UI refactor Interview page monolith, light touch on Evidence Correction in this (r713 and 64cp) -- (DONE)
+	  DO THIS: file:///Users/richardmoy/Code/ai/Insights/_bmad-output/interview-detail-mockup.html# (ALMOST DONE)
 	  
 - UI Refactoring with BMAD UX for mobile & person page to make more insightful & actionable
   
-DJ
-- survey responses. column people not found.
+
+- DJ found bug in survey responses. column people not found. (DONE)
   - user wants to capture company and other info. how do we allow users to specify fields they can collect? need to allow for some existing fields we need to have special rules about (title, industry, etc) bc organizations is linked record, and some custom
-- url uploads
-- not deleting
+- url uploads (DONE)
+- not deleting (DONE)
 
 ```
+
+## Tuesday 2/10 - Sales & Marketing
+
+- survey demo prod
+	- send to dennis, cheryl, eric, bryan
+- platform invites
+	- eric, bryan
+- email campaign start
+- usage visibility in PH
+
+* event promo for 2/19
+
 
 ## Parking Lot (not this sprint)
 

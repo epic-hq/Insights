@@ -156,7 +156,7 @@ export default function ProcessingScreen({
 				<div className="space-y-2">
 					<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
 						<div
-							className="h-full bg-primary transition-all duration-500 ease-out"
+							className={`h-full bg-primary transition-all ease-out ${showUploadProgress ? "duration-150" : "duration-500"}`}
 							style={{ width: `${displayProgress}%` }}
 						/>
 					</div>

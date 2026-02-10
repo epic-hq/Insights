@@ -3,8 +3,8 @@
  * Contains: media player, evidence timeline (chapters), transcript, and questions.
  * Evidence items include "Verify" affordance that opens the verification drawer.
  */
-import { Clock, Eye, ThumbsDown, ThumbsUp } from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, Clock, ThumbsDown, ThumbsUp } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Badge } from "~/components/ui/badge";
 import { MediaPlayer } from "~/components/ui/MediaPlayer";
 import type { VoteCounts } from "~/features/annotations/db";
@@ -102,6 +102,10 @@ interface InterviewSourcePanelProps {
 	onSpeakerClick: () => void;
 	/** Called when user clicks "Verify" on an evidence item */
 	onEvidenceSelect?: (evidenceId: string) => void;
+	/** Evidence ID to scroll to and highlight (from Key Insights "See source") */
+	highlightedEvidenceId?: string | null;
+	/** Callback to clear the highlight (called after animation completes) */
+	onClearHighlight?: () => void;
 }
 
 export function InterviewSourcePanel({
@@ -112,6 +116,8 @@ export function InterviewSourcePanel({
 	projectId,
 	onSpeakerClick,
 	onEvidenceSelect,
+	highlightedEvidenceId,
+	onClearHighlight,
 }: InterviewSourcePanelProps) {
 	const [playbackTime, setPlaybackTime] = useState<number | null>(null);
 
@@ -120,6 +126,27 @@ export function InterviewSourcePanel({
 			setPlaybackTime(seconds);
 		}
 	};
+
+	useEffect(() => {
+		if (!highlightedEvidenceId) return;
+
+		// Wait for React to render the element, then scroll
+		const timer = setTimeout(() => {
+			const el = document.getElementById(`evidence-${highlightedEvidenceId}`);
+			if (el) {
+				el.scrollIntoView({ behavior: "smooth", block: "center" });
+			}
+		}, 50);
+
+		const clearTimer = setTimeout(() => {
+			onClearHighlight?.();
+		}, 2500);
+
+		return () => {
+			clearTimeout(timer);
+			clearTimeout(clearTimer);
+		};
+	}, [highlightedEvidenceId, onClearHighlight]);
 
 	return (
 		<div className="space-y-6">
@@ -139,36 +166,55 @@ export function InterviewSourcePanel({
 			{/* Evidence Timeline (Chapters) */}
 			{evidence.length > 0 && <InterviewChapters evidence={evidence} onChapterClick={handleChapterClick} />}
 
-			{/* Evidence items with verification affordance */}
+			{/* Evidence items with quotes and verification */}
 			{evidence.length > 0 && onEvidenceSelect && (
-				<div className="space-y-2">
-					<h3 className="font-semibold text-foreground text-lg">Evidence ({evidence.length})</h3>
-					<div className="max-h-[400px] space-y-1.5 overflow-y-auto">
+				<div className="space-y-3">
+					<h3 className="font-semibold text-base text-foreground">Evidence ({evidence.length})</h3>
+					<div className="max-h-[600px] space-y-2 overflow-y-auto">
 						{evidence.slice(0, 50).map((item) => {
 							const seconds = extractAnchorSeconds(item.anchors);
 							const votes = evidenceVoteCounts?.[item.id];
 							const hasVotes = votes && (votes.upvotes > 0 || votes.downvotes > 0);
+							const isHighlighted = highlightedEvidenceId === item.id;
+
 							return (
-								<button
+								<div
 									key={item.id}
 									id={`evidence-${item.id}`}
-									type="button"
-									onClick={() => onEvidenceSelect(item.id)}
-									className="group flex w-full scroll-mt-4 items-start gap-2 rounded-md border border-transparent px-3 py-2 text-left transition-colors hover:border-border hover:bg-muted/40"
+									className={cn(
+										"scroll-mt-4 rounded-lg border p-3 transition-all duration-500",
+										isHighlighted
+											? "border-primary bg-primary/10 ring-1 ring-primary/30"
+											: "border-border bg-card hover:border-muted-foreground/30"
+									)}
 								>
-									<div className="min-w-0 flex-1">
-										<p className="line-clamp-2 text-foreground text-sm">{item.gist || item.verbatim || "Evidence"}</p>
-										<div className="mt-1 flex items-center gap-2">
+									{/* Gist / summary */}
+									<p className="mb-2 text-foreground text-sm leading-relaxed">{item.gist || "Evidence"}</p>
+
+									{/* Verbatim quote */}
+									{item.verbatim && (
+										<blockquote className="mb-2 rounded-r border-l-[3px] border-l-primary/60 bg-muted/30 px-3 py-2 text-muted-foreground text-sm italic leading-relaxed">
+											{item.verbatim.length > 200 ? `${item.verbatim.slice(0, 200)}…` : item.verbatim}
+										</blockquote>
+									)}
+
+									{/* Footer: topic, timestamp, votes, verify link */}
+									<div className="flex items-center justify-between gap-2">
+										<div className="flex items-center gap-2">
 											{item.topic && (
 												<Badge variant="outline" className="text-[10px] leading-tight">
 													{item.topic}
 												</Badge>
 											)}
 											{seconds !== null && (
-												<span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-													<Clock className="h-2.5 w-2.5" />
+												<button
+													type="button"
+													onClick={() => handleChapterClick(seconds)}
+													className="flex items-center gap-0.5 rounded px-1 py-0.5 font-mono text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+												>
+													<Clock className="h-3 w-3" />
 													{formatTimestamp(seconds)}
-												</span>
+												</button>
 											)}
 											{hasVotes && (
 												<span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -187,13 +233,16 @@ export function InterviewSourcePanel({
 												</span>
 											)}
 										</div>
+										<button
+											type="button"
+											onClick={() => onEvidenceSelect(item.id)}
+											className="inline-flex items-center gap-1 font-medium text-primary text-xs transition-colors hover:text-primary/80"
+										>
+											View evidence
+											<ArrowRight className="h-3 w-3" />
+										</button>
 									</div>
-									<Eye
-										className={cn(
-											"mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground/0 transition-colors group-hover:text-primary"
-										)}
-									/>
-								</button>
+								</div>
 							);
 						})}
 					</div>

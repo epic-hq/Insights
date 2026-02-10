@@ -270,6 +270,8 @@ const routes = [
 	route("api/update-lens-analysis-field", "./routes/api.update-lens-analysis-field.tsx"),
 	route("api/update-lens-entity", "./routes/api.update-lens-entity.tsx"),
 	route("api/regenerate-ai-summary", "./routes/api.regenerate-ai-summary.tsx"),
+	route("api/regenerate-conversation-analysis", "./routes/api.regenerate-conversation-analysis.tsx"),
+	route("api/backfill-conversation-overview-lens", "./routes/api.backfill-conversation-overview-lens.tsx"),
 	route("api/link-interview-participant", "./routes/api.link-interview-participant.tsx"),
 	route("api/generate-thumbnails", "./routes/api.generate-thumbnails.tsx"),
 	route("api/index-note", "./routes/api.index-note.tsx"),

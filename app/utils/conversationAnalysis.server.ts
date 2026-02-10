@@ -34,6 +34,8 @@ function buildContextString(context: ConversationContext | undefined) {
  */
 export type ConversationContext = z.infer<typeof conversationContextSchema>;
 
+const MIN_TRANSCRIPT_LENGTH = 200;
+
 export async function generateConversationAnalysis({
 	transcript,
 	context,
@@ -41,6 +43,21 @@ export async function generateConversationAnalysis({
 	transcript: string;
 	context?: ConversationContext;
 }): Promise<ConversationAnalysis> {
+	if (transcript.length < MIN_TRANSCRIPT_LENGTH) {
+		consola.warn(
+			`[conversationAnalysis] Transcript too short (${transcript.length} chars < ${MIN_TRANSCRIPT_LENGTH}), returning minimal analysis`
+		);
+		return {
+			overview: transcript.trim() || "Transcript too short for meaningful analysis.",
+			duration_estimate: null,
+			questions: [],
+			participant_goals: [],
+			key_takeaways: [],
+			open_questions: [],
+			recommended_next_steps: [],
+		};
+	}
+
 	const sanitizedContext = conversationContextSchema.parse(context ?? {});
 	const contextString = buildContextString(sanitizedContext);
 

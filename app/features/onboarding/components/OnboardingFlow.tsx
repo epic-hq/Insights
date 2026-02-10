@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Button } from "~/components/ui/button";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
@@ -194,6 +194,30 @@ export default function OnboardingFlow({
 	});
 	const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
 	const [isUploading, setIsUploading] = useState(false);
+	const uploadProgressRef = useRef<UploadProgress | null>(null);
+	const rafIdRef = useRef<number | null>(null);
+
+	// Flush latest progress to state at paint boundaries (avoids React 18 batching lag)
+	const handleUploadProgress = useCallback((progress: UploadProgress) => {
+		uploadProgressRef.current = progress;
+		if (rafIdRef.current === null) {
+			rafIdRef.current = requestAnimationFrame(() => {
+				rafIdRef.current = null;
+				if (uploadProgressRef.current) {
+					setUploadProgress({ ...uploadProgressRef.current });
+				}
+			});
+		}
+	}, []);
+
+	// Clean up rAF on unmount
+	useEffect(() => {
+		return () => {
+			if (rafIdRef.current !== null) {
+				cancelAnimationFrame(rafIdRef.current);
+			}
+		};
+	}, []);
 
 	const handleWelcomeNext = useCallback(
 		async (welcomeData: {
@@ -319,15 +343,13 @@ export default function OnboardingFlow({
 												})),
 											}),
 										});
+
 										if (!completeResponse.ok) {
 											throw new Error("Failed to complete multipart upload");
 										}
 									},
 								},
-								onProgress: (progress: UploadProgress) => {
-									console.log(`[Upload] Progress: ${progress.percent}% (phase: ${progress.phase})`);
-									setUploadProgress(progress);
-								},
+								onProgress: handleUploadProgress,
 							});
 							r2Key = presignedData.key;
 						} else {
@@ -337,17 +359,13 @@ export default function OnboardingFlow({
 								file,
 								singlePartUrl: presignedData.uploadUrl,
 								contentType: file.type || "application/octet-stream",
-								onProgress: (progress: UploadProgress) => {
-									console.log(`[Upload] Progress: ${progress.percent}% (phase: ${progress.phase})`);
-									setUploadProgress(progress);
-								},
+								onProgress: handleUploadProgress,
 							});
 							r2Key = presignedData.key;
 						}
 
 						console.log("[Upload] Direct R2 upload complete:", r2Key);
 					} catch (r2Error) {
-						// Direct R2 upload failed (likely CORS or network issue)
 						// Fall back to server-proxied upload
 						console.warn("[Upload] Direct R2 upload failed, falling back to server upload:", r2Error);
 						r2Key = null; // Ensure we use server upload path

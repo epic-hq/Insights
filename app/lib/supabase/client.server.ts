@@ -9,8 +9,7 @@ export const getServerClient = (request: Request) => {
 	const requestUrl = new URL(request.url);
 	// Use x-forwarded-host (from reverse proxy) or host header to get the actual hostname
 	// request.url contains internal hostname (localhost/0.0.0.0) when behind Fly.io/proxies
-	const actualHost =
-		request.headers.get("x-forwarded-host") || request.headers.get("host") || requestUrl.hostname;
+	const actualHost = request.headers.get("x-forwarded-host") || request.headers.get("host") || requestUrl.hostname;
 	const isProduction = actualHost === "getupsight.com" || actualHost.endsWith(".getupsight.com");
 
 	const supabase = createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -52,7 +51,7 @@ export function createSupabaseAdminClient() {
 	return createServerClient<Database>(SUPABASE_URL, _SUPABASE_SERVICE_ROLE_KEY, {
 		cookies: {
 			getAll: () => [],
-			setAll: () => { },
+			setAll: () => {},
 		},
 		auth: {
 			autoRefreshToken: false,
@@ -132,7 +131,7 @@ export async function getSession(request: Request) {
 export const supabaseAnon = createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
 	cookies: {
 		getAll: () => [],
-		setAll: () => { },
+		setAll: () => {},
 	},
 	auth: { persistSession: false },
 });
@@ -142,7 +141,7 @@ export function getRlsClient(jwt: string) {
 	return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
 		cookies: {
 			getAll: () => [],
-			setAll: () => { },
+			setAll: () => {},
 		},
 		auth: { persistSession: false },
 		global: {
