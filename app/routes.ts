@@ -218,6 +218,12 @@ const routes = [
           "api/interview-transcript",
           "./routes/api.interview-transcript.tsx",
         ),
+
+        // Evidence semantic search API (project-scoped)
+        route(
+          "api/evidence/semantic-search",
+          "./routes/api.evidence.semantic-search.tsx",
+        ),
       ]),
 
       // Account-scoped quick record API: creates project + interview
@@ -397,10 +403,6 @@ const routes = [
   route(
     "api/similar-evidence-for-insight",
     "./routes/api.similar-evidence-for-insight.tsx",
-  ),
-  route(
-    "api/evidence/semantic-search",
-    "./routes/api.evidence.semantic-search.tsx",
   ),
   route("api/reprocess-interview", "./routes/api.reprocess-interview.tsx"),
   route("api/fix-stuck-interview", "./routes/api.fix-stuck-interview.tsx"),

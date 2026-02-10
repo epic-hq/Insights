@@ -633,10 +633,16 @@ export default function EvidenceIndex() {
     const timer = setTimeout(async () => {
       try {
         console.log("[Semantic Search] Starting search for:", searchQuery);
-        const url = `/api/evidence/semantic-search?query=${encodeURIComponent(searchQuery)}&projectId=${currentProject?.projectId}&matchThreshold=0.5&matchCount=20`;
+        if (!currentProject?.projectPath || !currentProject?.projectId) {
+          console.error("[Semantic Search] No project context available");
+          return;
+        }
+        const url = `${currentProject.projectPath}/api/evidence/semantic-search?query=${encodeURIComponent(searchQuery)}&projectId=${currentProject.projectId}&matchThreshold=0.5&matchCount=20`;
         console.log("[Semantic Search] URL:", url);
 
-        const response = await fetch(url);
+        const response = await fetch(url, {
+          credentials: "include", // Include cookies for auth
+        });
 
         if (response.ok) {
           const data = await response.json();
