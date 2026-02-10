@@ -255,6 +255,7 @@ describe("fetchProjectStatusContextTool", () => {
 					const builder: any = {};
 					builder.select = () => builder;
 					builder.eq = () => builder;
+					builder.is = () => builder;
 					builder.in = () => builder;
 					builder.order = () => ({
 						limit: () => Promise.resolve({ data: evidenceRows, error: null }),
@@ -647,40 +648,42 @@ describe("fetchProjectStatusContextTool", () => {
 					};
 				case "evidence":
 					return {
-						select: () => ({
-							eq: () => ({
-								order: () => ({
-									limit: () =>
-										Promise.resolve({
-											data: [
-												{
-													id: "ev-1",
-													gist: "Pricing confusion blocks purchases",
-													verbatim: "I cannot tell which plan fits our team",
-													context_summary: null,
-													modality: "interview",
-													journey_stage: "evaluation",
-													topic: "pricing",
-													support: "high",
-													is_question: false,
-													interview_id: "int-1",
-													project_id: "project-123",
-													created_at: now,
-													updated_at: now,
-													says: null,
-													does: null,
-													thinks: null,
-													feels: null,
-													pains: null,
-													gains: null,
-													anchors: null,
-												},
-											],
-											error: null,
-										}),
-								}),
-							}),
-						}),
+						select: () => {
+							const builder: any = {};
+							builder.eq = () => builder;
+							builder.is = () => builder;
+							builder.order = () => ({
+								limit: () =>
+									Promise.resolve({
+										data: [
+											{
+												id: "ev-1",
+												gist: "Pricing confusion blocks purchases",
+												verbatim: "I cannot tell which plan fits our team",
+												context_summary: null,
+												modality: "interview",
+												journey_stage: "evaluation",
+												topic: "pricing",
+												support: "high",
+												is_question: false,
+												interview_id: "int-1",
+												project_id: "project-123",
+												created_at: now,
+												updated_at: now,
+												says: null,
+												does: null,
+												thinks: null,
+												feels: null,
+												pains: null,
+												gains: null,
+												anchors: null,
+											},
+										],
+										error: null,
+									}),
+							});
+							return builder;
+						},
 					};
 				default:
 					throw new Error(`Unexpected table ${table}`);

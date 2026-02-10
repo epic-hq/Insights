@@ -131,8 +131,11 @@ describe("fetchTopThemesWithPeopleTool", () => {
 					};
 				case "evidence":
 					return {
-						select: () => ({
-							in: () =>
+						select: () => {
+							const builder: any = {};
+							builder.in = () => builder;
+							builder.is = () => builder;
+							builder.eq = () =>
 								Promise.resolve({
 									data: [
 										{ id: "ev-1", interview_id: "int-1" },
@@ -140,8 +143,9 @@ describe("fetchTopThemesWithPeopleTool", () => {
 										{ id: "ev-3", interview_id: "int-1" },
 									],
 									error: null,
-								}),
-						}),
+								});
+							return builder;
+						},
 					};
 				case "evidence_facet":
 					return {
