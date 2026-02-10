@@ -855,6 +855,18 @@ export default function EvidenceIndex() {
       <div className="space-y-3">
         {/* View mode and regenerate */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <fetcher.Form method="post">
+            <input type="hidden" name="intent" value="regenerate" />
+            <Button
+              type="submit"
+              variant="secondary"
+              size="sm"
+              disabled={isRegenerating}
+            >
+              {isRegenerating ? "Regenerating…" : "Regenerate Evidence"}
+            </Button>
+          </fetcher.Form>
+
           <ToggleGroup
             type="single"
             value={viewMode}
@@ -876,18 +888,6 @@ export default function EvidenceIndex() {
               <span className="hidden sm:inline">Expanded</span>
             </ToggleGroupItem>
           </ToggleGroup>
-
-          <fetcher.Form method="post">
-            <input type="hidden" name="intent" value="regenerate" />
-            <Button
-              type="submit"
-              variant="secondary"
-              size="sm"
-              disabled={isRegenerating}
-            >
-              {isRegenerating ? "Regenerating…" : "Regenerate Evidence"}
-            </Button>
-          </fetcher.Form>
         </div>
 
         {/* Compact filters row */}
