@@ -1,5 +1,12 @@
 import consola from "consola";
-import { Grid3X3, List } from "lucide-react";
+import {
+  AlertCircle,
+  Grid3X3,
+  List,
+  MessageSquare,
+  Star,
+  Target,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import {
@@ -114,6 +121,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
   const filterSupport = url.searchParams.get("support");
   const filterConfidence = url.searchParams.get("confidence");
   const filterMethod = url.searchParams.get("method");
+  const filterFacetKind = url.searchParams.get("facet_kind") || undefined;
   const filterPersonId = url.searchParams.get("person_id") || undefined;
   const filterPersonNameParam =
     url.searchParams.get("person_name") || undefined;
@@ -330,6 +338,49 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
       return {
         evidence: [],
         filteredByUpvoted: true,
+        filteredByStarred: filterStarred,
+        filteredByTheme: themeId,
+        filteredByRQ: rqId,
+        filteredByPerson: filterPersonId,
+        filteredByInterview: filterInterviewId
+          ? { id: filterInterviewId, title: null }
+          : null,
+      };
+    }
+  }
+
+  // If filtering by facet kind, get evidence IDs with that facet type
+  if (filterFacetKind) {
+    const { data: facetEvidence, error: facetErr } = await supabase
+      .from("evidence_facet")
+      .select("evidence_id")
+      .eq("project_id", projectId)
+      .eq("kind_slug", filterFacetKind);
+
+    if (facetErr)
+      throw new Error(
+        `Failed to load evidence for facet kind: ${facetErr.message}`,
+      );
+
+    const facetEvidenceIds =
+      facetEvidence
+        ?.map((f) => f.evidence_id)
+        .filter((id): id is string => Boolean(id)) || [];
+
+    // Intersect with existing filters if present
+    if (evidenceIdFilter) {
+      evidenceIdFilter = evidenceIdFilter.filter((id) =>
+        facetEvidenceIds.includes(id),
+      );
+    } else {
+      evidenceIdFilter = facetEvidenceIds;
+    }
+
+    if (evidenceIdFilter.length === 0) {
+      return {
+        evidence: [],
+        filteredByFacetKind: filterFacetKind,
+        filteredByUpvoted: filterUpvoted,
         filteredByStarred: filterStarred,
         filteredByTheme: themeId,
         filteredByRQ: rqId,
@@ -837,81 +888,87 @@ export default function EvidenceIndex() {
           </fetcher.Form>
         </div>
 
-        {/* Modern filters */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-1">
-            <label className="font-medium text-muted-foreground text-xs">
-              Sort by
-            </label>
-            <div className="flex gap-1">
-              <select
-                value={sortBy}
-                onChange={(e) => updateParam("sort_by", e.target.value)}
-                className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              >
-                <option value="created_at">Created</option>
-                <option value="confidence">Confidence</option>
-              </select>
-              <select
-                value={sortDir}
-                onChange={(e) => updateParam("sort_dir", e.target.value)}
-                className="rounded-md border border-input bg-background px-2 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              >
-                <option value="desc">↓</option>
-                <option value="asc">↑</option>
-              </select>
-            </div>
+        {/* Compact filters row */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* JTBD Quick Filters */}
+          <div className="flex flex-wrap gap-1.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 px-2 text-xs"
+              onClick={() => updateParam("facet_kind", "goal")}
+            >
+              <Target className="h-3 w-3" />
+              Goals
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 px-2 text-xs"
+              onClick={() => updateParam("facet_kind", "gain")}
+            >
+              <MessageSquare className="h-3 w-3" />
+              Gains
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 px-2 text-xs"
+              onClick={() => updateParam("facet_kind", "pain")}
+            >
+              <AlertCircle className="h-3 w-3" />
+              Pains
+            </Button>
           </div>
 
-          <div className="space-y-1">
-            <label className="font-medium text-muted-foreground text-xs">
-              Support
-            </label>
-            <select
-              value={support}
-              onChange={(e) => updateParam("support", e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            >
-              <option value="">All</option>
-              <option value="supports">Supports</option>
-              <option value="neutral">Neutral</option>
-              <option value="refutes">Refutes</option>
-            </select>
-          </div>
+          <div className="h-4 w-px bg-border" />
 
-          <div className="space-y-1">
-            <label className="font-medium text-muted-foreground text-xs">
-              Confidence
-            </label>
-            <select
-              value={confidence}
-              onChange={(e) => updateParam("confidence", e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            >
-              <option value="">All</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-          </div>
+          {/* Compact Sort */}
+          <select
+            value={`${sortBy}-${sortDir}`}
+            onChange={(e) => {
+              const [newSort, newDir] = e.target.value.split("-");
+              updateParam("sort_by", newSort);
+              updateParam("sort_dir", newDir);
+            }}
+            className="h-7 rounded-md border border-input bg-background px-2 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="created_at-desc">Newest</option>
+            <option value="created_at-asc">Oldest</option>
+            <option value="confidence-desc">High Confidence</option>
+            <option value="confidence-asc">Low Confidence</option>
+          </select>
 
-          <div className="space-y-1">
-            <label className="font-medium text-muted-foreground text-xs">
-              Method
-            </label>
-            <select
-              value={method}
-              onChange={(e) => updateParam("method", e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            >
-              <option value="">All</option>
-              <option value="interview">Interview</option>
-              <option value="secondary">Secondary</option>
-            </select>
-          </div>
+          {/* Compact Confidence */}
+          <select
+            value={confidence}
+            onChange={(e) => updateParam("confidence", e.target.value)}
+            className="h-7 rounded-md border border-input bg-background px-2 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">All Confidence</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+
+          {/* Compact Method */}
+          <select
+            value={method}
+            onChange={(e) => updateParam("method", e.target.value)}
+            className="h-7 rounded-md border border-input bg-background px-2 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">All Methods</option>
+            <option value="interview">Interview</option>
+            <option value="secondary">Secondary</option>
+          </select>
+
+          <div className="h-4 w-px bg-border" />
 
           {/* Toggle filters */}
-          <div className="col-span-full flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             <Button
               type="button"
               variant={filteredByStarred ? "default" : "outline"}
@@ -925,9 +982,10 @@ export default function EvidenceIndex() {
                 }
                 setSearchParams(next);
               }}
-              className="h-8"
+              className="h-7 gap-1 px-2 text-xs"
             >
-              ⭐ Starred
+              <Star className="h-3 w-3" />
+              Starred
             </Button>
             <Button
               type="button"
@@ -999,7 +1057,93 @@ export default function EvidenceIndex() {
           No evidence found matching "{searchQuery}". Try a different search
           term.
         </div>
+      ) : searchQuery &&
+        (keywordMatches.length > 0 || semanticResults.length > 0) ? (
+        // Grouped search results
+        <div className="space-y-6">
+          {/* Exact Matches Section */}
+          {keywordMatches.length > 0 && (
+            <div>
+              <div className="mb-3 flex items-center gap-3">
+                <h3 className="font-semibold text-gray-300 text-sm uppercase tracking-wide">
+                  Exact Matches
+                </h3>
+                <span className="text-gray-500 text-xs">
+                  ({keywordMatches.length} result
+                  {keywordMatches.length !== 1 ? "s" : ""})
+                </span>
+              </div>
+              <div className={listClassName}>
+                {keywordMatches.map((item) => (
+                  <Link
+                    key={item.id}
+                    to={item.id}
+                    className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  >
+                    <EvidenceCard
+                      evidence={item}
+                      people={item.people}
+                      interview={item.interview ?? null}
+                      variant={viewMode}
+                      className="h-full"
+                      disableLinks
+                    />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Related Insights Section (semantic-only) */}
+          {semanticResults.filter(
+            (r) => !keywordMatches.some((k) => k.id === r.id),
+          ).length > 0 && (
+            <div>
+              <div className="mb-3 flex items-center gap-3">
+                <h3 className="font-semibold text-gray-300 text-sm uppercase tracking-wide">
+                  Related Insights
+                </h3>
+                <span className="text-gray-500 text-xs">
+                  (
+                  {
+                    semanticResults.filter(
+                      (r) => !keywordMatches.some((k) => k.id === r.id),
+                    ).length
+                  }{" "}
+                  result
+                  {semanticResults.filter(
+                    (r) => !keywordMatches.some((k) => k.id === r.id),
+                  ).length !== 1
+                    ? "s"
+                    : ""}
+                  )
+                </span>
+              </div>
+              <div className={listClassName}>
+                {semanticResults
+                  .filter((r) => !keywordMatches.some((k) => k.id === r.id))
+                  .map((item) => (
+                    <Link
+                      key={item.id}
+                      to={item.id}
+                      className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    >
+                      <EvidenceCard
+                        evidence={item}
+                        people={item.people}
+                        interview={item.interview ?? null}
+                        variant={viewMode}
+                        className="h-full"
+                        disableLinks
+                      />
+                    </Link>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
+        // No search: show all filtered evidence
         <div className={listClassName}>
           {filteredEvidence.map((item) => (
             <Link
