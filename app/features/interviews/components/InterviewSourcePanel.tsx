@@ -131,14 +131,9 @@ export function InterviewSourcePanel({
 		if (!highlightedEvidenceId) return;
 
 		const timer = setTimeout(() => {
-			const container = document.getElementById("evidence-scroll-container");
 			const el = document.getElementById(`evidence-${highlightedEvidenceId}`);
-			if (container && el) {
-				const containerRect = container.getBoundingClientRect();
-				const elRect = el.getBoundingClientRect();
-				const scrollTop =
-					container.scrollTop + (elRect.top - containerRect.top) - containerRect.height / 2 + elRect.height / 2;
-				container.scrollTo({ top: scrollTop, behavior: "smooth" });
+			if (el) {
+				el.scrollIntoView({ behavior: "smooth", block: "center" });
 			}
 		}, 50);
 
@@ -174,7 +169,7 @@ export function InterviewSourcePanel({
 			{evidence.length > 0 && onEvidenceSelect && (
 				<div className="space-y-3">
 					<h3 className="font-semibold text-base text-foreground">Evidence ({evidence.length})</h3>
-					<div className="max-h-[600px] space-y-2 overflow-y-auto" id="evidence-scroll-container">
+					<div className="space-y-2" id="evidence-scroll-container">
 						{evidence.slice(0, 100).map((item) => {
 							const seconds = extractAnchorSeconds(item.anchors);
 							const votes = evidenceVoteCounts?.[item.id];
