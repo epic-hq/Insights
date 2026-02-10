@@ -865,6 +865,7 @@ export default function EvidenceIndex() {
       </div>
 
       {/* Compact filters row */}
+      <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* Left: JTBD Quick Filters + Toggle filters */}
           <div className="flex flex-wrap items-center gap-2">
