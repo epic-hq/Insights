@@ -129,15 +129,21 @@ export function InterviewSourcePanel({
 
 	useEffect(() => {
 		if (!highlightedEvidenceId) return;
+		console.log("[SourcePanel] Highlight triggered for:", highlightedEvidenceId);
 
 		const timer = setTimeout(() => {
 			const el = document.getElementById(`evidence-${highlightedEvidenceId}`);
+			console.log("[SourcePanel] Looking for element:", `evidence-${highlightedEvidenceId}`, "found:", !!el);
 			if (el) {
+				console.log("[SourcePanel] Scrolling to element");
 				el.scrollIntoView({ behavior: "smooth", block: "center" });
+			} else {
+				console.warn("[SourcePanel] Element not found in DOM");
 			}
-		}, 50);
+		}, 100);
 
 		const clearTimer = setTimeout(() => {
+			console.log("[SourcePanel] Clearing highlight");
 			onClearHighlight?.();
 		}, 2500);
 
