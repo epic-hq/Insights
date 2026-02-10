@@ -120,10 +120,7 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 		try {
 			const [{ data: linkedPeopleData, error: linkedPeopleError }, { data: peopleData, error: peopleError }] =
 				await Promise.all([
-					supabase
-						.from("interview_people")
-						.select("id, people(id, name, segment)")
-						.eq("interview_id", interview.id),
+					supabase.from("interview_people").select("id, people(id, name, segment)").eq("interview_id", interview.id),
 					supabase.from("people").select("id, name").eq("project_id", projectId).order("name", { ascending: true }),
 				]);
 

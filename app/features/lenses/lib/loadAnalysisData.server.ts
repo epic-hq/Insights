@@ -171,12 +171,14 @@ export async function loadAnalysisPageData(
 			.eq("research_links.project_id", projectId)
 			.eq("completed", true),
 
-			// 6. People in project with basic info (join org for company name)
-			db
-				.from("people")
-				.select("id, firstname, lastname, name, title, image_url, created_at, default_organization:organizations!default_organization_id(name)")
-				.eq("project_id", projectId)
-				.order("created_at", { ascending: false }),
+		// 6. People in project with basic info (join org for company name)
+		db
+			.from("people")
+			.select(
+				"id, firstname, lastname, name, title, image_url, created_at, default_organization:organizations!default_organization_id(name)"
+			)
+			.eq("project_id", projectId)
+			.order("created_at", { ascending: false }),
 
 		// 7. All completed analyses for the project
 		db

@@ -141,10 +141,7 @@ async function checkDatabaseState() {
 
 	// Sample people
 	consola.box("Sample People");
-	const { data: samplePeople } = await supabase
-		.from("people")
-		.select("id, name, segment, role, title")
-		.limit(3);
+	const { data: samplePeople } = await supabase.from("people").select("id, name, segment, role, title").limit(3);
 
 	if (samplePeople && samplePeople.length > 0) {
 		for (const person of samplePeople) {

@@ -517,7 +517,9 @@ export default function UploadScreen({
 					// Check for exact duplicate (same name + company)
 					const companyLower = (newPersonCompany.trim() || "").toLowerCase();
 					const exactMatch = data.find(
-						(p) => p.name?.toLowerCase() === searchName && ((p as any).default_organization?.name || "").toLowerCase() === companyLower
+						(p) =>
+							p.name?.toLowerCase() === searchName &&
+							((p as any).default_organization?.name || "").toLowerCase() === companyLower
 					);
 
 					if (exactMatch) {
@@ -681,7 +683,9 @@ export default function UploadScreen({
 															)}
 														</div>
 														{(person as any).default_organization?.name && (
-															<p className="truncate text-muted-foreground text-xs">{(person as any).default_organization?.name}</p>
+															<p className="truncate text-muted-foreground text-xs">
+																{(person as any).default_organization?.name}
+															</p>
 														)}
 													</div>
 													{isSelected && <CheckCircle className="h-5 w-5 flex-shrink-0 text-blue-500" />}
@@ -819,7 +823,9 @@ export default function UploadScreen({
 											>
 												<Users className="h-4 w-4 text-amber-600" />
 												<span>{person.name}</span>
-												{(person as any).default_organization?.name && <span className="text-muted-foreground">at {(person as any).default_organization?.name}</span>}
+												{(person as any).default_organization?.name && (
+													<span className="text-muted-foreground">at {(person as any).default_organization?.name}</span>
+												)}
 											</button>
 										))}
 									</div>

@@ -129,7 +129,9 @@ export const managePeopleTool = createTool({
 
 				const { data: person_row, error } = await supabase
 					.from("people")
-					.select("id, name, title, primary_email, segment, account_id, project_id, default_organization:organizations!default_organization_id(name)")
+					.select(
+						"id, name, title, primary_email, segment, account_id, project_id, default_organization:organizations!default_organization_id(name)"
+					)
 					.eq("id", personId)
 					.eq("account_id", resolved_account_id)
 					.eq("project_id", resolved_project_id)
@@ -157,7 +159,9 @@ export const managePeopleTool = createTool({
 				const resolved_limit = limit ?? 50;
 				let query = supabase
 					.from("people")
-					.select("id, name, title, primary_email, segment, default_organization:organizations!default_organization_id(name)")
+					.select(
+						"id, name, title, primary_email, segment, default_organization:organizations!default_organization_id(name)"
+					)
 					.eq("account_id", resolved_account_id)
 					.eq("project_id", resolved_project_id)
 					.order("updated_at", { ascending: false })
@@ -182,7 +186,9 @@ export const managePeopleTool = createTool({
 					success: true,
 					message: `Found ${people_rows?.length || 0} people.`,
 					people:
-						(people_rows as Array<PersonListRow & { default_organization?: { name: string | null } | null }> | null)?.map((row) => ({
+						(
+							people_rows as Array<PersonListRow & { default_organization?: { name: string | null } | null }> | null
+						)?.map((row) => ({
 							id: row.id,
 							name: row.name,
 							title: row.title,

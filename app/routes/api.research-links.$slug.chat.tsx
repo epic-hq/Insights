@@ -215,7 +215,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		// Only fetch CRM data if autonomy allows using it
 		const { data: person } = await supabase
 			.from("people")
-			.select("name, title, segment, job_function, person_scale(score, band, confidence, kind_slug), default_organization:organizations!default_organization_id(name)")
+			.select(
+				"name, title, segment, job_function, person_scale(score, band, confidence, kind_slug), default_organization:organizations!default_organization_id(name)"
+			)
 			.eq("id", responseRecord.person_id)
 			.maybeSingle();
 

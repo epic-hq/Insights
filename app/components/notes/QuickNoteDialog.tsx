@@ -213,14 +213,12 @@ export function QuickNoteDialog({
 
 	// Filter people based on search
 	const filteredPeople = searchQuery.trim()
-		? people.filter(
-				(p) => {
-					return (
-						p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-						p.default_organization?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-					);
-				}
-			)
+		? people.filter((p) => {
+				return (
+					p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+					p.default_organization?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+				);
+			})
 		: people.slice(0, 8);
 
 	const addTag = () => {
@@ -325,7 +323,9 @@ export function QuickNoteDialog({
 													<div className="min-w-0 flex-1">
 														<p className="truncate font-medium text-sm">{person.name}</p>
 														{person.default_organization?.name && (
-															<p className="truncate text-muted-foreground text-xs">{person.default_organization?.name}</p>
+															<p className="truncate text-muted-foreground text-xs">
+																{person.default_organization?.name}
+															</p>
 														)}
 													</div>
 													{isSelected && <CheckCircle className="h-5 w-5 flex-shrink-0 text-blue-500" />}

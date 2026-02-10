@@ -224,7 +224,11 @@ export const fetchPeopleDetailsTool = createTool({
 					searchTerm: sanitizedPersonSearch,
 				});
 
-				const accountQuery = await supabase.from("people").select("*, default_organization:organizations!default_organization_id(name)").eq("account_id", accountId).limit(100);
+				const accountQuery = await supabase
+					.from("people")
+					.select("*, default_organization:organizations!default_organization_id(name)")
+					.eq("account_id", accountId)
+					.limit(100);
 
 				if (accountQuery.data && accountQuery.data.length > 0) {
 					peopleData = accountQuery.data as Person[];

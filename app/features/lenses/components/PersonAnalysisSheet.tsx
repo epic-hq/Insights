@@ -109,9 +109,7 @@ export function PersonAnalysisSheet({ person, open, onOpenChange, routes }: Shee
 								</Avatar>
 								<div className="min-w-0 flex-1">
 									<SheetTitle className="text-xl">{person.name}</SheetTitle>
-									<SheetDescription>
-										{person.title || "No title"}
-									</SheetDescription>
+									<SheetDescription>{person.title || "No title"}</SheetDescription>
 									<div className="mt-2 flex items-center gap-2">
 										{person.interviewCount > 0 && (
 											<Badge variant="secondary" className="gap-1 text-xs">

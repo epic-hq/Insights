@@ -96,9 +96,7 @@ function PersonCard({ person, onClick }: { person: PersonAnalysisSummary; onClic
 						<div className="flex items-start justify-between gap-2">
 							<div>
 								<h3 className="font-semibold text-sm leading-tight">{person.name}</h3>
-								<p className="text-foreground/60 text-xs">
-									{person.title || "No title"}
-								</p>
+								<p className="text-foreground/60 text-xs">{person.title || "No title"}</p>
 							</div>
 							<div className="flex flex-shrink-0 items-center gap-1.5">
 								{person.interviewCount > 0 && (
@@ -184,10 +182,7 @@ export function AnalysisByPersonTab({
 	const filteredPeople = useMemo(() => {
 		if (!searchQuery.trim()) return people;
 		const q = searchQuery.toLowerCase();
-		return people.filter(
-			(p) =>
-				p.name.toLowerCase().includes(q) || p.title?.toLowerCase().includes(q)
-		);
+		return people.filter((p) => p.name.toLowerCase().includes(q) || p.title?.toLowerCase().includes(q));
 	}, [people, searchQuery]);
 
 	// Split into people with analysis/evidence vs without

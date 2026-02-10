@@ -49,7 +49,9 @@ function buildQuickFacts(person: PersonRecord): string[] {
 		facts.push(`${label}: ${trimmed}`);
 	};
 
-	const primaryOrg = person.people_organizations?.find((po: { is_primary?: boolean | null }) => po.is_primary)?.organization ?? person.people_organizations?.[0]?.organization;
+	const primaryOrg =
+		person.people_organizations?.find((po: { is_primary?: boolean | null }) => po.is_primary)?.organization ??
+		person.people_organizations?.[0]?.organization;
 	append("Segment", person.segment);
 	append("Title", person.title);
 	append("Company", (primaryOrg as { name?: string | null } | null)?.name ?? null);
@@ -190,7 +192,12 @@ function mapPersonToProfile(
 		name: person.name ?? null,
 		title: person.title ?? null,
 		role: null, // DEPRECATED: people.role no longer populated
-		company: (person.people_organizations?.find((po: { is_primary?: boolean | null }) => po.is_primary)?.organization as { name?: string | null } | null)?.name ?? null,
+		company:
+			(
+				person.people_organizations?.find((po: { is_primary?: boolean | null }) => po.is_primary)?.organization as {
+					name?: string | null;
+				} | null
+			)?.name ?? null,
 		segment: person.segment ?? null,
 		persona: person.people_personas?.[0]?.personas?.name ?? null,
 		quick_facts: quickFacts,

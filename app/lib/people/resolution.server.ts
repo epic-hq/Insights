@@ -19,97 +19,95 @@ import { upsertPersonWithOrgAwareConflict } from "~/features/interviews/peopleNo
 type PeopleInsert = Database["public"]["Tables"]["people"]["Insert"];
 
 export interface PersonResolutionInput {
-  // Core identity
-  firstname?: string;
-  lastname?: string;
-  name?: string; // Full name fallback
+	// Core identity
+	firstname?: string;
+	lastname?: string;
+	name?: string; // Full name fallback
 
-  // Contact info
-  primary_email?: string;
-  primary_phone?: string;
+	// Contact info
+	primary_email?: string;
+	primary_phone?: string;
 
-  // Organization
-  company?: string;
-  title?: string;
+	// Organization
+	company?: string;
+	title?: string;
 
-  // Platform identity (for cross-meeting matching)
-  platform?: string;
-  platform_user_id?: string;
+	// Platform identity (for cross-meeting matching)
+	platform?: string;
+	platform_user_id?: string;
 
-  // Metadata
-  role?: string; // 'interviewer' | 'participant'
-  person_type?: "internal" | null;
-  source: string; // 'desktop_meeting' | 'baml_extraction' | 'manual' (routing metadata only)
+	// Metadata
+	role?: string; // 'interviewer' | 'participant'
+	person_type?: "internal" | null;
+	source: string; // 'desktop_meeting' | 'baml_extraction' | 'manual' (routing metadata only)
 }
 
 export interface PersonResolutionResult {
-  person: {
-    id: string;
-    name: string | null;
-    created: boolean; // True if newly created
-  };
-  matchedBy: "email" | "platform_id" | "name_company" | "created";
+	person: {
+		id: string;
+		name: string | null;
+		created: boolean; // True if newly created
+	};
+	matchedBy: "email" | "platform_id" | "name_company" | "created";
 }
 
-function normalizeNameParts(
-  input: Pick<PersonResolutionInput, "firstname" | "lastname" | "name">,
-): {
-  firstname: string | null;
-  lastname: string | null;
-  fullName: string;
+function normalizeNameParts(input: Pick<PersonResolutionInput, "firstname" | "lastname" | "name">): {
+	firstname: string | null;
+	lastname: string | null;
+	fullName: string;
 } {
-  const first = input.firstname?.trim() || "";
-  const last = input.lastname?.trim() || "";
+	const first = input.firstname?.trim() || "";
+	const last = input.lastname?.trim() || "";
 
-  if (first || last) {
-    return {
-      firstname: first || null,
-      lastname: last || null,
-      fullName: `${first} ${last}`.trim(),
-    };
-  }
+	if (first || last) {
+		return {
+			firstname: first || null,
+			lastname: last || null,
+			fullName: `${first} ${last}`.trim(),
+		};
+	}
 
-  const full = input.name?.trim() || "";
-  if (!full) {
-    return { firstname: null, lastname: null, fullName: "" };
-  }
+	const full = input.name?.trim() || "";
+	if (!full) {
+		return { firstname: null, lastname: null, fullName: "" };
+	}
 
-  const parts = full
-    .split(" ")
-    .map((part) => part.trim())
-    .filter(Boolean);
+	const parts = full
+		.split(" ")
+		.map((part) => part.trim())
+		.filter(Boolean);
 
-  if (parts.length === 0) {
-    return { firstname: null, lastname: null, fullName: "" };
-  }
+	if (parts.length === 0) {
+		return { firstname: null, lastname: null, fullName: "" };
+	}
 
-  return {
-    firstname: parts[0] || null,
-    lastname: parts.length > 1 ? parts.slice(1).join(" ") : null,
-    fullName: full,
-  };
+	return {
+		firstname: parts[0] || null,
+		lastname: parts.length > 1 ? parts.slice(1).join(" ") : null,
+		fullName: full,
+	};
 }
 
 /**
  * Find person by email (highest priority match)
  */
 async function findByEmail(
-  supabase: SupabaseClient<Database>,
-  accountId: string,
-  email: string,
+	supabase: SupabaseClient<Database>,
+	accountId: string,
+	email: string
 ): Promise<{ id: string; name: string | null } | null> {
-  const normalizedEmail = email.trim().toLowerCase();
+	const normalizedEmail = email.trim().toLowerCase();
 
-  const { data, error } = await supabase
-    .from("people")
-    .select("id, name")
-    .eq("account_id", accountId)
-    .ilike("primary_email", normalizedEmail)
-    .limit(1)
-    .single();
+	const { data, error } = await supabase
+		.from("people")
+		.select("id, name")
+		.eq("account_id", accountId)
+		.ilike("primary_email", normalizedEmail)
+		.limit(1)
+		.single();
 
-  if (error || !data) return null;
-  return data;
+	if (error || !data) return null;
+	return data;
 }
 
 /**
@@ -117,32 +115,32 @@ async function findByEmail(
  * Queries contact_info JSONB field
  */
 async function findByPlatformId(
-  supabase: SupabaseClient<Database>,
-  accountId: string,
-  platform: string,
-  platformUserId: string,
+	supabase: SupabaseClient<Database>,
+	accountId: string,
+	platform: string,
+	platformUserId: string
 ): Promise<{ id: string; name: string | null } | null> {
-  // Query contact_info JSONB using PostgreSQL JSON operators
-  // contact_info->platform->'user_id' = platformUserId
-  const { data, error } = await supabase
-    .from("people")
-    .select("id, name, contact_info")
-    .eq("account_id", accountId)
-    .not("contact_info", "is", null);
+	// Query contact_info JSONB using PostgreSQL JSON operators
+	// contact_info->platform->'user_id' = platformUserId
+	const { data, error } = await supabase
+		.from("people")
+		.select("id, name, contact_info")
+		.eq("account_id", accountId)
+		.not("contact_info", "is", null);
 
-  if (error || !data) return null;
+	if (error || !data) return null;
 
-  // Filter in-memory since Supabase doesn't support deep JSONB queries easily
-  const match = data.find((person) => {
-    const contactInfo = person.contact_info as Record<string, any> | null;
-    if (!contactInfo) return false;
-    const platformData = contactInfo[platform];
-    if (!platformData) return false;
-    return platformData.user_id === platformUserId;
-  });
+	// Filter in-memory since Supabase doesn't support deep JSONB queries easily
+	const match = data.find((person) => {
+		const contactInfo = person.contact_info as Record<string, any> | null;
+		if (!contactInfo) return false;
+		const platformData = contactInfo[platform];
+		if (!platformData) return false;
+		return platformData.user_id === platformUserId;
+	});
 
-  if (!match) return null;
-  return { id: match.id, name: match.name };
+	if (!match) return null;
+	return { id: match.id, name: match.name };
 }
 
 /**
@@ -150,29 +148,25 @@ async function findByPlatformId(
  * Phase 3: Uses default_organization_id instead of company text
  */
 async function findByNameOrg(
-  supabase: SupabaseClient<Database>,
-  accountId: string,
-  name: string,
-  orgId?: string | null,
+	supabase: SupabaseClient<Database>,
+	accountId: string,
+	name: string,
+	orgId?: string | null
 ): Promise<{ id: string; name: string | null } | null> {
-  const normalizedName = name.trim().toLowerCase();
+	const normalizedName = name.trim().toLowerCase();
 
-  let query = supabase
-    .from("people")
-    .select("id, name")
-    .eq("account_id", accountId)
-    .ilike("name", normalizedName);
+	let query = supabase.from("people").select("id, name").eq("account_id", accountId).ilike("name", normalizedName);
 
-  if (orgId) {
-    query = query.eq("default_organization_id", orgId);
-  } else {
-    query = query.is("default_organization_id", null);
-  }
+	if (orgId) {
+		query = query.eq("default_organization_id", orgId);
+	} else {
+		query = query.is("default_organization_id", null);
+	}
 
-  const { data, error } = await query.limit(1).single();
+	const { data, error } = await query.limit(1).single();
 
-  if (error || !data) return null;
-  return data;
+	if (error || !data) return null;
+	return data;
 }
 
 /**
@@ -187,33 +181,33 @@ async function findByNameOrg(
  * Creates the organization if it doesn't exist.
  */
 async function resolveOrganization(
-  supabase: SupabaseClient<Database>,
-  accountId: string,
-  companyName: string,
+	supabase: SupabaseClient<Database>,
+	accountId: string,
+	companyName: string
 ): Promise<string | null> {
-  const normalized = companyName.trim();
-  if (!normalized) return null;
+	const normalized = companyName.trim();
+	if (!normalized) return null;
 
-  // Try case-insensitive exact match
-  const { data: existing } = await supabase
-    .from("organizations")
-    .select("id")
-    .eq("account_id", accountId)
-    .ilike("name", normalized)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .single();
+	// Try case-insensitive exact match
+	const { data: existing } = await supabase
+		.from("organizations")
+		.select("id")
+		.eq("account_id", accountId)
+		.ilike("name", normalized)
+		.order("updated_at", { ascending: false })
+		.limit(1)
+		.single();
 
-  if (existing) return existing.id;
+	if (existing) return existing.id;
 
-  // Create new organization
-  const { data: newOrg } = await supabase
-    .from("organizations")
-    .insert({ account_id: accountId, name: normalized })
-    .select("id")
-    .single();
+	// Create new organization
+	const { data: newOrg } = await supabase
+		.from("organizations")
+		.insert({ account_id: accountId, name: normalized })
+		.select("id")
+		.single();
 
-  return newOrg?.id ?? null;
+	return newOrg?.id ?? null;
 }
 
 /**
@@ -230,93 +224,73 @@ async function resolveOrganization(
  * 4. Create new (via upsert for idempotency)
  */
 export async function resolveOrCreatePerson(
-  supabase: SupabaseClient<Database>,
-  accountId: string,
-  projectId: string,
-  input: PersonResolutionInput,
+	supabase: SupabaseClient<Database>,
+	accountId: string,
+	projectId: string,
+	input: PersonResolutionInput
 ): Promise<PersonResolutionResult> {
-  const normalized = normalizeNameParts(input);
-  const orgId = input.company
-    ? await resolveOrganization(supabase, accountId, input.company)
-    : null;
+	const normalized = normalizeNameParts(input);
+	const orgId = input.company ? await resolveOrganization(supabase, accountId, input.company) : null;
 
-  // 1. Email match (highest priority)
-  if (input.primary_email) {
-    const existing = await findByEmail(
-      supabase,
-      accountId,
-      input.primary_email,
-    );
-    if (existing) {
-      return {
-        person: { ...existing, created: false },
-        matchedBy: "email",
-      };
-    }
-  }
+	// 1. Email match (highest priority)
+	if (input.primary_email) {
+		const existing = await findByEmail(supabase, accountId, input.primary_email);
+		if (existing) {
+			return {
+				person: { ...existing, created: false },
+				matchedBy: "email",
+			};
+		}
+	}
 
-  // 2. Platform user ID match (for repeat meetings)
-  if (input.platform && input.platform_user_id) {
-    const existing = await findByPlatformId(
-      supabase,
-      accountId,
-      input.platform,
-      input.platform_user_id,
-    );
-    if (existing) {
-      return {
-        person: { ...existing, created: false },
-        matchedBy: "platform_id",
-      };
-    }
-  }
+	// 2. Platform user ID match (for repeat meetings)
+	if (input.platform && input.platform_user_id) {
+		const existing = await findByPlatformId(supabase, accountId, input.platform, input.platform_user_id);
+		if (existing) {
+			return {
+				person: { ...existing, created: false },
+				matchedBy: "platform_id",
+			};
+		}
+	}
 
-  // 3. Name + org match
-  if (normalized.fullName) {
-    const orgMatch = await findByNameOrg(
-      supabase,
-      accountId,
-      normalized.fullName,
-      orgId,
-    );
-    if (orgMatch) {
-      return {
-        person: { ...orgMatch, created: false },
-        matchedBy: "name_company",
-      };
-    }
+	// 3. Name + org match
+	if (normalized.fullName) {
+		const orgMatch = await findByNameOrg(supabase, accountId, normalized.fullName, orgId);
+		if (orgMatch) {
+			return {
+				person: { ...orgMatch, created: false },
+				matchedBy: "name_company",
+			};
+		}
 
-    // Legacy company column fallback removed - column dropped in Phase 3E migration
-    // All person records now use default_organization_id FK
-  }
+		// Legacy company column fallback removed - column dropped in Phase 3E migration
+		// All person records now use default_organization_id FK
+	}
 
-  // 5. Create new person with org FK
-  const insertPayload: PeopleInsert = {
-    account_id: accountId,
-    project_id: projectId,
-    firstname: normalized.firstname,
-    lastname: normalized.lastname,
-    primary_email: input.primary_email,
-    primary_phone: input.primary_phone,
-    default_organization_id: orgId,
-    title: input.title,
-    person_type: input.person_type,
-    // Store platform user ID in contact_info JSONB
-    contact_info: input.platform_user_id
-      ? {
-          [input.platform!]: { user_id: input.platform_user_id },
-        }
-      : null,
-  };
+	// 5. Create new person with org FK
+	const insertPayload: PeopleInsert = {
+		account_id: accountId,
+		project_id: projectId,
+		firstname: normalized.firstname,
+		lastname: normalized.lastname,
+		primary_email: input.primary_email,
+		primary_phone: input.primary_phone,
+		default_organization_id: orgId,
+		title: input.title,
+		person_type: input.person_type,
+		// Store platform user ID in contact_info JSONB
+		contact_info: input.platform_user_id
+			? {
+					[input.platform!]: { user_id: input.platform_user_id },
+				}
+			: null,
+	};
 
-  const person = await upsertPersonWithOrgAwareConflict(
-    supabase,
-    insertPayload,
-    input.person_type,
-  );
+	const person = await upsertPersonWithOrgAwareConflict(supabase, insertPayload, input.person_type);
 
-  return {
-    person: { ...person, created: true },
-    matchedBy: "created",
-  };
+	return {
+		person: { ...person, created: true },
+		matchedBy: "created",
+	};
 }
