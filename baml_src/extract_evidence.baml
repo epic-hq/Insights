@@ -243,19 +243,44 @@ Output ONLY JSON conforming to {{ ctx.output_format }} (no prose/markdown). Ensu
 test ExtractEvidenceFromTranscriptV2_EmpathyTest {
   functions [ExtractEvidenceFromTranscriptV2]
   args {
-    transcript #"
-INTERVIEWER: How do you feel about your current project management tool?
-
-PARTICIPANT: Honestly, it's really frustrating. I spend way too much time just trying to find where I put things. Like, I'll create a task and then I can't remember which project I assigned it to. It makes me feel disorganized and stressed out.
-
-INTERVIEWER: What do you do when that happens?
-
-PARTICIPANT: I usually end up searching through every project folder, which takes forever. Sometimes I just give up and create a duplicate task. I know it's not efficient, but I need to get my work done. I really wish there was a better way to organize everything automatically.
-
-INTERVIEWER: What would success look like for you?
-
-PARTICIPANT: I want to feel confident that I can find anything I need within seconds. When I'm in a meeting and someone asks about a project status, I want to pull it up instantly instead of saying 'let me get back to you on that.' That would make me feel so much more professional and in control.
-    "#
+    speaker_transcripts [
+      {
+        speaker "INTERVIEWER"
+        text "How do you feel about your current project management tool?"
+        start 0
+        end 5000
+      },
+      {
+        speaker "PARTICIPANT"
+        text "Honestly, it's really frustrating. I spend way too much time just trying to find where I put things. Like, I'll create a task and then I can't remember which project I assigned it to. It makes me feel disorganized and stressed out."
+        start 5500
+        end 20000
+      },
+      {
+        speaker "INTERVIEWER"
+        text "What do you do when that happens?"
+        start 20500
+        end 23000
+      },
+      {
+        speaker "PARTICIPANT"
+        text "I usually end up searching through every project folder, which takes forever. Sometimes I just give up and create a duplicate task. I know it's not efficient, but I need to get my work done. I really wish there was a better way to organize everything automatically."
+        start 23500
+        end 40000
+      },
+      {
+        speaker "INTERVIEWER"
+        text "What would success look like for you?"
+        start 40500
+        end 43000
+      },
+      {
+        speaker "PARTICIPANT"
+        text "I want to feel confident that I can find anything I need within seconds. When I'm in a meeting and someone asks about a project status, I want to pull it up instantly instead of saying 'let me get back to you on that.' That would make me feel so much more professional and in control."
+        start 43500
+        end 60000
+      }
+    ]
     chapters []
     language "en"
     facet_catalog {

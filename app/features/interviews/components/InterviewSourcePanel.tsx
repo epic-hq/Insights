@@ -201,7 +201,7 @@ export function InterviewSourcePanel({
 									className={cn(
 										"scroll-mt-4 rounded-lg border p-3 transition-all duration-500",
 										isHighlighted
-											? "border-primary bg-primary/10 ring-1 ring-primary/30"
+											? "border-primary bg-primary/30 ring-2 ring-primary/50"
 											: "border-border bg-card hover:border-muted-foreground/30"
 									)}
 								>
