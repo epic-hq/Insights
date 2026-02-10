@@ -170,7 +170,7 @@ export function InterviewSourcePanel({
 				<div className="space-y-3">
 					<h3 className="font-semibold text-base text-foreground">Evidence ({evidence.length})</h3>
 					<div className="space-y-2" id="evidence-scroll-container">
-						{evidence.slice(0, 100).map((item) => {
+						{evidence.map((item) => {
 							const seconds = extractAnchorSeconds(item.anchors);
 							const votes = evidenceVoteCounts?.[item.id];
 							const hasVotes = votes && (votes.upvotes > 0 || votes.downvotes > 0);
