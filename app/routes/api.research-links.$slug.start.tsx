@@ -594,6 +594,27 @@ async function handleCreatePersonAndContinue(
     }
 
     personId = newPerson.id;
+
+    // Phase 3: Create people_organizations join table record if organization exists
+    if (organizationId) {
+      const { error: linkError } = await supabase
+        .from("people_organizations")
+        .insert({
+          account_id: list.account_id,
+          project_id: list.project_id,
+          person_id: personId,
+          organization_id: organizationId,
+          is_primary: true,
+        });
+
+      if (linkError) {
+        consola.warn(
+          "[research-link-start] Failed to create people_organizations link:",
+          linkError,
+        );
+        // Don't fail the whole request - person was created successfully
+      }
+    }
   }
 
   // Update the response with the person_id
