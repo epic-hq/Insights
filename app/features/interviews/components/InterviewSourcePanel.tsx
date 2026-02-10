@@ -130,11 +130,15 @@ export function InterviewSourcePanel({
 	useEffect(() => {
 		if (!highlightedEvidenceId) return;
 
-		// Wait for React to render the element, then scroll
 		const timer = setTimeout(() => {
+			const container = document.getElementById("evidence-scroll-container");
 			const el = document.getElementById(`evidence-${highlightedEvidenceId}`);
-			if (el) {
-				el.scrollIntoView({ behavior: "smooth", block: "center" });
+			if (container && el) {
+				const containerRect = container.getBoundingClientRect();
+				const elRect = el.getBoundingClientRect();
+				const scrollTop =
+					container.scrollTop + (elRect.top - containerRect.top) - containerRect.height / 2 + elRect.height / 2;
+				container.scrollTo({ top: scrollTop, behavior: "smooth" });
 			}
 		}, 50);
 
@@ -170,8 +174,8 @@ export function InterviewSourcePanel({
 			{evidence.length > 0 && onEvidenceSelect && (
 				<div className="space-y-3">
 					<h3 className="font-semibold text-base text-foreground">Evidence ({evidence.length})</h3>
-					<div className="max-h-[600px] space-y-2 overflow-y-auto">
-						{evidence.slice(0, 50).map((item) => {
+					<div className="max-h-[600px] space-y-2 overflow-y-auto" id="evidence-scroll-container">
+						{evidence.slice(0, 100).map((item) => {
 							const seconds = extractAnchorSeconds(item.anchors);
 							const votes = evidenceVoteCounts?.[item.id];
 							const hasVotes = votes && (votes.upvotes > 0 || votes.downvotes > 0);
