@@ -132,11 +132,23 @@ export function InterviewSourcePanel({
 		console.log("[SourcePanel] Highlight triggered for:", highlightedEvidenceId);
 
 		const timer = setTimeout(() => {
+			const container = document.getElementById("evidence-scroll-container");
 			const el = document.getElementById(`evidence-${highlightedEvidenceId}`);
-			console.log("[SourcePanel] Looking for element:", `evidence-${highlightedEvidenceId}`, "found:", !!el);
-			if (el) {
-				console.log("[SourcePanel] Scrolling to element");
-				el.scrollIntoView({ behavior: "smooth", block: "center" });
+			console.log(
+				"[SourcePanel] Looking for element:",
+				`evidence-${highlightedEvidenceId}`,
+				"found:",
+				!!el,
+				"container:",
+				!!container
+			);
+			if (container && el) {
+				console.log("[SourcePanel] Scrolling within container");
+				const scrollTop = el.offsetTop - container.offsetTop - container.clientHeight / 2 + el.clientHeight / 2;
+				container.scrollTo({ top: Math.max(0, scrollTop), behavior: "smooth" });
+			} else if (el) {
+				console.log("[SourcePanel] Container not found, using scrollIntoView");
+				el.scrollIntoView({ behavior: "smooth", block: "nearest" });
 			} else {
 				console.warn("[SourcePanel] Element not found in DOM");
 			}
