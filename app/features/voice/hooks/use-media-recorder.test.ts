@@ -200,9 +200,7 @@ describe("useMediaRecorder", () => {
 
 			// Now simulate the browser firing dataavailable + onstop
 			act(() => {
-				recorderInstance!.simulateStop([
-					new Blob(["audio-data"], { type: "audio/webm;codecs=opus" }),
-				]);
+				recorderInstance!.simulateStop([new Blob(["audio-data"], { type: "audio/webm;codecs=opus" })]);
 			});
 
 			// NOW tracks should be stopped
@@ -229,9 +227,7 @@ describe("useMediaRecorder", () => {
 			});
 
 			act(() => {
-				recorderInstance!.simulateStop([
-					new Blob(["audio-data"], { type: "audio/webm;codecs=opus" }),
-				]);
+				recorderInstance!.simulateStop([new Blob(["audio-data"], { type: "audio/webm;codecs=opus" })]);
 			});
 
 			expect(mockTrackStopFn).not.toHaveBeenCalled();
@@ -259,9 +255,7 @@ describe("useMediaRecorder", () => {
 			});
 
 			act(() => {
-				recorderInstance!.simulateStop([
-					new Blob(["audio-data"], { type: "audio/webm;codecs=opus" }),
-				]);
+				recorderInstance!.simulateStop([new Blob(["audio-data"], { type: "audio/webm;codecs=opus" })]);
 			});
 
 			expect(onStop).toHaveBeenCalledTimes(1);
@@ -289,9 +283,7 @@ describe("useMediaRecorder", () => {
 			});
 
 			act(() => {
-				recorderInstance!.simulateStop([
-					new Blob(["audio-data"], { type: "audio/webm;codecs=opus" }),
-				]);
+				recorderInstance!.simulateStop([new Blob(["audio-data"], { type: "audio/webm;codecs=opus" })]);
 			});
 
 			expect(onStop).toHaveBeenCalledTimes(1);
@@ -347,9 +339,7 @@ describe("useMediaRecorder", () => {
 
 			// Simulate Chrome firing dataavailable with zero-size data
 			act(() => {
-				recorderInstance!.simulateStop([
-					new Blob([], { type: "audio/webm;codecs=opus" }),
-				]);
+				recorderInstance!.simulateStop([new Blob([], { type: "audio/webm;codecs=opus" })]);
 			});
 
 			// onStop should NOT be called — there's no data to process
@@ -435,9 +425,7 @@ describe("useMediaRecorder", () => {
 			});
 
 			act(() => {
-				recorderInstance!.simulateStop([
-					new Blob(["audio-data"], { type: "audio/webm;codecs=opus" }),
-				]);
+				recorderInstance!.simulateStop([new Blob(["audio-data"], { type: "audio/webm;codecs=opus" })]);
 			});
 
 			// onStop should NOT be called — the recording was deleted
@@ -469,9 +457,7 @@ describe("useMediaRecorder", () => {
 			expect(result.current.status).toBe("stopping");
 
 			act(() => {
-				recorderInstance!.simulateStop([
-					new Blob(["audio-data"], { type: "audio/webm;codecs=opus" }),
-				]);
+				recorderInstance!.simulateStop([new Blob(["audio-data"], { type: "audio/webm;codecs=opus" })]);
 			});
 			expect(result.current.status).toBe("stopped");
 		});
@@ -482,9 +468,7 @@ describe("useMediaRecorder", () => {
 			// Default MockMediaRecorder.isTypeSupported returns true for audio/webm*
 			const constructorSpy = vi.spyOn(MockMediaRecorder.prototype, "start");
 
-			const { result } = renderHook(() =>
-				useMediaRecorder({ audio: true })
-			);
+			const { result } = renderHook(() => useMediaRecorder({ audio: true }));
 
 			await act(async () => {
 				await result.current.startRecording();

@@ -34,7 +34,10 @@ import { getPostHogServerClient } from "~/lib/posthog.server";
 import { getServerClient } from "~/lib/supabase/client.server";
 import type { Database, InsightInsert, Interview, InterviewInsert } from "~/types";
 import { batchExtractEvidence } from "~/utils/batchEvidence";
-import { generateConversationAnalysis } from "~/utils/conversationAnalysis.server";
+import {
+	enrichConversationAnalysisWithEvidenceIds,
+	generateConversationAnalysis,
+} from "~/utils/conversationAnalysis.server";
 import { getR2KeyFromPublicUrl } from "~/utils/r2.server";
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
@@ -2980,6 +2983,20 @@ export async function processInterviewTranscriptWithClient({
 				attendees: attendees.length ? attendees : undefined,
 			},
 		});
+
+		const { data: evidenceForTraceability } = await db
+			.from("evidence")
+			.select("id, verbatim, gist")
+			.eq("interview_id", analysisResult.interview.id);
+
+		conversationAnalysis = enrichConversationAnalysisWithEvidenceIds(
+			conversationAnalysis,
+			(evidenceForTraceability || []).map((item) => ({
+				id: item.id,
+				verbatim: item.verbatim,
+				gist: item.gist,
+			}))
+		);
 
 		// Upsert structured analysis into the lens pipeline (conversation-overview lens)
 		const { upsertConversationOverviewLens } = await import(

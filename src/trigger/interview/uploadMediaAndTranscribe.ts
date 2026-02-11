@@ -278,7 +278,7 @@ export const uploadMediaAndTranscribeTask = task({
 			metadata.set("progressPercent", 90)
 
 			try {
-				const { generateConversationAnalysis } = await import("~/utils/conversationAnalysis.server")
+				const { generateConversationAnalysis, enrichConversationAnalysisWithEvidenceIds } = await import("~/utils/conversationAnalysis.server")
 				const { upsertConversationOverviewLens } = await import(
 					"~/lib/conversation-analyses/upsertConversationOverviewLens.server"
 				)
@@ -296,12 +296,26 @@ export const uploadMediaAndTranscribeTask = task({
 					},
 				})
 
+				const { data: evidenceForTraceability } = await client
+					.from("evidence")
+					.select("id, verbatim, gist")
+					.eq("interview_id", interviewForAnalysis.id)
+
+				const enrichedConversationAnalysis = enrichConversationAnalysisWithEvidenceIds(
+					conversationAnalysis,
+					(evidenceForTraceability || []).map((item) => ({
+						id: item.id,
+						verbatim: item.verbatim,
+						gist: item.gist,
+					}))
+				)
+
 				await upsertConversationOverviewLens({
 					db: client,
 					interviewId: interviewForAnalysis.id,
 					accountId: interviewForAnalysis.account_id,
 					projectId: interviewForAnalysis.project_id,
-					analysis: conversationAnalysis,
+					analysis: enrichedConversationAnalysis,
 					computedBy: payloadMetadata.userId,
 				})
 

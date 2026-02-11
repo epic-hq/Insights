@@ -7,33 +7,13 @@
  * inline list with links and primary badges.
  */
 
-import type { LucideIcon } from "lucide-react";
-import {
-	AlignLeft,
-	BarChart3,
-	Box,
-	Boxes,
-	Building2,
-	ChevronRight,
-	Heart,
-	Image,
-	Layers,
-	Pencil,
-	PersonStanding,
-	Plus,
-	Sparkles,
-	Target,
-	User2,
-	Users,
-	Wrench,
-} from "lucide-react";
+import { Building2, Pencil, Plus, User2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { LinkOrganizationDialog } from "~/components/dialogs/LinkOrganizationDialog";
 import { InlineEditableField } from "~/components/InlineEditableField";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
 import {
 	COMPANY_SIZE_RANGES,
 	getOptionLabel,
@@ -130,88 +110,6 @@ interface PersonProfileSectionProps {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Icon map for lens kinds (mirrors PersonFacetLenses.tsx)
-// ────────────────────────────────────────────────────────────────────────────
-
-const KIND_ICON_MAP: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
-	pain: {
-		icon: Heart,
-		color: "text-rose-600 dark:text-rose-400",
-		bg: "bg-rose-50 dark:bg-rose-950/40",
-	},
-	goal: {
-		icon: Target,
-		color: "text-emerald-700 dark:text-emerald-400",
-		bg: "bg-emerald-50 dark:bg-emerald-950/40",
-	},
-	workflow: {
-		icon: Layers,
-		color: "text-amber-700 dark:text-amber-400",
-		bg: "bg-amber-50 dark:bg-amber-950/40",
-	},
-	task: {
-		icon: BarChart3,
-		color: "text-blue-700 dark:text-blue-400",
-		bg: "bg-blue-50 dark:bg-blue-950/40",
-	},
-	demographic: {
-		icon: Users,
-		color: "text-slate-700 dark:text-slate-400",
-		bg: "bg-slate-100 dark:bg-slate-800/40",
-	},
-	preference: {
-		icon: AlignLeft,
-		color: "text-indigo-700 dark:text-indigo-400",
-		bg: "bg-indigo-50 dark:bg-indigo-950/40",
-	},
-	artifact: {
-		icon: Box,
-		color: "text-purple-700 dark:text-purple-400",
-		bg: "bg-purple-50 dark:bg-purple-950/40",
-	},
-	tool: {
-		icon: Wrench,
-		color: "text-cyan-700 dark:text-cyan-400",
-		bg: "bg-cyan-50 dark:bg-cyan-950/40",
-	},
-	behavior: {
-		icon: PersonStanding,
-		color: "text-orange-700 dark:text-orange-400",
-		bg: "bg-orange-50 dark:bg-orange-950/40",
-	},
-	context: {
-		icon: Image,
-		color: "text-teal-700 dark:text-teal-400",
-		bg: "bg-teal-50 dark:bg-teal-950/40",
-	},
-	job_function: {
-		icon: Boxes,
-		color: "text-violet-700 dark:text-violet-400",
-		bg: "bg-violet-50 dark:bg-violet-950/40",
-	},
-};
-
-function getIconConfig(kindSlug: string) {
-	return (
-		KIND_ICON_MAP[kindSlug] ?? {
-			icon: Sparkles,
-			color: "text-slate-700 dark:text-slate-400",
-			bg: "bg-slate-100 dark:bg-slate-800/40",
-		}
-	);
-}
-
-/** Generate a fallback summary from facet labels when no AI summary exists */
-function fallbackSummary(facets: FacetEntry[]): string {
-	if (!facets?.length) return "No attributes captured yet.";
-	const labels = facets
-		.map((f) => f.label)
-		.filter(Boolean)
-		.slice(0, 3);
-	return labels.join(" \u00b7 ") || "No attributes captured yet.";
-}
-
-// ────────────────────────────────────────────────────────────────────────────
 // Sub-components
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -243,7 +141,6 @@ export function PersonProfileSection({
 	availableOrganizations = [],
 }: PersonProfileSectionProps) {
 	const [isEditing, setIsEditing] = useState(false);
-	const [expandedLenses, setExpandedLenses] = useState<Set<string>>(new Set());
 
 	// Derived values
 	const jobFunctionLabel = getOptionLabel(JOB_FUNCTIONS, person.job_function);
@@ -255,27 +152,6 @@ export function PersonProfileSection({
 	const hasDemographics = person.job_function || person.seniority_level || industryValue || companySizeLabel;
 	const hasLenses = facetLensGroups.length > 0;
 	const hasOrganizations = sortedLinkedOrganizations.length > 0;
-	const hasAnyContent = hasDemographics || hasLenses || hasOrganizations;
-
-	const toggleLens = (kindSlug: string) => {
-		setExpandedLenses((prev) => {
-			const next = new Set(prev);
-			if (next.has(kindSlug)) {
-				next.delete(kindSlug);
-			} else {
-				next.add(kindSlug);
-			}
-			return next;
-		});
-	};
-
-	const toggleAllLenses = () => {
-		if (expandedLenses.size === facetLensGroups.length) {
-			setExpandedLenses(new Set());
-		} else {
-			setExpandedLenses(new Set(facetLensGroups.map((g) => g.kind_slug)));
-		}
-	};
 
 	// Always render sections so users can add data
 	return (
@@ -468,76 +344,12 @@ export function PersonProfileSection({
 
 			{/* ── Attribute Lenses ────────────────────────────────────────── */}
 			{hasLenses && (
-				<div>
-					<div className="mb-3 flex items-center justify-between">
-						<div className="flex items-center gap-2">
-							<p className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">Attribute Lenses</p>
-							{isGenerating && (
-								<Badge variant="outline" className="animate-pulse text-[10px] uppercase">
-									Refreshing
-								</Badge>
-							)}
-						</div>
-						<button
-							type="button"
-							onClick={toggleAllLenses}
-							className="cursor-pointer text-primary text-xs hover:underline"
-						>
-							{expandedLenses.size === facetLensGroups.length ? "Collapse all" : "Expand all"}
-						</button>
-					</div>
-
-					<div className="space-y-2">
-						{facetLensGroups.map((group) => {
-							const iconConfig = getIconConfig(group.kind_slug);
-							const IconComponent = iconConfig.icon;
-							const summaryText = group.summary?.trim() || fallbackSummary(group.facets);
-							const isOpen = expandedLenses.has(group.kind_slug);
-
-							return (
-								<Collapsible key={group.kind_slug} open={isOpen} onOpenChange={() => toggleLens(group.kind_slug)}>
-									<CollapsibleTrigger asChild>
-										<button
-											type="button"
-											className={cn(
-												"flex w-full items-start gap-3 rounded-lg border border-border/40 p-3",
-												"cursor-pointer text-left transition-colors hover:bg-muted/30",
-												isOpen && "bg-muted/20"
-											)}
-										>
-											<div
-												className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full", iconConfig.bg)}
-											>
-												<IconComponent className={cn("h-3.5 w-3.5", iconConfig.color)} />
-											</div>
-											<div className="min-w-0 flex-1">
-												<span className="font-semibold text-foreground text-sm capitalize">{group.label}</span>
-												<p className="mt-0.5 line-clamp-1 text-muted-foreground text-sm">{summaryText}</p>
-											</div>
-											<ChevronRight
-												className={cn(
-													"mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform",
-													isOpen && "rotate-90"
-												)}
-											/>
-										</button>
-									</CollapsibleTrigger>
-
-									<CollapsibleContent>
-										<div className="mt-2 ml-10">
-											<PersonFacetLenses
-												groups={[group]}
-												personId={person.id}
-												availableFacetsByKind={availableFacetsByKind}
-												isGenerating={isGenerating}
-											/>
-										</div>
-									</CollapsibleContent>
-								</Collapsible>
-							);
-						})}
-					</div>
-				</div>
+				<PersonFacetLenses
+					groups={facetLensGroups}
+					personId={person.id}
+					availableFacetsByKind={availableFacetsByKind}
+					isGenerating={isGenerating}
+				/>
 			)}
 		</div>
 	);

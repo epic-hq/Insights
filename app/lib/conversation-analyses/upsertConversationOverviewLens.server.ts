@@ -25,6 +25,7 @@ export type ConversationOverviewAnalysisData = {
 		priority: "high" | "medium" | "low";
 		summary: string;
 		evidence_snippets: string[];
+		supporting_evidence_ids: string[];
 	}>;
 	recommended_next_steps: Array<{
 		focus_area: string;
@@ -59,6 +60,7 @@ export function toConversationOverviewAnalysisData(analysis: ConversationAnalysi
 			priority: t.priority,
 			summary: t.summary,
 			evidence_snippets: t.evidence_snippets ?? [],
+			supporting_evidence_ids: t.supporting_evidence_ids ?? [],
 		})),
 		recommended_next_steps: analysis.recommended_next_steps.map((r) => ({
 			focus_area: r.focus_area,

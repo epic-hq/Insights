@@ -140,7 +140,6 @@ export function PersonFacetLenses({
 			<div className="flex items-center justify-between gap-2">
 				<div className="space-y-1">
 					<h2 className="font-semibold text-foreground text-lg">Attribute lenses</h2>
-					<p className="text-muted-foreground text-sm">Headline takeaways per facet group, details inside.</p>
 				</div>
 				{isGenerating ? (
 					<Badge variant="outline" className="text-[0.65rem] uppercase">

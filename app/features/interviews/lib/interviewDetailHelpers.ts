@@ -127,6 +127,7 @@ export interface KeyTakeaway {
 	priority: "high" | "medium" | "low";
 	summary: string;
 	evidenceSnippets: string[];
+	supportingEvidenceIds?: string[];
 	evidenceId?: string;
 }
 
@@ -137,8 +138,19 @@ export interface EvidenceRecord {
 }
 
 export function matchTakeawaysToEvidence(takeaways: KeyTakeaway[], evidence: EvidenceRecord[]): void {
+	const availableEvidenceIds = new Set(evidence.map((item) => item.id));
+
 	for (const takeaway of takeaways) {
 		if (takeaway.evidenceId) continue; // already matched
+
+		if (Array.isArray(takeaway.supportingEvidenceIds) && takeaway.supportingEvidenceIds.length > 0) {
+			const directEvidenceId = takeaway.supportingEvidenceIds.find((id) => availableEvidenceIds.has(id));
+			if (directEvidenceId) {
+				takeaway.evidenceId = directEvidenceId;
+				continue;
+			}
+		}
+
 		if (!takeaway.evidenceSnippets?.length) continue;
 
 		let bestMatch: string | undefined;

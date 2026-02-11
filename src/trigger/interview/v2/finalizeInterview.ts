@@ -39,6 +39,48 @@ const posthog = process.env.POSTHOG_API_KEY
 	})
 	: null;
 
+const videoExtensions = ["mp4", "mov", "avi", "mkv", "webm", "m4v"];
+
+function normalizeMediaKey(mediaUrl: string): string {
+	const trimmed = mediaUrl.trim();
+	if (!trimmed) return trimmed;
+	if (!/^https?:\/\//i.test(trimmed)) {
+		return trimmed.replace(/^\/+/, "");
+	}
+
+	try {
+		const parsed = new URL(trimmed);
+		let key = decodeURIComponent(parsed.pathname).replace(/^\/+/, "");
+		const bucket = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME;
+		if (bucket && key.startsWith(`${bucket}/`)) {
+			key = key.slice(bucket.length + 1);
+		}
+		return key;
+	} catch {
+		return trimmed.replace(/^\/+/, "");
+	}
+}
+
+function extractMediaExtension(value: string | null | undefined): string | null {
+	if (!value) return null;
+	const normalized = value.trim();
+	if (!normalized) return null;
+	const noQuery = normalized.split(/[?#]/, 1)[0] ?? normalized;
+	const lastSegment = noQuery.split("/").pop() ?? noQuery;
+	const ext = lastSegment.split(".").pop()?.toLowerCase();
+	if (!ext || ext === lastSegment.toLowerCase()) return null;
+	return ext;
+}
+
+function isVideoMedia(fileExtension: string | null | undefined, mediaUrl: string | null | undefined): boolean {
+	const normalizedFileExtension = fileExtension?.trim().toLowerCase() || "";
+	if (normalizedFileExtension && videoExtensions.includes(normalizedFileExtension)) {
+		return true;
+	}
+	const mediaExtension = extractMediaExtension(mediaUrl);
+	return Boolean(mediaExtension && videoExtensions.includes(mediaExtension));
+}
+
 export const finalizeInterviewTaskV2 = task({
 	id: "interview.v2.finalize-interview",
 	retry: workflowRetryConfig,
@@ -160,7 +202,7 @@ export const finalizeInterviewTaskV2 = task({
 			// and persist to conversation_lens_analyses for the detail page UI
 			try {
 				if (fullTranscript && fullTranscript.length > 0) {
-					const { generateConversationAnalysis } = await import(
+					const { generateConversationAnalysis, enrichConversationAnalysisWithEvidenceIds } = await import(
 						"~/utils/conversationAnalysis.server"
 					);
 					const { upsertConversationOverviewLens } = await import(
@@ -186,12 +228,26 @@ export const finalizeInterviewTaskV2 = task({
 							},
 						});
 
+						const { data: evidenceForTraceability } = await client
+							.from("evidence")
+							.select("id, verbatim, gist")
+							.eq("interview_id", interviewId);
+
+						const enrichedConversationAnalysis = enrichConversationAnalysisWithEvidenceIds(
+							conversationAnalysis,
+							(evidenceForTraceability || []).map((item) => ({
+								id: item.id,
+								verbatim: item.verbatim,
+								gist: item.gist,
+							}))
+						);
+
 						await upsertConversationOverviewLens({
 							db: client,
 							interviewId,
 							accountId: interviewForAnalysis.account_id,
 							projectId: interviewForAnalysis.project_id,
-							analysis: conversationAnalysis,
+							analysis: enrichedConversationAnalysis,
 							computedBy: metadata?.userId,
 						});
 
@@ -252,18 +308,17 @@ export const finalizeInterviewTaskV2 = task({
 					.eq("id", interviewId)
 					.single();
 
-				const videoExtensions = ["mp4", "mov", "avi", "mkv", "webm", "m4v"];
-				const isVideo =
-					interviewForThumb?.file_extension &&
-					videoExtensions.includes(
-						interviewForThumb.file_extension.toLowerCase(),
-					);
+				const isVideo = isVideoMedia(
+					interviewForThumb?.file_extension,
+					interviewForThumb?.media_url,
+				);
 
 				if (isVideo && interviewForThumb.media_url) {
+					const mediaKey = normalizeMediaKey(interviewForThumb.media_url);
 					const { generateThumbnail } =
 						await import("../../generate-thumbnail");
 					await generateThumbnail.trigger({
-						mediaKey: interviewForThumb.media_url,
+						mediaKey,
 						interviewId,
 						timestampSec: 1, // Extract frame at 1 second
 						accountId: interviewForThumb.account_id,

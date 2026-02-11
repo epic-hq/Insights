@@ -51,6 +51,7 @@ type EvidenceSnippet = (Pick<
 	| "anchors"
 	| "interview_id"
 	| "source_type"
+	| "thumbnail_url"
 > & { context_summary?: string | null; similarity?: number }) & {
 	facets?: EvidenceFacetChip[];
 };
@@ -361,7 +362,7 @@ function EvidenceCard({
 					variant={variant}
 					evidenceId={evidence.id}
 					projectPath={projectPath}
-					thumbnailUrl={interview?.thumbnail_url}
+					thumbnailUrl={evidence.thumbnail_url ?? interview?.thumbnail_url}
 					disableLinks={disableLinks}
 				/>
 			)}

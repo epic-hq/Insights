@@ -54,6 +54,67 @@ async function makeSignedReadUrl(
   );
 }
 
+function normalizeMediaKey(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return trimmed.replace(/^\/+/, "");
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    let key = decodeURIComponent(parsed.pathname).replace(/^\/+/, "");
+    const bucket = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME;
+    if (bucket && key.startsWith(`${bucket}/`)) {
+      key = key.slice(bucket.length + 1);
+    }
+    return key;
+  } catch {
+    return trimmed.replace(/^\/+/, "");
+  }
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number.parseFloat(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function extractAnchorStartMs(anchors: unknown): number | null {
+  if (!Array.isArray(anchors)) return null;
+
+  for (const anchor of anchors) {
+    if (!anchor || typeof anchor !== "object") continue;
+    const entry = anchor as Record<string, unknown>;
+
+    const startMs = toFiniteNumber(entry.start_ms ?? entry.startMs);
+    if (startMs !== null) return Math.max(0, startMs);
+
+    const startSeconds = toFiniteNumber(
+      entry.start_seconds ??
+        entry.startSeconds ??
+        entry.start_sec ??
+        entry.startSec,
+    );
+    if (startSeconds !== null) return Math.max(0, startSeconds * 1000);
+
+    const genericStart = toFiniteNumber(
+      entry.start ?? entry.start_time ?? entry.startTime,
+    );
+    if (genericStart !== null) {
+      return Math.max(
+        0,
+        genericStart > 500 ? genericStart : genericStart * 1000,
+      );
+    }
+  }
+
+  return null;
+}
+
 function getSupabase() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -93,7 +154,7 @@ export const generateEvidenceThumbnails = schemaTask({
       throw new Error(`Interview not found: ${interviewId}`);
     }
 
-    const mediaKey = interview.media_url;
+    const mediaKey = normalizeMediaKey(interview.media_url);
     if (!mediaKey) {
       return {
         success: false,
@@ -155,9 +216,8 @@ export const generateEvidenceThumbnails = schemaTask({
     }> = [];
 
     for (const row of evidenceRows) {
-      const anchors = row.anchors as Array<{ start_ms?: number }> | null;
-      const startMs = anchors?.[0]?.start_ms;
-      if (typeof startMs !== "number") {
+      const startMs = extractAnchorStartMs(row.anchors);
+      if (startMs === null) {
         results.push({ evidenceId: row.id, ok: false });
         continue;
       }

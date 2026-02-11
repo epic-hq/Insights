@@ -1000,7 +1000,22 @@ export default function PersonDetail() {
 					/>
 				</section>
 
-				{/* Section 2: Profile, Contact & Attributes - Actionable widgets first */}
+				{/* Section 2: Insights & Next Steps */}
+				<section id="insights">
+					<PersonInsights
+						description={person.description}
+						themes={personThemes}
+						lastContactDate={lastContactDate}
+						surveyCount={surveyLinks.length}
+						conversationCount={interviewLinks.length}
+						icpMatch={icpMatch}
+						routes={routes}
+						onRefreshDescription={handleRefreshDescription}
+						isRefreshing={isRefreshingDescription}
+					/>
+				</section>
+
+				{/* Section 3: Profile, Contact & Attributes */}
 				<section id="profile">
 					<PersonProfileSection
 						person={person}
@@ -1019,21 +1034,6 @@ export default function PersonDetail() {
 						sortedLinkedOrganizations={sortedLinkedOrganizations}
 						routes={routes}
 						availableOrganizations={organizations}
-					/>
-				</section>
-
-				{/* Section 3: Insights & Next Steps */}
-				<section id="insights">
-					<PersonInsights
-						description={person.description}
-						themes={personThemes}
-						lastContactDate={lastContactDate}
-						surveyCount={surveyLinks.length}
-						conversationCount={interviewLinks.length}
-						icpMatch={icpMatch}
-						routes={routes}
-						onRefreshDescription={handleRefreshDescription}
-						isRefreshing={isRefreshingDescription}
 					/>
 				</section>
 

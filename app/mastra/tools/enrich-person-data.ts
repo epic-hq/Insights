@@ -66,9 +66,7 @@ export const enrichPersonDataTool = createTool({
 		// Load current person data for hints
 		const { data: person, error: fetchError } = await supabase
 			.from("people")
-			.select(
-				"id, name, firstname, lastname, title, role, primary_email, linkedin_url, default_organization_id"
-			)
+			.select("id, name, firstname, lastname, title, role, primary_email, linkedin_url, default_organization_id")
 			.eq("id", input.personId)
 			.eq("account_id", accountId)
 			.single();

@@ -29,7 +29,7 @@ export function InterviewInsights({ aiKeyTakeaways, conversationUpdatedLabel, on
 	if (aiKeyTakeaways.length === 0) return null;
 
 	return (
-		<div className="space-y-3 rounded-xl border bg-card p-5 shadow-sm">
+		<div className="space-y-3">
 			<div className="flex items-center justify-between gap-4">
 				<div className="flex items-center gap-2">
 					<Sparkles className="h-5 w-5 text-amber-500" />
