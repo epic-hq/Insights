@@ -256,7 +256,7 @@ export function ICPMatchSection({
 							<div>
 								<CardTitle className="text-base">ICP Match Scoring</CardTitle>
 								<CardDescription className="text-xs">
-									Score contacts against your Ideal Customer Profile
+									AI-powered matching of contacts to your Ideal Customer Profile
 								</CardDescription>
 							</div>
 						</div>
@@ -444,7 +444,9 @@ export function ICPMatchSection({
 					<DialogHeader>
 						<DialogTitle>Edit ICP Criteria</DialogTitle>
 						<DialogDescription>
-							Define your Ideal Customer Profile. Separate multiple values with commas.
+							Describe your ideal customer in your own words. Our AI will intelligently match contacts against these
+							criteria, automatically handling variations, synonyms, and related terms. Just enter what matters to
+							you—comma-separated works, but natural descriptions do too.
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4 py-4">
@@ -456,7 +458,9 @@ export function ICPMatchSection({
 								value={roles}
 								onChange={(e) => setRoles(e.target.value)}
 							/>
-							<p className="text-muted-foreground text-xs">Job titles or roles you want to reach</p>
+							<p className="text-muted-foreground text-xs">
+								Job titles or roles you want to reach. AI matches variations automatically.
+							</p>
 						</div>
 						<div className="space-y-2">
 							<Label htmlFor="orgs">Target Organizations</Label>
@@ -466,7 +470,9 @@ export function ICPMatchSection({
 								value={orgs}
 								onChange={(e) => setOrgs(e.target.value)}
 							/>
-							<p className="text-muted-foreground text-xs">Industries, verticals, or organization types</p>
+							<p className="text-muted-foreground text-xs">
+								Industries, verticals, or organization types. AI understands related industries.
+							</p>
 						</div>
 						<div className="space-y-2">
 							<Label htmlFor="sizes">Target Company Sizes</Label>
@@ -476,7 +482,9 @@ export function ICPMatchSection({
 								value={sizes}
 								onChange={(e) => setSizes(e.target.value)}
 							/>
-							<p className="text-muted-foreground text-xs">Company size ranges you're targeting</p>
+							<p className="text-muted-foreground text-xs">
+								Company size ranges you're targeting. AI interprets employee counts, revenue, or stage.
+							</p>
 						</div>
 					</div>
 					<DialogFooter>
