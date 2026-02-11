@@ -872,12 +872,11 @@ export default function PersonDetail() {
 
 	const hasIcpScore = Boolean(icpScaleEntry);
 	const hasIcpScorableSignals = useMemo(() => {
-		const company = typeof person.company === "string" ? person.company : null;
 		const role = typeof person.role === "string" ? person.role : null;
 		const orgHasSignals = linkedOrganizations.some((link) =>
 			Boolean(link.organization?.industry || link.organization?.size_range || link.organization?.name)
 		);
-		return Boolean(person.title || role || company || orgHasSignals);
+		return Boolean(person.title || role || orgHasSignals);
 	}, [linkedOrganizations, person]);
 
 	// ---- Refresh / delete handlers ----
