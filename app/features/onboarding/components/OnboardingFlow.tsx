@@ -793,9 +793,12 @@ export default function OnboardingFlow({
 		handleQuestionsNext,
 		handleBack,
 		handleUploadNext,
+		handleUploadFromUrl,
 		handleProcessingComplete,
 		getProjectName,
 		accountId,
+		uploadProgress,
+		isUploading,
 	]);
 
 	return (
