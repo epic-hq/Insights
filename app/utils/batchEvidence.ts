@@ -5,6 +5,7 @@
  * for faster extraction using GPT-4o-mini.
  */
 
+import { heartbeats } from "@trigger.dev/sdk";
 import consola from "consola";
 
 type SpeakerUtterance = {
@@ -32,6 +33,7 @@ export type BatchProgressCallback = (info: BatchProgressInfo) => void | Promise<
 
 const BATCH_SIZE = 75; // Process ~75 utterances per batch
 const MAX_CONCURRENT_BATCHES = 3; // Limit parallel API calls to prevent rate limiting
+const BATCH_HEARTBEAT_INTERVAL_MS = 10_000;
 
 /**
  * Process items with limited concurrency (pool pattern)
@@ -71,7 +73,7 @@ export async function batchExtractEvidence(
 		// Single call for small transcripts
 		consola.info(`⚡ Single-batch mode: ${speakerTranscripts.length} utterances (≤${BATCH_SIZE}, batching disabled)`);
 		const startTime = Date.now();
-		const result = await extractFn(speakerTranscripts);
+		const result = await withHeartbeatWhilePending(() => extractFn(speakerTranscripts), BATCH_HEARTBEAT_INTERVAL_MS);
 		const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 		consola.success(`✅ Single batch completed in ${duration}s`);
 
@@ -106,10 +108,11 @@ export async function batchExtractEvidence(
 	const batchResults = await processWithConcurrency(
 		batches,
 		async (batch, batchIndex) => {
+			await heartbeats.yield();
 			const batchStart = Date.now();
 			consola.info(`⏳ Batch ${batchIndex + 1}/${batches.length}: processing ${batch.length} utterances`);
 
-			const result = await extractFn(batch);
+			const result = await withHeartbeatWhilePending(() => extractFn(batch), BATCH_HEARTBEAT_INTERVAL_MS);
 
 			const batchDuration = ((Date.now() - batchStart) / 1000).toFixed(1);
 			consola.success(`✅ Batch ${batchIndex + 1}/${batches.length}: completed in ${batchDuration}s`);
@@ -139,6 +142,7 @@ export async function batchExtractEvidence(
 	const mergedScenes: any[] = [];
 
 	for (const { result } of batchResults) {
+		await heartbeats.yield();
 		// Merge people (dedupe by person_key)
 		for (const person of result.people || []) {
 			if (!mergedPeople.find((p) => p.person_key === person.person_key)) {
@@ -187,4 +191,17 @@ export async function batchExtractEvidence(
 		facet_mentions: mergedFacetMentions,
 		scenes: mergedScenes,
 	};
+}
+
+async function withHeartbeatWhilePending<T>(operation: () => Promise<T>, intervalMs: number): Promise<T> {
+	const timer = setInterval(() => {
+		void heartbeats.yield();
+	}, intervalMs);
+
+	try {
+		return await operation();
+	} finally {
+		clearInterval(timer);
+		await heartbeats.yield();
+	}
 }
