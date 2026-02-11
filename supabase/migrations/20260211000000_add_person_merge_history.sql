@@ -3,8 +3,8 @@
 
 CREATE TABLE IF NOT EXISTS person_merge_history (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  account_id uuid NOT NULL REFERENCES accounts.accounts (id) ON DELETE CASCADE,
+  project_id uuid NOT NULL REFERENCES projects (id) ON DELETE CASCADE,
 
   -- Source person (deleted/merged away)
   source_person_id uuid NOT NULL,
@@ -12,11 +12,11 @@ CREATE TABLE IF NOT EXISTS person_merge_history (
   source_person_data jsonb, -- Snapshot of source person before merge
 
   -- Target person (kept)
-  target_person_id uuid NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+  target_person_id uuid NOT NULL REFERENCES people (id) ON DELETE CASCADE,
   target_person_name text,
 
   -- Merge metadata
-  merged_by uuid REFERENCES auth.users(id),
+  merged_by uuid REFERENCES auth.users (id),
   merged_at timestamptz NOT NULL DEFAULT now(),
   reason text,
 
@@ -47,7 +47,7 @@ CREATE POLICY "Users can view merge history for their projects"
   TO authenticated
   USING (
     account_id IN (
-      SELECT account_id FROM account_users WHERE user_id = auth.uid()
+      SELECT account_id FROM accounts.account_users WHERE user_id = auth.uid()
     )
   );
 
@@ -57,7 +57,7 @@ CREATE POLICY "Users can create merge history for their projects"
   TO authenticated
   WITH CHECK (
     account_id IN (
-      SELECT account_id FROM account_users WHERE user_id = auth.uid()
+      SELECT account_id FROM accounts.account_users WHERE user_id = auth.uid()
     )
   );
 
