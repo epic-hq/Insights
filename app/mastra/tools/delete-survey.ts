@@ -34,7 +34,7 @@ Use hardDelete=true only when explicitly requested to permanently remove the sur
 		responseCount: z.number().nullish().describe("Number of responses that were affected"),
 	}),
 	execute: async (input, context?) => {
-		const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server");
+		const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
 		const supabase = createSupabaseAdminClient();
 
 		// Resolve project context

@@ -1,6 +1,8 @@
 import { Agent } from "@mastra/core/agent";
 import { TokenLimiterProcessor } from "@mastra/core/processors";
+import { Memory } from "@mastra/memory";
 import { openai } from "../../lib/billing/instrumented-openai.server";
+import { getSharedPostgresStore } from "../storage/postgres-singleton";
 import { submitPosthogFeedbackTool } from "../tools/submit-posthog-feedback";
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 
@@ -24,6 +26,7 @@ Classify incoming user feedback as one of:
 - general_feedback
 
 Then submit it to PostHog using the submitPosthogFeedback tool.
+For bug_report and feature_request, this also triggers realtime Slack alerting (if configured).
 
 # Required Behavior
 1. Always call submitPosthogFeedback when the user gives actionable feedback, a bug report, or a feature request.
@@ -32,6 +35,7 @@ Then submit it to PostHog using the submitPosthogFeedback tool.
 4. If the user provides multiple distinct feedback items, submit them separately (one tool call per item).
 5. If the message is too vague to submit (e.g. "it is bad"), ask one concise clarifying question.
 6. After submission, confirm the category used and that it was sent to PostHog.
+7. For bug_report/feature_request, if tool output includes slackNotified=true, confirm it was sent to Slack. If false, mention Slack alerting is not configured.
 
 # Classification guidance
 - bug_report: broken behavior, errors, crashes, performance failures, incorrect output.
@@ -45,6 +49,9 @@ Then submit it to PostHog using the submitPosthogFeedback tool.
 `;
 	},
 	model: openai("gpt-4o-mini"),
+	memory: new Memory({
+		storage: getSharedPostgresStore(),
+	}),
 	tools: wrapToolsWithStatusEvents({
 		submitPosthogFeedback: submitPosthogFeedbackTool,
 	}),

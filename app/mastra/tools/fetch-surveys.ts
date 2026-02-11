@@ -62,7 +62,7 @@ Returns survey metadata including:
 		total: z.number(),
 	}),
 	execute: async (input, context?) => {
-		const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server");
+		const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
 		const supabase = createSupabaseAdminClient();
 
 		// Resolve project context

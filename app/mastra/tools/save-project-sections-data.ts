@@ -2,10 +2,10 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { upsertProjectSection } from "~/features/projects/db";
-import { getSectionConfig, PROJECT_SECTIONS } from "~/features/projects/section-config";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
+import { upsertProjectSection } from "../../features/projects/db";
+import { getSectionConfig, PROJECT_SECTIONS } from "../../features/projects/section-config";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
 
 // Section formatters - matches api.save-project-goals.tsx
 const formatters = {

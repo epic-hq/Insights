@@ -4,7 +4,7 @@ import { RequestContext } from "@mastra/core/di";
 import { describe, expect, it, vi } from "vitest";
 import { fetchInterviewContextTool } from "../fetch-interview-context";
 
-vi.mock("~/lib/supabase/client.server", () => ({
+vi.mock("../../../lib/supabase/client.server", () => ({
 	supabaseAdmin: {},
 }));
 

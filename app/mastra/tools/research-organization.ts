@@ -9,8 +9,8 @@
 import { createTool } from "@mastra/core/tools";
 import consola from "consola";
 import { z } from "zod";
-import { generateEmbeddingWithBilling, systemBillingContext } from "~/lib/billing";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
+import { generateEmbeddingWithBilling, systemBillingContext } from "../../lib/billing";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
 
 const EXA_API_URL = "https://api.exa.ai";
 

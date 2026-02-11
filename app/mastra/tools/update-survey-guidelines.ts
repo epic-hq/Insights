@@ -81,7 +81,7 @@ If the confidence is low, it will suggest clarifications.`,
 	}),
 	execute: async (input, context?) => {
 		try {
-			const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server");
+			const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
 			const supabase = createSupabaseAdminClient();
 
 			// Fetch the survey with its questions

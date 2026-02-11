@@ -4,9 +4,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateObject } from "ai";
 import consola from "consola";
 import { z } from "zod";
-import { FacetResolver } from "~/lib/database/facets.server";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
+import { FacetResolver } from "../../lib/database/facets.server";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
 
 const DEFAULT_CONFIDENCE = 0.78;
 const ALLOWED_SOURCES = ["interview", "survey", "telemetry", "inferred", "manual", "document"] as const;

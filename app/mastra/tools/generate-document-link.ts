@@ -1,6 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { HOST } from "~/paths";
+import { HOST } from "../../paths";
 
 /**
  * Generate a shareable link for project documents stored in project_sections.

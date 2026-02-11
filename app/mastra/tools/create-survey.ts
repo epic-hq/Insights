@@ -73,7 +73,7 @@ Question types:
 			const projectId = input.projectId;
 
 			// Get accountId from project record
-			const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server");
+			const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
 			const supabase = createSupabaseAdminClient();
 
 			const { data: project, error: projectError } = await supabase

@@ -2,9 +2,9 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { getProjectContextGeneric } from "~/features/questions/db";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
+import { getProjectContextGeneric } from "../../features/questions/db";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
 
 export const generateResearchStructureTool = createTool({
 	id: "generate-research-structure",

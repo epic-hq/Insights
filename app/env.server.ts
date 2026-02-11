@@ -16,6 +16,8 @@ const envSchema = z.object({
 	// PostHog runtime vars (used as fallback when VITE_ vars are not inlined)
 	POSTHOG_KEY: z.string().optional(),
 	POSTHOG_HOST: z.string().optional(),
+	SLACK_FEEDBACK_WEBHOOK_URL: z.string().optional(),
+	SLACK_FEEDBACK_MENTION: z.string().optional(),
 	SIGNUP_CHAT_REQUIRED: z.string().optional(),
 	LANGFUSE_PUBLIC_KEY: z.string().optional(),
 	LANGFUSE_SECRET_KEY: z.string().optional(),

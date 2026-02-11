@@ -5,8 +5,8 @@
 import { createTool } from "@mastra/core/tools";
 import consola from "consola";
 import { z } from "zod";
-import { markResearchLinkComplete, saveResearchLinkAnswer } from "~/features/research-links/db";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
+import { markResearchLinkComplete, saveResearchLinkAnswer } from "../../features/research-links/db";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
 
 export const saveResearchResponseTool = createTool({
 	id: "save-research-response",

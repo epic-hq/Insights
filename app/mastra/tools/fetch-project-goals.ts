@@ -2,10 +2,10 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { getProjectContextGeneric } from "~/features/questions/db";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import { projectGoalsSchema } from "~/schemas";
-import type { Database } from "~/types";
+import { getProjectContextGeneric } from "../../features/questions/db";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import { projectGoalsSchema } from "../../schemas";
+import type { Database } from "../../types";
 
 export const fetchProjectGoalsTool = createTool({
 	id: "fetch-project-goals",

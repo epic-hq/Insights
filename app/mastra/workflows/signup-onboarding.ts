@@ -1,7 +1,7 @@
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { getLangfuseClient } from "~/lib/langfuse.server";
+import { getLangfuseClient } from "../../lib/langfuse.server";
 import { llmAgent } from "../agents/llmAgent";
 
 const StateSchema = z.object({

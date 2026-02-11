@@ -2,11 +2,11 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import { HOST } from "~/paths";
-import type { Database } from "~/types";
-import { getProjectStatusData } from "~/utils/project-status.server";
-import { createRouteDefinitions } from "~/utils/route-definitions";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import { HOST } from "../../paths";
+import type { Database } from "../../types";
+import { getProjectStatusData } from "../../utils/project-status.server";
+import { createRouteDefinitions } from "../../utils/route-definitions";
 
 const DEFAULT_INSIGHT_LIMIT = 8;
 const DEFAULT_EVIDENCE_LIMIT = 24;
@@ -71,7 +71,7 @@ type IcpScoreRow = Pick<
 	Database["public"]["Tables"]["person_scale"]["Row"],
 	"person_id" | "score" | "band" | "confidence"
 >;
-type ProjectPersonSummary = Pick<Database["public"]["Tables"]["people"]["Row"], "id" | "title" | "company"> & {
+type ProjectPersonSummary = Pick<Database["public"]["Tables"]["people"]["Row"], "id" | "title"> & {
 	default_organization?: OrganizationNameSummary | OrganizationNameSummary[] | null;
 };
 type ProjectPeopleSummaryRow = Pick<Database["public"]["Tables"]["project_people"]["Row"], "person_id"> & {
@@ -1024,7 +1024,7 @@ export const fetchProjectStatusContextTool = createTool({
 							segment: person?.segment ?? null,
 							role: row.role ?? person?.role ?? null,
 							title: (person as { title?: string | null })?.title ?? null,
-							company: resolveOrganizationName(person?.default_organization) ?? person?.company ?? null,
+							company: resolveOrganizationName(person?.default_organization),
 							description: person?.description ?? null,
 							location: person?.location ?? null,
 							image_url: person?.image_url ?? null,
@@ -1068,8 +1068,7 @@ export const fetchProjectStatusContextTool = createTool({
 							hasTitle: false,
 							hasCompany: false,
 						};
-						const summaryCompanyName =
-							resolveOrganizationName(summaryPerson?.default_organization) ?? summaryPerson?.company ?? null;
+						const summaryCompanyName = resolveOrganizationName(summaryPerson?.default_organization);
 						summaryProfileByPersonId.set(personId, {
 							hasTitle: existing.hasTitle || Boolean(summaryPerson?.title),
 							hasCompany: existing.hasCompany || Boolean(summaryCompanyName),

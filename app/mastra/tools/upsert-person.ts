@@ -2,8 +2,8 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
 
 /**
  * Parse a full name into firstname and lastname

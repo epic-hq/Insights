@@ -8,7 +8,7 @@
  */
 
 import consola from "consola";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { createSupabaseAdminClient } from "../../lib/supabase/client.server";
 
 export interface ResolvedContext {
 	accountId: string;

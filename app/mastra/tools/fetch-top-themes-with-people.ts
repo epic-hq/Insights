@@ -82,9 +82,9 @@ export const fetchTopThemesWithPeopleTool = createTool({
 		),
 	}),
 	execute: async (input, context?) => {
-		const { supabaseAdmin } = await import("~/lib/supabase/client.server");
-		const { createRouteDefinitions } = await import("~/utils/route-definitions");
-		const { HOST } = await import("~/paths");
+		const { supabaseAdmin } = await import("../../lib/supabase/client.server");
+		const { createRouteDefinitions } = await import("../../utils/route-definitions");
+		const { HOST } = await import("../../paths");
 
 		const supabase = supabaseAdmin as SupabaseClient<unknown>;
 		const runtimeProjectId = context?.requestContext?.get?.("project_id");

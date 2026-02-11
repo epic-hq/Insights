@@ -3,9 +3,9 @@ import { tasks } from "@trigger.dev/sdk";
 import consola from "consola";
 import type { indexAssetTask } from "src/trigger/asset/indexAsset";
 import { z } from "zod";
-import { b } from "~/../baml_client";
-import type { Database } from "~/database.types";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { b } from "../../../baml_client";
+import type { Database } from "../../database.types";
+import { createSupabaseAdminClient } from "../../lib/supabase/client.server";
 
 // Type alias for database tables
 type ProjectAsset = Database["public"]["Tables"]["project_assets"]["Row"];

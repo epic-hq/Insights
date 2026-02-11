@@ -8,7 +8,7 @@
 import { createTool } from "@mastra/core/tools";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
 import { resolveAccountId } from "./context-utils";
 
 export const saveAccountCompanyContextTool = createTool({

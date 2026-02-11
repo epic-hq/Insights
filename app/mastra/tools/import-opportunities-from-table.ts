@@ -1,7 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import consola from "consola";
 import { z } from "zod";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { createSupabaseAdminClient } from "../../lib/supabase/client.server";
 
 /**
  * Column mapping schema - maps spreadsheet columns to opportunity fields

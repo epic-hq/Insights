@@ -99,7 +99,8 @@ Modes:
 - ux_research_mode: howtoAgent prompts about UX or product research/how-to.
 - normal: everything else.
 
-Rule: For people comparisons ("what do X and Y have in common", "compare these people"), use mode="normal", not theme_people_snapshot.`;
+Rule: For people comparisons ("what do X and Y have in common", "compare these people"), use mode="normal", not theme_people_snapshot.
+Rule: If system context indicates interview detail and the prompt is about open questions/prep/follow-up, route to researchAgent with mode="normal".`;
 const DEBUG_PREFIX_REGEX = /^\s*\/debug\b[:\s-]*/i;
 const FALLBACK_EMPTY_RESPONSE_TEXT = "Sorry, I couldn't answer that just now. Please try again.";
 const MARKDOWN_LINK_REGEX = /\[[^\]]+\]\((?:\/|https?:\/\/|#|mailto:)[^)]+\)/;
@@ -166,6 +167,21 @@ function streamPlainAssistantText(text: string) {
 function stripDebugPrefix(prompt: string): string {
 	const stripped = prompt.replace(DEBUG_PREFIX_REGEX, "").trim();
 	return stripped.length > 0 ? stripped : "what should I do next";
+}
+
+function extractInterviewIdFromSystemContext(systemContext: string): string | null {
+	if (!systemContext) return null;
+
+	// Current UI Context format:
+	// - Route: /a/{accountId}/{projectId}/interviews/{interviewId}
+	// - View: Interview detail (id={interviewId})
+	const routeMatch = systemContext.match(/\/interviews\/([a-zA-Z0-9-]{8,})\b/);
+	if (routeMatch?.[1]) return routeMatch[1];
+
+	const viewMatch = systemContext.match(/View:\s*Interview detail \(id=([a-zA-Z0-9-]{8,})\)/i);
+	if (viewMatch?.[1]) return viewMatch[1];
+
+	return null;
 }
 
 function normalizeMessagesForExecution(
@@ -394,10 +410,29 @@ function augmentStreamForReliability(
 	return transformed;
 }
 
-function routeByDeterministicPrompt(lastUserText: string): z.infer<typeof intentRoutingSchema> | null {
+function routeByDeterministicPrompt(
+	lastUserText: string,
+	options?: { systemContext?: string }
+): z.infer<typeof intentRoutingSchema> | null {
 	const prompt = lastUserText.trim().toLowerCase();
 	if (!prompt) return null;
 	const hasAny = (...tokens: string[]) => tokens.some((token) => prompt.includes(token));
+	const systemContext = options?.systemContext ?? "";
+	const interviewIdFromContext = extractInterviewIdFromSystemContext(systemContext);
+	const looksLikeFailureReport = hasAny(
+		"did not",
+		"didn't",
+		"does not",
+		"doesn't",
+		"failed",
+		"failure",
+		"broken",
+		"not working",
+		"error",
+		"crash",
+		"bug",
+		"issue"
+	);
 	const howtoRouting = detectHowtoPromptMode(prompt);
 	if (howtoRouting.isHowto) {
 		return {
@@ -432,7 +467,9 @@ function routeByDeterministicPrompt(lastUserText: string): z.infer<typeof intent
 	}
 
 	const asksForSurveyCreate =
-		hasAny("survey", "waitlist", "ask link", "questionnaire") && hasAny("create", "make", "build", "draft", "generate");
+		hasAny("survey", "waitlist", "ask link", "questionnaire") &&
+		hasAny("create", "make", "build", "draft", "generate") &&
+		!looksLikeFailureReport;
 	if (asksForSurveyCreate) {
 		return {
 			targetAgentId: "researchAgent",
@@ -453,8 +490,21 @@ function routeByDeterministicPrompt(lastUserText: string): z.infer<typeof intent
 		};
 	}
 
+	const asksForInterviewOpenQuestionHelp =
+		Boolean(interviewIdFromContext) &&
+		hasAny("open question", "open questions", "next steps", "follow up", "follow-up", "prepare", "prep");
+	if (asksForInterviewOpenQuestionHelp) {
+		return {
+			targetAgentId: "researchAgent",
+			confidence: 1,
+			responseMode: "normal",
+			rationale: "deterministic routing for interview detail open-question guidance",
+		};
+	}
+
 	const asksForFeedbackTriage =
-		(hasAny("feedback", "bug", "bug report", "feature request") && hasAny("posthog", "log", "submit", "report", "track")) ||
+		(hasAny("feedback", "bug", "bug report", "feature request") &&
+			hasAny("posthog", "log", "submit", "report", "track")) ||
 		(hasAny("bug report", "feature request") && hasAny("submit", "log", "track"));
 	if (asksForFeedbackTriage) {
 		return {
@@ -508,12 +558,49 @@ function routeByDeterministicPrompt(lastUserText: string): z.infer<typeof intent
 
 async function routeAgentByIntent(
 	lastUserText: string,
-	resourceId?: string
+	resourceId?: string,
+	options?: { systemContext?: string }
 ): Promise<z.infer<typeof intentRoutingSchema> | null> {
 	const prompt = lastUserText.trim();
 	if (!prompt) return null;
 
-	const deterministicRoute = routeByDeterministicPrompt(prompt);
+	const promptLower = prompt.toLowerCase();
+	const promptLooksLikeFollowupFeedbackDetail = [
+		"did not",
+		"didn't",
+		"does not",
+		"doesn't",
+		"failed",
+		"failure",
+		"broken",
+		"not working",
+		"error",
+		"crash",
+		"bug",
+		"issue",
+	].some((token) => promptLower.includes(token));
+
+	// Sticky routing for feedback clarifications:
+	// if we just routed to feedbackAgent and the next turn looks like issue detail,
+	// keep routing to feedbackAgent so the user can complete the bug report flow.
+	if (resourceId) {
+		const sticky = lastRoutedAgentMap.get(resourceId);
+		if (
+			sticky &&
+			sticky.agentId === "feedbackAgent" &&
+			Date.now() - sticky.timestamp < STICKY_ROUTING_TTL_MS &&
+			promptLooksLikeFollowupFeedbackDetail
+		) {
+			return {
+				targetAgentId: "feedbackAgent",
+				confidence: 0.95,
+				responseMode: "normal",
+				rationale: "sticky routing — continuing feedbackAgent clarification flow",
+			};
+		}
+	}
+
+	const deterministicRoute = routeByDeterministicPrompt(prompt, options);
 	if (deterministicRoute) return deterministicRoute;
 
 	// Sticky routing: if the last routed agent was projectSetupAgent and no
@@ -609,7 +696,9 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const lastUserText = debugRequested ? stripDebugPrefix(lastUserTextRaw) : lastUserTextRaw;
 	const runtimeMessagesForExecution = normalizeMessagesForExecution(runtimeMessages, debugRequested);
 	const routingResourceId = `project-chat-${userId}-${projectId}`;
-	const routeDecision = await routeAgentByIntent(lastUserText, routingResourceId);
+	const routeDecision = await routeAgentByIntent(lastUserText, routingResourceId, {
+		systemContext: typeof system === "string" ? system : "",
+	});
 	const resolvedResponseMode: RoutingResponseMode =
 		(routeDecision?.responseMode as RoutingResponseMode | undefined) ?? "normal";
 	const targetAgentId: RoutingTargetAgent =
@@ -696,6 +785,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	requestContext.set("user_id", userId);
 	requestContext.set("account_id", accountId);
 	requestContext.set("project_id", projectId);
+	const interviewIdFromSystemContext = extractInterviewIdFromSystemContext(typeof system === "string" ? system : "");
+	if (interviewIdFromSystemContext) {
+		requestContext.set("interview_id", interviewIdFromSystemContext);
+	}
 	if (userTimezone) {
 		requestContext.set("user_timezone", userTimezone);
 	}

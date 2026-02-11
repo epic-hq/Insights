@@ -53,8 +53,7 @@ function classifyFeedbackType(params: {
 
 export const submitPosthogFeedbackTool = createTool({
 	id: "submit-posthog-feedback",
-	description:
-		"Submit product feedback to PostHog and tag it as general feedback, bug report, or feature request.",
+	description: "Submit product feedback to PostHog and tag it as general feedback, bug report, or feature request.",
 	inputSchema: z.object({
 		message: z.string().min(1).describe("The user's feedback text. Keep this as close to verbatim as possible."),
 		title: z
@@ -78,10 +77,12 @@ export const submitPosthogFeedbackTool = createTool({
 		eventName: z.string().optional(),
 		feedbackType: feedbackTypeSchema.optional(),
 		distinctId: z.string().optional(),
+		slackNotified: z.boolean().optional(),
 	}),
 	execute: async (input, context?) => {
 		try {
-			const { getPostHogServerClient } = await import("~/lib/posthog.server");
+			const { getPostHogServerClient } = await import("../../lib/posthog.server");
+			const { sendFeedbackAlertToSlack } = await import("../../lib/slack-feedback.server");
 			const posthog = getPostHogServerClient();
 
 			if (!posthog) {
@@ -125,12 +126,27 @@ export const submitPosthogFeedbackTool = createTool({
 			});
 			await posthog.flush();
 
+			const shouldNotifySlack = feedbackType === "bug_report" || feedbackType === "feature_request";
+			const slackNotified = shouldNotifySlack
+				? await sendFeedbackAlertToSlack({
+						feedbackType,
+						message: input.message,
+						title: input.title,
+						distinctId,
+						accountId: typeof accountId === "string" ? accountId : null,
+						projectId: typeof projectId === "string" ? projectId : null,
+						source: input.source ?? null,
+						url: input.url ?? null,
+					})
+				: false;
+
 			return {
 				success: true,
 				message: "Feedback submitted to PostHog",
 				eventName,
 				feedbackType,
 				distinctId,
+				slackNotified,
 			};
 		} catch (error) {
 			consola.error("submit-posthog-feedback: failed", error);

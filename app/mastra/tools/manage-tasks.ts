@@ -2,7 +2,14 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { createTask, createTaskLink, deleteTask, getTasks, getTopFocusTasks, updateTask } from "~/features/tasks/db";
+import {
+	createTask,
+	createTaskLink,
+	deleteTask,
+	getTasks,
+	getTopFocusTasks,
+	updateTask,
+} from "../../features/tasks/db";
 import type {
 	AgentType,
 	Assignee,
@@ -11,11 +18,11 @@ import type {
 	Task,
 	TaskStatus,
 	TaskUpdate,
-} from "~/features/tasks/types";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import { HOST } from "~/paths";
-import type { Database } from "~/types";
-import { createRouteDefinitions } from "~/utils/route-definitions";
+} from "../../features/tasks/types";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import { HOST } from "../../paths";
+import type { Database } from "../../types";
+import { createRouteDefinitions } from "../../utils/route-definitions";
 
 const taskOutputSchema = z.object({
 	id: z.string(),

@@ -43,8 +43,8 @@ export const enrichPersonDataTool = createTool({
 		error: z.string().optional(),
 	}),
 	execute: async (input, context?) => {
-		const { enrichPersonData } = await import("~/features/people/services/enrichPersonData.server");
-		const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server");
+		const { enrichPersonData } = await import("../../features/people/services/enrichPersonData.server");
+		const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
 
 		const accountId = input.accountId || context?.requestContext?.get?.("account_id");
 		const projectId = input.projectId || context?.requestContext?.get?.("project_id");

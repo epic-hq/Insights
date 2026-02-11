@@ -2,12 +2,12 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { getPersonas } from "~/features/personas/db";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import { HOST } from "~/paths";
-import { personasDetailSchema } from "~/schemas";
-import type { Database } from "~/types";
-import { createRouteDefinitions } from "~/utils/route-definitions";
+import { getPersonas } from "../../features/personas/db";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import { HOST } from "../../paths";
+import { personasDetailSchema } from "../../schemas";
+import type { Database } from "../../types";
+import { createRouteDefinitions } from "../../utils/route-definitions";
 
 export const fetchPersonasTool = createTool({
 	id: "fetch-personas",
