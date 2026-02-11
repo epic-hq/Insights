@@ -478,6 +478,7 @@ function ProjectStatusAgentChatInner({
 		setForceExpandChat,
 	} = useProjectStatusAgent();
 	const { isEnabled: isVoiceEnabled } = usePostHogFeatureFlag("ffVoice");
+	const { isEnabled: isGenUIEnabled } = usePostHogFeatureFlag("ffGenUI");
 
 	// Load chat history from the server for display
 	// The history is loaded for UI display only - when sending new messages,
@@ -774,6 +775,7 @@ function ProjectStatusAgentChatInner({
 
 	// Scan messages for A2UI gen-ui payloads and apply them to the surface
 	useEffect(() => {
+		if (!isGenUIEnabled) return;
 		if (displayableMessages.length === 0) return;
 		// Scan from newest to oldest, apply first unseen A2UI payload
 		for (let i = displayableMessages.length - 1; i >= 0; i--) {
@@ -976,8 +978,8 @@ function ProjectStatusAgentChatInner({
 	// Shared chat content renderer (used by both embedded and card modes)
 	const chatContent = (
 		<>
-			{/* A2UI gen-ui surface — renders above chat when active */}
-			{a2uiSurface?.surface != null && a2uiSurface.surface.ready && (
+			{/* A2UI gen-ui surface — renders above chat when active (gated by ffGenUI) */}
+			{isGenUIEnabled && a2uiSurface?.surface != null && a2uiSurface.surface.ready && (
 				<div className="mb-3 flex-shrink-0">
 					<A2UIRenderer
 						surface={a2uiSurface.surface}
