@@ -10,7 +10,12 @@ import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { z } from "zod";
 import { getAuthenticatedUser } from "~/lib/supabase/client.server";
-import { completeMultipartUploadServer, createR2MultipartUpload, createR2PresignedUploadUrl } from "~/utils/r2.server";
+import {
+	abortMultipartUploadServer,
+	completeMultipartUploadServer,
+	createR2MultipartUpload,
+	createR2PresignedUploadUrl,
+} from "~/utils/r2.server";
 
 const MULTIPART_THRESHOLD = 100 * 1024 * 1024; // 100MB
 const PART_SIZE = 10 * 1024 * 1024; // 10MB chunks
@@ -32,6 +37,11 @@ const CompleteMultipartSchema = z.object({
 			etag: z.string(),
 		})
 	),
+});
+
+const AbortMultipartSchema = z.object({
+	key: z.string(),
+	uploadId: z.string(),
 });
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -68,6 +78,18 @@ export async function action({ request }: ActionFunctionArgs) {
 			}
 
 			return Response.json({ success: true, key });
+		}
+
+		// Handle multipart abort action
+		if (action === "abort") {
+			const parsed = AbortMultipartSchema.safeParse(body);
+			if (!parsed.success) {
+				return Response.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
+			}
+
+			const { key, uploadId } = parsed.data;
+			await abortMultipartUploadServer({ key, uploadId });
+			return Response.json({ success: true, key, uploadId });
 		}
 
 		// Handle presigned URL request

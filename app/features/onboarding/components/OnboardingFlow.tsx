@@ -46,6 +46,9 @@ type UploadResponse<T> =
 			error: string;
 	  };
 
+const MULTIPART_COMPLETE_TIMEOUT_MS = 2 * 60 * 1000;
+const MULTIPART_ABORT_TIMEOUT_MS = 30 * 1000;
+
 function postFormDataWithProgress<T>({
 	url,
 	formData,
@@ -134,6 +137,29 @@ function postFormDataWithProgress<T>({
 		console.log("[Upload] Starting XHR send to:", url);
 		xhr.send(formData);
 	});
+}
+
+async function fetchWithTimeout(
+	input: RequestInfo | URL,
+	init: Omit<RequestInit, "signal">,
+	timeoutMs: number
+): Promise<Response> {
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+	try {
+		return await fetch(input, {
+			...init,
+			signal: controller.signal,
+		});
+	} catch (error) {
+		if (error instanceof Error && error.name === "AbortError") {
+			throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`);
+		}
+		throw error;
+	} finally {
+		clearTimeout(timeoutId);
+	}
 }
 
 interface OnboardingFlowProps {
@@ -319,6 +345,9 @@ export default function OnboardingFlow({
 						if (presignedData.type === "multipart") {
 							// Large file - use multipart upload
 							console.log("[Upload] Starting multipart upload with", presignedData.totalParts, "parts");
+							let lastPartStarted = 0;
+							let lastPartCompleted = 0;
+							let loggedCompleting = false;
 							await uploadToR2WithProgress({
 								file,
 								singlePartUrl: "", // Not used for multipart
@@ -331,25 +360,66 @@ export default function OnboardingFlow({
 										partUrls: presignedData.partUrls, // Already Record<number, string> from server
 									}),
 									completeMultipartUpload: async ({ parts }) => {
-										const completeResponse = await fetch("/api/upload/presigned-url?action=complete", {
-											method: "POST",
-											headers: { "Content-Type": "application/json" },
-											body: JSON.stringify({
-												key: presignedData.key,
-												uploadId: presignedData.uploadId,
-												parts: parts.map((p) => ({
-													partNumber: p.partNumber,
-													etag: p.etag,
-												})),
-											}),
-										});
+										const completeResponse = await fetchWithTimeout(
+											"/api/upload/presigned-url?action=complete",
+											{
+												method: "POST",
+												headers: { "Content-Type": "application/json" },
+												body: JSON.stringify({
+													key: presignedData.key,
+													uploadId: presignedData.uploadId,
+													parts: parts.map((p) => ({
+														partNumber: p.partNumber,
+														etag: p.etag,
+													})),
+												}),
+											},
+											MULTIPART_COMPLETE_TIMEOUT_MS
+										);
 
 										if (!completeResponse.ok) {
-											throw new Error("Failed to complete multipart upload");
+											const errorData = await completeResponse.json().catch(() => ({}));
+											throw new Error(errorData.error || "Failed to complete multipart upload");
+										}
+									},
+									abortMultipartUpload: async () => {
+										const abortResponse = await fetchWithTimeout(
+											"/api/upload/presigned-url?action=abort",
+											{
+												method: "POST",
+												headers: { "Content-Type": "application/json" },
+												body: JSON.stringify({
+													key: presignedData.key,
+													uploadId: presignedData.uploadId,
+												}),
+											},
+											MULTIPART_ABORT_TIMEOUT_MS
+										);
+
+										if (!abortResponse.ok) {
+											const errorData = await abortResponse.json().catch(() => ({}));
+											throw new Error(errorData.error || "Failed to abort multipart upload");
 										}
 									},
 								},
-								onProgress: handleUploadProgress,
+								onProgress: (progress) => {
+									handleUploadProgress(progress);
+
+									if (progress.phase === "completing" && !loggedCompleting) {
+										loggedCompleting = true;
+										console.log("[Upload] Finalizing multipart upload");
+									}
+
+									if (!progress.part) return;
+									if (progress.part.bytesSent === 0 && progress.part.index !== lastPartStarted) {
+										lastPartStarted = progress.part.index;
+										console.log(`[Upload] Multipart part ${progress.part.index}/${progress.part.total} started`);
+									}
+									if (progress.part.bytesSent === progress.part.size && progress.part.index !== lastPartCompleted) {
+										lastPartCompleted = progress.part.index;
+										console.log(`[Upload] Multipart part ${progress.part.index}/${progress.part.total} complete`);
+									}
+								},
 							});
 							r2Key = presignedData.key;
 						} else {
@@ -533,7 +603,7 @@ export default function OnboardingFlow({
 				setCurrentStep("upload"); // Return to upload screen so user can retry
 			}
 		},
-		[data, accountId]
+		[data, accountId, handleUploadProgress]
 	);
 
 	const handleProcessingComplete = useCallback(() => {
