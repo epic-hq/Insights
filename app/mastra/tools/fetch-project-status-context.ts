@@ -1024,7 +1024,7 @@ export const fetchProjectStatusContextTool = createTool({
 							segment: person?.segment ?? null,
 							role: row.role ?? person?.role ?? null,
 							title: (person as { title?: string | null })?.title ?? null,
-							company: resolveOrganizationName(person?.default_organization) ?? person?.company ?? null,
+							company: resolveOrganizationName(person?.default_organization) ?? null,
 							description: person?.description ?? null,
 							location: person?.location ?? null,
 							image_url: person?.image_url ?? null,
@@ -1069,7 +1069,7 @@ export const fetchProjectStatusContextTool = createTool({
 							hasCompany: false,
 						};
 						const summaryCompanyName =
-							resolveOrganizationName(summaryPerson?.default_organization) ?? summaryPerson?.company ?? null;
+							resolveOrganizationName(summaryPerson?.default_organization) ?? null;
 						summaryProfileByPersonId.set(personId, {
 							hasTitle: existing.hasTitle || Boolean(summaryPerson?.title),
 							hasCompany: existing.hasCompany || Boolean(summaryCompanyName),

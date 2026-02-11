@@ -67,7 +67,7 @@ export const enrichPersonDataTool = createTool({
 		const { data: person, error: fetchError } = await supabase
 			.from("people")
 			.select(
-				"id, name, firstname, lastname, title, company, role, primary_email, linkedin_url, default_organization_id"
+				"id, name, firstname, lastname, title, role, primary_email, linkedin_url, default_organization_id"
 			)
 			.eq("id", input.personId)
 			.eq("account_id", accountId)
@@ -82,18 +82,6 @@ export const enrichPersonDataTool = createTool({
 				confidence: 0,
 				data: {},
 				error: fetchError?.message || "Person not found",
-			};
-		}
-
-		// If person already has all key fields, skip
-		if (person.title && person.company) {
-			return {
-				success: true,
-				enriched: false,
-				fieldsUpdated: [],
-				source: "none",
-				confidence: 1,
-				data: {},
 			};
 		}
 
