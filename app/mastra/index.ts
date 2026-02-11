@@ -4,6 +4,7 @@ import { Mastra } from "@mastra/core/mastra";
 import { PinoLogger } from "@mastra/loggers";
 import { createClient } from "@supabase/supabase-js";
 import { chiefOfStaffAgent } from "./agents/chief-of-staff-agent";
+import { feedbackAgent } from "./agents/feedback-agent";
 import { howtoAgent } from "./agents/howto-agent";
 import { insightsAgent } from "./agents/insights-agent";
 import { interviewStatusAgent } from "./agents/interview-status-agent";
@@ -59,6 +60,7 @@ const agents = {
 	projectStatusAgent,
 	howtoAgent,
 	chiefOfStaffAgent,
+	feedbackAgent,
 	peopleAgent,
 	researchAgent,
 	opsAgent,
@@ -132,6 +134,10 @@ export const mastra = new Mastra({
 			chatRoute({
 				path: "/chat/survey",
 				agent: "surveyAgent",
+			}),
+			chatRoute({
+				path: "/chat/feedback",
+				agent: "feedbackAgent",
 			}),
 		],
 	},

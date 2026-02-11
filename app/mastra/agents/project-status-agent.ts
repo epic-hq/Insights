@@ -25,6 +25,7 @@ import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence";
 import { suggestionTool } from "../tools/suggestion-tool";
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 import { chiefOfStaffAgent } from "./chief-of-staff-agent";
+import { feedbackAgent } from "./feedback-agent";
 import { howtoAgent } from "./howto-agent";
 import { opsAgent } from "./ops-agent";
 import { peopleAgent } from "./people-agent";
@@ -221,6 +222,7 @@ Call "getCurrentDate" first for any date/time questions.
 - Deals and organization ops are handled by the OpsAgent sub-agent.
 - People: delegate to PeopleAgent for all people/persona operations
 - Documents, table editing/imports, and URL content ingestion are handled by the ResearchAgent or OpsAgent sub-agent.
+- Product feedback ingestion into PostHog is handled by the feedbackAgent sub-agent.
 - **Search files/assets**: "semanticSearchAssets" to find previously saved tables, documents, spreadsheets by natural language query
 - Capabilities lookup: "capabilityLookup" when user asks what you can do or to restate scope/guardrails
 - Document links: "generateDocumentLink" to give the user a clickable link after saving or reading a document
@@ -279,6 +281,7 @@ Please try:
 		peopleAgent,
 		researchAgent,
 		opsAgent,
+		feedbackAgent,
 		chiefOfStaffAgent,
 		howtoAgent,
 	},

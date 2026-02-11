@@ -1695,12 +1695,12 @@ export interface QuestionPolicy {
 }
 
 export interface QuestionSet {
-  sessionId: string
-  policy: QuestionPolicy
+  sessionId?: string | null
+  policy?: QuestionPolicy | null
   categories: Category[]
   questions: Question[]
   history: HistoryItem[]
-  round: number
+  round?: number | null
   
 }
 

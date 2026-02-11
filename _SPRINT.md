@@ -86,7 +86,8 @@ Jot notes here as you work. Close beads with `bd close`. When you ask me to upda
 - email campaign start
 - usage visibility in PH
 
-* event promo for 2/19
+* event promo for 2/19 DONE
+* Interview page conversation lens key highlights link to evidence
 
 
 ## Parking Lot (not this sprint)

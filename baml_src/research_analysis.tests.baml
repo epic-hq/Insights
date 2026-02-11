@@ -1,21 +1,21 @@
 test GenerateQuestionSet_Pizza_Needs {
   functions [GenerateQuestionSet]
-  args {
-		target_org "mom and pop pizza shops"
-		target_roles "small business owners"
-		research_goal "understand operational needs"
-		research_goal_details "Identify key pain points and operational challenges facing small pizza shop owners"
-		assumptions "Pizza shops struggle with staffing and inventory management"
-		unknowns "What specific operational challenges cause the most impact on profitability"
-		custom_instructions ""
-		session_id "test_pizza_001"
-		round 1
-		total_per_round 8
-		per_category_min 1
-		per_category_max 3
-		interview_time_limit 30
-  }
-} 
+  args { inputs {
+    target_org "mom and pop pizza shops"
+    target_roles "small business owners"
+    research_goal "understand operational needs"
+    research_goal_details "Identify key pain points and operational challenges facing small pizza shop owners"
+    assumptions "Pizza shops struggle with staffing and inventory management"
+    unknowns "What specific operational challenges cause the most impact on profitability"
+    custom_instructions ""
+    session_id "test_pizza_001"
+    round 1
+    total_per_round 8
+    per_category_min 1
+    per_category_max 3
+    interview_time_limit 30
+  } }
+}
 
 test GenerateQuestionSet_Salon_Scheduling {
   functions [GenerateQuestionSet]
@@ -77,7 +77,7 @@ test GenerateQuestionSet_SaaS_Willingness {
 
 test GenerateQuestionSet_Custom_Instructions {
   functions [GenerateQuestionSet]
-  args {
+  args { inputs {
     target_org "Regional nonprofit hospital network (6 clinics, 450-bed hospital)"
     target_roles "Patients (outpatient), Front-desk staff, Nurses, Primary-care physicians"
     research_goal "Improve patient intake and follow-up experience"
@@ -91,7 +91,7 @@ test GenerateQuestionSet_Custom_Instructions {
     per_category_min 1
     per_category_max 3
     interview_time_limit 45
-  }
+  } }
 }
 
 test GenerateQuestionSet_Validation_Mode {

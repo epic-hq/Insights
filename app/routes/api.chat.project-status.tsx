@@ -45,6 +45,7 @@ const routingTargetAgents = [
 	"projectStatusAgent",
 	"chiefOfStaffAgent",
 	"researchAgent",
+	"feedbackAgent",
 	"projectSetupAgent",
 	"howtoAgent",
 ] as const;
@@ -86,6 +87,7 @@ Agents:
 - projectSetupAgent: onboarding, setup, research goals, company context.
 - chiefOfStaffAgent: strategic prioritization / "what should I do next".
 - researchAgent: create/manage surveys, interview prompts, interview operations.
+- feedbackAgent: classify feedback/bug/feature requests and submit to PostHog.
 - howtoAgent: procedural guidance ("how do I", "best way", "teach me", "where do I").
 - projectStatusAgent: factual status/data lookup (themes, ICP, people, evidence, interviews).
 
@@ -106,6 +108,7 @@ const MAX_STEPS_BY_AGENT: Record<RoutingTargetAgent, number> = {
 	projectStatusAgent: 6,
 	chiefOfStaffAgent: 4,
 	researchAgent: 4,
+	feedbackAgent: 3,
 	projectSetupAgent: 5,
 	howtoAgent: 4,
 };
@@ -114,6 +117,7 @@ const BILLING_MODEL_BY_AGENT: Record<RoutingTargetAgent, string> = {
 	projectStatusAgent: "gpt-4.1",
 	chiefOfStaffAgent: "gpt-4o-mini",
 	researchAgent: "gpt-4o",
+	feedbackAgent: "gpt-4o-mini",
 	projectSetupAgent: "gpt-5.1",
 	howtoAgent: "gpt-4o-mini",
 };
@@ -446,6 +450,18 @@ function routeByDeterministicPrompt(lastUserText: string): z.infer<typeof intent
 			confidence: 1,
 			responseMode: "normal",
 			rationale: "deterministic routing for interview operations",
+		};
+	}
+
+	const asksForFeedbackTriage =
+		(hasAny("feedback", "bug", "bug report", "feature request") && hasAny("posthog", "log", "submit", "report", "track")) ||
+		(hasAny("bug report", "feature request") && hasAny("submit", "log", "track"));
+	if (asksForFeedbackTriage) {
+		return {
+			targetAgentId: "feedbackAgent",
+			confidence: 1,
+			responseMode: "normal",
+			rationale: "deterministic routing for feedback triage and PostHog submission",
 		};
 	}
 

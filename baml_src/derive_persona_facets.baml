@@ -92,8 +92,16 @@ test DerivePersonaFacets_Sample {
           verbatim: "I use AI majority of the time"
           anchors: {
             speaker_label: "SPEAKER 2"
+            start_ms: 0
+            end_ms: 5000
           }
-          confidence: "high"
+          facet_mentions [
+            {
+              person_key: "participant-1"
+              kind_slug: "tool"
+              value: "uses AI for essay writing and formatting"
+            }
+          ]
         },
         {
           index: 1
@@ -103,45 +111,48 @@ test DerivePersonaFacets_Sample {
           verbatim: "I work better when I'm alone"
           anchors: {
             speaker_label: "SPEAKER 2"
+            start_ms: 6000
+            end_ms: 10000
           }
-          confidence: "high"
+          facet_mentions [
+            {
+              person_key: "participant-1"
+              kind_slug: "preference"
+              value: "prefers solo work over group work"
+            }
+          ]
         }
       ]
       facet_mentions [
         {
-          index: 0
-          parent_index: 0
           person_key: "participant-1"
           kind_slug: "tool"
           value: "uses AI for essay writing and formatting"
-          confidence: 0.9
+          quote: "I use AI majority of the time"
         },
         {
-          index: 1
-          parent_index: 0
           person_key: "participant-1"
           kind_slug: "behavior"
           value: "uses AI majority of time for academic work"
-          confidence: 0.85
+          quote: "working through essays"
         },
         {
-          index: 2
-          parent_index: 1
           person_key: "participant-1"
           kind_slug: "preference"
           value: "prefers solo work over group work"
-          confidence: 0.9
+          quote: "I work better when I'm alone"
         },
         {
-          index: 3
-          parent_index: 1
           person_key: "participant-1"
           kind_slug: "value"
           value: "values working independently"
-          confidence: 0.8
+          quote: "I think personally I work better"
         }
       ]
       scenes []
+      interaction_context: Research
+      context_confidence: 0.9
+      context_reasoning: "User interview about study habits and AI tool usage with a college student"
     }
   }
 }
