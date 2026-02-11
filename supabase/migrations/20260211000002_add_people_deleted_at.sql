@@ -19,7 +19,7 @@ CREATE POLICY "Users can view people in their projects"
   USING (
     deleted_at IS NULL
     AND account_id IN (
-      SELECT account_id FROM account_users WHERE user_id = auth.uid()
+      SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid()
     )
   );
 
