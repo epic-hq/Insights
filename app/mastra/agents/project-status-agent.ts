@@ -7,6 +7,7 @@ import { openai } from "../../lib/billing/instrumented-openai.server";
 // import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
 import { getSharedPostgresStore } from "../storage/postgres-singleton";
 import { capabilityLookupTool } from "../tools/capability-lookup";
+import { displayComponentTool } from "../tools/display-component";
 import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses";
 import { fetchEvidenceTool } from "../tools/fetch-evidence";
 import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache";
@@ -90,6 +91,7 @@ function auditToolSchemas(agent_name: string, tools: Record<string, unknown>) {
 }
 
 const project_status_agent_tools = {
+	displayComponent: displayComponentTool,
 	getCurrentDate: getCurrentDateTool,
 	fetchProjectStatusContext: fetchProjectStatusContextTool,
 	fetchEvidence: fetchEvidenceTool,
