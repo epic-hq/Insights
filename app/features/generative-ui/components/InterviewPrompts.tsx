@@ -51,13 +51,17 @@ export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsCh
 	const isDraggingRef = useRef(false);
 	const latestPromptsRef = useRef(prompts);
 	latestPromptsRef.current = prompts;
+	const prevParentDataRef = useRef(data.prompts);
 
-	// Sync with incoming data from parent (agent instructions or streaming)
+	// Sync with incoming data from parent — only when the PARENT's data actually
+	// changes (agent sends new prompts), not when local state diverges from stale
+	// parent data after a user edit/reorder.
 	useEffect(() => {
 		if (data.prompts) {
-			const dataStr = JSON.stringify(data.prompts);
-			const currentStr = JSON.stringify(prompts);
-			if (dataStr !== currentStr) {
+			const newParentStr = JSON.stringify(data.prompts);
+			const prevParentStr = JSON.stringify(prevParentDataRef.current);
+			if (newParentStr !== prevParentStr) {
+				prevParentDataRef.current = data.prompts;
 				setPrompts(data.prompts);
 			}
 		}
