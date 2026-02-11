@@ -985,6 +985,13 @@ function ProjectStatusAgentChatInner({
 						surface={a2uiSurface.surface}
 						onAction={(action) => {
 							consola.info("[gen-ui] A2UI action", action);
+							// Bidirectional: send canvas actions back to the agent as a [Canvas] message
+							const payloadSummary = action.payload
+								? ` — ${JSON.stringify(action.payload).slice(0, 200)}`
+								: "";
+							sendMessage({
+								text: `[Canvas] ${action.actionName} on ${action.componentId}${payloadSummary}`,
+							});
 						}}
 					/>
 				</div>

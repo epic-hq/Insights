@@ -6,6 +6,7 @@ import { openai } from "../../lib/billing/instrumented-openai.server";
 // ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
 // import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
 import { getSharedPostgresStore } from "../storage/postgres-singleton";
+import { buildGenUISystemContext } from "~/lib/gen-ui/agent-context";
 import { capabilityLookupTool } from "../tools/capability-lookup";
 import { displayComponentTool } from "../tools/display-component";
 import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses";
@@ -262,6 +263,8 @@ For strategic planning, task prioritization, or "what should I do next?", delega
 
 ## How-To Guidance
 For "how do I", "where do I", "best way to", and "teach me" guidance requests, delegate to the howtoAgent sub-agent.
+
+${buildGenUISystemContext()}
 `;
 		} catch (error) {
 			consola.error("Error in project status agent instructions:", error);

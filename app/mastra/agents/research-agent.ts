@@ -15,6 +15,7 @@ import { fetchWebContentTool } from "../tools/fetch-web-content";
 import { generateProjectRoutesTool } from "../tools/generate-project-routes";
 import { importVideoFromUrlTool } from "../tools/import-video-from-url";
 import { manageDocumentsTool } from "../tools/manage-documents";
+import { buildGenUISystemContext } from "~/lib/gen-ui/agent-context";
 import { displayComponentTool } from "../tools/display-component";
 import { displayInterviewPromptsTool } from "../tools/display-interview-prompts";
 import {
@@ -98,6 +99,8 @@ For FEEDBACK:
 # Rules
 - ALWAYS use tools to take action. Never just describe what you would do.
 - After creating anything, use navigateToPage to take the user there.
+
+${buildGenUISystemContext()}
 `;
 		} catch (error) {
 			consola.error("Error in research agent instructions:", error);
