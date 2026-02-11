@@ -648,7 +648,7 @@ export default function OnboardingFlow({
 	const currentProjectId = useMemo(() => data.projectId || projectId, [data.projectId, projectId]);
 
 	const handleUploadFromUrl = useCallback(
-		async (url: string, personId?: string) => {
+		async (items: Array<{ url: string; personId?: string }>) => {
 			if (!currentProjectId) {
 				setData((prev) => ({
 					...prev,
@@ -657,12 +657,26 @@ export default function OnboardingFlow({
 				throw new Error("A project is required to import from a URL.");
 			}
 
+			const normalizedItems = items
+				.map((item) => ({
+					url: item.url.trim(),
+					...(item.personId ? { personId: item.personId } : {}),
+				}))
+				.filter((item) => item.url.length > 0);
+
+			if (normalizedItems.length === 0) {
+				throw new Error("At least one URL is required.");
+			}
+
+			const primaryUrl = normalizedItems[0]?.url ?? "";
+			const uploadLabel = normalizedItems.length > 1 ? `${normalizedItems.length} URLs` : primaryUrl;
+
 			setData((prev) => ({
 				...prev,
 				file: undefined,
 				mediaType: "interview",
-				uploadLabel: url,
-				uploadedUrl: url,
+				uploadLabel,
+				uploadedUrl: primaryUrl,
 				triggerRunId: undefined,
 				triggerAccessToken: null,
 				interviewId: undefined,
@@ -673,9 +687,12 @@ export default function OnboardingFlow({
 			try {
 				const formData = new FormData();
 				formData.append("projectId", currentProjectId);
-				formData.append("url", url);
-				if (personId) {
-					formData.append("personId", personId);
+				formData.append("urls", JSON.stringify(normalizedItems));
+
+				// Keep legacy fields for backward compatibility with older server versions.
+				formData.append("url", primaryUrl);
+				if (normalizedItems.length === 1 && normalizedItems[0]?.personId) {
+					formData.append("personId", normalizedItems[0].personId);
 				}
 
 				const response = await fetch("/api/upload-from-url", {
@@ -694,8 +711,8 @@ export default function OnboardingFlow({
 					...prev,
 					interviewId: result.interviewId ?? prev.interviewId,
 					projectId: prev.projectId || currentProjectId,
-					uploadLabel: url,
-					uploadedUrl: url,
+					uploadLabel,
+					uploadedUrl: primaryUrl,
 					triggerRunId: result.triggerRunId ?? prev.triggerRunId,
 					triggerAccessToken: result.publicRunToken ?? prev.triggerAccessToken,
 				}));

@@ -12,7 +12,7 @@ import {
 	Users,
 	X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog";
@@ -46,7 +46,7 @@ interface UploadScreenProps {
 			sourceType?: string;
 		}
 	) => void;
-	onUploadFromUrl: (url: string, personId?: string) => Promise<void>;
+	onUploadFromUrl: (items: Array<{ url: string; personId?: string }>) => Promise<void>;
 	onBack: () => void;
 	projectId?: string;
 	accountId?: string;
@@ -55,6 +55,10 @@ interface UploadScreenProps {
 
 type UploadStep = "select" | "associate";
 type ActionType = "upload" | "record";
+type UrlAssignment = {
+	url: string;
+	personSelectionId: string;
+};
 type SelectablePerson =
 	| (Person & { isMember?: false })
 	| {
@@ -66,10 +70,28 @@ type SelectablePerson =
 			email?: string | null;
 	  };
 
+function parsePastedUrls(input: string): string[] {
+	if (!input.trim()) return [];
+
+	const matches = input.match(/https?:\/\/[^\s,]+/gi) ?? [];
+	const cleaned = matches
+		.map((url) => url.trim().replace(/[),.;\]]+$/g, ""))
+		.filter((url) => {
+			try {
+				const parsed = new URL(url);
+				return parsed.protocol === "http:" || parsed.protocol === "https:";
+			} catch {
+				return false;
+			}
+		});
+
+	return Array.from(new Set(cleaned));
+}
+
 export default function UploadScreen({
 	onNext,
 	onUploadFromUrl,
-	onBack,
+	onBack: _onBack,
 	projectId,
 	accountId,
 	error,
@@ -77,6 +99,7 @@ export default function UploadScreen({
 	// File/URL state
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [urlToUpload, setUrlToUpload] = useState("");
+	const [urlAssignments, setUrlAssignments] = useState<UrlAssignment[]>([]);
 	const [uploadTab, setUploadTab] = useState<"file" | "url">("file");
 	const [isDragOver, setIsDragOver] = useState(false);
 
@@ -143,6 +166,7 @@ export default function UploadScreen({
 	// File handlers
 	const handleFileSelect = (file: File) => {
 		setSelectedFile(file);
+		setUrlAssignments([]);
 		setPendingAction("upload");
 		setUploadStep("associate");
 	};
@@ -179,11 +203,14 @@ export default function UploadScreen({
 
 	// URL handler
 	const handleUrlContinue = () => {
-		if (!urlToUpload.trim()) {
-			setUrlError("Please enter a valid URL");
+		const urls = parsePastedUrls(urlToUpload);
+		if (urls.length === 0) {
+			setUrlError("Paste at least one valid URL");
 			return;
 		}
 		setUrlError(null);
+		setSelectedFile(null);
+		setUrlAssignments(urls.map((url) => ({ url, personSelectionId: "" })));
 		setPendingAction("upload");
 		setUploadStep("associate");
 	};
@@ -192,6 +219,7 @@ export default function UploadScreen({
 	const handleRecordClick = useCallback(async () => {
 		if (!projectId) {
 			// No project yet, proceed directly
+			setUrlAssignments([]);
 			setPendingAction("record");
 			setUploadStep("associate");
 			return;
@@ -210,6 +238,7 @@ export default function UploadScreen({
 			if (error) {
 				console.warn("[UploadScreen] Failed to check questions:", error);
 				// Proceed anyway on error
+				setUrlAssignments([]);
 				setPendingAction("record");
 				setUploadStep("associate");
 				return;
@@ -222,6 +251,7 @@ export default function UploadScreen({
 			}
 
 			// Questions exist, proceed to person association
+			setUrlAssignments([]);
 			setPendingAction("record");
 			setUploadStep("associate");
 		} finally {
@@ -232,6 +262,7 @@ export default function UploadScreen({
 	// Proceed to record without questions (user chose to continue)
 	const handleRecordWithoutQuestions = useCallback(() => {
 		setShowNoQuestionsDialog(false);
+		setUrlAssignments([]);
 		setPendingAction("record");
 		setUploadStep("associate");
 	}, []);
@@ -256,150 +287,228 @@ export default function UploadScreen({
 		[projectId, recordNow]
 	);
 
+	const resolveEffectiveAccountId = useCallback(async (): Promise<string | null> => {
+		if (accountId) return accountId;
+		if (!projectId) return null;
+
+		const { data: projectRow, error } = await supabase
+			.from("projects")
+			.select("account_id")
+			.eq("id", projectId)
+			.maybeSingle();
+		if (error) {
+			console.error("[UploadScreen] Failed to resolve account from project:", projectId, error);
+			return null;
+		}
+
+		return projectRow?.account_id ?? null;
+	}, [accountId, projectId, supabase]);
+
+	const resolveSelectablePersonId = useCallback(
+		async (selection: SelectablePerson): Promise<string | null> => {
+			if (!selection.isMember) return selection.id;
+
+			const effectiveAccountId = await resolveEffectiveAccountId();
+			if (!effectiveAccountId) {
+				toast.error(`Could not link ${selection.name}: missing account context`);
+				return null;
+			}
+
+			const { data: existingPerson, error: lookupErr } = await supabase
+				.from("people")
+				.select("id")
+				.eq("account_id", effectiveAccountId)
+				.eq("user_id", selection.user_id)
+				.maybeSingle();
+
+			if (lookupErr) {
+				console.error("[UploadScreen] Failed to lookup person for team member:", selection.name, lookupErr);
+				toast.error(`Could not link ${selection.name}`);
+				return null;
+			}
+
+			if (existingPerson?.id) return existingPerson.id;
+
+			const [first, ...rest] = (selection.name || "").split(/\s+/).filter(Boolean);
+			const last = rest.length ? rest.join(" ") : null;
+			const { data: insertedPerson, error: insertErr } = await supabase
+				.from("people")
+				.insert({
+					account_id: effectiveAccountId,
+					project_id: projectId ?? null,
+					user_id: selection.user_id,
+					person_type: "internal",
+					firstname: first || null,
+					lastname: last,
+					primary_email: selection.email ?? null,
+				})
+				.select("id")
+				.single();
+
+			if (insertErr || !insertedPerson?.id) {
+				console.error("[UploadScreen] Failed to insert person for team member:", selection.name, insertErr);
+				toast.error(`Could not link ${selection.name}`);
+				return null;
+			}
+
+			return insertedPerson.id;
+		},
+		[projectId, resolveEffectiveAccountId, supabase]
+	);
+
+	const urlSelectablePeople = useMemo<SelectablePerson[]>(
+		() => [
+			...(people.map((person) => ({ ...person, isMember: false as const })) as SelectablePerson[]),
+			...members.map((member) => ({
+				id: `member-${member.user_id}`,
+				isMember: true as const,
+				user_id: member.user_id,
+				name: member.name,
+				email: member.email,
+			})),
+		],
+		[members, people]
+	);
+
 	// Process action (upload or record) with optional people
-	const handleProcessAction = useCallback(async () => {
-		setIsSubmitting(true);
+	const handleProcessAction = useCallback(
+		async (options?: { skipPeople?: boolean }) => {
+			const skipPeople = options?.skipPeople ?? false;
+			setIsSubmitting(true);
 
-		try {
-			// Collect all person IDs (existing selections + newly created)
-			const personIds: string[] = [];
+			try {
+				const isUrlUpload = pendingAction === "upload" && !selectedFile && urlAssignments.length > 0;
 
-			// Ensure member selections have a person row
-			if (accountId && projectId && selectedPeople.length > 0) {
-				for (const sel of selectedPeople) {
-					if ((sel as any).isMember) {
-						const memberSel = sel as Extract<SelectablePerson, { isMember: true }>;
-						// Ensure a person row exists for this team member: find, otherwise insert
-						const [first, ...rest] = (memberSel.name || "").split(/\s+/).filter(Boolean);
-						const last = rest.length ? rest.join(" ") : null;
+				if (isUrlUpload) {
+					const resolvedSelectionIds = new Map<string, string | null>();
+					const urlItems: Array<{ url: string; personId?: string }> = [];
 
-						const { data: existingPerson, error: lookupErr } = await supabase
-							.from("people")
-							.select("id")
-							.eq("account_id", accountId)
-							.eq("user_id", memberSel.user_id)
-							.maybeSingle();
+					for (const assignment of urlAssignments) {
+						let personId: string | null = null;
 
-						if (lookupErr) {
-							console.error("[UploadScreen] Failed to lookup person for team member:", memberSel.name, lookupErr);
-							toast.error(`Could not link ${memberSel.name}`);
-							continue;
+						if (!skipPeople && assignment.personSelectionId) {
+							if (resolvedSelectionIds.has(assignment.personSelectionId)) {
+								personId = resolvedSelectionIds.get(assignment.personSelectionId) ?? null;
+							} else {
+								const selection = urlSelectablePeople.find((option) => option.id === assignment.personSelectionId);
+								personId = selection ? await resolveSelectablePersonId(selection) : null;
+								resolvedSelectionIds.set(assignment.personSelectionId, personId);
+							}
 						}
 
-						if (existingPerson?.id) {
-							personIds.push(existingPerson.id);
-							continue;
-						}
+						urlItems.push({
+							url: assignment.url,
+							...(personId ? { personId } : {}),
+						});
+					}
 
-						const insertPayload = {
-							account_id: accountId,
-							project_id: projectId,
-							user_id: memberSel.user_id,
-							person_type: "internal" as const,
-							firstname: first || null,
-							lastname: last,
-							primary_email: memberSel.email ?? null,
-						};
-						const { data: inserted, error: insertErr } = await supabase
-							.from("people")
-							.insert(insertPayload)
-							.select("id")
-							.single();
+					await onUploadFromUrl(urlItems);
+					return;
+				}
 
-						if (insertErr || !inserted?.id) {
-							console.error("[UploadScreen] Failed to insert person for team member:", memberSel.name, insertErr);
-							toast.error(`Could not link ${memberSel.name}`);
-						} else {
-							personIds.push(inserted.id);
+				// Collect all person IDs (existing selections + newly created)
+				const personIds: string[] = [];
+
+				if (!skipPeople) {
+					for (const selected of selectedPeople) {
+						const resolvedPersonId = await resolveSelectablePersonId(selected);
+						if (resolvedPersonId) {
+							personIds.push(resolvedPersonId);
 						}
-					} else {
-						personIds.push(sel.id);
 					}
 				}
-			} else {
-				personIds.push(...selectedPeople.map((p) => p.id));
-			}
 
-			// Create new person if needed (immediately, not deferred)
-			if (showCreatePerson && newPersonFirstName.trim() && accountId) {
-				const firstName = newPersonFirstName.trim();
-				const lastName = newPersonLastName.trim() || null;
-				const displayName = lastName ? `${firstName} ${lastName}` : firstName;
-				const { data, error } = await supabase
-					.from("people")
-					.insert({
-						firstname: firstName,
-						lastname: lastName,
-						account_id: accountId,
-						project_id: projectId,
-						company: newPersonCompany.trim() || null,
-					})
-					.select()
-					.single();
+				// Create new person if needed (immediately, not deferred)
+				const effectiveAccountId = skipPeople ? null : await resolveEffectiveAccountId();
+				if (!skipPeople && showCreatePerson && newPersonFirstName.trim() && effectiveAccountId) {
+					const firstName = newPersonFirstName.trim();
+					const lastName = newPersonLastName.trim() || null;
+					const displayName = lastName ? `${firstName} ${lastName}` : firstName;
+					const { data, error } = await supabase
+						.from("people")
+						.insert({
+							firstname: firstName,
+							lastname: lastName,
+							account_id: effectiveAccountId,
+							project_id: projectId ?? null,
+							company: newPersonCompany.trim() || null,
+						})
+						.select()
+						.single();
 
-				if (error) {
-					console.error("[UploadScreen] Failed to create person:", error);
-					toast.error("Failed to create person");
-				} else if (data) {
-					console.log("[UploadScreen] Created person:", data.id, displayName);
-					personIds.push(data.id);
-					toast.success(`Created "${displayName}"`);
+					if (error) {
+						console.error("[UploadScreen] Failed to create person:", error);
+						toast.error("Failed to create person");
+					} else if (data) {
+						console.log("[UploadScreen] Created person:", data.id, displayName);
+						personIds.push(data.id);
+						toast.success(`Created "${displayName}"`);
+					}
+				} else if (!skipPeople && showCreatePerson && newPersonFirstName.trim()) {
+					console.error("[UploadScreen] Cannot create person: no accountId available");
+					toast.error("Cannot create person: missing account context");
 				}
-			} else if (showCreatePerson && newPersonFirstName.trim()) {
-				console.error("[UploadScreen] Cannot create person: no accountId available");
-				toast.error("Cannot create person: missing account context");
-			}
 
-			// Handle recording - pass all person IDs
-			if (pendingAction === "record") {
-				handleStartRecording(personIds);
-				return;
-			}
+				// Handle recording - pass all person IDs
+				if (pendingAction === "record") {
+					handleStartRecording(personIds);
+					return;
+				}
 
-			// Handle file upload - for now, pass first person (API supports single)
-			const firstPersonId = personIds[0];
-			if (selectedFile) {
-				const fileExtension = selectedFile.name.split(".").pop()?.toLowerCase() || "";
-				const sourceType = getFileType(selectedFile);
+				// Handle file upload (link first selected person)
+				const firstPersonId = personIds[0];
+				if (selectedFile) {
+					const fileExtension = selectedFile.name.split(".").pop()?.toLowerCase() || "";
+					const sourceType = getFileType(selectedFile);
 
-				onNext(selectedFile, "interview", projectId, {
-					attachType: firstPersonId ? "existing" : "skip",
-					entityId: firstPersonId,
-					fileExtension,
-					sourceType,
-				});
-			} else if (urlToUpload.trim()) {
-				await onUploadFromUrl(urlToUpload.trim(), firstPersonId);
+					onNext(selectedFile, "interview", projectId, {
+						attachType: firstPersonId ? "existing" : "skip",
+						entityId: firstPersonId,
+						fileExtension,
+						sourceType,
+					});
+				} else if (urlAssignments.length > 0) {
+					await onUploadFromUrl(
+						urlAssignments.map((assignment) => ({
+							url: assignment.url,
+							...(firstPersonId ? { personId: firstPersonId } : {}),
+						}))
+					);
+				}
+			} catch (err) {
+				const message = err instanceof Error ? err.message : "Failed to process";
+				setUrlError(message);
+			} finally {
+				setIsSubmitting(false);
 			}
-		} catch (err) {
-			const message = err instanceof Error ? err.message : "Failed to process";
-			setUrlError(message);
-		} finally {
-			setIsSubmitting(false);
-		}
-	}, [
-		selectedFile,
-		urlToUpload,
-		selectedPeople,
-		showCreatePerson,
-		newPersonFirstName,
-		newPersonLastName,
-		newPersonCompany,
-		projectId,
-		accountId,
-		supabase,
-		getFileType,
-		onNext,
-		onUploadFromUrl,
-		pendingAction,
-		handleStartRecording,
-	]);
+		},
+		[
+			selectedFile,
+			urlAssignments,
+			selectedPeople,
+			showCreatePerson,
+			newPersonFirstName,
+			newPersonLastName,
+			newPersonCompany,
+			projectId,
+			supabase,
+			getFileType,
+			onNext,
+			onUploadFromUrl,
+			pendingAction,
+			handleStartRecording,
+			resolveEffectiveAccountId,
+			resolveSelectablePersonId,
+			urlSelectablePeople,
+		]
+	);
 
 	// Reset to initial state
 	const handleBack = () => {
 		setUploadStep("select");
 		setSelectedFile(null);
 		setUrlToUpload("");
+		setUrlAssignments([]);
 		setSelectedPeople([]);
 		setShowCreatePerson(false);
 		setSearchQuery("");
@@ -589,20 +698,17 @@ export default function UploadScreen({
 		[projectId]
 	);
 
-	const formatFileSize = (bytes: number): string => {
-		if (bytes === 0) return "0 Bytes";
-		const k = 1024;
-		const sizes = ["Bytes", "KB", "MB", "GB"];
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-		return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
-	};
-
 	// ─────────────────────────────────────────────────────────────
 	// RENDER: Association Step
 	// ─────────────────────────────────────────────────────────────
 	if (uploadStep === "associate") {
-		const contentLabel = selectedFile ? selectedFile.name : urlToUpload;
+		const contentLabel = selectedFile
+			? selectedFile.name
+			: urlAssignments.length > 0
+				? `${urlAssignments.length} URL${urlAssignments.length > 1 ? "s" : ""}`
+				: urlToUpload;
 		const isRecording = pendingAction === "record";
+		const isUrlUploadBatch = pendingAction === "upload" && urlAssignments.length > 0;
 
 		return (
 			<div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
@@ -620,16 +726,69 @@ export default function UploadScreen({
 							</button>
 						</div>
 						<h2 className="font-semibold text-slate-900 text-xl dark:text-white">Link to</h2>
-						{/* {!isRecording && contentLabel && (
-              <p className="mt-1 text-muted-foreground text-sm">
-                {selectedFile ? "Uploading" : "Importing"}: {contentLabel}
-              </p>
-            )} */}
+						{!isRecording && contentLabel && <p className="mt-1 text-muted-foreground text-sm">{contentLabel}</p>}
 					</div>
 
 					{/* Person Selection */}
 					<div className="w-full space-y-4">
-						{!showCreatePerson ? (
+						{isUrlUploadBatch ? (
+							<div className="space-y-3">
+								<p className="text-muted-foreground text-sm">
+									Assign people now for each URL, or skip and identify participants after upload.
+								</p>
+								<div className="max-h-80 space-y-2 overflow-y-auto">
+									{urlAssignments.map((assignment, index) => (
+										<div
+											key={`${assignment.url}-${index}`}
+											className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
+										>
+											<p className="font-medium text-slate-500 text-xs uppercase tracking-wide">URL {index + 1}</p>
+											<p className="truncate font-medium text-sm" title={assignment.url}>
+												{assignment.url}
+											</p>
+											<select
+												value={assignment.personSelectionId}
+												onChange={(event) => {
+													const nextSelectionId = event.target.value;
+													setUrlAssignments((prev) =>
+														prev.map((item, itemIndex) =>
+															itemIndex === index
+																? {
+																		...item,
+																		personSelectionId: nextSelectionId,
+																	}
+																: item
+														)
+													);
+												}}
+												className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+											>
+												<option value="">No person (link later)</option>
+												{people.length > 0 && (
+													<optgroup label="People">
+														{people.map((person) => (
+															<option key={person.id} value={person.id}>
+																{person.name}
+															</option>
+														))}
+													</optgroup>
+												)}
+												{members.length > 0 && (
+													<optgroup label="Internal teammates">
+														{members.map((member) => (
+															<option key={`member-${member.user_id}`} value={`member-${member.user_id}`}>
+																{member.name}
+																{member.email ? ` (${member.email})` : ""}
+															</option>
+														))}
+													</optgroup>
+												)}
+											</select>
+										</div>
+									))}
+								</div>
+							</div>
+						) : !showCreatePerson ? (
 							<>
 								{/* Search */}
 								<div className="relative">
@@ -846,18 +1005,26 @@ export default function UploadScreen({
 								variant="outline"
 								className="flex-1"
 								onClick={() => {
+									if (isUrlUploadBatch) {
+										handleProcessAction({ skipPeople: true });
+										return;
+									}
 									setSelectedPeople([]);
 									setShowCreatePerson(false);
-									handleProcessAction();
+									handleProcessAction({ skipPeople: true });
 								}}
 								disabled={isSubmitting}
 							>
-								Skip
+								{isUrlUploadBatch ? "Upload without people" : "Skip"}
 							</Button>
 							<Button
 								className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white"
 								onClick={handleProcessAction}
-								disabled={isSubmitting || (showCreatePerson && !newPersonFirstName.trim()) || !!duplicateError}
+								disabled={
+									isSubmitting ||
+									(!isUrlUploadBatch && showCreatePerson && !newPersonFirstName.trim()) ||
+									!!duplicateError
+								}
 							>
 								{isSubmitting ? (
 									"Processing..."
@@ -865,6 +1032,14 @@ export default function UploadScreen({
 									<>
 										<Sparkles className="mr-2 h-4 w-4" />
 										{(() => {
+											if (isUrlUploadBatch) {
+												const linkedCount = urlAssignments.filter((assignment) => assignment.personSelectionId).length;
+												if (linkedCount === 0) {
+													return `Queue ${urlAssignments.length} URL${urlAssignments.length > 1 ? "s" : ""}`;
+												}
+												return `Queue ${urlAssignments.length} URL${urlAssignments.length > 1 ? "s" : ""} (${linkedCount} linked)`;
+											}
+
 											const hasPersonSelected =
 												selectedPeople.length > 0 || (showCreatePerson && newPersonFirstName.trim());
 											const personCount =
@@ -1029,23 +1204,27 @@ export default function UploadScreen({
 
 						<TabsContent value="url" className="mt-4">
 							<div className="space-y-3">
-								<Input
-									type="url"
-									placeholder="https://..."
+								<textarea
+									placeholder={"Paste one or more URLs (one per line)\nhttps://...\nhttps://..."}
 									value={urlToUpload}
 									onChange={(e) => {
 										setUrlToUpload(e.target.value);
 										setUrlError(null);
 									}}
+									rows={5}
 									autoFocus
+									className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
 								/>
+								<p className="text-muted-foreground text-xs">
+									You can paste a list of URLs. We will process them sequentially.
+								</p>
 								{urlError && <p className="text-red-500 text-xs">{urlError}</p>}
 								<Button
 									onClick={() => {
 										setShowUploadMethodDialog(false);
 										handleUrlContinue();
 									}}
-									disabled={!urlToUpload.trim()}
+									disabled={parsePastedUrls(urlToUpload).length === 0}
 									className="w-full"
 								>
 									Continue
