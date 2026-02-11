@@ -60,6 +60,9 @@ const routes = [
 		route("admin/usage", "./features/admin/pages/usage.tsx"),
 		route("admin/stuck-interviews", "./features/admin/pages/stuck-interviews.tsx"),
 
+		// Dev/test routes (hidden, protected)
+		route("test/gen-ui", "./routes/test.gen-ui.tsx"),
+
 		// Protected API routes
 		route("api/tasks/deduplicate", "./routes/api.tasks.deduplicate.ts"),
 		route("api/update-ui-preference", "./features/users/api/update-ui-preference.tsx"),
