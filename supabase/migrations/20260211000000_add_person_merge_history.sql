@@ -47,7 +47,7 @@ CREATE POLICY "Users can view merge history for their projects"
   TO authenticated
   USING (
     account_id IN (
-      SELECT account_id FROM accounts.account_users WHERE user_id = auth.uid()
+      SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid()
     )
   );
 
@@ -57,7 +57,7 @@ CREATE POLICY "Users can create merge history for their projects"
   TO authenticated
   WITH CHECK (
     account_id IN (
-      SELECT account_id FROM accounts.account_users WHERE user_id = auth.uid()
+      SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid()
     )
   );
 
