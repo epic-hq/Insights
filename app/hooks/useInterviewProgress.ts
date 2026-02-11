@@ -3,6 +3,7 @@ import consola from "consola";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { uploadMediaAndTranscribeTask } from "~/../src/trigger/interview/uploadMediaAndTranscribe";
 import { createClient } from "~/lib/supabase/client";
+import type { Database } from "~/types";
 
 export interface ProgressInfo {
 	status: string;
@@ -21,17 +22,28 @@ export interface ProgressInfo {
 export interface InterviewProgressData {
 	id: string;
 	status: string | null;
+	processing_metadata?: unknown;
 	conversation_analysis?: unknown;
 }
 
 interface UseInterviewProgressOptions {
-	/** Minimal interview data: id, status, conversation_analysis */
+	/** Minimal interview data: id, status, processing_metadata, conversation_analysis */
 	interview?: InterviewProgressData | null;
 	/** Trigger.dev run ID for realtime run status */
 	runId?: string;
 	/** Access token for Trigger.dev realtime */
 	accessToken?: string;
 }
+
+type ProgressMetadata = {
+	current_step?: string;
+	progress?: number;
+	status_detail?: string;
+	trigger_run_id?: string;
+	failed_at?: string;
+	completed_steps?: string[];
+	error?: string;
+};
 
 /**
  * Hook to compute interview processing progress.
@@ -116,7 +128,42 @@ export function useInterviewProgress({ interview, runId, accessToken }: UseInter
 	}, [cleanupTimers]);
 
 	const progressInfo = useMemo((): ProgressInfo => {
-		// Priority 1: Trigger.dev run metadata
+		// Priority 1: Interview data (single source of truth for completion/error)
+		if (!interview) {
+			return {
+				status: "loading",
+				progress: 0,
+				label: "Loading...",
+				isComplete: false,
+				hasError: false,
+			};
+		}
+
+		const metadata =
+			((interview.processing_metadata ?? interview.conversation_analysis) as ProgressMetadata | null) ?? null;
+
+		if (interview.status === "ready") {
+			return {
+				status: "ready",
+				progress: 100,
+				label: "Analysis complete!",
+				isComplete: true,
+				hasError: false,
+			};
+		}
+
+		if (interview.status === "error") {
+			const errorMsg = metadata?.error || "Processing failed";
+			return {
+				status: "error",
+				progress: 0,
+				label: errorMsg,
+				isComplete: false,
+				hasError: true,
+			};
+		}
+
+		// Priority 2: Trigger.dev run metadata (only while interview is still active)
 		if (run && !realtimeError) {
 			const runStatus = run.status ?? "UNKNOWN";
 			const isComplete = runStatus === "COMPLETED";
@@ -160,40 +207,6 @@ export function useInterviewProgress({ interview, runId, accessToken }: UseInter
 			};
 		}
 
-		// Priority 2: Interview data
-		if (!interview) {
-			return {
-				status: "loading",
-				progress: 0,
-				label: "Loading...",
-				isComplete: false,
-				hasError: false,
-			};
-		}
-
-		if (interview.status === "ready") {
-			return {
-				status: "ready",
-				progress: 100,
-				label: "Analysis complete!",
-				isComplete: true,
-				hasError: false,
-			};
-		}
-
-		if (interview.status === "error") {
-			const metadata = interview.conversation_analysis as any;
-			const errorMsg = metadata?.error || "Processing failed";
-			return {
-				status: "error",
-				progress: 0,
-				label: errorMsg,
-				isComplete: false,
-				hasError: true,
-			};
-		}
-
-		const metadata = interview.conversation_analysis as any;
 		if (metadata?.current_step) {
 			const currentStep = metadata.current_step;
 			const jobProgress = metadata.progress ?? 0;
@@ -290,7 +303,8 @@ export function useInterviewProgress({ interview, runId, accessToken }: UseInter
 		if (!interview) return;
 		if (run && !realtimeError) return;
 
-		const metadata = interview.conversation_analysis as any;
+		const metadata =
+			((interview.processing_metadata ?? interview.conversation_analysis) as ProgressMetadata | null) ?? null;
 		if (metadata?.current_step) return;
 
 		const status = interview.status;
@@ -334,7 +348,7 @@ export function useRealtimeInterview(interviewId: string | null | undefined) {
 		const fetchData = async () => {
 			const { data, error } = await supabase
 				.from("interviews")
-				.select("id, status, conversation_analysis")
+				.select("id, status, processing_metadata, conversation_analysis")
 				.eq("id", interviewId)
 				.single();
 
@@ -358,11 +372,12 @@ export function useRealtimeInterview(interviewId: string | null | undefined) {
 					filter: `id=eq.${interviewId}`,
 				},
 				(payload) => {
-					const raw = payload.new as any;
+					const raw = payload.new as Database["public"]["Tables"]["interviews"]["Row"] | undefined;
 					if (raw) {
 						setInterview({
 							id: raw.id,
 							status: raw.status,
+							processing_metadata: raw.processing_metadata,
 							conversation_analysis: raw.conversation_analysis,
 						});
 					}

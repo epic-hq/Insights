@@ -1142,10 +1142,16 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				? {
 						id: interviewState.id,
 						status: interviewState.status,
+						processing_metadata: interviewState.processing_metadata,
 						conversation_analysis: interviewState.conversation_analysis,
 					}
 				: null,
-		[interviewState?.id, interviewState?.status, interviewState?.conversation_analysis]
+		[
+			interviewState?.id,
+			interviewState?.status,
+			interviewState?.processing_metadata,
+			interviewState?.conversation_analysis,
+		]
 	);
 
 	const { progressInfo, isRealtime } = useInterviewProgress({
