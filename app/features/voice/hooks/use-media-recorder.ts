@@ -269,7 +269,8 @@ export function useMediaRecorder({
 			mediaRecorder.current.ondataavailable = onRecordingActive;
 			mediaRecorder.current.onstop = onRecordingStop;
 			mediaRecorder.current.onstart = onRecordingStart;
-			mediaRecorder.current.onerror = () => {
+			mediaRecorder.current.onerror = (event) => {
+				consola.error("MediaRecorder error:", event);
 				setError("NO_RECORDER");
 				setStatus("idle");
 			};
@@ -287,13 +288,17 @@ export function useMediaRecorder({
 	};
 
 	const onRecordingStop = () => {
-		const [chunk] = mediaChunks.current;
-		const blobProperty: BlobPropertyBag = Object.assign(
-			{ type: chunk.type },
-			blobPropertyBag || (video ? { type: "video/mp4" } : { type: "audio/wav" })
-		);
-		const blob = new Blob(mediaChunks.current, blobProperty);
-		const url = URL.createObjectURL(blob);
+		// Stop tracks AFTER MediaRecorder has flushed all data to avoid
+		// a race condition where Chrome drops the final audio chunk.
+		// Previously tracks were stopped in stopRecording() synchronously
+		// after MediaRecorder.stop(), before the async dataavailable event fired.
+		if (stopStreamsOnStop) {
+			mediaStream.current?.getTracks().forEach((track) => track.stop());
+			mediaStream.current = null;
+			previewStream.current = null;
+			previewAudioStream.current = null;
+		}
+
 		if (shouldDelete.current) {
 			setStatus("idle");
 			setMediaBlobUrl(undefined);
@@ -301,6 +306,27 @@ export function useMediaRecorder({
 			mediaChunks.current = [];
 			return;
 		}
+
+		// Guard against empty chunks (can happen if recording was too short
+		// or the browser didn't deliver any data)
+		const nonEmptyChunks = mediaChunks.current.filter((c) => c.size > 0);
+		if (nonEmptyChunks.length === 0) {
+			consola.warn("MediaRecorder produced no audio data");
+			setStatus("idle");
+			mediaChunks.current = [];
+			return;
+		}
+
+		const [chunk] = nonEmptyChunks;
+		// Use blobPropertyBag if provided, otherwise preserve the actual
+		// recorded MIME type from the MediaRecorder (e.g. audio/webm;codecs=opus).
+		// The previous fallback of "audio/wav" was incorrect — MediaRecorder
+		// never produces WAV — and caused content-type mismatches with Whisper.
+		const blobProperty: BlobPropertyBag = blobPropertyBag || {
+			type: chunk.type || "audio/webm",
+		};
+		const blob = new Blob(nonEmptyChunks, blobProperty);
+		const url = URL.createObjectURL(blob);
 		setStatus("stopped");
 		setMediaBlobUrl(url);
 		onStop(url, blob);
@@ -331,14 +357,11 @@ export function useMediaRecorder({
 		if (mediaRecorder.current?.state === "inactive") return;
 		setStatus("stopping");
 		mediaRecorder.current?.stop();
-		if (stopStreamsOnStop) {
-			mediaStream.current?.getTracks().forEach((track) => track.stop());
-			mediaStream.current = null;
-			previewStream.current = null;
-			previewAudioStream.current = null;
-		}
-		setStatus("stopped");
-	}, [stopStreamsOnStop]);
+		// Track stopping is deferred to onRecordingStop (the MediaRecorder's
+		// onstop handler) so the recorder can flush its buffer first.
+		// Stopping tracks here caused a race condition in Chrome where the
+		// final dataavailable event was lost or empty.
+	}, []);
 
 	// Keep the ref in sync with the latest stopRecording function
 	useEffect(() => {

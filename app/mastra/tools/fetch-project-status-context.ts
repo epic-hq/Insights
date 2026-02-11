@@ -43,14 +43,14 @@ type ThemeEvidenceRow = Database["public"]["Tables"]["theme_evidence"]["Row"] & 
 type OrganizationNameSummary = Pick<Database["public"]["Tables"]["organizations"]["Row"], "name">;
 type ProjectPeopleRow = Database["public"]["Tables"]["project_people"]["Row"] & {
 	person?:
-		| (Database["public"]["Tables"]["people"]["Row"] & {
-				default_organization?: OrganizationNameSummary | OrganizationNameSummary[] | null;
-				people_personas?: Array<{
-					persona_id: string | null;
-					personas?: Database["public"]["Tables"]["personas"]["Row"] | null;
-				}> | null;
-		  })
-		| null;
+	| (Database["public"]["Tables"]["people"]["Row"] & {
+		default_organization?: OrganizationNameSummary | OrganizationNameSummary[] | null;
+		people_personas?: Array<{
+			persona_id: string | null;
+			personas?: Database["public"]["Tables"]["personas"]["Row"] | null;
+		}> | null;
+	})
+	| null;
 };
 type PersonaRow = Database["public"]["Tables"]["personas"]["Row"];
 type PeoplePersonaRow = Database["public"]["Tables"]["people_personas"]["Row"] & {
@@ -1024,7 +1024,7 @@ export const fetchProjectStatusContextTool = createTool({
 							segment: person?.segment ?? null,
 							role: row.role ?? person?.role ?? null,
 							title: (person as { title?: string | null })?.title ?? null,
-							company: resolveOrganizationName(person?.default_organization),
+							company: resolveOrganizationName(person?.default_organization) ?? null,
 							description: person?.description ?? null,
 							location: person?.location ?? null,
 							image_url: person?.image_url ?? null,
@@ -1037,10 +1037,10 @@ export const fetchProjectStatusContextTool = createTool({
 							evidence: evidenceSnippets,
 							icpMatch: icpByPerson.get(personId)
 								? {
-										band: icpByPerson.get(personId)!.band,
-										score: icpByPerson.get(personId)!.score,
-										confidence: icpByPerson.get(personId)!.confidence,
-									}
+									band: icpByPerson.get(personId)!.band,
+									score: icpByPerson.get(personId)!.score,
+									confidence: icpByPerson.get(personId)!.confidence,
+								}
 								: null,
 							url: projectPath ? `${HOST}${routes.people.detail(personId)}` : null,
 						};
@@ -1068,7 +1068,8 @@ export const fetchProjectStatusContextTool = createTool({
 							hasTitle: false,
 							hasCompany: false,
 						};
-						const summaryCompanyName = resolveOrganizationName(summaryPerson?.default_organization);
+						const summaryCompanyName =
+							resolveOrganizationName(summaryPerson?.default_organization) ?? null;
 						summaryProfileByPersonId.set(personId, {
 							hasTitle: existing.hasTitle || Boolean(summaryPerson?.title),
 							hasCompany: existing.hasCompany || Boolean(summaryCompanyName),
@@ -1236,18 +1237,18 @@ export const fetchProjectStatusContextTool = createTool({
 					const interviewIds = interviews?.map((i) => i.id) || [];
 					const [evidenceRows, insightRows] = interviewIds.length
 						? await Promise.all([
-								supabase
-									.from("evidence")
-									.select("id, interview_id")
-									.in("interview_id", interviewIds)
-									.is("deleted_at", null)
-									.eq("is_archived", false),
-								supabase.from("themes").select("id, interview_id").in("interview_id", interviewIds),
-							])
+							supabase
+								.from("evidence")
+								.select("id, interview_id")
+								.in("interview_id", interviewIds)
+								.is("deleted_at", null)
+								.eq("is_archived", false),
+							supabase.from("themes").select("id, interview_id").in("interview_id", interviewIds),
+						])
 						: [
-								{ data: [], error: null },
-								{ data: [], error: null },
-							];
+							{ data: [], error: null },
+							{ data: [], error: null },
+						];
 
 					const evidenceMap = new Map<string, number>();
 					evidenceRows?.data?.forEach((row) => {
