@@ -31,9 +31,24 @@ export interface BatchProgressInfo {
 
 export type BatchProgressCallback = (info: BatchProgressInfo) => void | Promise<void>;
 
-const BATCH_SIZE = 75; // Process ~75 utterances per batch
-const MAX_CONCURRENT_BATCHES = 3; // Limit parallel API calls to prevent rate limiting
+const DEFAULT_BATCH_SIZE = 30; // Keep each model call shorter to reduce heartbeat stall risk
+const DEFAULT_MAX_CONCURRENT_BATCHES = 2; // Reduce concurrent heavy calls to lower worker pressure
+const MAX_BATCH_SIZE = 75;
+const MAX_CONCURRENCY = 3;
 const BATCH_HEARTBEAT_INTERVAL_MS = 10_000;
+
+function readPositiveIntEnv(name: string, fallback: number): number {
+	const raw = process.env[name];
+	if (!raw) return fallback;
+	const parsed = Number.parseInt(raw, 10);
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const BATCH_SIZE = Math.min(MAX_BATCH_SIZE, readPositiveIntEnv("EVIDENCE_BATCH_SIZE", DEFAULT_BATCH_SIZE));
+const MAX_CONCURRENT_BATCHES = Math.min(
+	MAX_CONCURRENCY,
+	readPositiveIntEnv("EVIDENCE_MAX_CONCURRENT_BATCHES", DEFAULT_MAX_CONCURRENT_BATCHES)
+);
 
 /**
  * Process items with limited concurrency (pool pattern)

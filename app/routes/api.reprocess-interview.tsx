@@ -28,7 +28,9 @@ export async function action({ request }: ActionFunctionArgs) {
 		// 1. Get interview details
 		const { data: interview, error: interviewError } = await supabase
 			.from("interviews")
-			.select("id, title, transcript, transcript_formatted, media_url, account_id, project_id, created_by")
+			.select(
+				"id, title, transcript, transcript_formatted, media_url, account_id, project_id, created_by, original_filename, participant_pseudonym, segment"
+			)
 			.eq("id", interviewId)
 			.single();
 
@@ -70,11 +72,12 @@ export async function action({ request }: ActionFunctionArgs) {
 				}> | null
 			)?.[0]?.organizations?.name ?? undefined;
 
-		// 3. ALWAYS re-transcribe from media if available, otherwise use transcript
+		// 3. Re-transcribe from media when available, otherwise use transcript
 		let transcriptData: Record<string, unknown>;
+		const shouldRetranscribeFromMedia = !!interview.media_url;
 
-		if (interview.media_url) {
-			// ALWAYS re-transcribe from media when reprocessing
+		if (shouldRetranscribeFromMedia) {
+			// Re-transcribe from media when reprocessing
 			// This ensures fresh, accurate transcripts with proper speaker diarization
 			consola.info("Reprocess: Re-transcribing from media_url", {
 				hasTranscript: !!interview.transcript,
@@ -129,11 +132,11 @@ export async function action({ request }: ActionFunctionArgs) {
 			mediaUrl: interview.media_url || "",
 			existingInterviewId: interview.id,
 			userCustomInstructions: "",
-			resumeFrom: "evidence",
-			skipSteps: ["upload"],
+			resumeFrom: shouldRetranscribeFromMedia ? "upload" : "evidence",
+			skipSteps: shouldRetranscribeFromMedia ? [] : ["upload"],
 		});
 
-		const needsTranscription = !interview.transcript && !!interview.media_url;
+		const needsTranscription = shouldRetranscribeFromMedia;
 
 		consola.success("Interview reprocessing started:", {
 			interviewId: interview.id,

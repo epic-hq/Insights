@@ -21,6 +21,9 @@ export async function action({ request }: ActionFunctionArgs) {
 		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
+	let interviewIdForError: string | undefined;
+	let conversationAnalysisForError: Record<string, unknown> = {};
+
 	try {
 		// Auth check
 		const { user } = await getAuthenticatedUser(request);
@@ -32,6 +35,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		if (!interviewId) {
 			return Response.json({ error: "interviewId required" }, { status: 400 });
 		}
+		interviewIdForError = interviewId;
 
 		const supabase = createSupabaseAdminClient();
 
@@ -39,7 +43,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const { data: interview, error: fetchError } = await supabase
 			.from("interviews")
 			.select(
-				"id, title, status, media_url, transcript, source_type, account_id, project_id, participant_pseudonym, conversation_analysis"
+				"id, title, status, media_url, transcript, transcript_formatted, source_type, account_id, project_id, participant_pseudonym, conversation_analysis"
 			)
 			.eq("id", interviewId)
 			.single();
@@ -57,6 +61,29 @@ export async function action({ request }: ActionFunctionArgs) {
 		});
 
 		const conversationAnalysis = (interview.conversation_analysis as Record<string, unknown>) || {};
+		conversationAnalysisForError = conversationAnalysis;
+		const transcriptFormatted = (interview.transcript_formatted as Record<string, unknown> | null) || null;
+		const speakerTranscripts = Array.isArray(transcriptFormatted?.speaker_transcripts)
+			? (transcriptFormatted.speaker_transcripts as unknown[])
+			: [];
+		const utterances = Array.isArray(transcriptFormatted?.utterances)
+			? (transcriptFormatted.utterances as unknown[])
+			: [];
+		const chapters = Array.isArray(transcriptFormatted?.chapters) ? (transcriptFormatted.chapters as unknown[]) : [];
+		const autoChapters = Array.isArray(transcriptFormatted?.auto_chapters)
+			? (transcriptFormatted.auto_chapters as unknown[])
+			: [];
+		const hasStructuredTranscript = speakerTranscripts.length > 0 || utterances.length > 0;
+		const hasChapterData = chapters.length > 0 || autoChapters.length > 0;
+
+		consola.info("[interview-restart] Transcript structure check:", {
+			hasStructuredTranscript,
+			hasChapterData,
+			speakerTranscripts: speakerTranscripts.length,
+			utterances: utterances.length,
+			chapters: chapters.length,
+			autoChapters: autoChapters.length,
+		});
 
 		// Case 1: Already completed
 		if (interview.status === "ready" && interview.transcript) {
@@ -149,8 +176,11 @@ export async function action({ request }: ActionFunctionArgs) {
 			});
 		}
 
-		// Case 3: Has transcript, needs analysis
-		if (interview.transcript && interview.status !== "ready") {
+		const canResumeFromTranscript = hasStructuredTranscript && (hasChapterData || !interview.media_url);
+
+		// Case 3: Has structured transcript, needs analysis
+		// If media exists but chapter structure is missing, fall through to full reprocess (Case 4)
+		if (interview.transcript && interview.status !== "ready" && canResumeFromTranscript) {
 			consola.info("[interview-restart] Starting analysis...");
 
 			// Update status first
@@ -213,9 +243,14 @@ export async function action({ request }: ActionFunctionArgs) {
 			});
 		}
 
-		// Case 4: Has media, use orchestrator for full re-processing
+		// Case 4: Has media, use orchestrator for full re-processing (re-transcribe if transcript structure is missing)
 		if (interview.media_url) {
-			consola.info("[interview-restart] Full reprocess via orchestrator...");
+			consola.info("[interview-restart] Full reprocess via orchestrator...", {
+				reason:
+					interview.transcript && !canResumeFromTranscript
+						? "Transcript exists but missing chapter structure needed for reliable evidence extraction"
+						: "No transcript available",
+			});
 
 			await supabase
 				.from("interviews")
@@ -224,7 +259,10 @@ export async function action({ request }: ActionFunctionArgs) {
 					conversation_analysis: {
 						...conversationAnalysis,
 						current_step: "upload",
-						status_detail: "Starting processing...",
+						status_detail:
+							interview.transcript && !canResumeFromTranscript
+								? "Re-transcribing to rebuild chapters and speaker segments..."
+								: "Starting processing...",
 						completed_steps: [],
 					} as Json,
 				})
@@ -281,6 +319,34 @@ export async function action({ request }: ActionFunctionArgs) {
 		});
 	} catch (error) {
 		consola.error("[interview-restart] Error:", error);
-		return Response.json({ error: error instanceof Error ? error.message : "Restart failed" }, { status: 500 });
+		const message = error instanceof Error ? error.message : "Restart failed";
+
+		if (interviewIdForError) {
+			try {
+				const supabase = createSupabaseAdminClient();
+				await supabase
+					.from("interviews")
+					.update({
+						status: "error" as const,
+						conversation_analysis: {
+							...conversationAnalysisForError,
+							last_error: message,
+							status_detail: "Restart failed",
+							failed_at: new Date().toISOString(),
+						} as Json,
+						processing_metadata: {
+							current_step: "restart",
+							progress: 0,
+							error: message,
+							failed_at: new Date().toISOString(),
+						} as Json,
+					})
+					.eq("id", interviewIdForError);
+			} catch (updateError) {
+				consola.error("[interview-restart] Failed to write error status:", updateError);
+			}
+		}
+
+		return Response.json({ error: message }, { status: 500 });
 	}
 }
