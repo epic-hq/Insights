@@ -3068,6 +3068,7 @@ export type Database = {
           share_expires_at: string | null
           share_token: string | null
           source_type: string | null
+          speaker_review_needed: boolean | null
           status: Database["public"]["Enums"]["interview_status"]
           thumbnail_url: string | null
           title: string | null
@@ -3115,6 +3116,7 @@ export type Database = {
           share_expires_at?: string | null
           share_token?: string | null
           source_type?: string | null
+          speaker_review_needed?: boolean | null
           status?: Database["public"]["Enums"]["interview_status"]
           thumbnail_url?: string | null
           title?: string | null
@@ -3162,6 +3164,7 @@ export type Database = {
           share_expires_at?: string | null
           share_token?: string | null
           source_type?: string | null
+          speaker_review_needed?: boolean | null
           status?: Database["public"]["Enums"]["interview_status"]
           thumbnail_url?: string | null
           title?: string | null
@@ -4051,6 +4054,7 @@ export type Database = {
           contact_info: Json | null
           created_at: string
           default_organization_id: string | null
+          deleted_at: string | null
           description: string | null
           education: string | null
           firstname: string | null
@@ -4089,6 +4093,7 @@ export type Database = {
           contact_info?: Json | null
           created_at?: string
           default_organization_id?: string | null
+          deleted_at?: string | null
           description?: string | null
           education?: string | null
           firstname?: string | null
@@ -4127,6 +4132,7 @@ export type Database = {
           contact_info?: Json | null
           created_at?: string
           default_organization_id?: string | null
+          deleted_at?: string | null
           description?: string | null
           education?: string | null
           firstname?: string | null
@@ -4444,6 +4450,78 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_merge_history: {
+        Row: {
+          account_id: string
+          created_at: string
+          deleted_at: string | null
+          evidence_count: number | null
+          facet_count: number | null
+          id: string
+          interview_count: number | null
+          merged_at: string
+          merged_by: string | null
+          project_id: string
+          reason: string | null
+          source_person_data: Json | null
+          source_person_id: string
+          source_person_name: string | null
+          target_person_id: string
+          target_person_name: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          deleted_at?: string | null
+          evidence_count?: number | null
+          facet_count?: number | null
+          id?: string
+          interview_count?: number | null
+          merged_at?: string
+          merged_by?: string | null
+          project_id: string
+          reason?: string | null
+          source_person_data?: Json | null
+          source_person_id: string
+          source_person_name?: string | null
+          target_person_id: string
+          target_person_name?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          evidence_count?: number | null
+          facet_count?: number | null
+          id?: string
+          interview_count?: number | null
+          merged_at?: string
+          merged_by?: string | null
+          project_id?: string
+          reason?: string | null
+          source_person_data?: Json | null
+          source_person_id?: string
+          source_person_name?: string | null
+          target_person_id?: string
+          target_person_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_merge_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_merge_history_target_person_id_fkey"
+            columns: ["target_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -7574,6 +7652,23 @@ export type Database = {
       }
       lookup_invitation: {
         Args: { lookup_invitation_token: string }
+        Returns: Json
+      }
+      merge_people_transaction: {
+        Args: {
+          p_account_id: string
+          p_evidence_count: number
+          p_facet_count: number
+          p_interview_count: number
+          p_merged_by: string
+          p_project_id: string
+          p_reason: string
+          p_source_person_data: Json
+          p_source_person_id: string
+          p_source_person_name: string
+          p_target_person_id: string
+          p_target_person_name: string
+        }
         Returns: Json
       }
       process_embedding_queue: { Args: never; Returns: string }

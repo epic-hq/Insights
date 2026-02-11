@@ -6,7 +6,7 @@
  * Creates audit trail in person_merge_history for potential rollback.
  */
 
-import { type ActionFunctionArgs, json } from "react-router";
+import type { ActionFunctionArgs } from "react-router";
 import { z } from "zod";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { userContext } from "~/server/user-context";
@@ -19,10 +19,10 @@ const MergePersonSchema = z.object({
 
 export async function action({ request, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext);
-	const { supabase, user } = ctx;
+	const { supabase, claims } = ctx;
 
-	if (!user) {
-		return json({ ok: false, error: "Unauthorized" }, { status: 401 });
+	if (!claims?.sub) {
+		return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
 	}
 
 	try {
@@ -30,14 +30,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		const parsed = MergePersonSchema.safeParse(body);
 
 		if (!parsed.success) {
-			return json({ ok: false, error: "Invalid request", details: parsed.error.issues }, { status: 400 });
+			return Response.json({ ok: false, error: "Invalid request", details: parsed.error.issues }, { status: 400 });
 		}
 
 		const { sourcePersonId, targetPersonId, reason } = parsed.data;
 
 		// Validate: source and target must be different
 		if (sourcePersonId === targetPersonId) {
-			return json({ ok: false, error: "Cannot merge a person into themselves" }, { status: 400 });
+			return Response.json({ ok: false, error: "Cannot merge a person into themselves" }, { status: 400 });
 		}
 
 		// Use admin client for transactional merge (bypasses RLS within transaction)
@@ -51,7 +51,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			.single();
 
 		if (sourceError || !sourcePerson) {
-			return json({ ok: false, error: "Source person not found" }, { status: 404 });
+			return Response.json({ ok: false, error: "Source person not found" }, { status: 404 });
 		}
 
 		const { data: targetPerson, error: targetError } = await supabase
@@ -61,7 +61,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			.single();
 
 		if (targetError || !targetPerson) {
-			return json({ ok: false, error: "Target person not found" }, { status: 404 });
+			return Response.json({ ok: false, error: "Target person not found" }, { status: 404 });
 		}
 
 		// 2. Count records to be transferred
@@ -90,7 +90,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			p_target_person_id: targetPersonId,
 			p_account_id: sourcePerson.account_id,
 			p_project_id: sourcePerson.project_id,
-			p_merged_by: user.id,
+			p_merged_by: claims.sub,
 			p_reason: reason || null,
 			p_source_person_data: sourcePerson,
 			p_source_person_name: sourcePerson.name || "Unnamed",
@@ -102,7 +102,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 		if (mergeResult.error) {
 			console.error("[merge-people] Transaction failed:", mergeResult.error);
-			return json(
+			return Response.json(
 				{
 					ok: false,
 					error: "Failed to merge people",
@@ -112,7 +112,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			);
 		}
 
-		return json({
+		return Response.json({
 			ok: true,
 			message: "People merged successfully",
 			sourcePersonId,
@@ -125,7 +125,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		});
 	} catch (error) {
 		console.error("[merge-people] Unexpected error:", error);
-		return json(
+		return Response.json(
 			{
 				ok: false,
 				error: "Internal server error",
