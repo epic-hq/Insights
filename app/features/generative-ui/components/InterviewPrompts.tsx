@@ -9,144 +9,144 @@
  * - Streaming-friendly (data can populate incrementally)
  */
 
-import { motion, Reorder } from "framer-motion"
-import { Check, Eye, EyeOff, GripVertical, Plus, Star, Trash2 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Checkbox } from "~/components/ui/checkbox"
-import { Textarea } from "~/components/ui/textarea"
-import { cn } from "~/lib/utils"
+import { motion, Reorder } from "framer-motion";
+import { Check, Eye, EyeOff, GripVertical, Plus, Star, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
+import { Textarea } from "~/components/ui/textarea";
+import { cn } from "~/lib/utils";
 
 export interface InterviewPrompt {
-	id: string
-	text: string
-	status: "planned" | "answered" | "skipped"
-	isMustHave?: boolean
-	category?: string
+	id: string;
+	text: string;
+	status: "planned" | "answered" | "skipped";
+	isMustHave?: boolean;
+	category?: string;
 }
 
 export interface InterviewPromptsData {
-	prompts?: InterviewPrompt[]
-	title?: string
-	description?: string
+	prompts?: InterviewPrompt[];
+	title?: string;
+	description?: string;
 }
 
 interface InterviewPromptsProps {
-	data: InterviewPromptsData
-	isStreaming?: boolean
+	data: InterviewPromptsData;
+	isStreaming?: boolean;
 	/** Edit mode allows add/delete/edit text. Interview mode shows checkboxes to mark as asked. */
-	mode?: "edit" | "interview"
-	onPromptsChange?: (prompts: InterviewPrompt[]) => void
+	mode?: "edit" | "interview";
+	onPromptsChange?: (prompts: InterviewPrompt[]) => void;
 }
 
 export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsChange }: InterviewPromptsProps) {
-	const [prompts, setPrompts] = useState<InterviewPrompt[]>(data.prompts || [])
-	const [editingId, setEditingId] = useState<string | null>(null)
-	const [editText, setEditText] = useState("")
-	const [newQuestionText, setNewQuestionText] = useState("")
-	const textareaRef = useRef<HTMLTextAreaElement>(null)
+	const [prompts, setPrompts] = useState<InterviewPrompt[]>(data.prompts || []);
+	const [editingId, setEditingId] = useState<string | null>(null);
+	const [editText, setEditText] = useState("");
+	const [newQuestionText, setNewQuestionText] = useState("");
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 	// Sync with incoming data from parent (agent instructions or streaming)
 	useEffect(() => {
 		if (data.prompts) {
-			const dataStr = JSON.stringify(data.prompts)
-			const currentStr = JSON.stringify(prompts)
+			const dataStr = JSON.stringify(data.prompts);
+			const currentStr = JSON.stringify(prompts);
 			if (dataStr !== currentStr) {
-				setPrompts(data.prompts)
+				setPrompts(data.prompts);
 			}
 		}
-	}, [data.prompts])
+	}, [data.prompts]);
 
 	// Focus textarea when editing starts
 	useEffect(() => {
 		if (editingId && textareaRef.current) {
-			textareaRef.current.focus()
-			textareaRef.current.select()
+			textareaRef.current.focus();
+			textareaRef.current.select();
 		}
-	}, [editingId])
+	}, [editingId]);
 
 	const updatePrompts = (newPrompts: InterviewPrompt[]) => {
-		setPrompts(newPrompts)
-		onPromptsChange?.(newPrompts)
-	}
+		setPrompts(newPrompts);
+		onPromptsChange?.(newPrompts);
+	};
 
 	const updatePrompt = (id: string, updates: Partial<InterviewPrompt>) => {
-		updatePrompts(prompts.map((p) => (p.id === id ? { ...p, ...updates } : p)))
-	}
+		updatePrompts(prompts.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+	};
 
 	// Interview mode actions
-	const markDone = (id: string) => updatePrompt(id, { status: "answered" })
-	const unmarkDone = (id: string) => updatePrompt(id, { status: "planned" })
-	const skip = (id: string) => updatePrompt(id, { status: "skipped" })
-	const unhide = (id: string) => updatePrompt(id, { status: "planned" })
+	const markDone = (id: string) => updatePrompt(id, { status: "answered" });
+	const unmarkDone = (id: string) => updatePrompt(id, { status: "planned" });
+	const skip = (id: string) => updatePrompt(id, { status: "skipped" });
+	const unhide = (id: string) => updatePrompt(id, { status: "planned" });
 
 	// Edit mode actions
 	const startEdit = (prompt: InterviewPrompt) => {
-		setEditingId(prompt.id)
-		setEditText(prompt.text)
-	}
+		setEditingId(prompt.id);
+		setEditText(prompt.text);
+	};
 
 	const saveEdit = () => {
 		if (editingId && editText.trim()) {
-			updatePrompt(editingId, { text: editText.trim() })
+			updatePrompt(editingId, { text: editText.trim() });
 		}
-		setEditingId(null)
-		setEditText("")
-	}
+		setEditingId(null);
+		setEditText("");
+	};
 
 	const cancelEdit = () => {
-		setEditingId(null)
-		setEditText("")
-	}
+		setEditingId(null);
+		setEditText("");
+	};
 
 	const deletePrompt = (id: string) => {
-		updatePrompts(prompts.filter((p) => p.id !== id))
-	}
+		updatePrompts(prompts.filter((p) => p.id !== id));
+	};
 
 	const toggleMustHave = (id: string) => {
-		const prompt = prompts.find((p) => p.id === id)
+		const prompt = prompts.find((p) => p.id === id);
 		if (prompt) {
-			updatePrompt(id, { isMustHave: !prompt.isMustHave })
+			updatePrompt(id, { isMustHave: !prompt.isMustHave });
 		}
-	}
+	};
 
 	const addNewQuestion = () => {
-		if (!newQuestionText.trim()) return
+		if (!newQuestionText.trim()) return;
 		const newPrompt: InterviewPrompt = {
 			id: `q-${Date.now()}`,
 			text: newQuestionText.trim(),
 			status: "planned",
 			isMustHave: false,
-		}
-		updatePrompts([...prompts, newPrompt])
-		setNewQuestionText("")
-	}
+		};
+		updatePrompts([...prompts, newPrompt]);
+		setNewQuestionText("");
+	};
 
 	const handleReorder = (reordered: InterviewPrompt[]) => {
-		updatePrompts(reordered)
-	}
+		updatePrompts(reordered);
+	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === "Enter" && !e.shiftKey) {
-			e.preventDefault()
-			saveEdit()
+			e.preventDefault();
+			saveEdit();
 		}
 		if (e.key === "Escape") {
-			cancelEdit()
+			cancelEdit();
 		}
-	}
+	};
 
 	const handleAddKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === "Enter" && !e.shiftKey) {
-			e.preventDefault()
-			addNewQuestion()
+			e.preventDefault();
+			addNewQuestion();
 		}
-	}
+	};
 
-	const answeredCount = prompts.filter((p) => p.status === "answered").length
-	const visiblePrompts = prompts.filter((p) => p.status !== "skipped")
-	const skippedPrompts = prompts.filter((p) => p.status === "skipped")
+	const answeredCount = prompts.filter((p) => p.status === "answered").length;
+	const visiblePrompts = prompts.filter((p) => p.status !== "skipped");
+	const skippedPrompts = prompts.filter((p) => p.status === "skipped");
 
 	return (
 		<Card className={cn(isStreaming && "animate-pulse")}>
@@ -193,8 +193,8 @@ export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsCh
 									<Checkbox
 										checked={prompt.status === "answered"}
 										onCheckedChange={(checked) => {
-											if (checked) markDone(prompt.id)
-											else unmarkDone(prompt.id)
+											if (checked) markDone(prompt.id);
+											else unmarkDone(prompt.id);
 										}}
 										className="mt-0.5"
 									/>
@@ -312,5 +312,5 @@ export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsCh
 				)}
 			</CardContent>
 		</Card>
-	)
+	);
 }

@@ -1,5 +1,6 @@
 import type { UIMessage } from "ai";
 import type { InferMastraUITools } from "./ai-tool-type-helpers";
+import { displayInterviewPromptsTool } from "./tools/display-interview-prompts";
 import { displayUserQuestionsTool } from "./tools/display-user-questions";
 import { fetchInterviewContextTool } from "./tools/fetch-interview-context";
 import { fetchProjectStatusContextTool } from "./tools/fetch-project-status-context";
@@ -22,6 +23,7 @@ import { saveUserSettingsDataTool } from "./tools/save-usersettings-data";
 // type MyDataPart = z.infer<typeof dataPartSchema>;
 
 export const tools = {
+	displayInterviewPrompts: displayInterviewPromptsTool,
 	displayUserQuestions: displayUserQuestionsTool,
 	fetchProjectStatusContext: fetchProjectStatusContextTool,
 	fetchInterviewContext: fetchInterviewContextTool,

@@ -20,7 +20,7 @@ export type {
 	SurfaceState,
 	SurfaceUpdate,
 	ValueBinding,
-} from "./a2ui"
+} from "./a2ui";
 export {
 	a2uiArtifactSchema,
 	a2uiComponentSchema,
@@ -35,29 +35,26 @@ export {
 	deleteSurfaceSchema,
 	surfaceUpdateSchema,
 	valueBindingSchema,
-} from "./a2ui"
-
+} from "./a2ui";
+// Capabilities validation
+export type { CapabilitiesError } from "./capabilities";
+export { validateComponentsAgainstCapabilities } from "./capabilities";
+// Component registry
+export type { ComponentDefinition } from "./component-registry";
+export { componentRegistry, defineComponent } from "./component-registry";
 // Data binding
 export {
 	parseJsonPointer,
 	resolveBinding,
 	resolvePointer,
 	resolveTemplateData,
-} from "./data-binding"
-
-// Capabilities validation
-export type { CapabilitiesError } from "./capabilities"
-export { validateComponentsAgainstCapabilities } from "./capabilities"
-
-// Component registry
-export type { ComponentDefinition } from "./component-registry"
-export { componentRegistry, defineComponent } from "./component-registry"
+} from "./data-binding";
 
 // JSON Patch (RFC 6902)
-export type { JsonPatchError, JsonPatchOperation, JsonPatchResult } from "./json-patch"
+export type { JsonPatchError, JsonPatchOperation, JsonPatchResult } from "./json-patch";
 export {
 	applyJsonPatch,
 	jsonPatchOperationSchema,
 	jsonPatchSchema,
 	validateJsonPatch,
-} from "./json-patch"
+} from "./json-patch";

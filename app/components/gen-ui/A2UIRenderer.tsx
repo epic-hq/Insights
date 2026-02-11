@@ -11,28 +11,28 @@
  * - Emit user actions back to the parent via onAction callback
  */
 
-import { X } from "lucide-react"
-import { useCallback, useMemo } from "react"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import type { A2UIComponent, SurfaceState } from "~/lib/gen-ui/a2ui"
-import { componentRegistry } from "~/lib/gen-ui/component-registry"
-import { resolvePointer } from "~/lib/gen-ui/data-binding"
+import { X } from "lucide-react";
+import { useCallback, useMemo } from "react";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import type { A2UIComponent, SurfaceState } from "~/lib/gen-ui/a2ui";
+import { componentRegistry } from "~/lib/gen-ui/component-registry";
+import { resolvePointer } from "~/lib/gen-ui/data-binding";
 
 // Ensure components are registered
-import "~/lib/gen-ui/registered-components"
+import "~/lib/gen-ui/registered-components";
 
 export interface A2UIAction {
-	componentId: string
-	actionName: string
-	payload?: Record<string, unknown>
+	componentId: string;
+	actionName: string;
+	payload?: Record<string, unknown>;
 }
 
 interface A2UIRendererProps {
-	surface: SurfaceState
-	onAction?: (action: A2UIAction) => void
-	onDismiss?: () => void
-	isStreaming?: boolean
+	surface: SurfaceState;
+	onAction?: (action: A2UIAction) => void;
+	onDismiss?: () => void;
+	isStreaming?: boolean;
 }
 
 /**
@@ -45,51 +45,51 @@ function RenderNode({
 	onAction,
 	isStreaming,
 }: {
-	node: A2UIComponent
-	surface: SurfaceState
-	onAction?: (action: A2UIAction) => void
-	isStreaming?: boolean
+	node: A2UIComponent;
+	surface: SurfaceState;
+	onAction?: (action: A2UIAction) => void;
+	isStreaming?: boolean;
 }) {
 	// The component type is the first key in the component record
-	const componentType = Object.keys(node.component)[0]
-	if (!componentType) return null
+	const componentType = Object.keys(node.component)[0];
+	if (!componentType) return null;
 
-	const definition = componentRegistry.get(componentType)
+	const definition = componentRegistry.get(componentType);
 	if (!definition) {
 		return (
 			<div className="rounded border border-destructive/30 bg-destructive/5 p-3 text-sm">
 				Unknown component: <code>{componentType}</code>
 			</div>
-		)
+		);
 	}
 
 	// Resolve data: check if the component props contain a data binding path,
 	// otherwise use the raw props from the component record
-	const rawProps = node.component[componentType] as Record<string, unknown> | undefined
+	const rawProps = node.component[componentType] as Record<string, unknown> | undefined;
 
 	// If rawProps has a dataBinding path, resolve it from the data model
-	let resolvedData: unknown = rawProps
+	let resolvedData: unknown = rawProps;
 	if (rawProps?.dataBinding && typeof rawProps.dataBinding === "string") {
-		resolvedData = resolvePointer(surface.dataModel, rawProps.dataBinding as string)
+		resolvedData = resolvePointer(surface.dataModel, rawProps.dataBinding as string);
 	} else if (rawProps?.path && typeof rawProps.path === "string") {
-		resolvedData = resolvePointer(surface.dataModel, rawProps.path as string)
+		resolvedData = resolvePointer(surface.dataModel, rawProps.path as string);
 	}
 
 	// Validate against schema
-	const validation = definition.schema.safeParse(resolvedData ?? rawProps)
+	const validation = definition.schema.safeParse(resolvedData ?? rawProps);
 	if (!validation.success) {
 		return (
 			<div className="rounded border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
 				<p className="font-medium">Invalid data for {componentType}</p>
-				<pre className="mt-1 text-xs text-muted-foreground">
+				<pre className="mt-1 text-muted-foreground text-xs">
 					{validation.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("\n")}
 				</pre>
 			</div>
-		)
+		);
 	}
 
-	const Component = definition.component
-	return <Component data={validation.data} isStreaming={isStreaming} />
+	const Component = definition.component;
+	return <Component data={validation.data} isStreaming={isStreaming} />;
 }
 
 /**
@@ -101,24 +101,24 @@ export function A2UIRenderer({ surface, onAction, onDismiss, isStreaming }: A2UI
 	const rootNode = useMemo(() => {
 		if (!surface.rootId) {
 			// If no rootId, render the first component
-			const first = surface.components.values().next()
-			return first.done ? null : first.value
+			const first = surface.components.values().next();
+			return first.done ? null : first.value;
 		}
-		return surface.components.get(surface.rootId) ?? null
-	}, [surface.rootId, surface.components])
+		return surface.components.get(surface.rootId) ?? null;
+	}, [surface.rootId, surface.components]);
 
 	const handleDismiss = useCallback(() => {
-		onDismiss?.()
-	}, [onDismiss])
+		onDismiss?.();
+	}, [onDismiss]);
 
 	if (!rootNode || surface.components.size === 0) {
-		return null
+		return null;
 	}
 
 	// Determine display title from root component type
-	const componentType = Object.keys(rootNode.component)[0] ?? "Component"
-	const definition = componentRegistry.get(componentType)
-	const title = definition?.type ?? componentType
+	const componentType = Object.keys(rootNode.component)[0] ?? "Component";
+	const definition = componentRegistry.get(componentType);
+	const title = definition?.type ?? componentType;
 
 	return (
 		<Card className="border-primary/20 bg-gradient-to-br from-card to-primary/5">
@@ -132,15 +132,9 @@ export function A2UIRenderer({ surface, onAction, onDismiss, isStreaming }: A2UI
 			</CardHeader>
 			<CardContent className="space-y-3">
 				{Array.from(surface.components.values()).map((node) => (
-					<RenderNode
-						key={node.id}
-						node={node}
-						surface={surface}
-						onAction={onAction}
-						isStreaming={isStreaming}
-					/>
+					<RenderNode key={node.id} node={node} surface={surface} onAction={onAction} isStreaming={isStreaming} />
 				))}
 			</CardContent>
 		</Card>
-	)
+	);
 }

@@ -9,20 +9,20 @@
  *   Frontend parses tool result → detects a2ui key → applyMessages()
  */
 
-import { z } from "zod"
-import type { A2UIMessage, CapabilitiesSnapshot } from "./a2ui"
-import { componentRegistry } from "./component-registry"
+import { z } from "zod";
+import type { A2UIMessage, CapabilitiesSnapshot } from "./a2ui";
+import { componentRegistry } from "./component-registry";
 
 /**
  * Payload shape embedded in tool results for the frontend to detect.
  */
 export interface A2UIToolPayload {
 	/** Marker for frontend detection */
-	__a2ui: true
+	__a2ui: true;
 	/** The surface ID (usually thread-scoped) */
-	surfaceId: string
+	surfaceId: string;
 	/** Ordered A2UI messages to apply */
-	messages: A2UIMessage[]
+	messages: A2UIMessage[];
 }
 
 /**
@@ -33,13 +33,13 @@ export interface A2UIToolPayload {
  *   surfaceUpdate → dataModelUpdate → beginRendering
  */
 export function buildSingleComponentSurface(input: {
-	surfaceId: string
-	componentType: string
-	componentId?: string
-	data: Record<string, unknown>
+	surfaceId: string;
+	componentType: string;
+	componentId?: string;
+	data: Record<string, unknown>;
 }): A2UIToolPayload {
-	const { surfaceId, componentType, data } = input
-	const componentId = input.componentId ?? `${componentType.toLowerCase()}-root`
+	const { surfaceId, componentType, data } = input;
+	const componentId = input.componentId ?? `${componentType.toLowerCase()}-root`;
 
 	const messages: A2UIMessage[] = [
 		{
@@ -66,19 +66,16 @@ export function buildSingleComponentSurface(input: {
 			type: "beginRendering",
 			surfaceId,
 		},
-	]
+	];
 
-	return { __a2ui: true, surfaceId, messages }
+	return { __a2ui: true, surfaceId, messages };
 }
 
 /**
  * Build a dataModelUpdate to update the data for an existing surface.
  * Use this for incremental updates without re-sending the component structure.
  */
-export function buildDataUpdate(input: {
-	surfaceId: string
-	data: Record<string, unknown>
-}): A2UIToolPayload {
+export function buildDataUpdate(input: { surfaceId: string; data: Record<string, unknown> }): A2UIToolPayload {
 	return {
 		__a2ui: true,
 		surfaceId: input.surfaceId,
@@ -89,7 +86,7 @@ export function buildDataUpdate(input: {
 				data: input.data,
 			},
 		],
-	}
+	};
 }
 
 /**
@@ -100,17 +97,17 @@ export function buildDismiss(surfaceId: string): A2UIToolPayload {
 		__a2ui: true,
 		surfaceId,
 		messages: [{ type: "deleteSurface", surfaceId }],
-	}
+	};
 }
 
 /**
  * Detect if a tool result contains an A2UI payload.
  */
 export function isA2UIToolPayload(result: unknown): result is { a2ui: A2UIToolPayload } {
-	if (!result || typeof result !== "object") return false
-	const r = result as Record<string, unknown>
-	if (!r.a2ui || typeof r.a2ui !== "object") return false
-	return (r.a2ui as Record<string, unknown>).__a2ui === true
+	if (!result || typeof result !== "object") return false;
+	const r = result as Record<string, unknown>;
+	if (!r.a2ui || typeof r.a2ui !== "object") return false;
+	return (r.a2ui as Record<string, unknown>).__a2ui === true;
 }
 
 /**
@@ -118,7 +115,7 @@ export function isA2UIToolPayload(result: unknown): result is { a2ui: A2UIToolPa
  * Pass this to the agent so it knows what components are available.
  */
 export function getCapabilitiesSnapshot(): CapabilitiesSnapshot {
-	return componentRegistry.getCapabilitiesSnapshot()
+	return componentRegistry.getCapabilitiesSnapshot();
 }
 
 // ---------------------------------------------------------------------------
@@ -136,7 +133,7 @@ const a2uiPayloadSchema = z
 		surfaceId: z.string(),
 		messages: z.array(z.record(z.string(), z.unknown())),
 	})
-	.optional()
+	.optional();
 
 /**
  * Extend a tool's outputSchema with an optional `a2ui` field.
@@ -158,5 +155,5 @@ const a2uiPayloadSchema = z
  * ```
  */
 export function withA2UI<T extends z.ZodRawShape>(baseSchema: z.ZodObject<T>) {
-	return baseSchema.extend({ a2ui: a2uiPayloadSchema })
+	return baseSchema.extend({ a2ui: a2uiPayloadSchema });
 }

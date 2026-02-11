@@ -12,9 +12,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Textarea } from "~/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button";
+import { A2UIRenderer } from "~/components/gen-ui/A2UIRenderer";
+import { A2UISurfaceProvider, useA2UISurfaceOptional } from "~/contexts/a2ui-surface-context";
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
+import type { A2UIToolPayload } from "~/lib/gen-ui/tool-helpers";
 import { cn } from "~/lib/utils";
 import type { UpsightMessage } from "~/mastra/message-types";
 import { HOST, PRODUCTION_HOST } from "~/paths";
@@ -284,6 +287,39 @@ function extractToolResultText(message: UpsightMessage): string | null {
 	return null;
 }
 
+/**
+ * Detect A2UI payloads in tool-result message parts.
+ * Returns the first A2UI payload found, or null.
+ */
+function extractA2UIPayload(message: UpsightMessage): A2UIToolPayload | null {
+	if (!message.parts) return null;
+	for (const part of message.parts) {
+		const anyPart = part as {
+			type: string;
+			toolInvocation?: {
+				state: string;
+				result?: { a2ui?: { __a2ui?: boolean; surfaceId?: string; messages?: unknown[] } };
+			};
+			result?: { a2ui?: { __a2ui?: boolean; surfaceId?: string; messages?: unknown[] } };
+			state?: string;
+		};
+
+		// Check tool-invocation parts (AI SDK v5)
+		if (anyPart.type === "tool-invocation" || anyPart.toolInvocation) {
+			const toolData = anyPart.toolInvocation || anyPart;
+			if (toolData.state === "output-available" && toolData.result?.a2ui?.__a2ui === true) {
+				return toolData.result.a2ui as A2UIToolPayload;
+			}
+		}
+
+		// Check tool-result parts
+		if (anyPart.type === "tool-result" && anyPart.result?.a2ui?.__a2ui === true) {
+			return anyPart.result.a2ui as A2UIToolPayload;
+		}
+	}
+	return null;
+}
+
 function extractToolResultTaskId(message: UpsightMessage): string | null {
 	if (message.role !== "tool" || !message.parts) return null;
 	for (const part of message.parts) {
@@ -406,7 +442,15 @@ const ensureProjectScopedPath = (
 	return { resolved: null, reason: "outside-project-scope" };
 };
 
-export function ProjectStatusAgentChat({
+export function ProjectStatusAgentChat(props: ProjectStatusAgentChatProps) {
+	return (
+		<A2UISurfaceProvider>
+			<ProjectStatusAgentChatInner {...props} />
+		</A2UISurfaceProvider>
+	);
+}
+
+function ProjectStatusAgentChatInner({
 	accountId,
 	projectId,
 	systemContext,
@@ -468,6 +512,10 @@ export function ProjectStatusAgentChat({
 
 	const navigate = useNavigate();
 	const revalidator = useRevalidator();
+
+	// A2UI gen-ui surface state (optional — works without provider)
+	const a2uiSurface = useA2UISurfaceOptional();
+	const lastProcessedA2UIRef = useRef<string | null>(null);
 
 	const currentPageContext = useMemo(() => {
 		return describeCurrentProjectView({
@@ -724,6 +772,27 @@ export function ProjectStatusAgentChat({
 
 	const visibleMessages = useMemo(() => displayableMessages.slice(-12), [displayableMessages]);
 
+	// Scan messages for A2UI gen-ui payloads and apply them to the surface
+	useEffect(() => {
+		if (displayableMessages.length === 0) return;
+		// Scan from newest to oldest, apply first unseen A2UI payload
+		for (let i = displayableMessages.length - 1; i >= 0; i--) {
+			const msg = displayableMessages[i];
+			const payload = extractA2UIPayload(msg);
+			if (!payload) continue;
+			// Deduplicate: only process each surfaceId+messageCount combo once
+			const payloadKey = `${payload.surfaceId}:${payload.messages.length}`;
+			if (lastProcessedA2UIRef.current === payloadKey) break;
+			lastProcessedA2UIRef.current = payloadKey;
+			consola.info("[gen-ui] A2UI payload detected in chat message", {
+				surfaceId: payload.surfaceId,
+				messageCount: payload.messages.length,
+			});
+			a2uiSurface?.applyMessages(payload.messages);
+			break;
+		}
+	}, [displayableMessages, a2uiSurface]);
+
 	// Auto-focus the textarea when component mounts
 	useEffect(() => {
 		if (typeof window !== "undefined") {
@@ -907,6 +976,18 @@ export function ProjectStatusAgentChat({
 	// Shared chat content renderer (used by both embedded and card modes)
 	const chatContent = (
 		<>
+			{/* A2UI gen-ui surface — renders above chat when active */}
+			{a2uiSurface?.surface != null && a2uiSurface.surface.ready && (
+				<div className="mb-3 flex-shrink-0">
+					<A2UIRenderer
+						surface={a2uiSurface.surface}
+						onAction={(action) => {
+							consola.info("[gen-ui] A2UI action", action);
+						}}
+					/>
+				</div>
+			)}
+
 			<div className="min-h-0 flex-1 overflow-hidden">
 				{visibleMessages.length === 0 ? (
 					<div

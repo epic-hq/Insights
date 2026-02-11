@@ -11,75 +11,70 @@
  * - Dismiss the surface
  */
 
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react"
-import {
-	type A2UIMessage,
-	type SurfaceState,
-	applySurfaceMessage,
-	createEmptySurface,
-} from "~/lib/gen-ui/a2ui"
+import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import { type A2UIMessage, applySurfaceMessage, createEmptySurface, type SurfaceState } from "~/lib/gen-ui/a2ui";
 
 interface A2UISurfaceContextValue {
 	/** Current surface state */
-	surface: SurfaceState | null
+	surface: SurfaceState | null;
 	/** Whether a surface is active and ready to render */
-	isActive: boolean
+	isActive: boolean;
 	/** Apply an A2UI message to the surface */
-	applyMessage: (message: A2UIMessage) => void
+	applyMessage: (message: A2UIMessage) => void;
 	/** Apply multiple A2UI messages (e.g., from a tool result) */
-	applyMessages: (messages: A2UIMessage[]) => void
+	applyMessages: (messages: A2UIMessage[]) => void;
 	/** Dismiss the active surface */
-	dismiss: () => void
+	dismiss: () => void;
 }
 
-const A2UISurfaceContext = createContext<A2UISurfaceContextValue | null>(null)
+const A2UISurfaceContext = createContext<A2UISurfaceContextValue | null>(null);
 
 export function A2UISurfaceProvider({ children }: { children: ReactNode }) {
-	const [surface, setSurface] = useState<SurfaceState | null>(null)
+	const [surface, setSurface] = useState<SurfaceState | null>(null);
 
 	const applyMessage = useCallback((message: A2UIMessage) => {
 		setSurface((prev) => {
-			const current = prev ?? createEmptySurface(message.surfaceId)
+			const current = prev ?? createEmptySurface(message.surfaceId);
 			if (message.type === "deleteSurface") {
-				return null
+				return null;
 			}
-			return applySurfaceMessage(current, message)
-		})
-	}, [])
+			return applySurfaceMessage(current, message);
+		});
+	}, []);
 
 	const applyMessages = useCallback(
 		(messages: A2UIMessage[]) => {
 			for (const msg of messages) {
-				applyMessage(msg)
+				applyMessage(msg);
 			}
 		},
-		[applyMessage],
-	)
+		[applyMessage]
+	);
 
 	const dismiss = useCallback(() => {
-		setSurface(null)
-	}, [])
+		setSurface(null);
+	}, []);
 
 	const isActive = useMemo(() => {
-		return surface !== null && surface.components.size > 0
-	}, [surface])
+		return surface !== null && surface.components.size > 0;
+	}, [surface]);
 
 	const value = useMemo<A2UISurfaceContextValue>(
 		() => ({ surface, isActive, applyMessage, applyMessages, dismiss }),
-		[surface, isActive, applyMessage, applyMessages, dismiss],
-	)
+		[surface, isActive, applyMessage, applyMessages, dismiss]
+	);
 
-	return <A2UISurfaceContext.Provider value={value}>{children}</A2UISurfaceContext.Provider>
+	return <A2UISurfaceContext.Provider value={value}>{children}</A2UISurfaceContext.Provider>;
 }
 
 export function useA2UISurface(): A2UISurfaceContextValue {
-	const ctx = useContext(A2UISurfaceContext)
+	const ctx = useContext(A2UISurfaceContext);
 	if (!ctx) {
-		throw new Error("useA2UISurface must be used within <A2UISurfaceProvider>")
+		throw new Error("useA2UISurface must be used within <A2UISurfaceProvider>");
 	}
-	return ctx
+	return ctx;
 }
 
 export function useA2UISurfaceOptional(): A2UISurfaceContextValue | null {
-	return useContext(A2UISurfaceContext)
+	return useContext(A2UISurfaceContext);
 }

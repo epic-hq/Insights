@@ -15,6 +15,7 @@ import { fetchWebContentTool } from "../tools/fetch-web-content";
 import { generateProjectRoutesTool } from "../tools/generate-project-routes";
 import { importVideoFromUrlTool } from "../tools/import-video-from-url";
 import { manageDocumentsTool } from "../tools/manage-documents";
+import { displayInterviewPromptsTool } from "../tools/display-interview-prompts";
 import {
 	createInterviewPromptTool,
 	deleteInterviewPromptTool,
@@ -107,6 +108,7 @@ For FEEDBACK:
 		storage: getSharedPostgresStore(),
 	}),
 	tools: wrapToolsWithStatusEvents({
+		displayInterviewPrompts: displayInterviewPromptsTool,
 		fetchInterviewContext: fetchInterviewContextTool,
 		manageInterviews: manageInterviewsTool,
 		fetchInterviewPrompts: fetchInterviewPromptsTool,

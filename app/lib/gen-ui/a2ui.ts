@@ -10,7 +10,7 @@
  * Flat is LLM-friendly (streamable, incrementally updatable).
  */
 
-import { z } from "zod"
+import { z } from "zod";
 
 // ---------------------------------------------------------------------------
 // Value Binding — literal or data-bound via JSON Pointer
@@ -20,15 +20,15 @@ export const literalValueSchema = z.object({
 	literalString: z.string().optional(),
 	literalNumber: z.number().optional(),
 	literalBool: z.boolean().optional(),
-})
+});
 
 export const pathValueSchema = z.object({
 	path: z.string().startsWith("/"),
-})
+});
 
-export const valueBindingSchema = z.union([literalValueSchema, pathValueSchema])
+export const valueBindingSchema = z.union([literalValueSchema, pathValueSchema]);
 
-export type ValueBinding = z.infer<typeof valueBindingSchema>
+export type ValueBinding = z.infer<typeof valueBindingSchema>;
 
 // ---------------------------------------------------------------------------
 // Children — static (explicitList) or dynamic (template)
@@ -36,18 +36,18 @@ export type ValueBinding = z.infer<typeof valueBindingSchema>
 
 export const explicitChildrenSchema = z.object({
 	explicitList: z.array(z.string()),
-})
+});
 
 export const templateChildrenSchema = z.object({
 	template: z.object({
 		dataBinding: z.string().startsWith("/"),
 		componentId: z.string(),
 	}),
-})
+});
 
-export const childrenSchema = z.union([explicitChildrenSchema, templateChildrenSchema])
+export const childrenSchema = z.union([explicitChildrenSchema, templateChildrenSchema]);
 
-export type Children = z.infer<typeof childrenSchema>
+export type Children = z.infer<typeof childrenSchema>;
 
 // ---------------------------------------------------------------------------
 // Action — user interaction that emits an event
@@ -56,9 +56,9 @@ export type Children = z.infer<typeof childrenSchema>
 export const actionSchema = z.object({
 	name: z.string(),
 	payload: z.record(z.string(), z.unknown()).optional(),
-})
+});
 
-export type Action = z.infer<typeof actionSchema>
+export type Action = z.infer<typeof actionSchema>;
 
 // ---------------------------------------------------------------------------
 // Component — flat node in the adjacency list
@@ -69,9 +69,9 @@ export const a2uiComponentSchema = z.object({
 	id: z.string().min(1),
 	/** Component type — either standard catalog or custom registered type */
 	component: z.record(z.string(), z.unknown()),
-})
+});
 
-export type A2UIComponent = z.infer<typeof a2uiComponentSchema>
+export type A2UIComponent = z.infer<typeof a2uiComponentSchema>;
 
 // ---------------------------------------------------------------------------
 // Message Types (a2ui.org v0.8)
@@ -84,52 +84,52 @@ export const surfaceUpdateSchema = z.object({
 	components: z.array(a2uiComponentSchema),
 	/** Root component ID */
 	rootId: z.string().optional(),
-})
+});
 
 export const dataModelUpdateSchema = z.object({
 	type: z.literal("dataModelUpdate"),
 	surfaceId: z.string(),
 	/** Full or partial data model — merged into existing state */
 	data: z.record(z.string(), z.unknown()),
-})
+});
 
 export const beginRenderingSchema = z.object({
 	type: z.literal("beginRendering"),
 	surfaceId: z.string(),
-})
+});
 
 export const deleteSurfaceSchema = z.object({
 	type: z.literal("deleteSurface"),
 	surfaceId: z.string(),
-})
+});
 
 export const a2uiMessageSchema = z.discriminatedUnion("type", [
 	surfaceUpdateSchema,
 	dataModelUpdateSchema,
 	beginRenderingSchema,
 	deleteSurfaceSchema,
-])
+]);
 
-export type SurfaceUpdate = z.infer<typeof surfaceUpdateSchema>
-export type DataModelUpdate = z.infer<typeof dataModelUpdateSchema>
-export type BeginRendering = z.infer<typeof beginRenderingSchema>
-export type DeleteSurface = z.infer<typeof deleteSurfaceSchema>
-export type A2UIMessage = z.infer<typeof a2uiMessageSchema>
+export type SurfaceUpdate = z.infer<typeof surfaceUpdateSchema>;
+export type DataModelUpdate = z.infer<typeof dataModelUpdateSchema>;
+export type BeginRendering = z.infer<typeof beginRenderingSchema>;
+export type DeleteSurface = z.infer<typeof deleteSurfaceSchema>;
+export type A2UIMessage = z.infer<typeof a2uiMessageSchema>;
 
 // ---------------------------------------------------------------------------
 // Surface State — held by the renderer
 // ---------------------------------------------------------------------------
 
 export interface SurfaceState {
-	surfaceId: string
+	surfaceId: string;
 	/** Component lookup by ID */
-	components: Map<string, A2UIComponent>
+	components: Map<string, A2UIComponent>;
 	/** Root component ID */
-	rootId: string | null
+	rootId: string | null;
 	/** Data model for data binding */
-	dataModel: Record<string, unknown>
+	dataModel: Record<string, unknown>;
 	/** Whether beginRendering has been received */
-	ready: boolean
+	ready: boolean;
 }
 
 export function createEmptySurface(surfaceId: string): SurfaceState {
@@ -139,7 +139,7 @@ export function createEmptySurface(surfaceId: string): SurfaceState {
 		rootId: null,
 		dataModel: {},
 		ready: false,
-	}
+	};
 }
 
 /**
@@ -153,23 +153,23 @@ export function applySurfaceMessage(surface: SurfaceState, message: A2UIMessage)
 				...surface,
 				components: new Map(surface.components),
 				rootId: message.rootId ?? surface.rootId,
-			}
+			};
 			for (const comp of message.components) {
-				next.components.set(comp.id, comp)
+				next.components.set(comp.id, comp);
 			}
-			return next
+			return next;
 		}
 		case "dataModelUpdate": {
 			return {
 				...surface,
 				dataModel: { ...surface.dataModel, ...message.data },
-			}
+			};
 		}
 		case "beginRendering": {
-			return { ...surface, ready: true }
+			return { ...surface, ready: true };
 		}
 		case "deleteSurface": {
-			return createEmptySurface(surface.surfaceId)
+			return createEmptySurface(surface.surfaceId);
 		}
 	}
 }
@@ -182,9 +182,9 @@ export const capabilitiesSnapshotSchema = z.object({
 	components: z.array(z.string()).default([]),
 	actions: z.array(z.string()).default([]),
 	componentProps: z.record(z.string(), z.array(z.string())).optional(),
-})
+});
 
-export type CapabilitiesSnapshot = z.infer<typeof capabilitiesSnapshotSchema>
+export type CapabilitiesSnapshot = z.infer<typeof capabilitiesSnapshotSchema>;
 
 // ---------------------------------------------------------------------------
 // Artifact — persisted A2UI surface + data model (for event store)
@@ -196,6 +196,6 @@ export const a2uiArtifactSchema = z.object({
 	rootId: z.string().optional(),
 	dataModel: z.record(z.string(), z.unknown()),
 	capabilitiesSnapshot: capabilitiesSnapshotSchema,
-})
+});
 
-export type A2UIArtifact = z.infer<typeof a2uiArtifactSchema>
+export type A2UIArtifact = z.infer<typeof a2uiArtifactSchema>;
