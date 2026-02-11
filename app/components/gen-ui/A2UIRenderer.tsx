@@ -24,6 +24,7 @@ import "~/lib/gen-ui/registered-components";
 
 export interface A2UIAction {
 	componentId: string;
+	componentType: string;
 	actionName: string;
 	payload?: Record<string, unknown>;
 }
@@ -89,7 +90,15 @@ function RenderNode({
 	}
 
 	const Component = definition.component;
-	return <Component data={validation.data} isStreaming={isStreaming} />;
+
+	// Create a bound onAction that includes the component ID and type
+	const handleAction = onAction
+		? (actionName: string, payload?: Record<string, unknown>) => {
+				onAction({ componentId: node.id, componentType, actionName, payload });
+			}
+		: undefined;
+
+	return <Component data={validation.data} isStreaming={isStreaming} onAction={handleAction} />;
 }
 
 /**

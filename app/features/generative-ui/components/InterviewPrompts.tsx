@@ -38,9 +38,11 @@ interface InterviewPromptsProps {
 	/** Edit mode allows add/delete/edit text. Interview mode shows checkboxes to mark as asked. */
 	mode?: "edit" | "interview";
 	onPromptsChange?: (prompts: InterviewPrompt[]) => void;
+	/** A2UI action callback — fired on reorder, edit, delete, add, toggle, mark done, skip */
+	onAction?: (actionName: string, payload?: Record<string, unknown>) => void;
 }
 
-export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsChange }: InterviewPromptsProps) {
+export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsChange, onAction }: InterviewPromptsProps) {
 	const [prompts, setPrompts] = useState<InterviewPrompt[]>(data.prompts || []);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [editText, setEditText] = useState("");
@@ -66,20 +68,26 @@ export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsCh
 		}
 	}, [editingId]);
 
-	const updatePrompts = (newPrompts: InterviewPrompt[]) => {
+	const updatePrompts = (newPrompts: InterviewPrompt[], actionName: string, actionPayload?: Record<string, unknown>) => {
 		setPrompts(newPrompts);
 		onPromptsChange?.(newPrompts);
+		onAction?.(actionName, { ...actionPayload, promptCount: newPrompts.length });
 	};
 
-	const updatePrompt = (id: string, updates: Partial<InterviewPrompt>) => {
-		updatePrompts(prompts.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+	const updatePrompt = (id: string, updates: Partial<InterviewPrompt>, actionName: string) => {
+		const prompt = prompts.find((p) => p.id === id);
+		updatePrompts(
+			prompts.map((p) => (p.id === id ? { ...p, ...updates } : p)),
+			actionName,
+			{ promptId: id, promptText: prompt?.text?.slice(0, 80) }
+		);
 	};
 
 	// Interview mode actions
-	const markDone = (id: string) => updatePrompt(id, { status: "answered" });
-	const unmarkDone = (id: string) => updatePrompt(id, { status: "planned" });
-	const skip = (id: string) => updatePrompt(id, { status: "skipped" });
-	const unhide = (id: string) => updatePrompt(id, { status: "planned" });
+	const markDone = (id: string) => updatePrompt(id, { status: "answered" }, "markDone");
+	const unmarkDone = (id: string) => updatePrompt(id, { status: "planned" }, "unmarkDone");
+	const skip = (id: string) => updatePrompt(id, { status: "skipped" }, "skip");
+	const unhide = (id: string) => updatePrompt(id, { status: "planned" }, "unhide");
 
 	// Edit mode actions
 	const startEdit = (prompt: InterviewPrompt) => {
@@ -89,7 +97,7 @@ export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsCh
 
 	const saveEdit = () => {
 		if (editingId && editText.trim()) {
-			updatePrompt(editingId, { text: editText.trim() });
+			updatePrompt(editingId, { text: editText.trim() }, "editQuestion");
 		}
 		setEditingId(null);
 		setEditText("");
@@ -101,13 +109,18 @@ export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsCh
 	};
 
 	const deletePrompt = (id: string) => {
-		updatePrompts(prompts.filter((p) => p.id !== id));
+		const prompt = prompts.find((p) => p.id === id);
+		updatePrompts(
+			prompts.filter((p) => p.id !== id),
+			"deleteQuestion",
+			{ promptId: id, promptText: prompt?.text?.slice(0, 80) }
+		);
 	};
 
 	const toggleMustHave = (id: string) => {
 		const prompt = prompts.find((p) => p.id === id);
 		if (prompt) {
-			updatePrompt(id, { isMustHave: !prompt.isMustHave });
+			updatePrompt(id, { isMustHave: !prompt.isMustHave }, "toggleMustHave");
 		}
 	};
 
@@ -119,12 +132,18 @@ export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsCh
 			status: "planned",
 			isMustHave: false,
 		};
-		updatePrompts([...prompts, newPrompt]);
+		updatePrompts(
+			[...prompts, newPrompt],
+			"addQuestion",
+			{ promptText: newQuestionText.trim().slice(0, 80) }
+		);
 		setNewQuestionText("");
 	};
 
 	const handleReorder = (reordered: InterviewPrompt[]) => {
-		updatePrompts(reordered);
+		updatePrompts(reordered, "reorder", {
+			newOrder: reordered.map((p) => p.id),
+		});
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {

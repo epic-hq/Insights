@@ -13,6 +13,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button";
 import { A2UIRenderer } from "~/components/gen-ui/A2UIRenderer";
+import { persistCanvasAction } from "~/lib/gen-ui/canvas-persistence.client";
 import { A2UISurfaceProvider, useA2UISurfaceOptional } from "~/contexts/a2ui-surface-context";
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
@@ -985,12 +986,20 @@ function ProjectStatusAgentChatInner({
 						surface={a2uiSurface.surface}
 						onAction={(action) => {
 							consola.info("[gen-ui] A2UI action", action);
+
+							// Hybrid: persist to DB + notify agent
+							persistCanvasAction(action, projectId).then((result) => {
+								if (result.error) {
+									consola.warn("[gen-ui] persistence skipped/failed", result.error);
+								}
+							});
+
 							// Bidirectional: send canvas actions back to the agent as a [Canvas] message
 							const payloadSummary = action.payload
 								? ` — ${JSON.stringify(action.payload).slice(0, 200)}`
 								: "";
 							sendMessage({
-								text: `[Canvas] ${action.actionName} on ${action.componentId}${payloadSummary}`,
+								text: `[Canvas] ${action.actionName} on ${action.componentType}${payloadSummary}`,
 							});
 						}}
 					/>
