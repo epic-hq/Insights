@@ -48,6 +48,9 @@ export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsCh
 	const [editText, setEditText] = useState("");
 	const [newQuestionText, setNewQuestionText] = useState("");
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const isDraggingRef = useRef(false);
+	const latestPromptsRef = useRef(prompts);
+	latestPromptsRef.current = prompts;
 
 	// Sync with incoming data from parent (agent instructions or streaming)
 	useEffect(() => {
@@ -140,10 +143,19 @@ export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsCh
 		setNewQuestionText("");
 	};
 
+	// During drag: only update local state for visual feedback (no persistence/agent)
 	const handleReorder = (reordered: InterviewPrompt[]) => {
-		updatePrompts(reordered, "reorder", {
-			newOrder: reordered.map((p) => p.id),
-		});
+		isDraggingRef.current = true;
+		setPrompts(reordered);
+	};
+
+	// On drop: fire the action once with final order
+	const handleDragEnd = () => {
+		if (!isDraggingRef.current) return;
+		isDraggingRef.current = false;
+		const current = latestPromptsRef.current;
+		onPromptsChange?.(current);
+		onAction?.("reorder", { newOrder: current.map((p) => p.id), promptCount: current.length });
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -192,6 +204,7 @@ export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsCh
 							value={prompt}
 							className={cn("cursor-grab active:cursor-grabbing", editingId === prompt.id && "cursor-auto")}
 							dragListener={editingId !== prompt.id}
+							onDragEnd={handleDragEnd}
 						>
 							<motion.div
 								initial={{ opacity: 0, x: -10 }}
