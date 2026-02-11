@@ -50,8 +50,27 @@ jobs:
       - run: pnpm install --prefer-offline --frozen-lockfile
       - run: pnpm run check:unused
 
-  vitest:
+  build:
     needs: [lint, typecheck]
+    name: 🏗️ Build validation
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip build]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "package.json"
+          cache: "pnpm"
+      - run: pnpm install --prefer-offline --frozen-lockfile
+      - name: Build app
+        run: pnpm run build
+        env:
+          # Use test env vars to avoid requiring production secrets
+          NODE_ENV: production
+
+  vitest:
+    needs: [lint, typecheck, build]
     name: ⚡ Unit Tests
     runs-on: ubuntu-latest
     if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip test]') }}
