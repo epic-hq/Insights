@@ -1167,6 +1167,17 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const takeawaysPollTaskIdRef = useRef<string | null>(null);
 	const takeawaysPollTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
+	const getTakeawaysPollTimeouts = useCallback((): Array<ReturnType<typeof setTimeout>> => {
+		return Array.isArray(takeawaysPollTimeoutsRef.current) ? takeawaysPollTimeoutsRef.current : [];
+	}, []);
+
+	const clearTakeawaysPollTimeouts = useCallback(() => {
+		for (const timeout of getTakeawaysPollTimeouts()) {
+			clearTimeout(timeout);
+		}
+		takeawaysPollTimeoutsRef.current = [];
+	}, [getTakeawaysPollTimeouts]);
+
 	const submitInterviewFieldUpdate = (field_name: string, field_value: string) => {
 		const target = field_name === "observations_and_notes" ? notesFetcher : fetcher;
 		target.submit(
@@ -1230,25 +1241,22 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			if (takeawaysPollTaskIdRef.current === taskId) return;
 
 			takeawaysPollTaskIdRef.current = taskId;
-			for (const timeout of takeawaysPollTimeoutsRef.current) {
-				clearTimeout(timeout);
-			}
-			takeawaysPollTimeoutsRef.current = [];
+			clearTakeawaysPollTimeouts();
 
 			const intervals = [2000, 5000, 8000, 12000, 16000, 22000, 30000];
+			const nextTimeouts = getTakeawaysPollTimeouts();
 			for (const delay of intervals) {
-				takeawaysPollTimeoutsRef.current.push(setTimeout(() => revalidator.revalidate(), delay));
+				nextTimeouts.push(setTimeout(() => revalidator.revalidate(), delay));
 			}
+			takeawaysPollTimeoutsRef.current = nextTimeouts;
 		}
-	}, [fetcher.state, fetcher.data, revalidator]);
+	}, [fetcher.state, fetcher.data, revalidator, clearTakeawaysPollTimeouts, getTakeawaysPollTimeouts]);
 
 	useEffect(() => {
 		return () => {
-			for (const timeout of takeawaysPollTimeoutsRef.current) {
-				clearTimeout(timeout);
-			}
+			clearTakeawaysPollTimeouts();
 		};
-	}, []);
+	}, [clearTakeawaysPollTimeouts]);
 
 	useEffect(() => {
 		if (deleteFetcher.state !== "idle") return;
