@@ -1159,7 +1159,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const refreshTriggeredRef = useRef(false);
 	const fetcherPrevStateRef = useRef(fetcher.state);
 	const takeawaysPollTaskIdRef = useRef<string | null>(null);
-	const takeawaysPollTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>();
+	const takeawaysPollTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
 	const submitInterviewFieldUpdate = (field_name: string, field_value: string) => {
 		const target = field_name === "observations_and_notes" ? notesFetcher : fetcher;
