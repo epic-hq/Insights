@@ -1166,6 +1166,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const fetcherPrevStateRef = useRef(fetcher.state);
 	const takeawaysPollTaskIdRef = useRef<string | null>(null);
 	const takeawaysPollTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+	if (!Array.isArray(takeawaysPollTimeoutsRef.current)) {
+		takeawaysPollTimeoutsRef.current = [];
+	}
 
 	const getTakeawaysPollTimeouts = useCallback((): Array<ReturnType<typeof setTimeout>> => {
 		return Array.isArray(takeawaysPollTimeoutsRef.current) ? takeawaysPollTimeoutsRef.current : [];
