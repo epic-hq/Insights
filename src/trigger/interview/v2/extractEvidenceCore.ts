@@ -441,11 +441,7 @@ export async function extractEvidenceAndPeopleCore({
     );
   }
 
-  const facetCatalog = await resolveFacetCatalog(
-    db,
-    accountId,
-    projectId,
-  );
+  const facetCatalog = await resolveFacetCatalog(db, accountId, projectId);
   const facetLookup = buildFacetLookup(facetCatalog);
   const facetResolver = new FacetResolver(db, accountId);
   const langfuse = getLangfuseClient();
@@ -1129,6 +1125,260 @@ export async function extractEvidenceAndPeopleCore({
     wordsSample,
     segmentSample,
   });
+
+  // ============================================================================
+  // PERSON RESOLUTION - Moved before evidence loop to enable direct person_id attribution
+  // This eliminates the fragile two-step INSERT (with NULL) → UPDATE pattern
+  // ============================================================================
+
+  const personIdByKey = new Map<string, string>();
+  const personNameByKey = new Map<string, string>();
+  const keyByPersonId = new Map<string, string>();
+  const speakerLabelByPersonId = new Map<string, string>(); // AssemblyAI speaker label (e.g., "SPEAKER A")
+  const displayNameByKey = new Map<string, string>();
+  const personRoleById = new Map<string, string | null>();
+  const internalPerson = metadata.userId
+    ? await resolveInternalPerson({
+        supabase: db,
+        accountId,
+        projectId: projectId ?? null,
+        userId: metadata.userId,
+      })
+    : null;
+  let internalPersonLinked = false;
+  let internalPersonHasTranscriptKey = false;
+
+  if (projectId) {
+    const { data: existingInterviewPeople } = await db
+      .from("interview_people")
+      .select("person_id, transcript_key, display_name, role")
+      .eq("interview_id", interviewRecord.id);
+    if (Array.isArray(existingInterviewPeople)) {
+      existingInterviewPeople.forEach((row) => {
+        if (row.transcript_key && row.person_id) {
+          personIdByKey.set(row.transcript_key, row.person_id);
+          keyByPersonId.set(row.person_id, row.transcript_key);
+        }
+        if (row.display_name && row.transcript_key) {
+          displayNameByKey.set(row.transcript_key, row.display_name);
+        }
+        if (row.person_id && row.role) {
+          personRoleById.set(row.person_id, row.role);
+        }
+        if (internalPerson?.id && row.person_id === internalPerson.id) {
+          internalPersonLinked = true;
+          if (row.transcript_key) {
+            internalPersonHasTranscriptKey = true;
+          }
+        }
+      });
+    }
+  }
+
+  const upsertPerson = async (
+    fullName: string,
+    overrides: Partial<PeopleInsert> = {},
+  ): Promise<{ id: string; name: string }> => {
+    if (
+      peopleHooks?.isPlaceholderPerson?.(fullName) ||
+      /^participant\s*\d+$/i.test(fullName) ||
+      /^speaker\s+[A-Z]$/i.test(fullName)
+    ) {
+      throw new Error("skip-placeholder-person");
+    }
+
+    const { firstname, lastname } = parseFullName(fullName);
+    const payload: PeopleInsert = {
+      account_id: accountId,
+      project_id: projectId,
+      firstname: firstname || null,
+      lastname: lastname || null,
+      description: overrides.description ?? null,
+      segment: overrides.segment ?? metadata.segment ?? null,
+      contact_info: overrides.contact_info ?? null,
+      role: overrides.role ?? null,
+    };
+    if (peopleHooks?.upsertPerson) {
+      const result = await peopleHooks.upsertPerson(payload);
+      if (!result?.id) {
+        throw new Error(`Failed to upsert person ${fullName}: missing id`);
+      }
+      return { id: result.id, name: result.name ?? fullName.trim() };
+    }
+
+    const upserted = await upsertPersonWithOrgAwareConflict(db, payload);
+    if (!upserted?.id)
+      throw new Error(`Person upsert returned no id for ${fullName}`);
+    return { id: upserted.id, name: upserted.name ?? fullName.trim() };
+  };
+
+  let primaryPersonId: string | null = null;
+  let primaryPersonName: string | null = null;
+  let primaryPersonRole: string | null = null;
+  let primaryPersonDescription: string | null = null;
+  let primaryPersonOrganization: string | null = null;
+  let primaryPersonSegments: string[] = [];
+
+  consola.info(
+    `👥 Processing ${participants.length} participants for person records`,
+  );
+  if (participants.length) {
+    for (const [index, participant] of participants.entries()) {
+      const participantKey = participant.person_key;
+      consola.debug(
+        `  - Creating person record for "${participantKey}" (role: ${participant.role})`,
+      );
+      const resolved = resolveName(participant, index, metadata);
+      if (peopleHooks?.isPlaceholderPerson?.(resolved.name)) {
+        consola.info(
+          `[extractEvidence] Skipping placeholder person "${resolved.name}"`,
+        );
+        continue;
+      }
+      const normalizedRole = participant.role?.toLowerCase() ?? "";
+      const isInterviewer = internalPerson && normalizedRole === "interviewer";
+
+      if (isInterviewer && internalPerson) {
+        personIdByKey.set(participantKey, internalPerson.id);
+        personNameByKey.set(
+          participantKey,
+          internalPerson.name ?? resolved.name,
+        );
+        keyByPersonId.set(internalPerson.id, participantKey);
+        personRoleById.set(
+          internalPerson.id,
+          participant.role ?? "interviewer",
+        );
+        if (participant.speaker_label) {
+          speakerLabelByPersonId.set(
+            internalPerson.id,
+            participant.speaker_label,
+          );
+        }
+        const preferredDisplayName =
+          internalPerson.name ??
+          participant.display_name?.trim() ??
+          resolved.name;
+        if (preferredDisplayName) {
+          displayNameByKey.set(participantKey, preferredDisplayName);
+        }
+
+        if (!primaryPersonId && participant.person_key === primaryPersonKey) {
+          primaryPersonId = internalPerson.id;
+          primaryPersonName = internalPerson.name ?? resolved.name;
+          primaryPersonRole = participant.role ?? null;
+          primaryPersonDescription = participant.summary ?? null;
+          primaryPersonOrganization = participant.organization ?? null;
+          primaryPersonSegments = participant.segments.length
+            ? participant.segments
+            : metadata.segment
+              ? [metadata.segment]
+              : [];
+        }
+
+        internalPersonLinked = true;
+        continue;
+      }
+      const segments = participant.segments.length
+        ? participant.segments
+        : metadata.segment
+          ? [metadata.segment]
+          : [];
+      const participantOverrides: Partial<PeopleInsert> = {
+        description: participant.summary ?? null,
+        segment: segments[0] || metadata.segment || null,
+        role: participant.role ?? null,
+      };
+      let personRecord: { id: string; name: string } | null = null;
+      try {
+        personRecord = await upsertPerson(resolved.name, participantOverrides);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg === "skip-placeholder-person") {
+          consola.info(
+            `[processInterview] Skipping placeholder person "${resolved.name}"`,
+          );
+          continue;
+        }
+        throw e;
+      }
+      if (!personRecord) continue;
+      personIdByKey.set(participantKey, personRecord.id);
+      personNameByKey.set(participantKey, personRecord.name);
+      keyByPersonId.set(personRecord.id, participantKey);
+      // Use speaker_label (AssemblyAI format like "SPEAKER A") for transcript_key
+      if (participant.speaker_label) {
+        const normalized =
+          peopleHooks?.normalizeSpeakerLabel?.(participant.speaker_label) ??
+          participant.speaker_label;
+        speakerLabelByPersonId.set(personRecord.id, normalized);
+      }
+      const preferredDisplayName =
+        participant.display_name?.trim() || personRecord.name || null;
+      if (preferredDisplayName) {
+        displayNameByKey.set(participantKey, preferredDisplayName);
+      }
+      personRoleById.set(personRecord.id, participant.role ?? null);
+
+      if (!primaryPersonId && participant.person_key === primaryPersonKey) {
+        primaryPersonId = personRecord.id;
+        primaryPersonName = personRecord.name;
+        primaryPersonRole = participant.role ?? null;
+        primaryPersonDescription = participantOverrides.description ?? null;
+        primaryPersonOrganization = participant.organization ?? null;
+        primaryPersonSegments = segments.length
+          ? segments
+          : metadata.segment
+            ? [metadata.segment]
+            : [];
+      }
+    }
+  }
+
+  if (!primaryPersonId && participants.length) {
+    const fallbackKey = participants[0].person_key;
+    const fallbackId = personIdByKey.get(fallbackKey) ?? null;
+    if (fallbackId) {
+      primaryPersonId = fallbackId;
+      primaryPersonName =
+        personNameByKey.get(fallbackKey) ??
+        resolveName(participants[0], 0, metadata).name;
+      primaryPersonRole = participants[0].role ?? null;
+      primaryPersonDescription = participants[0].summary ?? null;
+      primaryPersonOrganization = participants[0].organization ?? null;
+      primaryPersonSegments = participants[0].segments.length
+        ? participants[0].segments
+        : metadata.segment
+          ? [metadata.segment]
+          : [];
+    }
+  }
+
+  if (!primaryPersonId) {
+    const fallback = await upsertPerson(generateFallbackPersonName(metadata));
+    primaryPersonId = fallback.id;
+    primaryPersonName = fallback.name;
+    primaryPersonSegments = metadata.segment ? [metadata.segment] : [];
+    primaryPersonRole = primaryPersonRole ?? null;
+    primaryPersonDescription = primaryPersonDescription ?? null;
+    primaryPersonOrganization = primaryPersonOrganization ?? null;
+  }
+
+  if (!primaryPersonId)
+    throw new Error("Failed to resolve primary person for interview");
+
+  if (!personRoleById.has(primaryPersonId) || primaryPersonRole !== null) {
+    personRoleById.set(primaryPersonId, primaryPersonRole ?? null);
+  }
+
+  consola.info(
+    `✅ Person resolution complete: ${personIdByKey.size} people mapped`,
+  );
+
+  // ============================================================================
+  // EVIDENCE EXTRACTION LOOP - Now has personIdByKey available for direct attribution
+  // ============================================================================
+
   for (let idx = 0; idx < evidenceUnits.length; idx++) {
     const ev = evidenceUnits[idx] as EvidenceTurn;
     const rawPersonKey = coerceString(
@@ -1202,11 +1452,15 @@ export async function extractEvidenceAndPeopleCore({
         (mention as FacetMention).quote ?? null,
       );
 
-      // Build evidence_facet row directly
+      // Build evidence_facet row - person_id will be set from personIdByKey map
+      // personKey is already resolved at this point (lines 1134-1142)
+      const facetPersonId = personIdByKey.get(personKey) || null;
+
       evidenceFacetRowsToInsert.push({
         account_id: accountId,
         project_id: projectIdForInsert,
         evidence_index: idx,
+        person_id: facetPersonId,
         kind_slug: kindRaw,
         facet_account_id: facetAccountId,
         label: resolvedLabel,
@@ -1514,246 +1768,8 @@ export async function extractEvidenceAndPeopleCore({
     }
   }
 
-  const personIdByKey = new Map<string, string>();
-  const personNameByKey = new Map<string, string>();
-  const keyByPersonId = new Map<string, string>();
-  const speakerLabelByPersonId = new Map<string, string>(); // AssemblyAI speaker label (e.g., "SPEAKER A")
-  const displayNameByKey = new Map<string, string>();
-  const personRoleById = new Map<string, string | null>();
-  const internalPerson = metadata.userId
-    ? await resolveInternalPerson({
-        supabase: db,
-        accountId,
-        projectId: projectId ?? null,
-        userId: metadata.userId,
-      })
-    : null;
-  let internalPersonLinked = false;
-  let internalPersonHasTranscriptKey = false;
-
-  if (projectId) {
-    const { data: existingInterviewPeople } = await db
-      .from("interview_people")
-      .select("person_id, transcript_key, display_name, role")
-      .eq("interview_id", interviewRecord.id);
-    if (Array.isArray(existingInterviewPeople)) {
-      existingInterviewPeople.forEach((row) => {
-        if (row.transcript_key && row.person_id) {
-          personIdByKey.set(row.transcript_key, row.person_id);
-          keyByPersonId.set(row.person_id, row.transcript_key);
-        }
-        if (row.display_name && row.transcript_key) {
-          displayNameByKey.set(row.transcript_key, row.display_name);
-        }
-        if (row.person_id && row.role) {
-          personRoleById.set(row.person_id, row.role);
-        }
-        if (internalPerson?.id && row.person_id === internalPerson.id) {
-          internalPersonLinked = true;
-          if (row.transcript_key) {
-            internalPersonHasTranscriptKey = true;
-          }
-        }
-      });
-    }
-  }
-
-  const upsertPerson = async (
-    fullName: string,
-    overrides: Partial<PeopleInsert> = {},
-  ): Promise<{ id: string; name: string }> => {
-    if (
-      peopleHooks?.isPlaceholderPerson?.(fullName) ||
-      /^participant\s*\d+$/i.test(fullName) ||
-      /^speaker\s+[A-Z]$/i.test(fullName)
-    ) {
-      throw new Error("skip-placeholder-person");
-    }
-
-    const { firstname, lastname } = parseFullName(fullName);
-    const payload: PeopleInsert = {
-      account_id: accountId,
-      project_id: projectId,
-      firstname: firstname || null,
-      lastname: lastname || null,
-      description: overrides.description ?? null,
-      segment: overrides.segment ?? metadata.segment ?? null,
-      contact_info: overrides.contact_info ?? null,
-      role: overrides.role ?? null,
-    };
-    if (peopleHooks?.upsertPerson) {
-      const result = await peopleHooks.upsertPerson(payload);
-      if (!result?.id) {
-        throw new Error(`Failed to upsert person ${fullName}: missing id`);
-      }
-      return { id: result.id, name: result.name ?? fullName.trim() };
-    }
-
-    const upserted = await upsertPersonWithOrgAwareConflict(db, payload);
-    if (!upserted?.id)
-      throw new Error(`Person upsert returned no id for ${fullName}`);
-    return { id: upserted.id, name: upserted.name ?? fullName.trim() };
-  };
-
-  let primaryPersonId: string | null = null;
-  let primaryPersonName: string | null = null;
-  let primaryPersonRole: string | null = null;
-  let primaryPersonDescription: string | null = null;
-  let primaryPersonOrganization: string | null = null;
-  let primaryPersonSegments: string[] = [];
-
-  consola.info(
-    `👥 Processing ${participants.length} participants for person records`,
-  );
-  if (participants.length) {
-    for (const [index, participant] of participants.entries()) {
-      const participantKey = participant.person_key;
-      consola.debug(
-        `  - Creating person record for "${participantKey}" (role: ${participant.role})`,
-      );
-      const resolved = resolveName(participant, index, metadata);
-      if (peopleHooks?.isPlaceholderPerson?.(resolved.name)) {
-        consola.info(
-          `[extractEvidence] Skipping placeholder person "${resolved.name}"`,
-        );
-        continue;
-      }
-      const normalizedRole = participant.role?.toLowerCase() ?? "";
-      const isInterviewer = internalPerson && normalizedRole === "interviewer";
-
-      if (isInterviewer && internalPerson) {
-        personIdByKey.set(participantKey, internalPerson.id);
-        personNameByKey.set(
-          participantKey,
-          internalPerson.name ?? resolved.name,
-        );
-        keyByPersonId.set(internalPerson.id, participantKey);
-        personRoleById.set(
-          internalPerson.id,
-          participant.role ?? "interviewer",
-        );
-        if (participant.speaker_label) {
-          speakerLabelByPersonId.set(
-            internalPerson.id,
-            participant.speaker_label,
-          );
-        }
-        const preferredDisplayName =
-          internalPerson.name ??
-          participant.display_name?.trim() ??
-          resolved.name;
-        if (preferredDisplayName) {
-          displayNameByKey.set(participantKey, preferredDisplayName);
-        }
-
-        if (!primaryPersonId && participant.person_key === primaryPersonKey) {
-          primaryPersonId = internalPerson.id;
-          primaryPersonName = internalPerson.name ?? resolved.name;
-          primaryPersonRole = participant.role ?? null;
-          primaryPersonDescription = participant.summary ?? null;
-          primaryPersonOrganization = participant.organization ?? null;
-          primaryPersonSegments = participant.segments.length
-            ? participant.segments
-            : metadata.segment
-              ? [metadata.segment]
-              : [];
-        }
-
-        internalPersonLinked = true;
-        continue;
-      }
-      const segments = participant.segments.length
-        ? participant.segments
-        : metadata.segment
-          ? [metadata.segment]
-          : [];
-      const participantOverrides: Partial<PeopleInsert> = {
-        description: participant.summary ?? null,
-        segment: segments[0] || metadata.segment || null,
-        company: participant.organization || "", // DB has NOT NULL default ''
-        role: participant.role ?? null,
-      };
-      let personRecord: { id: string; name: string } | null = null;
-      try {
-        personRecord = await upsertPerson(resolved.name, participantOverrides);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (msg === "skip-placeholder-person") {
-          consola.info(
-            `[processInterview] Skipping placeholder person "${resolved.name}"`,
-          );
-          continue;
-        }
-        throw e;
-      }
-      if (!personRecord) continue;
-      personIdByKey.set(participantKey, personRecord.id);
-      personNameByKey.set(participantKey, personRecord.name);
-      keyByPersonId.set(personRecord.id, participantKey);
-      // Use speaker_label (AssemblyAI format like "SPEAKER A") for transcript_key
-      if (participant.speaker_label) {
-        const normalized =
-          peopleHooks?.normalizeSpeakerLabel?.(participant.speaker_label) ??
-          participant.speaker_label;
-        speakerLabelByPersonId.set(personRecord.id, normalized);
-      }
-      const preferredDisplayName =
-        participant.display_name?.trim() || personRecord.name || null;
-      if (preferredDisplayName) {
-        displayNameByKey.set(participantKey, preferredDisplayName);
-      }
-      personRoleById.set(personRecord.id, participant.role ?? null);
-
-      if (!primaryPersonId && participant.person_key === primaryPersonKey) {
-        primaryPersonId = personRecord.id;
-        primaryPersonName = personRecord.name;
-        primaryPersonRole = participant.role ?? null;
-        primaryPersonDescription = participantOverrides.description ?? null;
-        primaryPersonOrganization = participantOverrides.company ?? null;
-        primaryPersonSegments = segments.length
-          ? segments
-          : metadata.segment
-            ? [metadata.segment]
-            : [];
-      }
-    }
-  }
-
-  if (!primaryPersonId && participants.length) {
-    const fallbackKey = participants[0].person_key;
-    const fallbackId = personIdByKey.get(fallbackKey) ?? null;
-    if (fallbackId) {
-      primaryPersonId = fallbackId;
-      primaryPersonName =
-        personNameByKey.get(fallbackKey) ??
-        resolveName(participants[0], 0, metadata).name;
-      primaryPersonRole = participants[0].role ?? null;
-      primaryPersonDescription = participants[0].summary ?? null;
-      primaryPersonOrganization = participants[0].organization ?? null;
-      primaryPersonSegments = participants[0].segments.length
-        ? participants[0].segments
-        : metadata.segment
-          ? [metadata.segment]
-          : [];
-    }
-  }
-
-  if (!primaryPersonId) {
-    const fallback = await upsertPerson(generateFallbackPersonName(metadata));
-    primaryPersonId = fallback.id;
-    primaryPersonName = fallback.name;
-    primaryPersonSegments = metadata.segment ? [metadata.segment] : [];
-    primaryPersonRole = primaryPersonRole ?? null;
-    primaryPersonDescription = primaryPersonDescription ?? null;
-    primaryPersonOrganization = primaryPersonOrganization ?? null;
-  }
-
-  if (!primaryPersonId)
-    throw new Error("Failed to resolve primary person for interview");
-
-  if (!personRoleById.has(primaryPersonId) || primaryPersonRole !== null) {
-    personRoleById.set(primaryPersonId, primaryPersonRole ?? null);
-  }
+  // Person resolution was moved before evidence loop (see lines 1134-1370)
+  // This enables direct person_id attribution during facet row building
 
   const ensuredPersonIds = new Set<string>([primaryPersonId]);
   for (const id of personIdByKey.values()) ensuredPersonIds.add(id);
@@ -1985,31 +2001,8 @@ export async function extractEvidenceAndPeopleCore({
       }
     }
 
-    // Update evidence_facet.person_id for direct attribution
-    // This enables efficient "get all facets for person" queries without junction traversal
-    if (evidenceIdToPersonId.size > 0) {
-      let facetsUpdated = 0;
-      for (const [evidenceId, personId] of evidenceIdToPersonId) {
-        const { error: facetUpdateErr, count } = await db
-          .from("evidence_facet")
-          .update({ person_id: personId })
-          .eq("evidence_id", evidenceId)
-          .is("person_id", null);
-
-        if (facetUpdateErr) {
-          consola.warn(
-            `Failed to set person_id on evidence_facet for evidence ${evidenceId}: ${facetUpdateErr.message}`,
-          );
-        } else {
-          facetsUpdated += count ?? 0;
-        }
-      }
-      if (facetsUpdated > 0) {
-        consola.info(
-          `✅ Set person_id on ${facetsUpdated} evidence_facet rows`,
-        );
-      }
-    }
+    // evidence_facet.person_id is now set directly during INSERT (see facet row building around line 1210)
+    // No longer need fragile two-step INSERT (NULL) → UPDATE pattern
   }
 
   if (projectId) {
