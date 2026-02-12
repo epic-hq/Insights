@@ -13,7 +13,7 @@
 import { schemaTask } from "@trigger.dev/sdk";
 import consola from "consola";
 import { z } from "zod";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { createSupabaseAdminClient } from "../../../app/lib/supabase/client.server";
 
 /** Question types that produce text evidence */
 const TEXT_QUESTION_TYPES = new Set(["short_text", "long_text", "auto"]);

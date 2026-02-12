@@ -3,7 +3,7 @@
  * Used by both client-side hooks and server-side utilities
  */
 
-import { PATHS } from "~/paths";
+import { PATHS } from "../paths";
 
 function extractAccountId(projectPath: string): string {
 	const match = projectPath.match(/^\/a\/([^/]+)/);

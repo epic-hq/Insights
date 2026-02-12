@@ -1,4 +1,4 @@
-import type { ResearchLinkResponse } from "~/types";
+import type { ResearchLinkResponse } from "../../types";
 import type { ResearchLinkQuestion } from "./schemas";
 
 export function extractAnswer(response: ResearchLinkResponse, question: ResearchLinkQuestion): string {

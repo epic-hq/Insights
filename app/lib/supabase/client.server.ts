@@ -1,6 +1,6 @@
 import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr";
-import { getServerEnv } from "~/env.server";
-import type { Database } from "~/types";
+import { getServerEnv } from "../../env.server";
+import type { Database } from "../../types";
 
 const { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: _SUPABASE_SERVICE_ROLE_KEY } = getServerEnv();
 
