@@ -299,6 +299,41 @@ export const orgContextStatusDataSchema = z.object({
 });
 
 /**
+ * Schema for ConversationLensInsights component data
+ */
+export const conversationLensInsightSchema = z.object({
+  label: z.string(),
+  summary: z.string(),
+  confidence: z.number().min(0).max(100).nullable().optional(),
+});
+
+export const conversationLensInsightsDataSchema = z.object({
+  interviewTitle: z.string(),
+  frameworkName: z.string(),
+  insights: z.array(conversationLensInsightSchema),
+  overallSummary: z.string().optional(),
+  detailUrl: z.string().optional(),
+});
+
+/**
+ * Schema for SurveyResultsSummary component data
+ */
+export const surveyQuestionSummarySchema = z.object({
+  question: z.string(),
+  topAnswer: z.string(),
+  responseCount: z.number(),
+});
+
+export const surveyResultsSummaryDataSchema = z.object({
+  surveyName: z.string(),
+  totalResponses: z.number(),
+  completionRate: z.number().min(0).max(100).optional(),
+  questionSummaries: z.array(surveyQuestionSummarySchema).optional(),
+  topThemes: z.array(z.string()).optional(),
+  detailUrl: z.string().optional(),
+});
+
+/**
  * Component definition with metadata
  */
 export interface ComponentDefinition<TData = unknown> {

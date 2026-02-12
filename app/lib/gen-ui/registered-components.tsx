@@ -1494,5 +1494,216 @@ defineComponent<OrgContextStatusData>({
   ],
 });
 
+/**
+ * Conversation Lens Insights - Key takeaways from lens analysis
+ */
+import { BookOpen, BarChart3, ClipboardList } from "lucide-react";
+import {
+  conversationLensInsightsDataSchema,
+  surveyResultsSummaryDataSchema,
+} from "./component-registry";
+
+interface ConversationLensInsight {
+  label: string;
+  summary: string;
+  confidence?: number | null;
+}
+
+interface ConversationLensInsightsData {
+  interviewTitle: string;
+  frameworkName: string;
+  insights: ConversationLensInsight[];
+  overallSummary?: string;
+  detailUrl?: string;
+}
+
+const ConversationLensInsights: React.FC<{
+  data: ConversationLensInsightsData;
+  isStreaming?: boolean;
+}> = ({ data }) => (
+  <div className="overflow-hidden rounded-lg border bg-card">
+    <div className="border-b bg-muted/50 px-4 py-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-primary" />
+          <div>
+            <h4 className="font-semibold">{data.frameworkName}</h4>
+            <p className="text-muted-foreground text-xs">
+              {data.interviewTitle}
+            </p>
+          </div>
+        </div>
+        {data.detailUrl && (
+          <Link
+            to={data.detailUrl}
+            className="text-primary text-sm hover:underline"
+          >
+            View full analysis →
+          </Link>
+        )}
+      </div>
+    </div>
+    {data.overallSummary && (
+      <div className="border-b bg-primary/5 px-4 py-2.5">
+        <p className="text-sm">{data.overallSummary}</p>
+      </div>
+    )}
+    <div className="divide-y">
+      {data.insights.map((insight, idx) => (
+        <div key={idx} className="px-4 py-3">
+          <div className="flex items-start justify-between gap-2">
+            <span className="font-medium text-sm">{insight.label}</span>
+            {insight.confidence != null && (
+              <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-muted-foreground text-xs">
+                {insight.confidence}%
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-muted-foreground text-sm">
+            {insight.summary}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+defineComponent<ConversationLensInsightsData>({
+  type: "ConversationLensInsights",
+  description:
+    "Key insights from a conversation lens analysis showing framework name, per-facet summaries, and confidence scores.",
+  schema: conversationLensInsightsDataSchema,
+  component: ConversationLensInsights,
+  actions: ["viewFullAnalysis", "rerunAnalysis"],
+  useWhen:
+    "Showing lens analysis results, BANT/MEDDIC/empathy map insights, or conversation analysis summaries.",
+  triggerExamples: [
+    "lens insights",
+    "conversation analysis",
+    "BANT results",
+    "what did the lens find",
+  ],
+});
+
+/**
+ * Survey Results Summary - Aggregate survey results overview
+ */
+interface SurveyQuestionSummary {
+  question: string;
+  topAnswer: string;
+  responseCount: number;
+}
+
+interface SurveyResultsSummaryData {
+  surveyName: string;
+  totalResponses: number;
+  completionRate?: number;
+  questionSummaries?: SurveyQuestionSummary[];
+  topThemes?: string[];
+  detailUrl?: string;
+}
+
+const SurveyResultsSummary: React.FC<{
+  data: SurveyResultsSummaryData;
+  isStreaming?: boolean;
+}> = ({ data }) => {
+  const summaries = data.questionSummaries?.slice(0, 5) ?? [];
+  const themes = data.topThemes?.slice(0, 6) ?? [];
+
+  return (
+    <div className="overflow-hidden rounded-lg border bg-card">
+      <div className="border-b bg-muted/50 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-primary" />
+            <h4 className="font-semibold">{data.surveyName}</h4>
+          </div>
+          {data.detailUrl && (
+            <Link
+              to={data.detailUrl}
+              className="text-primary text-sm hover:underline"
+            >
+              View details →
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="flex gap-6 border-b px-4 py-3">
+        <div className="text-center">
+          <div className="font-bold text-xl">{data.totalResponses}</div>
+          <div className="text-muted-foreground text-xs">Responses</div>
+        </div>
+        {data.completionRate != null && (
+          <div className="text-center">
+            <div className="font-bold text-xl">{data.completionRate}%</div>
+            <div className="text-muted-foreground text-xs">Completion</div>
+          </div>
+        )}
+        {summaries.length > 0 && (
+          <div className="text-center">
+            <div className="font-bold text-xl">{summaries.length}</div>
+            <div className="text-muted-foreground text-xs">Questions</div>
+          </div>
+        )}
+      </div>
+
+      {/* Top themes */}
+      {themes.length > 0 && (
+        <div className="border-b px-4 py-3">
+          <p className="mb-2 font-medium text-muted-foreground text-xs">
+            Top Themes
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {themes.map((theme, i) => (
+              <span
+                key={i}
+                className="rounded-full bg-primary/10 px-2 py-0.5 text-primary text-xs"
+              >
+                {theme}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Question summaries */}
+      {summaries.length > 0 && (
+        <div className="divide-y">
+          {summaries.map((qs, idx) => (
+            <div key={idx} className="px-4 py-3">
+              <p className="font-medium text-muted-foreground text-sm">
+                {qs.question}
+              </p>
+              <p className="mt-1 text-foreground text-sm">{qs.topAnswer}</p>
+              <span className="mt-1 inline-block text-muted-foreground text-xs">
+                {qs.responseCount} response{qs.responseCount !== 1 ? "s" : ""}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+defineComponent<SurveyResultsSummaryData>({
+  type: "SurveyResultsSummary",
+  description:
+    "Aggregate survey results with response count, completion rate, top themes, and per-question summaries.",
+  schema: surveyResultsSummaryDataSchema,
+  component: SurveyResultsSummary,
+  actions: ["viewDetails", "exportResults", "analyzeThemes"],
+  useWhen:
+    "Showing overall survey results, aggregate response data, or survey performance metrics.",
+  triggerExamples: [
+    "survey results",
+    "how did the survey do",
+    "response summary",
+    "survey performance",
+  ],
+});
+
 // Re-export registry for convenience
 export { componentRegistry } from "./component-registry";

@@ -440,6 +440,77 @@ const COMPONENT_GALLERY: Array<{
       evidenceCount: 34,
     },
   },
+  {
+    type: "ConversationLensInsights",
+    label: "Conversation Lens Insights",
+    data: {
+      interviewTitle: "Sarah K — Onboarding Feedback",
+      frameworkName: "BANT Analysis",
+      overallSummary:
+        "Strong budget signals and clear authority, but timeline is unclear.",
+      insights: [
+        {
+          label: "Budget",
+          summary:
+            "Has approved $50K budget for this quarter. Mentioned willingness to expand if ROI proven.",
+          confidence: 85,
+        },
+        {
+          label: "Authority",
+          summary:
+            "Direct decision maker for tools under $100K. VP approval needed above.",
+          confidence: 92,
+        },
+        {
+          label: "Need",
+          summary:
+            "Current workflow takes 3x longer than competitors. Team morale affected.",
+          confidence: 78,
+        },
+        {
+          label: "Timeline",
+          summary:
+            "Mentioned 'sometime this quarter' but no hard deadline. Waiting on budget cycle.",
+          confidence: 45,
+        },
+      ],
+    },
+  },
+  {
+    type: "SurveyResultsSummary",
+    label: "Survey Results Summary",
+    data: {
+      surveyName: "Product-Market Fit Survey Q1",
+      totalResponses: 47,
+      completionRate: 82,
+      topThemes: [
+        "Ease of use",
+        "Pricing concerns",
+        "Integration needs",
+        "Mobile support",
+      ],
+      questionSummaries: [
+        {
+          question:
+            "How disappointed would you be if you could no longer use this product?",
+          topAnswer: "Very disappointed (62%)",
+          responseCount: 47,
+        },
+        {
+          question:
+            "What is the primary benefit you receive from this product?",
+          topAnswer: "Saves time on customer research (34%)",
+          responseCount: 45,
+        },
+        {
+          question:
+            "What would you use as an alternative if this product didn't exist?",
+          topAnswer: "Spreadsheets and manual notes (41%)",
+          responseCount: 43,
+        },
+      ],
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
