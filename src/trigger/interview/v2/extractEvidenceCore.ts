@@ -69,6 +69,7 @@ import {
   mapUsageToLangfuse,
   summarizeCollectorUsage,
 } from "~/lib/baml/collector.server";
+import { validateAttributionParity } from "~/lib/evidence/personAttribution.server";
 import {
   createTaskBillingContext,
   inferProvider,
@@ -2137,6 +2138,29 @@ export async function extractEvidenceAndPeopleCore({
       progress: 100,
       detail: `Extraction complete: ${insertedEvidenceIds.length} evidence, ${rawPeople.length} people`,
     });
+  }
+
+  // TrustCore: Validate person attribution parity
+  try {
+    const parityResult = await validateAttributionParity(
+      db,
+      interviewRecord.id,
+      "trigger-v2",
+    );
+    if (!parityResult.passed) {
+      consola.warn(
+        "[TrustCore] Person attribution parity check failed in Trigger v2 extraction",
+        {
+          interviewId: interviewRecord.id,
+          mismatches: parityResult.mismatches,
+        },
+      );
+    }
+  } catch (parityError: unknown) {
+    consola.error(
+      "[TrustCore] Parity validation failed:",
+      parityError instanceof Error ? parityError.message : String(parityError),
+    );
   }
 
   return {
