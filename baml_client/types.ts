@@ -733,6 +733,21 @@ export interface ExecutiveSummary {
   
 }
 
+export interface ExtractedEvidence {
+  gist: string
+  verbatim: string
+  context_summary: string
+  category: "pain" | "goal" | "workflow" | "tool" | "context"
+  confidence: number
+  says: string[]
+  thinks: string[]
+  feels: string[]
+  pains: string[]
+  gains: string[]
+  theme_matches: string[]
+  
+}
+
 export interface ExtractedInsight {
   name: string
   pain?: string | null
@@ -1256,6 +1271,22 @@ export interface Person {
   
 }
 
+export interface PersonContext {
+  name: string
+  title?: string | null
+  company?: string | null
+  role?: string | null
+  seniority_level?: string | null
+  icp_band?: string | null
+  icp_score?: number | null
+  facets: PersonFacets
+  missing_fields: string[]
+  conversation_themes: string[]
+  last_interaction_date?: string | null
+  sparse_mode: boolean
+  
+}
+
 export interface PersonDescriptionSummary {
   summary: string
   
@@ -1288,6 +1319,14 @@ export interface PersonFacetLensRequest {
 
 export interface PersonFacetLensResponse {
   summaries: FacetGroupSummary[]
+  
+}
+
+export interface PersonFacets {
+  pains: string[]
+  goals: string[]
+  workflows: string[]
+  tools: string[]
   
 }
 
@@ -1535,6 +1574,15 @@ export interface PersonaSet {
   
 }
 
+export interface PersonalizedQuestion {
+  text: string
+  rationale: string
+  uses_attributes: string[]
+  evidence_type: string
+  order: number
+  
+}
+
 export interface ProductGap {
   gap_description: string
   impact: string
@@ -1562,6 +1610,13 @@ export interface ProjectAnalysis {
   key_discoveries: string[]
   confidence_score: number
   next_steps: string[]
+  
+}
+
+export interface ProjectContext {
+  research_goals: string[]
+  themes_needing_validation: ThemeValidation[]
+  decision_questions: string[]
   
 }
 
@@ -1974,6 +2029,13 @@ export interface SuggestedQuestion {
   
 }
 
+export interface SurveyGoal {
+  goal: "validate" | "discover" | "deep_dive" | "pricing"
+  focus_theme?: string | null
+  target_segment?: string | null
+  
+}
+
 export interface SurveyQuestionInput {
   id: string
   prompt: string
@@ -2006,6 +2068,14 @@ export interface TargetFitAssessment {
   reasoning: string
   signals: string[]
   evidence_ids: string[]
+  
+}
+
+export interface ThemeValidation {
+  theme_name: string
+  evidence_count: number
+  target_count: number
+  confidence: string
   
 }
 

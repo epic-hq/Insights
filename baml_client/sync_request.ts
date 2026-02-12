@@ -22,7 +22,7 @@ import type { BamlRuntime, BamlCtxManager, Image, Audio, Pdf, Video } from "@bou
 import { toBamlError, HTTPRequest, ClientRegistry } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
 import type * as types from "./types"
-import type {ActionButton, AskLinkInsightsResponse, AuthorityInfo, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, BehaviorPattern, BudgetInfo, Category, Chapter, CompetitiveInsight, ConditionOperator, ContextualSuggestions, ConversationAnalysis, ConversationEvidence, ConversationLensResult, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, ConversationTakeaways, CrossLensFinding, CrossLensRecommendedAction, CrossLensSynthesisResult, DealAdvisorRecommendation, DealQualificationSignals, DecisionInsight, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, DocumentEvidence, DocumentExtraction, Emotions, EntityAggregation, EvidenceAnalysisResponse, EvidenceItem, EvidenceLinkResult, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, Extraction, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetGroupInput, FacetGroupSummary, FacetMention, FacetSignalInput, FeaturePrioritization, FeatureRequest, FieldSynthesis, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, GeneratedLensField, GeneratedLensSection, GeneratedLensTemplate, GoalAnswer, GoalLensExtraction, GuidelineAction, GuidelineParseResult, HistoryItem, HypothesisValidation, InferredPersonSegments, InsightMatch, InteractionContext, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, JobFunction, JobToBeDone, LensEntityResult, LensEvidenceHighlight, LensFieldValue, LensHygieneItem, LensNextStepItem, LensObjectionItem, LensRecommendation, LensSectionResult, LensStakeholderItem, LensSynthesisResult, MentalModel, NeedInfo, NextStepInfo, NoteSnippet, OpportunityRecommendation, PainMatrixInsights, PainMatrixInsightsInput, ParsedCondition, ParsedGuideline, Participant, ParticipantGoal, Person, PersonDescriptionSummary, PersonEvidenceHighlight, PersonFacetInput, PersonFacetLensRequest, PersonFacetLensResponse, PersonLensMetadata, PersonProfileInput, PersonScaleInput, PersonSegmentInput, PersonSnapshot, Persona, Persona1, PersonaAdvisorContext, PersonaAdvisorFacetInput, PersonaAdvisorPersonaInput, PersonaAdvisorReport, PersonaAdvisorScaleInput, PersonaAdvisorThemeInput, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, ProductGap, ProductLensExtraction, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, ProposedTheme, QALensResult, QAPair, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionInsight, QuestionIssue, QuestionPolicy, QuestionSet, QuickResponseSummary, ResearchGoal, ResearchInsightInput, ResearchLearning, ResearchLensExtraction, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionInsight, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, ResponseTheme, RuleConfidence, SalesLensExtraction, Scene, Scores, SectionSynthesis, SegmentPattern, SeniorityLevel, Set, SetRecord, Source, SpeakerUtterance, Spectrum, SpreadsheetAnalysis, SpreadsheetColumnMapping, StakeholderRole, SuggestedFacet, SuggestedQuestion, SurveyQuestionInput, SynthesisDiscrepancy, SynthesizedInsight, TargetFitAssessment, TimelineInfo, TopPainCell, TurnAnchors, UnknownResolution, UsabilityFinding, UserJourneyInsight} from "./types"
+import type {ActionButton, AskLinkInsightsResponse, AuthorityInfo, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, BehaviorPattern, BudgetInfo, Category, Chapter, CompetitiveInsight, ConditionOperator, ContextualSuggestions, ConversationAnalysis, ConversationEvidence, ConversationLensResult, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, ConversationTakeaways, CrossLensFinding, CrossLensRecommendedAction, CrossLensSynthesisResult, DealAdvisorRecommendation, DealQualificationSignals, DecisionInsight, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, DocumentEvidence, DocumentExtraction, Emotions, EntityAggregation, EvidenceAnalysisResponse, EvidenceItem, EvidenceLinkResult, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, ExecutiveInsight, ExecutiveSummary, ExtractedEvidence, ExtractedInsight, Extraction, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetGroupInput, FacetGroupSummary, FacetMention, FacetSignalInput, FeaturePrioritization, FeatureRequest, FieldSynthesis, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, GeneratedLensField, GeneratedLensSection, GeneratedLensTemplate, GoalAnswer, GoalLensExtraction, GuidelineAction, GuidelineParseResult, HistoryItem, HypothesisValidation, InferredPersonSegments, InsightMatch, InteractionContext, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, JobFunction, JobToBeDone, LensEntityResult, LensEvidenceHighlight, LensFieldValue, LensHygieneItem, LensNextStepItem, LensObjectionItem, LensRecommendation, LensSectionResult, LensStakeholderItem, LensSynthesisResult, MentalModel, NeedInfo, NextStepInfo, NoteSnippet, OpportunityRecommendation, PainMatrixInsights, PainMatrixInsightsInput, ParsedCondition, ParsedGuideline, Participant, ParticipantGoal, Person, PersonContext, PersonDescriptionSummary, PersonEvidenceHighlight, PersonFacetInput, PersonFacetLensRequest, PersonFacetLensResponse, PersonFacets, PersonLensMetadata, PersonProfileInput, PersonScaleInput, PersonSegmentInput, PersonSnapshot, Persona, Persona1, PersonaAdvisorContext, PersonaAdvisorFacetInput, PersonaAdvisorPersonaInput, PersonaAdvisorReport, PersonaAdvisorScaleInput, PersonaAdvisorThemeInput, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, PersonalizedQuestion, ProductGap, ProductLensExtraction, ProjectAnalysis, ProjectContext, ProjectNameDescription, ProjectTemplateOut, ProposedTheme, QALensResult, QAPair, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionInsight, QuestionIssue, QuestionPolicy, QuestionSet, QuickResponseSummary, ResearchGoal, ResearchInsightInput, ResearchLearning, ResearchLensExtraction, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionInsight, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, ResponseTheme, RuleConfidence, SalesLensExtraction, Scene, Scores, SectionSynthesis, SegmentPattern, SeniorityLevel, Set, SetRecord, Source, SpeakerUtterance, Spectrum, SpreadsheetAnalysis, SpreadsheetColumnMapping, StakeholderRole, SuggestedFacet, SuggestedQuestion, SurveyGoal, SurveyQuestionInput, SynthesisDiscrepancy, SynthesizedInsight, TargetFitAssessment, ThemeValidation, TimelineInfo, TopPainCell, TurnAnchors, UnknownResolution, UsabilityFinding, UserJourneyInsight} from "./types"
 import type TypeBuilder from "./type_builder"
 import type * as events from "./events"
 
@@ -521,6 +521,39 @@ export class HttpRequest {
         "ExtractEvidence",
         {
           "doc": doc
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __clientRegistry__,
+        false,
+        __env__,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  ExtractEvidenceFromAnswer(
+      question_text: string,answer_text: string,question_metadata: string,question_index: number,
+      __baml_options__?: BamlCallOptions<never>
+  ): HTTPRequest {
+    try {
+      const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const __env__: Record<string, string> = Object.fromEntries(
+        Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+
+      // Resolve client option to clientRegistry (client takes precedence)
+      let __clientRegistry__ = __baml_options__?.clientRegistry;
+      if (__baml_options__?.client) {
+        __clientRegistry__ = __clientRegistry__ || new ClientRegistry();
+        __clientRegistry__.setPrimary(__baml_options__.client);
+      }
+
+      return this.runtime.buildRequestSync(
+        "ExtractEvidenceFromAnswer",
+        {
+          "question_text": question_text,"answer_text": answer_text,"question_metadata": question_metadata,"question_index": question_index
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -1181,6 +1214,39 @@ export class HttpRequest {
         "GeneratePersonaAdvisorReport",
         {
           "context": context
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __clientRegistry__,
+        false,
+        __env__,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  GeneratePersonalizedQuestions(
+      person_context: types.PersonContext,project_context: types.ProjectContext,survey_goal: types.SurveyGoal,question_count: number,
+      __baml_options__?: BamlCallOptions<never>
+  ): HTTPRequest {
+    try {
+      const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const __env__: Record<string, string> = Object.fromEntries(
+        Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+
+      // Resolve client option to clientRegistry (client takes precedence)
+      let __clientRegistry__ = __baml_options__?.clientRegistry;
+      if (__baml_options__?.client) {
+        __clientRegistry__ = __clientRegistry__ || new ClientRegistry();
+        __clientRegistry__.setPrimary(__baml_options__.client);
+      }
+
+      return this.runtime.buildRequestSync(
+        "GeneratePersonalizedQuestions",
+        {
+          "person_context": person_context,"project_context": project_context,"survey_goal": survey_goal,"question_count": question_count
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -2222,6 +2288,39 @@ export class HttpStreamRequest {
     }
   }
   
+  ExtractEvidenceFromAnswer(
+      question_text: string,answer_text: string,question_metadata: string,question_index: number,
+      __baml_options__?: BamlCallOptions<never>
+  ): HTTPRequest {
+    try {
+      const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const __env__: Record<string, string> = Object.fromEntries(
+        Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+
+      // Resolve client option to clientRegistry (client takes precedence)
+      let __clientRegistry__ = __baml_options__?.clientRegistry;
+      if (__baml_options__?.client) {
+        __clientRegistry__ = __clientRegistry__ || new ClientRegistry();
+        __clientRegistry__.setPrimary(__baml_options__.client);
+      }
+
+      return this.runtime.buildRequestSync(
+        "ExtractEvidenceFromAnswer",
+        {
+          "question_text": question_text,"answer_text": answer_text,"question_metadata": question_metadata,"question_index": question_index
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __clientRegistry__,
+        true,
+        __env__,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   ExtractEvidenceFromDocument(
       document_text: string,document_title?: string | null,document_type: string,max_evidence: number,
       __baml_options__?: BamlCallOptions<never>
@@ -2870,6 +2969,39 @@ export class HttpStreamRequest {
         "GeneratePersonaAdvisorReport",
         {
           "context": context
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __clientRegistry__,
+        true,
+        __env__,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  GeneratePersonalizedQuestions(
+      person_context: types.PersonContext,project_context: types.ProjectContext,survey_goal: types.SurveyGoal,question_count: number,
+      __baml_options__?: BamlCallOptions<never>
+  ): HTTPRequest {
+    try {
+      const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const __env__: Record<string, string> = Object.fromEntries(
+        Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+
+      // Resolve client option to clientRegistry (client takes precedence)
+      let __clientRegistry__ = __baml_options__?.clientRegistry;
+      if (__baml_options__?.client) {
+        __clientRegistry__ = __clientRegistry__ || new ClientRegistry();
+        __clientRegistry__.setPrimary(__baml_options__.client);
+      }
+
+      return this.runtime.buildRequestSync(
+        "GeneratePersonalizedQuestions",
+        {
+          "person_context": person_context,"project_context": project_context,"survey_goal": survey_goal,"question_count": question_count
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
