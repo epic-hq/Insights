@@ -1,7 +1,7 @@
 # Unified Conversation Architecture
 
 > **Status:** Phase 1 complete (schema), Phase 2 in progress
-> **Updated:** 2026-01-13
+> **Updated:** 2026-02-12
 > **Created:** 2024-12-26
 
 ## Overview
@@ -540,6 +540,43 @@ When an Ask response is completed:
    ↓
 7. Evidence appears in unified views with source badges
 ```
+
+### Desktop Realtime Meeting Flow (Current)
+
+This is the current production flow for desktop live meeting capture and finalization:
+
+```text
+Recall SDK meeting detected
+  ↓
+Desktop floating panel shown (single notification per meeting fingerprint)
+  ↓
+User starts recording (requires desktop auth + account/project context + upload token)
+  ↓
+Realtime transcript + participant join events stream from Recall SDK
+  ↓
+Desktop queues utterances and calls POST /api/desktop/realtime-evidence in batches
+  ↓
+Realtime evidence/tasks/people persist to DB (interview_id scoped)
+  ↓
+On stop/recording-ended, desktop flushes pending extraction
+  ↓
+Desktop resolves people via POST /api/desktop/people/resolve
+  ↓
+Desktop finalizes via POST /api/desktop/interviews/finalize
+  ↓
+Finalize writes transcript_formatted, upserts interview_people, links evidence_people/evidence_facet.person_id, sets interview status=ready
+```
+
+### People/Org Normalization Alignment
+
+- Desktop does not implement person resolution logic locally.
+- Desktop sends enriched participant signals (name/email/platform user ID) to `/api/desktop/people/resolve`.
+- Web app shared resolver (`app/lib/people/resolution.server.ts`) is the single source of truth for matching:
+  - email
+  - platform user ID
+  - name + organization/company context
+  - create fallback
+- Organization linkage is normalized through web-side people/org models (`people.default_organization_id` and `people_organizations`), not separate desktop-only logic.
 
 ### Currently Missing (To Implement)
 

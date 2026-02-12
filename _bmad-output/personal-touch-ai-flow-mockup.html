@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Touch AI - Survey Generation Flow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #1a202c;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 48px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header .subtitle {
+            font-size: 20px;
+            opacity: 0.95;
+            font-weight: 500;
+        }
+
+        .header .tagline {
+            font-size: 16px;
+            opacity: 0.85;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        .flow-container {
+            display: grid;
+            gap: 40px;
+        }
+
+        .step {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .step-number {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        .step-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a202c;
+        }
+
+        .step-description {
+            font-size: 16px;
+            color: #4a5568;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .mockup {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 24px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .window-header {
+            background: #2d3748;
+            padding: 12px 16px;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: -24px -24px 16px -24px;
+        }
+
+        .window-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot.red { background: #fc5c65; }
+        .dot.yellow { background: #fed330; }
+        .dot.green { background: #26de81; }
+
+        .window-title {
+            color: #a0aec0;
+            font-size: 13px;
+            margin-left: 12px;
+        }
+
+        .ui-element {
+            background: white;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .ui-element:last-child {
+            margin-bottom: 0;
+        }
+
+        .button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .button-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .button-secondary {
+            background: white;
+            color: #4a5568;
+            border: 1px solid #cbd5e0;
+        }
+
+        .button-ghost {
+            background: transparent;
+            color: #667eea;
+        }
+
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #cbd5e0;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+        }
+
+        .checkbox.checked {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+
+        .person-row {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .person-row:last-child {
+            border-bottom: none;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 16px;
+            margin-right: 12px;
+        }
+
+        .person-info {
+            flex: 1;
+        }
+
+        .person-name {
+            font-weight: 600;
+            font-size: 15px;
+            color: #1a202c;
+        }
+
+        .person-meta {
+            font-size: 13px;
+            color: #718096;
+            margin-top: 2px;
+        }
+
+        .badge {
+            display: inline-flex;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .badge-warning {
+            background: #feebc8;
+            color: #7c2d12;
+        }
+
+        .badge-info {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a202c;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            padding: 20px 24px;
+            background: #f7fafc;
+            border-radius: 0 0 12px 12px;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .question-card {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .question-text {
+            font-size: 15px;
+            color: #1a202c;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .rationale {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 12px;
+            background: #edf2f7;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #4a5568;
+            margin-top: 8px;
+        }
+
+        .info-icon {
+            color: #4299e1;
+            font-weight: 700;
+        }
+
+        .progress-bar {
+            display: flex;
+            gap: 8px;
+            margin: 16px 0;
+        }
+
+        .progress-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #cbd5e0;
+        }
+
+        .progress-dot.completed {
+            background: #48bb78;
+        }
+
+        .progress-dot.current {
+            background: #667eea;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+
+        .timeline-event {
+            border-left: 3px solid #667eea;
+            padding-left: 16px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .timeline-event::before {
+            content: '';
+            position: absolute;
+            left: -7px;
+            top: 4px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #667eea;
+            border: 3px solid white;
+        }
+
+        .timeline-date {
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 4px;
+        }
+
+        .timeline-title {
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 4px;
+        }
+
+        .timeline-meta {
+            font-size: 13px;
+            color: #4a5568;
+        }
+
+        .highlight-box {
+            background: #fef5e7;
+            border-left: 4px solid #f39c12;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 16px 0;
+        }
+
+        .highlight-title {
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+
+        .highlight-text {
+            font-size: 14px;
+            color: #4a5568;
+            line-height: 1.6;
+        }
+
+        .arrow-down {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 32px;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .stat-box {
+            flex: 1;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #718096;
+            margin-top: 4px;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #48bb78;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-x: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th {
+            background: #edf2f7;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            color: #4a5568;
+            border-bottom: 2px solid #cbd5e0;
+        }
+
+        .table td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✨ Personal Touch AI</h1>
+            <div class="subtitle">Context-Aware Personalized Survey Generation</div>
+            <div class="tagline">"Ask Sarah these 5 questions because she's a high-value VP Engineering who mentioned pricing concerns last month"</div>
+        </div>
+
+        <div class="flow-container">
+            <!-- STEP 1: People List Selection -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Select People from List</div>
+                </div>
+                <div class="step-description">
+                    User navigates to People List page and selects multiple people to generate personalized surveys for.
+                    Multi-select checkboxes enable bulk operations.
+                </div>
+                <div class="mockup">
+                    <div class="window-header">
+                        <div class="window-dots">
+                            <div class="dot red"></div>
+                            <div class="dot yellow"></div>
+                            <div class="dot green"></div>
+                        </div>
+                        <div class="window-title">People → All People</div>
+                    </div>
+
+                    <div class="ui-element">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <div style="font-weight: 600; font-size: 16px;">People (47)</div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="button button-secondary">
+                                    <span>⚙️</span> Filter
+                                </button>
+                                <button class="button button-primary">
+                                    <span>✨</span> Generate Surveys (10)
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="person-row">
+                            <div class="checkbox checked">✓</div>
+                            <div class="avatar">SC</div>
+                            <div class="person-info">
+                                <div class="person-name">Sarah Chen</div>
+                                <div class="person-meta">VP Engineering @ Acme · <span class="badge badge-success">ICP: Strong 87%</span></div>
+                            </div>
+                        </div>
+
+                        <div class="person-row">
+                            <div class="checkbox checked">✓</div>
+                            <div class="avatar">MJ</div>
+                            <div class="person-info">
+                                <div class="person-name">Mike Jones</div>
+                                <div class="person-meta">Product Manager @ Beta Corp · <span class="badge badge-warning">ICP: Moderate 68%</span></div>
+                            </div>
+                        </div>
+
+                        <div class="person-row">
+                            <div class="checkbox checked">✓</div>
+                            <div class="avatar">LW</div>
+                            <div class="person-info">
+                                <div class="person-name">Li Wang</div>
+                                <div class="person-meta">Founder @ Startup · <span class="badge badge-success">ICP: Strong 92%</span></div>
+                            </div>
+                        </div>
+
+                        <div class="person-row" style="opacity: 0.5;">
+                            <div class="checkbox"></div>
+                            <div class="avatar">JD</div>
+                            <div class="person-info">
+                                <div class="person-name">Jane Doe</div>
+                                <div class="person-meta">Designer @ Creative Co · <span class="badge badge-info">ICP: Unscored</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="highlight-box">
+                        <div class="highlight-title">💡 Key Feature</div>
+                        <div class="highlight-text">
+                            Multi-select enables bulk survey generation. "Generate Surveys" action appears in toolbar when 1+ people selected.
+                            Badge shows ICP scores to help prioritize who to survey first.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="arrow-down">↓</div>
+
+            <!-- STEP 2: Survey Generation -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">2</div>
+                    <div class="step-title">AI Generates Personalized Questions</div>
+                </div>
+                <div class="step-description">
+                    System calls BAML GeneratePersonalizedQuestions for each selected person in parallel.
+                    Questions are tailored using person context (title, role, facets, ICP, past conversations) and project context (research goals, themes needing validation).
+                </div>
+                <div class="mockup">
+                    <div class="ui-element" style="background: #f0f4f8;">
+                        <div style="text-align: center; padding: 20px;">
+                            <div style="font-size: 18px; font-weight: 600; color: #4a5568; margin-bottom: 12px;">
+                                ✨ Generating personalized surveys...
+                            </div>
+                            <div style="font-size: 14px; color: #718096; margin-bottom: 16px;">
+                                Creating questions for 10 people
+                            </div>
+                            <div class="progress-bar" style="justify-content: center;">
+                                <div class="progress-dot completed"></div>
+                                <div class="progress-dot completed"></div>
+                                <div class="progress-dot completed"></div>
+                                <div class="progress-dot current"></div>
+                                <div class="progress-dot"></div>
+                                <div class="progress-dot"></div>
+                                <div class="progress-dot"></div>
+                                <div class="progress-dot"></div>
+                                <div class="progress-dot"></div>
+                                <div class="progress-dot"></div>
+                            </div>
+                            <div style="font-size: 13px; color: #718096; margin-top: 8px;">
+                                4 of 10 complete
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="highlight-box" style="margin-top: 16px;">
+                        <div class="highlight-title">⚡ Technical Details</div>
+                        <div class="highlight-text">
+                            • Parallel generation using Promise.all (10 surveys in ~30 seconds)<br>
+                            • BAML function: GeneratePersonalizedQuestions(person_context, project_context, survey_goal, question_count)<br>
+                            • Each generation includes 5 questions with rationale and uses_attributes metadata<br>
+                            • Failed generations skip gracefully, don't block others
+                        </div>
+                    </div>
+
+                    <div class="code-block" style="margin-top: 16px;">
+<span style="color: #cbd5e0;">// Example generation for Sarah Chen</span>
+{
+  "person_context": {
+    "name": "Sarah Chen",
+    "title": "VP Engineering",
+    "company": "Acme",
+    "icp_band": "Strong",
+    "icp_score": 0.87,
+    "facets": {
+      "pains": ["budget concerns", "integration complexity"],
+      "goals": ["enterprise features"],
+      "tools": ["Typeform"]
+    },
+    "conversation_themes": ["Pricing Pain", "Enterprise Needs"]
+  }
+}
+
+→ Generates 5 personalized questions in 3.2 seconds
+                    </div>
+                </div>
+            </div>
+
+            <div class="arrow-down">↓</div>
+
+            <!-- STEP 3: Quick View Carousel -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">3</div>
+                    <div class="step-title">Review with Quick View Carousel</div>
+                </div>
+                <div class="step-description">
+                    Modal opens showing first survey. User can navigate with arrow keys, approve with spacebar, or edit questions inline.
+                    Progress indicator shows approved/pending surveys. After reviewing all, bulk generate links.
+                </div>
+                <div class="mockup">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <div class="modal-title">Review Personalized Surveys</div>
+                            <button class="button button-ghost" style="padding: 4px;">✕</button>
+                        </div>
+                        <div class="modal-body">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <button class="button button-secondary">← Previous</button>
+                                <div style="font-weight: 600; color: #4a5568;">Sarah Chen (1/10)</div>
+                                <button class="button button-primary">Next →</button>
+                            </div>
+
+                            <div class="ui-element" style="background: #f7fafc;">
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                                    <div class="avatar" style="width: 56px; height: 56px; font-size: 20px;">SC</div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 700; font-size: 16px;">Sarah Chen</div>
+                                        <div style="font-size: 13px; color: #718096;">VP Engineering @ Acme · <span class="badge badge-success" style="margin-left: 4px;">ICP: Strong 87%</span></div>
+                                    </div>
+                                </div>
+                                <div style="font-size: 13px; color: #4a5568; padding: 12px; background: #edf2f7; border-radius: 6px;">
+                                    <strong>Survey Goal:</strong> Pricing Validation · <strong>Questions:</strong> 5 · <strong>Est. Time:</strong> 3 min
+                                </div>
+                            </div>
+
+                            <div class="question-card">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                    <div style="font-weight: 700; color: #667eea; font-size: 13px;">Q1</div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="button button-ghost" style="padding: 4px 8px; font-size: 12px;">✏️ Edit</button>
+                                        <button class="button button-ghost" style="padding: 4px 8px; font-size: 12px;">🗑️ Delete</button>
+                                    </div>
+                                </div>
+                                <div class="question-text">
+                                    As a VP Engineering at a Series B company, what's your biggest challenge with research tools?
+                                </div>
+                                <div class="rationale">
+                                    <span class="info-icon">ℹ️</span>
+                                    <span><strong>Rationale:</strong> High ICP match + role-specific pain discovery</span>
+                                </div>
+                            </div>
+
+                            <div class="question-card">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                    <div style="font-weight: 700; color: #667eea; font-size: 13px;">Q2</div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="button button-ghost" style="padding: 4px 8px; font-size: 12px;">✏️ Edit</button>
+                                        <button class="button button-ghost" style="padding: 4px 8px; font-size: 12px;">🗑️ Delete</button>
+                                    </div>
+                                </div>
+                                <div class="question-text">
+                                    In our last conversation, you brought up budget constraints. Has that changed at all, or is pricing still a key factor in your evaluation?
+                                </div>
+                                <div class="rationale">
+                                    <span class="info-icon">ℹ️</span>
+                                    <span><strong>Rationale:</strong> References past conversation evidence from "Pricing Pain" theme</span>
+                                </div>
+                            </div>
+
+                            <div class="question-card">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                    <div style="font-weight: 700; color: #667eea; font-size: 13px;">Q3</div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="button button-ghost" style="padding: 4px 8px; font-size: 12px;">✏️ Edit</button>
+                                        <button class="button button-ghost" style="padding: 4px 8px; font-size: 12px;">🗑️ Delete</button>
+                                    </div>
+                                </div>
+                                <div class="question-text">
+                                    What pricing model would work best for your team - per-seat, per-project, or unlimited usage?
+                                </div>
+                                <div class="rationale">
+                                    <span class="info-icon">ℹ️</span>
+                                    <span><strong>Rationale:</strong> Validates "Pricing Pain" theme (2/5 evidence pieces, needs more)</span>
+                                </div>
+                            </div>
+
+                            <div style="text-align: center; color: #718096; font-size: 13px; margin: 12px 0;">
+                                <button class="button button-ghost">+ Show 2 more questions...</button>
+                            </div>
+
+                            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="checkbox checked">✓</div>
+                                    <span style="font-weight: 600; color: #1a202c;">Approve this survey</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <div style="flex: 1;">
+                                <div class="progress-bar">
+                                    <div class="progress-dot completed"></div>
+                                    <div class="progress-dot current"></div>
+                                    <div class="progress-dot"></div>
+                                    <div class="progress-dot"></div>
+                                    <div class="progress-dot"></div>
+                                    <div class="progress-dot"></div>
+                                    <div class="progress-dot"></div>
+                                    <div class="progress-dot"></div>
+                                    <div class="progress-dot"></div>
+                                    <div class="progress-dot"></div>
+                                </div>
+                                <div style="font-size: 12px; color: #718096; text-align: center;">
+                                    Approved: 0 · Pending: 10
+                                </div>
+                            </div>
+                            <button class="button button-secondary">
+                                <span>🔄</span> Regenerate
+                            </button>
+                            <button class="button button-primary">
+                                Next Survey →
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="highlight-box" style="margin-top: 24px;">
+                        <div class="highlight-title">⌨️ Keyboard Shortcuts</div>
+                        <div class="highlight-text">
+                            • <strong>Arrow Keys:</strong> Navigate between surveys<br>
+                            • <strong>Spacebar:</strong> Approve current survey + auto-advance<br>
+                            • <strong>E:</strong> Edit first question<br>
+                            • <strong>Escape:</strong> Close modal (saves progress)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="arrow-down">↓</div>
+
+            <!-- STEP 4: Generate Links -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">4</div>
+                    <div class="step-title">Generate Personalized Links (CSV)</div>
+                </div>
+                <div class="step-description">
+                    After reviewing all surveys, user clicks "Generate Links" to create unique personalized URLs for each approved survey.
+                    Downloads as CSV with columns: Name, Email, Survey Link, Questions Preview.
+                </div>
+                <div class="mockup">
+                    <div class="ui-element" style="background: #f0fdf4; border-color: #86efac;">
+                        <div style="text-align: center; padding: 24px;">
+                            <div style="font-size: 48px; margin-bottom: 12px;">✅</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #166534; margin-bottom: 8px;">
+                                8 surveys approved, 2 skipped
+                            </div>
+                            <div style="font-size: 14px; color: #4a5568; margin-bottom: 20px;">
+                                Ready to generate personalized links
+                            </div>
+
+                            <div class="stats-row">
+                                <div class="stat-box">
+                                    <div class="stat-value">8</div>
+                                    <div class="stat-label">Approved</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-value">40</div>
+                                    <div class="stat-label">Questions</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-value">~24 min</div>
+                                    <div class="stat-label">Est. Time</div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">
+                                <button class="button button-primary" style="padding: 12px 24px; font-size: 15px;">
+                                    <span>📥</span> Download CSV with Links
+                                </button>
+                                <button class="button button-secondary">
+                                    <span>📋</span> Copy All Links
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ui-element" style="margin-top: 16px;">
+                        <div style="font-weight: 600; margin-bottom: 12px;">CSV Preview (research-surveys-2026-02-11.csv)</div>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Survey Link</th>
+                                    <th>Preview</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Sarah Chen</td>
+                                    <td>sarah@acme.com</td>
+                                    <td style="font-family: monospace; font-size: 11px; color: #667eea;">
+                                        app.upsight.ai/research/abc123?p=sarah-xyz
+                                    </td>
+                                    <td style="font-size: 12px; color: #718096;">
+                                        As a VP Engineering at...
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Mike Jones</td>
+                                    <td>mike@beta.com</td>
+                                    <td style="font-family: monospace; font-size: 11px; color: #667eea;">
+                                        app.upsight.ai/research/def456?p=mike-abc
+                                    </td>
+                                    <td style="font-size: 12px; color: #718096;">
+                                        As a Product Manager...
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Li Wang</td>
+                                    <td>li@startup.io</td>
+                                    <td style="font-family: monospace; font-size: 11px; color: #667eea;">
+                                        app.upsight.ai/research/ghi789?p=li-def
+                                    </td>
+                                    <td style="font-size: 12px; color: #718096;">
+                                        As a Founder of...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="highlight-box" style="margin-top: 16px;">
+                        <div class="highlight-title">📧 Next Steps</div>
+                        <div class="highlight-text">
+                            User opens CSV → Copies links → Pastes into their email client (Gmail, Outlook, etc.) → Sends batch email with personalized links.
+                            <br><br>
+                            <strong>Future (Phase 4):</strong> Direct Gmail integration with auto-send + staging queue.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="arrow-down">↓</div>
+
+            <!-- STEP 5: Survey Completion -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">5</div>
+                    <div class="step-title">Recipient Completes Survey</div>
+                </div>
+                <div class="step-description">
+                    Sarah clicks personalized link → Research link page opens with her 5 questions → She completes survey → Submits.
+                    Webhook triggers processSurveyCompletion task.
+                </div>
+                <div class="mockup">
+                    <div class="window-header">
+                        <div class="window-dots">
+                            <div class="dot red"></div>
+                            <div class="dot yellow"></div>
+                            <div class="dot green"></div>
+                        </div>
+                        <div class="window-title">app.upsight.ai/research/abc123?p=sarah-xyz</div>
+                    </div>
+
+                    <div class="ui-element" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <div style="text-align: center; padding: 32px;">
+                            <div style="font-size: 28px; font-weight: 700; margin-bottom: 8px;">
+                                Enterprise Pricing Survey
+                            </div>
+                            <div style="opacity: 0.9; font-size: 16px;">
+                                5 questions · About 3 minutes
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ui-element">
+                        <div style="font-weight: 700; color: #1a202c; margin-bottom: 12px;">
+                            Question 1 of 5
+                        </div>
+                        <div style="font-size: 15px; line-height: 1.6; margin-bottom: 16px;">
+                            As a VP Engineering at a Series B company, what's your biggest challenge with research tools?
+                        </div>
+                        <textarea
+                            style="width: 100%; min-height: 120px; padding: 12px; border: 2px solid #cbd5e0; border-radius: 8px; font-family: inherit; font-size: 14px;"
+                            placeholder="Type your answer here...">Honestly, it's the fragmentation. We have customer feedback in Intercom, survey data in Typeform, user interviews in Zoom recordings... there's no single place to see what customers are actually saying. And when I need to justify a technical decision to leadership, I'm scrambling to find that one quote from three months ago.</textarea>
+                        <button class="button button-primary" style="margin-top: 12px; width: 100%; justify-content: center;">
+                            Next Question →
+                        </button>
+                    </div>
+
+                    <div class="progress-bar" style="margin-top: 16px; justify-content: center;">
+                        <div class="progress-dot completed"></div>
+                        <div class="progress-dot"></div>
+                        <div class="progress-dot"></div>
+                        <div class="progress-dot"></div>
+                        <div class="progress-dot"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="arrow-down">↓</div>
+
+            <!-- STEP 6: Evidence Extraction -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">6</div>
+                    <div class="step-title">Auto-Extract Evidence from Responses</div>
+                </div>
+                <div class="step-description">
+                    Trigger.dev task processes survey response. BAML ExtractEvidenceFromAnswer extracts structured evidence from each answer.
+                    Auto-creates evidence records, links to person, auto-links to themes (confidence > 0.7).
+                </div>
+                <div class="mockup">
+                    <div class="ui-element" style="background: #f0f4f8;">
+                        <div style="padding: 20px;">
+                            <div style="font-size: 16px; font-weight: 600; color: #4a5568; margin-bottom: 16px;">
+                                🤖 Processing Survey Response
+                            </div>
+
+                            <div class="timeline-event">
+                                <div class="timeline-date">12:45 PM</div>
+                                <div class="timeline-title">✅ Survey completed by Sarah Chen</div>
+                                <div class="timeline-meta">5 questions answered</div>
+                            </div>
+
+                            <div class="timeline-event">
+                                <div class="timeline-date">12:45 PM</div>
+                                <div class="timeline-title">🔍 Extracting evidence from responses</div>
+                                <div class="timeline-meta">Analyzing Question 1/5...</div>
+                            </div>
+
+                            <div class="timeline-event">
+                                <div class="timeline-date">12:45 PM</div>
+                                <div class="timeline-title">📝 Created evidence: "Research tool fragmentation"</div>
+                                <div class="timeline-meta">Category: Pain · Confidence: 0.89</div>
+                            </div>
+
+                            <div class="timeline-event">
+                                <div class="timeline-date">12:45 PM</div>
+                                <div class="timeline-title">🔗 Linked to theme: "Integration Complexity"</div>
+                                <div class="timeline-meta">Confidence: 0.82 (auto-linked)</div>
+                            </div>
+
+                            <div class="timeline-event">
+                                <div class="timeline-date">12:46 PM</div>
+                                <div class="timeline-title">✅ Processing complete</div>
+                                <div class="timeline-meta">3 evidence pieces extracted</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ui-element" style="margin-top: 16px;">
+                        <div style="font-weight: 600; margin-bottom: 12px;">Extracted Evidence</div>
+
+                        <div style="border-left: 3px solid #48bb78; padding-left: 12px; margin-bottom: 12px;">
+                            <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">
+                                "Research tool fragmentation pain"
+                            </div>
+                            <div style="font-size: 13px; color: #718096; margin-bottom: 8px;">
+                                <span class="badge badge-warning">Pain</span> · Confidence: 0.89
+                            </div>
+                            <div style="font-size: 13px; color: #4a5568; font-style: italic; line-height: 1.5;">
+                                "customer feedback in Intercom, survey data in Typeform, user interviews in Zoom recordings... no single place"
+                            </div>
+                            <div style="font-size: 12px; color: #718096; margin-top: 8px;">
+                                🔗 Auto-linked to: <strong>Integration Complexity</strong>, <strong>Data Organization</strong>
+                            </div>
+                        </div>
+
+                        <div style="border-left: 3px solid #48bb78; padding-left: 12px; margin-bottom: 12px;">
+                            <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">
+                                "Need for centralized customer insights"
+                            </div>
+                            <div style="font-size: 13px; color: #718096; margin-bottom: 8px;">
+                                <span class="badge badge-info">Goal</span> · Confidence: 0.76
+                            </div>
+                            <div style="font-size: 13px; color: #4a5568; font-style: italic; line-height: 1.5;">
+                                "there's no single place to see what customers are actually saying"
+                            </div>
+                            <div style="font-size: 12px; color: #718096; margin-top: 8px;">
+                                🔗 Auto-linked to: <strong>Research Organization</strong>
+                            </div>
+                        </div>
+
+                        <div style="border-left: 3px solid #48bb78; padding-left: 12px;">
+                            <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">
+                                "Manual evidence retrieval workflow"
+                            </div>
+                            <div style="font-size: 13px; color: #718096; margin-bottom: 8px;">
+                                <span class="badge badge-warning">Workflow</span> · Confidence: 0.81
+                            </div>
+                            <div style="font-size: 13px; color: #4a5568; font-style: italic; line-height: 1.5;">
+                                "I'm scrambling to find that one quote from three months ago"
+                            </div>
+                            <div style="font-size: 12px; color: #718096; margin-top: 8px;">
+                                🔗 Auto-linked to: <strong>Search & Discovery</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="highlight-box" style="margin-top: 16px;">
+                        <div class="highlight-title">🎯 Auto-Accept Threshold</div>
+                        <div class="highlight-text">
+                            Evidence with confidence >= 0.6 is auto-accepted (same trust as interview evidence).
+                            Low confidence (< 0.6) is logged but still created. No manual approval needed for beta.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="arrow-down">↓</div>
+
+            <!-- STEP 7: Timeline Integration -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">7</div>
+                    <div class="step-title">Survey Appears in Person Timeline</div>
+                </div>
+                <div class="step-description">
+                    Survey event shows in Activity Timeline on Sarah's person detail page.
+                    Status updates: Sent → Opened → Completed. Evidence extraction summary visible.
+                </div>
+                <div class="mockup">
+                    <div class="window-header">
+                        <div class="window-dots">
+                            <div class="dot red"></div>
+                            <div class="dot yellow"></div>
+                            <div class="dot green"></div>
+                        </div>
+                        <div class="window-title">People → Sarah Chen → Activity</div>
+                    </div>
+
+                    <div class="ui-element">
+                        <div style="font-weight: 600; font-size: 16px; margin-bottom: 16px;">
+                            📋 Activity Timeline
+                        </div>
+
+                        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                            <div class="badge badge-info" style="cursor: pointer;">All · 12</div>
+                            <div class="badge badge-success" style="cursor: pointer; background: white; color: #4a5568; border: 1px solid #cbd5e0;">Interviews · 4</div>
+                            <div class="badge badge-success" style="cursor: pointer; background: white; color: #4a5568; border: 1px solid #cbd5e0;">Surveys · 5</div>
+                            <div class="badge badge-success" style="cursor: pointer; background: white; color: #4a5568; border: 1px solid #cbd5e0;">Notes · 3</div>
+                        </div>
+
+                        <div style="font-size: 13px; color: #718096; font-weight: 600; margin-bottom: 12px;">
+                            Today
+                        </div>
+
+                        <div class="ui-element" style="background: #f0fdf4; border-color: #86efac;">
+                            <div style="display: flex; align-items: flex-start; gap: 12px;">
+                                <div style="font-size: 24px;">📋</div>
+                                <div style="flex: 1;">
+                                    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 4px;">
+                                        <div style="font-weight: 700; color: #1a202c;">Enterprise Pricing Survey</div>
+                                        <span class="badge badge-success" style="margin-left: auto;">Personalized Survey</span>
+                                    </div>
+                                    <div style="font-size: 13px; color: #166534; margin-bottom: 8px;">
+                                        ✅ Completed · 3 evidence pieces extracted
+                                    </div>
+                                    <div style="font-size: 13px; color: #4a5568;">
+                                        5 questions · Completed 2h ago
+                                    </div>
+                                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                        <button class="button button-secondary" style="font-size: 12px; padding: 6px 12px;">
+                                            📄 View Responses
+                                        </button>
+                                        <button class="button button-secondary" style="font-size: 12px; padding: 6px 12px;">
+                                            🔍 View Evidence
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="font-size: 13px; color: #718096; font-weight: 600; margin: 16px 0 12px 0;">
+                            Feb 8
+                        </div>
+
+                        <div class="ui-element">
+                            <div style="display: flex; align-items: flex-start; gap: 12px;">
+                                <div style="font-size: 24px;">📹</div>
+                                <div style="flex: 1;">
+                                    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 4px;">
+                                        <div style="font-weight: 700; color: #1a202c;">Product Feedback Deep Dive</div>
+                                        <span class="badge badge-info" style="margin-left: auto;">Interview</span>
+                                    </div>
+                                    <div style="font-size: 13px; color: #4a5568; margin-bottom: 8px;">
+                                        45 minutes · 12 evidence pieces extracted
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="highlight-box" style="margin-top: 16px;">
+                        <div class="highlight-title">🔄 Real-time Status Updates</div>
+                        <div class="highlight-text">
+                            Timeline event shows live status:<br>
+                            • <strong>Sent 2h ago:</strong> Gray background, shows link<br>
+                            • <strong>Opened 30min ago:</strong> Blue accent, shows progress<br>
+                            • <strong>Completed:</strong> Green background, evidence summary<br>
+                            • <strong>Failed:</strong> Red border, retry option
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Card -->
+            <div class="step" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">🎉</div>
+                    <div style="font-size: 32px; font-weight: 800; margin-bottom: 12px;">
+                        Complete Flow Summary
+                    </div>
+                    <div style="font-size: 18px; opacity: 0.95; margin-bottom: 32px;">
+                        7 steps from selection to evidence
+                    </div>
+
+                    <div class="stats-row">
+                        <div class="stat-box">
+                            <div class="stat-value" style="color: #667eea;">10</div>
+                            <div class="stat-label">People Selected</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" style="color: #667eea;">50</div>
+                            <div class="stat-label">Questions Generated</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" style="color: #667eea;">8</div>
+                            <div class="stat-label">Surveys Approved</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" style="color: #667eea;">24</div>
+                            <div class="stat-label">Evidence Pieces</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 32px; padding: 24px; background: rgba(255,255,255,0.1); border-radius: 12px;">
+                        <div style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">
+                            ⏱️ Time to Value
+                        </div>
+                        <div style="font-size: 14px; opacity: 0.9; line-height: 1.8;">
+                            • Bulk generation: ~30 seconds (10 surveys)<br>
+                            • Quick View review: ~5 minutes (average)<br>
+                            • Survey completion: ~3 minutes per person<br>
+                            • Evidence extraction: ~30 seconds per survey<br>
+                            <br>
+                            <strong>Total: From selection to evidence in ~10 minutes</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 60px; color: white; font-size: 14px; opacity: 0.8;">
+            <div style="margin-bottom: 8px;">Personal Touch AI · Beta Internal QA</div>
+            <div>Generated: February 11, 2026</div>
+        </div>
+    </div>
+</body>
+</html>

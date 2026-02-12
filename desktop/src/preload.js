@@ -24,7 +24,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   logout: () => ipcRenderer.invoke("logout"),
   getAccessToken: () => ipcRenderer.invoke("getAccessToken"),
   getUserContext: () => ipcRenderer.invoke("getUserContext"),
+  setUserContextSelection: (selection) =>
+    ipcRenderer.invoke("setUserContextSelection", selection),
   navigateToHome: () => ipcRenderer.invoke("navigateToHome"),
+  openAuthWindow: () => ipcRenderer.invoke("openAuthWindow"),
 
   // Meetings data
   saveMeetingsData: (data) => ipcRenderer.invoke("saveMeetingsData", data),

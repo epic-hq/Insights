@@ -89,7 +89,23 @@ Jot notes here as you work. Close beads with `bd close`. When you ask me to upda
 * event promo for 2/19 DONE
 * Interview page conversation lens key highlights link to evidence
 
-
+## Wednesday 2/11 - fixing bugs
+* Desktop app
+	* unified conversation pipeline flow
+	* build proc, node vs mastra bundle
+	* Signin/out
+	* confirmed multiperson, transcript, evidence showing
+* Main issues
+	* facets showing semantic searchable
+	* upload process QA 
+		* todo: Test multiple URLs
+	* ICP Facet selection
+	* Thumbnails not showing up **PAIN** not working
+		* havent had thumbnail_url since 1/26. file extension type is missing too in interviews table
+* AI Survey Feature (Personal Touch AI)
+	* make it smarter. identify what to ask whom
+	* eventually support sending from linked email
+	* 
 ## Parking Lot (not this sprint)
 
 - Smarter agent loop / recommendation memory (next sprint) -- ha, kinda doing it now a bit.
