@@ -7,6 +7,7 @@
 import { formatDistance } from "date-fns";
 import {
 	ClipboardList,
+	Globe,
 	Loader2,
 	MessageCircle,
 	MoreHorizontal,
@@ -80,6 +81,8 @@ interface PersonScorecardProps {
 	showAutoScoringHint?: boolean;
 	onDelete: () => void;
 	onLogNote?: () => void;
+	onEnrichPerson?: () => void;
+	isEnriching?: boolean;
 	isRefreshing?: boolean;
 }
 
@@ -128,6 +131,8 @@ export function PersonScorecard({
 	showAutoScoringHint = false,
 	onDelete,
 	onLogNote,
+	onEnrichPerson,
+	isEnriching = false,
 	isRefreshing = false,
 }: PersonScorecardProps) {
 	const persona = person.people_personas?.[0]?.personas;
@@ -251,6 +256,12 @@ export function PersonScorecard({
 					<Button variant="outline" size="sm" onClick={onLogNote}>
 						<StickyNote className="size-4" />
 						Quick Note
+					</Button>
+
+					{/* Enrich via web search */}
+					<Button variant="outline" size="sm" onClick={onEnrichPerson} disabled={isEnriching}>
+						{isEnriching ? <Loader2 className="size-4 animate-spin" /> : <Globe className="size-4" />}
+						{isEnriching ? "Enriching…" : "Enrich"}
 					</Button>
 
 					{/* Send Survey - Phase 2 placeholder */}

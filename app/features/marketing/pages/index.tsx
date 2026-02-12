@@ -1,367 +1,923 @@
-import { MeshGradient } from "@paper-design/shaders-react";
-import {
-	ArrowRight,
-	BarChart2,
-	Briefcase,
-	CheckSquare,
-	ClipboardList,
-	FileText,
-	HeadphonesIcon,
-	Lightbulb,
-	MessageSquare,
-	Mic,
-	Rocket,
-	Search,
-	Sparkles,
-	Star,
-	Target,
-	TrendingUp,
-	Users,
-	Video,
-	Zap,
-} from "lucide-react";
-import { Link, type MetaFunction, useNavigate } from "react-router";
+/**
+ * UpSight Marketing Landing Page
+ *
+ * Emotion-first, anti-SaaS landing page with:
+ * - Crowd background → cycling Polaroid portrait carousel
+ * - SVG annotation lines from labels INTO the portrait (Thinks/Feels/Uses)
+ * - Progressive disclosure of SEO capabilities below the fold
+ */
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, type MetaFunction } from "react-router";
 import MainNav from "~/components/navigation/MainNav";
-import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/button";
-import { Card } from "~/components/ui/card";
-
 import { PATHS } from "~/paths";
-import { HowItWorks, KeyBenefits } from "./benefits-how";
+import "./landing.css";
 
-export const meta: MetaFunction = () => {
-	return [
-		{ title: "UpSight - The AI-Native CRM That Actually Connects" },
-		{
-			name: "description",
-			content:
-				"Customer truth, connected. UpSight captures every customer conversation and turns them into evidence your whole team can see, search, and act on. Click any insight, see exactly who said it. Make work work.",
-		},
-	];
+export const meta: MetaFunction = () => [
+  {
+    title: "UpSight — Get Your Customers. Build Conviction.",
+  },
+  {
+    name: "description",
+    content:
+      "Voice of Customer platform with AI-powered surveys, interview guides, UX research synthesis, and evidence-backed customer intelligence. Turn conversations into decisions you can defend.",
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Data
+// ---------------------------------------------------------------------------
+
+interface PersonData {
+  name: string;
+  role: string;
+  imgSrc: string;
+  tilt: string;
+  annotations: {
+    label: string;
+    value: string;
+    highlight: string;
+    side: "left" | "right";
+    zone: "head" | "heart" | "hand";
+  }[];
+}
+
+const PEOPLE: PersonData[] = [
+  {
+    name: "Sarah",
+    role: "Product Lead, Series A",
+    imgSrc:
+      "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=480&h=640&q=80",
+    tilt: "rotate(-2.5deg)",
+    annotations: [
+      {
+        label: "Thinks",
+        value: "\u201CThe roadmap is ",
+        highlight: "guesswork",
+        side: "left",
+        zone: "head",
+      },
+      {
+        label: "Feels",
+        value: "Evidence-backed ",
+        highlight: "priorities",
+        side: "right",
+        zone: "heart",
+      },
+      {
+        label: "Uses",
+        value: "",
+        highlight: "Notion",
+        side: "right",
+        zone: "hand",
+      },
+    ],
+  },
+  {
+    name: "Marcus",
+    role: "Founder & CEO",
+    imgSrc:
+      "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=480&h=640&q=80",
+    tilt: "rotate(1.8deg)",
+    annotations: [
+      {
+        label: "Thinks",
+        value: "\u201CI heard this ",
+        highlight: "3 months ago",
+        side: "left",
+        zone: "head",
+      },
+      {
+        label: "Feels",
+        value: "Team aligned on ",
+        highlight: "what to build",
+        side: "right",
+        zone: "heart",
+      },
+      {
+        label: "Uses",
+        value: "",
+        highlight: "Zoom",
+        side: "right",
+        zone: "hand",
+      },
+    ],
+  },
+  {
+    name: "Priya",
+    role: "Customer Success Lead",
+    imgSrc:
+      "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=480&h=640&q=80",
+    tilt: "rotate(-1.2deg)",
+    annotations: [
+      {
+        label: "Thinks",
+        value: "\u201C",
+        highlight: "Nobody",
+        side: "left",
+        zone: "head",
+      },
+      {
+        label: "Feels",
+        value: "Early warning with ",
+        highlight: "receipts",
+        side: "right",
+        zone: "heart",
+      },
+      {
+        label: "Uses",
+        value: "",
+        highlight: "Intercom",
+        side: "right",
+        zone: "hand",
+      },
+    ],
+  },
+];
+
+// Extra text after highlight for each annotation
+const ANNO_SUFFIX: Record<string, Record<number, string>> = {
+  "0": { 0: "\u201D", 1: "", 2: ", Linear, Slack" },
+  "1": { 0: "\u201D", 1: "", 2: ", spreadsheets, memory" },
+  "2": { 0: " listens to CS\u201D", 1: "", 2: ", HubSpot, hope" },
 };
 
+const BODY_ZONES = { head: 0.18, heart: 0.5, hand: 0.75 } as const;
+const CAROUSEL_INTERVAL = 6000;
+const LABEL_GAP = 48;
+
+const CAPABILITIES = [
+  {
+    tag: "Capture",
+    title: "Voice of Customer",
+    desc: "Ingest conversations from calls, meetings, support tickets, and field notes. Every customer touchpoint in one place.",
+  },
+  {
+    tag: "Engage",
+    title: "AI-Powered Surveys",
+    desc: "Smart surveys with intelligent follow-up questions. Collect text, audio, and video responses. AI analyzes themes automatically.",
+  },
+  {
+    tag: "Guide",
+    title: "Interview Guides & Recording",
+    desc: "Plan interview prompts, record live or upload recordings. Auto-transcribe with speaker identification and timestamps.",
+  },
+  {
+    tag: "Analyze",
+    title: "UX Research Synthesis",
+    desc: "AI extracts themes, personas, and evidence across conversations. Click any insight to see the exact source\u2014the receipts.",
+  },
+  {
+    tag: "Connect",
+    title: "AI-Native CRM",
+    desc: "Customer intelligence that flows to your whole team. Not another database\u2014a shared reality where every insight is traceable.",
+  },
+  {
+    tag: "Act",
+    title: "Evidence-Linked Actions",
+    desc: "Turn insights into tasks with evidence attached. Every decision stays grounded in what customers actually said.",
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Annotation positioning engine
+// ---------------------------------------------------------------------------
+
+function positionAnnotations(
+  sceneEl: HTMLElement,
+  svgEl: SVGSVGElement,
+  labelEls: HTMLElement[],
+) {
+  const wrap = sceneEl.querySelector<HTMLElement>(".lp-polaroid-wrap");
+  const imgEl = sceneEl.querySelector<HTMLElement>(".lp-polaroid-img");
+  if (!wrap || !imgEl) return;
+
+  const sceneRect = sceneEl.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
+  const imgRect = imgEl.getBoundingClientRect();
+
+  const sw = sceneRect.width;
+  const sh = sceneRect.height;
+  svgEl.setAttribute("viewBox", `0 0 ${sw} ${sh}`);
+  svgEl.style.width = `${sw}px`;
+  svgEl.style.height = `${sh}px`;
+
+  const imgL = imgRect.left - sceneRect.left;
+  const imgT = imgRect.top - sceneRect.top;
+  const imgW = imgRect.width;
+  const imgH = imgRect.height;
+  const wrapL = wrapRect.left - sceneRect.left;
+  const wrapR = wrapRect.right - sceneRect.left;
+
+  const delays = ["delay-1", "delay-2", "delay-3"];
+  let svgContent = "";
+
+  labelEls.forEach((label, i) => {
+    const side = label.dataset.side || "left";
+    const zone = (label.dataset.zone || "head") as keyof typeof BODY_ZONES;
+    const yPct = BODY_ZONES[zone];
+    const dotY = imgT + imgH * yPct;
+
+    if (side === "left") {
+      const dotX = imgL + imgW * 0.35;
+      label.style.position = "absolute";
+      label.style.right = `${sw - wrapL + LABEL_GAP}px`;
+      label.style.left = "auto";
+      label.style.top = `${dotY}px`;
+      label.style.transform = "translateY(-50%)";
+      const labelRight = wrapL - LABEL_GAP;
+      svgContent += `<line class="${delays[i]}" x1="${labelRight}" y1="${dotY}" x2="${dotX}" y2="${dotY}" />`;
+      svgContent += `<circle class="${delays[i]}" cx="${dotX}" cy="${dotY}" r="6" />`;
+      svgContent += `<circle class="pulse ${delays[i]}" cx="${dotX}" cy="${dotY}" r="6" />`;
+    } else {
+      const dotX = imgL + imgW * 0.65;
+      label.style.position = "absolute";
+      label.style.left = `${wrapR + LABEL_GAP}px`;
+      label.style.right = "auto";
+      label.style.top = `${dotY}px`;
+      label.style.transform = "translateY(-50%)";
+      const labelLeft = wrapR + LABEL_GAP;
+      svgContent += `<line class="${delays[i]}" x1="${dotX}" y1="${dotY}" x2="${labelLeft}" y2="${dotY}" />`;
+      svgContent += `<circle class="${delays[i]}" cx="${dotX}" cy="${dotY}" r="6" />`;
+      svgContent += `<circle class="pulse ${delays[i]}" cx="${dotX}" cy="${dotY}" r="6" />`;
+    }
+  });
+
+  svgEl.innerHTML = svgContent;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export default function LandingPage() {
-	const navigate = useNavigate();
-	return (
-		<div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900">
-			<MainNav />
-			<main className="flex-1">
-				{/* Hero Section */}
-				<section className="relative w-full overflow-hidden bg-gradient-to-br from-zinc-900 via-stone-900 to-neutral-800 py-8 text-white md:py-10 lg:py-20 xl:py-20">
-					{/* Background Effects */}
-					<div className="pointer-events-none absolute inset-0 z-0">
-						<MeshGradient
-							style={{ height: "100%", width: "100%" }}
-							distortion={0.9}
-							swirl={0.2}
-							offsetX={0}
-							offsetY={0}
-							scale={1.2}
-							rotation={15}
-							speed={0.8}
-							colors={["hsl(0, 0%, 8%)", "hsl(20, 15%, 12%)", "hsl(35, 25%, 18%)", "hsl(45, 35%, 25%)"]}
-						/>
-					</div>
-					<div className="container relative mx-auto px-2 text-center md:px-6">
-						<div className="mx-auto max-w-5xl space-y-8">
-							<h1 className="bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-400 bg-clip-text font-bold text-4xl text-transparent tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-								Get the customer intelligence you need to build deeper relationships.
-							</h1>
+  const [current, setCurrent] = useState(0);
+  const sceneRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const svgRefs = useRef<(SVGSVGElement | null)[]>([]);
+  const labelRefs = useRef<(HTMLElement | null)[][]>([[], [], []]);
+  const timerFillRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
 
-							<p className="mx-auto max-w-3xl text-white/90 text-xl leading-relaxed md:text-2xl">
-								Multimodal customer insights—with receipts—for distributed teams.
-							</p>
+  // Reposition annotations when current changes or on resize
+  const reposition = useCallback((idx: number) => {
+    const scene = sceneRefs.current[idx];
+    const svg = svgRefs.current[idx];
+    const labels = labelRefs.current[idx]?.filter(Boolean) as HTMLElement[];
+    if (scene && svg && labels?.length) {
+      requestAnimationFrame(() =>
+        setTimeout(() => positionAnnotations(scene, svg, labels), 80),
+      );
+    }
+  }, []);
 
-							<p className="mx-auto max-w-3xl text-lg text-white/70 leading-relaxed md:text-xl">
-								AI-driven surveys, conversation guidance, and analysis to help you understand what really matters.
-							</p>
+  // Carousel auto-rotation
+  useEffect(() => {
+    let timerStart = performance.now();
+    let rafId: number;
+    const fill = timerFillRef.current;
 
-							<div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center sm:gap-4">
-								<Button
-									asChild
-									size="lg"
-									className="group relative overflow-hidden bg-white px-8 py-4 font-semibold text-lg text-slate-900 shadow-2xl transition-all duration-300 hover:scale-105 hover:bg-white/95 hover:shadow-white/20"
-								>
-									<Link to={`${PATHS.AUTH.REGISTER}?plan=pro`} className="flex items-center gap-2">
-										Start Pro Trial
-										<ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-									</Link>
-								</Button>
+    function animate(now: number) {
+      const elapsed = now - timerStart;
+      const pct = Math.min((elapsed / CAROUSEL_INTERVAL) * 100, 100);
+      if (fill) fill.style.width = `${pct}%`;
+      rafId = requestAnimationFrame(animate);
+    }
 
-								<Button
-									asChild
-									variant="outline"
-									size="lg"
-									className="border-white/30 bg-white/10 px-8 py-4 font-semibold text-lg text-white backdrop-blur-sm transition-all duration-300 hover:bg-white/20"
-								>
-									<a href="https://cal.com/rickmoy" target="_blank" rel="noopener noreferrer">
-										Get a Demo
-									</a>
-								</Button>
-							</div>
+    rafId = requestAnimationFrame(animate);
+    const interval = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % PEOPLE.length);
+      timerStart = performance.now();
+    }, CAROUSEL_INTERVAL);
 
-							<div className="flex items-center justify-center gap-2 text-white/80">
-								<Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-								<span className="font-medium text-sm">14-day free trial</span>
-							</div>
-						</div>
-					</div>
-				</section>
+    return () => {
+      clearInterval(interval);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
 
-				{/* Who It's For Section */}
-				<section className="w-full bg-gradient-to-b from-slate-50 to-white py-16 md:py-20">
-					<div className="container mx-auto px-4 md:px-6">
-						<div className="mb-10 text-center">
-							<p className="mb-2 font-medium text-orange-600 text-sm uppercase tracking-wider">
-								Built for teams who talk to customers
-							</p>
-							<h2 className="font-bold text-3xl text-slate-900 tracking-tight sm:text-4xl">Who It's For</h2>
-						</div>
+  // Reposition on current change + resize
+  useEffect(() => {
+    reposition(current);
+    const handleResize = () => reposition(current);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [current, reposition]);
 
-						<div className="mx-auto grid max-w-4xl gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-							{/* Founders */}
-							<div className="group flex flex-col items-center rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100 transition-all hover:shadow-md hover:ring-orange-200">
-								<div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg transition-transform group-hover:scale-105">
-									<Rocket className="h-7 w-7" />
-								</div>
-								<h3 className="mb-1 font-semibold text-slate-900">Founders</h3>
-								<p className="text-slate-500 text-xs leading-relaxed">Move fast without losing signal</p>
-							</div>
+  // Initial positioning after images load
+  useEffect(() => {
+    const t = setTimeout(() => reposition(0), 400);
+    window.addEventListener("load", () => reposition(0));
+    return () => clearTimeout(t);
+  }, [reposition]);
 
-							{/* Consultants */}
-							<div className="group flex flex-col items-center rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100 transition-all hover:shadow-md hover:ring-orange-200">
-								<div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-500 text-white shadow-lg transition-transform group-hover:scale-105">
-									<Briefcase className="h-7 w-7" />
-								</div>
-								<h3 className="mb-1 font-semibold text-slate-900">Consultants</h3>
-								<p className="text-slate-500 text-xs leading-relaxed">Hours saved = money earned</p>
-							</div>
+  // Intersection observer for scroll reveals
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) e.target.classList.add("lp-visible");
+        }
+      },
+      { threshold: 0.15 },
+    );
 
-							{/* Product/UX */}
-							<div className="group flex flex-col items-center rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100 transition-all hover:shadow-md hover:ring-orange-200">
-								<div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-500 text-white shadow-lg transition-transform group-hover:scale-105">
-									<Lightbulb className="h-7 w-7" />
-								</div>
-								<h3 className="mb-1 font-semibold text-slate-900">Product & UX</h3>
-								<p className="text-slate-500 text-xs leading-relaxed">Research without a research team</p>
-							</div>
+    document
+      .querySelectorAll(
+        ".lp-hero, .lp-break, .lp-promises, .lp-capabilities, .lp-cta",
+      )
+      .forEach((el) => observer.observe(el));
 
-							{/* CS Leaders */}
-							<div className="group flex flex-col items-center rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100 transition-all hover:shadow-md hover:ring-orange-200">
-								<div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-600 to-red-500 text-white shadow-lg transition-transform group-hover:scale-105">
-									<HeadphonesIcon className="h-7 w-7" />
-								</div>
-								<h3 className="mb-1 font-semibold text-slate-900">CS Leaders</h3>
-								<p className="text-slate-500 text-xs leading-relaxed">See churn signals before they churn</p>
-							</div>
+    // Hero visible immediately
+    heroRef.current?.classList.add("lp-visible");
 
-							{/* Sales Pros */}
-							<div className="group flex flex-col items-center rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100 transition-all hover:shadow-md hover:ring-orange-200">
-								<div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-orange-600 text-white shadow-lg transition-transform group-hover:scale-105">
-									<TrendingUp className="h-7 w-7" />
-								</div>
-								<h3 className="mb-1 font-semibold text-slate-900">Sales Pros</h3>
-								<p className="text-slate-500 text-xs leading-relaxed">Win deals with evidence that closes</p>
-							</div>
-						</div>
-					</div>
-				</section>
+    return () => observer.disconnect();
+  }, []);
 
-				{/* Features Section */}
-				<section
-					id="features"
-					className="relative w-full bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 py-10 md:py-20 lg:py-20"
-				>
-					{/* Subtle background pattern */}
-					<div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.05),transparent_70%)]" />
+  return (
+    <div
+      className="flex min-h-screen flex-col"
+      style={{
+        background: "var(--lp-bg)",
+        color: "var(--lp-text)",
+        fontFamily: "'Inter', system-ui, sans-serif",
+      }}
+    >
+      {/* Google Fonts */}
+      <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap"
+        rel="stylesheet"
+      />
 
-					<div className="container relative mx-auto px-4 md:px-6">
-						<div className="flex flex-col items-center justify-center space-y-8 text-center">
-							<div className="space-y-6">
-								<Badge className="border-orange-200 bg-orange-50 px-4 py-2 font-medium text-orange-700">
-									<Target className="mr-2 h-4 w-4" />
-									Platform Features
-								</Badge>
+      <MainNav />
 
-								<h2 className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text font-bold text-4xl text-transparent tracking-tight sm:text-5xl md:text-6xl">
-									Everything you need to
-									<span className="bg-gradient-to-r from-orange-600 via-red-700 to-orange-700 bg-clip-text text-transparent">
-										{" "}
-										understand customers.
-									</span>
-								</h2>
+      {/* ===== HERO ===== */}
+      <section
+        className="lp-hero"
+        id="hero"
+        ref={heroRef}
+        style={{
+          paddingTop: "calc(clamp(0.5rem, 1.5vw, 1.5rem) + 56px)",
+          paddingLeft: "clamp(1.5rem, 4vw, 5rem)",
+          paddingRight: "clamp(1.5rem, 4vw, 5rem)",
+          paddingBottom: "clamp(0.75rem, 2vw, 2rem)",
+        }}
+      >
+        {/* Crowd bg */}
+        <div className="lp-hero-crowd">
+          <img
+            src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1920&q=80"
+            alt="Team meeting"
+            loading="eager"
+          />
+        </div>
 
-								<p className="mx-auto max-w-3xl text-slate-600 text-xl leading-relaxed md:text-2xl">
-									Capture conversations, extract evidence, and turn insights into action—all in one platform.
-								</p>
-							</div>
-						</div>
-						<div className="mx-auto grid max-w-7xl justify-items-center gap-8 py-16 sm:grid-cols-2 lg:grid-cols-3">
-							{/* AI-Powered Surveys */}
-							<Card className="group hover:-translate-y-2 relative h-full w-full overflow-hidden border-0 bg-white/70 p-8 text-center shadow-lg backdrop-blur-sm transition-all duration-500 hover:bg-white hover:shadow-2xl hover:shadow-orange-400/20">
-								<div className="absolute inset-0 rounded-lg bg-gradient-to-r from-orange-400/20 via-amber-500/20 to-orange-500/20 p-[1px]">
-									<div className="h-full w-full rounded-lg bg-white/90 backdrop-blur-sm" />
-								</div>
-								<div className="relative flex h-full flex-col items-center">
-									<div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 via-amber-500 to-orange-500 shadow-lg transition-transform duration-300 group-hover:scale-110">
-										<ClipboardList className="h-8 w-8 text-white" />
-									</div>
-									<h3 className="mb-4 font-bold text-slate-900 text-xl">AI-Powered Surveys</h3>
-									<p className="text-base text-slate-700 leading-relaxed md:text-lg">
-										Smart surveys with intelligent follow-up questions. Collect text, audio, and video responses. AI
-										analyzes themes automatically.
-									</p>
-								</div>
-							</Card>
+        {/* Headline */}
+        <div className="relative z-[2] mb-[clamp(0.25rem,0.8vw,0.75rem)] text-center">
+          <p
+            className="mb-[clamp(0.2rem,0.5vw,0.5rem)] uppercase tracking-[0.2em]"
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "clamp(0.55rem, 0.75vw, 0.68rem)",
+              color: "var(--lp-amber)",
+              opacity: 0.8,
+            }}
+          >
+            Customer Intelligence Platform
+          </p>
+          <h1
+            className="mx-auto"
+            style={{
+              fontSize: "clamp(2.2rem, 5.5vw, 4.5rem)",
+              fontWeight: 900,
+              lineHeight: 1.05,
+              letterSpacing: "-0.03em",
+              maxWidth: "18ch",
+            }}
+          >
+            Get your customers.
+            <br />
+            <span style={{ color: "var(--lp-amber)" }}>Build conviction.</span>
+          </h1>
+          <p
+            className="mx-auto"
+            style={{
+              fontSize: "clamp(0.95rem, 1.5vw, 1.2rem)",
+              color: "var(--lp-dim)",
+              fontWeight: 300,
+              maxWidth: "44ch",
+              marginTop: "clamp(0.5rem, 1vw, 1rem)",
+            }}
+          >
+            Across your entire team.
+          </p>
+        </div>
 
-							{/* Interview Recording */}
-							<Card className="group hover:-translate-y-2 relative h-full w-full overflow-hidden border-0 bg-white/70 p-8 text-center shadow-lg backdrop-blur-sm transition-all duration-500 hover:bg-white hover:shadow-2xl hover:shadow-amber-500/20">
-								<div className="absolute inset-0 rounded-lg bg-gradient-to-r from-amber-500/20 via-yellow-600/20 to-amber-600/20 p-[1px]">
-									<div className="h-full w-full rounded-lg bg-white/90 backdrop-blur-sm" />
-								</div>
-								<div className="relative flex h-full flex-col items-center">
-									<div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 via-yellow-600 to-amber-600 shadow-lg transition-transform duration-300 group-hover:scale-110">
-										<Mic className="h-8 w-8 text-white" />
-									</div>
-									<h3 className="mb-4 font-bold text-slate-900 text-xl">Interview Recording</h3>
-									<p className="text-base text-slate-700 leading-relaxed md:text-lg">
-										Plan interview prompts, record live or upload recordings. Auto-transcribe with speaker
-										identification and timestamps.
-									</p>
-								</div>
-							</Card>
+        {/* Portrait Carousel */}
+        <div className="lp-portrait-stage">
+          {PEOPLE.map((person, pIdx) => (
+            <div
+              key={person.name}
+              ref={(el) => {
+                sceneRefs.current[pIdx] = el;
+              }}
+              className={`lp-portrait-scene ${pIdx === current ? "active" : ""}`}
+              data-person={pIdx}
+            >
+              {/* Scene-level SVG for annotation lines */}
+              <svg
+                ref={(el) => {
+                  svgRefs.current[pIdx] = el;
+                }}
+                className="lp-anno-svg"
+              />
 
-							{/* Evidence Extraction */}
-							<Card className="group hover:-translate-y-2 relative h-full w-full overflow-hidden border-0 bg-white/70 p-8 text-center shadow-lg backdrop-blur-sm transition-all duration-500 hover:bg-white hover:shadow-2xl hover:shadow-stone-500/20">
-								<div className="absolute inset-0 rounded-lg bg-gradient-to-r from-stone-500/20 via-neutral-600/20 to-stone-600/20 p-[1px]">
-									<div className="h-full w-full rounded-lg bg-white/90 backdrop-blur-sm" />
-								</div>
-								<div className="relative flex h-full flex-col items-center">
-									<div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-stone-500 via-neutral-600 to-stone-600 shadow-lg transition-transform duration-300 group-hover:scale-110">
-										<Sparkles className="h-8 w-8 text-white" />
-									</div>
-									<h3 className="mb-4 font-bold text-slate-900 text-xl">Evidence Extraction</h3>
-									<p className="text-base text-slate-700 leading-relaxed md:text-lg">
-										AI identifies key quotes, themes, and personas. Every insight links back to the exact moment—click
-										to verify.
-									</p>
-								</div>
-							</Card>
+              {/* Polaroid card */}
+              <div className="lp-polaroid-wrap relative shrink-0">
+                <div className="lp-polaroid" style={{ transform: person.tilt }}>
+                  <div className="lp-polaroid-img">
+                    <img
+                      src={person.imgSrc}
+                      alt={`${person.name}, ${person.role}`}
+                      loading="eager"
+                    />
+                  </div>
+                  <div className="pt-[clamp(4px,0.5vw,8px)] text-center text-[#2a2520]">
+                    <div
+                      style={{
+                        fontSize: "clamp(0.85rem, 1.2vw, 1.05rem)",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {person.name}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "clamp(0.6rem, 0.85vw, 0.75rem)",
+                        color: "#6b6560",
+                      }}
+                    >
+                      {person.role}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-							{/* Semantic Search */}
-							<Card className="group hover:-translate-y-2 relative h-full w-full overflow-hidden border-0 bg-white/70 p-8 text-center shadow-lg backdrop-blur-sm transition-all duration-500 hover:bg-white hover:shadow-2xl hover:shadow-orange-500/20">
-								<div className="absolute inset-0 rounded-lg bg-gradient-to-r from-orange-500/20 via-red-600/20 to-orange-600/20 p-[1px]">
-									<div className="h-full w-full rounded-lg bg-white/90 backdrop-blur-sm" />
-								</div>
-								<div className="relative flex h-full flex-col items-center">
-									<div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 via-red-600 to-orange-600 shadow-lg transition-transform duration-300 group-hover:scale-110">
-										<Search className="h-8 w-8 text-white" />
-									</div>
-									<h3 className="mb-4 font-bold text-slate-900 text-xl">Semantic Search</h3>
-									<p className="text-base text-slate-700 leading-relaxed md:text-lg">
-										Ask any question across all conversations. Get answers grounded in real customer words with source
-										citations.
-									</p>
-								</div>
-							</Card>
+              {/* Annotation labels */}
+              {person.annotations.map((anno, aIdx) => (
+                <div
+                  key={anno.label}
+                  ref={(el) => {
+                    if (!labelRefs.current[pIdx]) labelRefs.current[pIdx] = [];
+                    labelRefs.current[pIdx][aIdx] = el;
+                  }}
+                  className={`lp-anno-label ${anno.side === "left" ? "left-side" : "right-side"} d${aIdx + 1}`}
+                  data-side={anno.side}
+                  data-zone={anno.zone}
+                >
+                  <span
+                    className="block"
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: "clamp(0.6rem, 0.85vw, 0.72rem)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.18em",
+                      color: "var(--lp-amber)",
+                      marginBottom: "1px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    // {anno.label}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "clamp(1rem, 1.8vw, 1.35rem)",
+                      fontWeight: 500,
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {anno.value}
+                    <span style={{ color: "var(--lp-sky)" }}>
+                      {anno.highlight}
+                    </span>
+                    {ANNO_SUFFIX[String(pIdx)]?.[aIdx] ?? ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
 
-							{/* Integrated Tasks */}
-							<Card className="group hover:-translate-y-2 relative h-full w-full overflow-hidden border-0 bg-white/70 p-8 text-center shadow-lg backdrop-blur-sm transition-all duration-500 hover:bg-white hover:shadow-2xl hover:shadow-red-600/20">
-								<div className="absolute inset-0 rounded-lg bg-gradient-to-r from-red-600/20 via-orange-700/20 to-red-700/20 p-[1px]">
-									<div className="h-full w-full rounded-lg bg-white/90 backdrop-blur-sm" />
-								</div>
-								<div className="relative flex h-full flex-col items-center">
-									<div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 via-orange-700 to-red-700 shadow-lg transition-transform duration-300 group-hover:scale-110">
-										<CheckSquare className="h-8 w-8 text-white" />
-									</div>
-									<h3 className="mb-4 font-bold text-slate-900 text-xl">Integrated Tasks</h3>
-									<p className="text-base text-slate-700 leading-relaxed md:text-lg">
-										Turn insights into action items. Assign owners, track progress, and keep evidence attached so
-										decisions stay grounded.
-									</p>
-								</div>
-							</Card>
+        {/* Carousel pips + timer */}
+        <div
+          className="relative z-[2] flex flex-col items-center"
+          style={{ marginTop: "clamp(0.5rem, 1vw, 0.8rem)" }}
+        >
+          <div className="flex gap-2.5">
+            {PEOPLE.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                className={`lp-carousel-pip ${i === current ? "active" : ""}`}
+                onClick={() => setCurrent(i)}
+                aria-label={`Show person ${i + 1}`}
+              />
+            ))}
+          </div>
+          <div
+            className="overflow-hidden"
+            style={{
+              width: "clamp(80px, 12vw, 160px)",
+              height: "2px",
+              background: "rgba(255,255,255,0.06)",
+              borderRadius: "1px",
+              marginTop: "clamp(6px, 0.8vw, 10px)",
+            }}
+          >
+            <div ref={timerFillRef} className="lp-timer-fill" />
+          </div>
+        </div>
 
-							{/* Video Testimonials */}
-							<Card className="group hover:-translate-y-2 relative h-full w-full overflow-hidden border-0 bg-white/70 p-8 text-center shadow-lg backdrop-blur-sm transition-all duration-500 hover:bg-white hover:shadow-2xl hover:shadow-amber-600/20">
-								<div className="absolute inset-0 rounded-lg bg-gradient-to-r from-amber-600/20 via-yellow-700/20 to-amber-700/20 p-[1px]">
-									<div className="h-full w-full rounded-lg bg-white/90 backdrop-blur-sm" />
-								</div>
-								<div className="relative flex h-full flex-col items-center">
-									<div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-600 via-yellow-700 to-amber-700 shadow-lg transition-transform duration-300 group-hover:scale-110">
-										<Video className="h-8 w-8 text-white" />
-									</div>
-									<h3 className="mb-4 font-bold text-slate-900 text-xl">Video Testimonials</h3>
-									<p className="text-base text-slate-700 leading-relaxed md:text-lg">
-										Collect video responses directly. Create shareable reels and highlight clips for stakeholders and
-										marketing.
-									</p>
-								</div>
-							</Card>
-						</div>
-					</div>
-				</section>
+        {/* Hero CTA */}
+        <div className="relative z-[2] mt-[clamp(0.4rem,0.8vw,0.75rem)] text-center">
+          <div className="flex flex-wrap items-center justify-center gap-[clamp(0.5rem,1vw,0.75rem)]">
+            <Link
+              to={`${PATHS.AUTH.REGISTER}?plan=pro`}
+              className="inline-flex items-center gap-1.5 rounded-md font-bold transition-transform hover:-translate-y-px"
+              style={{
+                fontSize: "clamp(0.8rem, 1.2vw, 1rem)",
+                padding: "clamp(10px, 1.2vw, 14px) clamp(24px, 3.5vw, 40px)",
+                background: "var(--lp-amber)",
+                color: "var(--lp-bg)",
+              }}
+            >
+              Start seeing your customers &rarr;
+            </Link>
+            <a
+              href="https://cal.com/rickmoy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md font-semibold transition-colors hover:border-white/30"
+              style={{
+                fontSize: "clamp(0.8rem, 1.2vw, 1rem)",
+                padding: "clamp(10px, 1.2vw, 14px) clamp(24px, 3.5vw, 40px)",
+                background: "transparent",
+                color: "var(--lp-text)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                borderRadius: "6px",
+              }}
+            >
+              Get a Demo
+            </a>
+          </div>
+          <p
+            className="mx-auto"
+            style={{
+              fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)",
+              color: "var(--lp-dim)",
+              fontWeight: 300,
+              marginTop: "clamp(0.4rem, 0.8vw, 0.6rem)",
+              lineHeight: 1.5,
+              maxWidth: "36ch",
+            }}
+          >
+            Start with a{" "}
+            <Link
+              to={`${PATHS.AUTH.REGISTER}?plan=pro`}
+              className="font-medium underline underline-offset-4"
+              style={{
+                color: "var(--lp-text)",
+                textDecorationColor: "rgba(238,238,242,0.3)",
+              }}
+            >
+              smart survey
+            </Link>{" "}
+            <span style={{ color: "var(--lp-amber)", fontWeight: 500 }}>
+              (personalized by AI)
+            </span>{" "}
+            or a{" "}
+            <Link
+              to={`${PATHS.AUTH.REGISTER}?plan=pro`}
+              className="font-medium underline underline-offset-4"
+              style={{
+                color: "var(--lp-text)",
+                textDecorationColor: "rgba(238,238,242,0.3)",
+              }}
+            >
+              conversation
+            </Link>
+            .
+          </p>
+        </div>
+      </section>
 
-				{/* Modern spacing wrapper */}
-				<div className="bg-gradient-to-b from-white via-slate-50/50 to-white">
-					<div className="container mx-auto px-4 py-10 md:py-20 lg:py-20">
-						<KeyBenefits />
-					</div>
+      {/* ===== BREAK ===== */}
+      <section
+        className="lp-break text-center"
+        style={{
+          padding: "clamp(4rem, 10vw, 8rem) clamp(1.5rem, 4vw, 5rem)",
+          background: "var(--lp-bg)",
+          borderTop: "1px solid rgba(255,255,255,0.03)",
+        }}
+      >
+        <h2
+          className="lp-rv mx-auto"
+          style={{
+            fontSize: "clamp(1.6rem, 4vw, 3.2rem)",
+            fontWeight: 800,
+            lineHeight: 1.2,
+            letterSpacing: "-0.02em",
+            maxWidth: "22ch",
+          }}
+        >
+          They&rsquo;re telling you.
+          <br />
+          <span style={{ color: "var(--lp-amber)" }}>Are you getting it?</span>
+        </h2>
+      </section>
 
-					<div className="container mx-auto px-4 py-10 md:py-20 lg:py-20">
-						<HowItWorks onCtaClick={() => navigate(`${PATHS.AUTH.REGISTER}?plan=pro`)} />
-					</div>
-				</div>
+      {/* ===== THINKS / FEELS / USES ===== */}
+      <section
+        className="lp-promises"
+        style={{
+          padding: "clamp(4rem, 10vw, 8rem) clamp(1.5rem, 4vw, 5rem)",
+          background: `radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.03), transparent 50%), var(--lp-bg)`,
+        }}
+      >
+        <div
+          className="mx-auto grid grid-cols-1 md:grid-cols-3"
+          style={{
+            gap: "clamp(2rem, 4vw, 4rem)",
+            maxWidth: "min(95vw, 1000px)",
+          }}
+        >
+          {[
+            {
+              mono: "Thinks",
+              h: "What they\nthink",
+              p: "Surface frustrations, beliefs, and objections from real conversations. Not surveys. Not guesses. Their words.",
+            },
+            {
+              mono: "Feels",
+              h: "What they\nfeel",
+              p: "Understand desires and motivations with evidence you can verify. Click any insight\u2014see exactly who said it, when.",
+            },
+            {
+              mono: "Uses",
+              h: "What they\nuse",
+              p: "Map tools, workflows, and behaviors across your entire customer base. Patterns emerge in minutes, not weeks of synthesis.",
+            },
+          ].map((item) => (
+            <div
+              key={item.mono}
+              className="lp-rv text-center"
+              style={{
+                padding: "clamp(1.5rem, 3vw, 3rem) clamp(1rem, 2vw, 2rem)",
+              }}
+            >
+              <p
+                className="mb-[clamp(0.75rem,1.5vw,1.5rem)] uppercase tracking-[0.25em]"
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "clamp(0.65rem, 0.95vw, 0.8rem)",
+                  color: "var(--lp-amber)",
+                  fontWeight: 500,
+                }}
+              >
+                // {item.mono}
+              </p>
+              <h3
+                style={{
+                  fontSize: "clamp(1.4rem, 2.8vw, 2.2rem)",
+                  fontWeight: 800,
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1.15,
+                  marginBottom: "clamp(0.5rem, 1vw, 1rem)",
+                  whiteSpace: "pre-line",
+                }}
+              >
+                {item.h}
+              </h3>
+              <p
+                className="mx-auto"
+                style={{
+                  fontSize: "clamp(0.85rem, 1.2vw, 1rem)",
+                  color: "var(--lp-dim)",
+                  fontWeight: 300,
+                  lineHeight: 1.65,
+                  maxWidth: "28ch",
+                }}
+              >
+                {item.p}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-				{/* Call to Action Section */}
-				<section className="relative w-full overflow-hidden bg-gradient-to-br from-zinc-900 via-stone-800 to-neutral-700 py-8 text-center text-white md:py-18 lg:py-20">
-					{/* Background Effects */}
-					<div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(249,115,22,0.2),transparent_50%)]" />
-					<div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.3),transparent_50%)]" />
+      {/* ===== CAPABILITIES ===== */}
+      <section
+        className="lp-capabilities"
+        id="capabilities"
+        style={{
+          padding: "clamp(4rem, 10vw, 8rem) clamp(1.5rem, 4vw, 5rem)",
+          background: "var(--lp-bg2)",
+          borderTop: "1px solid rgba(255,255,255,0.03)",
+          borderBottom: "1px solid rgba(255,255,255,0.03)",
+        }}
+      >
+        <div className="mb-[clamp(2rem,4vw,4rem)] text-center">
+          <p
+            className="lp-rv mb-[clamp(0.5rem,1vw,1rem)] uppercase tracking-[0.2em]"
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "clamp(0.55rem, 0.75vw, 0.68rem)",
+              color: "var(--lp-amber)",
+            }}
+          >
+            One platform. Every touchpoint.
+          </p>
+          <h2
+            className="lp-rv"
+            style={{
+              fontSize: "clamp(1.6rem, 4vw, 3.2rem)",
+              fontWeight: 800,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            From conversation to conviction.
+          </h2>
+          <p
+            className="lp-rv mx-auto"
+            style={{
+              fontSize: "clamp(0.85rem, 1.3vw, 1.05rem)",
+              color: "var(--lp-dim)",
+              fontWeight: 300,
+              maxWidth: "50ch",
+              marginTop: "clamp(0.5rem, 1vw, 1rem)",
+            }}
+          >
+            Capture customer intelligence from every channel. Turn it into
+            decisions your whole team can defend.
+          </p>
+        </div>
+        <div
+          className="mx-auto grid grid-cols-1 md:grid-cols-3"
+          style={{
+            gap: "clamp(1rem, 2vw, 2rem)",
+            maxWidth: "min(95vw, 1000px)",
+          }}
+        >
+          {CAPABILITIES.map((cap) => (
+            <div
+              key={cap.title}
+              className="lp-rv rounded-lg transition-all duration-300 hover:-translate-y-0.5"
+              style={{
+                padding: "clamp(1.2rem, 2vw, 2rem)",
+                border: "1px solid rgba(255,255,255,0.05)",
+                background: "rgba(255,255,255,0.01)",
+              }}
+            >
+              <span
+                className="mb-[clamp(0.4rem,0.8vw,0.75rem)] block uppercase tracking-[0.12em]"
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "clamp(0.55rem, 0.75vw, 0.68rem)",
+                  color: "var(--lp-amber)",
+                  fontWeight: 500,
+                }}
+              >
+                {cap.tag}
+              </span>
+              <h4
+                style={{
+                  fontSize: "clamp(0.95rem, 1.4vw, 1.15rem)",
+                  fontWeight: 700,
+                  marginBottom: "clamp(0.3rem, 0.6vw, 0.5rem)",
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                {cap.title}
+              </h4>
+              <p
+                style={{
+                  fontSize: "clamp(0.7rem, 1vw, 0.85rem)",
+                  color: "var(--lp-dim)",
+                  fontWeight: 300,
+                  lineHeight: 1.6,
+                }}
+              >
+                {cap.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-					<div className="container relative mx-auto mx-auto space-y-8 px-4 md:px-6">
-						<h2 className="bg-gradient-to-r from-white via-white to-white/80 bg-clip-text font-bold text-4xl text-transparent tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-							Start with one project.
-						</h2>
-						<p className="mx-auto max-w-3xl text-white/90 text-xl leading-relaxed md:text-2xl">
-							Five conversations. See what you learn. Make work work.
-						</p>
-						<div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-4">
-							<Button
-								asChild
-								className="group relative overflow-hidden bg-white px-12 py-6 font-semibold text-slate-900 text-xl shadow-2xl transition-all duration-300 hover:scale-105 hover:bg-white/95 hover:shadow-white/20"
-							>
-								<Link to={`${PATHS.AUTH.REGISTER}?plan=pro`} className="flex items-center gap-3">
-									Start Pro Trial
-									<ArrowRight className="h-6 w-6 transition-transform group-hover:translate-x-1" />
-								</Link>
-							</Button>
-							<Button
-								asChild
-								variant="outline"
-								className="border-white/30 bg-white/10 px-12 py-6 font-semibold text-white text-xl backdrop-blur-sm transition-all duration-300 hover:bg-white/20"
-							>
-								<Link to={`${PATHS.AUTH.REGISTER}?plan=team`}>Start Team Trial</Link>
-							</Button>
-						</div>
-					</div>
-				</section>
-			</main>
-			;
-			<footer className="flex w-full shrink-0 flex-col items-center gap-2 border-t bg-white px-4 py-6 text-gray-600 sm:flex-row md:px-6">
-				<p className="text-xs">&copy; 2025 DeepLight. All rights reserved.</p>
-				<nav className="flex gap-4 sm:ml-auto sm:gap-6">
-					<Link to="/terms" className="text-xs underline-offset-4 hover:underline">
-						Terms of Service
-					</Link>
-					<Link to="/privacy" className="text-xs underline-offset-4 hover:underline">
-						Privacy
-					</Link>
-					<Link to="/about" className="text-xs underline-offset-4 hover:underline">
-						About
-					</Link>
-				</nav>
-			</footer>
-		</div>
-	);
+      {/* ===== CTA ===== */}
+      <section
+        className="lp-cta text-center"
+        id="cta"
+        style={{
+          padding: "clamp(5rem, 12vw, 10rem) clamp(1.5rem, 4vw, 5rem)",
+          background: `radial-gradient(ellipse at 50% 70%, rgba(245,158,11,0.05), transparent 50%), var(--lp-bg)`,
+        }}
+      >
+        <h2
+          className="lp-rv"
+          style={{
+            fontSize: "clamp(1.6rem, 4vw, 3.2rem)",
+            fontWeight: 900,
+            letterSpacing: "-0.02em",
+            marginBottom: "clamp(0.5rem, 1vw, 1rem)",
+          }}
+        >
+          Start with a smart survey
+          <br />
+          <span style={{ color: "var(--lp-amber)" }}>
+            (personalized by AI)
+          </span>{" "}
+          or a conversation.
+        </h2>
+        <p
+          className="lp-rv mx-auto"
+          style={{
+            fontSize: "clamp(0.95rem, 1.4vw, 1.15rem)",
+            color: "var(--lp-dim)",
+            fontWeight: 300,
+            maxWidth: "40ch",
+            marginBottom: "clamp(1.5rem, 3vw, 2.5rem)",
+          }}
+        >
+          See what conviction feels like when it&rsquo;s backed by evidence.
+        </p>
+        <div className="lp-rv flex flex-wrap items-center justify-center gap-[clamp(0.75rem,1.5vw,1.25rem)]">
+          <Link
+            to={`${PATHS.AUTH.REGISTER}?plan=pro`}
+            className="inline-flex items-center gap-1.5 rounded-md font-bold transition-transform hover:-translate-y-px"
+            style={{
+              fontSize: "clamp(0.85rem, 1.3vw, 1.05rem)",
+              padding: "14px 36px",
+              background: "var(--lp-amber)",
+              color: "var(--lp-bg)",
+            }}
+          >
+            Start Pro Trial &rarr;
+          </Link>
+          <a
+            href="https://cal.com/rickmoy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md font-semibold transition-colors"
+            style={{
+              fontSize: "clamp(0.85rem, 1.3vw, 1.05rem)",
+              padding: "14px 36px",
+              background: "transparent",
+              color: "var(--lp-text)",
+              border: "1px solid rgba(255,255,255,0.15)",
+            }}
+          >
+            Get a Demo
+          </a>
+        </div>
+        <p
+          className="lp-rv"
+          style={{
+            fontSize: "clamp(0.7rem, 1vw, 0.85rem)",
+            color: "var(--lp-dim2)",
+            marginTop: "clamp(1.5rem, 3vw, 2.5rem)",
+            fontWeight: 300,
+            letterSpacing: "0.04em",
+          }}
+        >
+          Customer truth, connected.
+        </p>
+      </section>
+
+      {/* ===== FOOTER ===== */}
+      <footer
+        className="flex items-center justify-between"
+        style={{
+          padding: "clamp(1.5rem, 3vw, 2rem) clamp(1.5rem, 4vw, 5rem)",
+          fontSize: "clamp(0.55rem, 0.75vw, 0.68rem)",
+          color: "var(--lp-dim2)",
+          borderTop: "1px solid rgba(255,255,255,0.03)",
+        }}
+      >
+        <span>&copy; 2026 UpSight by DeepLight</span>
+        <div className="flex gap-[clamp(1rem,2vw,2rem)]">
+          <Link to="/blog" className="hover:text-white/50 transition-colors">
+            Blog
+          </Link>
+          <Link to="/terms" className="hover:text-white/50 transition-colors">
+            Terms
+          </Link>
+          <Link to="/privacy" className="hover:text-white/50 transition-colors">
+            Privacy
+          </Link>
+          <Link to="/about" className="hover:text-white/50 transition-colors">
+            About
+          </Link>
+        </div>
+      </footer>
+    </div>
+  );
 }

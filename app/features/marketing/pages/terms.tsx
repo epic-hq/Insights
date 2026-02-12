@@ -352,8 +352,8 @@ export default function TermsOfServicePage() {
 							<h3 className="mb-3 font-semibold text-xl">14.1 Informal Resolution</h3>
 							<p className="mb-4 text-slate-700 leading-relaxed">
 								Before initiating formal dispute resolution, you agree to contact us at{" "}
-								<a href="mailto:legal@deeplight.io" className="text-orange-600 hover:underline">
-									legal@deeplight.io
+								<a href="mailto:hello@getupsight.com" className="text-orange-600 hover:underline">
+									hello@getupsight.com
 								</a>{" "}
 								to attempt to resolve any dispute informally.
 							</p>
@@ -429,14 +429,14 @@ export default function TermsOfServicePage() {
 								</p>
 								<p className="mb-2 text-slate-700">
 									Email:{" "}
-									<a href="mailto:legal@deeplight.io" className="text-orange-600 hover:underline">
-										legal@deeplight.io
+									<a href="mailto:hello@getupsight.com" className="text-orange-600 hover:underline">
+										hello@getupsight.com
 									</a>
 								</p>
 								<p className="text-slate-700">
 									For general support:{" "}
-									<a href="mailto:support@deeplight.io" className="text-orange-600 hover:underline">
-										support@deeplight.io
+									<a href="mailto:hello@getupsight.com" className="text-orange-600 hover:underline">
+										hello@getupsight.com
 									</a>
 								</p>
 							</div>
