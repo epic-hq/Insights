@@ -2,7 +2,7 @@
  * Facet Explorer - Browse your account's vocabulary
  *
  * Shows all facets grouped by kind with search.
- * Helps users understand their vocabulary and see relationships.
+ * Semantic search powered by pgvector embeddings on evidence_facet.
  */
 
 import {
@@ -10,13 +10,20 @@ import {
   ChevronRight,
   Lightbulb,
   Search,
+  Sparkles,
   Tag,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { type LoaderFunctionArgs, useLoaderData } from "react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ActionFunctionArgs,
+  type LoaderFunctionArgs,
+  useFetcher,
+  useLoaderData,
+} from "react-router";
 import { Badge } from "~/components/ui/badge";
 import { Card } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
+import { generateEmbedding } from "~/lib/embeddings/openai.server";
 import { userContext } from "~/server/user-context";
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
@@ -66,10 +73,55 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
   return { grouped, accountId };
 }
 
+export async function action({ request, context, params }: ActionFunctionArgs) {
+  const { supabase } = context.get(userContext);
+  const projectId = params.projectId;
+  if (!projectId) return { semanticMatches: [] };
+
+  const formData = await request.formData();
+  const query = formData.get("query") as string;
+  if (!query || query.length < 2) return { semanticMatches: [] };
+
+  const embedding = await generateEmbedding(query, {
+    label: "facet-explorer",
+  });
+  if (!embedding) return { semanticMatches: [] };
+
+  const embeddingStr = `[${embedding.join(",")}]`;
+
+  const { data } = await supabase.rpc("find_similar_evidence_facets", {
+    query_embedding: embeddingStr,
+    project_id_param: projectId,
+    match_threshold: 0.3,
+    match_count: 50,
+  });
+
+  // Dedupe by kind_slug + label, keep max similarity
+  const byKey = new Map<
+    string,
+    { kindSlug: string; label: string; similarity: number }
+  >();
+  for (const row of data ?? []) {
+    const key = `${row.kind_slug}|${row.label}`;
+    const existing = byKey.get(key);
+    if (!existing || row.similarity > existing.similarity) {
+      byKey.set(key, {
+        kindSlug: row.kind_slug,
+        label: row.label,
+        similarity: row.similarity,
+      });
+    }
+  }
+
+  return { semanticMatches: Array.from(byKey.values()) };
+}
+
 export default function FacetExplorer() {
   const { grouped } = useLoaderData<typeof loader>();
   const [search, setSearch] = useState("");
   const [expandedKinds, setExpandedKinds] = useState<Set<string>>(new Set());
+  const fetcher = useFetcher<typeof action>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const toggleKind = (kindSlug: string) => {
     setExpandedKinds((prev) => {
@@ -83,20 +135,76 @@ export default function FacetExplorer() {
     });
   };
 
+  // Debounced semantic search
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (search.length < 2) return;
+    debounceRef.current = setTimeout(() => {
+      fetcher.submit({ query: search }, { method: "post" });
+    }, 500);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const isSearching = fetcher.state !== "idle";
+
+  // Build semantic match lookup: "kindSlug|label" -> similarity
+  const semanticMatchMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const m of fetcher.data?.semanticMatches ?? []) {
+      map.set(`${m.kindSlug}|${m.label}`, m.similarity);
+    }
+    return map;
+  }, [fetcher.data]);
+
   const filtered = useMemo(() => {
     if (!search) return grouped;
     const q = search.toLowerCase();
+    const hasSemanticResults = semanticMatchMap.size > 0;
+
     return grouped
-      .map((group) => ({
-        ...group,
-        facets: group.facets.filter(
-          (f) =>
+      .map((group) => {
+        const matchedFacets = group.facets.reduce<
+          Array<
+            (typeof group.facets)[number] & {
+              _semanticOnly?: boolean;
+              _similarity?: number;
+            }
+          >
+        >((acc, f) => {
+          const textMatch =
             f.label.toLowerCase().includes(q) ||
-            f.synonyms?.some((s) => s.toLowerCase().includes(q)),
-        ),
-      }))
+            f.synonyms?.some((s) => s.toLowerCase().includes(q));
+          const kindSlug = f.facet_kind_global?.slug ?? "unknown";
+          const semanticKey = `${kindSlug}|${f.label}`;
+          const similarity = semanticMatchMap.get(semanticKey);
+          const semanticMatch = hasSemanticResults && similarity !== undefined;
+
+          if (textMatch || semanticMatch) {
+            acc.push({
+              ...f,
+              _semanticOnly: !textMatch && semanticMatch,
+              _similarity: similarity,
+            });
+          }
+          return acc;
+        }, []);
+
+        // Sort: text matches first, then semantic by similarity
+        matchedFacets.sort((a, b) => {
+          if (a._semanticOnly && !b._semanticOnly) return 1;
+          if (!a._semanticOnly && b._semanticOnly) return -1;
+          if (a._semanticOnly && b._semanticOnly) {
+            return (b._similarity ?? 0) - (a._similarity ?? 0);
+          }
+          return 0;
+        });
+
+        return { ...group, facets: matchedFacets };
+      })
       .filter((g) => g.facets.length > 0);
-  }, [search, grouped]);
+  }, [search, grouped, semanticMatchMap]);
 
   const effectiveExpanded = useMemo(() => {
     if (search) return new Set(filtered.map((g) => g.kindSlug));
@@ -104,6 +212,14 @@ export default function FacetExplorer() {
   }, [search, filtered, expandedKinds]);
 
   const totalFacets = grouped.reduce((sum, g) => sum + g.totalCount, 0);
+  const semanticCount = useMemo(
+    () =>
+      filtered.reduce(
+        (sum, g) => sum + g.facets.filter((f) => f._semanticOnly).length,
+        0,
+      ),
+    [filtered],
+  );
 
   return (
     <div className="mx-auto mt-6 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -137,7 +253,8 @@ export default function FacetExplorer() {
                 <span className="font-bold text-amber-500">1.</span>
                 <span>
                   <strong>Search</strong> to find what customers are talking
-                  about across all your interviews
+                  about — results include semantically similar concepts, not
+                  just exact text matches
                 </span>
               </div>
               <div className="flex gap-2">
@@ -164,12 +281,30 @@ export default function FacetExplorer() {
         <div className="relative">
           <Search className="absolute top-3 left-3 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search facets... (e.g., faster, cost, workflow)"
+            placeholder="Search facets semantically... (e.g., speed, frustration, onboarding)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
           />
         </div>
+        {search.length >= 2 && (
+          <div className="mt-2 flex items-center gap-2 text-muted-foreground text-xs">
+            {isSearching ? (
+              <>
+                <Sparkles className="h-3 w-3 animate-pulse text-amber-500" />
+                <span>Finding semantically similar facets...</span>
+              </>
+            ) : semanticCount > 0 ? (
+              <>
+                <Sparkles className="h-3 w-3 text-amber-500" />
+                <span>
+                  {semanticCount} semantically similar{" "}
+                  {semanticCount === 1 ? "facet" : "facets"} found
+                </span>
+              </>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {/* Facet Grid - 2 columns on large screens */}
@@ -220,15 +355,27 @@ export default function FacetExplorer() {
                   {group.facets.map((facet) => {
                     const evidenceCount = facet.evidence_count?.[0]?.count ?? 0;
                     const personCount = facet.person_count?.[0]?.count ?? 0;
+                    const isSemantic =
+                      "_semanticOnly" in facet && facet._semanticOnly;
+                    const similarity =
+                      "_similarity" in facet ? facet._similarity : null;
 
                     return (
                       <div
                         key={facet.id}
-                        className="flex items-center justify-between border-b px-5 py-3 last:border-0 hover:bg-background/50"
+                        className={`flex items-center justify-between border-b px-5 py-3 last:border-0 hover:bg-background/50 ${isSemantic ? "bg-amber-50/30 dark:bg-amber-950/10" : ""}`}
                       >
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium text-sm">
+                          <div className="flex items-center gap-1.5 font-medium text-sm">
+                            {isSemantic && (
+                              <Sparkles className="h-3 w-3 shrink-0 text-amber-500" />
+                            )}
                             {facet.label}
+                            {isSemantic && similarity != null && (
+                              <span className="font-normal text-amber-600 text-xs dark:text-amber-400">
+                                {Math.round(similarity * 100)}%
+                              </span>
+                            )}
                           </div>
                           {facet.synonyms && facet.synonyms.length > 0 && (
                             <div className="mt-0.5 truncate text-muted-foreground text-xs">
