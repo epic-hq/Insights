@@ -6,8 +6,8 @@
  */
 
 import { ChevronDown, ChevronRight, Search, Tag } from "lucide-react";
-import { useState } from "react";
-import { json, type LoaderFunctionArgs, useLoaderData } from "react-router";
+import { useMemo, useState } from "react";
+import { type LoaderFunctionArgs, useLoaderData } from "react-router";
 import { Badge } from "~/components/ui/badge";
 import { Card } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -36,7 +36,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
     `,
     )
     .eq("account_id", accountId)
-    .eq("is_active", true)
     .order("label");
 
   if (error) throw error;
@@ -82,25 +81,26 @@ export default function FacetExplorer() {
   };
 
   // Filter facets by search
-  const filtered = search
-    ? grouped
-        .map((group) => ({
-          ...group,
-          facets: group.facets.filter(
-            (f) =>
-              f.label.toLowerCase().includes(search.toLowerCase()) ||
-              f.synonyms?.some((s) =>
-                s.toLowerCase().includes(search.toLowerCase()),
-              ),
-          ),
-        }))
-        .filter((g) => g.facets.length > 0)
-    : grouped;
+  const filtered = useMemo(() => {
+    if (!search) return grouped;
+    const q = search.toLowerCase();
+    return grouped
+      .map((group) => ({
+        ...group,
+        facets: group.facets.filter(
+          (f) =>
+            f.label.toLowerCase().includes(q) ||
+            f.synonyms?.some((s) => s.toLowerCase().includes(q)),
+        ),
+      }))
+      .filter((g) => g.facets.length > 0);
+  }, [search, grouped]);
 
-  // Auto-expand all if searching
-  if (search && expandedKinds.size === 0) {
-    setExpandedKinds(new Set(filtered.map((g) => g.kindSlug)));
-  }
+  // When searching, auto-expand all matching groups
+  const effectiveExpanded = useMemo(() => {
+    if (search) return new Set(filtered.map((g) => g.kindSlug));
+    return expandedKinds;
+  }, [search, filtered, expandedKinds]);
 
   const totalFacets = grouped.reduce((sum, g) => sum + g.totalCount, 0);
 
@@ -130,7 +130,7 @@ export default function FacetExplorer() {
       {/* Tree */}
       <div className="space-y-2">
         {filtered.map((group) => {
-          const isExpanded = expandedKinds.has(group.kindSlug);
+          const isExpanded = effectiveExpanded.has(group.kindSlug);
           const evidenceTotal = group.facets.reduce(
             (sum, f) => sum + (f.evidence_count?.[0]?.count ?? 0),
             0,
