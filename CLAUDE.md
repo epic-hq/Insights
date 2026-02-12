@@ -237,6 +237,7 @@ execute: async (input) => {
 - **Never call `supabase.auth.getUser()` in loaders** — use middleware context
 - **Never use static `~/` imports** in Mastra tool files — use dynamic imports
 - **Never run bare `bv`** — blocks the session with interactive TUI
+- **Never use `new URL(request.url).origin`** for webhook/callback URLs — returns HTTP behind proxy. Use `createDomain(request)` from `~/utils/http`
 
 ### Package Quirks
 
