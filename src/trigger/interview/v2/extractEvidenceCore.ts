@@ -1436,8 +1436,9 @@ export async function extractEvidenceAndPeopleCore({
       let facetAccountId: number | null =
         matchedFacet?.facet_account_id ?? null;
 
-      // If no match found in catalog, create new facet
-      if (!facetAccountId) {
+      // If no match found in catalog OR matched a global facet (id=0 sentinel),
+      // create account-specific facet via FacetResolver
+      if (!facetAccountId || facetAccountId === 0) {
         facetAccountId = await facetResolver.ensureFacet({
           kindSlug: kindRaw,
           label: resolvedLabel,

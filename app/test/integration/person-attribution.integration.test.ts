@@ -27,6 +27,7 @@ import {
   TEST_PROJECT_ID,
   testDb,
 } from "~/test/utils/testDb";
+import { FacetResolver } from "~/lib/database/facets.server";
 
 // Mock BAML client
 vi.mock("~/../baml_client", () => ({
@@ -71,6 +72,34 @@ describe("Person Attribution Integration Tests", () => {
     // Clean and seed test data
     await cleanupTestData();
     await seedTestData();
+
+    // Seed facet kinds (required for FacetResolver)
+    // Using proper seeds from _NORUN_seed.sql
+    await testDb.from("facet_kind_global").upsert(
+      [
+        {
+          slug: "goal",
+          label: "Goal",
+          description: "Desired outcomes and success definitions",
+        },
+        {
+          slug: "pain",
+          label: "Pain",
+          description: "Frustrations, blockers, and negative moments",
+        },
+        {
+          slug: "behavior",
+          label: "Behavior",
+          description: "Observable actions and habits",
+        },
+        {
+          slug: "workflow",
+          label: "Workflow",
+          description: "Steps or rituals followed to accomplish tasks",
+        },
+      ],
+      { onConflict: "slug" },
+    );
 
     // Create test interview
     const { data: interview, error: interviewError } = await testDb
@@ -134,16 +163,6 @@ describe("Person Attribution Integration Tests", () => {
         role: "interviewer",
       },
     ]);
-
-    // Seed facet kinds (required for FacetResolver)
-    // FacetResolver.ensureFacet() will auto-create facet_account rows
-    await testDb.from("facet_kind_global").upsert(
-      [
-        { slug: "goal", label: "Goal", description: "Goals" },
-        { slug: "pain", label: "Pain", description: "Pains" },
-      ],
-      { onConflict: "slug" },
-    );
   });
 
   describe("Trigger v2 Path (extractEvidenceCore)", () => {
@@ -394,14 +413,16 @@ describe("Person Attribution Integration Tests", () => {
         role: "speaker",
       });
 
-      // Get facet_account_id
-      const { data: goalFacet } = await testDb
-        .from("facet_global")
-        .select("id")
-        .eq("slug", "goal_speed")
-        .single();
+      // Use FacetResolver to create facet_account (matches production pattern)
+      const facetResolver = new FacetResolver(testDb, TEST_ACCOUNT_ID);
+      const facetAccountId = await facetResolver.ensureFacet({
+        kindSlug: "goal",
+        label: "Move Faster",
+        isActive: true,
+      });
 
-      if (!goalFacet) throw new Error("Facet not found");
+      if (!facetAccountId)
+        throw new Error("Failed to create facet_account via FacetResolver");
 
       // Create evidence_facet WITHOUT person_id (simulating drift)
       await testDb.from("evidence_facet").insert({
@@ -410,7 +431,7 @@ describe("Person Attribution Integration Tests", () => {
         project_id: TEST_PROJECT_ID,
         person_id: null, // NULL - this is the drift!
         kind_slug: "goal",
-        facet_account_id: goalFacet.id,
+        facet_account_id: facetAccountId,
         label: "Move Faster",
         source: "interview",
         confidence: 0.8,
@@ -456,13 +477,16 @@ describe("Person Attribution Integration Tests", () => {
         role: "speaker",
       });
 
-      const { data: goalFacet } = await testDb
-        .from("facet_global")
-        .select("id")
-        .eq("slug", "goal_speed")
-        .single();
+      // Use FacetResolver to create facet_account
+      const facetResolver = new FacetResolver(testDb, TEST_ACCOUNT_ID);
+      const facetAccountId = await facetResolver.ensureFacet({
+        kindSlug: "pain",
+        label: "Too Slow",
+        isActive: true,
+      });
 
-      if (!goalFacet) throw new Error("Facet not found");
+      if (!facetAccountId)
+        throw new Error("Failed to create facet_account via FacetResolver");
 
       // evidence_facet says person 2 (MISMATCH!)
       await testDb.from("evidence_facet").insert({
@@ -470,9 +494,9 @@ describe("Person Attribution Integration Tests", () => {
         account_id: TEST_ACCOUNT_ID,
         project_id: TEST_PROJECT_ID,
         person_id: testPersonId2, // Different person!
-        kind_slug: "goal",
-        facet_account_id: goalFacet.id,
-        label: "Move Faster",
+        kind_slug: "pain",
+        facet_account_id: facetAccountId,
+        label: "Too Slow",
         source: "interview",
         confidence: 0.8,
       });
@@ -517,22 +541,25 @@ describe("Person Attribution Integration Tests", () => {
         role: "speaker",
       });
 
-      const { data: goalFacet } = await testDb
-        .from("facet_global")
-        .select("id")
-        .eq("slug", "goal_speed")
-        .single();
+      // Use FacetResolver to create facet_account
+      const facetResolver = new FacetResolver(testDb, TEST_ACCOUNT_ID);
+      const facetAccountId = await facetResolver.ensureFacet({
+        kindSlug: "workflow",
+        label: "Weekly Review",
+        isActive: true,
+      });
 
-      if (!goalFacet) throw new Error("Facet not found");
+      if (!facetAccountId)
+        throw new Error("Failed to create facet_account via FacetResolver");
 
       await testDb.from("evidence_facet").insert({
         evidence_id: evidence.id,
         account_id: TEST_ACCOUNT_ID,
         project_id: TEST_PROJECT_ID,
         person_id: testPersonId1, // Same person!
-        kind_slug: "goal",
-        facet_account_id: goalFacet.id,
-        label: "Move Faster",
+        kind_slug: "workflow",
+        facet_account_id: facetAccountId,
+        label: "Weekly Review",
         source: "interview",
         confidence: 0.8,
       });
