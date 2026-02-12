@@ -1219,6 +1219,32 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		revalidator.revalidate();
 	}, [revalidator]);
 
+	const getEvidenceSpeakerNames = useCallback((item: unknown): string[] => {
+		if (!item || typeof item !== "object") return [];
+		const record = item as {
+			evidence_people?: Array<{ people?: { name?: string | null } | null }>;
+			anchors?: unknown;
+		};
+		const links = Array.isArray(record.evidence_people) ? record.evidence_people : [];
+		const names = links
+			.map((link) => link?.people?.name?.trim())
+			.filter((name): name is string => Boolean(name && name.length > 0));
+		if (names.length > 0) return Array.from(new Set(names));
+
+		const anchors = Array.isArray(record.anchors) ? record.anchors : [];
+		const anchorSpeakers = anchors
+			.map((anchor) => {
+				if (!anchor || typeof anchor !== "object") return null;
+				const speaker = (anchor as { speaker?: unknown; speaker_label?: unknown }).speaker;
+				if (typeof speaker === "string" && speaker.trim().length > 0) return speaker.trim();
+				const speakerLabel = (anchor as { speaker_label?: unknown }).speaker_label;
+				if (typeof speakerLabel === "string" && speakerLabel.trim().length > 0) return speakerLabel.trim();
+				return null;
+			})
+			.filter((name): name is string => Boolean(name && name.toLowerCase() !== "unknown speaker"));
+		return Array.from(new Set(anchorSpeakers));
+	}, []);
+
 	const selectedEvidence = useMemo(() => {
 		if (!selectedEvidenceId) return null;
 		const item = evidence.find((e) => e.id === selectedEvidenceId);
@@ -1232,8 +1258,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			confidence: item.confidence ?? null,
 			anchors: item.anchors,
 			thumbnail_url: (item as { thumbnail_url?: string | null }).thumbnail_url ?? null,
+			speakerNames: getEvidenceSpeakerNames(item),
 		};
-	}, [selectedEvidenceId, evidence]);
+	}, [selectedEvidenceId, evidence, getEvidenceSpeakerNames]);
 
 	useEffect(() => {
 		const prevState = fetcherPrevStateRef.current;
@@ -1836,6 +1863,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						confidence: e.confidence ?? null,
 						anchors: e.anchors,
 						thumbnail_url: (e as { thumbnail_url?: string | null }).thumbnail_url ?? null,
+						speakerNames: getEvidenceSpeakerNames(e),
 					}))}
 				interview={interview}
 				evidenceDetailRoute={routes.evidence.detail}

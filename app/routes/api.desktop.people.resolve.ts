@@ -47,6 +47,18 @@ interface ResolvePersonResponse {
 	errors: ResolvePersonError[];
 }
 
+function toOptionalString(value: unknown): string | undefined {
+	if (value === null || value === undefined) return undefined;
+	if (typeof value === "string") {
+		const trimmed = value.trim();
+		return trimmed.length ? trimmed : undefined;
+	}
+	if (typeof value === "number" && Number.isFinite(value)) {
+		return String(value);
+	}
+	return undefined;
+}
+
 /**
  * Authenticates desktop request using Bearer token
  * TODO: Implement proper desktop app authentication
@@ -72,7 +84,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	let body: ResolvePersonRequest;
 	try {
 		body = await request.json();
-	} catch (error) {
+	} catch (_error) {
 		return Response.json({ error: "Invalid JSON body" }, { status: 400 });
 	}
 
@@ -104,10 +116,10 @@ export async function action({ request }: ActionFunctionArgs) {
 			// Build resolution input
 			const input: PersonResolutionInput = {
 				name: person.person_name,
-				primary_email: person.email,
+				primary_email: toOptionalString(person.email),
 				role: person.role,
-				platform: person.recall_platform,
-				platform_user_id: person.recall_participant_id,
+				platform: toOptionalString(person.recall_platform),
+				platform_user_id: toOptionalString(person.recall_participant_id),
 				person_type: person.role === "interviewer" || person.is_host ? "internal" : null,
 				source: "desktop_meeting",
 			};
