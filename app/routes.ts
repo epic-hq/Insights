@@ -1,10 +1,4 @@
-import {
-	index,
-	layout,
-	prefix,
-	type RouteConfig,
-	route,
-} from "@react-router/dev/routes";
+import { index, layout, prefix, type RouteConfig, route } from "@react-router/dev/routes";
 import annotationsRoutes from "./features/annotations/routes";
 import askRoutes from "./features/ask/routes";
 import assetsRoutes from "./features/assets/routes";
@@ -32,9 +26,7 @@ import responsesRoutes from "./features/responses/routes";
 import segmentsRoutes from "./features/segments/routes";
 import signupChatRoutes from "./features/signup-chat/routes";
 import sourcesRoutes from "./features/sources/routes";
-import teamsRoutes, {
-	teamsAccountRoutes as teamRoutes,
-} from "./features/teams/routes";
+import teamsRoutes, { teamsAccountRoutes as teamRoutes } from "./features/teams/routes";
 import voiceRoutes from "./features/voice/routes";
 
 const routes = [
@@ -57,10 +49,7 @@ const routes = [
 
 		// Calendar integration routes (protected, need user context)
 		route("api/calendar/connect", "./routes/api.calendar.connect.tsx"),
-		route(
-			"api/calendar/save-connection",
-			"./routes/api.calendar.save-connection.tsx",
-		),
+		route("api/calendar/save-connection", "./routes/api.calendar.save-connection.tsx"),
 		route("api/calendar/disconnect", "./routes/api.calendar.disconnect.tsx"),
 		route("api/calendar/sync", "./routes/api.calendar.sync.tsx"),
 
@@ -69,21 +58,12 @@ const routes = [
 
 		// Admin routes (platform admin only)
 		route("admin/usage", "./features/admin/pages/usage.tsx"),
-		route(
-			"admin/stuck-interviews",
-			"./features/admin/pages/stuck-interviews.tsx",
-		),
+		route("admin/stuck-interviews", "./features/admin/pages/stuck-interviews.tsx"),
 
 		// Protected API routes
 		route("api/tasks/deduplicate", "./routes/api.tasks.deduplicate.ts"),
-		route(
-			"api/update-ui-preference",
-			"./features/users/api/update-ui-preference.tsx",
-		),
-		route(
-			"api/user-settings/onboarding",
-			"./routes/api.user-settings.onboarding.tsx",
-		),
+		route("api/update-ui-preference", "./features/users/api/update-ui-preference.tsx"),
+		route("api/user-settings/onboarding", "./routes/api.user-settings.onboarding.tsx"),
 		route("api/share/enable", "./routes/api.share.enable.tsx"),
 		route("api/share/disable", "./routes/api.share.disable.tsx"),
 
@@ -101,10 +81,7 @@ const routes = [
 			// ...researchLinkRoutes,
 			// Account-scoped team routes
 			...teamRoutes,
-			route(
-				"api/sales/create-workspace",
-				"./routes/api.sales.create-workspace.tsx",
-			),
+			route("api/sales/create-workspace", "./routes/api.sales.create-workspace.tsx"),
 
 			// Nested project detail children - Layout route with sidebar
 			route(":projectId", "./routes/_protected/projects.tsx", [
@@ -116,10 +93,7 @@ const routes = [
 				route("setup", "./features/projects/pages/setup.tsx"),
 				// Mobile routes
 				...dashboardRoutes,
-				route(
-					"sales-lenses",
-					"./routes/_protected.projects.$projectId.sales-lenses.tsx",
-				),
+				route("sales-lenses", "./routes/_protected.projects.$projectId.sales-lenses.tsx"),
 				...interviewsRoutes,
 				...insightsRoutes,
 				...evidenceRoutes,
@@ -146,10 +120,7 @@ const routes = [
 				route("new", "./features/onboarding/pages/new.tsx"),
 
 				// Research workflow route
-				route(
-					"research-workflow",
-					"./features/questions/pages/research-workflow.tsx",
-				),
+				route("research-workflow", "./features/questions/pages/research-workflow.tsx"),
 
 				// Project settings route (new, replacing deprecated /projects/:id/edit)
 				route("settings", "./features/projects/pages/edit.tsx"),
@@ -158,28 +129,13 @@ const routes = [
 				...annotationsRoutes,
 
 				// Campaign API routes (project-scoped)
-				route(
-					"api/campaigns/create",
-					"./features/research-links/api/create-campaign.tsx",
-				),
-				route(
-					"api/campaigns/add-people",
-					"./features/research-links/api/add-to-campaign.tsx",
-				),
-				route(
-					"api/campaigns/generate-questions",
-					"./features/research-links/api/generate-campaign-questions.tsx",
-				),
-				route(
-					"api/campaigns/recommendations",
-					"./features/research-links/api/get-campaign-recommendations.tsx",
-				),
+				route("api/campaigns/create", "./features/research-links/api/create-campaign.tsx"),
+				route("api/campaigns/add-people", "./features/research-links/api/add-to-campaign.tsx"),
+				route("api/campaigns/generate-questions", "./features/research-links/api/generate-campaign-questions.tsx"),
+				route("api/campaigns/recommendations", "./features/research-links/api/get-campaign-recommendations.tsx"),
 
 				// Contextual suggestions API (needs project context)
-				route(
-					"api/contextual-suggestions",
-					"./routes/api.contextual-suggestions.tsx",
-				),
+				route("api/contextual-suggestions", "./routes/api.contextual-suggestions.tsx"),
 				// Mentionable users API for @mentions (needs project context)
 				route("api/mentionable-users", "./routes/api/mentionable-users.ts"),
 
@@ -189,67 +145,31 @@ const routes = [
 				route("api/enrich-people", "./routes/api.enrich-people.tsx"),
 
 				// Realtime interviews APIs (project-scoped)
-				route(
-					"api/interviews/realtime-start",
-					"./routes/api.interviews.realtime-start.tsx",
-				),
-				route(
-					"api/interviews/realtime-upload",
-					"./routes/api.interviews.realtime-upload.tsx",
-				),
-				route(
-					"api/interviews/realtime-finalize",
-					"./routes/api.interviews.realtime-finalize.tsx",
-				),
+				route("api/interviews/realtime-start", "./routes/api.interviews.realtime-start.tsx"),
+				route("api/interviews/realtime-upload", "./routes/api.interviews.realtime-upload.tsx"),
+				route("api/interviews/realtime-finalize", "./routes/api.interviews.realtime-finalize.tsx"),
 
 				// Project setup chat API (project-scoped)
 				route("api/chat/project-setup", "./routes/api.chat.project-setup.tsx"),
-				route(
-					"api/chat/project-setup/history",
-					"./routes/api.chat.project-setup.history.tsx",
-				),
+				route("api/chat/project-setup/history", "./routes/api.chat.project-setup.history.tsx"),
 				// Project status agent chat API (project-scoped)
-				route(
-					"api/chat/project-status",
-					"./routes/api.chat.project-status.tsx",
-				),
-				route(
-					"api/chat/project-status/history",
-					"./routes/api.chat.project-status.history.tsx",
-				),
-				route(
-					"api/chat/project-status/threads",
-					"./routes/api.chat.project-status.threads.tsx",
-				),
-				route(
-					"api/chat/project-status/history-by-thread",
-					"./routes/api.chat.project-status.history-by-thread.tsx",
-				),
+				route("api/chat/project-status", "./routes/api.chat.project-status.tsx"),
+				route("api/chat/project-status/history", "./routes/api.chat.project-status.history.tsx"),
+				route("api/chat/project-status/threads", "./routes/api.chat.project-status.threads.tsx"),
+				route("api/chat/project-status/history-by-thread", "./routes/api.chat.project-status.history-by-thread.tsx"),
 				// Interview insight agent chat API (project-scoped)
-				route(
-					"api/chat/interview/:interviewId",
-					"./routes/api.chat.interview.$interviewId.tsx",
-				),
+				route("api/chat/interview/:interviewId", "./routes/api.chat.interview.$interviewId.tsx"),
 
 				// Interview transcript API (project-scoped)
-				route(
-					"api/interview-transcript",
-					"./routes/api.interview-transcript.tsx",
-				),
+				route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
 
 				// Evidence semantic search API (project-scoped)
-				route(
-					"api/evidence/semantic-search",
-					"./routes/api.evidence.semantic-search.tsx",
-				),
+				route("api/evidence/semantic-search", "./routes/api.evidence.semantic-search.tsx"),
 				route("api/merge-people", "./routes/api.merge-people.tsx"),
 			]),
 
 			// Account-scoped quick record API: creates project + interview
-			route(
-				"api/interviews/record-now",
-				"./routes/api.interviews.record-now.tsx",
-			),
+			route("api/interviews/record-now", "./routes/api.interviews.record-now.tsx"),
 			route("api/people/search", "./routes/api.people.search.tsx"),
 		]),
 	]),
@@ -270,23 +190,11 @@ const routes = [
 	route("api/desktop/health", "./routes/api.desktop.health.ts"),
 	route("api/desktop/context", "./routes/api.desktop.context.ts"),
 	route("api/desktop/recall-token", "./routes/api.desktop.recall-token.ts"),
-	route(
-		"api/desktop/recordings/:recordingId/status",
-		"./routes/api.desktop.recordings.$recordingId.status.ts",
-	),
-	route(
-		"api/desktop/realtime-evidence",
-		"./routes/api.desktop.realtime-evidence.ts",
-	),
+	route("api/desktop/recordings/:recordingId/status", "./routes/api.desktop.recordings.$recordingId.status.ts"),
+	route("api/desktop/realtime-evidence", "./routes/api.desktop.realtime-evidence.ts"),
 	route("api/desktop/interviews", "./routes/api.desktop.interviews.ts"),
-	route(
-		"api/desktop/interviews/finalize",
-		"./routes/api.desktop.interviews.finalize.ts",
-	),
-	route(
-		"api/desktop/interviews/upload-media",
-		"./routes/api.desktop.interviews.upload-media.ts",
-	),
+	route("api/desktop/interviews/finalize", "./routes/api.desktop.interviews.finalize.ts"),
+	route("api/desktop/interviews/upload-media", "./routes/api.desktop.interviews.upload-media.ts"),
 	route("api/desktop/people/resolve", "./routes/api.desktop.people.resolve.ts"),
 	route("api/recall-webhook", "./routes/api.recall-webhook.ts"),
 
@@ -297,20 +205,14 @@ const routes = [
 	route("api/upload/presigned-url", "./routes/api.upload.presigned-url.tsx"),
 	route("api/notes/create", "./routes/api.notes.create.tsx"),
 	route("api/update-field", "./routes/api.update-field.tsx"),
-	route(
-		"api/update-person-facet-summary",
-		"./routes/api.update-person-facet-summary.tsx",
-	),
+	route("api/update-person-facet-summary", "./routes/api.update-person-facet-summary.tsx"),
 	route("api/update-lens", "./routes/api.update-lens.tsx"),
 	route("api/update-slot", "./routes/api.update-slot.tsx"),
 	route("api/update-stakeholder", "./routes/api.update-stakeholder.tsx"),
 	route("api/update-opportunity", "./routes/api.update-opportunity.tsx"),
 	route("api/update-next-step", "./routes/api.update-next-step.tsx"),
 	route("api/opportunity-advisor", "./routes/api.opportunity-advisor.tsx"),
-	route(
-		"api/update-user-project-preference",
-		"./routes/api.update-user-project-preference.tsx",
-	),
+	route("api/update-user-project-preference", "./routes/api.update-user-project-preference.tsx"),
 	route("api/interview-status", "./routes/api.interview-status.tsx"),
 	route("api/interviews/delete", "./routes/api.interviews.delete.tsx"),
 	route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),
@@ -325,87 +227,33 @@ const routes = [
 	route("api/generate-questions", "./routes/api.generate-questions.tsx"),
 	route("api/generate-suggestions", "./routes/api.generate-suggestions.tsx"),
 	route("api/project-status", "./routes/api.project-status.tsx"),
-	route(
-		"api/analyze-project-status",
-		"./routes/api.analyze-project-status.tsx",
-	),
-	route(
-		"api/analyze-research-evidence",
-		"./routes/api.analyze-research-evidence.tsx",
-	),
+	route("api/analyze-project-status", "./routes/api.analyze-project-status.tsx"),
+	route("api/analyze-research-evidence", "./routes/api.analyze-research-evidence.tsx"),
 	route("api/agent-state/:agentId", "./routes/api.agent-state.$agentId.tsx"),
 	route("api/media/signed-url", "./routes/api.media.signed-url.tsx"),
 	route("api/user-profile", "./routes/api/user-profile.ts"),
 	route("api.analysis-retry", "./routes/api.analysis-retry.tsx"),
 	route("api/generate-themes", "./routes/api/generate-themes.tsx"),
-	route(
-		"api/generate-persona-insights",
-		"./routes/api/generate-persona-insights.ts",
-	),
-	route(
-		"api/generate-icp-recommendations",
-		"./routes/api.generate-icp-recommendations.ts",
-	),
-	route(
-		"api/create-persona-from-icp",
-		"./routes/api.create-persona-from-icp.ts",
-	),
-	route(
-		"api/generate-followup-questions",
-		"./routes/api.generate-followup-questions.tsx",
-	),
+	route("api/generate-persona-insights", "./routes/api/generate-persona-insights.ts"),
+	route("api/generate-icp-recommendations", "./routes/api.generate-icp-recommendations.ts"),
+	route("api/create-persona-from-icp", "./routes/api.create-persona-from-icp.ts"),
+	route("api/generate-followup-questions", "./routes/api.generate-followup-questions.tsx"),
 	route("api/improve-question", "./routes/api.improve-question.tsx"),
 	route("api/questions/:questionId", "./routes/api.questions.$questionId.tsx"),
 	route("api/questions/save-debug", "./routes/api.questions.save-debug.tsx"),
-	route(
-		"api/generate-research-structure",
-		"./routes/api.generate-research-structure.tsx",
-	),
-	route(
-		"api/migrate-research-structure",
-		"./routes/api.migrate-research-structure.tsx",
-	),
-	route(
-		"api/check-research-structure",
-		"./routes/api.check-research-structure.tsx",
-	),
+	route("api/generate-research-structure", "./routes/api.generate-research-structure.tsx"),
+	route("api/migrate-research-structure", "./routes/api.migrate-research-structure.tsx"),
+	route("api/check-research-structure", "./routes/api.check-research-structure.tsx"),
 	route("api/signup-next-turn", "./routes/api.signup-next-turn.tsx"),
-	route(
-		"api/research-links/:slug/start",
-		"./routes/api.research-links.$slug.start.tsx",
-	),
-	route(
-		"api/research-links/:slug/save",
-		"./routes/api.research-links.$slug.save.tsx",
-	),
-	route(
-		"api/research-links/:slug/chat",
-		"./routes/api.research-links.$slug.chat.tsx",
-	),
-	route(
-		"api/research-links/:slug/upload-video",
-		"./features/research-links/api/upload-video.tsx",
-	),
-	route(
-		"api/research-links/:listId/upload-walkthrough",
-		"./features/research-links/api/upload-walkthrough.tsx",
-	),
-	route(
-		"api/research-links/:listId/delete-walkthrough",
-		"./features/research-links/api/delete-walkthrough.tsx",
-	),
-	route(
-		"api/research-links/:listId/upload-question-video",
-		"./features/research-links/api/upload-question-video.tsx",
-	),
-	route(
-		"api/research-links/:listId/responses/delete",
-		"./features/research-links/api/delete-responses-bulk.tsx",
-	),
-	route(
-		"api/research-links/:listId/responses/:responseId/delete",
-		"./features/research-links/api/delete-response.tsx",
-	),
+	route("api/research-links/:slug/start", "./routes/api.research-links.$slug.start.tsx"),
+	route("api/research-links/:slug/save", "./routes/api.research-links.$slug.save.tsx"),
+	route("api/research-links/:slug/chat", "./routes/api.research-links.$slug.chat.tsx"),
+	route("api/research-links/:slug/upload-video", "./features/research-links/api/upload-video.tsx"),
+	route("api/research-links/:listId/upload-walkthrough", "./features/research-links/api/upload-walkthrough.tsx"),
+	route("api/research-links/:listId/delete-walkthrough", "./features/research-links/api/delete-walkthrough.tsx"),
+	route("api/research-links/:listId/upload-question-video", "./features/research-links/api/upload-question-video.tsx"),
+	route("api/research-links/:listId/responses/delete", "./features/research-links/api/delete-responses-bulk.tsx"),
+	route("api/research-links/:listId/responses/:responseId/delete", "./features/research-links/api/delete-response.tsx"),
 	route("api/assemblyai-token", "./routes/api.assemblyai-token.tsx"),
 	route("api.livekit-token", "./routes/api.livekit-token.tsx"),
 	route("api/realtime-evidence", "./routes/api.realtime-evidence.tsx"),
@@ -419,40 +267,22 @@ const routes = [
 	route("api/enrich-themes", "./routes/api.enrich-themes.tsx"),
 	route("api/consolidate-themes", "./routes/api.consolidate-themes.tsx"),
 	route("api/diagnose-themes", "./routes/api.diagnose-themes.tsx"),
-	route(
-		"api/similar-evidence-for-insight",
-		"./routes/api.similar-evidence-for-insight.tsx",
-	),
+	route("api/similar-evidence-for-insight", "./routes/api.similar-evidence-for-insight.tsx"),
 	route("api/reprocess-interview", "./routes/api.reprocess-interview.tsx"),
 	route("api/fix-stuck-interview", "./routes/api.fix-stuck-interview.tsx"),
 	route("api/interview-restart", "./routes/api.interview-restart.tsx"),
 	route("api.generate-sales-lens", "./routes/api.generate-sales-lens.tsx"),
 	route("api/apply-lens", "./routes/api.apply-lens.tsx"),
 	route("api/lens-templates", "./routes/api.lens-templates.tsx"),
-	route(
-		"api/update-lens-analysis-field",
-		"./routes/api.update-lens-analysis-field.tsx",
-	),
+	route("api/update-lens-analysis-field", "./routes/api.update-lens-analysis-field.tsx"),
 	route("api/update-lens-entity", "./routes/api.update-lens-entity.tsx"),
 	route("api/regenerate-ai-summary", "./routes/api.regenerate-ai-summary.tsx"),
-	route(
-		"api/regenerate-conversation-analysis",
-		"./routes/api.regenerate-conversation-analysis.tsx",
-	),
-	route(
-		"api/backfill-conversation-overview-lens",
-		"./routes/api.backfill-conversation-overview-lens.tsx",
-	),
-	route(
-		"api/link-interview-participant",
-		"./routes/api.link-interview-participant.tsx",
-	),
+	route("api/regenerate-conversation-analysis", "./routes/api.regenerate-conversation-analysis.tsx"),
+	route("api/backfill-conversation-overview-lens", "./routes/api.backfill-conversation-overview-lens.tsx"),
+	route("api/link-interview-participant", "./routes/api.link-interview-participant.tsx"),
 	route("api/generate-thumbnails", "./routes/api.generate-thumbnails.tsx"),
 	route("api/index-note", "./routes/api.index-note.tsx"),
-	route(
-		"api/update-analysis-settings",
-		"./routes/api.update-analysis-settings.tsx",
-	),
+	route("api/update-analysis-settings", "./routes/api.update-analysis-settings.tsx"),
 	// Lens architecture test routes
 	route("api/test-user-groups", "./routes/api.test-user-groups.tsx"),
 	route("api/test-pain-matrix", "./routes/api.test-pain-matrix.tsx"),
@@ -474,10 +304,7 @@ const routes = [
 	route("/resource/locales", "./routes/resource.locales.ts"),
 	route("healthcheck", "./routes/healthcheck.ts"),
 	route("apple-touch-icon.png", "./routes/apple-touch-icon[.]png.ts"),
-	route(
-		"apple-touch-icon-precomposed.png",
-		"./routes/apple-touch-icon-precomposed[.]png.ts",
-	),
+	route("apple-touch-icon-precomposed.png", "./routes/apple-touch-icon-precomposed[.]png.ts"),
 
 	// Test routes
 	route("test/upsight", "./routes/test.upsight.tsx"),
