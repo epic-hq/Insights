@@ -19,6 +19,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { validateAttributionParity } from "~/lib/evidence/personAttribution.server";
 import {
   cleanupTestData,
   seedTestData,
@@ -26,7 +27,6 @@ import {
   TEST_PROJECT_ID,
   testDb,
 } from "~/test/utils/testDb";
-import { validateAttributionParity } from "~/lib/evidence/personAttribution.server";
 
 // Mock BAML client
 vi.mock("~/../baml_client", () => ({
@@ -46,8 +46,8 @@ vi.mock("~/lib/supabase/client.server", () => ({
 }));
 
 import { b } from "~/../baml_client";
-import { extractEvidenceAndPeopleCore } from "~/utils/processInterview.server";
 import type { Interview } from "~/types";
+import { extractEvidenceAndPeopleCore } from "../../../src/trigger/interview/v2/extractEvidenceCore";
 
 const mockExtractEvidence = b.ExtractEvidenceFromTranscriptV2 as ReturnType<
   typeof vi.fn
@@ -57,6 +57,8 @@ const mockDerivePersonaFacets = b.DerivePersonaFacetsFromEvidence as ReturnType<
 >;
 
 describe("Person Attribution Integration Tests", () => {
+  vi.setConfig({ hookTimeout: 30000 }); // Increase hook timeout for database operations
+
   let testInterviewId: string;
   let testPersonId1: string;
   let testPersonId2: string;
@@ -78,7 +80,7 @@ describe("Person Attribution Integration Tests", () => {
         project_id: TEST_PROJECT_ID,
         title: "Person Attribution Test Interview",
         status: "processing",
-        source: "upload",
+        source_type: "upload",
       })
       .select("id")
       .single();
