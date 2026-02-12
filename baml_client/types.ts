@@ -1302,6 +1302,34 @@ export interface PersonLensMetadata {
   
 }
 
+export interface PersonNextStep {
+  action: string
+  reasoning: string
+  priority: number
+  
+}
+
+export interface PersonNextStepsInput {
+  name?: string | null
+  title?: string | null
+  company?: string | null
+  description?: string | null
+  icp_band?: string | null
+  icp_score?: number | null
+  days_since_last_contact?: number | null
+  conversation_count: number
+  survey_count: number
+  themes: string[]
+  recent_evidence: string[]
+  facets: string[]
+  
+}
+
+export interface PersonNextStepsOutput {
+  steps: PersonNextStep[]
+  
+}
+
 export interface PersonProfileInput {
   person_id: string
   name?: string | null
