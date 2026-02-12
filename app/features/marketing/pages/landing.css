@@ -8,8 +8,8 @@
 	--lp-bg: #050508;
 	--lp-bg2: #0a0a10;
 	--lp-text: #eeeef2;
-	--lp-dim: rgba(238, 238, 242, 0.5);
-	--lp-dim2: rgba(238, 238, 242, 0.25);
+	--lp-dim: rgba(238, 238, 242, 0.7);
+	--lp-dim2: rgba(238, 238, 242, 0.45);
 	--lp-amber: #f59e0b;
 	--lp-amber-glow: rgba(245, 158, 11, 0.3);
 	--lp-sky: #38bdf8;
@@ -36,7 +36,7 @@
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
-	filter: brightness(0.18) saturate(0.5);
+	filter: brightness(0.38) saturate(0.6);
 }
 .lp-hero-crowd::after {
 	content: "";
@@ -45,10 +45,10 @@
 	background:
 		linear-gradient(
 			180deg,
-			rgba(5, 5, 8, 0.6) 0%,
-			rgba(5, 5, 8, 0.15) 30%,
-			rgba(5, 5, 8, 0.3) 65%,
-			rgba(5, 5, 8, 0.95) 100%
+			rgba(5, 5, 8, 0.4) 0%,
+			rgba(5, 5, 8, 0.05) 30%,
+			rgba(5, 5, 8, 0.15) 65%,
+			rgba(5, 5, 8, 0.85) 100%
 		), radial-gradient(ellipse at 50% 50%, rgba(245, 158, 11, 0.03), transparent 60%);
 }
 
@@ -323,6 +323,33 @@
 		display: none;
 	}
 }
+/* ===========================================
+   NAV OVERRIDES — dark landing page context
+   =========================================== */
+.lp-page nav {
+	position: relative;
+	z-index: 10;
+}
+.lp-page nav a {
+	color: rgba(238, 238, 242, 0.85) !important;
+}
+.lp-page nav a:hover {
+	color: #fff !important;
+}
+.lp-page nav button {
+	color: rgba(238, 238, 242, 0.85) !important;
+}
+/* Keep Sign Up button with amber brand CTA */
+.lp-page nav a[href*="register"] {
+	background: var(--lp-amber) !important;
+	color: var(--lp-bg) !important;
+	border-color: var(--lp-amber) !important;
+}
+/* Logo stays brand blue */
+.lp-page nav .text-brand {
+	color: var(--lp-sky) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.lp-rv,
 	.lp-portrait-scene,

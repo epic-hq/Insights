@@ -323,7 +323,7 @@ export default function LandingPage() {
 
 	return (
 		<div
-			className="flex min-h-screen flex-col"
+			className="lp-page flex min-h-screen flex-col"
 			style={{
 				background: "var(--lp-bg)",
 				color: "var(--lp-text)",
@@ -365,9 +365,9 @@ export default function LandingPage() {
 						className="mb-[clamp(0.2rem,0.5vw,0.5rem)] uppercase tracking-[0.2em]"
 						style={{
 							fontFamily: "'JetBrains Mono', monospace",
-							fontSize: "clamp(0.55rem, 0.75vw, 0.68rem)",
+							fontSize: "clamp(0.7rem, 1vw, 0.9rem)",
 							color: "var(--lp-amber)",
-							opacity: 0.8,
+							opacity: 0.9,
 						}}
 					>
 						Customer Intelligence Platform
@@ -386,18 +386,6 @@ export default function LandingPage() {
 						<br />
 						<span style={{ color: "var(--lp-amber)" }}>Build conviction.</span>
 					</h1>
-					<p
-						className="mx-auto"
-						style={{
-							fontSize: "clamp(0.95rem, 1.5vw, 1.2rem)",
-							color: "var(--lp-dim)",
-							fontWeight: 300,
-							maxWidth: "44ch",
-							marginTop: "clamp(0.5rem, 1vw, 1rem)",
-						}}
-					>
-						Across your entire team.
-					</p>
 				</div>
 
 				{/* Portrait Carousel */}
@@ -539,7 +527,7 @@ export default function LandingPage() {
 							style={{
 								fontSize: "clamp(0.8rem, 1.2vw, 1rem)",
 								padding: "clamp(10px, 1.2vw, 14px) clamp(24px, 3.5vw, 40px)",
-								background: "transparent",
+								background: "rgba(255,255,255,0.08)",
 								color: "var(--lp-text)",
 								border: "1px solid rgba(255,255,255,0.15)",
 								borderRadius: "6px",
@@ -706,7 +694,7 @@ export default function LandingPage() {
 						className="lp-rv mb-[clamp(0.5rem,1vw,1rem)] uppercase tracking-[0.2em]"
 						style={{
 							fontFamily: "'JetBrains Mono', monospace",
-							fontSize: "clamp(0.55rem, 0.75vw, 0.68rem)",
+							fontSize: "clamp(0.7rem, 1vw, 0.85rem)",
 							color: "var(--lp-amber)",
 						}}
 					>
@@ -756,7 +744,7 @@ export default function LandingPage() {
 								className="mb-[clamp(0.4rem,0.8vw,0.75rem)] block uppercase tracking-[0.12em]"
 								style={{
 									fontFamily: "'JetBrains Mono', monospace",
-									fontSize: "clamp(0.55rem, 0.75vw, 0.68rem)",
+									fontSize: "clamp(0.7rem, 1vw, 0.85rem)",
 									color: "var(--lp-amber)",
 									fontWeight: 500,
 								}}
@@ -775,7 +763,7 @@ export default function LandingPage() {
 							</h4>
 							<p
 								style={{
-									fontSize: "clamp(0.7rem, 1vw, 0.85rem)",
+									fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)",
 									color: "var(--lp-dim)",
 									fontWeight: 300,
 									lineHeight: 1.6,
@@ -843,7 +831,7 @@ export default function LandingPage() {
 						style={{
 							fontSize: "clamp(0.85rem, 1.3vw, 1.05rem)",
 							padding: "14px 36px",
-							background: "transparent",
+							background: "rgba(255,255,255,0.08)",
 							color: "var(--lp-text)",
 							border: "1px solid rgba(255,255,255,0.15)",
 						}}
@@ -857,7 +845,7 @@ export default function LandingPage() {
 						fontSize: "clamp(0.7rem, 1vw, 0.85rem)",
 						color: "var(--lp-dim2)",
 						marginTop: "clamp(1.5rem, 3vw, 2.5rem)",
-						fontWeight: 300,
+						fontWeight: 500,
 						letterSpacing: "0.04em",
 					}}
 				>
