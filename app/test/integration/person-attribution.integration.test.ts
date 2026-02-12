@@ -135,7 +135,16 @@ describe("Person Attribution Integration Tests", () => {
       },
     ]);
 
-    // Seed facet catalog
+    // Seed facet kind catalog (required for FacetResolver)
+    // FacetResolver.ensureFacet() will create facet_account rows dynamically
+    const { data: existingKinds } = await testDb
+      .from("facet_kind_global")
+      .select("slug");
+    console.log(
+      "[SETUP] Existing facet kinds:",
+      existingKinds?.map((k) => k.slug),
+    );
+
     await testDb.from("facet_kind_global").upsert(
       [
         { slug: "goal", label: "Goal", description: "Goals" },
@@ -144,29 +153,12 @@ describe("Person Attribution Integration Tests", () => {
       { onConflict: "slug" },
     );
 
-    const { data: kindRows } = await testDb
+    const { data: afterKinds } = await testDb
       .from("facet_kind_global")
-      .select("id, slug");
-    const kindIdBySlug = new Map(
-      (kindRows ?? []).map((row) => [row.slug, row.id]),
-    );
-
-    await testDb.from("facet_global").upsert(
-      [
-        {
-          kind_id: kindIdBySlug.get("goal"),
-          slug: "goal_speed",
-          label: "Move Faster",
-          description: "Speed oriented",
-        },
-        {
-          kind_id: kindIdBySlug.get("pain"),
-          slug: "pain_slow",
-          label: "Too Slow",
-          description: "Performance issues",
-        },
-      ],
-      { onConflict: "slug" },
+      .select("slug");
+    console.log(
+      "[SETUP] After upsert facet kinds:",
+      afterKinds?.map((k) => k.slug),
     );
   });
 
