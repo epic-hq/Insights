@@ -14,99 +14,107 @@ import { generateResearchStructureTool } from "../tools/generate-research-struct
 import { manageAnnotationsTool } from "../tools/manage-annotations";
 import { manageDocumentsTool } from "../tools/manage-documents";
 import {
-	deleteProjectSectionMetaKeyTool,
-	fetchProjectSectionTool,
-	updateProjectSectionMetaTool,
+  deleteProjectSectionMetaKeyTool,
+  fetchProjectSectionTool,
+  updateProjectSectionMetaTool,
 } from "../tools/manage-project-sections";
 import { researchCompanyWebsiteTool } from "../tools/research-company-website";
 import { webResearchTool } from "../tools/research-web";
 import { saveAccountCompanyContextTool } from "../tools/save-account-company-context";
 import { saveProjectSectionsDataTool } from "../tools/save-project-sections-data";
+import { requestUserInputTool } from "../tools/request-user-input";
 import { suggestionTool } from "../tools/suggestion-tool";
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 
 // Dynamically build ProjectSetupState from section config
 const buildProjectSetupStateSchema = () => {
-	const stateFields: Record<string, z.ZodTypeAny> = {};
+  const stateFields: Record<string, z.ZodTypeAny> = {};
 
-	for (const section of PROJECT_SECTIONS) {
-		if (section.kind === "research_goal") {
-			stateFields.research_goal = z.string().optional();
-			stateFields.research_goal_details = z.string().optional();
-		} else if (section.type === "string[]") {
-			stateFields[section.kind] = z.array(z.string()).optional();
-		} else if (section.type === "string") {
-			stateFields[section.kind] = z.string().optional();
-		}
-	}
+  for (const section of PROJECT_SECTIONS) {
+    if (section.kind === "research_goal") {
+      stateFields.research_goal = z.string().optional();
+      stateFields.research_goal_details = z.string().optional();
+    } else if (section.type === "string[]") {
+      stateFields[section.kind] = z.array(z.string()).optional();
+    } else if (section.type === "string") {
+      stateFields[section.kind] = z.string().optional();
+    }
+  }
 
-	stateFields.completed = z.boolean().optional();
+  stateFields.completed = z.boolean().optional();
 
-	return z.object({
-		projectSetup: z.object(stateFields).optional(),
-	});
+  return z.object({
+    projectSetup: z.object(stateFields).optional(),
+  });
 };
 
 const ProjectSetupState = buildProjectSetupStateSchema();
 
 const navigateToPageTool = createTool({
-	id: "navigate-to-page",
-	description:
-		"Navigate to a specific in-app route. Use the account-scoped paths (e.g. /a/:accountId/:projectId/setup) or other current UI routes—avoid legacy /projects/... URLs.",
-	inputSchema: z.object({
-		path: z.string().describe("Relative path to navigate to"),
-	}),
+  id: "navigate-to-page",
+  description:
+    "Navigate to a specific in-app route. Use the account-scoped paths (e.g. /a/:accountId/:projectId/setup) or other current UI routes—avoid legacy /projects/... URLs.",
+  inputSchema: z.object({
+    path: z.string().describe("Relative path to navigate to"),
+  }),
 });
 
 export const projectSetupAgent = new Agent({
-	id: "project-setup-agent",
-	name: "projectSetupAgent",
-	instructions: async ({ requestContext }) => {
-		const projectId = requestContext.get("project_id");
+  id: "project-setup-agent",
+  name: "projectSetupAgent",
+  instructions: async ({ requestContext }) => {
+    const projectId = requestContext.get("project_id");
 
-		// Fetch existing project sections
-		const { data: existing } = await supabaseAdmin
-			.from("project_sections")
-			.select("project_id, kind, meta, content_md")
-			.eq("project_id", projectId);
+    // Fetch existing project sections
+    const { data: existing } = await supabaseAdmin
+      .from("project_sections")
+      .select("project_id, kind, meta, content_md")
+      .eq("project_id", projectId);
 
-		// Fetch project to get account_id
-		const { data: project } = await supabaseAdmin.from("projects").select("account_id").eq("id", projectId).single();
+    // Fetch project to get account_id
+    const { data: project } = await supabaseAdmin
+      .from("projects")
+      .select("account_id")
+      .eq("id", projectId)
+      .single();
 
-		// Fetch account context (company info)
-		let accountContext: Record<string, unknown> | null = null;
-		if (project?.account_id) {
-			const { data: account } = await supabaseAdmin
-				.from("accounts")
-				.select("company_description, customer_problem, offerings, target_orgs, target_roles, competitors, website_url")
-				.eq("id", project.account_id)
-				.maybeSingle();
+    // Fetch account context (company info)
+    let accountContext: Record<string, unknown> | null = null;
+    if (project?.account_id) {
+      const { data: account } = await supabaseAdmin
+        .from("accounts")
+        .select(
+          "company_description, customer_problem, offerings, target_orgs, target_roles, competitors, website_url",
+        )
+        .eq("id", project.account_id)
+        .maybeSingle();
 
-			accountContext = account;
-		}
+      accountContext = account;
+    }
 
-		// Check if account has company context filled in
-		const hasCompanyContext =
-			accountContext &&
-			(accountContext.company_description ||
-				accountContext.customer_problem ||
-				(Array.isArray(accountContext.offerings) && accountContext.offerings.length > 0));
+    // Check if account has company context filled in
+    const hasCompanyContext =
+      accountContext &&
+      (accountContext.company_description ||
+        accountContext.customer_problem ||
+        (Array.isArray(accountContext.offerings) &&
+          accountContext.offerings.length > 0));
 
-		return `
+    return `
 You are a fast, efficient project setup assistant. Be BRIEF - 1-2 sentences max per response.
 
 ## Journey: Define > Design > Collect > Synthesize > Prioritize
 
 ${
-	hasCompanyContext
-		? `
+  hasCompanyContext
+    ? `
 ## COMPANY CONTEXT ALREADY SET
 The account already has company info. Skip company questions and focus on PROJECT goals.
 Account context: ${JSON.stringify(accountContext)}
 
 Start with: "What's the main thing you want to learn from this research?"
 `
-		: `
+    : `
 ## COMPANY CONTEXT NEEDED
 First collect company context (saved to account for reuse).
 
@@ -153,30 +161,31 @@ Document requests: Use manageDocuments tool.
 Existing project sections (skip if answered):
 ${JSON.stringify(existing)}
 `;
-	},
-	model: openai("gpt-5.1"),
-	tools: wrapToolsWithStatusEvents({
-		saveProjectSectionsData: saveProjectSectionsDataTool,
-		fetchProjectSection: fetchProjectSectionTool,
-		updateProjectSectionMeta: updateProjectSectionMetaTool,
-		deleteProjectSectionMetaKey: deleteProjectSectionMetaKeyTool,
-		displayUserQuestions: displayUserQuestionsTool,
-		navigateToPage: navigateToPageTool,
-		generateResearchStructure: generateResearchStructureTool,
-		manageDocuments: manageDocumentsTool,
-		manageAnnotations: manageAnnotationsTool,
-		webResearch: webResearchTool,
-		researchCompanyWebsite: researchCompanyWebsiteTool,
-		saveAccountCompanyContext: saveAccountCompanyContextTool,
-		suggestNextSteps: suggestionTool,
-	}),
-	memory: new Memory({
-		storage: getSharedPostgresStore(),
-		options: {
-			workingMemory: { enabled: false, schema: ProjectSetupState },
-		},
-		generateTitle: false,
-	}),
-	// Note: Using number format for Zod v4 compatibility
-	outputProcessors: [new TokenLimiterProcessor(100_000)],
+  },
+  model: openai("gpt-5.1"),
+  tools: wrapToolsWithStatusEvents({
+    saveProjectSectionsData: saveProjectSectionsDataTool,
+    fetchProjectSection: fetchProjectSectionTool,
+    updateProjectSectionMeta: updateProjectSectionMetaTool,
+    deleteProjectSectionMetaKey: deleteProjectSectionMetaKeyTool,
+    displayUserQuestions: displayUserQuestionsTool,
+    navigateToPage: navigateToPageTool,
+    generateResearchStructure: generateResearchStructureTool,
+    manageDocuments: manageDocumentsTool,
+    manageAnnotations: manageAnnotationsTool,
+    webResearch: webResearchTool,
+    researchCompanyWebsite: researchCompanyWebsiteTool,
+    saveAccountCompanyContext: saveAccountCompanyContextTool,
+    suggestNextSteps: suggestionTool,
+    requestUserInput: requestUserInputTool,
+  }),
+  memory: new Memory({
+    storage: getSharedPostgresStore(),
+    options: {
+      workingMemory: { enabled: false, schema: ProjectSetupState },
+    },
+    generateTitle: false,
+  }),
+  // Note: Using number format for Zod v4 compatibility
+  outputProcessors: [new TokenLimiterProcessor(100_000)],
 });

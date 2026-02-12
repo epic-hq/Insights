@@ -19,14 +19,15 @@ import { buildGenUISystemContext } from "~/lib/gen-ui/agent-context";
 import { displayComponentTool } from "../tools/display-component";
 import { displayInterviewPromptsTool } from "../tools/display-interview-prompts";
 import {
-	createInterviewPromptTool,
-	deleteInterviewPromptTool,
-	fetchInterviewPromptsTool,
-	updateInterviewPromptTool,
+  createInterviewPromptTool,
+  deleteInterviewPromptTool,
+  fetchInterviewPromptsTool,
+  updateInterviewPromptTool,
 } from "../tools/manage-interview-prompts";
 import { manageInterviewsTool } from "../tools/manage-interviews";
 import { navigateToPageTool } from "../tools/navigate-to-page";
 import { parseSpreadsheetTool } from "../tools/parse-spreadsheet";
+import { requestUserInputTool } from "../tools/request-user-input";
 import { findSimilarPagesTool, webResearchTool } from "../tools/research-web";
 import { saveTableToAssetsTool } from "../tools/save-table-to-assets";
 import { searchSurveyResponsesTool } from "../tools/search-survey-responses";
@@ -34,16 +35,17 @@ import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 import { updateTableAssetTool } from "../tools/update-table-asset";
 
 export const researchAgent = new Agent({
-	id: "research-agent",
-	name: "researchAgent",
-	description: "Specialist for research operations: interviews, surveys, and interview prompts.",
-	instructions: async ({ requestContext }) => {
-		try {
-			const projectId = requestContext.get("project_id");
-			const accountId = requestContext.get("account_id");
-			const userId = requestContext.get("user_id");
+  id: "research-agent",
+  name: "researchAgent",
+  description:
+    "Specialist for research operations: interviews, surveys, and interview prompts.",
+  instructions: async ({ requestContext }) => {
+    try {
+      const projectId = requestContext.get("project_id");
+      const accountId = requestContext.get("account_id");
+      const userId = requestContext.get("user_id");
 
-			return `
+      return `
 You are a Research specialist that EXECUTES actions using tools. You do NOT describe what you would do - you DO it.
 
 Project: ${projectId}, Account: ${accountId}
@@ -102,38 +104,39 @@ For FEEDBACK:
 
 ${buildGenUISystemContext()}
 `;
-		} catch (error) {
-			consola.error("Error in research agent instructions:", error);
-			return "You are a Research specialist for interviews and surveys.";
-		}
-	},
-	model: openai("gpt-4o"),
-	memory: new Memory({
-		storage: getSharedPostgresStore(),
-	}),
-	tools: wrapToolsWithStatusEvents({
-		displayComponent: displayComponentTool,
-		displayInterviewPrompts: displayInterviewPromptsTool,
-		fetchInterviewContext: fetchInterviewContextTool,
-		manageInterviews: manageInterviewsTool,
-		fetchInterviewPrompts: fetchInterviewPromptsTool,
-		createInterviewPrompt: createInterviewPromptTool,
-		updateInterviewPrompt: updateInterviewPromptTool,
-		deleteInterviewPrompt: deleteInterviewPromptTool,
-		fetchSurveys: fetchSurveysTool,
-		searchSurveyResponses: searchSurveyResponsesTool,
-		createSurvey: createSurveyTool,
-		deleteSurvey: deleteSurveyTool,
-		fetchWebContent: fetchWebContentTool,
-		importVideoFromUrl: importVideoFromUrlTool,
-		webResearch: webResearchTool,
-		findSimilarPages: findSimilarPagesTool,
-		manageDocuments: manageDocumentsTool,
-		parseSpreadsheet: parseSpreadsheetTool,
-		saveTableToAssets: saveTableToAssetsTool,
-		updateTableAsset: updateTableAssetTool,
-		navigateToPage: navigateToPageTool,
-		generateProjectRoutes: generateProjectRoutesTool,
-	}),
-	outputProcessors: [new TokenLimiterProcessor(20_000)],
+    } catch (error) {
+      consola.error("Error in research agent instructions:", error);
+      return "You are a Research specialist for interviews and surveys.";
+    }
+  },
+  model: openai("gpt-4o"),
+  memory: new Memory({
+    storage: getSharedPostgresStore(),
+  }),
+  tools: wrapToolsWithStatusEvents({
+    displayComponent: displayComponentTool,
+    displayInterviewPrompts: displayInterviewPromptsTool,
+    fetchInterviewContext: fetchInterviewContextTool,
+    manageInterviews: manageInterviewsTool,
+    fetchInterviewPrompts: fetchInterviewPromptsTool,
+    createInterviewPrompt: createInterviewPromptTool,
+    updateInterviewPrompt: updateInterviewPromptTool,
+    deleteInterviewPrompt: deleteInterviewPromptTool,
+    fetchSurveys: fetchSurveysTool,
+    searchSurveyResponses: searchSurveyResponsesTool,
+    createSurvey: createSurveyTool,
+    deleteSurvey: deleteSurveyTool,
+    fetchWebContent: fetchWebContentTool,
+    importVideoFromUrl: importVideoFromUrlTool,
+    webResearch: webResearchTool,
+    findSimilarPages: findSimilarPagesTool,
+    manageDocuments: manageDocumentsTool,
+    parseSpreadsheet: parseSpreadsheetTool,
+    saveTableToAssets: saveTableToAssetsTool,
+    updateTableAsset: updateTableAssetTool,
+    navigateToPage: navigateToPageTool,
+    generateProjectRoutes: generateProjectRoutesTool,
+    requestUserInput: requestUserInputTool,
+  }),
+  outputProcessors: [new TokenLimiterProcessor(20_000)],
 });

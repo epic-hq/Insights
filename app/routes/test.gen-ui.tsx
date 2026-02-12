@@ -1,13 +1,14 @@
 /**
  * Hidden test page for Gen-UI / A2UI development.
  *
- * Access: /test/gen-ui
+ * Access: /a/:accountId/:projectId/test/gen-ui
  *
  * Component gallery + live surface testing without hitting the agent.
  * Protected by _ProtectedLayout — requires login.
  */
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { InlineUserInput } from "~/components/chat/InlineUserInput";
 import { A2UIRenderer } from "~/components/gen-ui/A2UIRenderer";
 import {
   A2UISurfaceProvider,
@@ -562,7 +563,139 @@ function GenUITestInner() {
           )}
         </CardContent>
       </Card>
+
+      {/* InlineUserInput test section */}
+      <InlineUserInputTestSection addLog={addLog} />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// InlineUserInput standalone test
+// ---------------------------------------------------------------------------
+
+function InlineUserInputTestSection({
+  addLog,
+}: {
+  addLog: (msg: string) => void;
+}) {
+  const handleSingleSubmit = useCallback(
+    (selectedIds: string[], freeText?: string) => {
+      addLog(
+        `[Single] selected=${JSON.stringify(selectedIds)}, freeText=${freeText ?? "none"}`,
+      );
+    },
+    [addLog],
+  );
+
+  const handleMultiSubmit = useCallback(
+    (selectedIds: string[], freeText?: string) => {
+      addLog(
+        `[Multi] selected=${JSON.stringify(selectedIds)}, freeText=${freeText ?? "none"}`,
+      );
+    },
+    [addLog],
+  );
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">
+          InlineUserInput (requestUserInput)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Single selection (radio) */}
+        <div>
+          <p className="mb-2 text-xs font-medium text-muted-foreground uppercase">
+            Single select (radio)
+          </p>
+          <div className="rounded-lg bg-background p-3 ring-1 ring-border/60">
+            <InlineUserInput
+              prompt="Which persona should we prioritize for the next interview?"
+              options={[
+                {
+                  id: "persona-1",
+                  label: "Tech-Savvy PM",
+                  description: "Product managers at Series B+ startups",
+                },
+                {
+                  id: "persona-2",
+                  label: "Enterprise Buyer",
+                  description: "VP/Director at Fortune 500 companies",
+                },
+                {
+                  id: "persona-3",
+                  label: "Solo Founder",
+                  description: "Early-stage founders wearing multiple hats",
+                },
+              ]}
+              selectionMode="single"
+              allowFreeText
+              onSubmit={handleSingleSubmit}
+            />
+          </div>
+        </div>
+
+        {/* Multiple selection (checkbox) */}
+        <div>
+          <p className="mb-2 text-xs font-medium text-muted-foreground uppercase">
+            Multiple select (checkbox)
+          </p>
+          <div className="rounded-lg bg-background p-3 ring-1 ring-border/60">
+            <InlineUserInput
+              prompt="Which themes should we validate in the next round of interviews?"
+              options={[
+                {
+                  id: "theme-1",
+                  label: "Workflow automation",
+                  description: "Manual processes eating into research time",
+                },
+                {
+                  id: "theme-2",
+                  label: "Team collaboration",
+                  description: "Sharing findings across functions",
+                },
+                {
+                  id: "theme-3",
+                  label: "AI synthesis",
+                  description: "Automated insight extraction from transcripts",
+                },
+                {
+                  id: "theme-4",
+                  label: "Security compliance",
+                  description: "SOC2 and data residency requirements",
+                },
+              ]}
+              selectionMode="multiple"
+              allowFreeText
+              onSubmit={handleMultiSubmit}
+            />
+          </div>
+        </div>
+
+        {/* Already answered state */}
+        <div>
+          <p className="mb-2 text-xs font-medium text-muted-foreground uppercase">
+            Already answered
+          </p>
+          <div className="rounded-lg bg-background p-3 ring-1 ring-border/60">
+            <InlineUserInput
+              prompt="Which persona should we focus on?"
+              options={[
+                { id: "a", label: "Tech-Savvy PM" },
+                { id: "b", label: "Enterprise Buyer" },
+                { id: "c", label: "Solo Founder" },
+              ]}
+              selectionMode="single"
+              answered
+              answeredIds={["b"]}
+              onSubmit={() => {}}
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
