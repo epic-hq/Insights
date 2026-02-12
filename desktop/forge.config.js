@@ -1,6 +1,39 @@
 const { FusesPlugin } = require("@electron-forge/plugin-fuses");
 const { FuseV1Options, FuseVersion } = require("@electron/fuses");
 
+const TEAM_ID = "MF6J364BXK";
+const hasAppleIdCreds = Boolean(
+  process.env.APPLE_ID && process.env.APPLE_ID_PASSWORD,
+);
+const hasKeychainProfile = Boolean(process.env.APPLE_NOTARY_KEYCHAIN_PROFILE);
+const requireNotarization = process.env.REQUIRE_NOTARIZATION === "1";
+
+if (requireNotarization && !hasAppleIdCreds && !hasKeychainProfile) {
+  throw new Error(
+    "REQUIRE_NOTARIZATION=1, but no notarization credentials were provided. " +
+      "Set APPLE_ID + APPLE_ID_PASSWORD, or APPLE_NOTARY_KEYCHAIN_PROFILE.",
+  );
+}
+
+const osxNotarize = hasKeychainProfile
+  ? {
+      keychainProfile: process.env.APPLE_NOTARY_KEYCHAIN_PROFILE,
+      teamId: TEAM_ID,
+    }
+  : hasAppleIdCreds
+    ? {
+        appleId: process.env.APPLE_ID,
+        appleIdPassword: process.env.APPLE_ID_PASSWORD,
+        teamId: TEAM_ID,
+      }
+    : null;
+
+if (!osxNotarize) {
+  console.warn(
+    "[forge] macOS notarization is disabled (no Apple notarization credentials provided).",
+  );
+}
+
 module.exports = {
   packagerConfig: {
     name: "UpSight",
@@ -17,13 +50,9 @@ module.exports = {
         };
       },
     },
-    ...(process.env.APPLE_ID && process.env.APPLE_ID_PASSWORD
+    ...(osxNotarize
       ? {
-          osxNotarize: {
-            appleId: process.env.APPLE_ID,
-            appleIdPassword: process.env.APPLE_ID_PASSWORD,
-            teamId: "MF6J364BXK",
-          },
+          osxNotarize,
         }
       : {}),
     icon: "./upsight.icns",

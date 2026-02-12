@@ -69,6 +69,15 @@ APPLE_ID_PASSWORD="your-app-specific-password" \
 npm run make
 ```
 
+Recommended (fails fast if notarization is skipped and validates Gatekeeper/stapling):
+
+```bash
+cd desktop
+APPLE_ID="your@email.com" \
+APPLE_ID_PASSWORD="your-app-specific-password" \
+npm run make:release
+```
+
 **Notes**:
 - Notarization only happens when both `APPLE_ID` and `APPLE_ID_PASSWORD` env vars are set
 - Use an [app-specific password](https://support.apple.com/en-us/HT204397) generated from appleid.apple.com, not your Apple ID password
@@ -141,6 +150,13 @@ These configurations ensure native dependencies like the Recall.ai SDK and keyta
 - Check [Apple's notarization history](https://developer.apple.com/account/resources/notarization-history) for error details
 - Ensure all entitlements are properly declared
 - Wait 5-15 minutes - notarization is not instant
+
+**Apple says "could not verify free of malware"**:
+- This means the app is signed but not notarized/stapled.
+- Run:
+  - `spctl -a -vv --type execute desktop/out/UpSight-darwin-arm64/UpSight.app`
+  - `xcrun stapler validate desktop/out/UpSight-darwin-arm64/UpSight.app`
+- Use `npm run make:release` from `desktop/` to force notarization credentials and fail the build if notarization is skipped.
 
 **App won't launch after build**:
 - Check that native modules are properly unpacked (see ASAR configuration)
