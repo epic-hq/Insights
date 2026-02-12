@@ -135,30 +135,14 @@ describe("Person Attribution Integration Tests", () => {
       },
     ]);
 
-    // Seed facet kind catalog (required for FacetResolver)
-    // FacetResolver.ensureFacet() will create facet_account rows dynamically
-    const { data: existingKinds } = await testDb
-      .from("facet_kind_global")
-      .select("slug");
-    console.log(
-      "[SETUP] Existing facet kinds:",
-      existingKinds?.map((k) => k.slug),
-    );
-
+    // Seed facet kinds (required for FacetResolver)
+    // FacetResolver.ensureFacet() will auto-create facet_account rows
     await testDb.from("facet_kind_global").upsert(
       [
         { slug: "goal", label: "Goal", description: "Goals" },
         { slug: "pain", label: "Pain", description: "Pains" },
       ],
       { onConflict: "slug" },
-    );
-
-    const { data: afterKinds } = await testDb
-      .from("facet_kind_global")
-      .select("slug");
-    console.log(
-      "[SETUP] After upsert facet kinds:",
-      afterKinds?.map((k) => k.slug),
     );
   });
 
