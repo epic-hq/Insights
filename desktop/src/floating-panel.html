@@ -74,6 +74,7 @@
       }
 
       .floating-panel.minimized .panel-header,
+      .floating-panel.minimized .panel-context,
       .floating-panel.minimized .recording-controls,
       .floating-panel.minimized .panel-tabs,
       .floating-panel.minimized .panel-content,
@@ -237,35 +238,73 @@
       }
 
       .panel-btn.logout-btn:hover {
-        background: rgba(239, 68, 68, 0.18);
-        color: #fecaca;
+        background: rgba(129, 140, 248, 0.2);
+        border-color: rgba(129, 140, 248, 0.65);
+        color: #e2e8f0;
       }
 
       .panel-btn.logout-btn {
         width: auto;
-        min-width: 74px;
-        padding: 0 8px;
+        min-width: 86px;
+        padding: 0 10px;
         gap: 5px;
-        color: #fda4af;
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        background: rgba(239, 68, 68, 0.1);
+        color: #cbd5e1;
+        border: 1px solid rgba(148, 163, 184, 0.32);
+        background: rgba(15, 23, 42, 0.55);
       }
 
       .panel-btn.logout-btn.signed-out {
-        color: #c4b5fd;
+        color: #c7d2fe;
         border-color: rgba(129, 140, 248, 0.35);
-        background: rgba(129, 140, 248, 0.14);
+        background: rgba(129, 140, 248, 0.12);
       }
 
       .panel-btn.logout-btn.signed-out:hover {
-        color: #e9d5ff;
+        color: #e2e8f0;
         border-color: rgba(129, 140, 248, 0.6);
-        background: rgba(129, 140, 248, 0.22);
+        background: rgba(129, 140, 248, 0.2);
+      }
+
+      .panel-btn.logout-btn.pending {
+        cursor: wait;
+        opacity: 0.9;
+      }
+
+      .panel-btn.logout-btn:disabled {
+        cursor: wait;
+      }
+
+      .logout-btn-icon {
+        display: inline-flex;
+      }
+
+      .panel-btn.logout-btn.pending .logout-btn-icon {
+        display: none;
+      }
+
+      .btn-spinner {
+        width: 11px;
+        height: 11px;
+        border-radius: 999px;
+        border: 1.5px solid rgba(148, 163, 184, 0.45);
+        border-top-color: #c7d2fe;
+        animation: spin 0.75s linear infinite;
+        display: none;
+      }
+
+      .panel-btn.logout-btn.pending .btn-spinner {
+        display: inline-flex;
       }
 
       .logout-btn-label {
         font-size: 11px;
         font-weight: 600;
+      }
+
+      .panel-context {
+        padding: 10px 14px 8px;
+        background-color: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-color);
       }
 
       /* Recording Controls */
@@ -274,9 +313,9 @@
         align-items: stretch;
         justify-content: center;
         flex-direction: column;
-        gap: 8px;
-        padding: 10px 14px;
-        background-color: var(--bg-secondary);
+        gap: 6px;
+        padding: 8px 14px 10px;
+        background-color: rgba(15, 23, 42, 0.55);
         border-bottom: 1px solid var(--border-color);
       }
 
@@ -335,8 +374,8 @@
       .recording-auth-status {
         display: none;
         align-items: center;
-        justify-content: space-between;
-        gap: 10px;
+        justify-content: flex-start;
+        gap: 8px;
         padding: 8px 10px;
         border-radius: 8px;
         border: 1px solid rgba(129, 140, 248, 0.3);
@@ -357,27 +396,35 @@
         background: rgba(74, 222, 128, 0.12);
       }
 
+      .recording-auth-status.loading {
+        border-color: rgba(129, 140, 248, 0.45);
+        background: rgba(129, 140, 248, 0.16);
+      }
+
+      .auth-status-spinner {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        border: 1.5px solid rgba(148, 163, 184, 0.45);
+        border-top-color: #c7d2fe;
+        animation: spin 0.75s linear infinite;
+        display: none;
+        flex: 0 0 auto;
+      }
+
+      .recording-auth-status.loading .auth-status-spinner {
+        display: inline-flex;
+      }
+
       .auth-status-text {
         font-size: 12px;
         line-height: 1.3;
         color: var(--text-secondary);
       }
 
-      .auth-status-action {
-        border: 1px solid var(--border-color);
-        background: #1f2937;
-        color: var(--text-primary);
-        font-size: 11px;
-        font-weight: 600;
-        border-radius: 6px;
-        padding: 6px 10px;
-        cursor: pointer;
-        -webkit-app-region: no-drag;
-      }
-
-      .auth-status-action:hover {
-        border-color: var(--accent);
-        color: #fff;
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
 
       .routing-context {
@@ -1005,9 +1052,10 @@
         </div>
         <div class="panel-controls">
           <button class="panel-btn logout-btn" id="logoutBtn" title="Sign out">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <svg class="logout-btn-icon" width="12" height="12" viewBox="0 0 24 24" fill="none">
               <path d="M16 17v-2h-5V9h5V7l5 5-5 5zM3 5h8v2H5v10h6v2H3V5z" fill="currentColor"/>
             </svg>
+            <span class="btn-spinner" id="logoutBtnSpinner" aria-hidden="true"></span>
             <span class="logout-btn-label" id="logoutBtnLabel">Sign out</span>
           </button>
           <button class="panel-btn" id="minimizeBtn" title="Minimize">
@@ -1028,6 +1076,26 @@
         </div>
       </div>
 
+      <div class="panel-context">
+        <div class="routing-context" id="routingContext">
+          <div class="routing-context-header">
+            <span class="routing-context-label">Project</span>
+            <button class="routing-context-switch" id="contextSwitchBtn" style="display:none;">Switch</button>
+          </div>
+          <div class="routing-context-value" id="routingContextValue">Checking project access…</div>
+          <div class="routing-context-editor" id="routingContextEditor">
+            <span class="context-select-label">Team</span>
+            <select class="context-select" id="accountSelect"></select>
+            <span class="context-select-label">Project</span>
+            <select class="context-select" id="projectSelect"></select>
+            <div class="context-actions">
+              <button class="context-btn" id="contextCancelBtn">Cancel</button>
+              <button class="context-btn save" id="contextSaveBtn">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Recording Controls -->
       <div class="recording-controls">
         <button class="record-btn" id="recordBtn">
@@ -1040,25 +1108,8 @@
           <span id="recordLabel">Record</span>
         </button>
         <div class="recording-auth-status" id="recordingAuthStatus">
+          <span class="auth-status-spinner" id="authStatusSpinner" aria-hidden="true"></span>
           <span class="auth-status-text" id="authStatusText">Checking sign-in...</span>
-          <button class="auth-status-action" id="authStatusAction" style="display:none;">Sign in</button>
-        </div>
-        <div class="routing-context" id="routingContext">
-          <div class="routing-context-header">
-            <span class="routing-context-label">Project</span>
-            <button class="routing-context-switch" id="contextSwitchBtn" style="display:none;">Switch</button>
-          </div>
-          <div class="routing-context-value" id="routingContextValue">Sign in to load team/project</div>
-          <div class="routing-context-editor" id="routingContextEditor">
-            <span class="context-select-label">Team</span>
-            <select class="context-select" id="accountSelect"></select>
-            <span class="context-select-label">Project</span>
-            <select class="context-select" id="projectSelect"></select>
-            <div class="context-actions">
-              <button class="context-btn" id="contextCancelBtn">Cancel</button>
-              <button class="context-btn save" id="contextSaveBtn">Save</button>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -1217,7 +1268,6 @@
       const minimizedIndicator = document.getElementById('minimizedIndicator');
       const recordingAuthStatus = document.getElementById('recordingAuthStatus');
       const authStatusText = document.getElementById('authStatusText');
-      const authStatusAction = document.getElementById('authStatusAction');
       const contextSwitchBtn = document.getElementById('contextSwitchBtn');
       const routingContextValue = document.getElementById('routingContextValue');
       const routingContextEditor = document.getElementById('routingContextEditor');
@@ -1227,14 +1277,17 @@
       const contextSaveBtn = document.getElementById('contextSaveBtn');
       let canStartRecording = false;
       let authIsLoggedIn = false;
+      let authPending = false;
       let authRefreshInFlight = false;
       let authPollInterval = null;
-      let authActionHandler = null;
       let userContext = null;
       let contextEditorOpen = false;
 
       function setAuthControlMode(isLoggedIn) {
         authIsLoggedIn = !!isLoggedIn;
+        if (authPending) {
+          return;
+        }
         logoutBtn.classList.toggle('signed-out', !authIsLoggedIn);
         logoutBtn.title = authIsLoggedIn ? 'Sign out' : 'Sign in';
         logoutBtnLabel.textContent = authIsLoggedIn ? 'Sign out' : 'Sign in';
@@ -1246,6 +1299,24 @@
           authIsLoggedIn && (hasMultipleAccounts || hasMultipleProjects)
             ? 'inline-flex'
             : 'none';
+      }
+
+      function setAuthPending(pending, label = 'Checking…') {
+        authPending = !!pending;
+        logoutBtn.classList.toggle('pending', authPending);
+        logoutBtn.disabled = authPending;
+
+        if (authPending) {
+          logoutBtn.title = 'Checking sign-in';
+          logoutBtnLabel.textContent = label;
+          contextSwitchBtn.style.display = 'none';
+          if (!authIsLoggedIn && !isRecording) {
+            routingContextValue.textContent = 'Checking project access…';
+          }
+          return;
+        }
+
+        setAuthControlMode(authIsLoggedIn);
       }
 
       function getAccountById(accountId) {
@@ -1318,8 +1389,9 @@
       logoutBtn.addEventListener('click', async () => {
         if (!window.electronAPI) return;
         if (!authIsLoggedIn) {
+          setAuthPending(true);
           await openAuthWindow();
-          showAuthStatus('Sign in in the main window, then return here.');
+          showAuthStatus('Waiting for sign-in in the main window…', { loading: true });
           return;
         }
         if (isRecording) {
@@ -1328,22 +1400,19 @@
         }
 
         try {
+          setAuthPending(true, 'Signing out…');
           await window.electronAPI.logout();
           await window.electronAPI.openAuthWindow?.();
+          setAuthPending(false);
           setAuthControlMode(false);
           userContext = null;
           closeContextEditor();
           renderRoutingContextSummary();
           setRecordReady(false);
-          showAuthStatus('Signed out. Sign in to start recording.', {
-            tone: 'error',
-            actionLabel: 'Sign in',
-            actionHandler: openAuthWindow,
-          });
+          showAuthStatus('Signed out. Sign in to start recording.', { tone: 'error' });
         } catch (_) {
-          showAuthStatus('Sign out failed. Retry.', {
-            tone: 'error',
-          });
+          setAuthPending(false);
+          showAuthStatus('Sign out failed. Retry.', { tone: 'error' });
         }
       });
 
@@ -1384,12 +1453,6 @@
       closeConfirmBtn.addEventListener('click', () => {
         closeConfirm.classList.remove('active');
         window.electronAPI?.closePanel();
-      });
-
-      authStatusAction.addEventListener('click', async () => {
-        if (typeof authActionHandler === 'function') {
-          await authActionHandler();
-        }
       });
 
       contextSwitchBtn.addEventListener('click', () => {
@@ -1476,21 +1539,13 @@
 
         if (result.error === 'auth_required') {
           setRecordReady(false);
-          showAuthStatus('Sign in to start meeting recording.', {
-            tone: 'error',
-            actionLabel: 'Sign in',
-            actionHandler: openAuthWindow,
-          });
+          showAuthStatus('Sign in to start meeting recording.', { tone: 'error' });
           return;
         }
 
         if (result.error === 'upload_token_unavailable') {
           setRecordReady(false);
-          showAuthStatus('Could not fetch upload token. Retry.', {
-            tone: 'error',
-            actionLabel: 'Retry',
-            actionHandler: refreshRecordingReadiness,
-          });
+          showAuthStatus('Could not fetch upload token. Retry.', { tone: 'error' });
           return;
         }
 
@@ -1501,11 +1556,7 @@
           return;
         }
 
-        showAuthStatus('Could not start recording. Retry.', {
-          tone: 'error',
-          actionLabel: 'Retry',
-          actionHandler: refreshRecordingReadiness,
-        });
+        showAuthStatus('Could not start recording. Retry.', { tone: 'error' });
       });
 
       // Tab switching
@@ -1555,38 +1606,27 @@
       }
 
       function hideAuthStatus() {
-        recordingAuthStatus.classList.remove('show', 'error', 'ready');
+        recordingAuthStatus.classList.remove('show', 'error', 'ready', 'loading');
         authStatusText.textContent = '';
-        authStatusAction.style.display = 'none';
-        authStatusAction.textContent = '';
-        authActionHandler = null;
       }
 
       function showAuthStatus(message, options = {}) {
         const {
           tone = 'info',
-          actionLabel = null,
-          actionHandler = null,
+          loading = false,
         } = options;
 
         recordingAuthStatus.classList.add('show');
-        recordingAuthStatus.classList.remove('error', 'ready');
-        if (tone === 'error') {
+        recordingAuthStatus.classList.remove('error', 'ready', 'loading');
+        if (loading) {
+          recordingAuthStatus.classList.add('loading');
+        } else if (tone === 'error') {
           recordingAuthStatus.classList.add('error');
         } else if (tone === 'ready') {
           recordingAuthStatus.classList.add('ready');
         }
 
         authStatusText.textContent = message;
-        authActionHandler = actionHandler;
-
-        if (actionLabel) {
-          authStatusAction.style.display = 'inline-flex';
-          authStatusAction.textContent = actionLabel;
-        } else {
-          authStatusAction.style.display = 'none';
-          authStatusAction.textContent = '';
-        }
       }
 
       function setRecordReady(ready) {
@@ -1612,21 +1652,19 @@
         }
 
         authRefreshInFlight = true;
+        setAuthPending(true);
         try {
-          showAuthStatus('Checking sign-in…');
+          showAuthStatus('Checking sign-in…', { loading: true });
 
           const authStatus = await window.electronAPI.getAuthStatus();
-          setAuthControlMode(authStatus?.isLoggedIn);
           if (!authStatus?.isLoggedIn) {
+            setAuthPending(false);
+            setAuthControlMode(false);
             userContext = null;
             closeContextEditor();
             renderRoutingContextSummary();
             setRecordReady(false);
-            showAuthStatus('Sign in to start meeting recording.', {
-              tone: 'error',
-              actionLabel: 'Sign in',
-              actionHandler: openAuthWindow,
-            });
+            showAuthStatus('Sign in to start meeting recording.', { tone: 'error' });
             return false;
           }
 
@@ -1638,33 +1676,28 @@
             !context?.default_project_id
           ) {
             userContext = context || null;
+            setAuthPending(false);
             setAuthControlMode(authStatus?.isLoggedIn);
             renderRoutingContextSummary();
             setRecordReady(false);
-            showAuthStatus('Workspace connection failed. Retry.', {
-              tone: 'error',
-              actionLabel: 'Retry',
-              actionHandler: refreshRecordingReadiness,
-            });
+            showAuthStatus('Workspace connection failed. Retry.', { tone: 'error' });
             return false;
           }
 
           userContext = context;
+          setAuthPending(false);
           setAuthControlMode(authStatus?.isLoggedIn);
           renderRoutingContextSummary();
           setRecordReady(true);
           hideAuthStatus();
           return true;
         } catch (_) {
+          setAuthPending(false);
           userContext = null;
           closeContextEditor();
           renderRoutingContextSummary();
           setRecordReady(false);
-          showAuthStatus('Could not verify account. Retry.', {
-            tone: 'error',
-            actionLabel: 'Retry',
-            actionHandler: refreshRecordingReadiness,
-          });
+          showAuthStatus('Could not verify account. Retry.', { tone: 'error' });
           return false;
         } finally {
           authRefreshInFlight = false;
@@ -1938,10 +1971,10 @@
 
       // IPC handlers (will be set up by preload)
       if (window.electronAPI) {
-        setAuthControlMode(false);
+        setAuthPending(true);
         renderRoutingContextSummary();
         setRecordReady(false);
-        showAuthStatus('Checking sign-in…');
+        showAuthStatus('Checking sign-in…', { loading: true });
         refreshRecordingReadiness();
 
         authPollInterval = setInterval(() => {
@@ -1971,6 +2004,7 @@
           addTranscript(transcript);
         });
       } else {
+        setAuthPending(false);
         setAuthControlMode(false);
         renderRoutingContextSummary();
         setRecordReady(false);
