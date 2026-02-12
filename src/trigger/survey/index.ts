@@ -10,3 +10,4 @@
 export { extractSurveyEvidenceTask } from "./extractSurveyEvidence";
 export { computeSurveyStatsTask } from "./computeSurveyStats";
 export { backfillSurveyEvidenceTask } from "./backfillSurveyEvidence";
+export { extractPersonalizedEvidenceTask } from "./extractPersonalizedEvidence";

@@ -16,6 +16,7 @@ import { calculateICPScore } from "~/features/people/services/calculateICPScore.
 import { enrichPersonData } from "~/features/people/services/enrichPersonData.server";
 import { generatePersonDescription } from "~/features/people/services/generatePersonDescription.server";
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav";
+import { BulkGenerateSurveys } from "~/features/research-links/components/BulkGenerateSurveys";
 import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
 import { getFacetCatalog } from "~/lib/database/facets.server";
 import { userContext } from "~/server/user-context";
@@ -1110,6 +1111,9 @@ export default function PersonDetail() {
 	// ---- Quick Note dialog ----
 	const [noteDialogOpen, setNoteDialogOpen] = useState(false);
 
+	// ---- Survey dialog ----
+	const [surveyDialogOpen, setSurveyDialogOpen] = useState(false);
+
 	const handleSaveNote = useCallback(
 		async (note: {
 			title: string;
@@ -1189,6 +1193,7 @@ export default function PersonDetail() {
 						onLogNote={() => setNoteDialogOpen(true)}
 						onEnrichPerson={handleEnrichPerson}
 						isEnriching={isEnriching}
+						onSendSurvey={() => setSurveyDialogOpen(true)}
 						isRefreshing={isRefreshingDescription}
 					/>
 				</section>
@@ -1244,6 +1249,19 @@ export default function PersonDetail() {
 			</PageContainer>
 
 			<QuickNoteDialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen} onSave={handleSaveNote} />
+
+			<BulkGenerateSurveys
+				open={surveyDialogOpen}
+				onOpenChange={setSurveyDialogOpen}
+				selectedPeople={[
+					{
+						id: person.id,
+						name: person.name || "Unknown",
+						title: person.title,
+						email: person.primary_email,
+					},
+				]}
+			/>
 		</div>
 	);
 }

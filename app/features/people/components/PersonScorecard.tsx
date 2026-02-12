@@ -83,6 +83,7 @@ interface PersonScorecardProps {
 	onLogNote?: () => void;
 	onEnrichPerson?: () => void;
 	isEnriching?: boolean;
+	onSendSurvey?: () => void;
 	isRefreshing?: boolean;
 }
 
@@ -133,6 +134,7 @@ export function PersonScorecard({
 	onLogNote,
 	onEnrichPerson,
 	isEnriching = false,
+	onSendSurvey,
 	isRefreshing = false,
 }: PersonScorecardProps) {
 	const persona = person.people_personas?.[0]?.personas;
@@ -261,21 +263,14 @@ export function PersonScorecard({
 					{/* Enrich via web search */}
 					<Button variant="outline" size="sm" onClick={onEnrichPerson} disabled={isEnriching}>
 						{isEnriching ? <Loader2 className="size-4 animate-spin" /> : <Globe className="size-4" />}
-						{isEnriching ? "Enriching…" : "Enrich"}
+						{isEnriching ? "Enriching\u2026" : "Enrich"}
 					</Button>
 
-					{/* Send Survey - Phase 2 placeholder */}
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<span tabIndex={0}>
-								<Button variant="outline" size="sm" disabled>
-									<ClipboardList className="size-4" />
-									Send Survey
-								</Button>
-							</span>
-						</TooltipTrigger>
-						<TooltipContent>Coming soon</TooltipContent>
-					</Tooltip>
+					{/* Send Survey */}
+					<Button variant="outline" size="sm" onClick={onSendSurvey}>
+						<ClipboardList className="size-4" />
+						Send Survey
+					</Button>
 
 					{/* Overflow menu */}
 					<DropdownMenu>
