@@ -219,10 +219,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 			if (interviews && interviews.length > 0) {
 				try {
-					const { applyAllLensesTask } = await import("~/../src/trigger/lens/applyAllLenses");
+					const { tasks } = await import("@trigger.dev/sdk");
 
 					for (const interview of interviews) {
-						await applyAllLensesTask.trigger({
+						await tasks.trigger("lens.apply-all-lenses", {
 							interviewId: interview.id,
 							accountId: project.account_id,
 							projectId,

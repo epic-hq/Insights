@@ -375,8 +375,8 @@ export async function markResearchLinkComplete({
 
 	// Trigger background task to extract evidence from text responses
 	try {
-		const { extractSurveyEvidenceTask } = await import("../../../src/trigger/survey/extractSurveyEvidence");
-		await extractSurveyEvidenceTask.trigger({ responseId });
+		const { tasks } = await import("@trigger.dev/sdk");
+		await tasks.trigger("survey.extract-evidence", { responseId });
 	} catch (triggerError) {
 		// Log but don't fail - the response is marked complete
 		console.error("[markResearchLinkComplete] Failed to trigger evidence extraction:", triggerError);

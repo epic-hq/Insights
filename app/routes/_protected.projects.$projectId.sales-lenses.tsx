@@ -372,8 +372,8 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 	}
 
 	if (parsed.data.intent === "refresh") {
-		const { generateSalesLensTask } = await import("~/../src/trigger/sales/generateSalesLens");
-		await generateSalesLensTask.trigger({
+		const { tasks } = await import("@trigger.dev/sdk");
+		await tasks.trigger("sales.generate-sales-lens", {
 			interviewId: parsed.data.interviewId!,
 			computedBy: ctx.claims.sub ?? null,
 		});
