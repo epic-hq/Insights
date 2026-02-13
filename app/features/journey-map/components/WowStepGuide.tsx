@@ -4,7 +4,13 @@
  */
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Check, PartyPopper, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Loader2,
+  PartyPopper,
+  Sparkles,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useFetcher, useRevalidator } from "react-router";
 import { Button } from "~/components/ui/button";
@@ -18,6 +24,7 @@ interface WowStepGuideProps {
   wowPath: WowPath;
   wowSettings: WowSettings;
   counts: Record<string, number | undefined>;
+  countsLoading: boolean;
   routes: RouteDefinitions;
   onSkipToJourney: () => void;
 }
@@ -26,12 +33,14 @@ export function WowStepGuide({
   wowPath,
   wowSettings,
   counts,
+  countsLoading,
   routes,
   onSkipToJourney,
 }: WowStepGuideProps) {
   const pathConfig = WOW_PATHS[wowPath];
   const completedSteps = wowSettings.wow_steps_completed ?? [];
   const fetcher = useFetcher();
+  const resetFetcher = useFetcher();
   const revalidator = useRevalidator();
   const [showConfetti, setShowConfetti] = useState(false);
   const [showBigCelebration, setShowBigCelebration] = useState(false);
@@ -181,14 +190,29 @@ export function WowStepGuide({
           animate={{ opacity: 1, y: 0 }}
           className="text-center"
         >
-          <span
-            className={cn(
-              "mb-2 inline-block rounded-full px-3 py-1 font-medium text-xs",
-              accentClasses.badge,
-            )}
-          >
-            {pathConfig.label} path
-          </span>
+          <div className="mb-2 flex items-center justify-center gap-2">
+            <span
+              className={cn(
+                "inline-block rounded-full px-3 py-1 font-medium text-xs",
+                accentClasses.badge,
+              )}
+            >
+              {pathConfig.label} path
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                resetFetcher.submit(
+                  { _action: "reset_wow_path" },
+                  { method: "POST" },
+                )
+              }
+              disabled={resetFetcher.state !== "idle"}
+              className="text-muted-foreground text-xs underline-offset-4 hover:underline"
+            >
+              Change
+            </button>
+          </div>
           <h1 className="font-bold text-2xl tracking-tight">3 steps to wow</h1>
         </motion.div>
 
@@ -212,6 +236,7 @@ export function WowStepGuide({
                     index={index}
                     isComplete={isComplete}
                     isActive={isActive}
+                    isProcessing={isActive && countsLoading}
                     routes={routes}
                     accentClasses={accentClasses}
                   />
@@ -246,6 +271,7 @@ function StepCard({
   index,
   isComplete,
   isActive,
+  isProcessing,
   routes,
   accentClasses,
 }: {
@@ -253,6 +279,7 @@ function StepCard({
   index: number;
   isComplete: boolean;
   isActive: boolean;
+  isProcessing: boolean;
   routes: RouteDefinitions;
   accentClasses: {
     ring: string;
@@ -313,7 +340,7 @@ function StepCard({
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="mt-3"
+              className="mt-3 flex items-center gap-3"
             >
               <Button asChild size="sm" className="gap-1.5">
                 <Link to={step.getRoute(routes)}>
@@ -326,6 +353,12 @@ function StepCard({
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </Button>
+              {isProcessing && (
+                <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Checking...
+                </span>
+              )}
             </motion.div>
           )}
         </div>

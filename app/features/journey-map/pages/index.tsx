@@ -84,6 +84,16 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     return { ok: true };
   }
 
+  if (actionType === "reset_wow_path") {
+    const { wow_path: _, wow_steps_completed: __, ...rest } = currentSettings;
+    await supabase
+      .from("projects")
+      .update({ project_settings: rest })
+      .eq("id", projectId);
+
+    return { ok: true };
+  }
+
   if (actionType === "advance_wow_step") {
     const stepsRaw = formData.get("wow_steps_completed") as string;
     const steps = JSON.parse(stepsRaw) as number[];
@@ -106,7 +116,10 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 export default function JourneyMapPage() {
   const { accountId, projectId } = useCurrentProject();
   const routes = useProjectRoutesFromIds(accountId, projectId);
-  const { counts } = useSidebarCounts(accountId, projectId);
+  const { counts, loading: countsLoading } = useSidebarCounts(
+    accountId,
+    projectId,
+  );
   const { progress } = useJourneyProgress(projectId);
   const { wowSettings } = useLoaderData<typeof loader>();
   const skipFetcher = useFetcher();
@@ -139,6 +152,7 @@ export default function JourneyMapPage() {
       <StepsToWow
         routes={routes}
         counts={counts}
+        countsLoading={countsLoading}
         wowSettings={wowSettings}
         onShowJourneyMap={handleShowJourneyMap}
       />
