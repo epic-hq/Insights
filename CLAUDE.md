@@ -238,6 +238,8 @@ execute: async (input) => {
 - **Never use static `~/` imports** in Mastra tool files — use dynamic imports
 - **Never run bare `bv`** — blocks the session with interactive TUI
 - **Never use `new URL(request.url).origin`** for webhook/callback URLs — returns HTTP behind proxy. Use `createDomain(request)` from `~/utils/http`
+- **Never sign Content-Type in R2 presigned upload URLs** — browsers may send subtly different Content-Type than signed, causing `SignatureDoesNotMatch`. Only sign `host`. See `createR2PresignedUploadUrl()` in `r2.server.ts`
+- **Never use `ReadableStream` body + `duplex:"half"` for browser uploads** — not cross-browser. Use `Blob` body directly
 
 ### Package Quirks
 
