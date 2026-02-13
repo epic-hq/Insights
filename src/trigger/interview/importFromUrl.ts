@@ -37,7 +37,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server";
-import type { processInterviewOrchestratorV2 } from "~/trigger/interview/v2/orchestrator";
+import type { processInterviewOrchestratorV2 } from "./v2/orchestrator";
 import { uploadToR2 } from "~/utils/r2.server";
 import {
   isDirectMediaUrl,

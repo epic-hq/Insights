@@ -13,7 +13,7 @@ import { metadata, task } from "@trigger.dev/sdk";
 import consola from "consola";
 import { calculateICPScore } from "~/features/people/services/calculateICPScore.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
-import { workflowRetryConfig } from "~/trigger/interview/v2/config";
+import { workflowRetryConfig } from "../interview/v2/config";
 
 // Progress stages
 const STAGES = {
