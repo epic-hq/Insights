@@ -702,12 +702,6 @@ export interface EvidenceTurn {
   why_it_matters?: string | null
   facet_mentions: FacetMention[]
   isQuestion?: boolean | null
-  says?: string[] | null
-  does?: string[] | null
-  thinks?: string[] | null
-  feels?: string[] | null
-  pains?: string[] | null
-  gains?: string[] | null
   
 }
 

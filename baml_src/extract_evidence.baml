@@ -28,14 +28,8 @@ class EvidenceTurn {
   why_it_matters string? @description("≤10 words on consequence/importance (e.g., trigger/impact; note if generalizable)")
 	facet_mentions FacetMention[] @description("Facet mentions that appear in this turn")
   isQuestion bool? @description("TRUE if this turn contains a question (any speaker). Useful for filtering question-response patterns.")
-
-  // Empathy map (high-signal only; leave empty if none)
-  says string[]? @description("High-signal quotes only; 0–2 (≤120 chars). Use when wording carries unique meaning beyond verbatim.")
-  does string[]? @description("High-signal behaviors; 0–2. Imperative phrasing (present-habitual). Include frequency/recency if available.")
-  thinks string[]? @description("High-signal inferred beliefs; 0–2. Only when justified by evidence.")
-  feels string[]? @description("High-signal emotions; 0–2, with brief context and trigger if present.")
-  pains string[]? @description("High-signal obstacles; 0–2. Prefer job-story: When [situation], blocked by [obstacle].")
-  gains string[]? @description("High-signal outcomes; 0–2. Prefer job-story: so I can [outcome].")
+  // Empathy maps (says/does/thinks/feels/pains/gains) removed from extraction pass for performance.
+  // Reimplemented as paid-tier feature derived from facet_mentions. See bead Insights-vpws.
 }
 
 class FacetMention {
@@ -129,7 +123,7 @@ function ExtractEvidenceFromTranscriptV2(
   language: string,
   facet_catalog: FacetCatalog
 ) -> Extraction {
-  client "CustomGPT5"
+  client "EvidenceExtractionFast"
   prompt #"
 You are an expert UX researcher.
 Your task is to produce an exhaustive, chronological Event Stream from an conversation transcript so the reader can follow what happened moment by moment, with explicit mention-level signals. Do not summarize; capture every distinct signal as a separate mention. Do not perform catalog linking in this pass.
@@ -141,7 +135,7 @@ Note this could be a monologue in which case be sure to create evidenceTurns for
    - `display_name`: the literal transcript label (e.g., "SPEAKER 2", "Kai", "Interviewer").
    - `inferred_name` and `role` when confident (role ∈ participant | interviewer | moderator | observer | customer | sales_rep).
    - Include any known segments/personas/organization in the optional fields when the transcript states them.
-2. Slice the transcript into coherent, chronological turns (where each turn is a single speaker). Emit one `EvidenceTurn` per turn, anchored to the correct `person_key` with gist, chunk, verbatim, tags, anchors, confidence, and empathy map fields.
+2. Slice the transcript into coherent, chronological turns (where each turn is a single speaker). Emit one `EvidenceTurn` per turn, anchored to the correct `person_key` with gist, chunk, verbatim, anchors, and facet mentions.
 3. For each `EvidenceTurn`, emit one or more `FacetMention` items—one per distinct, atomic signal (goal, pain, behavior, tool, value, preference, demographic, context, artifact, emotion, feature, price). Each `FacetMention` must reference its parent `EvidenceTurn` via `parent_index`. Keep `value` concrete and readable in isolation (≤12 words). Prefer verb+object or noun+modifier. Avoid vague superlatives (e.g., "best", "amazing") unless paired with a criterion. Include a short `quote` when high-signal.
 4. Segment the conversation into `Scene`s when the topic/goal shifts. Each scene spans a contiguous block of `EvidenceTurn.index` values and has a short topic label.
 
@@ -181,8 +175,7 @@ ONLY extract turns with business or psychographic relevance.
 - anchors: include start_ms (REQUIRED), end_ms when available, speaker label, optional chapter_title.
 - confidence: low | medium | high. Map evidence strength: direct quote ≥ concrete behavior ≥ inferred belief.
 - **isQuestion**: Set to TRUE if this turn contains any question (explicit questions, requests for clarification, probes, etc.) regardless of speaker. FALSE or omit if no questions. Useful for filtering question-response patterns and conversation analysis.
-- empathy map: only when high-signal; 0–2 items per field; do not repeat gist/verbatim/facet values; leave empty if not useful.
- - why_it_matters: ≤10 words; express the consequence or importance (e.g., "blocks timely status updates").
+- why_it_matters: ≤10 words; express the consequence or importance (e.g., "blocks timely status updates").
 
 ## FacetMention (extraction-only, no linking)
 - parent_index: points to the `EvidenceTurn.index` where the signal appeared.
@@ -218,7 +211,6 @@ Set `context_confidence` between 0.0-1.0 based on how clear the signals are.
 - Do not fall back to a generic person — if a turn's `person_key` cannot be matched to `people`, revisit your mapping rather than defaulting to the primary participant.
 - Do not output any catalog ids or proposals; linking occurs in a separate step.
 - Keep `value` and `verbatim` within word limits. Ban vague comparatives unless paired with a concrete subject/rationale. Each mention should be testable and specific (avoid grouping multiple subjects; emit one mention per subject).
-- When choosing empathy vs mention: prefer FacetMention as the authoritative signal; only add empathy items if they add non-duplicative skim value.
 - Prefer fewer, higher-quality turns over many weak ones; but do not drop distinct signals (emit mentions instead).
 - Output facet_mentions both nested in EvidenceTurn AND as a flattened top-level array (this enables phase-2 persona synthesis).
 - ALWAYS output `interaction_context`, `context_confidence`, and `context_reasoning` at the top level.
@@ -239,8 +231,8 @@ Output ONLY JSON conforming to {{ ctx.output_format }} (no prose/markdown). Ensu
 "#
 }
 
-// Simple empathy test
-test ExtractEvidenceFromTranscriptV2_EmpathyTest {
+// Basic extraction test
+test ExtractEvidenceFromTranscriptV2_BasicTest {
   functions [ExtractEvidenceFromTranscriptV2]
   args {
     speaker_transcripts [

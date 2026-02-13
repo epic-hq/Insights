@@ -24,7 +24,7 @@ import { toBamlError, BamlStream, BamlAbortError, Collector, ClientRegistry } fr
 import type { Checked, Check, RecursivePartialNull as MovedRecursivePartialNull } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, AskLinkInsightsResponse, AuthorityInfo, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, BehaviorPattern, BudgetInfo, Category, Chapter, CompetitiveInsight, ConditionOperator, ContextualSuggestions, ConversationAnalysis, ConversationEvidence, ConversationLensResult, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, ConversationTakeaways, CrossLensFinding, CrossLensRecommendedAction, CrossLensSynthesisResult, DealAdvisorRecommendation, DealQualificationSignals, DecisionInsight, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, DocumentEvidence, DocumentExtraction, Emotions, EntityAggregation, EvidenceAnalysisResponse, EvidenceItem, EvidenceLinkResult, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, ExecutiveInsight, ExecutiveSummary, ExtractedEvidence, ExtractedInsight, Extraction, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetGroupInput, FacetGroupSummary, FacetMention, FacetSignalInput, FeaturePrioritization, FeatureRequest, FieldSynthesis, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, GeneratedLensField, GeneratedLensSection, GeneratedLensTemplate, GoalAnswer, GoalLensExtraction, GuidelineAction, GuidelineParseResult, HistoryItem, HypothesisValidation, InferredPersonSegments, InsightMatch, InteractionContext, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, JobFunction, JobToBeDone, LensEntityResult, LensEvidenceHighlight, LensFieldValue, LensHygieneItem, LensNextStepItem, LensObjectionItem, LensRecommendation, LensSectionResult, LensStakeholderItem, LensSynthesisResult, MentalModel, NeedInfo, NextStepInfo, NoteSnippet, OpportunityRecommendation, PainMatrixInsights, PainMatrixInsightsInput, ParsedCondition, ParsedGuideline, Participant, ParticipantGoal, Person, PersonContext, PersonDescriptionSummary, PersonEvidenceHighlight, PersonFacetInput, PersonFacetLensRequest, PersonFacetLensResponse, PersonFacets, PersonLensMetadata, PersonProfileInput, PersonScaleInput, PersonSegmentInput, PersonSnapshot, Persona, Persona1, PersonaAdvisorContext, PersonaAdvisorFacetInput, PersonaAdvisorPersonaInput, PersonaAdvisorReport, PersonaAdvisorScaleInput, PersonaAdvisorThemeInput, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, PersonalizedQuestion, ProductGap, ProductLensExtraction, ProjectAnalysis, ProjectContext, ProjectNameDescription, ProjectTemplateOut, ProposedTheme, QALensResult, QAPair, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionInsight, QuestionIssue, QuestionPolicy, QuestionSet, QuickResponseSummary, ResearchGoal, ResearchInsightInput, ResearchLearning, ResearchLensExtraction, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionInsight, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, ResponseTheme, RuleConfidence, SalesLensExtraction, Scene, Scores, SectionSynthesis, SegmentPattern, SeniorityLevel, Set, SetRecord, Source, SpeakerUtterance, Spectrum, SpreadsheetAnalysis, SpreadsheetColumnMapping, StakeholderRole, SuggestedFacet, SuggestedQuestion, SurveyGoal, SurveyQuestionInput, SynthesisDiscrepancy, SynthesizedInsight, TargetFitAssessment, ThemeValidation, TimelineInfo, TopPainCell, TurnAnchors, UnknownResolution, UsabilityFinding, UserJourneyInsight} from "./types"
+import type {ActionButton, AskLinkInsightsResponse, AuthorityInfo, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, BehaviorPattern, BudgetInfo, Category, Chapter, CompetitiveInsight, ConditionOperator, ContextualSuggestions, ConversationAnalysis, ConversationEvidence, ConversationLensResult, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, ConversationTakeaways, CrossLensFinding, CrossLensRecommendedAction, CrossLensSynthesisResult, DealAdvisorRecommendation, DealQualificationSignals, DecisionInsight, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, DocumentEvidence, DocumentExtraction, Emotions, EntityAggregation, EvidenceAnalysisResponse, EvidenceItem, EvidenceLinkResult, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, ExecutiveInsight, ExecutiveSummary, ExtractedEvidence, ExtractedInsight, Extraction, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetGroupInput, FacetGroupSummary, FacetMention, FacetSignalInput, FeaturePrioritization, FeatureRequest, FieldSynthesis, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, GeneratedLensField, GeneratedLensSection, GeneratedLensTemplate, GoalAnswer, GoalLensExtraction, GuidelineAction, GuidelineParseResult, HistoryItem, HypothesisValidation, InferredPersonSegments, InsightMatch, InteractionContext, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, JobFunction, JobToBeDone, LensEntityResult, LensEvidenceHighlight, LensFieldValue, LensHygieneItem, LensNextStepItem, LensObjectionItem, LensRecommendation, LensSectionResult, LensStakeholderItem, LensSynthesisResult, MentalModel, NeedInfo, NextStepInfo, NoteSnippet, OpportunityRecommendation, PainMatrixInsights, PainMatrixInsightsInput, ParsedCondition, ParsedGuideline, Participant, ParticipantGoal, Person, PersonContext, PersonDescriptionSummary, PersonEvidenceHighlight, PersonFacetInput, PersonFacetLensRequest, PersonFacetLensResponse, PersonFacets, PersonLensMetadata, PersonNextStep, PersonNextStepsInput, PersonNextStepsOutput, PersonProfileInput, PersonScaleInput, PersonSegmentInput, PersonSnapshot, Persona, Persona1, PersonaAdvisorContext, PersonaAdvisorFacetInput, PersonaAdvisorPersonaInput, PersonaAdvisorReport, PersonaAdvisorScaleInput, PersonaAdvisorThemeInput, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, PersonalizedQuestion, ProductGap, ProductLensExtraction, ProjectAnalysis, ProjectContext, ProjectNameDescription, ProjectTemplateOut, ProposedTheme, QALensResult, QAPair, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionInsight, QuestionIssue, QuestionPolicy, QuestionSet, QuickResponseSummary, ResearchGoal, ResearchInsightInput, ResearchLearning, ResearchLensExtraction, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionInsight, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, ResponseTheme, RuleConfidence, SalesLensExtraction, Scene, Scores, SectionSynthesis, SegmentPattern, SeniorityLevel, Set, SetRecord, Source, SpeakerUtterance, Spectrum, SpreadsheetAnalysis, SpreadsheetColumnMapping, StakeholderRole, SuggestedFacet, SuggestedQuestion, SurveyGoal, SurveyQuestionInput, SynthesisDiscrepancy, SynthesizedInsight, TargetFitAssessment, ThemeValidation, TimelineInfo, TopPainCell, TurnAnchors, UnknownResolution, UsabilityFinding, UserJourneyInsight} from "./types"
 import type TypeBuilder from "./type_builder"
 import { AsyncHttpRequest, AsyncHttpStreamRequest } from "./async_request"
 import { LlmResponseParser, LlmStreamParser } from "./parser"
@@ -2052,6 +2052,62 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
             __options__.watchers,
             )
             return __raw__.parsed(false) as types.PainMatrixInsights
+            } catch (error) {
+            throw toBamlError(error);
+            }
+            }
+            
+        async GeneratePersonNextSteps(
+        input: types.PersonNextStepsInput,
+        __baml_options__?: BamlCallOptions<never>
+        ): Promise<types.PersonNextStepsOutput> {
+          try {
+          const __options__ = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+          const __signal__ = __options__.signal;
+
+          if (__signal__?.aborted) {
+          throw new BamlAbortError('Operation was aborted', __signal__.reason);
+          }
+
+          // Check if onTick is provided - route through streaming if so
+          if (__options__.onTick) {
+          const __stream__ = this.stream.GeneratePersonNextSteps(
+          input,
+          __baml_options__
+          );
+
+          return await __stream__.getFinalResponse();
+          }
+
+          const __collector__ = __options__.collector ? (Array.isArray(__options__.collector) ? __options__.collector :
+          [__options__.collector]) : [];
+          const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+          const __env__: Record<string, string> = Object.fromEntries(
+            Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+            );
+
+            // Resolve client option to clientRegistry (client takes precedence)
+            let __clientRegistry__ = __options__.clientRegistry;
+            if (__options__.client) {
+              __clientRegistry__ = __clientRegistry__ || new ClientRegistry();
+              __clientRegistry__.setPrimary(__options__.client);
+            }
+
+            const __raw__ = await this.runtime.callFunction(
+            "GeneratePersonNextSteps",
+            {
+            "input": input
+            },
+            this.ctxManager.cloneContext(),
+            __options__.tb?.__tb(),
+            __clientRegistry__,
+            __collector__,
+            __options__.tags || {},
+            __env__,
+            __signal__,
+            __options__.watchers,
+            )
+            return __raw__.parsed(false) as types.PersonNextStepsOutput
             } catch (error) {
             throw toBamlError(error);
             }
@@ -5661,6 +5717,80 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
                   __raw__,
                   (a): partial_types.PainMatrixInsights => a,
                   (a): types.PainMatrixInsights => a,
+                  this.ctxManager.cloneContext(),
+                  __options__.signal,
+                  )
+                  } catch (error) {
+                  throw toBamlError(error);
+                  }
+                  }
+                  
+            GeneratePersonNextSteps(
+            input: types.PersonNextStepsInput,
+            __baml_options__?: BamlCallOptions<never>
+            ): BamlStream<partial_types.PersonNextStepsOutput, types.PersonNextStepsOutput>
+              {
+              try {
+              const __options__ = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+              const __signal__ = __options__.signal;
+
+              if (__signal__?.aborted) {
+              throw new BamlAbortError('Operation was aborted', __signal__.reason);
+              }
+
+              let __collector__ = __options__.collector ? (Array.isArray(__options__.collector) ? __options__.collector :
+              [__options__.collector]) : [];
+
+              let __onTickWrapper__: (() => void) | undefined;
+
+              // Create collector and wrap onTick if provided
+              if (__options__.onTick) {
+              const __tickCollector__ = new Collector("on-tick-collector");
+              __collector__ = [...__collector__, __tickCollector__];
+
+              __onTickWrapper__ = () => {
+              const __log__ = __tickCollector__.last;
+              if (__log__) {
+              try {
+              __options__.onTick!("Unknown", __log__);
+              } catch (error) {
+              console.error("Error in onTick callback for GeneratePersonNextSteps", error);
+              }
+              }
+              };
+              }
+
+              const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+              const __env__: Record<string, string> = Object.fromEntries(
+                Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+                );
+
+                // Resolve client option to clientRegistry (client takes precedence)
+                let __clientRegistry__ = __options__.clientRegistry;
+                if (__options__.client) {
+                  __clientRegistry__ = __clientRegistry__ || new ClientRegistry();
+                  __clientRegistry__.setPrimary(__options__.client);
+                }
+
+                const __raw__ = this.runtime.streamFunction(
+                "GeneratePersonNextSteps",
+                {
+                "input": input
+                },
+                undefined,
+                this.ctxManager.cloneContext(),
+                __options__.tb?.__tb(),
+                __clientRegistry__,
+                __collector__,
+                __options__.tags || {},
+                __env__,
+                __signal__,
+                __onTickWrapper__,
+                )
+                return new BamlStream<partial_types.PersonNextStepsOutput, types.PersonNextStepsOutput>(
+                  __raw__,
+                  (a): partial_types.PersonNextStepsOutput => a,
+                  (a): types.PersonNextStepsOutput => a,
                   this.ctxManager.cloneContext(),
                   __options__.signal,
                   )

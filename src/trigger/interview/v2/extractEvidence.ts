@@ -35,7 +35,7 @@ export const extractEvidenceTaskV2 = task({
     maxTimeoutInMs: 30_000,
     randomize: false,
   },
-  maxDuration: 3_600, // allow up to 60 minutes for large transcripts (93K+ chars)
+  maxDuration: 1_200, // 20 min — gpt-5-mini @ 6x concurrency should finish in 3-8 min
   machine: {
     preset: "medium-2x", // faster than default for long transcripts
   },

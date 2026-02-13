@@ -1061,23 +1061,6 @@ export async function extractEvidenceAndPeopleCore({
     }
   }
 
-  const empathyStats = {
-    says: 0,
-    does: 0,
-    thinks: 0,
-    feels: 0,
-    pains: 0,
-    gains: 0,
-  };
-  const empathySamples: Record<keyof typeof empathyStats, string[]> = {
-    says: [],
-    does: [],
-    thinks: [],
-    feels: [],
-    pains: [],
-    gains: [],
-  };
-
   const evidenceRows: EvidenceInsert[] = [];
   const durationSeconds =
     typeof (transcriptData as { audio_duration?: unknown }).audio_duration ===
@@ -1636,38 +1619,8 @@ export async function extractEvidenceAndPeopleCore({
       is_question: ev.isQuestion ?? false,
     };
 
-    const _says = Array.isArray(ev?.says) ? (ev.says as string[]) : [];
-    const _does = Array.isArray(ev?.does) ? (ev.does as string[]) : [];
-    const _thinks = Array.isArray(ev?.thinks) ? (ev.thinks as string[]) : [];
-    const _feels = Array.isArray(ev?.feels) ? (ev.feels as string[]) : [];
-    const _pains = Array.isArray(ev?.pains) ? (ev.pains as string[]) : [];
-    const _gains = Array.isArray(ev?.gains) ? (ev.gains as string[]) : [];
-    (row as Record<string, unknown>).says = _says;
-    (row as Record<string, unknown>).does = _does;
-    (row as Record<string, unknown>).thinks = _thinks;
-    (row as Record<string, unknown>).feels = _feels;
-    (row as Record<string, unknown>).pains = _pains;
-    (row as Record<string, unknown>).gains = _gains;
-
-    empathyStats.says += _says.length;
-    empathyStats.does += _does.length;
-    empathyStats.thinks += _thinks.length;
-    empathyStats.feels += _feels.length;
-    empathyStats.pains += _pains.length;
-    empathyStats.gains += _gains.length;
-    for (const [k, arr] of Object.entries({
-      says: _says,
-      does: _does,
-      thinks: _thinks,
-      feels: _feels,
-      pains: _pains,
-      gains: _gains,
-    }) as Array<[keyof typeof empathyStats, string[]]>) {
-      for (const v of arr) {
-        if (typeof v === "string" && v.trim() && empathySamples[k].length < 3)
-          empathySamples[k].push(v.trim());
-      }
-    }
+    // Empathy maps (says/does/thinks/feels/pains/gains) removed from extraction.
+    // Will be derived from facet_mentions as paid-tier feature. See bead Insights-vpws.
 
     const whyItMatters = sanitizeVerbatim(
       (ev as { why_it_matters?: string }).why_it_matters,
