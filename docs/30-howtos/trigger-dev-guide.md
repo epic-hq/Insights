@@ -913,3 +913,75 @@ Key properties available in run subscriptions:
 - **Cleanup subscriptions**: Backend subscriptions auto-complete, frontend hooks auto-cleanup
 
 Design tasks to be stateless, idempotent, and resilient to failures. Use metadata for state tracking and queues for resource management.
+
+---
+
+# Interview Processing Pipeline (v2)
+
+## Architecture Overview
+
+The v2 pipeline processes interviews through an orchestrator (`processInterviewOrchestratorV2`) that calls atomic tasks sequentially. Each task is resumable via persistent workflow state in `analysis_jobs.workflow_state` JSONB.
+
+**Entry points:** Desktop app upload, web upload, Recall meeting import, manual re-process.
+
+## Pipeline Steps
+
+### Blocking (must complete before interview is "ready")
+
+| Step | Task | Model/Cost | What it does |
+|------|------|-----------|--------------|
+| 1 | `uploadAndTranscribeTaskV2` | AssemblyAI (~$0.65/hr) | Upload media, transcribe if needed |
+| 2 | `extractEvidenceTaskV2` | gpt-5 ($$$) | BAML evidence extraction, batched chunks, 30min max |
+| 3 | `enrichPersonTaskV2` | gpt-5-mini ($$) | AI descriptions for each person |
+| 4 | `generateInsightsTaskV2` | BAML ($$) | Themes, embeddings, semantic dedup |
+| 5 | `assignPersonasTaskV2` | DB only (free) | Auto-group themes, persona queries |
+| 6 | `attributeAnswersTaskV2` | Embeddings (free) | Link evidence to project questions |
+
+### Deferrable side effects (triggered from `finalizeInterviewTaskV2`)
+
+| Task | Model/Cost | Notes |
+|------|-----------|-------|
+| `applyAllLensesTask` | BAML ($$$ per lens) | Currently sequential, should fan out |
+| Conversation analysis | BAML ($$) | Overview card generation |
+| `generateThumbnail` | Cheap | Video thumbnails |
+| `generateEvidenceThumbnails` | Cheap | Evidence card thumbnails |
+| Theme consolidation | DB only | Cross-interview, threshold-based |
+
+### Parallelizable (currently sequential, could run together)
+
+- `assignPersonasTaskV2` + `attributeAnswersTaskV2` (no dependency)
+- Multiple lenses within `applyAllLensesTask` (currently sequential `triggerAndWait` loop)
+
+## Cost Estimate (typical 30min interview)
+
+| Component | Cost Range |
+|-----------|-----------|
+| Transcription | ~$0.33 |
+| Evidence extraction | ~$0.50-2.00 |
+| Insights generation | ~$0.20-0.80 |
+| Person enrichment | ~$0.10-0.40 |
+| Lens application | ~$0.30-1.20 per lens |
+| **Total** | **~$1.43-4.73** |
+
+## BAML Model Pricing (.env)
+
+```
+BAML_EXTRACT_EVIDENCE_PROMPT_COST_PER_1K_TOKENS=0.00125      # gpt-5 input
+BAML_EXTRACT_EVIDENCE_COMPLETION_COST_PER_1K_TOKENS=0.01      # gpt-5 output
+BAML_PERSONA_SYNTHESIS_PROMPT_COST_PER_1K_TOKENS=0.00025      # gpt-5-mini input
+BAML_PERSONA_SYNTHESIS_COMPLETION_COST_PER_1K_TOKENS=0.002    # gpt-5-mini output
+```
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/trigger/interview/v2/orchestrator.ts` | Main pipeline orchestrator |
+| `src/trigger/interview/v2/extractEvidenceCore.ts` | Evidence extraction + batching (~2200 LOC) |
+| `src/trigger/interview/v2/enrichPerson.ts` | Person profile enrichment |
+| `src/trigger/interview/v2/generateInsights.ts` | Theme/insight generation |
+| `src/trigger/interview/v2/finalize.ts` | Finalization + side effect triggers |
+| `src/trigger/lens/` | Lens application tasks |
+| `baml_src/extract_evidence.baml` | Evidence extraction prompt (gpt-5) |
+| `baml_src/extract_persona.baml` | Persona synthesis prompt (gpt-5-mini) |
+| `baml_src/clients.baml` | BAML client/model definitions |
