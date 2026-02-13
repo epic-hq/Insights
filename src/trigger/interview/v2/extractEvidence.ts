@@ -103,6 +103,19 @@ export const extractEvidenceTaskV2 = task({
             : [],
         });
 
+        // Guard: ensure transcript has speech before calling expensive AI extraction
+        if (
+          transcriptData.speaker_transcripts.length === 0 &&
+          (!fullTranscript || fullTranscript.trim().length === 0)
+        ) {
+          throw new Error(
+            `[extract-evidence] No speech content available for interview ${interviewId}. ` +
+              `speaker_transcripts: ${transcriptData.speaker_transcripts.length}, ` +
+              `fullTranscript length: ${fullTranscript?.length ?? 0}. ` +
+              `The audio file likely contains no detectable speech.`,
+          );
+        }
+
         // Call v2 core with people hooks and progress callback for heartbeat safety
         const extraction = await extractEvidenceCore({
           db: client as any,

@@ -257,7 +257,9 @@ function toUsageRollupEntry(
       ? usage.totalTokens
       : inputTokens + outputTokens;
   const promptCostUsd =
-    typeof usage?.promptCostUsd === "number" ? roundUsd(usage.promptCostUsd) : 0;
+    typeof usage?.promptCostUsd === "number"
+      ? roundUsd(usage.promptCostUsd)
+      : 0;
   const completionCostUsd =
     typeof usage?.completionCostUsd === "number"
       ? roundUsd(usage.completionCostUsd)
@@ -339,7 +341,9 @@ interface ExtractEvidenceResult {
   rawPeople?: EvidenceParticipant[];
 }
 
-function normalizeSpeakerLabelKey(value: string | null | undefined): string | null {
+function normalizeSpeakerLabelKey(
+  value: string | null | undefined,
+): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed.length) return null;
@@ -582,15 +586,11 @@ export async function extractEvidenceAndPeopleCore({
     projectId,
   };
   const usageRunKey =
-    normalizedMetadata.triggerRunId ??
-    analysisJobId ??
-    `manual-${Date.now()}`;
-  const extractModel =
-    process.env.BAML_EXTRACT_EVIDENCE_MODEL || "gpt-5-mini";
+    normalizedMetadata.triggerRunId ?? analysisJobId ?? `manual-${Date.now()}`;
+  const extractModel = process.env.BAML_EXTRACT_EVIDENCE_MODEL || "gpt-5-mini";
   const extractProvider = inferProvider(extractModel);
   const extractUsageIdempotencyKey = `interview:${interviewRecord.id}:extract-evidence:${usageRunKey}`;
-  const synthesisModel =
-    process.env.BAML_PERSONA_SYNTHESIS_MODEL || "gpt-5";
+  const synthesisModel = process.env.BAML_PERSONA_SYNTHESIS_MODEL || "gpt-5";
   const synthesisProvider = inferProvider(synthesisModel);
   const synthesisUsageIdempotencyKey = `interview:${interviewRecord.id}:persona-synthesis:${usageRunKey}`;
   const firstTranscriptSpeakerLabel = (() => {
@@ -660,6 +660,7 @@ export async function extractEvidenceAndPeopleCore({
 
   const lfGeneration = lfTrace?.generation?.({
     name: "baml.ExtractEvidenceFromTranscriptV2",
+    model: extractModel,
     input: {
       language,
       transcriptLength: fullTranscript?.length ?? 0,
@@ -922,9 +923,14 @@ export async function extractEvidenceAndPeopleCore({
   const rawInteractionContext = (evidenceResponse as any)?.interaction_context;
   const interactionContext: ExtractEvidenceResult["interactionContext"] =
     rawInteractionContext &&
-    ["Research", "Sales", "Support", "Internal", "Debrief", "Personal"].includes(
-      rawInteractionContext,
-    )
+    [
+      "Research",
+      "Sales",
+      "Support",
+      "Internal",
+      "Debrief",
+      "Personal",
+    ].includes(rawInteractionContext)
       ? (rawInteractionContext.toLowerCase() as ExtractEvidenceResult["interactionContext"])
       : null;
   const contextConfidence: number | null =
@@ -985,6 +991,7 @@ export async function extractEvidenceAndPeopleCore({
 
     const lfSynthesisGeneration = lfTrace?.generation?.({
       name: "baml.DerivePersonaFacetsFromEvidence",
+      model: synthesisModel,
       input: {
         evidenceCount: evidenceUnits.length,
         peopleCount: evidenceResponse?.people?.length ?? 0,
@@ -1117,21 +1124,23 @@ export async function extractEvidenceAndPeopleCore({
     );
     const rollupUpdatedAt = new Date().toISOString();
 
-    const { data: interviewUsageData, error: interviewUsageReadError } = await db
-      .from("interviews")
-      .select("conversation_analysis")
-      .eq("id", interviewRecord.id)
-      .single();
+    const { data: interviewUsageData, error: interviewUsageReadError } =
+      await db
+        .from("interviews")
+        .select("conversation_analysis")
+        .eq("id", interviewRecord.id)
+        .single();
     if (interviewUsageReadError) {
       consola.warn(
         "[usage-rollup] Failed to load existing conversation_analysis:",
         interviewUsageReadError.message,
       );
     } else {
-      const existingAnalysis = asRecord(
-        (interviewUsageData as { conversation_analysis?: unknown } | null)
-          ?.conversation_analysis,
-      ) ?? {};
+      const existingAnalysis =
+        asRecord(
+          (interviewUsageData as { conversation_analysis?: unknown } | null)
+            ?.conversation_analysis,
+        ) ?? {};
       const existingLlmUsage = asRecord(existingAnalysis.llm_usage) ?? {};
 
       const nextConversationAnalysis = {
@@ -1314,7 +1323,9 @@ export async function extractEvidenceAndPeopleCore({
       const normalizedSpeaker = normalizeSpeakerLabelKey(
         participant.speaker_label,
       );
-      const normalizedFirst = normalizeSpeakerLabelKey(firstTranscriptSpeakerLabel);
+      const normalizedFirst = normalizeSpeakerLabelKey(
+        firstTranscriptSpeakerLabel,
+      );
       if (!normalizedSpeaker || !normalizedFirst) return false;
       return normalizedSpeaker !== normalizedFirst;
     }) ??
@@ -1542,9 +1553,7 @@ export async function extractEvidenceAndPeopleCore({
   if (participants.length) {
     for (const [index, participant] of participants.entries()) {
       const participantKey = participant.person_key;
-      consola.debug(
-        `  - Creating person record for "${participantKey}"`,
-      );
+      consola.debug(`  - Creating person record for "${participantKey}"`);
       const resolved = resolveName(participant, index, metadata);
       if (peopleHooks?.isPlaceholderPerson?.(resolved.name)) {
         consola.info(
@@ -1692,7 +1701,8 @@ export async function extractEvidenceAndPeopleCore({
       primaryPersonName = personNameByKey.get(externalKey) ?? primaryPersonName;
       primaryPersonRole = "participant";
       const participant = participantByKey.get(externalKey);
-      primaryPersonDescription = participant?.summary ?? primaryPersonDescription;
+      primaryPersonDescription =
+        participant?.summary ?? primaryPersonDescription;
       primaryPersonOrganization =
         participant?.organization ?? primaryPersonOrganization;
       primaryPersonSegments =
@@ -2085,9 +2095,13 @@ export async function extractEvidenceAndPeopleCore({
           evidence_id: evidenceId,
         };
       })
-      .filter((row): row is Omit<EvidenceFacetRow, "evidence_index"> & {
-        evidence_id: string;
-      } => row !== null);
+      .filter(
+        (
+          row,
+        ): row is Omit<EvidenceFacetRow, "evidence_index"> & {
+          evidence_id: string;
+        } => row !== null,
+      );
 
     if (finalFacetRows.length) {
       consola.info(

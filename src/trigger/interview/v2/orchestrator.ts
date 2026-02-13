@@ -214,7 +214,49 @@ export const processInterviewOrchestratorV2 = task({
           throw new Error(errorMsg);
         }
 
-        // fullTranscript is now optional - will be extracted from transcript_formatted if not provided
+        // Validate that transcript contains actual speech before attempting extraction
+        const hasTranscriptContent =
+          (state.fullTranscript && state.fullTranscript.trim().length > 0) ||
+          (Array.isArray(
+            (state.transcriptData as Record<string, unknown> | undefined)
+              ?.speaker_transcripts,
+          ) &&
+            (
+              (state.transcriptData as Record<string, unknown>)
+                .speaker_transcripts as unknown[]
+            ).length > 0);
+
+        if (!hasTranscriptContent) {
+          // Load from DB as a fallback — transcript may exist on the interview record
+          const { data: interviewCheck } = await client
+            .from("interviews")
+            .select("transcript, transcript_formatted")
+            .eq("id", state.interviewId)
+            .single();
+
+          const dbTranscript = interviewCheck?.transcript || "";
+          const dbSpeakers = Array.isArray(
+            (interviewCheck?.transcript_formatted as Record<string, unknown>)
+              ?.speaker_transcripts,
+          )
+            ? (
+                (interviewCheck?.transcript_formatted as Record<string, unknown>)
+                  .speaker_transcripts as unknown[]
+              ).length
+            : 0;
+
+          if (!dbTranscript.trim() && dbSpeakers === 0) {
+            throw new Error(
+              `Cannot extract evidence: no speech detected in transcript for interview ${state.interviewId}. ` +
+                `The audio file may be silent or corrupted. Please re-upload with a valid audio file.`,
+            );
+          }
+
+          // DB has content — populate state so extraction can proceed
+          state.fullTranscript = dbTranscript;
+          state.transcriptData =
+            interviewCheck?.transcript_formatted as Record<string, unknown>;
+        }
 
         consola.info(
           `[Orchestrator] State validation passed: interviewId=${state.interviewId}`,

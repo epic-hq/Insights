@@ -111,9 +111,14 @@ Jot notes here as you work. Close beads with `bd close`. When you ask me to upda
 	* video how to
 
 Tee up: Marketing messages
-- home page needs to show 
-- more concretely immediately that we help you understand your people right now. It's just a wallet text. So my idea is to have a Lot more people like maybe in a crowd and then you're gonna as you hover over They'll zoom like a Polaroid Snot would zoom out and it would have like Indicator Text written over it like maybe in Like a Sharpie or something Or like a dry erase ink depends if we want high tech or low tech and like over the head it might say like thinks There's her is it frustrated with Awkward tools for getting their job done or something and then over the heart it might say Wants to be more productive And then over their hand it might say, you know uses tools like notion and Slack So it kind of makes the point visually that you are That we're seeing key at important attributes of the people And I'd pick like, you know three Different people out of the crowd that would You could zoom in like that by You know it would Pop it up where they would like zoom in to focus in the front. So maybe in the background kind of like a sea of people Walking on the street in Manhattan or something or maybe In a business meeting Sitting around a table But the idea is it's kind of like a more modern version of the thought bubble What's not a bubble but you're seeing actually into the people and that's why the text is written over them So I want you to get a Designer And channel your your top, you know brand ad agency juices Get someone from that company in here to like chai at day or whoever's done like You know Nike and Apple and these iconic brand type positioning Uh in messaging campaigns to bring this out And um look at the you know positioning doc that we have And um We have the features that are on the Home page, but really renovate this to a very crisp almost minimalist website don't want to Kill them with a list of features. I want them to immediately feel the emotion of oh you help me get my customer So I can get my customer
-- image cosanova
+- home page needs to be elevated. Redesigned. DONE
+- improved onboarding workflow to WOW
+- standardized on blue and orange colors in HP
+- 
+Bugs:
+- upload multipart Auth header failure
+- time exceeded in trigger dev evidence pipeline. complete refactor, removing obttleneck by adding concurrency, removing facet catalog injection, usering smaller cheaper models for extraction.
+-  
 ## Parking Lot (not this sprint)
 
 - Smarter agent loop / recommendation memory (next sprint) -- ha, kinda doing it now a bit.
