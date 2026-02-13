@@ -145,6 +145,7 @@ export interface ProcessInterviewOrchestratorPayload {
 	// Resume capability
 	resumeFrom?: WorkflowStep
 	skipSteps?: WorkflowStep[] // Optional: skip specific steps (e.g., for testing)
+	includeDeferredSteps?: boolean // Opt-in for enrich/personas/answers pass
 }
 
 export interface ProcessInterviewOrchestratorResult {

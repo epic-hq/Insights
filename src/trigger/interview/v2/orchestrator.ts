@@ -61,6 +61,7 @@ export const processInterviewOrchestratorV2 = task({
       userCustomInstructions,
       resumeFrom,
       skipSteps = [],
+      includeDeferredSteps = false,
     } = payload;
 
     const client = createSupabaseAdminClient();
@@ -98,6 +99,15 @@ export const processInterviewOrchestratorV2 = task({
 
     // Determine starting point
     const startFrom = resumeFrom || "upload";
+    const deferredStepSet = new Set<WorkflowStep>([
+      "enrich-person",
+      "personas",
+      "answers",
+    ]);
+    const isDeferredRun =
+      includeDeferredSteps && deferredStepSet.has(startFrom);
+    const shouldRunDeferredSteps =
+      includeDeferredSteps || deferredStepSet.has(startFrom);
 
     // Validate required data for resume points
     if (startFrom === "evidence" && !state.fullTranscript) {
@@ -124,7 +134,7 @@ export const processInterviewOrchestratorV2 = task({
 
     try {
       // Initialize processing_metadata at workflow start
-      if (state.interviewId) {
+      if (state.interviewId && !isDeferredRun) {
         await client
           .from("interviews")
           .update({
@@ -251,6 +261,7 @@ export const processInterviewOrchestratorV2 = task({
 
       // Step 3: Enrich Person (generate descriptions, link organizations)
       if (
+        shouldRunDeferredSteps &&
         shouldExecuteStep("enrich-person", startFrom, state) &&
         !skipSteps.includes("enrich-person")
       ) {
@@ -301,6 +312,7 @@ export const processInterviewOrchestratorV2 = task({
 
       // Step 5: Assign Personas
       if (
+        shouldRunDeferredSteps &&
         shouldExecuteStep("personas", startFrom, state) &&
         !skipSteps.includes("personas")
       ) {
@@ -337,6 +349,7 @@ export const processInterviewOrchestratorV2 = task({
 
       // Step 6: Attribute Answers
       if (
+        shouldRunDeferredSteps &&
         shouldExecuteStep("answers", startFrom, state) &&
         !skipSteps.includes("answers")
       ) {
@@ -425,7 +438,7 @@ export const processInterviewOrchestratorV2 = task({
       );
 
       // Update processing_metadata on error
-      if (state.interviewId) {
+      if (state.interviewId && !isDeferredRun) {
         await client
           .from("interviews")
           .update({
@@ -441,10 +454,12 @@ export const processInterviewOrchestratorV2 = task({
           .eq("id", state.interviewId);
       }
 
-      await updateAnalysisJobError(client, analysisJobId, {
-        currentStep: state.currentStep,
-        error: errorMessage(error),
-      });
+      if (!isDeferredRun) {
+        await updateAnalysisJobError(client, analysisJobId, {
+          currentStep: state.currentStep,
+          error: errorMessage(error),
+        });
+      }
 
       throw error;
     }

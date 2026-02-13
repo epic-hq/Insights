@@ -1810,7 +1810,8 @@ export async function extractEvidenceAndPeopleCore({
 
       // Build evidence_facet row - person_id will be set from personIdByKey map
       // personKey is already resolved at this point (lines 1134-1142)
-      const facetPersonId = personIdByKey.get(personKey) || null;
+      const facetPersonId =
+        personIdByKey.get(personKey) || primaryPersonId || null;
 
       const facetRow: EvidenceFacetRow = {
         account_id: accountId,
@@ -2063,13 +2064,30 @@ export async function extractEvidenceAndPeopleCore({
     }
 
     // Map evidence_index to evidence_id
-    const finalFacetRows = evidenceFacetRowsToInsert.map((row) => {
-      const { evidence_index, ...rest } = row;
-      return {
-        ...rest,
-        evidence_id: insertedEvidenceIds[evidence_index],
-      };
-    });
+    const finalFacetRows = evidenceFacetRowsToInsert
+      .map((row) => {
+        const { evidence_index, ...rest } = row;
+        const evidenceId = insertedEvidenceIds[evidence_index];
+        if (!evidenceId) {
+          consola.warn(
+            `Skipping evidence_facet row: no evidence_id for index ${evidence_index}`,
+          );
+          return null;
+        }
+        const fallbackPersonKey = personKeyForEvidence[evidence_index];
+        const fallbackPersonId =
+          (fallbackPersonKey && personIdByKey.get(fallbackPersonKey)) ||
+          primaryPersonId ||
+          null;
+        return {
+          ...rest,
+          person_id: rest.person_id ?? fallbackPersonId,
+          evidence_id: evidenceId,
+        };
+      })
+      .filter((row): row is Omit<EvidenceFacetRow, "evidence_index"> & {
+        evidence_id: string;
+      } => row !== null);
 
     if (finalFacetRows.length) {
       consola.info(
@@ -2362,7 +2380,12 @@ export async function extractEvidenceAndPeopleCore({
     );
 
     for (const personKey of allPersonKeys) {
-      const personId = personIdByKey.get(personKey);
+      const personId =
+        personIdByKey.get(personKey) ||
+        (personIdByKey.size === 1
+          ? Array.from(personIdByKey.values())[0]
+          : primaryPersonId) ||
+        null;
       if (!personId) {
         consola.warn(
           `⚠️  Skipping facets for person_key "${personKey}" - no matching person record found`,
@@ -2372,6 +2395,11 @@ export async function extractEvidenceAndPeopleCore({
           Array.from(personIdByKey.keys()),
         );
         continue;
+      }
+      if (!personIdByKey.has(personKey)) {
+        consola.info(
+          `ℹ️  Remapping unresolved person_key "${personKey}" to person_id ${personId}`,
+        );
       }
 
       const facetObservations: PersonFacetObservation[] = [];

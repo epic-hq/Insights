@@ -139,6 +139,7 @@ export interface EvidenceFacetRow {
   account_id: string;
   project_id: string | null;
   evidence_index: number;
+  person_id: string | null;
   kind_slug: string;
   facet_account_id: number;
   label: string;
