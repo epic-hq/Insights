@@ -9,6 +9,10 @@ on:
       - ".github/ISSUE_TEMPLATE/**"
       - ".github/pull_request_template.md"
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   agent-smoke-tests:
     name: Agent Domain Smoke Tests
