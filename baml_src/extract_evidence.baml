@@ -18,13 +18,14 @@ class TurnAnchors {
 }
 
 class EvidenceTurn {
+  index int @description("0-based, contiguous, equals its position in evidence[]")
   person_key string @description("REQUIRED: Exact match to Person.person_key (e.g., 'participant-1', 'interviewer-1'). Must reference a person defined in the people array.")
   speaker_label string? @description("Literal transcript speaker label, e.g., 'SPEAKER A', 'Speaker B' or the provided diarization name")
   gist string @description("≤12-word essence of the turn; slide-like headline")
   chunk string @description("2–5 sentences capturing the person's full thought")
   verbatim string @description("≤15-word exact quote/snippet from the chunk")
   anchors TurnAnchors @description("Anchors to source for auditability")
-  // confidence string @description("low | medium | high")
+  confidence string? @description("low | medium | high")
   why_it_matters string? @description("≤10 words on consequence/importance (e.g., trigger/impact; note if generalizable)")
 	facet_mentions FacetMention[] @description("Facet mentions that appear in this turn")
   isQuestion bool? @description("TRUE if this turn contains a question (any speaker). Useful for filtering question-response patterns.")
@@ -33,13 +34,12 @@ class EvidenceTurn {
 }
 
 class FacetMention {
-  // index int @description("0-based index within the stream for ordering")
-  // parent_index int @description("Index of the EvidenceTurn this mention derives from")
+  parent_index int @description("EvidenceTurn.index this mention derives from")
   person_key string @description("REQUIRED: Exact match to Person.person_key. Must match the person_key of the parent EvidenceTurn.")
   kind_slug string @description("One: goal | pain | behavior | tool | value | requirements | preference | demographic | context | artifact | emotion | workflow | feature")
   value string @description("CRITICAL: Human-readable descriptive text (≤12 words), NOT an ID or reference number. Examples: 'Healthcare Professional', 'prefers explicit topic mapping for workflow', 'requires calendar integration to schedule study'. NEVER use formats like 'ID:123' or numeric references. Prefer verb+object or noun+modifier. Include trigger/condition and objective when helpful.")
   quote string? @description("Optional ≤15-word supporting quote from the parent turn")
-  // confidence float? @description("Discrete buckets recommended: 1, 0.75, 0.5, 0.25, 0")
+  confidence float? @description("Discrete buckets recommended: 1, 0.75, 0.5, 0.25, 0")
 }
 
 class Scene {
@@ -53,9 +53,10 @@ class Scene {
 class Person {
   person_key string @description("REQUIRED: Deterministic slug like 'participant-1', 'participant-2', 'interviewer-1'. Number based on first appearance order. This MUST be used consistently in all EvidenceTurn and FacetMention references.")
   speaker_label string? @description("Literal transcript speaker label, e.g., 'SPEAKER A', 'Speaker B' or the provided diarization name")
-	person_name string? @description("The person's common name, like John Smith, Sally A., etc.")
+	person_name string? @description("The person's common name when confidently known, like John Smith, Sally A., etc.")
 	inferred_name string? @description("Preferred name if confidently inferred from context")
-	role string? @description("their role in the coversation (participant | interviewer | observer | moderator | customer | Sales Rep")
+	job_title string? @description("Optional free-text title like 'Product Manager' when explicitly stated")
+	job_function string? @description("Optional normalized job function like Engineering, Product, Sales, Marketing")
 }
 
 // === Interaction Context: What kind of conversation is this? ===
@@ -70,11 +71,10 @@ enum InteractionContext {
 }
 
 class Extraction {
-	//  people EvidenceParticipant[]
-	 people Person[]
-	 evidence EvidenceTurn[] @description("Chronological stream of evidence turns")
-	 facet_mentions FacetMention[] @description("Flattened array of all facet mentions for easier phase-2 processing")
-	 scenes Scene[]
+		//  people EvidenceParticipant[]
+		 people Person[]
+		 evidence EvidenceTurn[] @description("Chronological stream of evidence turns")
+		 scenes Scene[]
 
 	 // LLM-determined interaction context for automatic lens selection
 	 interaction_context InteractionContext @description("What kind of conversation is this? Used for automatic lens selection.")
@@ -120,21 +120,19 @@ class FacetCatalog {
 function ExtractEvidenceFromTranscriptV2(
   speaker_transcripts: SpeakerUtterance[],
   chapters: Chapter[],
-  language: string,
-  facet_catalog: FacetCatalog
+  language: string
 ) -> Extraction {
   client "EvidenceExtractionFast"
   prompt #"
 You are an expert UX researcher.
-Your task is to produce an exhaustive, chronological Event Stream from an conversation transcript so the reader can follow what happened moment by moment, with explicit mention-level signals. Do not summarize; capture every distinct signal as a separate mention. Do not perform catalog linking in this pass.
+Your task is to produce an exhaustive, chronological Event Stream from an conversation transcript so the reader can follow what happened moment by moment, with explicit mention-level signals. Do not summarize; capture every distinct signal as a separate mention.
 Note this could be a monologue in which case be sure to create evidenceTurns for each separate topic.
 
 ## Steps
 1. Identify every human speaker. Populate the `people` array once with:
    - `person_key`: deterministic slug per human such as `participant-1`, `participant-2`, `interviewer-1`. Derive the number from first appearance order. Reuse the EXACT same `person_key` string for all references to that person. Never reuse a slug for different humans.
-   - `display_name`: the literal transcript label (e.g., "SPEAKER 2", "Kai", "Interviewer").
-   - `inferred_name` and `role` when confident (role ∈ participant | interviewer | moderator | observer | customer | sales_rep).
-   - Include any known segments/personas/organization in the optional fields when the transcript states them.
+   - `speaker_label`: the literal transcript label (e.g., "SPEAKER 2", "Kai", "Interviewer").
+   - `inferred_name`, `job_title`, and `job_function` when confident.
 2. Slice the transcript into coherent, chronological turns (where each turn is a single speaker). Emit one `EvidenceTurn` per turn, anchored to the correct `person_key` with gist, chunk, verbatim, anchors, and facet mentions.
 3. For each `EvidenceTurn`, emit one or more `FacetMention` items—one per distinct, atomic signal (goal, pain, behavior, tool, value, preference, demographic, context, artifact, emotion, feature, price). Each `FacetMention` must reference its parent `EvidenceTurn` via `parent_index`. Keep `value` concrete and readable in isolation (≤12 words). Prefer verb+object or noun+modifier. Avoid vague superlatives (e.g., "best", "amazing") unless paired with a criterion. Include a short `quote` when high-signal.
 4. Segment the conversation into `Scene`s when the topic/goal shifts. Each scene spans a contiguous block of `EvidenceTurn.index` values and has a short topic label.
@@ -212,7 +210,6 @@ Set `context_confidence` between 0.0-1.0 based on how clear the signals are.
 - Do not output any catalog ids or proposals; linking occurs in a separate step.
 - Keep `value` and `verbatim` within word limits. Ban vague comparatives unless paired with a concrete subject/rationale. Each mention should be testable and specific (avoid grouping multiple subjects; emit one mention per subject).
 - Prefer fewer, higher-quality turns over many weak ones; but do not drop distinct signals (emit mentions instead).
-- Output facet_mentions both nested in EvidenceTurn AND as a flattened top-level array (this enables phase-2 persona synthesis).
 - ALWAYS output `interaction_context`, `context_confidence`, and `context_reasoning` at the top level.
 
 Speaker Transcripts (language={{ language }})
@@ -221,11 +218,6 @@ Each utterance includes speaker label, text, and timing in milliseconds:
 
 Chapters (optional; may help anchoring)
 {{ chapters }}
-
-{% if facet_catalog and (facet_catalog.kinds|length > 0 or facet_catalog.facets|length > 0) %}
-Facet catalog (read-only; do not link in this pass)
-{{ facet_catalog }}
-{% endif %}
 
 Output ONLY JSON conforming to {{ ctx.output_format }} (no prose/markdown). Ensure indices are contiguous from 0 and strictly ascending; each FacetMention.parent_index references an existing EvidenceTurn.index; omit empty/null fields.
 "#
@@ -275,11 +267,5 @@ test ExtractEvidenceFromTranscriptV2_BasicTest {
     ]
     chapters []
     language "en"
-    facet_catalog {
-      kinds []
-      facets []
-      version "test"
-    }
   }
 }
-

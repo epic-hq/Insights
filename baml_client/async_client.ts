@@ -1050,7 +1050,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
             }
             
         async ExtractEvidenceFromTranscriptV2(
-        speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
+        speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,
         __baml_options__?: BamlCallOptions<never>
         ): Promise<types.Extraction> {
           try {
@@ -1064,7 +1064,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
           // Check if onTick is provided - route through streaming if so
           if (__options__.onTick) {
           const __stream__ = this.stream.ExtractEvidenceFromTranscriptV2(
-          speaker_transcripts,chapters,language,facet_catalog,
+          speaker_transcripts,chapters,language,
           __baml_options__
           );
 
@@ -1088,7 +1088,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
             const __raw__ = await this.runtime.callFunction(
             "ExtractEvidenceFromTranscriptV2",
             {
-            "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
+            "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language
             },
             this.ctxManager.cloneContext(),
             __options__.tb?.__tb(),
@@ -4394,7 +4394,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
                   }
                   
             ExtractEvidenceFromTranscriptV2(
-            speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
+            speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,
             __baml_options__?: BamlCallOptions<never>
             ): BamlStream<partial_types.Extraction, types.Extraction>
               {
@@ -4443,7 +4443,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
                 const __raw__ = this.runtime.streamFunction(
                 "ExtractEvidenceFromTranscriptV2",
                 {
-                "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
+                "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language
                 },
                 undefined,
                 this.ctxManager.cloneContext(),

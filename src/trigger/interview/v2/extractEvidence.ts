@@ -7,7 +7,6 @@
 
 import { heartbeats, task } from "@trigger.dev/sdk";
 import consola from "consola";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import {
   errorMessage,
@@ -22,9 +21,7 @@ import {
 } from "~/features/interviews/peopleNormalization.server";
 import { resolveOrCreatePerson } from "~/lib/people/resolution.server";
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
-import { mapRawPeopleToInterviewLinks } from "./personMapping";
 import { extractEvidenceCore } from "./extractEvidenceCore";
-import type { Database } from "~/../supabase/types";
 
 export const extractEvidenceTaskV2 = task({
   id: "interview.v2.extract-evidence",
@@ -114,6 +111,7 @@ export const extractEvidenceTaskV2 = task({
             // Always trust the interview record for these authoritative fields
             accountId: interview.account_id,
             projectId: interview.project_id || undefined,
+            triggerRunId: ctx.run.id,
           },
           interviewRecord: interview as any,
           transcriptData: transcriptData as any,
@@ -162,7 +160,14 @@ export const extractEvidenceTaskV2 = task({
                   lastname: payload.lastname || undefined,
                   primary_email: payload.primary_email || undefined,
                   company: payload.company || undefined,
-                  role: payload.role || undefined,
+                  title: payload.title || undefined,
+                  job_function:
+                    (payload as Record<string, unknown>).job_function &&
+                    typeof (payload as Record<string, unknown>).job_function ===
+                      "string"
+                      ? ((payload as Record<string, unknown>)
+                          .job_function as string)
+                      : undefined,
                   person_type: payload.person_type ?? undefined,
                   source: "baml_extraction",
                 },
@@ -172,36 +177,6 @@ export const extractEvidenceTaskV2 = task({
             },
           },
         });
-
-        // Map raw people to people table and set transcript_key on interview_people
-        const rawPeople = Array.isArray((extraction as any)?.rawPeople)
-          ? ((extraction as any).rawPeople as any[])
-          : [];
-        if (rawPeople.length) {
-          const { speakerLabelByPersonId } = await mapRawPeopleToInterviewLinks(
-            {
-              db: client as unknown as SupabaseClient<Database>,
-              rawPeople,
-              accountId: interview.account_id,
-              projectId: interview.project_id,
-            },
-          );
-
-          for (const [
-            personId,
-            transcriptKey,
-          ] of speakerLabelByPersonId.entries()) {
-            await client.from("interview_people").upsert(
-              {
-                interview_id: interviewId,
-                person_id: personId,
-                project_id: interview.project_id,
-                transcript_key: transcriptKey,
-              },
-              { onConflict: "interview_id,person_id" },
-            );
-          }
-        }
 
         if (analysisJobId) {
           await saveWorkflowState(client, analysisJobId, {

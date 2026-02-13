@@ -600,7 +600,7 @@ export class HttpRequest {
   }
   
   ExtractEvidenceFromTranscriptV2(
-      speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
+      speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,
       __baml_options__?: BamlCallOptions<never>
   ): HTTPRequest {
     try {
@@ -619,7 +619,7 @@ export class HttpRequest {
       return this.runtime.buildRequestSync(
         "ExtractEvidenceFromTranscriptV2",
         {
-          "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
+          "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -2388,7 +2388,7 @@ export class HttpStreamRequest {
   }
   
   ExtractEvidenceFromTranscriptV2(
-      speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
+      speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,
       __baml_options__?: BamlCallOptions<never>
   ): HTTPRequest {
     try {
@@ -2407,7 +2407,7 @@ export class HttpStreamRequest {
       return this.runtime.buildRequestSync(
         "ExtractEvidenceFromTranscriptV2",
         {
-          "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
+          "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),

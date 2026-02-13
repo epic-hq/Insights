@@ -693,12 +693,14 @@ export interface EvidenceSet {
 }
 
 export interface EvidenceTurn {
+  index: number
   person_key: string
   speaker_label?: string | null
   gist: string
   chunk: string
   verbatim: string
   anchors: TurnAnchors
+  confidence?: string | null
   why_it_matters?: string | null
   facet_mentions: FacetMention[]
   isQuestion?: boolean | null
@@ -768,7 +770,6 @@ export interface ExtractedInsight {
 export interface Extraction {
   people: Person[]
   evidence: EvidenceTurn[]
-  facet_mentions: FacetMention[]
   scenes: Scene[]
   interaction_context: InteractionContext
   context_confidence: number
@@ -812,10 +813,12 @@ export interface FacetGroupSummary {
 }
 
 export interface FacetMention {
+  parent_index: number
   person_key: string
   kind_slug: string
   value: string
   quote?: string | null
+  confidence?: number | null
   
 }
 
@@ -1261,7 +1264,8 @@ export interface Person {
   speaker_label?: string | null
   person_name?: string | null
   inferred_name?: string | null
-  role?: string | null
+  job_title?: string | null
+  job_function?: string | null
   
 }
 

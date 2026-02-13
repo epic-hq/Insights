@@ -1,5 +1,1 @@
 export { uploadMediaAndTranscribeTask } from "./uploadMediaAndTranscribe"
-export { extractEvidenceAndPeopleTask } from "./extractEvidenceAndPeople"
-export { generateInterviewInsightsTask } from "./generateInterviewInsights"
-export { analyzeThemesAndPersonaTask } from "./analyzeThemesAndPersona"
-export { attributeAnswersTask } from "./attributeAnswers"

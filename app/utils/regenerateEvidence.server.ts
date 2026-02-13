@@ -1,9 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { tasks } from "@trigger.dev/sdk";
 import consola from "consola";
-import type { uploadMediaAndTranscribeTask } from "~/../../src/trigger/interview/uploadMediaAndTranscribe";
+import type { processInterviewOrchestratorV2 } from "~/../../src/trigger/interview/v2/orchestrator";
+import type { InterviewMetadata } from "~/../../src/trigger/interview/v2/types";
 import type { Database } from "~/../supabase/types";
-import type { InterviewMetadata } from "~/utils/processInterview.server";
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
 interface RegenerateEvidenceOptions {
@@ -75,7 +75,6 @@ export async function regenerateEvidenceForProject({
 				interviewTitle: interview.title || undefined,
 				interviewDate: interview.interview_date || undefined,
 				participantName: interview.participant_pseudonym || undefined,
-				duration_sec: interview.duration_sec || undefined,
 				segment: interview.segment || undefined,
 			};
 
@@ -94,9 +93,8 @@ export async function regenerateEvidenceForProject({
 				}
 			}
 
-			// Use Trigger.dev task instead of duplicating core logic
-			// This ensures consistent behavior and single source of truth
-			const result = await tasks.trigger<typeof uploadMediaAndTranscribeTask>("interview.upload-media-and-transcribe", {
+			// Route regenerations through the v2 orchestrator for one canonical pipeline.
+			const result = await tasks.trigger<typeof processInterviewOrchestratorV2>("interview.v2.orchestrator", {
 				metadata,
 				mediaUrl: mediaUrlForTask,
 				transcriptData,

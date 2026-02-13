@@ -229,6 +229,8 @@
 		"test:browser": "vitest run --config vitest.browser.config.ts --browser.headless",
 		"benchmark:howto:smoke": "tsx scripts/howto-benchmark-smoke.ts",
 		"benchmark:howto:update-snapshot": "tsx scripts/howto-benchmark-smoke.ts --update-snapshot",
+		"benchmark:extract:v2": "tsx scripts/benchmarks/extract-evidence-v2.ts",
+		"benchmark:goldset:candidates": "tsx scripts/benchmarks/find-goldset-candidates.ts",
 		"test:agents": "vitest run app/routes/api.chat.project-status.test.ts app/mastra/tools/__tests__/fetch-project-status-context.test.ts app/mastra/tools/__tests__/fetch-top-themes-with-people.test.ts && pnpm benchmark:howto:smoke",
 		"test:agents:smoke": "tsx scripts/agent-smoke-prompts.ts",
 		"test:all": "vitest run --browser.headless && vitest run --config vitest.integration.config.ts",

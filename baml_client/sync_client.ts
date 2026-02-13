@@ -948,7 +948,7 @@ export class BamlSyncClient {
   }
   
   ExtractEvidenceFromTranscriptV2(
-      speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
+      speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,
       __baml_options__?: BamlCallOptions<never>
   ): types.Extraction {
     try {
@@ -980,7 +980,7 @@ export class BamlSyncClient {
       const __raw__ = this.runtime.callFunctionSync(
         "ExtractEvidenceFromTranscriptV2",
         {
-          "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
+          "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language
         },
         this.ctxManager.cloneContext(),
         __options__.tb?.__tb(),

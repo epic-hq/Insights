@@ -1,7 +1,7 @@
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
 import consola from "consola";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { uploadMediaAndTranscribeTask } from "~/../src/trigger/interview/uploadMediaAndTranscribe";
+import type { processInterviewOrchestratorV2 } from "~/../src/trigger/interview/v2/orchestrator";
 import { createClient } from "~/lib/supabase/client";
 import type { Database } from "~/types";
 
@@ -66,7 +66,7 @@ export function useInterviewProgress({ interview, runId, accessToken }: UseInter
 
 	const realtimeRunId = shouldSubscribeToRun ? runId : undefined;
 
-	const { run, error: realtimeError } = useRealtimeRun<typeof uploadMediaAndTranscribeTask>(
+	const { run, error: realtimeError } = useRealtimeRun<typeof processInterviewOrchestratorV2>(
 		realtimeRunId,
 		realtimeOptions
 	);

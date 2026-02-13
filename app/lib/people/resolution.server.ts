@@ -31,6 +31,7 @@ export interface PersonResolutionInput {
 	// Organization
 	company?: string;
 	title?: string;
+	job_function?: string;
 
 	// Platform identity (for cross-meeting matching)
 	platform?: string;
@@ -278,6 +279,7 @@ export async function resolveOrCreatePerson(
 		primary_phone: input.primary_phone,
 		default_organization_id: orgId,
 		title: input.title,
+		job_function: input.job_function,
 		person_type: input.person_type,
 		// Store platform user ID in contact_info JSONB
 		contact_info: input.platform_user_id

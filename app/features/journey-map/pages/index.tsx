@@ -12,134 +12,107 @@ import { useJourneyProgress } from "~/hooks/useJourneyProgress";
 import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
 import { useSidebarCounts } from "~/hooks/useSidebarCounts";
 import { userContext } from "~/server/user-context";
-import type { WowPath, WowSettings } from "../journey-config";
 import { JourneyMapView } from "../components/JourneyMapView";
 import { StepsToWow } from "../components/StepsToWow";
+import type { WowPath, WowSettings } from "../journey-config";
 import type { Route } from "./+types/index";
 
 export async function loader({ context, params }: Route.LoaderArgs) {
-  const ctx = context.get(userContext);
-  const supabase = ctx.supabase;
-  const projectId = params.projectId;
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const projectId = params.projectId;
 
-  if (!projectId) {
-    throw new Response("Project ID required", { status: 400 });
-  }
+	if (!projectId) {
+		throw new Response("Project ID required", { status: 400 });
+	}
 
-  const { data: project } = await supabase
-    .from("projects")
-    .select("project_settings")
-    .eq("id", projectId)
-    .single();
+	const { data: project } = await supabase.from("projects").select("project_settings").eq("id", projectId).single();
 
-  const settings = (project?.project_settings ?? {}) as Record<string, unknown>;
+	const settings = (project?.project_settings ?? {}) as Record<string, unknown>;
 
-  const wowSettings: WowSettings = {
-    wow_path: (settings.wow_path as WowPath | null) ?? null,
-    wow_steps_completed: Array.isArray(settings.wow_steps_completed)
-      ? (settings.wow_steps_completed as number[])
-      : [],
-  };
+	const wowSettings: WowSettings = {
+		wow_path: (settings.wow_path as WowPath | null) ?? null,
+		wow_steps_completed: Array.isArray(settings.wow_steps_completed) ? (settings.wow_steps_completed as number[]) : [],
+	};
 
-  return { wowSettings };
+	return { wowSettings };
 }
 
 export async function action({ request, context, params }: Route.ActionArgs) {
-  const ctx = context.get(userContext);
-  const supabase = ctx.supabase;
-  const projectId = params.projectId;
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const projectId = params.projectId;
 
-  if (!projectId) {
-    throw new Response("Project ID required", { status: 400 });
-  }
+	if (!projectId) {
+		throw new Response("Project ID required", { status: 400 });
+	}
 
-  const formData = await request.formData();
-  const actionType = formData.get("_action");
+	const formData = await request.formData();
+	const actionType = formData.get("_action");
 
-  // Fetch current settings to merge
-  const { data: project } = await supabase
-    .from("projects")
-    .select("project_settings")
-    .eq("id", projectId)
-    .single();
+	// Fetch current settings to merge
+	const { data: project } = await supabase.from("projects").select("project_settings").eq("id", projectId).single();
 
-  const currentSettings = (project?.project_settings ?? {}) as Record<
-    string,
-    unknown
-  >;
+	const currentSettings = (project?.project_settings ?? {}) as Record<string, unknown>;
 
-  if (actionType === "set_wow_path") {
-    const wowPath = formData.get("wow_path") as string;
-    const updatedSettings = {
-      ...currentSettings,
-      wow_path: wowPath,
-      wow_steps_completed: [],
-    };
+	if (actionType === "set_wow_path") {
+		const wowPath = formData.get("wow_path") as string;
+		const updatedSettings = {
+			...currentSettings,
+			wow_path: wowPath,
+			wow_steps_completed: [],
+		};
 
-    await supabase
-      .from("projects")
-      .update({ project_settings: updatedSettings })
-      .eq("id", projectId);
+		await supabase.from("projects").update({ project_settings: updatedSettings }).eq("id", projectId);
 
-    return { ok: true };
-  }
+		return { ok: true };
+	}
 
-  if (actionType === "advance_wow_step") {
-    const stepsRaw = formData.get("wow_steps_completed") as string;
-    const steps = JSON.parse(stepsRaw) as number[];
-    const updatedSettings = {
-      ...currentSettings,
-      wow_steps_completed: steps,
-    };
+	if (actionType === "advance_wow_step") {
+		const stepsRaw = formData.get("wow_steps_completed") as string;
+		const steps = JSON.parse(stepsRaw) as number[];
+		const updatedSettings = {
+			...currentSettings,
+			wow_steps_completed: steps,
+		};
 
-    await supabase
-      .from("projects")
-      .update({ project_settings: updatedSettings })
-      .eq("id", projectId);
+		await supabase.from("projects").update({ project_settings: updatedSettings }).eq("id", projectId);
 
-    return { ok: true };
-  }
+		return { ok: true };
+	}
 
-  return { ok: false };
+	return { ok: false };
 }
 
 export default function JourneyMapPage() {
-  const { accountId, projectId } = useCurrentProject();
-  const routes = useProjectRoutesFromIds(accountId, projectId);
-  const { counts } = useSidebarCounts(accountId, projectId);
-  const { progress } = useJourneyProgress(projectId);
-  const { wowSettings } = useLoaderData<typeof loader>();
+	const { accountId, projectId } = useCurrentProject();
+	const routes = useProjectRoutesFromIds(accountId, projectId);
+	const { counts } = useSidebarCounts(accountId, projectId);
+	const { progress } = useJourneyProgress(projectId);
+	const { wowSettings } = useLoaderData<typeof loader>();
 
-  // Local override to force showing the journey map (for "Full Setup" / "Skip")
-  const [forceJourneyMap, setForceJourneyMap] = useState(false);
+	// Local override to force showing the journey map (for "Full Setup" / "Skip")
+	const [forceJourneyMap, setForceJourneyMap] = useState(false);
 
-  // Determine whether to show Steps to Wow or the full journey map.
-  // Show the wow flow if: no wow_path set OR path is set but not all steps are done.
-  // Show journey map if: forceJourneyMap is true, or wow path was "full_setup" style (we use null for that)
-  // and all 3 wow steps are completed.
-  const wowComplete =
-    wowSettings.wow_path &&
-    wowSettings.wow_steps_completed &&
-    wowSettings.wow_steps_completed.length >= 3;
+	// Determine whether to show Steps to Wow or the full journey map.
+	// Show the wow flow if: no wow_path set OR path is set but not all steps are done.
+	// Show journey map if: forceJourneyMap is true, or wow path was "full_setup" style (we use null for that)
+	// and all 3 wow steps are completed.
+	const wowComplete =
+		wowSettings.wow_path && wowSettings.wow_steps_completed && wowSettings.wow_steps_completed.length >= 3;
 
-  const showWow = !forceJourneyMap && !wowComplete;
+	const showWow = !forceJourneyMap && !wowComplete;
 
-  if (showWow) {
-    return (
-      <StepsToWow
-        routes={routes}
-        counts={counts}
-        wowSettings={wowSettings}
-        onShowJourneyMap={() => setForceJourneyMap(true)}
-      />
-    );
-  }
+	if (showWow) {
+		return (
+			<StepsToWow
+				routes={routes}
+				counts={counts}
+				wowSettings={wowSettings}
+				onShowJourneyMap={() => setForceJourneyMap(true)}
+			/>
+		);
+	}
 
-  return (
-    <JourneyMapView
-      routes={routes}
-      counts={counts}
-      journeyProgress={progress}
-    />
-  );
+	return <JourneyMapView routes={routes} counts={counts} journeyProgress={progress} />;
 }

@@ -149,9 +149,10 @@ export type NameResolutionSource =
 export interface NormalizedParticipant {
   person_key: string;
   speaker_label: string | null; // AssemblyAI speaker label (e.g., "SPEAKER A")
-  role: string | null;
   display_name: string | null;
   inferred_name: string | null;
+  job_title: string | null;
+  job_function: string | null;
   organization: string | null;
   summary: string | null;
   segments: string[];

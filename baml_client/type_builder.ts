@@ -99,7 +99,7 @@ export default class TypeBuilder {
     
     EvidenceSet: ClassViewer<'EvidenceSet', "facts" | "goals" | "pains" | "behaviors" | "triggers" | "success" | "quotes">;
     
-    EvidenceTurn: ClassViewer<'EvidenceTurn', "person_key" | "speaker_label" | "gist" | "chunk" | "verbatim" | "anchors" | "why_it_matters" | "facet_mentions" | "isQuestion">;
+    EvidenceTurn: ClassViewer<'EvidenceTurn', "index" | "person_key" | "speaker_label" | "gist" | "chunk" | "verbatim" | "anchors" | "confidence" | "why_it_matters" | "facet_mentions" | "isQuestion">;
     
     ExecutiveInsight: ClassViewer<'ExecutiveInsight', "title" | "insight" | "evidence" | "business_impact" | "impact_level" | "confidence_level" | "personas_affected" | "recommended_actions" | "category">;
     
@@ -109,7 +109,7 @@ export default class TypeBuilder {
     
     ExtractedInsight: ClassBuilder<'ExtractedInsight', "name" | "pain" | "details" | "evidence" | "desiredOutcome" | "assumptionAlignment" | "researchQuestionAnswered" | "evidenceStrength" | "productImplication" | "followUpQuestions" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "jtbd" | "contradictions" | "relatedTags">;
     
-    Extraction: ClassViewer<'Extraction', "people" | "evidence" | "facet_mentions" | "scenes" | "interaction_context" | "context_confidence" | "context_reasoning">;
+    Extraction: ClassViewer<'Extraction', "people" | "evidence" | "scenes" | "interaction_context" | "context_confidence" | "context_reasoning">;
     
     FacetCatalog: ClassViewer<'FacetCatalog', "kinds" | "facets" | "version">;
     
@@ -121,7 +121,7 @@ export default class TypeBuilder {
     
     FacetGroupSummary: ClassViewer<'FacetGroupSummary', "kind_slug" | "summary">;
     
-    FacetMention: ClassViewer<'FacetMention', "person_key" | "kind_slug" | "value" | "quote">;
+    FacetMention: ClassViewer<'FacetMention', "parent_index" | "person_key" | "kind_slug" | "value" | "quote" | "confidence">;
     
     FacetSignalInput: ClassViewer<'FacetSignalInput', "label" | "source" | "confidence">;
     
@@ -215,7 +215,7 @@ export default class TypeBuilder {
     
     ParticipantGoal: ClassViewer<'ParticipantGoal', "speaker" | "goal" | "evidence_snippet" | "confidence">;
     
-    Person: ClassViewer<'Person', "person_key" | "speaker_label" | "person_name" | "inferred_name" | "role">;
+    Person: ClassViewer<'Person', "person_key" | "speaker_label" | "person_name" | "inferred_name" | "job_title" | "job_function">;
     
     PersonContext: ClassViewer<'PersonContext', "name" | "title" | "company" | "role" | "seniority_level" | "icp_band" | "icp_score" | "facets" | "missing_fields" | "conversation_themes" | "last_interaction_date" | "sparse_mode">;
     
@@ -567,7 +567,7 @@ export default class TypeBuilder {
         ]);
         
         this.EvidenceTurn = this.tb.classViewer("EvidenceTurn", [
-          "person_key","speaker_label","gist","chunk","verbatim","anchors","why_it_matters","facet_mentions","isQuestion",
+          "index","person_key","speaker_label","gist","chunk","verbatim","anchors","confidence","why_it_matters","facet_mentions","isQuestion",
         ]);
         
         this.ExecutiveInsight = this.tb.classViewer("ExecutiveInsight", [
@@ -587,7 +587,7 @@ export default class TypeBuilder {
         ]);
         
         this.Extraction = this.tb.classViewer("Extraction", [
-          "people","evidence","facet_mentions","scenes","interaction_context","context_confidence","context_reasoning",
+          "people","evidence","scenes","interaction_context","context_confidence","context_reasoning",
         ]);
         
         this.FacetCatalog = this.tb.classViewer("FacetCatalog", [
@@ -611,7 +611,7 @@ export default class TypeBuilder {
         ]);
         
         this.FacetMention = this.tb.classViewer("FacetMention", [
-          "person_key","kind_slug","value","quote",
+          "parent_index","person_key","kind_slug","value","quote","confidence",
         ]);
         
         this.FacetSignalInput = this.tb.classViewer("FacetSignalInput", [
@@ -799,7 +799,7 @@ export default class TypeBuilder {
         ]);
         
         this.Person = this.tb.classViewer("Person", [
-          "person_key","speaker_label","person_name","inferred_name","role",
+          "person_key","speaker_label","person_name","inferred_name","job_title","job_function",
         ]);
         
         this.PersonContext = this.tb.classViewer("PersonContext", [

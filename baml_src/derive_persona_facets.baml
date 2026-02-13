@@ -5,7 +5,7 @@ class PersonaFacet {
   person_key string @description("Reference to person from extraction")
   kind_slug string @description("One: motivation | value | attitude | skill | preference | personality | identity | belief | habit | constraint")
   value string @description("≤12 words; enduring trait phrasing. E.g., 'values autonomy in work', 'prefers visual learning over text', 'motivated by social impact'")
-  evidence_refs int[] @description("List of FacetMention.index values supporting this trait")
+  evidence_refs int[] @description("List of EvidenceTurn.index values supporting this trait")
   confidence float @description("0-1; based on frequency, consistency, and salience")
   frequency int @description("Number of distinct supporting mentions")
   reasoning string? @description("≤20 words explaining why this is an enduring trait vs situational")
@@ -59,7 +59,7 @@ Each `PersonaFacet.value` must be:
 {{ extraction }}
 
 ## Guardrails
-- Each `evidence_refs` array must contain valid `FacetMention.index` values from the input.
+- Each `evidence_refs` array must contain valid `EvidenceTurn.index` values from the input.
 - Never merge mentions from different people; keep persona facets scoped to one `person_key`. If multiple people share the same behavior, create separate facets referencing their respective evidence.
 - `confidence` should reflect: frequency (more mentions = higher), consistency (contradictions lower it), salience (strong emotional/attitudinal signal).
 - Do NOT create facets for interview topics unless they reveal a personal stance/value/habit.
@@ -78,9 +78,10 @@ test DerivePersonaFacets_Sample {
       people [
         {
           person_key: "participant-1"
-          display_name: "SPEAKER 2"
+          speaker_label: "SPEAKER 2"
           inferred_name: "Kai"
-          role: "participant"
+          job_title: "Student"
+          job_function: "Education"
         }
       ]
       evidence [
@@ -97,9 +98,11 @@ test DerivePersonaFacets_Sample {
           }
           facet_mentions [
             {
+              parent_index: 0
               person_key: "participant-1"
               kind_slug: "tool"
               value: "uses AI for essay writing and formatting"
+              confidence: 0.75
             }
           ]
         },
@@ -116,37 +119,13 @@ test DerivePersonaFacets_Sample {
           }
           facet_mentions [
             {
+              parent_index: 1
               person_key: "participant-1"
               kind_slug: "preference"
               value: "prefers solo work over group work"
+              confidence: 0.75
             }
           ]
-        }
-      ]
-      facet_mentions [
-        {
-          person_key: "participant-1"
-          kind_slug: "tool"
-          value: "uses AI for essay writing and formatting"
-          quote: "I use AI majority of the time"
-        },
-        {
-          person_key: "participant-1"
-          kind_slug: "behavior"
-          value: "uses AI majority of time for academic work"
-          quote: "working through essays"
-        },
-        {
-          person_key: "participant-1"
-          kind_slug: "preference"
-          value: "prefers solo work over group work"
-          quote: "I work better when I'm alone"
-        },
-        {
-          person_key: "participant-1"
-          kind_slug: "value"
-          value: "values working independently"
-          quote: "I think personally I work better"
         }
       ]
       scenes []

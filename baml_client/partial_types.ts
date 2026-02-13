@@ -301,12 +301,14 @@ export namespace partial_types {
       quotes: string[]
     }
     export interface EvidenceTurn {
+      index?: number | null
       person_key?: string | null
       speaker_label?: string | null
       gist?: string | null
       chunk?: string | null
       verbatim?: string | null
       anchors?: TurnAnchors | null
+      confidence?: string | null
       why_it_matters?: string | null
       facet_mentions: FacetMention[]
       isQuestion?: boolean | null
@@ -366,7 +368,6 @@ export namespace partial_types {
     export interface Extraction {
       people: Person[]
       evidence: EvidenceTurn[]
-      facet_mentions: FacetMention[]
       scenes: Scene[]
       interaction_context?: types.InteractionContext | null
       context_confidence?: number | null
@@ -398,10 +399,12 @@ export namespace partial_types {
       summary?: string | null
     }
     export interface FacetMention {
+      parent_index?: number | null
       person_key?: string | null
       kind_slug?: string | null
       value?: string | null
       quote?: string | null
+      confidence?: number | null
     }
     export interface FacetSignalInput {
       label?: string | null
@@ -753,7 +756,8 @@ export namespace partial_types {
       speaker_label?: string | null
       person_name?: string | null
       inferred_name?: string | null
-      role?: string | null
+      job_title?: string | null
+      job_function?: string | null
     }
     export interface PersonContext {
       name?: string | null

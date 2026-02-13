@@ -604,7 +604,7 @@ env?: Record<string, string | undefined>
       }
       
   async ExtractEvidenceFromTranscriptV2(
-  speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
+  speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,
   __baml_options__?: BamlCallOptions<never>
   ): Promise<HTTPRequest> {
     try {
@@ -623,7 +623,7 @@ env?: Record<string, string | undefined>
       return await this.runtime.buildRequest(
       "ExtractEvidenceFromTranscriptV2",
       {
-      "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
+      "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language
       },
       this.ctxManager.cloneContext(),
       __baml_options__?.tb?.__tb(),
@@ -2392,7 +2392,7 @@ env?: Record<string, string | undefined>
           }
           
       async ExtractEvidenceFromTranscriptV2(
-      speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
+      speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,
       __baml_options__?: BamlCallOptions<never>
       ): Promise<HTTPRequest> {
         try {
@@ -2411,7 +2411,7 @@ env?: Record<string, string | undefined>
           return await this.runtime.buildRequest(
           "ExtractEvidenceFromTranscriptV2",
           {
-          "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
+          "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language
           },
           this.ctxManager.cloneContext(),
           __baml_options__?.tb?.__tb(),

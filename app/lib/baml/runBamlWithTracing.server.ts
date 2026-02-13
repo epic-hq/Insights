@@ -127,5 +127,8 @@ export async function runBamlWithTracing<TResult>({
 				? { amount: usageSummary.totalCostUsd, currency: "USD" as const }
 				: undefined;
 		trace?.end?.({ usage: finalUsage, cost: finalCost, metadata });
+		await (langfuse as any)?.flushAsync?.().catch((error: unknown) => {
+			consola.warn(`[langfuse] Failed to flush trace for baml.${functionName}:`, error);
+		});
 	}
 }

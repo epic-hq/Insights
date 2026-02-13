@@ -148,6 +148,16 @@ export async function recordUsageAndSpendCredits(
 		// Cast to get id from untyped response
 		const eventId = (usageEvent as { id?: string } | null)?.id || null;
 
+		// No billable spend configured/calculated, but usage event is still recorded.
+		if (creditsCharged <= 0) {
+			return {
+				success: true,
+				usageEventId: eventId,
+				creditsCharged: 0,
+				limitStatus: "ok",
+			};
+		}
+
 		// 2. Get account's plan for limit calculation
 		const planInfo = await getAccountPlan(ctx.accountId);
 		const plan = PLANS[planInfo.planId];
@@ -266,7 +276,7 @@ export async function recordUsageOnly(
  * Get account's current plan.
  * TODO: This should query billing_subscriptions when we have real billing.
  */
-async function getAccountPlan(accountId: string): Promise<{ planId: PlanId; seatCount: number }> {
+async function getAccountPlan(_accountId: string): Promise<{ planId: PlanId; seatCount: number }> {
 	// For now, everyone is on free tier
 	// TODO: Query billing_subscriptions.plan_name and map to PlanId
 	return {

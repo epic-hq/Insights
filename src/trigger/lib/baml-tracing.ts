@@ -85,8 +85,9 @@ function summarizeUsage(collector: Collector, costOptions?: RunBamlOptions<unkno
 	if (typeof totalTokens === "number") summary.totalTokens = totalTokens
 
 	// Calculate costs if rates provided
-	if (costOptions?.promptCostPer1KTokens && typeof summary.inputTokens === "number") {
-		summary.promptCostUsd = Number(((summary.inputTokens / 1000) * costOptions.promptCostPer1KTokens).toFixed(6))
+	const promptTokenBase = summary.billedInputTokens ?? summary.inputTokens
+	if (costOptions?.promptCostPer1KTokens && typeof promptTokenBase === "number") {
+		summary.promptCostUsd = Number(((promptTokenBase / 1000) * costOptions.promptCostPer1KTokens).toFixed(6))
 	}
 	if (costOptions?.completionCostPer1KTokens && typeof summary.outputTokens === "number") {
 		summary.completionCostUsd = Number(((summary.outputTokens / 1000) * costOptions.completionCostPer1KTokens).toFixed(6))

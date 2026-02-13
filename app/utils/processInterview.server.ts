@@ -705,7 +705,7 @@ export async function extractEvidenceAndPeopleCore({
 		);
 
 		evidenceResponse = await batchExtractEvidence(speakerTranscripts, async (batch) => {
-			return await instrumentedClient.ExtractEvidenceFromTranscriptV2(batch, chapters, language, facetCatalog);
+			return await instrumentedClient.ExtractEvidenceFromTranscriptV2(batch, chapters, language);
 		});
 		usageSummary = summarizeCollectorUsage(collector, costOptions);
 		if (usageSummary) {

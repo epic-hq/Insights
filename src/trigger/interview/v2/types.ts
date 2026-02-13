@@ -8,6 +8,7 @@ export interface InterviewMetadata {
 	accountId: string
 	userId?: string
 	projectId?: string
+	triggerRunId?: string
 	interviewTitle?: string
 	interviewDate?: string
 	fileName?: string

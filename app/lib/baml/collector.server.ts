@@ -47,8 +47,9 @@ export function summarizeCollectorUsage(
 
 	const promptCostRate = costOptions?.promptCostPer1KTokens;
 	const completionCostRate = costOptions?.completionCostPer1KTokens;
-	if (typeof promptCostRate === "number" && typeof summary.inputTokens === "number") {
-		summary.promptCostUsd = Number(((summary.inputTokens / 1000) * promptCostRate).toFixed(6));
+	const promptTokenBase = summary.billedInputTokens ?? summary.inputTokens;
+	if (typeof promptCostRate === "number" && typeof promptTokenBase === "number") {
+		summary.promptCostUsd = Number(((promptTokenBase / 1000) * promptCostRate).toFixed(6));
 	}
 	if (typeof completionCostRate === "number" && typeof summary.outputTokens === "number") {
 		summary.completionCostUsd = Number(((summary.outputTokens / 1000) * completionCostRate).toFixed(6));
