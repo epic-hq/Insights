@@ -5,7 +5,7 @@
  * 1. Upload & Transcribe
  * 2. Extract Evidence
  * 3. Enrich Person (generate descriptions, link organizations)
- * 4. Generate Insights (themes)
+ * 4. (skipped) Generate Insights — removed, run ad-hoc via generateInsightsTaskV2
  * 5. Assign Personas (parallel with answers)
  * 6. Attribute Answers (parallel with personas)
  * 7. Finalize Interview
@@ -24,7 +24,9 @@ import { workflowRetryConfig } from "./config";
 import { uploadAndTranscribeTaskV2 } from "./uploadAndTranscribe";
 import { extractEvidenceTaskV2 } from "./extractEvidence";
 import { enrichPersonTaskV2 } from "./enrichPerson";
-import { generateInsightsTaskV2 } from "./generateInsights";
+// generate-insights removed from orchestrator flow — run ad-hoc instead.
+// See bead Insights-vpws. Import kept for type reference if needed.
+// import { generateInsightsTaskV2 } from "./generateInsights";
 import { assignPersonasTaskV2 } from "./assignPersonas";
 import { attributeAnswersTaskV2 } from "./attributeAnswers";
 import { finalizeInterviewTaskV2 } from "./finalizeInterview";
@@ -118,17 +120,7 @@ export const processInterviewOrchestratorV2 = task({
       }
     }
 
-    // Validate required data for insights step
-    if (startFrom === "insights" && !state.evidenceUnits) {
-      consola.error(
-        `[Orchestrator] Cannot resume from 'insights' - evidenceUnits missing from state`,
-        `State has: ${Object.keys(state).join(", ")}`,
-      );
-      throw new Error(
-        "Cannot resume from 'insights' step: evidenceUnits not found in workflow state. " +
-          "Please ensure the state is properly initialized before resuming.",
-      );
-    }
+    // Note: insights step removed from orchestrator flow — run ad-hoc instead.
 
     try {
       // Initialize processing_metadata at workflow start
@@ -292,42 +284,17 @@ export const processInterviewOrchestratorV2 = task({
         consola.info("[Orchestrator] Skipping: Enrich Person");
       }
 
-      // Step 4: Generate Insights (themes)
-      if (
-        shouldExecuteStep("insights", startFrom, state) &&
-        !skipSteps.includes("insights")
-      ) {
-        consola.info("[Orchestrator] Executing: Generate Insights");
-
-        const insightsIdempotencyKey = `insights-${state.interviewId}-${ctx.run.id}`;
-        const result = await generateInsightsTaskV2.triggerAndWait(
-          {
-            interviewId: state.interviewId,
-            evidenceUnits: state.evidenceUnits!,
-            evidenceIds: state.evidenceIds || [],
-            userCustomInstructions,
-            analysisJobId,
-            metadata,
-          },
-          { idempotencyKey: insightsIdempotencyKey },
-        );
-
-        if (!result.ok) {
-          throw new Error(`Generate insights failed: ${result.error}`);
-        }
-
-        // Update state
-        state.insightIds = result.output.insightIds;
-        state.completedSteps = [
-          ...new Set([...state.completedSteps, "insights"]),
-        ];
-        state.currentStep = "insights";
-
-        await saveWorkflowState(client, analysisJobId, state);
-        consola.success("[Orchestrator] ✓ Generate Insights complete");
-      } else {
-        consola.info("[Orchestrator] Skipping: Generate Insights");
-      }
+      // Step 4: Generate Insights — removed from orchestrator flow.
+      // Insights (themes) can be generated ad-hoc via generateInsightsTaskV2.
+      // This avoids blocking the pipeline on large transcripts that exceed context limits.
+      consola.info(
+        "[Orchestrator] Skipping: Generate Insights (removed from default flow — run ad-hoc)",
+      );
+      state.completedSteps = [
+        ...new Set([...state.completedSteps, "insights"]),
+      ];
+      state.currentStep = "insights";
+      await saveWorkflowState(client, analysisJobId, state);
 
       // Steps 5 & 6: Assign Personas + Attribute Answers (can run in parallel in future)
       // For now, run sequentially for simplicity

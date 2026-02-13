@@ -27,7 +27,6 @@ import {
 import { SIMILARITY_THRESHOLDS } from "~/lib/embeddings/openai.server";
 import { searchEvidenceForTheme } from "~/lib/evidence/semantic-search.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
-import { workflowRetryConfig } from "./config";
 import { generateInterviewInsightsFromEvidenceCore } from "./extractEvidenceCore";
 import {
   errorMessage,
@@ -87,7 +86,9 @@ async function findSemanticallySimilarTheme(
 
 export const generateInsightsTaskV2 = task({
   id: "interview.v2.generate-insights",
-  retry: workflowRetryConfig,
+  // No retries — the core function handles retries internally and bails on 400-level errors.
+  // Context-length and other client errors should not be retried at the task level.
+  retry: { maxAttempts: 1 },
   run: async (
     payload: GenerateInsightsPayload,
     { ctx },

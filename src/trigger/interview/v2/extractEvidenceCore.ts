@@ -282,6 +282,35 @@ interface ExtractEvidenceResult {
   rawPeople?: EvidenceParticipant[];
 }
 
+/**
+ * Rough token estimate: ~4 chars per token for English JSON.
+ * Conservative to avoid exceeding context window.
+ */
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 3.5);
+}
+
+/** Context window for gpt-4o-mini. Reserve ~8K for prompt template + output. */
+const MODEL_CONTEXT_LIMIT = 128_000;
+const RESERVED_TOKENS = 8_000;
+const MAX_EVIDENCE_TOKENS = MODEL_CONTEXT_LIMIT - RESERVED_TOKENS; // ~120K
+
+/**
+ * Returns true if the error is a 400-level client error that should NOT be retried
+ * (e.g. context_length_exceeded, invalid_request_error).
+ */
+function isNonRetryableClientError(error: unknown): boolean {
+  const msg = String(error);
+  return (
+    msg.includes("status code: 400") ||
+    msg.includes("context_length_exceeded") ||
+    msg.includes("invalid_request_error") ||
+    msg.includes("status code: 401") ||
+    msg.includes("status code: 403") ||
+    msg.includes("status code: 422")
+  );
+}
+
 export async function generateInterviewInsightsFromEvidenceCore({
   evidenceUnits,
   userCustomInstructions,
@@ -302,18 +331,61 @@ export async function generateInterviewInsightsFromEvidenceCore({
     };
   }
 
-  // No validation needed - source guarantees correct EvidenceUnit[] structure
+  // Token pre-check: estimate tokens and truncate evidence if over limit
+  let truncatedUnits = evidenceUnits;
+  const fullJson = JSON.stringify(evidenceUnits);
+  const estimatedTokens = estimateTokens(fullJson);
+
+  if (estimatedTokens > MAX_EVIDENCE_TOKENS) {
+    consola.warn(
+      `[generateInsightsCore] Evidence exceeds context window: ~${estimatedTokens} tokens (limit: ${MAX_EVIDENCE_TOKENS}). Truncating.`,
+    );
+
+    // Binary search for max evidence count that fits
+    let lo = 1;
+    let hi = evidenceUnits.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      const slice = JSON.stringify(evidenceUnits.slice(0, mid));
+      if (estimateTokens(slice) <= MAX_EVIDENCE_TOKENS) {
+        lo = mid;
+      } else {
+        hi = mid - 1;
+      }
+    }
+
+    truncatedUnits = evidenceUnits.slice(0, lo);
+    consola.info(
+      `[generateInsightsCore] Truncated evidence: ${evidenceUnits.length} → ${truncatedUnits.length} units (~${estimateTokens(JSON.stringify(truncatedUnits))} tokens)`,
+    );
+  } else {
+    consola.info(
+      `[generateInsightsCore] Evidence fits in context window: ~${estimatedTokens} tokens (${evidenceUnits.length} units)`,
+    );
+  }
+
+  // Retry loop with non-retryable error detection
   let lastErr: unknown = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const response = await b.GenerateKeyTakeawaysFromEvidence(
-        evidenceUnits,
+        truncatedUnits,
         instructions,
       );
       consola.log("BAML generateInterviewInsights response:", response);
       return response;
     } catch (error) {
       lastErr = error;
+
+      // Don't retry 400-level client errors — they'll fail again
+      if (isNonRetryableClientError(error)) {
+        consola.error(
+          `[generateInsightsCore] Non-retryable client error (attempt ${attempt + 1}/3), aborting:`,
+          error,
+        );
+        throw error;
+      }
+
       const delayMs = 500 * (attempt + 1);
       consola.warn(
         `GenerateKeyTakeawaysFromEvidence failed (attempt ${attempt + 1}/3), retrying in ${delayMs}ms`,
