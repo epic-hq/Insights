@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNavigate, useRevalidator } from "react-router";
 import { useCurrentProject } from "~/contexts/current-project-context";
 import { useNotification } from "~/contexts/NotificationContext";
+import type { ProcessingResult } from "~/features/upload/types";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
-import type { ProcessingResult } from "~/utils/processInterview.server";
 import UploadModal from "./UploadModal";
 
 export default function UploadButton() {

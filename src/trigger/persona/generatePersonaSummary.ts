@@ -7,7 +7,7 @@ import {
 	systemBillingContext,
 } from "~/lib/billing/instrumented-baml.server";
 import type { Tables } from "~/types";
-import { workflowRetryConfig } from "~/utils/processInterview.server";
+import { workflowRetryConfig } from "~/trigger/interview/v2/config";
 
 /** Payload for the persona summary generation task. */
 type Payload = {

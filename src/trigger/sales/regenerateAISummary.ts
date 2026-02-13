@@ -2,7 +2,7 @@ import { task } from "@trigger.dev/sdk";
 import consola from "consola";
 
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
-import { workflowRetryConfig } from "~/utils/processInterview.server";
+import { workflowRetryConfig } from "~/trigger/interview/v2/config";
 import {
   runBamlWithBilling,
   systemBillingContext,

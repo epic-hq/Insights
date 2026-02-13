@@ -12,10 +12,19 @@ import { task, metadata } from "@trigger.dev/sdk";
 import consola from "consola";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { workflowRetryConfig } from "./v2/config";
-import type {
-  TranscriptData,
-  TranscriptUtterance,
-} from "~/utils/processInterview.server";
+
+type TranscriptUtterance = {
+  speaker: string;
+  text: string;
+  start: number;
+  end: number;
+};
+
+type TranscriptData = {
+  full_transcript: string;
+  utterances: TranscriptUtterance[];
+  audio_duration: number;
+};
 
 interface RecallTranscriptEntry {
   participant: {

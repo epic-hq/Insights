@@ -16,7 +16,7 @@ import { metadata, task, tasks } from "@trigger.dev/sdk";
 import consola from "consola";
 import type { EnrichPersonResult } from "~/features/people/services/enrichPersonData.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
-import { workflowRetryConfig } from "~/utils/processInterview.server";
+import { workflowRetryConfig } from "~/trigger/interview/v2/config";
 import type { scoreICPMatchesTask } from "./scoreICPMatches";
 
 const MAX_BATCH_SIZE = 50;

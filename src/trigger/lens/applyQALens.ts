@@ -13,7 +13,7 @@ import {
 	systemBillingContext,
 } from "~/lib/billing/instrumented-baml.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
-import { workflowRetryConfig } from "~/utils/processInterview.server";
+import { workflowRetryConfig } from "~/trigger/interview/v2/config";
 
 const TEMPLATE_KEY = "qa-summary";
 

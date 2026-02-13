@@ -17,7 +17,7 @@ import {
 } from "~/lib/billing/instrumented-baml.server";
 import type { TaskStatus } from "~/features/tasks/types";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
-import { workflowRetryConfig } from "~/utils/processInterview.server";
+import { workflowRetryConfig } from "~/trigger/interview/v2/config";
 
 // Progress stages for lens application
 const LENS_STAGES = {
