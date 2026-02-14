@@ -10,7 +10,8 @@
 import { CheckSquare, History, Map, Minus, Plus, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useFetcher } from "react-router";
-import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat";
+import { ProjectStatusAgentChat, type TTSState } from "~/components/chat/ProjectStatusAgentChat";
+import { TTSToggle } from "~/components/chat/TTSToggle";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -415,6 +416,12 @@ export function AIAssistantPanel({
 		loadThreadRef.current = fn;
 	}, []);
 
+	// TTS state exposed from chat component
+	const [ttsState, setTTSState] = useState<TTSState | null>(null);
+	const handleTTSStateRef = useCallback((state: TTSState | null) => {
+		setTTSState(state);
+	}, []);
+
 	const handleNewChat = useCallback(() => {
 		clearChatRef.current?.();
 	}, []);
@@ -476,16 +483,27 @@ export function AIAssistantPanel({
 			</div>
 			{/* Header */}
 			<div className="flex flex-shrink-0 items-center justify-between border-white/[0.08] border-b px-4 py-2.5">
-				<button
-					type="button"
-					onClick={handleToggle}
-					className="flex cursor-pointer items-center gap-2.5 transition-opacity hover:opacity-80"
-				>
-					<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-500/20 shadow-sm">
-						<Sparkles className="h-3.5 w-3.5 text-white" />
-					</div>
-					<span className="font-semibold text-sm text-white">Uppy Assistant</span>
-				</button>
+				<div className="flex items-center gap-2">
+					<button
+						type="button"
+						onClick={handleToggle}
+						className="flex cursor-pointer items-center gap-2.5 transition-opacity hover:opacity-80"
+					>
+						<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-500/20 shadow-sm">
+							<Sparkles className="h-3.5 w-3.5 text-white" />
+						</div>
+						<span className="font-semibold text-sm text-white">Uppy Assistant</span>
+					</button>
+					{ttsState && (
+						<TTSToggle
+							isEnabled={ttsState.isEnabled}
+							isPlaying={ttsState.isPlaying}
+							isDisabledByVoiceChat={ttsState.isDisabledByVoiceChat}
+							onToggle={ttsState.toggleEnabled}
+							variant="dark"
+						/>
+					)}
+				</div>
 				<div className="flex items-center gap-0.5">
 					{accountId && projectId && (
 						<ChatThreadSelector
@@ -533,6 +551,7 @@ export function AIAssistantPanel({
 						embedded
 						onClearChatRef={handleClearChatRef}
 						onLoadThreadRef={handleLoadThreadRef}
+						onTTSStateRef={handleTTSStateRef}
 					/>
 				</div>
 			)}
