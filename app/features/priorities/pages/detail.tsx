@@ -27,27 +27,27 @@ import {
 	User,
 	Users,
 	X,
-} from "lucide-react"
-import type React from "react"
-import { useMemo, useState } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { Link, redirect, useFetcher, useLoaderData } from "react-router"
-import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Calendar } from "~/components/ui/calendar"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import InlineEdit from "~/components/ui/inline-edit"
-import { Input } from "~/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { getInsights } from "~/features/insights/db"
-import { getInterviews } from "~/features/interviews/db"
-import { getOpportunities } from "~/features/opportunities/db"
-import { getPeople } from "~/features/people/db"
-import { PriorityBars, priorityConfig as sharedPriorityConfig } from "~/features/tasks/components/PriorityBars"
-import { StatusDropdown } from "~/features/tasks/components/TaskStatus"
+} from "lucide-react";
+import type React from "react";
+import { useMemo, useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { Link, redirect, useFetcher, useLoaderData } from "react-router";
+import { EntityInteractionPanel } from "~/components/EntityInteractionPanel";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Calendar } from "~/components/ui/calendar";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import InlineEdit from "~/components/ui/inline-edit";
+import { Input } from "~/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { getInsights } from "~/features/insights/db";
+import { getInterviews } from "~/features/interviews/db";
+import { getOpportunities } from "~/features/opportunities/db";
+import { getPeople } from "~/features/people/db";
+import { PriorityBars, priorityConfig as sharedPriorityConfig } from "~/features/tasks/components/PriorityBars";
+import { StatusDropdown } from "~/features/tasks/components/TaskStatus";
 import {
 	createTaskLink,
 	deleteTaskLink,
@@ -57,47 +57,47 @@ import {
 	type TaskLink,
 	type TaskLinkEntityType,
 	updateTask,
-} from "~/features/tasks/db"
-import type { AgentType, Assignee, TaskActivity, TaskStatus } from "~/features/tasks/types"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
+} from "~/features/tasks/db";
+import type { AgentType, Assignee, TaskActivity, TaskStatus } from "~/features/tasks/types";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
 
 // ============================================================================
 // Types
 // ============================================================================
 
 interface TeamMember {
-	user_id: string
-	name: string
-	email: string | null
-	avatar_url: string | null
+	user_id: string;
+	name: string;
+	email: string | null;
+	avatar_url: string | null;
 }
 
 interface ProjectPerson {
-	id: string
-	name: string | null
-	title: string | null
-	email: string | null
-	avatar_url: string | null
+	id: string;
+	name: string | null;
+	title: string | null;
+	email: string | null;
+	avatar_url: string | null;
 }
 
 interface EnrichedTaskLink {
-	id: string
-	task_id: string
-	entity_type: TaskLinkEntityType
-	entity_id: string
-	link_type: string
-	description: string | null
+	id: string;
+	task_id: string;
+	entity_type: TaskLinkEntityType;
+	entity_id: string;
+	link_type: string;
+	description: string | null;
 	// Enriched data
-	entity_name: string
-	entity_preview: string | null
+	entity_name: string;
+	entity_preview: string | null;
 }
 
 interface LinkableEntity {
-	id: string
-	name: string
-	preview: string | null
-	type: TaskLinkEntityType
+	id: string;
+	name: string;
+	preview: string | null;
+	type: TaskLinkEntityType;
 }
 
 // ============================================================================
@@ -105,20 +105,20 @@ interface LinkableEntity {
 // ============================================================================
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
+	const ctx = context.get(userContext);
 
 	if (!ctx?.claims) {
-		return redirect("/login")
+		return redirect("/login");
 	}
 
-	const { accountId, projectId, taskId } = params
+	const { accountId, projectId, taskId } = params;
 
 	if (!accountId || !projectId || !taskId) {
-		throw new Response("Missing required parameters", { status: 400 })
+		throw new Response("Missing required parameters", { status: 400 });
 	}
 
 	if (!ctx.supabase) {
-		throw new Response("Supabase client missing", { status: 500 })
+		throw new Response("Supabase client missing", { status: 500 });
 	}
 
 	try {
@@ -138,27 +138,27 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			getTaskActivity({ supabase: ctx.supabase, taskId, limit: 20 }),
 			// Fetch team members from account_user and user_settings
 			(async () => {
-				const supabase = ctx.supabase!
+				const supabase = ctx.supabase!;
 				const { data: accountUsers } = await supabase
 					.schema("accounts")
 					.from("account_user")
 					.select("user_id")
-					.eq("account_id", accountId)
+					.eq("account_id", accountId);
 
-				if (!accountUsers || accountUsers.length === 0) return []
+				if (!accountUsers || accountUsers.length === 0) return [];
 
-				const userIds = accountUsers.map((u) => u.user_id)
+				const userIds = accountUsers.map((u) => u.user_id);
 				const { data: profiles } = await supabase
 					.from("user_settings")
 					.select("user_id, first_name, last_name, email, image_url")
-					.in("user_id", userIds)
+					.in("user_id", userIds);
 
 				return (profiles || []).map((p) => ({
 					user_id: p.user_id,
 					name: [p.first_name, p.last_name].filter(Boolean).join(" ") || p.email || "Unknown",
 					email: p.email,
 					avatar_url: p.image_url,
-				}))
+				}));
 			})(),
 			// Fetch people from the project
 			getPeople({ supabase: ctx.supabase, accountId, projectId }),
@@ -171,22 +171,22 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					.supabase!.from("evidence")
 					.select("id, gist, verbatim")
 					.eq("project_id", projectId)
-					.limit(100)
-				return { data: data || [] }
+					.limit(100);
+				return { data: data || [] };
 			})(),
 			getInterviews({ supabase: ctx.supabase, accountId, projectId }),
 			getInsights({ supabase: ctx.supabase, accountId, projectId }),
 			getOpportunities({ supabase: ctx.supabase, accountId, projectId }),
-		])
+		]);
 
 		// Map project people to a simpler format
 		const projectPeople: ProjectPerson[] = (peopleResult.data || []).map(
 			(p: {
-				id: string
-				name: string | null
-				title: string | null
-				primary_email: string | null
-				image_url: string | null
+				id: string;
+				name: string | null;
+				title: string | null;
+				primary_email: string | null;
+				image_url: string | null;
 			}) => ({
 				id: p.id,
 				name: p.name,
@@ -194,92 +194,92 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				email: p.primary_email,
 				avatar_url: p.image_url,
 			})
-		)
+		);
 
 		// Enrich task links with entity details
 		const enrichedLinks: EnrichedTaskLink[] = await Promise.all(
 			taskLinks.map(async (link: TaskLink) => {
-				let entityName = "Unknown"
-				let entityPreview: string | null = null
+				let entityName = "Unknown";
+				let entityPreview: string | null = null;
 
 				try {
-					const supabase = ctx.supabase!
+					const supabase = ctx.supabase!;
 					switch (link.entity_type) {
 						case "evidence": {
 							const { data } = await supabase
 								.from("evidence")
 								.select("gist, verbatim")
 								.eq("id", link.entity_id)
-								.single()
+								.single();
 							if (data) {
-								entityName = data.gist || "Evidence"
-								entityPreview = data.verbatim?.slice(0, 100) || null
+								entityName = data.gist || "Evidence";
+								entityPreview = data.verbatim?.slice(0, 100) || null;
 							}
-							break
+							break;
 						}
 						case "person": {
-							const { data } = await supabase.from("people").select("name, title").eq("id", link.entity_id).single()
+							const { data } = await supabase.from("people").select("name, title").eq("id", link.entity_id).single();
 							if (data) {
-								entityName = data.name || "Unknown Person"
-								entityPreview = data.title
+								entityName = data.name || "Unknown Person";
+								entityPreview = data.title;
 							}
-							break
+							break;
 						}
 						case "organization": {
 							const { data } = await supabase
 								.from("organizations")
 								.select("name, description")
 								.eq("id", link.entity_id)
-								.single()
+								.single();
 							if (data) {
-								entityName = data.name || "Unknown Organization"
-								entityPreview = data.description?.slice(0, 100) || null
+								entityName = data.name || "Unknown Organization";
+								entityPreview = data.description?.slice(0, 100) || null;
 							}
-							break
+							break;
 						}
 						case "opportunity": {
 							const { data } = await supabase
 								.from("opportunities")
 								.select("title, description")
 								.eq("id", link.entity_id)
-								.single()
+								.single();
 							if (data) {
-								entityName = data.title || "Unknown Opportunity"
-								entityPreview = data.description?.slice(0, 100) || null
+								entityName = data.title || "Unknown Opportunity";
+								entityPreview = data.description?.slice(0, 100) || null;
 							}
-							break
+							break;
 						}
 						case "interview": {
 							const { data } = await supabase
 								.from("interviews")
 								.select("title, participant_pseudonym")
 								.eq("id", link.entity_id)
-								.single()
+								.single();
 							if (data) {
-								entityName = data.title || "Interview"
-								entityPreview = data.participant_pseudonym
+								entityName = data.title || "Interview";
+								entityPreview = data.participant_pseudonym;
 							}
-							break
+							break;
 						}
 						case "insight": {
-							const { data } = await supabase.from("themes").select("name, details").eq("id", link.entity_id).single()
+							const { data } = await supabase.from("themes").select("name, details").eq("id", link.entity_id).single();
 							if (data) {
-								entityName = data.name || "Insight"
-								entityPreview = data.details?.slice(0, 100) || null
+								entityName = data.name || "Insight";
+								entityPreview = data.details?.slice(0, 100) || null;
 							}
-							break
+							break;
 						}
 						case "persona": {
 							const { data } = await supabase
 								.from("personas")
 								.select("name, description")
 								.eq("id", link.entity_id)
-								.single()
+								.single();
 							if (data) {
-								entityName = data.name || "Persona"
-								entityPreview = data.description?.slice(0, 100) || null
+								entityName = data.name || "Persona";
+								entityPreview = data.description?.slice(0, 100) || null;
 							}
-							break
+							break;
 						}
 					}
 				} catch {
@@ -295,9 +295,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					description: link.description,
 					entity_name: entityName,
 					entity_preview: entityPreview,
-				}
+				};
 			})
-		)
+		);
 
 		// Build linkable entities from fetched data
 		const linkableEntities: LinkableEntity[] = [
@@ -340,9 +340,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				preview: p.title || null,
 				type: "person" as TaskLinkEntityType,
 			})),
-		]
+		];
 
-		const projectPath = `/a/${accountId}/${projectId}`
+		const projectPath = `/a/${accountId}/${projectId}`;
 
 		return {
 			task,
@@ -354,9 +354,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			projectPeople,
 			taskLinks: enrichedLinks,
 			linkableEntities,
-		}
+		};
 	} catch (error) {
-		throw new Response("Task not found", { status: 404 })
+		throw new Response("Task not found", { status: 404 });
 	}
 }
 
@@ -365,50 +365,50 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 // ============================================================================
 
 export async function action({ context, request, params }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
+	const ctx = context.get(userContext);
 
 	if (!ctx?.claims) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
 	if (!ctx.supabase) {
-		throw new Response("Supabase client missing", { status: 500 })
+		throw new Response("Supabase client missing", { status: 500 });
 	}
 
-	const { taskId } = params
+	const { taskId } = params;
 	if (!taskId) {
-		throw new Response("Missing task ID", { status: 400 })
+		throw new Response("Missing task ID", { status: 400 });
 	}
 
-	const userId = ctx.claims.sub
-	const formData = await request.formData()
-	const action = formData.get("_action") as string
-	const field = formData.get("field") as string
-	const value = formData.get("value") as string
+	const userId = ctx.claims.sub;
+	const formData = await request.formData();
+	const action = formData.get("_action") as string;
+	const field = formData.get("field") as string;
+	const value = formData.get("value") as string;
 
 	if (action === "update-field") {
 		if (!field) {
-			throw new Response("Missing field name", { status: 400 })
+			throw new Response("Missing field name", { status: 400 });
 		}
 
 		try {
-			let parsedValue: unknown = value
+			let parsedValue: unknown = value;
 
 			// Parse value based on field type
 			if (field === "priority" || field === "impact") {
-				parsedValue = Number.parseInt(value, 10)
+				parsedValue = Number.parseInt(value, 10);
 			} else if (field === "status") {
-				parsedValue = value as TaskStatus
+				parsedValue = value as TaskStatus;
 			} else if (field === "tags") {
 				parsedValue = value
 					.split(",")
 					.map((t) => t.trim())
-					.filter(Boolean)
+					.filter(Boolean);
 			} else if (field === "assigned_to") {
-				parsedValue = JSON.parse(value)
+				parsedValue = JSON.parse(value);
 			} else if (field === "due_date") {
 				// Handle empty string as null for clearing the date
-				parsedValue = value === "" ? null : value
+				parsedValue = value === "" ? null : value;
 			}
 
 			await updateTask({
@@ -416,21 +416,21 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 				taskId,
 				userId,
 				updates: { [field]: parsedValue } as any,
-			})
+			});
 
-			return { success: true }
+			return { success: true };
 		} catch (error) {
-			throw new Response("Failed to update task", { status: 500 })
+			throw new Response("Failed to update task", { status: 500 });
 		}
 	}
 
 	if (action === "add-link") {
-		const entityType = formData.get("entityType") as TaskLinkEntityType
-		const entityId = formData.get("entityId") as string
-		const linkType = (formData.get("linkType") as string) || "supports"
+		const entityType = formData.get("entityType") as TaskLinkEntityType;
+		const entityId = formData.get("entityId") as string;
+		const linkType = (formData.get("linkType") as string) || "supports";
 
 		if (!entityType || !entityId) {
-			throw new Response("Missing entity type or ID", { status: 400 })
+			throw new Response("Missing entity type or ID", { status: 400 });
 		}
 
 		try {
@@ -443,19 +443,19 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 					entity_id: entityId,
 					link_type: linkType as any,
 				},
-			})
+			});
 
-			return { success: true }
+			return { success: true };
 		} catch (error) {
-			throw new Response("Failed to add link", { status: 500 })
+			throw new Response("Failed to add link", { status: 500 });
 		}
 	}
 
 	if (action === "remove-link") {
-		const linkId = formData.get("linkId") as string
+		const linkId = formData.get("linkId") as string;
 
 		if (!linkId) {
-			throw new Response("Missing link ID", { status: 400 })
+			throw new Response("Missing link ID", { status: 400 });
 		}
 
 		try {
@@ -463,15 +463,15 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 				supabase: ctx.supabase,
 				linkId,
 				userId,
-			})
+			});
 
-			return { success: true }
+			return { success: true };
 		} catch (error) {
-			throw new Response("Failed to remove link", { status: 500 })
+			throw new Response("Failed to remove link", { status: 500 });
 		}
 	}
 
-	throw new Response("Invalid action", { status: 400 })
+	throw new Response("Invalid action", { status: 400 });
 }
 
 // ============================================================================
@@ -482,16 +482,16 @@ const impactConfig = {
 	1: { label: "Low", className: "bg-slate-100 text-slate-700", description: "Minor improvement" },
 	2: { label: "Medium", className: "bg-blue-100 text-blue-700", description: "Noticeable improvement" },
 	3: { label: "High", className: "bg-purple-100 text-purple-700", description: "Significant impact" },
-}
+};
 
 const effortConfig = {
 	S: { label: "Small (S)", description: "< 2 hours" },
 	M: { label: "Medium (M)", description: "2-8 hours" },
 	L: { label: "Large (L)", description: "1-3 days" },
 	XL: { label: "Extra Large (XL)", description: "> 3 days" },
-}
+};
 
-const agentTypes: AgentType[] = ["code-generation", "research", "testing", "documentation"]
+const agentTypes: AgentType[] = ["code-generation", "research", "testing", "documentation"];
 
 const categoryOptions = [
 	"Product",
@@ -504,7 +504,7 @@ const categoryOptions = [
 	"Trust & Risk",
 	"Ops & Scale",
 	"Other",
-] as const
+] as const;
 
 // ============================================================================
 // Field Components
@@ -519,26 +519,26 @@ function EditableField({
 	textClassName = "text-sm",
 	inputClassName = "text-sm",
 }: {
-	taskId: string
-	field: string
-	value: string
-	multiline?: boolean
-	markdown?: boolean
-	textClassName?: string
-	inputClassName?: string
+	taskId: string;
+	field: string;
+	value: string;
+	multiline?: boolean;
+	markdown?: boolean;
+	textClassName?: string;
+	inputClassName?: string;
 }) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	const handleSubmit = (newValue: string) => {
-		if (newValue === value) return
+		if (newValue === value) return;
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", field)
-		formData.append("value", newValue)
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", field);
+		formData.append("value", newValue);
 
-		fetcher.submit(formData, { method: "POST" })
-	}
+		fetcher.submit(formData, { method: "POST" });
+	};
 
 	return (
 		<InlineEdit
@@ -551,44 +551,44 @@ function EditableField({
 			autoSize={true}
 			placeholder={`Add ${field}...`}
 		/>
-	)
+	);
 }
 
 function StatusSelectField({ taskId, value }: { taskId: string; value: TaskStatus }) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	const handleStatusChange = (_taskId: string, newStatus: TaskStatus) => {
-		if (newStatus === value) return
+		if (newStatus === value) return;
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", "status")
-		formData.append("value", newStatus)
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", "status");
+		formData.append("value", newStatus);
 
-		fetcher.submit(formData, { method: "POST" })
-	}
+		fetcher.submit(formData, { method: "POST" });
+	};
 
-	return <StatusDropdown currentStatus={value} taskId={taskId} onStatusChange={handleStatusChange} size="default" />
+	return <StatusDropdown currentStatus={value} taskId={taskId} onStatusChange={handleStatusChange} size="default" />;
 }
 
 function PrioritySelectField({ taskId, value }: { taskId: string; value: 1 | 2 | 3 }) {
-	const fetcher = useFetcher()
-	const [open, setOpen] = useState(false)
+	const fetcher = useFetcher();
+	const [open, setOpen] = useState(false);
 
 	const handleSelect = (newValue: number) => {
 		if (newValue === value) {
-			setOpen(false)
-			return
+			setOpen(false);
+			return;
 		}
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", "priority")
-		formData.append("value", newValue.toString())
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", "priority");
+		formData.append("value", newValue.toString());
 
-		fetcher.submit(formData, { method: "POST" })
-		setOpen(false)
-	}
+		fetcher.submit(formData, { method: "POST" });
+		setOpen(false);
+	};
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -618,25 +618,25 @@ function PrioritySelectField({ taskId, value }: { taskId: string; value: 1 | 2 |
 				</div>
 			</PopoverContent>
 		</Popover>
-	)
+	);
 }
 
 function CategorySelectField({ taskId, value }: { taskId: string; value: string | null }) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	const handleChange = (newValue: string) => {
-		if (newValue === value) return
+		if (newValue === value) return;
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", "cluster") // DB field is 'cluster'
-		formData.append("value", newValue)
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", "cluster"); // DB field is 'cluster'
+		formData.append("value", newValue);
 
-		fetcher.submit(formData, { method: "POST" })
-	}
+		fetcher.submit(formData, { method: "POST" });
+	};
 
 	// Find matching category or use empty string for uncontrolled behavior with placeholder
-	const currentValue = value && categoryOptions.includes(value as (typeof categoryOptions)[number]) ? value : ""
+	const currentValue = value && categoryOptions.includes(value as (typeof categoryOptions)[number]) ? value : "";
 
 	return (
 		<Select value={currentValue} onValueChange={handleChange}>
@@ -651,25 +651,25 @@ function CategorySelectField({ taskId, value }: { taskId: string; value: string 
 				))}
 			</SelectContent>
 		</Select>
-	)
+	);
 }
 
 function ImpactSelect({ taskId, value }: { taskId: string; value: number | null }) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	const handleChange = (newValue: string) => {
-		const numValue = Number.parseInt(newValue, 10)
-		if (numValue === value) return
+		const numValue = Number.parseInt(newValue, 10);
+		if (numValue === value) return;
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", "impact")
-		formData.append("value", newValue)
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", "impact");
+		formData.append("value", newValue);
 
-		fetcher.submit(formData, { method: "POST" })
-	}
+		fetcher.submit(formData, { method: "POST" });
+	};
 
-	const currentImpact = value ? impactConfig[value as 1 | 2 | 3] : null
+	const currentImpact = value ? impactConfig[value as 1 | 2 | 3] : null;
 
 	return (
 		<Select value={value?.toString() || ""} onValueChange={handleChange}>
@@ -699,22 +699,22 @@ function ImpactSelect({ taskId, value }: { taskId: string; value: number | null 
 				))}
 			</SelectContent>
 		</Select>
-	)
+	);
 }
 
 function EffortSelect({ taskId, value }: { taskId: string; value: string | null }) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	const handleChange = (newValue: string) => {
-		if (newValue === value) return
+		if (newValue === value) return;
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", "estimated_effort")
-		formData.append("value", newValue)
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", "estimated_effort");
+		formData.append("value", newValue);
 
-		fetcher.submit(formData, { method: "POST" })
-	}
+		fetcher.submit(formData, { method: "POST" });
+	};
 
 	return (
 		<Select value={value || ""} onValueChange={handleChange}>
@@ -732,40 +732,40 @@ function EffortSelect({ taskId, value }: { taskId: string; value: string | null 
 				))}
 			</SelectContent>
 		</Select>
-	)
+	);
 }
 
 function TagManager({ taskId, tags }: { taskId: string; tags: string[] }) {
-	const fetcher = useFetcher()
-	const [newTag, setNewTag] = useState("")
+	const fetcher = useFetcher();
+	const [newTag, setNewTag] = useState("");
 
 	const handleAddTag = (e: React.FormEvent) => {
-		e.preventDefault()
-		const trimmedTag = newTag.trim()
+		e.preventDefault();
+		const trimmedTag = newTag.trim();
 		if (!trimmedTag || tags.includes(trimmedTag)) {
-			setNewTag("")
-			return
+			setNewTag("");
+			return;
 		}
 
-		const updatedTags = [...tags, trimmedTag]
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", "tags")
-		formData.append("value", updatedTags.join(","))
+		const updatedTags = [...tags, trimmedTag];
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", "tags");
+		formData.append("value", updatedTags.join(","));
 
-		fetcher.submit(formData, { method: "POST" })
-		setNewTag("")
-	}
+		fetcher.submit(formData, { method: "POST" });
+		setNewTag("");
+	};
 
 	const handleRemoveTag = (tagToRemove: string) => {
-		const updatedTags = tags.filter((t) => t !== tagToRemove)
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", "tags")
-		formData.append("value", updatedTags.join(","))
+		const updatedTags = tags.filter((t) => t !== tagToRemove);
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", "tags");
+		formData.append("value", updatedTags.join(","));
 
-		fetcher.submit(formData, { method: "POST" })
-	}
+		fetcher.submit(formData, { method: "POST" });
+	};
 
 	return (
 		<div className="space-y-2">
@@ -796,43 +796,43 @@ function TagManager({ taskId, tags }: { taskId: string; tags: string[] }) {
 				</Button>
 			</form>
 		</div>
-	)
+	);
 }
 
 function DueDatePicker({ taskId, value }: { taskId: string; value: string | null }) {
-	const fetcher = useFetcher()
-	const [open, setOpen] = useState(false)
+	const fetcher = useFetcher();
+	const [open, setOpen] = useState(false);
 
 	const handleSelect = (date: Date | undefined) => {
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", "due_date")
-		formData.append("value", date ? date.toISOString().split("T")[0] : "")
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", "due_date");
+		formData.append("value", date ? date.toISOString().split("T")[0] : "");
 
-		fetcher.submit(formData, { method: "POST" })
-		if (date) setOpen(false)
-	}
+		fetcher.submit(formData, { method: "POST" });
+		if (date) setOpen(false);
+	};
 
 	const handleClear = () => {
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", "due_date")
-		formData.append("value", "")
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", "due_date");
+		formData.append("value", "");
 
-		fetcher.submit(formData, { method: "POST" })
-		setOpen(false)
-	}
+		fetcher.submit(formData, { method: "POST" });
+		setOpen(false);
+	};
 
 	const formatDate = (dateString: string | null) => {
-		if (!dateString) return null
+		if (!dateString) return null;
 		return new Date(dateString).toLocaleDateString("en-US", {
 			month: "short",
 			day: "numeric",
 			year: "numeric",
-		})
-	}
+		});
+	};
 
-	const selectedDate = value ? new Date(value) : undefined
+	const selectedDate = value ? new Date(value) : undefined;
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -854,7 +854,7 @@ function DueDatePicker({ taskId, value }: { taskId: string; value: string | null
 				)}
 			</PopoverContent>
 		</Popover>
-	)
+	);
 }
 
 function AssigneeSelector({
@@ -863,40 +863,40 @@ function AssigneeSelector({
 	teamMembers,
 	projectPeople,
 }: {
-	taskId: string
-	currentAssignees: Assignee[]
-	teamMembers: TeamMember[]
-	projectPeople: ProjectPerson[]
+	taskId: string;
+	currentAssignees: Assignee[];
+	teamMembers: TeamMember[];
+	projectPeople: ProjectPerson[];
 }) {
-	const fetcher = useFetcher()
-	const [open, setOpen] = useState(false)
-	const [search, setSearch] = useState("")
+	const fetcher = useFetcher();
+	const [open, setOpen] = useState(false);
+	const [search, setSearch] = useState("");
 
 	// Filter people based on search
 	const filteredPeople = useMemo(() => {
-		if (!search.trim()) return projectPeople
-		const lower = search.toLowerCase()
+		if (!search.trim()) return projectPeople;
+		const lower = search.toLowerCase();
 		return projectPeople.filter(
 			(p) =>
 				p.name?.toLowerCase().includes(lower) ||
 				p.title?.toLowerCase().includes(lower) ||
 				p.email?.toLowerCase().includes(lower)
-		)
-	}, [projectPeople, search])
+		);
+	}, [projectPeople, search]);
 
 	const filteredTeamMembers = useMemo(() => {
-		if (!search.trim()) return teamMembers
-		const lower = search.toLowerCase()
-		return teamMembers.filter((m) => m.name?.toLowerCase().includes(lower) || m.email?.toLowerCase().includes(lower))
-	}, [teamMembers, search])
+		if (!search.trim()) return teamMembers;
+		const lower = search.toLowerCase();
+		return teamMembers.filter((m) => m.name?.toLowerCase().includes(lower) || m.email?.toLowerCase().includes(lower));
+	}, [teamMembers, search]);
 
 	// Show search if combined count > 5
-	const showSearch = projectPeople.length + teamMembers.length > 5
+	const showSearch = projectPeople.length + teamMembers.length > 5;
 
 	const handleAddPerson = (person: ProjectPerson) => {
 		// Check if already assigned
 		if (currentAssignees.some((a) => a.type === "person" && a.person_id === person.id)) {
-			return
+			return;
 		}
 
 		const newAssignees: Assignee[] = [
@@ -907,22 +907,22 @@ function AssigneeSelector({
 				name: person.name || "Unknown",
 				avatar_url: person.avatar_url || undefined,
 			},
-		]
+		];
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", "assigned_to")
-		formData.append("value", JSON.stringify(newAssignees))
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", "assigned_to");
+		formData.append("value", JSON.stringify(newAssignees));
 
-		fetcher.submit(formData, { method: "POST" })
-		setOpen(false)
-		setSearch("")
-	}
+		fetcher.submit(formData, { method: "POST" });
+		setOpen(false);
+		setSearch("");
+	};
 
 	const handleAddTeamMember = (member: TeamMember) => {
 		// Check if already assigned
 		if (currentAssignees.some((a) => a.type === "human" && a.user_id === member.user_id)) {
-			return
+			return;
 		}
 
 		const newAssignees: Assignee[] = [
@@ -933,22 +933,22 @@ function AssigneeSelector({
 				name: member.name,
 				avatar_url: member.avatar_url || undefined,
 			},
-		]
+		];
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", "assigned_to")
-		formData.append("value", JSON.stringify(newAssignees))
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", "assigned_to");
+		formData.append("value", JSON.stringify(newAssignees));
 
-		fetcher.submit(formData, { method: "POST" })
-		setOpen(false)
-		setSearch("")
-	}
+		fetcher.submit(formData, { method: "POST" });
+		setOpen(false);
+		setSearch("");
+	};
 
 	const handleAddAgent = (agentType: AgentType) => {
 		// Check if already assigned
 		if (currentAssignees.some((a) => a.type === "agent" && a.agent_type === agentType)) {
-			return
+			return;
 		}
 
 		const newAssignees: Assignee[] = [
@@ -957,35 +957,35 @@ function AssigneeSelector({
 				type: "agent",
 				agent_type: agentType,
 			},
-		]
+		];
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", "assigned_to")
-		formData.append("value", JSON.stringify(newAssignees))
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", "assigned_to");
+		formData.append("value", JSON.stringify(newAssignees));
 
-		fetcher.submit(formData, { method: "POST" })
-		setOpen(false)
-		setSearch("")
-	}
+		fetcher.submit(formData, { method: "POST" });
+		setOpen(false);
+		setSearch("");
+	};
 
 	const handleRemove = (index: number) => {
-		const newAssignees = currentAssignees.filter((_, i) => i !== index)
+		const newAssignees = currentAssignees.filter((_, i) => i !== index);
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", "assigned_to")
-		formData.append("value", JSON.stringify(newAssignees))
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", "assigned_to");
+		formData.append("value", JSON.stringify(newAssignees));
 
-		fetcher.submit(formData, { method: "POST" })
-	}
+		fetcher.submit(formData, { method: "POST" });
+	};
 
 	const getAssigneeName = (assignee: Assignee) => {
 		if (assignee.type === "agent") {
-			return assignee.agent_type
+			return assignee.agent_type;
 		}
-		return assignee.name || "Unknown"
-	}
+		return assignee.name || "Unknown";
+	};
 
 	return (
 		<div className="space-y-2">
@@ -1032,8 +1032,8 @@ function AssigneeSelector({
 			<Popover
 				open={open}
 				onOpenChange={(isOpen) => {
-					setOpen(isOpen)
-					if (!isOpen) setSearch("")
+					setOpen(isOpen);
+					if (!isOpen) setSearch("");
 				}}
 			>
 				<PopoverTrigger asChild>
@@ -1064,7 +1064,7 @@ function AssigneeSelector({
 								<div>
 									<div className="px-2 py-1 font-medium text-muted-foreground text-xs">Project People</div>
 									{filteredPeople.map((person) => {
-										const isAssigned = currentAssignees.some((a) => a.type === "person" && a.person_id === person.id)
+										const isAssigned = currentAssignees.some((a) => a.type === "person" && a.person_id === person.id);
 										return (
 											<button
 												key={person.id}
@@ -1085,7 +1085,7 @@ function AssigneeSelector({
 												</div>
 												{isAssigned && <Check className="h-4 w-4 flex-shrink-0 text-green-600" />}
 											</button>
-										)
+										);
 									})}
 								</div>
 							)}
@@ -1095,7 +1095,7 @@ function AssigneeSelector({
 								<div>
 									<div className="px-2 py-1 font-medium text-muted-foreground text-xs">Team Members</div>
 									{filteredTeamMembers.map((member) => {
-										const isAssigned = currentAssignees.some((a) => a.type === "human" && a.user_id === member.user_id)
+										const isAssigned = currentAssignees.some((a) => a.type === "human" && a.user_id === member.user_id);
 										return (
 											<button
 												key={member.user_id}
@@ -1113,7 +1113,7 @@ function AssigneeSelector({
 												<span className="flex-1 truncate text-left">{member.name}</span>
 												{isAssigned && <Check className="h-4 w-4 flex-shrink-0 text-green-600" />}
 											</button>
-										)
+										);
 									})}
 								</div>
 							)}
@@ -1123,10 +1123,10 @@ function AssigneeSelector({
 								<div>
 									<div className="px-2 py-1 font-medium text-muted-foreground text-xs">AI Agents</div>
 									{agentTypes.map((agentType) => {
-										const isAssigned = currentAssignees.some((a) => a.type === "agent" && a.agent_type === agentType)
+										const isAssigned = currentAssignees.some((a) => a.type === "agent" && a.agent_type === agentType);
 										// Filter agents by search
 										if (search.trim() && !agentType.toLowerCase().includes(search.toLowerCase())) {
-											return null
+											return null;
 										}
 										return (
 											<button
@@ -1141,7 +1141,7 @@ function AssigneeSelector({
 												<span className="flex-1 text-left capitalize">{agentType}</span>
 												{isAssigned && <Check className="h-4 w-4 flex-shrink-0 text-green-600" />}
 											</button>
-										)
+										);
 									})}
 								</div>
 							)}
@@ -1157,38 +1157,38 @@ function AssigneeSelector({
 				</PopoverContent>
 			</Popover>
 		</div>
-	)
+	);
 }
 
 function ActivityTimeline({ activity }: { activity: TaskActivity[] }) {
-	const [expanded, setExpanded] = useState(false)
-	const COLLAPSED_COUNT = 3
+	const [expanded, setExpanded] = useState(false);
+	const COLLAPSED_COUNT = 3;
 
 	if (activity.length === 0) {
-		return <div className="py-4 text-center text-muted-foreground text-sm">No activity yet</div>
+		return <div className="py-4 text-center text-muted-foreground text-sm">No activity yet</div>;
 	}
 
 	const formatActivityDescription = (item: TaskActivity) => {
 		switch (item.activity_type) {
 			case "created":
-				return "Created this task"
+				return "Created this task";
 			case "status_change":
-				return `Changed status from ${item.old_value} to ${item.new_value}`
+				return `Changed status from ${item.old_value} to ${item.new_value}`;
 			case "field_update":
-				return `Updated ${item.field_name}`
+				return `Updated ${item.field_name}`;
 			case "assignment":
-				return "Updated assignees"
+				return "Updated assignees";
 			case "comment":
-				return item.content || "Added a comment"
+				return item.content || "Added a comment";
 			case "voice_update":
-				return item.content || "Voice update"
+				return item.content || "Voice update";
 			default:
-				return item.content || "Made changes"
+				return item.content || "Made changes";
 		}
-	}
+	};
 
-	const displayedActivity = expanded ? activity : activity.slice(0, COLLAPSED_COUNT)
-	const hasMore = activity.length > COLLAPSED_COUNT
+	const displayedActivity = expanded ? activity : activity.slice(0, COLLAPSED_COUNT);
+	const hasMore = activity.length > COLLAPSED_COUNT;
 
 	return (
 		<div className="space-y-3">
@@ -1215,7 +1215,7 @@ function ActivityTimeline({ activity }: { activity: TaskActivity[] }) {
 				</Button>
 			)}
 		</div>
-	)
+	);
 }
 
 // Entity type icon mapping
@@ -1227,7 +1227,7 @@ const entityTypeIcons: Record<TaskLinkEntityType, React.ComponentType<{ classNam
 	interview: Mic,
 	insight: Lightbulb,
 	persona: Users,
-}
+};
 
 const entityTypeLabels: Record<TaskLinkEntityType, string> = {
 	evidence: "Evidence",
@@ -1237,33 +1237,33 @@ const entityTypeLabels: Record<TaskLinkEntityType, string> = {
 	interview: "Interview",
 	insight: "Insight",
 	persona: "Persona",
-}
+};
 
 function TaskLinksCard({ taskLinks, projectPath }: { taskLinks: EnrichedTaskLink[]; projectPath: string }) {
-	const fetcher = useFetcher()
-	const routes = useProjectRoutes(projectPath)
+	const fetcher = useFetcher();
+	const routes = useProjectRoutes(projectPath);
 
 	const handleRemoveLink = (linkId: string) => {
-		const formData = new FormData()
-		formData.append("_action", "remove-link")
-		formData.append("linkId", linkId)
-		fetcher.submit(formData, { method: "POST" })
-	}
+		const formData = new FormData();
+		formData.append("_action", "remove-link");
+		formData.append("linkId", linkId);
+		fetcher.submit(formData, { method: "POST" });
+	};
 
 	const getEntityRoute = (link: EnrichedTaskLink): string | null => {
 		switch (link.entity_type) {
 			case "evidence":
-				return routes.evidence.detail(link.entity_id)
+				return routes.evidence.detail(link.entity_id);
 			case "person":
-				return routes.people.detail(link.entity_id)
+				return routes.people.detail(link.entity_id);
 			case "interview":
-				return routes.interviews.detail(link.entity_id)
+				return routes.interviews.detail(link.entity_id);
 			case "insight":
-				return routes.insights.detail(link.entity_id)
+				return routes.insights.detail(link.entity_id);
 			default:
-				return null
+				return null;
 		}
-	}
+	};
 
 	// Group links by entity type
 	const groupedLinks = useMemo(() => {
@@ -1275,24 +1275,24 @@ function TaskLinksCard({ taskLinks, projectPath }: { taskLinks: EnrichedTaskLink
 			interview: [],
 			insight: [],
 			persona: [],
-		}
+		};
 		for (const link of taskLinks) {
-			groups[link.entity_type].push(link)
+			groups[link.entity_type].push(link);
 		}
-		return groups
-	}, [taskLinks])
+		return groups;
+	}, [taskLinks]);
 
-	const nonEmptyGroups = Object.entries(groupedLinks).filter(([_, links]) => links.length > 0)
+	const nonEmptyGroups = Object.entries(groupedLinks).filter(([_, links]) => links.length > 0);
 
 	if (taskLinks.length === 0) {
-		return null
+		return null;
 	}
 
 	return (
 		<div className="space-y-4">
 			{nonEmptyGroups.map(([type, links]) => {
-				const entityType = type as TaskLinkEntityType
-				const Icon = entityTypeIcons[entityType]
+				const entityType = type as TaskLinkEntityType;
+				const Icon = entityTypeIcons[entityType];
 				return (
 					<div key={type}>
 						<div className="mb-2 flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
@@ -1301,7 +1301,7 @@ function TaskLinksCard({ taskLinks, projectPath }: { taskLinks: EnrichedTaskLink
 						</div>
 						<div className="space-y-2">
 							{links.map((link) => {
-								const route = getEntityRoute(link)
+								const route = getEntityRoute(link);
 								return (
 									<div
 										key={link.id}
@@ -1329,57 +1329,57 @@ function TaskLinksCard({ taskLinks, projectPath }: { taskLinks: EnrichedTaskLink
 											<Trash2 className="h-3 w-3" />
 										</Button>
 									</div>
-								)
+								);
 							})}
 						</div>
 					</div>
-				)
+				);
 			})}
 		</div>
-	)
+	);
 }
 
 function EntityLinkAdder({
 	linkableEntities,
 	existingLinkIds,
 }: {
-	linkableEntities: LinkableEntity[]
-	existingLinkIds: Set<string>
+	linkableEntities: LinkableEntity[];
+	existingLinkIds: Set<string>;
 }) {
-	const fetcher = useFetcher()
-	const [open, setOpen] = useState(false)
-	const [search, setSearch] = useState("")
-	const [selectedType, setSelectedType] = useState<TaskLinkEntityType | "all">("all")
+	const fetcher = useFetcher();
+	const [open, setOpen] = useState(false);
+	const [search, setSearch] = useState("");
+	const [selectedType, setSelectedType] = useState<TaskLinkEntityType | "all">("all");
 
 	// Filter entities based on search and type
 	const filteredEntities = useMemo(() => {
-		let filtered = linkableEntities.filter((entity) => !existingLinkIds.has(entity.id))
+		let filtered = linkableEntities.filter((entity) => !existingLinkIds.has(entity.id));
 
 		if (selectedType !== "all") {
-			filtered = filtered.filter((entity) => entity.type === selectedType)
+			filtered = filtered.filter((entity) => entity.type === selectedType);
 		}
 
 		if (search.trim()) {
-			const lower = search.toLowerCase()
+			const lower = search.toLowerCase();
 			filtered = filtered.filter(
 				(entity) => entity.name.toLowerCase().includes(lower) || entity.preview?.toLowerCase().includes(lower)
-			)
+			);
 		}
 
-		return filtered.slice(0, 20) // Limit to 20 results
-	}, [linkableEntities, existingLinkIds, selectedType, search])
+		return filtered.slice(0, 20); // Limit to 20 results
+	}, [linkableEntities, existingLinkIds, selectedType, search]);
 
 	const handleAddLink = (entity: LinkableEntity) => {
-		const formData = new FormData()
-		formData.append("_action", "add-link")
-		formData.append("entityType", entity.type)
-		formData.append("entityId", entity.id)
-		formData.append("linkType", "supports")
+		const formData = new FormData();
+		formData.append("_action", "add-link");
+		formData.append("entityType", entity.type);
+		formData.append("entityId", entity.id);
+		formData.append("linkType", "supports");
 
-		fetcher.submit(formData, { method: "POST" })
-		setOpen(false)
-		setSearch("")
-	}
+		fetcher.submit(formData, { method: "POST" });
+		setOpen(false);
+		setSearch("");
+	};
 
 	const entityTypes: Array<{ value: TaskLinkEntityType | "all"; label: string }> = [
 		{ value: "all", label: "All" },
@@ -1388,16 +1388,16 @@ function EntityLinkAdder({
 		{ value: "insight", label: "Insights" },
 		{ value: "opportunity", label: "Opportunities" },
 		{ value: "person", label: "People" },
-	]
+	];
 
 	return (
 		<Popover
 			open={open}
 			onOpenChange={(isOpen) => {
-				setOpen(isOpen)
+				setOpen(isOpen);
 				if (!isOpen) {
-					setSearch("")
-					setSelectedType("all")
+					setSearch("");
+					setSelectedType("all");
 				}
 			}}
 		>
@@ -1443,7 +1443,7 @@ function EntityLinkAdder({
 							</div>
 						) : (
 							filteredEntities.map((entity) => {
-								const Icon = entityTypeIcons[entity.type]
+								const Icon = entityTypeIcons[entity.type];
 								return (
 									<button
 										key={`${entity.type}-${entity.id}`}
@@ -1461,14 +1461,14 @@ function EntityLinkAdder({
 											{entityTypeLabels[entity.type]}
 										</Badge>
 									</button>
-								)
+								);
 							})
 						)}
 					</div>
 				</div>
 			</PopoverContent>
 		</Popover>
-	)
+	);
 }
 
 // ============================================================================
@@ -1477,20 +1477,20 @@ function EntityLinkAdder({
 
 export default function TaskDetailPage() {
 	const { task, activity, projectPath, teamMembers, projectPeople, taskLinks, linkableEntities } =
-		useLoaderData<typeof loader>()
+		useLoaderData<typeof loader>();
 
 	// Build a set of already linked entity IDs
-	const existingLinkIds = useMemo(() => new Set(taskLinks.map((link) => link.entity_id)), [taskLinks])
-	const routes = useProjectRoutes(projectPath)
+	const existingLinkIds = useMemo(() => new Set(taskLinks.map((link) => link.entity_id)), [taskLinks]);
+	const routes = useProjectRoutes(projectPath);
 
 	const formatDate = (dateString: string | null) => {
-		if (!dateString) return null
+		if (!dateString) return null;
 		return new Date(dateString).toLocaleDateString("en-US", {
 			month: "short",
 			day: "numeric",
 			year: "numeric",
-		})
-	}
+		});
+	};
 
 	return (
 		<div className="container mx-auto max-w-5xl px-4 py-6">
@@ -1720,5 +1720,5 @@ export default function TaskDetailPage() {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

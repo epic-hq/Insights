@@ -1,29 +1,29 @@
-import { randomUUID } from "node:crypto"
-import type { ActionFunctionArgs } from "react-router"
+import { randomUUID } from "node:crypto";
+import type { ActionFunctionArgs } from "react-router";
 
-const TRIGGER_ENDPOINT = "https://api.trigger.dev/v3/tasks/run"
+const TRIGGER_ENDPOINT = "https://api.trigger.dev/v3/tasks/run";
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		throw new Response("Method not allowed", { status: 405 })
+		throw new Response("Method not allowed", { status: 405 });
 	}
 
-	const triggerApiKey = process.env.TRIGGER_API_KEY
+	const triggerApiKey = process.env.TRIGGER_API_KEY;
 	if (!triggerApiKey) {
-		throw new Error("Missing TRIGGER_API_KEY")
+		throw new Error("Missing TRIGGER_API_KEY");
 	}
 
 	const { key, mediaId, accountId, projectId, userId, profile } = (await request.json()) as {
-		key?: string
-		mediaId?: string
-		accountId?: string
-		projectId?: string
-		userId?: string
-		profile?: string
-	}
+		key?: string;
+		mediaId?: string;
+		accountId?: string;
+		projectId?: string;
+		userId?: string;
+		profile?: string;
+	};
 
 	if (!key || !mediaId || !accountId || !projectId || !userId) {
-		return { error: "key, mediaId, accountId, projectId, and userId are required" }
+		return { error: "key, mediaId, accountId, projectId, and userId are required" };
 	}
 
 	const payload = {
@@ -37,7 +37,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			userId,
 			profile: profile ?? process.env.TRANSCODE_PROFILE ?? "speech_mp3_low",
 		},
-	}
+	};
 
 	const response = await fetch(TRIGGER_ENDPOINT, {
 		method: "POST",
@@ -46,14 +46,14 @@ export async function action({ request }: ActionFunctionArgs) {
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify(payload),
-	})
+	});
 
-	const rawBody = await response.text()
-	let parsedBody: unknown
+	const rawBody = await response.text();
+	let parsedBody: unknown;
 	try {
-		parsedBody = rawBody ? JSON.parse(rawBody) : null
+		parsedBody = rawBody ? JSON.parse(rawBody) : null;
 	} catch (error) {
-		parsedBody = { message: rawBody, parseError: (error as Error).message }
+		parsedBody = { message: rawBody, parseError: (error as Error).message };
 	}
 
 	if (!response.ok) {
@@ -61,12 +61,12 @@ export async function action({ request }: ActionFunctionArgs) {
 			error: "Failed to trigger transcription job",
 			status: response.status,
 			body: parsedBody,
-		}
+		};
 	}
 
 	return {
 		success: true as const,
 		status: response.status,
 		body: parsedBody,
-	}
+	};
 }

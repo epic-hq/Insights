@@ -1,6 +1,6 @@
-import { consola } from "consola"
+import { consola } from "consola";
 
 /** Detect Remix “browser” bundle */
-const isBrowser = typeof window !== "undefined"
+const isBrowser = typeof window !== "undefined";
 
-export const log = consola.withTag(isBrowser ? "client" : "server")
+export const log = consola.withTag(isBrowser ? "client" : "server");

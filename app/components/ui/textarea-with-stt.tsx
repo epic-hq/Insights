@@ -5,32 +5,32 @@
  * voice input. Uses the useSpeechToText hook for transcription.
  */
 
-import { Mic, Square } from "lucide-react"
-import { forwardRef, useCallback } from "react"
-import { Textarea, type TextareaProps } from "~/components/ui/textarea"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
-import { cn } from "~/lib/utils"
+import { Mic, Square } from "lucide-react";
+import { forwardRef, useCallback } from "react";
+import { Textarea, type TextareaProps } from "~/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
+import { cn } from "~/lib/utils";
 
 export interface TextareaWithSTTProps extends TextareaProps {
 	/** Called when transcription completes - receives the transcript text */
-	onTranscription?: (text: string) => void
+	onTranscription?: (text: string) => void;
 	/** Whether to show the STT button */
-	showSTT?: boolean
+	showSTT?: boolean;
 	/** Custom class for the container */
-	containerClassName?: string
+	containerClassName?: string;
 	/** Position of the mic button */
-	micPosition?: "inside" | "outside"
+	micPosition?: "inside" | "outside";
 }
 
 export const TextareaWithSTT = forwardRef<HTMLTextAreaElement, TextareaWithSTTProps>(
 	({ onTranscription, showSTT = true, containerClassName, micPosition = "inside", className, ...props }, ref) => {
 		const handleTranscription = useCallback(
 			(text: string) => {
-				onTranscription?.(text)
+				onTranscription?.(text);
 			},
 			[onTranscription]
-		)
+		);
 
 		const {
 			toggleRecording,
@@ -38,12 +38,12 @@ export const TextareaWithSTT = forwardRef<HTMLTextAreaElement, TextareaWithSTTPr
 			isTranscribing,
 			error: voiceError,
 			isSupported: isVoiceSupported,
-		} = useSpeechToText({ onTranscription: handleTranscription })
+		} = useSpeechToText({ onTranscription: handleTranscription });
 
-		const showMicButton = showSTT && isVoiceSupported
+		const showMicButton = showSTT && isVoiceSupported;
 
 		if (!showMicButton) {
-			return <Textarea ref={ref} className={className} {...props} />
+			return <Textarea ref={ref} className={className} {...props} />;
 		}
 
 		return (
@@ -89,8 +89,8 @@ export const TextareaWithSTT = forwardRef<HTMLTextAreaElement, TextareaWithSTTPr
 					</Tooltip>
 				</TooltipProvider>
 			</div>
-		)
+		);
 	}
-)
+);
 
-TextareaWithSTT.displayName = "TextareaWithSTT"
+TextareaWithSTT.displayName = "TextareaWithSTT";

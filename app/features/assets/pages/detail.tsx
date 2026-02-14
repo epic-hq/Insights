@@ -1,4 +1,4 @@
-import type { ColumnDef, SortingState } from "@tanstack/react-table"
+import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import {
 	flexRender,
 	getCoreRowModel,
@@ -6,9 +6,9 @@ import {
 	getPaginationRowModel,
 	getSortedRowModel,
 	useReactTable,
-} from "@tanstack/react-table"
-import consola from "consola"
-import { formatDistance } from "date-fns"
+} from "@tanstack/react-table";
+import consola from "consola";
+import { formatDistance } from "date-fns";
 import {
 	ArrowLeft,
 	ArrowUpDown,
@@ -21,12 +21,12 @@ import {
 	Search,
 	Table,
 	Trash2,
-} from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useFetcher, useLoaderData, useNavigate } from "react-router"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Button } from "~/components/ui/button"
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Link, useFetcher, useLoaderData, useNavigate } from "react-router";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Button } from "~/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -35,44 +35,52 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "~/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import InlineEdit from "~/components/ui/inline-edit"
-import { Input } from "~/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
+} from "~/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import InlineEdit from "~/components/ui/inline-edit";
+import { Input } from "~/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: `${data?.asset?.title || "Asset"} | Insights` },
-		{ name: "description", content: data?.asset?.description || "View and edit asset data" },
-	]
-}
+		{
+			name: "description",
+			content: data?.asset?.description || "View and edit asset data",
+		},
+	];
+};
 
 interface ProjectAsset {
-	id: string
-	title: string
-	description: string | null
-	asset_type: string
-	row_count: number | null
-	column_count: number | null
-	table_data: { headers: string[]; rows: Record<string, unknown>[] } | null
-	content_md: string | null
-	status: string | null
-	source_type: string | null
-	created_at: string
-	updated_at: string
+	id: string;
+	title: string;
+	description: string | null;
+	asset_type: string;
+	row_count: number | null;
+	column_count: number | null;
+	table_data: { headers: string[]; rows: Record<string, unknown>[] } | null;
+	content_md: string | null;
+	status: string | null;
+	source_type: string | null;
+	created_at: string;
+	updated_at: string;
 }
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const assetId = params.assetId
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const assetId = params.assetId;
 
 	if (!assetId) {
-		throw new Response("Asset ID is required", { status: 400 })
+		throw new Response("Asset ID is required", { status: 400 });
 	}
 
 	const { data: asset, error } = await supabase
@@ -81,100 +89,103 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			"id, title, description, asset_type, row_count, column_count, table_data, content_md, status, source_type, created_at, updated_at"
 		)
 		.eq("id", assetId)
-		.single()
+		.single();
 
 	if (error || !asset) {
-		consola.error("Asset query error:", error)
-		throw new Response("Asset not found", { status: 404 })
+		consola.error("Asset query error:", error);
+		throw new Response("Asset not found", { status: 404 });
 	}
 
-	return { asset: asset as ProjectAsset }
+	return { asset: asset as ProjectAsset };
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const assetId = params.assetId
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const assetId = params.assetId;
 
 	if (!assetId) {
-		return { error: "Asset ID is required" }
+		return { error: "Asset ID is required" };
 	}
 
-	const formData = await request.formData()
-	const actionType = formData.get("_action") as string
+	const formData = await request.formData();
+	const actionType = formData.get("_action") as string;
 
 	if (actionType === "update-field") {
-		const field = formData.get("field") as string
-		const value = formData.get("value") as string
+		const field = formData.get("field") as string;
+		const value = formData.get("value") as string;
 
 		if (!field) {
-			return { error: "Field name is required" }
+			return { error: "Field name is required" };
 		}
 
 		// Only allow updating certain fields
-		const allowedFields = ["title", "description"]
+		const allowedFields = ["title", "description"];
 		if (!allowedFields.includes(field)) {
-			return { error: `Field ${field} is not editable` }
+			return { error: `Field ${field} is not editable` };
 		}
 
 		const { error } = await supabase
 			.from("project_assets")
 			.update({ [field]: value || null, updated_at: new Date().toISOString() })
-			.eq("id", assetId)
+			.eq("id", assetId);
 
 		if (error) {
-			consola.error("Failed to update asset field:", error)
-			return { error: "Failed to update field" }
+			consola.error("Failed to update asset field:", error);
+			return { error: "Failed to update field" };
 		}
 
-		return { success: true }
+		return { success: true };
 	}
 
 	if (actionType === "delete") {
-		const { error } = await supabase.from("project_assets").delete().eq("id", assetId)
+		const { error } = await supabase.from("project_assets").delete().eq("id", assetId);
 
 		if (error) {
-			consola.error("Failed to delete asset:", error)
-			return { error: "Failed to delete asset" }
+			consola.error("Failed to delete asset:", error);
+			return { error: "Failed to delete asset" };
 		}
 
-		return { success: true, deleted: true }
+		return { success: true, deleted: true };
 	}
 
 	if (actionType === "update-cell") {
-		const rowIndex = Number.parseInt(formData.get("rowIndex") as string, 10)
-		const columnKey = formData.get("columnKey") as string
-		const value = formData.get("value") as string
+		const rowIndex = Number.parseInt(formData.get("rowIndex") as string, 10);
+		const columnKey = formData.get("columnKey") as string;
+		const value = formData.get("value") as string;
 
 		// Fetch current table_data
 		const { data: asset, error: fetchError } = await supabase
 			.from("project_assets")
 			.select("table_data")
 			.eq("id", assetId)
-			.single()
+			.single();
 
 		if (fetchError || !asset?.table_data) {
-			return { error: "Failed to fetch asset data" }
+			return { error: "Failed to fetch asset data" };
 		}
 
-		const tableData = asset.table_data as { headers: string[]; rows: Record<string, unknown>[] }
+		const tableData = asset.table_data as {
+			headers: string[];
+			rows: Record<string, unknown>[];
+		};
 
 		// Update the specific cell
 		if (tableData.rows[rowIndex]) {
-			tableData.rows[rowIndex][columnKey] = value
+			tableData.rows[rowIndex][columnKey] = value;
 		}
 
 		const { error: updateError } = await supabase
 			.from("project_assets")
 			.update({ table_data: tableData, updated_at: new Date().toISOString() })
-			.eq("id", assetId)
+			.eq("id", assetId);
 
 		if (updateError) {
-			consola.error("Failed to update cell:", updateError)
-			return { error: "Failed to update cell" }
+			consola.error("Failed to update cell:", updateError);
+			return { error: "Failed to update cell" };
 		}
 
-		return { success: true }
+		return { success: true };
 	}
 
 	if (actionType === "add-row") {
@@ -183,20 +194,23 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			.from("project_assets")
 			.select("table_data, row_count")
 			.eq("id", assetId)
-			.single()
+			.single();
 
 		if (fetchError || !asset?.table_data) {
-			return { error: "Failed to fetch asset data" }
+			return { error: "Failed to fetch asset data" };
 		}
 
-		const tableData = asset.table_data as { headers: string[]; rows: Record<string, unknown>[] }
+		const tableData = asset.table_data as {
+			headers: string[];
+			rows: Record<string, unknown>[];
+		};
 
 		// Create empty row with all headers
-		const newRow: Record<string, string> = {}
+		const newRow: Record<string, string> = {};
 		for (const header of tableData.headers) {
-			newRow[header] = ""
+			newRow[header] = "";
 		}
-		tableData.rows.push(newRow)
+		tableData.rows.push(newRow);
 
 		const { error: updateError } = await supabase
 			.from("project_assets")
@@ -205,21 +219,21 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				row_count: tableData.rows.length,
 				updated_at: new Date().toISOString(),
 			})
-			.eq("id", assetId)
+			.eq("id", assetId);
 
 		if (updateError) {
-			consola.error("Failed to add row:", updateError)
-			return { error: "Failed to add row" }
+			consola.error("Failed to add row:", updateError);
+			return { error: "Failed to add row" };
 		}
 
-		return { success: true, action: "add-row" }
+		return { success: true, action: "add-row" };
 	}
 
 	if (actionType === "add-column") {
-		const columnName = formData.get("columnName") as string
+		const columnName = formData.get("columnName") as string;
 
 		if (!columnName?.trim()) {
-			return { error: "Column name is required" }
+			return { error: "Column name is required" };
 		}
 
 		// Fetch current table_data
@@ -227,23 +241,26 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			.from("project_assets")
 			.select("table_data, column_count")
 			.eq("id", assetId)
-			.single()
+			.single();
 
 		if (fetchError || !asset?.table_data) {
-			return { error: "Failed to fetch asset data" }
+			return { error: "Failed to fetch asset data" };
 		}
 
-		const tableData = asset.table_data as { headers: string[]; rows: Record<string, unknown>[] }
+		const tableData = asset.table_data as {
+			headers: string[];
+			rows: Record<string, unknown>[];
+		};
 
 		// Check if column already exists
 		if (tableData.headers.includes(columnName.trim())) {
-			return { error: "Column already exists" }
+			return { error: "Column already exists" };
 		}
 
 		// Add column to headers and all rows
-		tableData.headers.push(columnName.trim())
+		tableData.headers.push(columnName.trim());
 		for (const row of tableData.rows) {
-			row[columnName.trim()] = ""
+			row[columnName.trim()] = "";
 		}
 
 		const { error: updateError } = await supabase
@@ -253,17 +270,17 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				column_count: tableData.headers.length,
 				updated_at: new Date().toISOString(),
 			})
-			.eq("id", assetId)
+			.eq("id", assetId);
 
 		if (updateError) {
-			consola.error("Failed to add column:", updateError)
-			return { error: "Failed to add column" }
+			consola.error("Failed to add column:", updateError);
+			return { error: "Failed to add column" };
 		}
 
-		return { success: true, action: "add-column" }
+		return { success: true, action: "add-column" };
 	}
 
-	return { error: "Unknown action" }
+	return { error: "Unknown action" };
 }
 
 function EditableCell({
@@ -272,24 +289,24 @@ function EditableCell({
 	columnKey,
 	value,
 }: {
-	assetId: string
-	rowIndex: number
-	columnKey: string
-	value: string
+	assetId: string;
+	rowIndex: number;
+	columnKey: string;
+	value: string;
 }) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	const handleSubmit = (newValue: string) => {
-		if (newValue === value) return
+		if (newValue === value) return;
 
-		const formData = new FormData()
-		formData.append("_action", "update-cell")
-		formData.append("rowIndex", rowIndex.toString())
-		formData.append("columnKey", columnKey)
-		formData.append("value", newValue)
+		const formData = new FormData();
+		formData.append("_action", "update-cell");
+		formData.append("rowIndex", rowIndex.toString());
+		formData.append("columnKey", columnKey);
+		formData.append("value", newValue);
 
-		fetcher.submit(formData, { method: "POST" })
-	}
+		fetcher.submit(formData, { method: "POST" });
+	};
 
 	return (
 		<InlineEdit
@@ -299,7 +316,7 @@ function EditableCell({
 			inputClassName="text-sm"
 			placeholder="-"
 		/>
-	)
+	);
 }
 
 function EditableAssetField({
@@ -309,24 +326,24 @@ function EditableAssetField({
 	multiline = false,
 	textClassName = "text-sm",
 }: {
-	assetId: string
-	field: string
-	value: string
-	multiline?: boolean
-	textClassName?: string
+	assetId: string;
+	field: string;
+	value: string;
+	multiline?: boolean;
+	textClassName?: string;
 }) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	const handleSubmit = (newValue: string) => {
-		if (newValue === value) return
+		if (newValue === value) return;
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("field", field)
-		formData.append("value", newValue)
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("field", field);
+		formData.append("value", newValue);
 
-		fetcher.submit(formData, { method: "POST" })
-	}
+		fetcher.submit(formData, { method: "POST" });
+	};
 
 	return (
 		<InlineEdit
@@ -337,7 +354,7 @@ function EditableAssetField({
 			multiline={multiline}
 			placeholder={`Add ${field}...`}
 		/>
-	)
+	);
 }
 
 function SortableHeader({ column, title }: { column: any; title: string }) {
@@ -351,46 +368,49 @@ function SortableHeader({ column, title }: { column: any; title: string }) {
 			{title}
 			<ArrowUpDown className="ml-2 h-4 w-4" />
 		</Button>
-	)
+	);
 }
 
 export default function AssetDetailPage() {
-	const { asset } = useLoaderData<typeof loader>()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath)
-	const navigate = useNavigate()
-	const deleteFetcher = useFetcher()
-	const addRowFetcher = useFetcher()
-	const addColumnFetcher = useFetcher()
-	const [sorting, setSorting] = useState<SortingState>([])
-	const [globalFilter, setGlobalFilter] = useState("")
-	const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 50 })
-	const [addColumnDialogOpen, setAddColumnDialogOpen] = useState(false)
-	const [newColumnName, setNewColumnName] = useState("")
+	const { asset } = useLoaderData<typeof loader>();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath);
+	const navigate = useNavigate();
+	const deleteFetcher = useFetcher();
+	const addRowFetcher = useFetcher();
+	const addColumnFetcher = useFetcher();
+	const [sorting, setSorting] = useState<SortingState>([]);
+	const [globalFilter, setGlobalFilter] = useState("");
+	const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 50 });
+	const [addColumnDialogOpen, setAddColumnDialogOpen] = useState(false);
+	const [newColumnName, setNewColumnName] = useState("");
 
-	// Handle delete redirect - go to files tab
-	const deleteResult = deleteFetcher.data as { deleted?: boolean } | undefined
+	// Handle delete redirect - go to sources (Notes & Files) page
+	const deleteResult = deleteFetcher.data as { deleted?: boolean } | undefined;
 	if (deleteResult?.deleted) {
-		navigate(`${routes.interviews.index()}?tab=files`)
+		navigate(routes.sources.index());
 	}
 
 	// Add row handler
 	const handleAddRow = () => {
-		addRowFetcher.submit({ _action: "add-row" }, { method: "POST" })
-	}
+		addRowFetcher.submit({ _action: "add-row" }, { method: "POST" });
+	};
 
 	// Add column handler
 	const handleAddColumn = () => {
-		if (!newColumnName.trim()) return
-		addColumnFetcher.submit({ _action: "add-column", columnName: newColumnName.trim() }, { method: "POST" })
-		setNewColumnName("")
-		setAddColumnDialogOpen(false)
-	}
+		if (!newColumnName.trim()) return;
+		addColumnFetcher.submit({ _action: "add-column", columnName: newColumnName.trim() }, { method: "POST" });
+		setNewColumnName("");
+		setAddColumnDialogOpen(false);
+	};
 
 	// Parse table data
-	const tableData = asset.table_data as { headers: string[]; rows: Record<string, unknown>[] } | null
-	const headers = tableData?.headers || []
-	const rows = tableData?.rows || []
+	const tableData = asset.table_data as {
+		headers: string[];
+		rows: Record<string, unknown>[];
+	} | null;
+	const headers = tableData?.headers || [];
+	const rows = tableData?.rows || [];
 
 	// Create columns dynamically from headers
 	const columns: ColumnDef<Record<string, unknown>>[] = useMemo(() => {
@@ -398,12 +418,12 @@ export default function AssetDetailPage() {
 			accessorKey: header,
 			header: ({ column }) => <SortableHeader column={column} title={header} />,
 			cell: ({ row }) => {
-				const value = String(row.getValue(header) ?? "")
-				return <EditableCell assetId={asset.id} rowIndex={row.index} columnKey={header} value={value} />
+				const value = String(row.getValue(header) ?? "");
+				return <EditableCell assetId={asset.id} rowIndex={row.index} columnKey={header} value={value} />;
 			},
 			filterFn: "includesString",
-		}))
-	}, [headers, asset.id])
+		}));
+	}, [headers, asset.id]);
 
 	const table = useReactTable({
 		data: rows,
@@ -421,35 +441,35 @@ export default function AssetDetailPage() {
 		getFilteredRowModel: getFilteredRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
 		globalFilterFn: "includesString",
-	})
+	});
 
 	const handleExportCSV = () => {
-		if (!tableData) return
+		if (!tableData) return;
 
 		const csvContent = [
 			headers.join(","),
 			...rows.map((row) =>
 				headers
 					.map((h) => {
-						const val = String(row[h] ?? "")
+						const val = String(row[h] ?? "");
 						// Escape quotes and wrap in quotes if contains comma
 						if (val.includes(",") || val.includes('"') || val.includes("\n")) {
-							return `"${val.replace(/"/g, '""')}"`
+							return `"${val.replace(/"/g, '""')}"`;
 						}
-						return val
+						return val;
 					})
 					.join(",")
 			),
-		].join("\n")
+		].join("\n");
 
-		const blob = new Blob([csvContent], { type: "text/csv" })
-		const url = URL.createObjectURL(blob)
-		const a = document.createElement("a")
-		a.href = url
-		a.download = `${asset.title.replace(/[^a-z0-9]/gi, "_")}.csv`
-		a.click()
-		URL.revokeObjectURL(url)
-	}
+		const blob = new Blob([csvContent], { type: "text/csv" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `${asset.title.replace(/[^a-z0-9]/gi, "_")}.csv`;
+		a.click();
+		URL.revokeObjectURL(url);
+	};
 
 	return (
 		<div className="min-h-screen bg-background">
@@ -497,7 +517,12 @@ export default function AssetDetailPage() {
 									</>
 								)}
 								<span>•</span>
-								<span>Updated {formatDistance(new Date(asset.updated_at), new Date(), { addSuffix: true })}</span>
+								<span>
+									Updated{" "}
+									{formatDistance(new Date(asset.updated_at), new Date(), {
+										addSuffix: true,
+									})}
+								</span>
 							</div>
 						</div>
 						{/* Actions Menu */}
@@ -516,7 +541,7 @@ export default function AssetDetailPage() {
 									className="text-destructive focus:text-destructive"
 									onClick={() => {
 										if (confirm("Delete this file? This cannot be undone.")) {
-											deleteFetcher.submit({ _action: "delete" }, { method: "POST" })
+											deleteFetcher.submit({ _action: "delete" }, { method: "POST" });
 										}
 									}}
 								>
@@ -603,7 +628,7 @@ export default function AssetDetailPage() {
 										value={newColumnName}
 										onChange={(e) => setNewColumnName(e.target.value)}
 										onKeyDown={(e) => {
-											if (e.key === "Enter") handleAddColumn()
+											if (e.key === "Enter") handleAddColumn();
 										}}
 									/>
 								</div>
@@ -678,7 +703,12 @@ export default function AssetDetailPage() {
 								</span>
 								<select
 									value={pagination.pageSize}
-									onChange={(e) => setPagination((prev) => ({ ...prev, pageSize: Number(e.target.value) }))}
+									onChange={(e) =>
+										setPagination((prev) => ({
+											...prev,
+											pageSize: Number(e.target.value),
+										}))
+									}
 									className="rounded-md border px-2 py-1 text-sm"
 								>
 									{[25, 50, 100, 250].map((size) => (
@@ -697,5 +727,5 @@ export default function AssetDetailPage() {
 				)}
 			</PageContainer>
 		</div>
-	)
+	);
 }

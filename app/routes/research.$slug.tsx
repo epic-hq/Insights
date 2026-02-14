@@ -1,9 +1,9 @@
 /**
  * Public survey page with both form and AI chat modes
  */
-import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport } from "ai"
-import { AnimatePresence, motion } from "framer-motion"
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { AnimatePresence, motion } from "framer-motion";
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -18,34 +18,65 @@ import {
 	Send,
 	Share2,
 	Video,
-} from "lucide-react"
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { useLoaderData } from "react-router-dom"
-import { Streamdown } from "streamdown"
-import { z } from "zod"
-import { Logo } from "~/components/branding"
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader } from "~/components/ui/card"
-import { Checkbox } from "~/components/ui/checkbox"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
-import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button"
-import { VideoRecorder } from "~/features/research-links/components/VideoRecorder"
-import { type ResearchLinkQuestion, ResearchLinkQuestionSchema } from "~/features/research-links/schemas"
-import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import { cn } from "~/lib/utils"
-import { createR2PresignedUrl } from "~/utils/r2.server"
+} from "lucide-react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { useLoaderData } from "react-router-dom";
+import { Streamdown } from "streamdown";
+import { z } from "zod";
+import { Logo } from "~/components/branding";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
+import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button";
+import { getNextQuestionIndex } from "~/features/research-links/branching";
+import { VideoRecorder } from "~/features/research-links/components/VideoRecorder";
+import { type ResearchLinkQuestion, ResearchLinkQuestionSchema } from "~/features/research-links/schemas";
+import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { cn } from "~/lib/utils";
+import { createR2PresignedUrl } from "~/utils/r2.server";
+import { extractUtmParamsFromSearch, hasUtmParams } from "~/utils/utm";
 
-const emailSchema = z.string().email()
+const emailSchema = z.string().email();
+const phoneSchema = z.string().min(7, "Enter a valid phone number");
+
+/** Render text with markdown-style [label](url) converted to clickable links */
+function renderChatText(text: string) {
+	const matches = [...text.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)];
+	if (matches.length === 0) return text;
+
+	const parts: React.ReactNode[] = [];
+	let lastIndex = 0;
+
+	for (const match of matches) {
+		const idx = match.index ?? 0;
+		if (idx > lastIndex) {
+			parts.push(text.slice(lastIndex, idx));
+		}
+		parts.push(
+			<a key={idx} href={match[2]} target="_blank" rel="noreferrer" className="font-medium underline hover:opacity-80">
+				{match[1]}
+			</a>
+		);
+		lastIndex = idx + match[0].length;
+	}
+
+	if (lastIndex < text.length) {
+		parts.push(text.slice(lastIndex));
+	}
+
+	return parts;
+}
 
 // Type definitions used by ChatSection (moved before component)
-type ResponseValue = string | string[] | boolean | null
-type ResponseRecord = Record<string, ResponseValue>
+type ResponseValue = string | string[] | boolean | null;
+type ResponseRecord = Record<string, ResponseValue>;
 
 /**
  * Chat section component - isolated to ensure useChat is initialized with valid responseId
@@ -60,19 +91,19 @@ function ChatSection({
 	onVideoStage,
 	renderModeSwitcher,
 }: {
-	slug: string
-	responseId: string
-	responses: ResponseRecord
-	questions: ResearchLinkQuestion[]
-	allowVideo: boolean
-	onComplete: () => void
-	onVideoStage: () => void
-	renderModeSwitcher: () => React.ReactNode
+	slug: string;
+	responseId: string;
+	responses: ResponseRecord;
+	questions: ResearchLinkQuestion[];
+	allowVideo: boolean;
+	onComplete: () => void;
+	onVideoStage: () => void;
+	renderModeSwitcher: () => React.ReactNode;
 }) {
-	const chatContainerRef = useRef<HTMLDivElement>(null)
-	const chatInputRef = useRef<HTMLTextAreaElement>(null)
-	const [chatInput, setChatInput] = useState("")
-	const hasStartedChat = useRef(false)
+	const chatContainerRef = useRef<HTMLDivElement>(null);
+	const chatInputRef = useRef<HTMLTextAreaElement>(null);
+	const [chatInput, setChatInput] = useState("");
+	const hasStartedChat = useRef(false);
 
 	// Create transport with body that gets refreshed with current responses
 	const transport = useMemo(() => {
@@ -82,8 +113,8 @@ function ChatSection({
 				responseId,
 				currentResponses: responses,
 			},
-		})
-	}, [slug, responseId, responses])
+		});
+	}, [slug, responseId, responses]);
 
 	const {
 		messages,
@@ -93,14 +124,14 @@ function ChatSection({
 	} = useChat({
 		id: `research-chat-${responseId}`,
 		transport,
-	})
+	});
 
-	const isChatLoading = status === "streaming" || status === "submitted"
+	const isChatLoading = status === "streaming" || status === "submitted";
 
 	// Voice input for chat
 	const handleChatVoiceTranscription = useCallback((text: string) => {
-		setChatInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text))
-	}, [])
+		setChatInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+	}, []);
 
 	const {
 		isRecording: isChatVoiceRecording,
@@ -108,7 +139,7 @@ function ChatSection({
 		error: chatVoiceError,
 		toggleRecording: toggleChatRecording,
 		isSupported: isVoiceSupported,
-	} = useSpeechToText({ onTranscription: handleChatVoiceTranscription })
+	} = useSpeechToText({ onTranscription: handleChatVoiceTranscription });
 
 	const chatVoiceButtonState: VoiceButtonState = chatVoiceError
 		? "error"
@@ -116,31 +147,31 @@ function ChatSection({
 			? "processing"
 			: isChatVoiceRecording
 				? "recording"
-				: "idle"
+				: "idle";
 
 	// Auto-scroll chat
 	useEffect(() => {
 		if (chatContainerRef.current) {
-			chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
+			chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
 		}
-	}, [messages])
+	}, [messages]);
 
 	// Auto-focus chat input
 	useEffect(() => {
 		if (chatInputRef.current && !isChatLoading) {
-			chatInputRef.current.focus()
+			chatInputRef.current.focus();
 		}
-	}, [isChatLoading])
+	}, [isChatLoading]);
 
 	// Helper to extract text content from message parts
 	const getMessageText = useCallback((message: (typeof messages)[0]): string => {
-		if (!message.parts) return ""
+		if (!message.parts) return "";
 		return message.parts
 			.filter((p) => p.type === "text")
 			.map((p) => (p as { type: "text"; text: string }).text)
 			.join("")
-			.trim()
-	}, [])
+			.trim();
+	}, []);
 
 	// Auto-start chat when component mounts
 	useEffect(() => {
@@ -148,35 +179,35 @@ function ChatSection({
 			messagesLength: messages.length,
 			hasStartedChat: hasStartedChat.current,
 			status,
-		})
+		});
 
 		if (messages.length === 0 && !hasStartedChat.current && status === "ready") {
-			console.log("[research-link-chat] sending initial message")
-			hasStartedChat.current = true
+			console.log("[research-link-chat] sending initial message");
+			hasStartedChat.current = true;
 			sendMessage({
 				text: "Hi, I'm ready to share my feedback. Please start with your first question.",
-			})
+			});
 		}
-	}, [messages.length, status, sendMessage])
+	}, [messages.length, status, sendMessage]);
 
 	// Check if survey is complete after each message
 	useEffect(() => {
-		if (messages.length === 0 || status === "streaming") return
-		const lastMessage = messages[messages.length - 1]
-		if (lastMessage?.role !== "assistant") return
+		if (messages.length === 0 || status === "streaming") return;
+		const lastMessage = messages[messages.length - 1];
+		if (lastMessage?.role !== "assistant") return;
 
-		const text = getMessageText(lastMessage).toLowerCase()
-		const isComplete = text.includes("thank you") && text.includes("response")
+		const text = getMessageText(lastMessage).toLowerCase();
+		const isComplete = text.includes("thank you") && text.includes("response");
 		if (isComplete) {
 			saveProgress(slug, { responseId, responses, completed: true }).then(() => {
 				if (allowVideo) {
-					onVideoStage()
+					onVideoStage();
 				} else {
-					onComplete()
+					onComplete();
 				}
-			})
+			});
 		}
-	}, [messages, status, getMessageText, slug, responseId, responses, allowVideo, onVideoStage, onComplete])
+	}, [messages, status, getMessageText, slug, responseId, responses, allowVideo, onVideoStage, onComplete]);
 
 	return (
 		<div className="space-y-4">
@@ -201,11 +232,11 @@ function ChatSection({
 				)}
 				{messages
 					.filter((m, i) => {
-						const text = getMessageText(m)
-						return !(i === 0 && m.role === "user" && text.includes("I'm ready to share my feedback"))
+						const text = getMessageText(m);
+						return !(i === 0 && m.role === "user" && text.includes("I'm ready to share my feedback"));
 					})
 					.map((message) => {
-						const text = getMessageText(message)
+						const text = getMessageText(message);
 						if (!text && message.role === "assistant") {
 							// Show loading for empty assistant message
 							return (
@@ -214,7 +245,7 @@ function ChatSection({
 										<Loader2 className="h-4 w-4 animate-spin text-white/50" />
 									</div>
 								</div>
-							)
+							);
 						}
 						return (
 							<div key={message.id} className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}>
@@ -226,10 +257,10 @@ function ChatSection({
 											: "rounded-bl-md bg-white/10 text-white/90"
 									)}
 								>
-									{text}
+									{message.role === "assistant" ? renderChatText(text) : text}
 								</div>
 							</div>
-						)
+						);
 					})}
 				{/* Only show trailing spinner if the last message has text (not an empty streaming message) */}
 				{isChatLoading && messages.length > 0 && getMessageText(messages[messages.length - 1]) !== "" && (
@@ -244,10 +275,10 @@ function ChatSection({
 			{/* Chat input */}
 			<form
 				onSubmit={(e) => {
-					e.preventDefault()
-					if (!chatInput.trim() || isChatLoading) return
-					sendMessage({ text: chatInput.trim() })
-					setChatInput("")
+					e.preventDefault();
+					if (!chatInput.trim() || isChatLoading) return;
+					sendMessage({ text: chatInput.trim() });
+					setChatInput("");
 				}}
 				className="flex items-end gap-2"
 			>
@@ -258,10 +289,10 @@ function ChatSection({
 						onChange={(e) => setChatInput(e.target.value)}
 						onKeyDown={(e) => {
 							if (e.key === "Enter" && !e.shiftKey) {
-								e.preventDefault()
+								e.preventDefault();
 								if (chatInput.trim() && !isChatLoading) {
-									sendMessage({ text: chatInput.trim() })
-									setChatInput("")
+									sendMessage({ text: chatInput.trim() });
+									setChatInput("");
 								}
 							}
 						}}
@@ -296,12 +327,12 @@ function ChatSection({
 			{/* Mode switcher at bottom */}
 			{renderModeSwitcher()}
 		</div>
-	)
+	);
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	if (!data) {
-		return [{ title: "Survey" }]
+		return [{ title: "Survey" }];
 	}
 	return [
 		{ title: data.list.hero_title || data.list.name || "Survey" },
@@ -309,46 +340,46 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 			name: "description",
 			content: data.list.hero_subtitle || data.list.description || "",
 		},
-	]
-}
+	];
+};
 
 export async function loader({ params }: LoaderFunctionArgs) {
-	const slug = params.slug
+	const slug = params.slug;
 	if (!slug) {
-		throw new Response("Missing slug", { status: 400 })
+		throw new Response("Missing slug", { status: 400 });
 	}
-	const supabase = createSupabaseAdminClient()
+	const supabase = createSupabaseAdminClient();
 	const { data: list, error } = await supabase
 		.from("research_links")
 		.select(
-			"id, name, slug, description, hero_title, hero_subtitle, instructions, hero_cta_label, hero_cta_helper, redirect_url, calendar_url, questions, allow_chat, allow_voice, allow_video, walkthrough_video_url, default_response_mode, is_live, account_id"
+			"id, name, slug, description, hero_title, hero_subtitle, instructions, hero_cta_label, hero_cta_helper, redirect_url, calendar_url, questions, allow_chat, allow_voice, allow_video, walkthrough_video_url, default_response_mode, is_live, account_id, identity_mode, identity_field"
 		)
 		.eq("slug", slug)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (error) {
-		throw new Response(error.message, { status: 500 })
+		throw new Response(error.message, { status: 500 });
 	}
 	if (!list || !list.is_live) {
-		throw new Response("Survey not found", { status: 404 })
+		throw new Response("Survey not found", { status: 404 });
 	}
 
-	const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions)
+	const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions);
 
 	// Generate signed URL for walkthrough video if it exists
-	let walkthroughSignedUrl: string | null = null
+	let walkthroughSignedUrl: string | null = null;
 	if (list.walkthrough_video_url) {
 		// Detect content type from file extension
-		const key = list.walkthrough_video_url
-		const ext = key.split(".").pop()?.toLowerCase()
-		const contentType = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : "video/webm"
+		const key = list.walkthrough_video_url;
+		const ext = key.split(".").pop()?.toLowerCase();
+		const contentType = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : "video/webm";
 
 		const presigned = createR2PresignedUrl({
 			key,
 			expiresInSeconds: 3600, // 1 hour
 			responseContentType: contentType,
-		})
-		walkthroughSignedUrl = presigned?.url ?? null
+		});
+		walkthroughSignedUrl = presigned?.url ?? null;
 	}
 
 	return {
@@ -356,115 +387,147 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		list,
 		questions: questionsResult.success ? questionsResult.data : [],
 		walkthroughSignedUrl,
-	}
+	};
 }
+
+type IdentityMode = "anonymous" | "identified";
+type IdentityField = "email" | "phone";
 
 type LoaderData = {
-	slug: string
+	slug: string;
 	list: {
-		id: string
-		name: string
-		slug: string
-		description: string | null
-		hero_title: string | null
-		hero_subtitle: string | null
-		instructions: string | null
-		hero_cta_label: string | null
-		hero_cta_helper: string | null
-		redirect_url: string | null
-		calendar_url: string | null
-		questions: unknown
-		allow_chat: boolean
-		allow_voice: boolean
-		allow_video: boolean
-		walkthrough_video_url: string | null
-		default_response_mode: "form" | "chat" | "voice" | null
-		is_live: boolean
-		account_id: string
-	}
-	questions: Array<ResearchLinkQuestion>
-	walkthroughSignedUrl: string | null
-}
+		id: string;
+		name: string;
+		slug: string;
+		description: string | null;
+		hero_title: string | null;
+		hero_subtitle: string | null;
+		instructions: string | null;
+		hero_cta_label: string | null;
+		hero_cta_helper: string | null;
+		redirect_url: string | null;
+		calendar_url: string | null;
+		questions: unknown;
+		allow_chat: boolean;
+		allow_voice: boolean;
+		allow_video: boolean;
+		walkthrough_video_url: string | null;
+		default_response_mode: "form" | "chat" | "voice" | null;
+		is_live: boolean;
+		account_id: string;
+		identity_mode: IdentityMode;
+		identity_field: IdentityField;
+	};
+	questions: Array<ResearchLinkQuestion>;
+	walkthroughSignedUrl: string | null;
+};
 
-type Stage = "email" | "name" | "instructions" | "survey" | "video" | "complete"
-type Mode = "form" | "chat" | "voice"
+type Stage = "email" | "phone" | "name" | "instructions" | "survey" | "video" | "complete";
+type Mode = "form" | "chat" | "voice";
 
 type StartSignupResult = {
-	responseId: string
-	responses: ResponseRecord
-	completed: boolean
-	personId: string | null
-}
+	responseId: string;
+	responses: ResponseRecord;
+	completed: boolean;
+	personId: string | null;
+};
 
-async function startSignup(
-	slug: string,
-	payload: {
-		email: string
-		firstName?: string | null
-		lastName?: string | null
-		responseId?: string | null
-		responseMode?: Mode
-	}
-): Promise<StartSignupResult> {
+type StartSignupPayload =
+	| {
+			email: string;
+			firstName?: string | null;
+			lastName?: string | null;
+			company?: string | null;
+			responseId?: string | null;
+			responseMode?: Mode;
+			utmParams?: Record<string, string> | null;
+	  }
+	| {
+			phone: string;
+			responseId?: string | null;
+			responseMode?: Mode;
+			utmParams?: Record<string, string> | null;
+	  }
+	| {
+			responseId?: string | null;
+			responseMode?: Mode;
+			utmParams?: Record<string, string> | null;
+	  }; // anonymous
+
+async function startSignup(slug: string, payload: StartSignupPayload): Promise<StartSignupResult> {
 	const response = await fetch(`/api/research-links/${slug}/start`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(payload),
-	})
+	});
 	if (!response.ok) {
-		const errorData = await response.json().catch(() => ({}))
-		throw new Error(errorData.message || "Failed to start survey")
+		const errorData = await response.json().catch(() => ({}));
+		throw new Error(errorData.message || "Failed to start survey");
 	}
-	return (await response.json()) as StartSignupResult
+	return (await response.json()) as StartSignupResult;
 }
 
 async function saveProgress(
 	slug: string,
 	payload: {
-		responseId: string
-		responses: ResponseRecord
-		completed?: boolean
+		responseId: string;
+		responses: ResponseRecord;
+		completed?: boolean;
 	}
 ) {
 	const response = await fetch(`/api/research-links/${slug}/save`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(payload),
-	})
+	});
 	if (!response.ok) {
-		throw new Error("Failed to save responses")
+		throw new Error("Failed to save responses");
 	}
-	return (await response.json()) as { ok: boolean }
+	return (await response.json()) as { ok: boolean };
 }
 
 export default function ResearchLinkPage() {
-	const { slug, list, questions, walkthroughSignedUrl } = useLoaderData() as LoaderData
-	const emailId = useId()
-	const storageKey = `research-link:${slug}`
-	const [stage, setStage] = useState<Stage>("email")
-	const [mode, setMode] = useState<Mode>(list.allow_chat ? (list.default_response_mode ?? "form") : "form")
-	const [email, setEmail] = useState("")
-	const [firstName, setFirstName] = useState("")
-	const [lastName, setLastName] = useState("")
-	const [responseId, setResponseId] = useState<string | null>(null)
-	const [responses, setResponses] = useState<ResponseRecord>({})
-	const [currentIndex, setCurrentIndex] = useState(0)
-	const [currentAnswer, setCurrentAnswer] = useState<ResponseValue>("")
-	const [isSaving, setIsSaving] = useState(false)
-	const [error, setError] = useState<string | null>(null)
-	const [initializing, setInitializing] = useState(true)
-	const [copiedLink, setCopiedLink] = useState(false)
-	const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null)
-	const [isReviewing, setIsReviewing] = useState(false)
+	const { slug, list, questions, walkthroughSignedUrl } = useLoaderData() as LoaderData;
+	const emailId = useId();
+	const phoneId = useId();
+	const storageKey = `research-link:${slug}`;
 
-	const resolvedMode = list.allow_chat ? mode : "form"
-	const hasMultipleModes = list.allow_chat || list.allow_voice
-	const isEmailValid = emailSchema.safeParse(email).success
+	// Determine initial stage based on identity mode
+	const getInitialStage = (): Stage => {
+		if (list.identity_mode === "anonymous") {
+			return list.instructions ? "instructions" : "survey";
+		}
+		return list.identity_field === "phone" ? "phone" : "email";
+	};
+
+	const [stage, setStage] = useState<Stage>(getInitialStage);
+	const [mode, setMode] = useState<Mode>(list.allow_chat ? (list.default_response_mode ?? "form") : "form");
+	const [email, setEmail] = useState("");
+	const [phone, setPhone] = useState("");
+	const [firstName, setFirstName] = useState("");
+	const [lastName, setLastName] = useState("");
+	const [company, setCompany] = useState("");
+	const [responseId, setResponseId] = useState<string | null>(null);
+	const [responses, setResponses] = useState<ResponseRecord>({});
+	const [currentIndex, setCurrentIndex] = useState(0);
+	const [currentAnswer, setCurrentAnswer] = useState<ResponseValue>("");
+	const [isSaving, setIsSaving] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [initializing, setInitializing] = useState(true);
+	const [copiedLink, setCopiedLink] = useState(false);
+	const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
+	const [isReviewing, setIsReviewing] = useState(false);
+	const utmParamsRef = useRef<Record<string, string> | undefined>(undefined);
+
+	const resolvedMode = list.allow_chat ? mode : "form";
+	const hasMultipleModes = list.allow_chat || list.allow_voice;
+	const isEmailValid = emailSchema.safeParse(email).success;
+	const isPhoneValid = phoneSchema.safeParse(phone).success;
 
 	// Handle mode switch with response refresh
 	const handleModeSwitch = useCallback(
 		async (newMode: Mode) => {
-			if (newMode === mode) return
+			if (newMode === mode) return;
 
 			// If we have a responseId and are in survey stage, refresh responses from DB
 			if (responseId && stage === "survey" && email) {
@@ -473,25 +536,25 @@ export default function ResearchLinkPage() {
 						email,
 						responseId,
 						responseMode: newMode,
-					})
-					setResponses(result.responses || {})
+					});
+					setResponses(result.responses || {});
 					// Update current answer if in form mode
 					if (newMode === "form") {
-						const existingValue = result.responses?.[questions[currentIndex]?.id]
-						setCurrentAnswer(existingValue ?? "")
+						const existingValue = result.responses?.[questions[currentIndex]?.id];
+						setCurrentAnswer(existingValue ?? "");
 					}
 				} catch {
 					// If refresh fails, just switch mode anyway
 				}
 			}
-			setMode(newMode)
+			setMode(newMode);
 		},
 		[mode, responseId, stage, email, slug, questions, currentIndex]
-	)
+	);
 
 	// Mode switcher component for survey stages
 	const renderModeSwitcher = () => {
-		if (!hasMultipleModes) return null
+		if (!hasMultipleModes) return null;
 		return (
 			<div className="flex items-center justify-center gap-1 py-2">
 				<button
@@ -532,59 +595,59 @@ export default function ResearchLinkPage() {
 					</button>
 				)}
 			</div>
-		)
-	}
+		);
+	};
 
 	// Countdown timer for redirect
 	useEffect(() => {
-		if (redirectCountdown === null || redirectCountdown <= 0) return
+		if (redirectCountdown === null || redirectCountdown <= 0) return;
 		const timer = setTimeout(() => {
-			setRedirectCountdown((prev) => (prev !== null ? prev - 1 : null))
-		}, 1000)
-		return () => clearTimeout(timer)
-	}, [redirectCountdown])
+			setRedirectCountdown((prev) => (prev !== null ? prev - 1 : null));
+		}, 1000);
+		return () => clearTimeout(timer);
+	}, [redirectCountdown]);
 
 	// Redirect when countdown reaches 0
 	useEffect(() => {
 		if (redirectCountdown === 0 && list.redirect_url) {
-			window.location.href = list.redirect_url
+			window.location.href = list.redirect_url;
 		}
-	}, [redirectCountdown, list.redirect_url])
+	}, [redirectCountdown, list.redirect_url]);
 
 	const cancelRedirect = useCallback(() => {
-		setRedirectCountdown(null)
-	}, [])
+		setRedirectCountdown(null);
+	}, []);
 
 	const handleStartOver = useCallback(() => {
-		window.localStorage.removeItem(storageKey)
-		setStage("email")
-		setEmail("")
-		setFirstName("")
-		setLastName("")
-		setResponseId(null)
-		setResponses({})
-		setCurrentIndex(0)
-		setCurrentAnswer("")
-		setRedirectCountdown(null)
-		setError(null)
-	}, [storageKey])
+		window.localStorage.removeItem(storageKey);
+		setStage("email");
+		setEmail("");
+		setFirstName("");
+		setLastName("");
+		setResponseId(null);
+		setResponses({});
+		setCurrentIndex(0);
+		setCurrentAnswer("");
+		setRedirectCountdown(null);
+		setError(null);
+	}, [storageKey]);
 
 	// Get the current page URL for sharing
-	const shareUrl = typeof window !== "undefined" ? window.location.href : `/ask/${slug}`
+	const shareUrl = typeof window !== "undefined" ? window.location.href : `/ask/${slug}`;
 
 	const handleCopyLink = useCallback(() => {
-		navigator.clipboard.writeText(shareUrl)
-		setCopiedLink(true)
-		setTimeout(() => setCopiedLink(false), 2000)
-	}, [shareUrl])
+		navigator.clipboard.writeText(shareUrl);
+		setCopiedLink(true);
+		setTimeout(() => setCopiedLink(false), 2000);
+	}, [shareUrl]);
 
 	// Voice input for form mode
 	const handleFormVoiceTranscription = useCallback((text: string) => {
 		setCurrentAnswer((prev) => {
-			const current = typeof prev === "string" ? prev : ""
-			return current.trim() ? `${current.trim()} ${text}` : text
-		})
-	}, [])
+			const current = typeof prev === "string" ? prev : "";
+			return current.trim() ? `${current.trim()} ${text}` : text;
+		});
+	}, []);
 
 	const {
 		isRecording: isFormVoiceRecording,
@@ -592,7 +655,7 @@ export default function ResearchLinkPage() {
 		error: formVoiceError,
 		toggleRecording: toggleFormRecording,
 		isSupported: isVoiceSupported,
-	} = useSpeechToText({ onTranscription: handleFormVoiceTranscription })
+	} = useSpeechToText({ onTranscription: handleFormVoiceTranscription });
 
 	// Form voice button state
 	const formVoiceButtonState: VoiceButtonState = formVoiceError
@@ -601,33 +664,44 @@ export default function ResearchLinkPage() {
 			? "processing"
 			: isFormVoiceRecording
 				? "recording"
-				: "idle"
+				: "idle";
 
 	useEffect(() => {
 		if (!list.allow_chat && mode === "chat") {
-			setMode("form")
+			setMode("form");
 		}
-	}, [list.allow_chat, mode])
+	}, [list.allow_chat, mode]);
 
 	useEffect(() => {
-		if (typeof window === "undefined") return
+		if (typeof window === "undefined") return;
 		try {
 			// Check URL params first (from embed redirect)
-			const urlParams = new URLSearchParams(window.location.search)
-			const urlEmail = urlParams.get("email")
-			const urlResponseId = urlParams.get("responseId")
+			const urlParams = new URLSearchParams(window.location.search);
+			const urlEmail = urlParams.get("email");
+			const urlResponseId = urlParams.get("responseId");
 
-			// If we have URL params, use those (coming from embed)
+			// Also check for personalized link params (standalone email/phone without responseId)
+			const urlPhone = urlParams.get("phone");
+			const urlFirstName = urlParams.get("first_name") || urlParams.get("name")?.split(" ")[0] || null;
+			const urlLastName = urlParams.get("last_name") || urlParams.get("name")?.split(" ").slice(1).join(" ") || null;
+
+			// Extract UTM params for campaign attribution (store in ref for manual submits)
+			const utmParams = extractUtmParamsFromSearch(urlParams);
+			const utmPayload = hasUtmParams(utmParams) ? utmParams : undefined;
+			if (utmPayload) utmParamsRef.current = utmPayload;
+
+			// If we have URL params, use those (coming from embed or personalized link)
 			if (urlEmail && urlResponseId) {
 				void startSignup(slug, {
 					email: urlEmail,
 					responseId: urlResponseId,
 					responseMode: resolvedMode,
+					utmParams: utmPayload,
 				})
 					.then((result) => {
-						setEmail(urlEmail)
-						setResponseId(result.responseId)
-						setResponses(result.responses || {})
+						setEmail(urlEmail);
+						setResponseId(result.responseId);
+						setResponses(result.responses || {});
 						// Save to localStorage for future visits
 						window.localStorage.setItem(
 							storageKey,
@@ -635,38 +709,185 @@ export default function ResearchLinkPage() {
 								email: urlEmail,
 								responseId: result.responseId,
 							})
-						)
-						const initialIndex = findNextQuestionIndex(result.responses || {}, questions)
+						);
+						const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
 						if (initialIndex >= questions.length) {
-							setStage("complete")
+							setStage("complete");
 						} else {
 							// Show instructions stage before survey when coming from embed
-							setStage("instructions")
-							setCurrentIndex(initialIndex)
-							const existingValue = result.responses?.[questions[initialIndex]?.id]
-							setCurrentAnswer(existingValue ?? "")
+							setStage("instructions");
+							setCurrentIndex(initialIndex);
+							const existingValue = result.responses?.[questions[initialIndex]?.id];
+							setCurrentAnswer(existingValue ?? "");
 						}
 					})
 					.catch(() => {
 						// If URL params fail, fall back to email stage
-						setInitializing(false)
+						setInitializing(false);
 					})
 					.finally(() => {
-						setInitializing(false)
-					})
-				return
+						setInitializing(false);
+					});
+				return;
 			}
 
+			// Personalized link: standalone ?email (no responseId) — auto-submit for known people
+			if (urlEmail && !urlResponseId && list.identity_field === "email") {
+				setEmail(urlEmail);
+				if (urlFirstName) setFirstName(urlFirstName);
+				if (urlLastName) setLastName(urlLastName);
+				void startSignup(slug, {
+					email: urlEmail,
+					responseMode: resolvedMode,
+					utmParams: utmPayload,
+				})
+					.then((result) => {
+						setResponseId(result.responseId);
+						setResponses(result.responses || {});
+						window.localStorage.setItem(
+							storageKey,
+							JSON.stringify({
+								email: urlEmail,
+								responseId: result.responseId,
+							})
+						);
+						const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
+						if (initialIndex >= questions.length) {
+							setStage("complete");
+						} else if (result.personId) {
+							// Known person — skip identity gate entirely
+							setCurrentIndex(initialIndex);
+							setStage(list.instructions ? "instructions" : "survey");
+							const existingValue = result.responses?.[questions[initialIndex]?.id];
+							setCurrentAnswer(existingValue ?? "");
+						} else if (urlFirstName) {
+							// Unknown person but name provided via URL — create person and skip to survey
+							void startSignup(slug, {
+								email: urlEmail,
+								firstName: urlFirstName,
+								lastName: urlLastName,
+								responseId: result.responseId,
+								responseMode: resolvedMode,
+								utmParams: utmPayload,
+							})
+								.then((personResult) => {
+									setResponseId(personResult.responseId);
+									setResponses(personResult.responses || {});
+									setCurrentIndex(initialIndex);
+									setStage(list.instructions ? "instructions" : "survey");
+									const existingValue = personResult.responses?.[questions[initialIndex]?.id];
+									setCurrentAnswer(existingValue ?? "");
+								})
+								.catch(() => {
+									// Fall through — person creation failed, show name form
+									setCurrentIndex(initialIndex);
+									setStage("name");
+								});
+						} else {
+							// Unknown person, no name — show name collection form
+							setCurrentIndex(initialIndex);
+							setStage("name");
+						}
+					})
+					.catch(() => {
+						// Auto-submit failed — show pre-filled email form for manual confirmation
+						setInitializing(false);
+					})
+					.finally(() => {
+						setInitializing(false);
+					});
+				return;
+			}
+
+			// Personalized link: standalone ?phone (no responseId)
+			if (urlPhone && !urlResponseId && list.identity_field === "phone") {
+				setPhone(urlPhone);
+				void startSignup(slug, {
+					phone: urlPhone,
+					responseMode: resolvedMode,
+					utmParams: utmPayload,
+				})
+					.then((result) => {
+						setResponseId(result.responseId);
+						setResponses(result.responses || {});
+						window.localStorage.setItem(
+							storageKey,
+							JSON.stringify({
+								phone: urlPhone,
+								responseId: result.responseId,
+							})
+						);
+						const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
+						if (initialIndex >= questions.length) {
+							setStage("complete");
+						} else {
+							// Phone-identified: skip to survey (person lookup happens server-side)
+							setCurrentIndex(initialIndex);
+							setStage(list.instructions ? "instructions" : "survey");
+							const existingValue = result.responses?.[questions[initialIndex]?.id];
+							setCurrentAnswer(existingValue ?? "");
+						}
+					})
+					.catch(() => {
+						// Auto-submit failed — show pre-filled phone form
+						setInitializing(false);
+					})
+					.finally(() => {
+						setInitializing(false);
+					});
+				return;
+			}
+
+			// Pre-fill only (email/phone present but identity_field doesn't match — just populate the field)
+			if (urlEmail) setEmail(urlEmail);
+			if (urlPhone) setPhone(urlPhone);
+			if (urlFirstName) setFirstName(urlFirstName);
+			if (urlLastName) setLastName(urlLastName);
+
 			// Otherwise check localStorage for existing session
-			const stored = window.localStorage.getItem(storageKey)
+			const stored = window.localStorage.getItem(storageKey);
 			if (!stored) {
-				setInitializing(false)
-				return
+				// For anonymous mode with no stored session, auto-start the survey
+				if (list.identity_mode === "anonymous") {
+					void startSignup(slug, {
+						responseMode: resolvedMode,
+						utmParams: utmPayload,
+					})
+						.then((result) => {
+							setResponseId(result.responseId);
+							setResponses(result.responses || {});
+							window.localStorage.setItem(storageKey, JSON.stringify({ responseId: result.responseId }));
+							const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
+							if (initialIndex >= questions.length) {
+								setStage("complete");
+							} else {
+								setCurrentIndex(initialIndex);
+								// Anonymous surveys show instructions or go straight to survey
+								if (list.instructions) {
+									setStage("instructions");
+								} else {
+									setStage("survey");
+								}
+							}
+						})
+						.catch(() => {
+							// Silently fail - user can still use the survey
+						})
+						.finally(() => {
+							setInitializing(false);
+						});
+					return;
+				}
+				setInitializing(false);
+				return;
 			}
 			const parsed = JSON.parse(stored) as {
-				email?: string
-				responseId?: string
-			}
+				email?: string;
+				phone?: string;
+				responseId?: string;
+			};
+
+			// Handle email-identified resume
 			if (parsed.email && parsed.responseId) {
 				void startSignup(slug, {
 					email: parsed.email,
@@ -674,190 +895,290 @@ export default function ResearchLinkPage() {
 					responseMode: resolvedMode,
 				})
 					.then((result) => {
-						setEmail(parsed.email as string)
-						setResponseId(result.responseId)
-						setResponses(result.responses || {})
-						const initialIndex = findNextQuestionIndex(result.responses || {}, questions)
+						setEmail(parsed.email as string);
+						setResponseId(result.responseId);
+						setResponses(result.responses || {});
+						const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
 						if (initialIndex >= questions.length) {
-							setStage("complete")
+							setStage("complete");
 						} else {
-							setStage("survey")
-							setCurrentIndex(initialIndex)
-							const existingValue = result.responses?.[questions[initialIndex]?.id]
-							setCurrentAnswer(existingValue ?? "")
+							setStage("survey");
+							setCurrentIndex(initialIndex);
+							const existingValue = result.responses?.[questions[initialIndex]?.id];
+							setCurrentAnswer(existingValue ?? "");
 						}
 					})
 					.catch(() => {
-						window.localStorage.removeItem(storageKey)
+						window.localStorage.removeItem(storageKey);
 					})
 					.finally(() => {
-						setInitializing(false)
-					})
-			} else {
-				window.localStorage.removeItem(storageKey)
-				setInitializing(false)
+						setInitializing(false);
+					});
+				return;
 			}
+
+			// Handle phone-identified resume
+			if (parsed.phone && parsed.responseId) {
+				void startSignup(slug, {
+					phone: parsed.phone,
+					responseId: parsed.responseId,
+					responseMode: resolvedMode,
+				})
+					.then((result) => {
+						setPhone(parsed.phone as string);
+						setResponseId(result.responseId);
+						setResponses(result.responses || {});
+						const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
+						if (initialIndex >= questions.length) {
+							setStage("complete");
+						} else {
+							setStage("survey");
+							setCurrentIndex(initialIndex);
+							const existingValue = result.responses?.[questions[initialIndex]?.id];
+							setCurrentAnswer(existingValue ?? "");
+						}
+					})
+					.catch(() => {
+						window.localStorage.removeItem(storageKey);
+					})
+					.finally(() => {
+						setInitializing(false);
+					});
+				return;
+			}
+
+			// Handle anonymous resume (just responseId)
+			if (parsed.responseId && list.identity_mode === "anonymous") {
+				void startSignup(slug, {
+					responseId: parsed.responseId,
+					responseMode: resolvedMode,
+				})
+					.then((result) => {
+						setResponseId(result.responseId);
+						setResponses(result.responses || {});
+						const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
+						if (initialIndex >= questions.length) {
+							setStage("complete");
+						} else {
+							setStage("survey");
+							setCurrentIndex(initialIndex);
+							const existingValue = result.responses?.[questions[initialIndex]?.id];
+							setCurrentAnswer(existingValue ?? "");
+						}
+					})
+					.catch(() => {
+						window.localStorage.removeItem(storageKey);
+					})
+					.finally(() => {
+						setInitializing(false);
+					});
+				return;
+			}
+
+			window.localStorage.removeItem(storageKey);
+			setInitializing(false);
 		} catch {
-			setInitializing(false)
+			setInitializing(false);
 		}
-	}, [questions, slug, storageKey, resolvedMode])
+	}, [questions, slug, storageKey, resolvedMode, list.identity_mode, list.identity_field, list.instructions]);
 
 	useEffect(() => {
 		if (stage === "survey" && resolvedMode === "form") {
-			const value = responses[questions[currentIndex]?.id]
-			setCurrentAnswer(value ?? "")
+			const value = responses[questions[currentIndex]?.id];
+			setCurrentAnswer(value ?? "");
 		}
-	}, [stage, currentIndex, questions, responses, resolvedMode])
+	}, [stage, currentIndex, questions, responses, resolvedMode]);
 
-	const currentQuestion = useMemo(() => questions[currentIndex], [currentIndex, questions])
+	const currentQuestion = useMemo(() => questions[currentIndex], [currentIndex, questions]);
 
 	const _answeredCount = useMemo(() => {
 		return questions.filter((q) => {
-			const val = responses[q.id]
-			return val !== undefined && val !== null && val !== ""
-		}).length
-	}, [questions, responses])
+			const val = responses[q.id];
+			return val !== undefined && val !== null && val !== "";
+		}).length;
+	}, [questions, responses]);
 
 	async function handleEmailSubmit(event: React.FormEvent<HTMLFormElement>) {
-		event.preventDefault()
-		setError(null)
+		event.preventDefault();
+		setError(null);
 		if (!email.trim()) {
-			setError("Enter an email to continue")
-			return
+			setError("Enter an email to continue");
+			return;
 		}
 		try {
-			setIsSaving(true)
+			setIsSaving(true);
 			const result = await startSignup(slug, {
 				email: email.trim(),
 				responseId,
 				responseMode: resolvedMode,
-			})
-			setResponseId(result.responseId)
-			setResponses(result.responses || {})
-			window.localStorage.setItem(storageKey, JSON.stringify({ email: email.trim(), responseId: result.responseId }))
+				utmParams: utmParamsRef.current,
+			});
+			setResponseId(result.responseId);
+			setResponses(result.responses || {});
+			window.localStorage.setItem(storageKey, JSON.stringify({ email: email.trim(), responseId: result.responseId }));
 
 			// If no person linked, we need to collect name info
 			if (!result.personId) {
-				setStage("name")
-				return
+				setStage("name");
+				return;
 			}
 
 			// Person was found, proceed to survey
-			const initialIndex = findNextQuestionIndex(result.responses || {}, questions)
+			const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
 			if (initialIndex >= questions.length) {
-				setStage("complete")
+				setStage("complete");
 			} else {
-				setCurrentIndex(initialIndex)
-				setStage("survey")
+				setCurrentIndex(initialIndex);
+				setStage("survey");
 			}
 		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Something went wrong")
+			setError(caught instanceof Error ? caught.message : "Something went wrong");
 		} finally {
-			setIsSaving(false)
+			setIsSaving(false);
+		}
+	}
+
+	async function handlePhoneSubmit(event: React.FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		setError(null);
+		if (!phone.trim()) {
+			setError("Enter a phone number to continue");
+			return;
+		}
+		try {
+			setIsSaving(true);
+			const result = await startSignup(slug, {
+				phone: phone.trim().replace(/\s+/g, ""),
+				responseId,
+				responseMode: resolvedMode,
+				utmParams: utmParamsRef.current,
+			});
+			setResponseId(result.responseId);
+			setResponses(result.responses || {});
+			window.localStorage.setItem(storageKey, JSON.stringify({ phone: phone.trim(), responseId: result.responseId }));
+
+			// Phone-identified surveys don't collect name, go straight to survey
+			const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
+			if (initialIndex >= questions.length) {
+				setStage("complete");
+			} else {
+				setCurrentIndex(initialIndex);
+				if (list.instructions) {
+					setStage("instructions");
+				} else {
+					setStage("survey");
+				}
+			}
+		} catch (caught) {
+			setError(caught instanceof Error ? caught.message : "Something went wrong");
+		} finally {
+			setIsSaving(false);
 		}
 	}
 
 	async function handleNameSubmit(event: React.FormEvent<HTMLFormElement>) {
-		event.preventDefault()
-		setError(null)
+		event.preventDefault();
+		setError(null);
 		if (!firstName.trim()) {
-			setError("Enter your first name to continue")
-			return
+			setError("Enter your first name to continue");
+			return;
 		}
 		if (!responseId) {
-			setError("Something went wrong. Please refresh and try again.")
-			return
+			setError("Something went wrong. Please refresh and try again.");
+			return;
 		}
 		try {
-			setIsSaving(true)
+			setIsSaving(true);
 			const result = await startSignup(slug, {
 				email: email.trim(),
 				firstName: firstName.trim(),
 				lastName: lastName.trim() || null,
+				company: company.trim() || null,
 				responseId,
 				responseMode: resolvedMode,
-			})
-			setResponseId(result.responseId)
-			setResponses(result.responses || {})
+			});
+			setResponseId(result.responseId);
+			setResponses(result.responses || {});
 
-			const initialIndex = findNextQuestionIndex(result.responses || {}, questions)
+			const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
 			if (initialIndex >= questions.length) {
-				setStage("complete")
+				setStage("complete");
 			} else {
-				setCurrentIndex(initialIndex)
-				setStage("survey")
+				setCurrentIndex(initialIndex);
+				setStage("survey");
 			}
 		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Something went wrong")
+			setError(caught instanceof Error ? caught.message : "Something went wrong");
 		} finally {
-			setIsSaving(false)
+			setIsSaving(false);
 		}
 	}
 
 	async function handleAnswerSubmit(value: ResponseValue) {
 		if (!responseId) {
-			setError("Something went wrong. Refresh and try again.")
-			return
+			setError("Something went wrong. Refresh and try again.");
+			return;
 		}
-		const normalizedValue = normalizeResponseValue(value)
+		const normalizedValue = normalizeResponseValue(value);
 		if (currentQuestion?.required && !hasResponseValue(normalizedValue)) {
-			setError("This question is required")
-			return
+			setError("This question is required");
+			return;
 		}
-		setError(null)
+		setError(null);
 		const nextResponses: ResponseRecord = {
 			...responses,
 			[currentQuestion?.id ?? ""]: normalizedValue,
-		}
-		setIsSaving(true)
+		};
+		setIsSaving(true);
 		try {
-			const nextIndex = currentIndex + 1
-			const isComplete = nextIndex >= questions.length
+			// Use branching engine to determine next question
+			const nextIndex = getNextQuestionIndex(currentIndex, questions, nextResponses);
+			const isComplete = nextIndex >= questions.length;
 			await saveProgress(slug, {
 				responseId,
 				responses: nextResponses,
 				completed: isComplete,
-			})
-			setResponses(nextResponses)
+			});
+			setResponses(nextResponses);
 			if (isComplete) {
 				// If video is enabled, go to video stage first
-				console.log("[survey] Survey complete, allow_video:", list.allow_video, typeof list.allow_video)
+				console.log("[survey] Survey complete, allow_video:", list.allow_video, typeof list.allow_video);
 				if (list.allow_video) {
-					setStage("video")
+					setStage("video");
 				} else {
-					setStage("complete")
+					setStage("complete");
 					if (list.redirect_url) {
-						setRedirectCountdown(7)
+						setRedirectCountdown(7);
 					}
 				}
 			} else {
-				setCurrentIndex(nextIndex)
-				setCurrentAnswer(nextResponses[questions[nextIndex]?.id] ?? "")
+				setCurrentIndex(nextIndex);
+				setCurrentAnswer(nextResponses[questions[nextIndex]?.id] ?? "");
 			}
 		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Failed to save your answer")
+			setError(caught instanceof Error ? caught.message : "Failed to save your answer");
 		} finally {
-			setIsSaving(false)
+			setIsSaving(false);
 		}
 	}
 
 	function handleBack() {
 		if (currentIndex > 0) {
-			const prevIndex = currentIndex - 1
-			setCurrentIndex(prevIndex)
-			setCurrentAnswer(responses[questions[prevIndex]?.id] ?? "")
+			const prevIndex = currentIndex - 1;
+			setCurrentIndex(prevIndex);
+			setCurrentAnswer(responses[questions[prevIndex]?.id] ?? "");
 		}
 	}
 
 	function handleJumpToQuestion(targetIndex: number) {
-		if (targetIndex < 0 || targetIndex >= questions.length) return
+		if (targetIndex < 0 || targetIndex >= questions.length) return;
 		// Allow jumping to any answered question or current question
-		const isAnswered = hasResponseValue(responses[questions[targetIndex]?.id])
-		const isCurrent = targetIndex === currentIndex
-		const isPrevious = targetIndex < currentIndex
+		const isAnswered = hasResponseValue(responses[questions[targetIndex]?.id]);
+		const isCurrent = targetIndex === currentIndex;
+		const isPrevious = targetIndex < currentIndex;
 		if (isAnswered || isCurrent || isPrevious) {
-			setCurrentIndex(targetIndex)
-			setCurrentAnswer(responses[questions[targetIndex]?.id] ?? "")
+			setCurrentIndex(targetIndex);
+			setCurrentAnswer(responses[questions[targetIndex]?.id] ?? "");
 		}
 	}
 
@@ -866,7 +1187,7 @@ export default function ResearchLinkPage() {
 			<div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
 				<Loader2 className="h-8 w-8 animate-spin text-white/50" />
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -904,17 +1225,8 @@ export default function ResearchLinkPage() {
 									</div>
 								)}
 
-								{/* Description after video */}
-								{(list.hero_subtitle || list.description) && (
-									<p className="text-sm text-white/80 leading-relaxed">{list.hero_subtitle || list.description}</p>
-								)}
-
-								{/* Instructions (optional detailed guidance) */}
-								{list.instructions && (
-									<div className="prose prose-sm prose-invert max-w-none rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 prose-li:text-white/60 prose-li:text-xs prose-p:text-white/60 prose-p:text-xs prose-ul:text-white/60 prose-ul:text-xs prose-p:leading-relaxed">
-										<Streamdown>{list.instructions}</Streamdown>
-									</div>
-								)}
+								{/* Instructions for the respondent */}
+								{list.instructions && <p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>}
 
 								{/* Mode selector - show when multiple modes available */}
 								{(list.allow_chat || list.allow_voice || list.calendar_url) && (
@@ -996,12 +1308,124 @@ export default function ResearchLinkPage() {
 										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
 										required
 									/>
-									<p className="text-right text-white/50 text-xs">{list.hero_cta_helper || ""}</p>
 								</div>
 								<div className="flex justify-end">
 									<Button
 										type="submit"
 										disabled={isSaving || !isEmailValid}
+										size="sm"
+										className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
+									>
+										{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
+										<ArrowRight className="ml-1.5 h-4 w-4" />
+									</Button>
+								</div>
+							</motion.form>
+						)}
+
+						{/* Phone stage - for phone-identified surveys */}
+						{stage === "phone" && (
+							<motion.form
+								onSubmit={handlePhoneSubmit}
+								initial={{ opacity: 0, y: 16 }}
+								animate={{ opacity: 1, y: 0 }}
+								className="space-y-4"
+							>
+								{/* Walkthrough video */}
+								{walkthroughSignedUrl && (
+									<div className="overflow-hidden rounded-xl">
+										<video src={walkthroughSignedUrl} className="aspect-video w-full bg-black" controls playsInline />
+									</div>
+								)}
+
+								{/* Instructions for the respondent */}
+								{list.instructions && <p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>}
+
+								{/* Mode selector - show when multiple modes available */}
+								{(list.allow_chat || list.allow_voice || list.calendar_url) && (
+									<div className="space-y-2">
+										<p className="text-white/60 text-xs">How would you like to respond?</p>
+										<div className="flex gap-2">
+											<button
+												type="button"
+												onClick={() => setMode("form")}
+												className={cn(
+													"flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
+													mode === "form"
+														? "border-white bg-white/10 text-white"
+														: "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
+												)}
+											>
+												<ClipboardList className="h-5 w-5" />
+												<span className="font-medium text-xs">Form</span>
+											</button>
+											{list.allow_chat && (
+												<button
+													type="button"
+													onClick={() => setMode("chat")}
+													className={cn(
+														"flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
+														mode === "chat"
+															? "border-white bg-white/10 text-white"
+															: "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
+													)}
+												>
+													<MessageSquare className="h-5 w-5" />
+													<span className="font-medium text-xs">Chat</span>
+												</button>
+											)}
+											{list.allow_voice && (
+												<button
+													type="button"
+													onClick={() => setMode("voice")}
+													className={cn(
+														"relative flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
+														mode === "voice"
+															? "border-violet-400 bg-violet-500/20 text-white"
+															: "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
+													)}
+												>
+													<Mic className="h-5 w-5" />
+													<span className="font-medium text-xs">Voice</span>
+													<span className="-top-1 -right-1 absolute rounded bg-violet-500 px-1 py-0.5 font-bold text-[8px] text-white">
+														NEW
+													</span>
+												</button>
+											)}
+											{list.calendar_url && (
+												<a
+													href={list.calendar_url}
+													target="_blank"
+													rel="noreferrer"
+													className="flex flex-1 flex-col items-center gap-1.5 rounded-lg border border-white/20 px-3 py-2.5 text-white/60 transition-all hover:border-white/40 hover:text-white/80"
+												>
+													<Calendar className="h-5 w-5" />
+													<span className="font-medium text-xs">Book Call / Meet</span>
+												</a>
+											)}
+										</div>
+									</div>
+								)}
+
+								{/* Phone field */}
+								<div className="space-y-2">
+									<Label htmlFor={phoneId} className="text-white/90">
+										Your Phone Number
+									</Label>
+									<Input
+										id={phoneId}
+										type="tel"
+										value={phone}
+										onChange={(e) => setPhone(e.target.value)}
+										placeholder="+1 (555) 123-4567"
+										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+										required
+									/>
+								</div>
+								<div className="flex justify-end">
+									<Button
+										type="submit"
+										disabled={isSaving || !isPhoneValid}
 										size="sm"
 										className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
 									>
@@ -1050,6 +1474,18 @@ export default function ResearchLinkPage() {
 											className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
 										/>
 									</div>
+								</div>
+
+								{/* Company field - optional */}
+								<div className="space-y-2">
+									<Label className="text-white/90">Company</Label>
+									<Input
+										type="text"
+										value={company}
+										onChange={(e) => setCompany(e.target.value)}
+										placeholder="Acme Inc"
+										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+									/>
 								</div>
 
 								<div className="flex items-center justify-between">
@@ -1160,11 +1596,11 @@ export default function ResearchLinkPage() {
 														size="sm"
 														onClick={() => {
 															if (currentIndex === questions.length - 1) {
-																setIsReviewing(false)
-																setStage("complete")
+																setIsReviewing(false);
+																setStage("complete");
 															} else {
-																setCurrentIndex(currentIndex + 1)
-																setCurrentAnswer(responses[questions[currentIndex + 1]?.id] ?? "")
+																setCurrentIndex(currentIndex + 1);
+																setCurrentAnswer(responses[questions[currentIndex + 1]?.id] ?? "");
 															}
 														}}
 														className="bg-white text-black hover:bg-white/90"
@@ -1197,9 +1633,9 @@ export default function ResearchLinkPage() {
 									{/* Progress indicator - clickable numbers */}
 									<div className="flex items-center justify-center gap-1.5 pt-3">
 										{questions.map((q, idx) => {
-											const isAnswered = hasResponseValue(responses[q.id])
-											const isCurrent = idx === currentIndex
-											const canJump = isAnswered || isCurrent || idx < currentIndex
+											const isAnswered = hasResponseValue(responses[q.id]);
+											const isCurrent = idx === currentIndex;
+											const canJump = isAnswered || isCurrent || idx < currentIndex;
 											return (
 												<button
 													key={q.id}
@@ -1226,7 +1662,7 @@ export default function ResearchLinkPage() {
 												>
 													{idx + 1}
 												</button>
-											)
+											);
 										})}
 									</div>
 									{/* Mode switcher */}
@@ -1244,9 +1680,9 @@ export default function ResearchLinkPage() {
 								questions={questions}
 								allowVideo={list.allow_video}
 								onComplete={() => {
-									setStage("complete")
+									setStage("complete");
 									if (list.redirect_url) {
-										setRedirectCountdown(7)
+										setRedirectCountdown(7);
 									}
 								}}
 								onVideoStage={() => setStage("video")}
@@ -1265,15 +1701,15 @@ export default function ResearchLinkPage() {
 									slug={slug}
 									responseId={responseId}
 									onComplete={() => {
-										setStage("complete")
+										setStage("complete");
 										if (list.redirect_url) {
-											setRedirectCountdown(7)
+											setRedirectCountdown(7);
 										}
 									}}
 									onSkip={() => {
-										setStage("complete")
+										setStage("complete");
 										if (list.redirect_url) {
-											setRedirectCountdown(7)
+											setRedirectCountdown(7);
 										}
 									}}
 								/>
@@ -1359,9 +1795,9 @@ export default function ResearchLinkPage() {
 								<Button
 									variant="ghost"
 									onClick={() => {
-										setCurrentIndex(0)
-										setIsReviewing(true)
-										setStage("survey")
+										setCurrentIndex(0);
+										setIsReviewing(true);
+										setStage("survey");
 									}}
 									className="w-full gap-2 text-white/60 hover:bg-white/10 hover:text-white"
 								>
@@ -1410,31 +1846,31 @@ export default function ResearchLinkPage() {
 				</p>
 			</div>
 		</div>
-	)
+	);
 }
 
 function findNextQuestionIndex(responses: ResponseRecord, questions: ResearchLinkQuestion[]) {
 	for (let index = 0; index < questions.length; index++) {
-		const question = questions[index]
-		const value = responses?.[question.id]
+		const question = questions[index];
+		const value = responses?.[question.id];
 		if (!hasResponseValue(value)) {
-			return index
+			return index;
 		}
 	}
-	return questions.length
+	return questions.length;
 }
 
 function hasResponseValue(value: ResponseValue) {
-	if (Array.isArray(value)) return value.length > 0
-	if (typeof value === "string") return value.trim().length > 0
-	if (typeof value === "boolean") return true
-	return false
+	if (Array.isArray(value)) return value.length > 0;
+	if (typeof value === "string") return value.trim().length > 0;
+	if (typeof value === "boolean") return true;
+	return false;
 }
 
 function normalizeResponseValue(value: ResponseValue): ResponseValue {
-	if (Array.isArray(value)) return value.filter((entry) => typeof entry === "string" && entry.trim().length > 0)
-	if (typeof value === "string") return value.trim()
-	return value ?? null
+	if (Array.isArray(value)) return value.filter((entry) => typeof entry === "string" && entry.trim().length > 0);
+	if (typeof value === "string") return value.trim();
+	return value ?? null;
 }
 
 function renderQuestionInput({
@@ -1445,14 +1881,14 @@ function renderQuestionInput({
 	voiceButtonState,
 	toggleRecording,
 }: {
-	question: ResearchLinkQuestion
-	value: ResponseValue
-	onChange: (value: ResponseValue) => void
-	voiceSupported?: boolean
-	voiceButtonState?: VoiceButtonState
-	toggleRecording?: () => void
+	question: ResearchLinkQuestion;
+	value: ResponseValue;
+	onChange: (value: ResponseValue) => void;
+	voiceSupported?: boolean;
+	voiceButtonState?: VoiceButtonState;
+	toggleRecording?: () => void;
 }) {
-	const resolved = resolveQuestionInput(question)
+	const resolved = resolveQuestionInput(question);
 
 	if (resolved.kind === "select") {
 		return (
@@ -1468,35 +1904,35 @@ function renderQuestionInput({
 					))}
 				</SelectContent>
 			</Select>
-		)
+		);
 	}
 
 	if (resolved.kind === "multi") {
-		const selected = Array.isArray(value) ? value : []
+		const selected = Array.isArray(value) ? value : [];
 		return (
 			<div className="space-y-2">
 				{resolved.options.map((option) => {
-					const checked = selected.includes(option)
+					const checked = selected.includes(option);
 					return (
 						<label key={option} className="flex items-center gap-2 text-sm text-white/80">
 							<Checkbox
 								checked={checked}
 								onCheckedChange={(next) => {
-									const nextChecked = Boolean(next)
-									onChange(nextChecked ? [...selected, option] : selected.filter((entry) => entry !== option))
+									const nextChecked = Boolean(next);
+									onChange(nextChecked ? [...selected, option] : selected.filter((entry) => entry !== option));
 								}}
 							/>
 							<span>{option}</span>
 						</label>
-					)
+					);
 				})}
 			</div>
-		)
+		);
 	}
 
 	if (resolved.kind === "likert") {
-		const selectedValue = typeof value === "string" ? value : ""
-		const scalePoints = Array.from({ length: resolved.scale }, (_, i) => i + 1)
+		const selectedValue = typeof value === "string" ? value : "";
+		const scalePoints = Array.from({ length: resolved.scale }, (_, i) => i + 1);
 		return (
 			<div className="space-y-2">
 				<div className="flex items-center justify-between gap-1">
@@ -1523,11 +1959,11 @@ function renderQuestionInput({
 					</div>
 				)}
 			</div>
-		)
+		);
 	}
 
 	if (resolved.kind === "image_select") {
-		const selectedValue = typeof value === "string" ? value : ""
+		const selectedValue = typeof value === "string" ? value : "";
 		return (
 			<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
 				{resolved.options.map((option) => (
@@ -1569,7 +2005,7 @@ function renderQuestionInput({
 					</button>
 				))}
 			</div>
-		)
+		);
 	}
 
 	if (resolved.kind === "textarea") {
@@ -1595,11 +2031,11 @@ function renderQuestionInput({
 					</div>
 				)}
 			</div>
-		)
+		);
 	}
 
 	// Text input with voice button for text-based inputs (not email/tel)
-	const showVoice = voiceSupported && toggleRecording && voiceButtonState && resolved.inputType === "text"
+	const showVoice = voiceSupported && toggleRecording && voiceButtonState && resolved.inputType === "text";
 
 	return (
 		<div className="relative">
@@ -1623,45 +2059,45 @@ function renderQuestionInput({
 				</div>
 			)}
 		</div>
-	)
+	);
 }
 
 function resolveQuestionInput(question: ResearchLinkQuestion) {
 	if (question.type === "single_select" && question.options?.length) {
-		return { kind: "select" as const, options: question.options }
+		return { kind: "select" as const, options: question.options };
 	}
 	if (question.type === "multi_select" && question.options?.length) {
-		return { kind: "multi" as const, options: question.options }
+		return { kind: "multi" as const, options: question.options };
 	}
 	if (question.type === "likert") {
 		return {
 			kind: "likert" as const,
 			scale: question.likertScale ?? 5,
 			labels: question.likertLabels ?? { low: "", high: "" },
-		}
+		};
 	}
 	if (question.type === "image_select" && question.imageOptions?.length) {
 		return {
 			kind: "image_select" as const,
 			options: question.imageOptions,
-		}
+		};
 	}
 	if (question.type === "long_text") {
-		return { kind: "textarea" as const }
+		return { kind: "textarea" as const };
 	}
 	if (question.type === "short_text") {
-		return { kind: "input" as const, inputType: "text" as const }
+		return { kind: "input" as const, inputType: "text" as const };
 	}
 
-	const prompt = question.prompt.toLowerCase()
+	const prompt = question.prompt.toLowerCase();
 	if (question.options?.length) {
-		return { kind: "select" as const, options: question.options }
+		return { kind: "select" as const, options: question.options };
 	}
 	if (/email/.test(prompt)) {
-		return { kind: "input" as const, inputType: "email" as const }
+		return { kind: "input" as const, inputType: "email" as const };
 	}
 	if (/phone|mobile|text me/.test(prompt)) {
-		return { kind: "input" as const, inputType: "tel" as const }
+		return { kind: "input" as const, inputType: "tel" as const };
 	}
-	return { kind: "textarea" as const }
+	return { kind: "textarea" as const };
 }

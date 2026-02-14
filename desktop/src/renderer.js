@@ -25,6 +25,49 @@ let pastMeetingsByDate = {};
 window.isRecording = false;
 window.currentRecordingId = null;
 
+// Recording indicator state
+let recordingStartTime = null;
+let recordingTimerInterval = null;
+
+/**
+ * Update the recording indicator in the debug panel header
+ * Shows pulsing red dot and timer during recording
+ */
+function updateRecordingIndicator(state, startTime = null) {
+  const indicator = document.getElementById("recordingIndicator");
+  const timer = document.getElementById("recordingTimer");
+  if (!indicator) return;
+
+  if (state === "recording") {
+    indicator.classList.remove("hidden", "paused", "stopped");
+    recordingStartTime = startTime || Date.now();
+
+    // Start timer interval
+    if (recordingTimerInterval) clearInterval(recordingTimerInterval);
+    recordingTimerInterval = setInterval(() => {
+      if (timer && recordingStartTime) {
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const minutes = Math.floor(elapsed / 60)
+          .toString()
+          .padStart(2, "0");
+        const seconds = (elapsed % 60).toString().padStart(2, "0");
+        timer.textContent = `${minutes}:${seconds}`;
+      }
+    }, 1000);
+  } else if (state === "paused") {
+    indicator.classList.remove("hidden", "stopped");
+    indicator.classList.add("paused");
+    if (recordingTimerInterval) clearInterval(recordingTimerInterval);
+  } else {
+    // stopped or idle
+    indicator.classList.add("hidden");
+    indicator.classList.remove("paused", "stopped");
+    if (recordingTimerInterval) clearInterval(recordingTimerInterval);
+    recordingStartTime = null;
+    if (timer) timer.textContent = "00:00";
+  }
+}
+
 // Function to check if there's an active recording for the current note
 async function checkActiveRecordingState() {
   if (!currentEditingMeetingId) return;
@@ -290,6 +333,11 @@ function showHomeView() {
   document.getElementById("backButton").style.display = "none";
   document.getElementById("newNoteBtn").style.display = "block";
   document.getElementById("toggleSidebar").style.display = "none";
+  const toggleDebugPanelBtn = document.getElementById("toggleDebugPanelBtn");
+  if (toggleDebugPanelBtn) {
+    toggleDebugPanelBtn.style.display = "none";
+  }
+  closeDebugPanel();
 
   // Show Record Meeting button and set its state based on meeting detection
   const joinMeetingBtn = document.getElementById("joinMeetingBtn");
@@ -317,6 +365,10 @@ function showEditorView(meetingId) {
   document.getElementById("backButton").style.display = "block";
   document.getElementById("newNoteBtn").style.display = "none";
   document.getElementById("toggleSidebar").style.display = "none"; // Hide the sidebar toggle
+  const toggleDebugPanelBtn = document.getElementById("toggleDebugPanelBtn");
+  if (toggleDebugPanelBtn) {
+    toggleDebugPanelBtn.style.display = "inline-flex";
+  }
 
   // Always hide the join meeting button when in editor view
   const joinMeetingBtn = document.getElementById("joinMeetingBtn");
@@ -337,6 +389,11 @@ function showEditorView(meetingId) {
   // Set the current editing meeting ID
   currentEditingMeetingId = meetingId;
   console.log(`Now editing meeting: ${meetingId} - ${meeting.title}`);
+
+  // Clear floating panel evidence when switching meetings
+  if (typeof clearFloatingPanelEvidence === "function") {
+    clearFloatingPanelEvidence();
+  }
 
   // Set the meeting title
   document.getElementById("noteTitle").textContent = meeting.title;
@@ -384,50 +441,7 @@ function showEditorView(meetingId) {
     // Update debug panel with any available data if it's open
     const debugPanel = document.getElementById("debugPanel");
     if (debugPanel && !debugPanel.classList.contains("hidden")) {
-      // Update transcript if available
-      if (meeting.transcript && meeting.transcript.length > 0) {
-        updateDebugTranscript(meeting.transcript);
-      } else {
-        // Clear transcript area if no transcript
-        const transcriptContent = document.getElementById("transcriptContent");
-        if (transcriptContent) {
-          transcriptContent.innerHTML = `
-            <div class="placeholder-content">
-              <p>No transcript available yet</p>
-            </div>
-          `;
-        }
-      }
-
-      // Update participants if available
-      if (meeting.participants && meeting.participants.length > 0) {
-        updateDebugParticipants(meeting.participants);
-      } else {
-        // Clear participants area if no participants
-        const participantsContent = document.getElementById(
-          "participantsContent",
-        );
-        if (participantsContent) {
-          participantsContent.innerHTML = `
-            <div class="placeholder-content">
-              <p>No participants detected yet</p>
-            </div>
-          `;
-        }
-      }
-
-      // Reset video preview when changing notes
-      const videoContent = document.getElementById("videoContent");
-      if (videoContent) {
-        videoContent.innerHTML = `
-          <div class="placeholder-content video-placeholder">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" fill="#999"/>
-            </svg>
-            <p>Video preview will appear here</p>
-          </div>
-        `;
-      }
+      refreshDebugPanelContent(meeting);
     }
   }, 50);
 }
@@ -806,6 +820,129 @@ function updateDebugTranscript(transcript) {
   }
 }
 
+/**
+ * Derive a category tag from evidence properties
+ */
+function deriveEvidenceTag(evidence) {
+  // Check for pain points
+  if (evidence.pains?.length) {
+    return { label: "pain", className: "pain" };
+  }
+  // Check for goals/gains
+  if (
+    evidence.gains?.length ||
+    evidence.facet_mentions?.some((f) => f.kind_slug === "goal")
+  ) {
+    return { label: "goal", className: "goal" };
+  }
+  // Check for tool mentions
+  if (evidence.facet_mentions?.some((f) => f.kind_slug === "tool")) {
+    return { label: "tool", className: "tool" };
+  }
+  // Check for workflow
+  if (evidence.facet_mentions?.some((f) => f.kind_slug === "workflow")) {
+    return { label: "workflow", className: "workflow" };
+  }
+  // Questions from interviewer
+  if (evidence.isQuestion) {
+    return { label: "probe", className: "probe" };
+  }
+  return null;
+}
+
+/**
+ * Render a Tag-First evidence card (new UX design)
+ * Layout: [TAG BADGE] | Speaker · Timestamp | Gist
+ */
+function renderTagFirstEvidenceCard(item, isNewest = false) {
+  const tag = deriveEvidenceTag(item);
+  const tagClass = tag?.className || "context";
+  const tagLabel = tag?.label || "context";
+  const speakerDisplay = item.speaker_label || item.person_key || "Unknown";
+
+  const card = document.createElement("div");
+  card.className = `evidence-card-tagfirst${isNewest ? " newest" : ""}`;
+
+  card.innerHTML = `
+    <div class="tag-badge ${tagClass}">${tagLabel}</div>
+    <div class="evidence-card-content">
+      <div class="evidence-card-meta">
+        <span class="evidence-card-speaker">${speakerDisplay}</span>
+        ${item.timestamp ? `<span class="evidence-card-timestamp">${item.timestamp}</span>` : ""}
+      </div>
+      <div class="evidence-card-gist">${item.gist}</div>
+    </div>
+  `;
+
+  return card;
+}
+
+/**
+ * Update the evidence section in the debug panel
+ * Called when new evidence is extracted from the backend
+ * Now uses Tag-First design from UX specification
+ */
+function updateDebugEvidence(evidenceData) {
+  const evidenceContent = document.getElementById("evidenceContent");
+  const evidenceCount = document.getElementById("evidenceCount");
+  if (!evidenceContent) return;
+
+  const { evidence, people, interactionContext } = evidenceData;
+
+  // Update count
+  if (evidenceCount) {
+    const count = evidence?.length || 0;
+    evidenceCount.textContent = `${count} insight${count !== 1 ? "s" : ""}`;
+  }
+
+  // Check if user was at bottom before clearing content
+  const wasAtBottom =
+    evidenceContent.scrollTop + evidenceContent.clientHeight >=
+    evidenceContent.scrollHeight - 5;
+
+  // Clear previous content
+  evidenceContent.innerHTML = "";
+
+  if (!evidence || evidence.length === 0) {
+    // Show empty state
+    evidenceContent.innerHTML = `
+      <div class="evidence-empty-state">
+        <p>Evidence will appear as people speak...</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Create evidence entries container
+  const evidenceDiv = document.createElement("div");
+  evidenceDiv.className = "evidence-entries";
+
+  // Add each evidence entry using Tag-First design
+  evidence.forEach((item, index) => {
+    const isNewest = index === evidence.length - 1;
+    const card = renderTagFirstEvidenceCard(item, isNewest);
+    evidenceDiv.appendChild(card);
+  });
+
+  evidenceContent.appendChild(evidenceDiv);
+
+  // Auto-scroll if user was at bottom
+  if (wasAtBottom) {
+    setTimeout(() => {
+      evidenceContent.scrollTop = evidenceContent.scrollHeight;
+    }, 0);
+  }
+
+  // Highlight debug panel toggle if panel is closed
+  const debugPanel = document.getElementById("debugPanel");
+  if (debugPanel && debugPanel.classList.contains("hidden")) {
+    const debugPanelToggle = document.getElementById("debugPanelToggle");
+    if (debugPanelToggle) {
+      debugPanelToggle.classList.add("has-new-content");
+    }
+  }
+}
+
 // Function to update the video preview in the debug panel
 function updateDebugVideoPreview(frameData) {
   // Get the image data from the frame
@@ -980,122 +1117,154 @@ function updateDebugParticipants(participants) {
   participantsContent.appendChild(participantsList);
 }
 
+const DEBUG_PANEL_CLOSED_ICON = `
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z" fill="currentColor"/>
+  </svg>
+`;
+
+const DEBUG_PANEL_OPEN_ICON = `
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M7.99 11H20v2H7.99v3L4 12l3.99-4v3z" fill="currentColor"/>
+  </svg>
+`;
+
+function getCurrentMeetingForDebugPanel() {
+  if (!currentEditingMeetingId) return null;
+  return [...upcomingMeetings, ...pastMeetings].find(
+    (meeting) => meeting.id === currentEditingMeetingId,
+  );
+}
+
+function refreshDebugPanelContent(meeting = getCurrentMeetingForDebugPanel()) {
+  if (!meeting) return;
+
+  if (meeting.transcript && meeting.transcript.length > 0) {
+    updateDebugTranscript(meeting.transcript);
+  } else {
+    const transcriptContent = document.getElementById("transcriptContent");
+    if (transcriptContent) {
+      transcriptContent.innerHTML = `
+        <div class="placeholder-content">
+          <p>No transcript available yet</p>
+        </div>
+      `;
+    }
+  }
+
+  if (meeting.participants && meeting.participants.length > 0) {
+    updateDebugParticipants(meeting.participants);
+  } else {
+    const participantsContent = document.getElementById("participantsContent");
+    if (participantsContent) {
+      participantsContent.innerHTML = `
+        <div class="placeholder-content">
+          <p>No participants detected yet</p>
+        </div>
+      `;
+    }
+  }
+
+  const videoContent = document.getElementById("videoContent");
+  if (videoContent) {
+    videoContent.innerHTML = `
+      <div class="placeholder-content video-placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" fill="#64748b"/>
+        </svg>
+        <p>Video preview will appear here</p>
+      </div>
+    `;
+  }
+}
+
+function setDebugPanelToggleState(isOpen) {
+  const debugPanelToggle = document.getElementById("debugPanelToggle");
+  if (!debugPanelToggle) return;
+  debugPanelToggle.innerHTML = isOpen
+    ? DEBUG_PANEL_OPEN_ICON
+    : DEBUG_PANEL_CLOSED_ICON;
+  debugPanelToggle.classList.toggle("panel-open", isOpen);
+}
+
+function setDebugHeaderButtonState(isOpen) {
+  const toggleDebugPanelBtn = document.getElementById("toggleDebugPanelBtn");
+  if (!toggleDebugPanelBtn) return;
+  toggleDebugPanelBtn.classList.toggle("active", isOpen);
+  toggleDebugPanelBtn.textContent = isOpen ? "Hide Debug" : "Debug";
+}
+
+function openDebugPanel({ refresh = true } = {}) {
+  const debugPanel = document.getElementById("debugPanel");
+  const appContainer = document.querySelector(".app-container");
+  const debugPanelToggle = document.getElementById("debugPanelToggle");
+  if (!debugPanel || !appContainer) return;
+
+  debugPanel.classList.remove("hidden");
+  appContainer.classList.add("debug-panel-open");
+  if (debugPanelToggle) {
+    debugPanelToggle.classList.remove("has-new-content");
+  }
+  setDebugPanelToggleState(true);
+  setDebugHeaderButtonState(true);
+
+  if (refresh) {
+    refreshDebugPanelContent();
+  }
+}
+
+function closeDebugPanel() {
+  const debugPanel = document.getElementById("debugPanel");
+  const appContainer = document.querySelector(".app-container");
+  if (!debugPanel || !appContainer) return;
+
+  debugPanel.classList.add("hidden");
+  appContainer.classList.remove("debug-panel-open");
+  setDebugPanelToggleState(false);
+  setDebugHeaderButtonState(false);
+}
+
+function toggleDebugPanel() {
+  const debugPanel = document.getElementById("debugPanel");
+  if (!debugPanel) return;
+  if (debugPanel.classList.contains("hidden")) {
+    openDebugPanel();
+  } else {
+    closeDebugPanel();
+  }
+}
+
 // Function to initialize the debug panel
 function initDebugPanel() {
   const debugPanelToggle = document.getElementById("debugPanelToggle");
-  const debugPanel = document.getElementById("debugPanel");
   const closeDebugPanelBtn = document.getElementById("closeDebugPanelBtn");
+  const toggleDebugPanelBtn = document.getElementById("toggleDebugPanelBtn");
 
-  // Set up toggle button for the debug panel
-  if (debugPanelToggle && debugPanel) {
-    debugPanelToggle.addEventListener("click", () => {
-      // Toggle the debug panel visibility
-      if (debugPanel.classList.contains("hidden")) {
-        debugPanel.classList.remove("hidden");
-        document
-          .querySelector(".app-container")
-          .classList.add("debug-panel-open");
-
-        // Update the toggle button position and remove any notification indicators
-        debugPanelToggle.style.right = "50%";
-        debugPanelToggle.classList.remove("has-new-content");
-        debugPanelToggle.innerHTML = `
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M7.99 11H20v2H7.99v3L4 12l3.99-4v3z" fill="currentColor"/>
-          </svg>
-        `;
-
-        // If there's an active meeting, refresh the debug panels with latest data
-        if (currentEditingMeetingId) {
-          const meeting = [...upcomingMeetings, ...pastMeetings].find(
-            (m) => m.id === currentEditingMeetingId,
-          );
-          if (meeting) {
-            // Update transcript if available
-            if (meeting.transcript && meeting.transcript.length > 0) {
-              updateDebugTranscript(meeting.transcript);
-            } else {
-              // Clear transcript area if no transcript
-              const transcriptContent =
-                document.getElementById("transcriptContent");
-              if (transcriptContent) {
-                transcriptContent.innerHTML = `
-                  <div class="placeholder-content">
-                    <p>No transcript available yet</p>
-                  </div>
-                `;
-              }
-            }
-
-            // Update participants if available
-            if (meeting.participants && meeting.participants.length > 0) {
-              updateDebugParticipants(meeting.participants);
-            } else {
-              // Clear participants area if no participants
-              const participantsContent = document.getElementById(
-                "participantsContent",
-              );
-              if (participantsContent) {
-                participantsContent.innerHTML = `
-                  <div class="placeholder-content">
-                    <p>No participants detected yet</p>
-                  </div>
-                `;
-              }
-            }
-
-            // Reset video preview when opening debug panel
-            const videoContent = document.getElementById("videoContent");
-            if (videoContent) {
-              videoContent.innerHTML = `
-                <div class="placeholder-content video-placeholder">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" fill="#999"/>
-                  </svg>
-                  <p>Video preview will appear here</p>
-                </div>
-              `;
-            }
-          }
-        }
-      } else {
-        debugPanel.classList.add("hidden");
-        document
-          .querySelector(".app-container")
-          .classList.remove("debug-panel-open");
-
-        // Reset the toggle button position
-        debugPanelToggle.style.right = "0";
-        debugPanelToggle.innerHTML = `
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z" fill="currentColor"/>
-          </svg>
-        `;
-      }
-    });
+  if (debugPanelToggle) {
+    debugPanelToggle.addEventListener("click", toggleDebugPanel);
   }
 
-  // Set up close button for the debug panel
-  if (closeDebugPanelBtn && debugPanel) {
-    closeDebugPanelBtn.addEventListener("click", () => {
-      debugPanel.classList.add("hidden");
-      // Restore the editorView to full width
-      document
-        .querySelector(".app-container")
-        .classList.remove("debug-panel-open");
-
-      // Reset the toggle button position and icon
-      const debugPanelToggle = document.getElementById("debugPanelToggle");
-      if (debugPanelToggle) {
-        debugPanelToggle.style.right = "0";
-        debugPanelToggle.innerHTML = `
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z" fill="currentColor"/>
-          </svg>
-        `;
-      }
-    });
+  if (closeDebugPanelBtn) {
+    closeDebugPanelBtn.addEventListener("click", closeDebugPanel);
   }
+
+  if (toggleDebugPanelBtn) {
+    toggleDebugPanelBtn.addEventListener("click", toggleDebugPanel);
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      event.shiftKey &&
+      event.key.toLowerCase() === "d"
+    ) {
+      event.preventDefault();
+      toggleDebugPanel();
+    }
+  });
+
+  setDebugPanelToggleState(false);
+  setDebugHeaderButtonState(false);
 
   // Set up clear button for the logger section
   const clearLoggerBtn = document.getElementById("clearLoggerBtn");
@@ -1652,6 +1821,60 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
+  // Listen for real-time evidence extraction updates
+  window.electronAPI.onEvidenceUpdated((data) => {
+    console.log("Evidence updated:", data);
+
+    const { noteId, evidence, people, interactionContext } = data;
+
+    // Only handle evidence for the currently open meeting
+    if (currentEditingMeetingId === noteId) {
+      console.log(`Received ${evidence?.length || 0} evidence items`);
+
+      // Update the evidence section in the debug panel
+      updateDebugEvidence({ evidence, people, interactionContext });
+
+      // Update the floating panel evidence list
+      if (
+        evidence?.length > 0 &&
+        typeof updateFloatingPanelEvidence === "function"
+      ) {
+        updateFloatingPanelEvidence(evidence);
+      }
+
+      // Show notification if panel is closed
+      const debugPanel = document.getElementById("debugPanel");
+      if (
+        debugPanel &&
+        debugPanel.classList.contains("hidden") &&
+        evidence?.length > 0
+      ) {
+        const latestEvidence = evidence[evidence.length - 1];
+
+        // Create a mini notification for new evidence
+        const miniNotification = document.createElement("div");
+        miniNotification.className = "debug-notification evidence-notification";
+        miniNotification.innerHTML = `
+          <span class="debug-notification-title">New Insight:</span>
+          <span class="debug-notification-text">${latestEvidence.gist?.slice(0, 50)}${latestEvidence.gist?.length > 50 ? "..." : ""}</span>
+        `;
+
+        // Add to document
+        document.body.appendChild(miniNotification);
+
+        // Remove after a short time
+        setTimeout(() => {
+          miniNotification.classList.add("fade-out");
+          setTimeout(() => {
+            if (document.body.contains(miniNotification)) {
+              document.body.removeChild(miniNotification);
+            }
+          }, 500);
+        }, 4000);
+      }
+    }
+  });
+
   // Listen for summary generation events
   window.electronAPI.onSummaryGenerated((meetingId) => {
     console.log("Summary generated for meeting:", meetingId);
@@ -2034,6 +2257,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.electronAPI.onRecordingStateChange((data) => {
     console.log("Recording state change received:", data);
 
+    // Update recording indicator in debug panel
+    updateRecordingIndicator(data.state);
+
+    // Update floating panel recording indicator
+    if (typeof updateFloatingRecordingIndicator === "function") {
+      updateFloatingRecordingIndicator(data.state);
+    }
+
     // If this state change is for the current note, update the UI
     if (data.noteId === currentEditingMeetingId) {
       console.log("Updating recording button for current note");
@@ -2268,4 +2499,480 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     }
   });
+
+  // ==========================================
+  // Floating Panel Component (UX Redesign)
+  // ==========================================
+  initializeFloatingPanel();
 });
+
+/**
+ * Floating Panel Component
+ * Provides compact/expanded/minimized modes for evidence, tasks, and transcript
+ */
+let floatingPanelState = {
+  mode: "compact", // "compact" | "expanded" | "minimized"
+  position: { x: null, y: null }, // null = use default CSS position
+  isDragging: false,
+  dragOffset: { x: 0, y: 0 },
+  activeTab: "evidence",
+};
+
+/**
+ * Initialize the floating panel with event listeners
+ */
+function initializeFloatingPanel() {
+  const panel = document.getElementById("floatingPanel");
+  const minimizedBtn = document.getElementById("floatingPanelMinimizedBtn");
+
+  if (!panel) {
+    console.warn("Floating panel not found in DOM");
+    return;
+  }
+
+  // Mode control buttons
+  const minimizeBtn = document.getElementById("floatingPanelMinimize");
+  const expandBtn = document.getElementById("floatingPanelExpand");
+  const closeBtn = document.getElementById("floatingPanelClose");
+
+  if (minimizeBtn) {
+    minimizeBtn.addEventListener("click", () =>
+      setFloatingPanelMode("minimized"),
+    );
+  }
+
+  if (expandBtn) {
+    expandBtn.addEventListener("click", () => {
+      const newMode =
+        floatingPanelState.mode === "expanded" ? "compact" : "expanded";
+      setFloatingPanelMode(newMode);
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => setFloatingPanelMode("minimized"));
+  }
+
+  // Minimized button to restore panel
+  if (minimizedBtn) {
+    minimizedBtn.addEventListener("click", () =>
+      setFloatingPanelMode("compact"),
+    );
+  }
+
+  // Floating panel record button
+  const floatingRecordBtn = document.getElementById("floatingRecordBtn");
+  if (floatingRecordBtn) {
+    floatingRecordBtn.addEventListener("click", async () => {
+      // Trigger the same recording logic as the main record button
+      const mainRecordButton = document.getElementById("recordButton");
+      if (mainRecordButton) {
+        mainRecordButton.click();
+      }
+    });
+  }
+
+  // Tab switching
+  const tabs = document.querySelectorAll(".floating-panel-tab");
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const tabId = tab.dataset.tab;
+      switchFloatingPanelTab(tabId);
+    });
+  });
+
+  // Dragging functionality
+  const dragRegion = document.getElementById("floatingPanelDragRegion");
+  if (dragRegion) {
+    dragRegion.addEventListener("mousedown", startDragging);
+  }
+
+  // Note input handling
+  const noteInput = document.getElementById("floatingNoteInput");
+  const noteSubmit = document.getElementById("floatingNoteSubmit");
+
+  if (noteInput) {
+    noteInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        submitFloatingNote();
+      }
+    });
+  }
+
+  if (noteSubmit) {
+    noteSubmit.addEventListener("click", submitFloatingNote);
+  }
+
+  // Global keyboard shortcut: Cmd+Shift+N to focus note input
+  document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "n") {
+      e.preventDefault();
+      if (floatingPanelState.mode === "minimized") {
+        setFloatingPanelMode("compact");
+      }
+      setTimeout(() => {
+        const input = document.getElementById("floatingNoteInput");
+        if (input) input.focus();
+      }, 50);
+    }
+  });
+
+  // Load saved state from localStorage
+  loadFloatingPanelState();
+
+  console.log("Floating panel initialized");
+}
+
+/**
+ * Set the floating panel mode (compact, expanded, minimized)
+ */
+function setFloatingPanelMode(mode) {
+  const panel = document.getElementById("floatingPanel");
+  const minimizedBtn = document.getElementById("floatingPanelMinimizedBtn");
+
+  if (!panel || !minimizedBtn) return;
+
+  floatingPanelState.mode = mode;
+
+  // Remove all mode classes
+  panel.classList.remove("compact", "expanded", "hidden");
+  minimizedBtn.classList.add("hidden");
+
+  if (mode === "minimized") {
+    panel.classList.add("hidden");
+    minimizedBtn.classList.remove("hidden");
+  } else if (mode === "expanded") {
+    panel.classList.add("expanded");
+  } else {
+    panel.classList.add("compact");
+  }
+
+  // Update expand button icon based on current mode
+  const expandBtn = document.getElementById("floatingPanelExpand");
+  if (expandBtn) {
+    if (mode === "expanded") {
+      expandBtn.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" fill="currentColor"/>
+        </svg>
+      `;
+      expandBtn.title = "Collapse";
+    } else {
+      expandBtn.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="currentColor"/>
+        </svg>
+      `;
+      expandBtn.title = "Expand";
+    }
+  }
+
+  // Save state
+  saveFloatingPanelState();
+}
+
+/**
+ * Switch floating panel tab
+ */
+function switchFloatingPanelTab(tabId) {
+  floatingPanelState.activeTab = tabId;
+
+  // Update tab buttons
+  const tabs = document.querySelectorAll(".floating-panel-tab");
+  tabs.forEach((tab) => {
+    if (tab.dataset.tab === tabId) {
+      tab.classList.add("active");
+    } else {
+      tab.classList.remove("active");
+    }
+  });
+
+  // Update tab content
+  const tabContents = document.querySelectorAll(".floating-panel-tab-content");
+  tabContents.forEach((content) => {
+    if (content.id === `${tabId}TabContent`) {
+      content.classList.add("active");
+    } else {
+      content.classList.remove("active");
+    }
+  });
+
+  saveFloatingPanelState();
+}
+
+/**
+ * Start dragging the floating panel
+ */
+function startDragging(e) {
+  // Don't start dragging if clicking a button
+  if (e.target.closest("button")) return;
+
+  const panel = document.getElementById("floatingPanel");
+  if (!panel) return;
+
+  floatingPanelState.isDragging = true;
+  panel.classList.add("dragging");
+
+  const rect = panel.getBoundingClientRect();
+  floatingPanelState.dragOffset = {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top,
+  };
+
+  document.addEventListener("mousemove", handleDragging);
+  document.addEventListener("mouseup", stopDragging);
+}
+
+/**
+ * Handle dragging movement
+ */
+function handleDragging(e) {
+  if (!floatingPanelState.isDragging) return;
+
+  const panel = document.getElementById("floatingPanel");
+  if (!panel) return;
+
+  const x = e.clientX - floatingPanelState.dragOffset.x;
+  const y = e.clientY - floatingPanelState.dragOffset.y;
+
+  // Constrain to viewport
+  const rect = panel.getBoundingClientRect();
+  const maxX = window.innerWidth - rect.width;
+  const maxY = window.innerHeight - rect.height;
+
+  const constrainedX = Math.max(0, Math.min(x, maxX));
+  const constrainedY = Math.max(0, Math.min(y, maxY));
+
+  panel.style.left = `${constrainedX}px`;
+  panel.style.top = `${constrainedY}px`;
+  panel.style.right = "auto";
+
+  floatingPanelState.position = { x: constrainedX, y: constrainedY };
+}
+
+/**
+ * Stop dragging the floating panel
+ */
+function stopDragging() {
+  const panel = document.getElementById("floatingPanel");
+  if (panel) {
+    panel.classList.remove("dragging");
+  }
+
+  floatingPanelState.isDragging = false;
+  document.removeEventListener("mousemove", handleDragging);
+  document.removeEventListener("mouseup", stopDragging);
+
+  saveFloatingPanelState();
+}
+
+/**
+ * Submit a note from the floating panel input
+ */
+function submitFloatingNote() {
+  const input = document.getElementById("floatingNoteInput");
+  if (!input || !input.value.trim()) return;
+
+  const noteText = input.value.trim();
+  console.log("Floating note submitted:", noteText);
+
+  // Create a manual note evidence entry
+  const noteEvidence = {
+    gist: noteText,
+    speaker_label: "Note",
+    person_key: "manual_note",
+    category: "note",
+    timestamp: new Date().toISOString(),
+  };
+
+  // Add to floating panel evidence list
+  addEvidenceToFloatingPanel(noteEvidence);
+
+  // Clear input
+  input.value = "";
+
+  // TODO: Send to backend/sync with meeting notes
+}
+
+/**
+ * Add evidence to the floating panel
+ */
+function addEvidenceToFloatingPanel(item) {
+  const evidenceList = document.getElementById("floatingEvidenceList");
+  const emptyState = document.getElementById("evidenceEmptyState");
+
+  if (!evidenceList) return;
+
+  // Hide empty state, show list
+  if (emptyState) emptyState.style.display = "none";
+  evidenceList.style.display = "flex";
+
+  // Create evidence card using Tag-First design
+  const card = renderTagFirstEvidenceCard(item, true);
+
+  // Prepend to show newest first
+  evidenceList.insertBefore(card, evidenceList.firstChild);
+
+  // Remove "newest" class from older cards after animation
+  setTimeout(() => {
+    card.classList.remove("newest");
+  }, 2000);
+}
+
+/**
+ * Save floating panel state to localStorage
+ */
+function saveFloatingPanelState() {
+  try {
+    localStorage.setItem(
+      "floatingPanelState",
+      JSON.stringify({
+        mode: floatingPanelState.mode,
+        position: floatingPanelState.position,
+        activeTab: floatingPanelState.activeTab,
+      }),
+    );
+  } catch (e) {
+    console.warn("Failed to save floating panel state:", e);
+  }
+}
+
+/**
+ * Load floating panel state from localStorage
+ */
+function loadFloatingPanelState() {
+  try {
+    const saved = localStorage.getItem("floatingPanelState");
+    if (saved) {
+      const state = JSON.parse(saved);
+
+      // Restore mode
+      if (state.mode) {
+        setFloatingPanelMode(state.mode);
+      }
+
+      // Restore position
+      if (state.position && state.position.x !== null) {
+        const panel = document.getElementById("floatingPanel");
+        if (panel) {
+          panel.style.left = `${state.position.x}px`;
+          panel.style.top = `${state.position.y}px`;
+          panel.style.right = "auto";
+          floatingPanelState.position = state.position;
+        }
+      }
+
+      // Restore active tab
+      if (state.activeTab) {
+        switchFloatingPanelTab(state.activeTab);
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to load floating panel state:", e);
+  }
+}
+
+/**
+ * Update the floating panel's recording indicator and record button
+ */
+function updateFloatingRecordingIndicator(state, startTime = null) {
+  const indicator = document.getElementById("floatingRecordingIndicator");
+  const timer = document.getElementById("floatingRecordingTimer");
+  const recordBtn = document.getElementById("floatingRecordBtn");
+  const recordLabel = recordBtn?.querySelector(".floating-record-label");
+
+  // Update indicator
+  if (indicator) {
+    if (state === "recording") {
+      indicator.classList.remove("hidden", "paused", "stopped");
+    } else if (state === "paused") {
+      indicator.classList.remove("hidden", "stopped");
+      indicator.classList.add("paused");
+    } else {
+      indicator.classList.add("hidden");
+      indicator.classList.remove("paused", "stopped");
+      if (timer) timer.textContent = "00:00";
+    }
+  }
+
+  // Update record button
+  if (recordBtn) {
+    if (state === "recording") {
+      recordBtn.classList.add("recording");
+      if (recordLabel) recordLabel.textContent = "Stop";
+    } else {
+      recordBtn.classList.remove("recording");
+      if (recordLabel) recordLabel.textContent = "Record";
+    }
+  }
+}
+
+// Track which evidence items we've already shown to avoid duplicates
+let shownEvidenceIds = new Set();
+
+/**
+ * Update the floating panel with evidence data from the stream
+ */
+function updateFloatingPanelEvidence(evidence) {
+  const evidenceList = document.getElementById("floatingEvidenceList");
+  const emptyState = document.getElementById("evidenceEmptyState");
+
+  if (!evidenceList || !evidence) return;
+
+  // Hide empty state, show list
+  if (emptyState) emptyState.style.display = "none";
+  evidenceList.style.display = "flex";
+
+  // Process each evidence item, adding new ones
+  evidence.forEach((item, index) => {
+    // Create a simple ID from the gist to track duplicates
+    const itemId = `${item.gist}_${item.speaker_label || ""}`.slice(0, 100);
+
+    if (!shownEvidenceIds.has(itemId)) {
+      shownEvidenceIds.add(itemId);
+
+      // Check if this is the newest item
+      const isNewest = index === evidence.length - 1;
+
+      // Create card using Tag-First design
+      const card = renderTagFirstEvidenceCard(item, isNewest);
+
+      // Prepend to show newest first
+      evidenceList.insertBefore(card, evidenceList.firstChild);
+
+      // Remove "newest" class after animation
+      if (isNewest) {
+        setTimeout(() => {
+          card.classList.remove("newest");
+        }, 2000);
+      }
+    }
+  });
+
+  // Limit the number of visible evidence cards to prevent memory issues
+  const maxCards = 50;
+  while (evidenceList.children.length > maxCards) {
+    evidenceList.removeChild(evidenceList.lastChild);
+  }
+}
+
+/**
+ * Clear the floating panel evidence (call when switching meetings)
+ */
+function clearFloatingPanelEvidence() {
+  const evidenceList = document.getElementById("floatingEvidenceList");
+  const emptyState = document.getElementById("evidenceEmptyState");
+
+  if (evidenceList) {
+    evidenceList.innerHTML = "";
+    evidenceList.style.display = "none";
+  }
+
+  if (emptyState) {
+    emptyState.style.display = "flex";
+  }
+
+  // Reset tracked evidence
+  shownEvidenceIds.clear();
+}

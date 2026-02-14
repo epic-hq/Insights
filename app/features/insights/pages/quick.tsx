@@ -1,98 +1,98 @@
-import consola from "consola"
-import { ChevronDown, ChevronRight, LayoutGrid, List, Search } from "lucide-react"
-import { useMemo, useState } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { useLoaderData } from "react-router"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
-import { Input } from "~/components/ui/input"
-import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
-import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
-import { getInsights } from "~/features/insights/db"
-import { currentProjectContext } from "~/server/current-project-context"
-import { userContext } from "~/server/user-context"
-import type { Insight } from "~/types"
+import consola from "consola";
+import { ChevronDown, ChevronRight, LayoutGrid, List, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { useLoaderData } from "react-router";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
+import { Input } from "~/components/ui/input";
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
+import { InsightCardV3 } from "~/features/insights/components/InsightCardV3";
+import { getInsights } from "~/features/insights/db";
+import { currentProjectContext } from "~/server/current-project-context";
+import { userContext } from "~/server/user-context";
+import type { Insight } from "~/types";
 
-type ViewMode = "flat" | "grouped"
+type ViewMode = "flat" | "grouped";
 
 export const meta: MetaFunction = () => {
-	return [{ title: "Quick Insights | Pain points" }, { name: "description", content: "Quick insights interface" }]
-}
+	return [{ title: "Quick Insights | Pain points" }, { name: "description", content: "Quick insights interface" }];
+};
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
-	const ctx_project = context.get(currentProjectContext)
-	const projectId = ctx_project.projectId ?? params.projectId ?? null
-	const accountId = ctx_project.accountId ?? params.accountId ?? null
+	const ctx_project = context.get(currentProjectContext);
+	const projectId = ctx_project.projectId ?? params.projectId ?? null;
+	const accountId = ctx_project.accountId ?? params.accountId ?? null;
 
 	if (!projectId || !accountId) {
-		consola.warn("Missing project or account context")
-		return { insights: [] }
+		consola.warn("Missing project or account context");
+		return { insights: [] };
 	}
 
 	const { data: insights, error } = await getInsights({
 		supabase,
 		accountId,
 		projectId,
-	})
+	});
 
 	if (error) {
-		consola.error("Insights query error:", error)
-		throw new Response(`Error fetching insights: ${error.message}`, { status: 500 })
+		consola.error("Insights query error:", error);
+		throw new Response(`Error fetching insights: ${error.message}`, { status: 500 });
 	}
 
-	consola.log(`Found ${insights?.length || 0} insights`)
+	consola.log(`Found ${insights?.length || 0} insights`);
 
 	return {
 		insights: insights || [],
-	}
+	};
 }
 
 // Group insights by category
 function groupByCategory(insights: (Insight & Record<string, unknown>)[]) {
-	const groups: Record<string, (Insight & Record<string, unknown>)[]> = {}
-	const uncategorized: (Insight & Record<string, unknown>)[] = []
+	const groups: Record<string, (Insight & Record<string, unknown>)[]> = {};
+	const uncategorized: (Insight & Record<string, unknown>)[] = [];
 
 	for (const insight of insights) {
-		const category = (insight as { category?: string }).category
+		const category = (insight as { category?: string }).category;
 		if (category) {
-			if (!groups[category]) groups[category] = []
-			groups[category].push(insight)
+			if (!groups[category]) groups[category] = [];
+			groups[category].push(insight);
 		} else {
-			uncategorized.push(insight)
+			uncategorized.push(insight);
 		}
 	}
 
 	// Sort categories alphabetically, put uncategorized at end
-	const sortedCategories = Object.keys(groups).sort()
+	const sortedCategories = Object.keys(groups).sort();
 	const result: { category: string; insights: (Insight & Record<string, unknown>)[] }[] = sortedCategories.map(
 		(category) => ({
 			category,
 			insights: groups[category],
 		})
-	)
+	);
 
 	if (uncategorized.length > 0) {
-		result.push({ category: "Uncategorized", insights: uncategorized })
+		result.push({ category: "Uncategorized", insights: uncategorized });
 	}
 
-	return result
+	return result;
 }
 
 export default function QuickInsights() {
-	const { insights } = useLoaderData<typeof loader>()
-	const [searchQuery, setSearchQuery] = useState("")
-	const [viewMode, setViewMode] = useState<ViewMode>("grouped")
-	const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
+	const { insights } = useLoaderData<typeof loader>();
+	const [searchQuery, setSearchQuery] = useState("");
+	const [viewMode, setViewMode] = useState<ViewMode>("grouped");
+	const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
 	// Initialize all categories as expanded on first render
 	const filtered = useMemo(() => {
-		const normalized = searchQuery.trim().toLowerCase()
-		if (!normalized) return insights
+		const normalized = searchQuery.trim().toLowerCase();
+		if (!normalized) return insights;
 
 		return insights.filter((insight: Insight & Record<string, unknown>) => {
 			const haystack = [
@@ -105,35 +105,35 @@ export default function QuickInsights() {
 					?.map((pi) => pi.personas?.name)
 					.join(" "),
 				(insight.linked_themes as { name?: string }[] | undefined)?.map((theme) => theme.name).join(" "),
-			]
+			];
 
-			return haystack.some((text) => typeof text === "string" && text.toLowerCase().includes(normalized))
-		})
-	}, [insights, searchQuery])
+			return haystack.some((text) => typeof text === "string" && text.toLowerCase().includes(normalized));
+		});
+	}, [insights, searchQuery]);
 
-	const grouped = useMemo(() => groupByCategory(filtered), [filtered])
+	const grouped = useMemo(() => groupByCategory(filtered), [filtered]);
 
 	// Initialize expanded categories when grouped changes
 	useMemo(() => {
 		if (expandedCategories.size === 0 && grouped.length > 0) {
-			setExpandedCategories(new Set(grouped.map((g) => g.category)))
+			setExpandedCategories(new Set(grouped.map((g) => g.category)));
 		}
-	}, [grouped, expandedCategories.size])
+	}, [grouped, expandedCategories.size]);
 
 	const toggleCategory = (category: string) => {
 		setExpandedCategories((prev) => {
-			const next = new Set(prev)
+			const next = new Set(prev);
 			if (next.has(category)) {
-				next.delete(category)
+				next.delete(category);
 			} else {
-				next.add(category)
+				next.add(category);
 			}
-			return next
-		})
-	}
+			return next;
+		});
+	};
 
-	const expandAll = () => setExpandedCategories(new Set(grouped.map((g) => g.category)))
-	const collapseAll = () => setExpandedCategories(new Set())
+	const expandAll = () => setExpandedCategories(new Set(grouped.map((g) => g.category)));
+	const collapseAll = () => setExpandedCategories(new Set());
 
 	return (
 		<PageContainer className="space-y-6">
@@ -217,5 +217,5 @@ export default function QuickInsights() {
 				</div>
 			)}
 		</PageContainer>
-	)
+	);
 }

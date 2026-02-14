@@ -1,21 +1,24 @@
-import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr"
-import { getServerEnv } from "~/env.server"
-import type { Database } from "~/types"
+import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr";
+import { getServerEnv } from "../../env.server";
+import type { Database } from "../../types";
 
-const { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: _SUPABASE_SERVICE_ROLE_KEY } = getServerEnv()
+const { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: _SUPABASE_SERVICE_ROLE_KEY } = getServerEnv();
 
 export const getServerClient = (request: Request) => {
-	const headers = new Headers()
-	const requestUrl = new URL(request.url)
-	const isProduction = requestUrl.hostname === "getupsight.com" || requestUrl.hostname.endsWith(".getupsight.com")
+	const headers = new Headers();
+	const requestUrl = new URL(request.url);
+	// Use x-forwarded-host (from reverse proxy) or host header to get the actual hostname
+	// request.url contains internal hostname (localhost/0.0.0.0) when behind Fly.io/proxies
+	const actualHost = request.headers.get("x-forwarded-host") || request.headers.get("host") || requestUrl.hostname;
+	const isProduction = actualHost === "getupsight.com" || actualHost.endsWith(".getupsight.com");
 
 	const supabase = createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
 		cookies: {
 			getAll() {
 				return parseCookieHeader(request.headers.get("Cookie") ?? "") as {
-					name: string
-					value: string
-				}[]
+					name: string;
+					value: string;
+				}[];
 			},
 			setAll(cookiesToSet) {
 				cookiesToSet.forEach(({ name, value, options }) => {
@@ -30,19 +33,19 @@ export const getServerClient = (request: Request) => {
 						path: options?.path ?? "/",
 						// Set reasonable maxAge if not specified (7 days)
 						maxAge: options?.maxAge ?? 60 * 60 * 24 * 7,
-					}
-					headers.append("Set-Cookie", serializeCookieHeader(name, value, cookieOptions))
-				})
+					};
+					headers.append("Set-Cookie", serializeCookieHeader(name, value, cookieOptions));
+				});
 			},
 		},
 		auth: {
 			// Explicitly use PKCE flow for OAuth (more secure and reliable)
 			flowType: "pkce",
 		},
-	})
+	});
 
-	return { client: supabase, headers }
-}
+	return { client: supabase, headers };
+};
 
 export function createSupabaseAdminClient() {
 	return createServerClient<Database>(SUPABASE_URL, _SUPABASE_SERVICE_ROLE_KEY, {
@@ -54,7 +57,7 @@ export function createSupabaseAdminClient() {
 			autoRefreshToken: false,
 			persistSession: false,
 		},
-	})
+	});
 }
 
 /**
@@ -63,19 +66,19 @@ export function createSupabaseAdminClient() {
  * Also returns headers that should be included in the response (for token refresh)
  */
 export async function getAuthenticatedUser(request: Request) {
-	const { client: supabase, headers } = getServerClient(request)
+	const { client: supabase, headers } = getServerClient(request);
 
 	try {
 		// Prefer JWT claims when available
-		const { data: claims, error } = await supabase.auth.getClaims()
+		const { data: claims, error } = await supabase.auth.getClaims();
 		// consola.log("getAuthenticatedUser claims", claims)
 		if (claims?.claims && !error) {
-			return { user: claims.claims as any, headers }
+			return { user: claims.claims as any, headers };
 		}
 		// Fallback to user/session for broader compatibility
-		const { data: sessionData } = await supabase.auth.getSession()
+		const { data: sessionData } = await supabase.auth.getSession();
 		if (sessionData?.session?.user) {
-			const u = sessionData.session.user
+			const u = sessionData.session.user;
 			return {
 				user: {
 					sub: u.id,
@@ -86,11 +89,11 @@ export async function getAuthenticatedUser(request: Request) {
 					access_token: sessionData.session.access_token,
 				},
 				headers,
-			}
+			};
 		}
-		return { user: null, headers }
+		return { user: null, headers };
 	} catch {
-		return { user: null, headers }
+		return { user: null, headers };
 	}
 }
 
@@ -99,8 +102,8 @@ export async function getAuthenticatedUser(request: Request) {
  * @deprecated Use getAuthenticatedUser and handle headers properly
  */
 export async function getAuthenticatedUserOnly(request: Request) {
-	const result = await getAuthenticatedUser(request)
-	return result.user
+	const result = await getAuthenticatedUser(request);
+	return result.user;
 }
 
 /**
@@ -108,19 +111,19 @@ export async function getAuthenticatedUserOnly(request: Request) {
  * Returns null if no valid session
  */
 export async function getSession(request: Request) {
-	const supabase = getServerClient(request)
+	const supabase = getServerClient(request);
 
 	try {
 		const {
 			data: { session },
 			error,
-		} = await supabase.client.auth.getSession()
+		} = await supabase.client.auth.getSession();
 		if (error || !session) {
-			return null
+			return null;
 		}
-		return session
+		return session;
 	} catch {
-		return null
+		return null;
 	}
 }
 
@@ -131,7 +134,7 @@ export const supabaseAnon = createServerClient<Database>(SUPABASE_URL, SUPABASE_
 		setAll: () => {},
 	},
 	auth: { persistSession: false },
-})
+});
 
 // Per-request helper that returns a client with a user JWT set for RLS-protected queries
 export function getRlsClient(jwt: string) {
@@ -144,9 +147,9 @@ export function getRlsClient(jwt: string) {
 		global: {
 			headers: { Authorization: `Bearer ${jwt}` },
 		},
-	})
+	});
 }
 
 // Backward compatibility exports
-export const supabaseAdmin = createSupabaseAdminClient()
-export { supabaseAnon as db }
+export const supabaseAdmin = createSupabaseAdminClient();
+export { supabaseAnon as db };

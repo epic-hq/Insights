@@ -1,4 +1,4 @@
-import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes"
+import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes";
 
 export default [
 	...prefix("research-links", [
@@ -11,6 +11,9 @@ export default [
 		route(":listId/responses", "./features/research-links/pages/responses.$listId.tsx"),
 		// API routes
 		route("api/generate-questions", "./features/research-links/api/generate-questions.tsx"),
+		route("api/generate-from-voice", "./features/research-links/api/generate-from-voice.tsx"),
+		route("api/parse-branch-rule", "./features/research-links/api/parse-branch-rule.tsx"),
 		route("api/suggest-surveys", "./features/research-links/api/suggest-surveys.tsx"),
+		// Campaign API routes registered in app/routes.ts under :projectId scope
 	]),
-] satisfies RouteConfig
+] satisfies RouteConfig;

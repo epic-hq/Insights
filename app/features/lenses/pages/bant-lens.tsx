@@ -3,43 +3,43 @@
  * Shows opportunity qualification by budget range and decision-maker authority
  */
 
-import consola from "consola"
-import { useState } from "react"
-import { type LoaderFunctionArgs, useLoaderData } from "react-router"
-import { userContext } from "~/server/user-context"
-import { BantMatrixComponent } from "../components/BantMatrix"
-import { type BantMatrixCell, generateBantMatrix } from "../services/generateBantMatrix.server"
+import consola from "consola";
+import { useState } from "react";
+import { type LoaderFunctionArgs, useLoaderData } from "react-router";
+import { userContext } from "~/server/user-context";
+import { BantMatrixComponent } from "../components/BantMatrix";
+import { type BantMatrixCell, generateBantMatrix } from "../services/generateBantMatrix.server";
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	if (!supabase) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const projectId = params.projectId as string
+	const projectId = params.projectId as string;
 
 	if (!projectId) {
-		throw new Response("Project ID required", { status: 400 })
+		throw new Response("Project ID required", { status: 400 });
 	}
 
 	try {
 		const matrix = await generateBantMatrix({
 			supabase,
 			projectId,
-		})
+		});
 
-		return { matrix, projectId }
+		return { matrix, projectId };
 	} catch (error) {
-		consola.error("BANT Lens loader error:", error)
-		throw new Response("Failed to generate BANT matrix", { status: 500 })
+		consola.error("BANT Lens loader error:", error);
+		throw new Response("Failed to generate BANT matrix", { status: 500 });
 	}
 }
 
 export default function BantLens() {
-	const { matrix } = useLoaderData<typeof loader>()
-	const [selectedCell, setSelectedCell] = useState<BantMatrixCell | null>(null)
+	const { matrix } = useLoaderData<typeof loader>();
+	const [selectedCell, setSelectedCell] = useState<BantMatrixCell | null>(null);
 
 	if (!matrix || matrix.summary.total_opportunities === 0) {
 		return (
@@ -54,7 +54,7 @@ export default function BantLens() {
 					</p>
 				</div>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -124,5 +124,5 @@ export default function BantLens() {
 				</div>
 			)}
 		</div>
-	)
+	);
 }

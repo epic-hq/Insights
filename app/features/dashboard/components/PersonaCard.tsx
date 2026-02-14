@@ -1,31 +1,31 @@
 // Enhanced component for displaying comprehensive persona information
 
-import type { CSSProperties } from "react"
-import { Link } from "react-router-dom"
-import type { Database } from "~/../supabase/types"
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
+import type { CSSProperties } from "react";
+import { Link } from "react-router-dom";
+import type { Database } from "~/../supabase/types";
+import { Avatar, AvatarFallback } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
 
 type Persona = Database["public"]["Tables"]["personas"]["Row"] & {
 	people_personas?: {
 		people: {
-			id: string
-			name: string
-			segment: string | null
-		} | null
-	}[]
-}
+			id: string;
+			name: string;
+			segment: string | null;
+		} | null;
+	}[];
+};
 
 interface PersonaCardProps {
-	persona: Persona
-	style?: CSSProperties
+	persona: Persona;
+	style?: CSSProperties;
 }
 
 export default function PersonaCard({ persona, style }: PersonaCardProps) {
 	// Safely extract people data with null checks
 	const people = (persona.people_personas || [])
 		.map((pp) => pp?.people)
-		.filter((person): person is NonNullable<typeof person> => person !== null && person !== undefined)
+		.filter((person): person is NonNullable<typeof person> => person !== null && person !== undefined);
 
 	// Safely generate initials with fallback
 	const personaInitials =
@@ -35,7 +35,7 @@ export default function PersonaCard({ persona, style }: PersonaCardProps) {
 			.map((word) => word?.[0] || "")
 			.join("")
 			.toUpperCase()
-			.slice(0, 2) || "??"
+			.slice(0, 2) || "??";
 
 	return (
 		<Link
@@ -122,5 +122,5 @@ export default function PersonaCard({ persona, style }: PersonaCardProps) {
 				</div>
 			</div>
 		</Link>
-	)
+	);
 }

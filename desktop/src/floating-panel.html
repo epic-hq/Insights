@@ -1,0 +1,2021 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>UpSight</title>
+    <style>
+      :root {
+        --bg-primary: #0f172a;
+        --bg-secondary: #1e293b;
+        --border-color: #334155;
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --accent: #818cf8;
+        --accent-hover: #6366f1;
+        --recording: #ef4444;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: transparent;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      .floating-panel {
+        width: 320px;
+        height: 400px;
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .floating-panel.expanded {
+        width: 480px;
+        height: 600px;
+      }
+
+      .resize-handle {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 16px;
+        height: 16px;
+        cursor: nwse-resize;
+        z-index: 100;
+      }
+      .resize-handle::after {
+        content: '';
+        position: absolute;
+        bottom: 3px;
+        right: 3px;
+        width: 8px;
+        height: 8px;
+        border-right: 2px solid rgba(255,255,255,0.25);
+        border-bottom: 2px solid rgba(255,255,255,0.25);
+      }
+
+      .floating-panel.minimized {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        overflow: hidden;
+      }
+
+      .floating-panel.minimized .panel-header,
+      .floating-panel.minimized .panel-context,
+      .floating-panel.minimized .recording-controls,
+      .floating-panel.minimized .panel-tabs,
+      .floating-panel.minimized .panel-content,
+      .floating-panel.minimized .panel-footer,
+      .floating-panel.minimized .close-confirm {
+        display: none;
+      }
+
+      .minimized-indicator {
+        display: none;
+        width: 48px;
+        height: 48px;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        -webkit-app-region: no-drag;
+      }
+
+      .floating-panel.minimized .minimized-indicator {
+        display: flex;
+      }
+
+      .minimized-logo {
+        width: 28px;
+        height: 28px;
+      }
+
+      .minimized-indicator .recording-pulse {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        background: var(--recording);
+        border-radius: 50%;
+        top: 6px;
+        right: 6px;
+        animation: pulse 2s ease-in-out infinite;
+        display: none;
+      }
+
+      .floating-panel.minimized.recording .minimized-indicator .recording-pulse {
+        display: block;
+      }
+
+      /* Header */
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        background-color: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-color);
+        -webkit-app-region: drag;
+        cursor: grab;
+      }
+
+      .panel-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .panel-logo {
+        width: 20px;
+        height: 20px;
+      }
+
+      .panel-title-text {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .recording-indicator {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        background-color: rgba(239, 68, 68, 0.1);
+        border-radius: 4px;
+        margin-left: 8px;
+      }
+
+      .recording-indicator.active {
+        display: flex;
+      }
+
+      .recording-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--recording);
+        border-radius: 50%;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      /* Header listening waves (always visible when recording) */
+      .header-waves {
+        display: none;
+        align-items: center;
+        gap: 2px;
+        height: 14px;
+        margin-left: 6px;
+      }
+
+      .header-waves.active {
+        display: flex;
+      }
+
+      .header-wave {
+        width: 2px;
+        background: var(--accent);
+        border-radius: 1px;
+        animation: headerWave 0.8s ease-in-out infinite;
+      }
+
+      .header-wave:nth-child(1) { height: 4px; animation-delay: 0s; }
+      .header-wave:nth-child(2) { height: 8px; animation-delay: 0.1s; }
+      .header-wave:nth-child(3) { height: 12px; animation-delay: 0.2s; }
+      .header-wave:nth-child(4) { height: 8px; animation-delay: 0.3s; }
+      .header-wave:nth-child(5) { height: 4px; animation-delay: 0.4s; }
+
+      @keyframes headerWave {
+        0%, 100% { transform: scaleY(1); opacity: 1; }
+        50% { transform: scaleY(0.4); opacity: 0.7; }
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      .recording-timer {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: #f87171;
+        font-weight: 500;
+      }
+
+      .panel-controls {
+        display: flex;
+        gap: 4px;
+        -webkit-app-region: no-drag;
+      }
+
+      .panel-btn {
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 150ms ease, color 150ms ease;
+      }
+
+      .panel-btn:hover {
+        background: var(--border-color);
+        color: var(--text-primary);
+      }
+
+      .panel-btn.logout-btn:hover {
+        background: rgba(129, 140, 248, 0.2);
+        border-color: rgba(129, 140, 248, 0.65);
+        color: #e2e8f0;
+      }
+
+      .panel-btn.logout-btn {
+        width: auto;
+        min-width: 86px;
+        padding: 0 10px;
+        gap: 5px;
+        color: #cbd5e1;
+        border: 1px solid rgba(148, 163, 184, 0.32);
+        background: rgba(15, 23, 42, 0.55);
+      }
+
+      .panel-btn.logout-btn.signed-out {
+        color: #c7d2fe;
+        border-color: rgba(129, 140, 248, 0.35);
+        background: rgba(129, 140, 248, 0.12);
+      }
+
+      .panel-btn.logout-btn.signed-out:hover {
+        color: #e2e8f0;
+        border-color: rgba(129, 140, 248, 0.6);
+        background: rgba(129, 140, 248, 0.2);
+      }
+
+      .panel-btn.logout-btn.pending {
+        cursor: wait;
+        opacity: 0.9;
+      }
+
+      .panel-btn.logout-btn:disabled {
+        cursor: wait;
+      }
+
+      .logout-btn-icon {
+        display: inline-flex;
+      }
+
+      .panel-btn.logout-btn.pending .logout-btn-icon {
+        display: none;
+      }
+
+      .btn-spinner {
+        width: 11px;
+        height: 11px;
+        border-radius: 999px;
+        border: 1.5px solid rgba(148, 163, 184, 0.45);
+        border-top-color: #c7d2fe;
+        animation: spin 0.75s linear infinite;
+        display: none;
+      }
+
+      .panel-btn.logout-btn.pending .btn-spinner {
+        display: inline-flex;
+      }
+
+      .logout-btn-label {
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .panel-context {
+        padding: 10px 14px 8px;
+        background-color: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      /* Recording Controls */
+      .recording-controls {
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px 14px 10px;
+        background-color: rgba(15, 23, 42, 0.55);
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .record-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        background: var(--border-color);
+        border: none;
+        color: var(--text-primary);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 150ms ease;
+        -webkit-app-region: no-drag;
+      }
+
+      .record-btn:hover {
+        background: #475569;
+      }
+
+      .record-btn:disabled {
+        background: #334155;
+        color: #94a3b8;
+        opacity: 0.75;
+        cursor: not-allowed;
+      }
+
+      .record-btn:disabled:hover {
+        background: #334155;
+      }
+
+      .record-btn.recording {
+        background: var(--recording);
+      }
+
+      .record-btn.recording:hover {
+        background: #dc2626;
+      }
+
+      .record-btn .stop-icon {
+        display: none;
+      }
+
+      .record-btn.recording .record-icon {
+        display: none;
+      }
+
+      .record-btn.recording .stop-icon {
+        display: block;
+      }
+
+      .recording-auth-status {
+        display: none;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(129, 140, 248, 0.3);
+        background: rgba(129, 140, 248, 0.12);
+      }
+
+      .recording-auth-status.show {
+        display: flex;
+      }
+
+      .recording-auth-status.error {
+        border-color: rgba(239, 68, 68, 0.35);
+        background: rgba(239, 68, 68, 0.14);
+      }
+
+      .recording-auth-status.ready {
+        border-color: rgba(74, 222, 128, 0.35);
+        background: rgba(74, 222, 128, 0.12);
+      }
+
+      .recording-auth-status.loading {
+        border-color: rgba(129, 140, 248, 0.45);
+        background: rgba(129, 140, 248, 0.16);
+      }
+
+      .auth-status-spinner {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        border: 1.5px solid rgba(148, 163, 184, 0.45);
+        border-top-color: #c7d2fe;
+        animation: spin 0.75s linear infinite;
+        display: none;
+        flex: 0 0 auto;
+      }
+
+      .recording-auth-status.loading .auth-status-spinner {
+        display: inline-flex;
+      }
+
+      .auth-status-text {
+        font-size: 12px;
+        line-height: 1.3;
+        color: var(--text-secondary);
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      .routing-context {
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-radius: 8px;
+        background: rgba(15, 23, 42, 0.42);
+        padding: 8px 10px;
+      }
+
+      .routing-context-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .routing-context-label {
+        color: var(--text-muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .routing-context-switch {
+        border: 1px solid var(--border-color);
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 10px;
+        border-radius: 6px;
+        padding: 4px 8px;
+        cursor: pointer;
+      }
+
+      .routing-context-switch:hover {
+        border-color: var(--accent);
+        color: var(--text-primary);
+      }
+
+      .routing-context-switch:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .routing-context-value {
+        color: var(--text-primary);
+        font-size: 12px;
+        margin-top: 4px;
+        line-height: 1.3;
+      }
+
+      .routing-context-editor {
+        margin-top: 8px;
+        display: none;
+        gap: 6px;
+        flex-direction: column;
+      }
+
+      .routing-context-editor.active {
+        display: flex;
+      }
+
+      .context-select-label {
+        color: var(--text-muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .context-select {
+        width: 100%;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: #0b1328;
+        color: var(--text-primary);
+        font-size: 12px;
+        padding: 7px 8px;
+      }
+
+      .context-select:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      .context-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 6px;
+      }
+
+      .context-btn {
+        border: 1px solid var(--border-color);
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 11px;
+        border-radius: 6px;
+        padding: 5px 9px;
+        cursor: pointer;
+      }
+
+      .context-btn:hover {
+        color: var(--text-primary);
+      }
+
+      .context-btn.save {
+        border-color: rgba(129, 140, 248, 0.5);
+        color: #c7d2fe;
+      }
+
+      /* Tabs */
+      .panel-tabs {
+        display: flex;
+        background-color: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-color);
+        padding: 0 8px;
+      }
+
+      .panel-tab {
+        flex: 1;
+        padding: 10px 12px;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        position: relative;
+        transition: color 150ms ease;
+        -webkit-app-region: no-drag;
+      }
+
+      .panel-tab:hover {
+        color: var(--text-secondary);
+      }
+
+      .panel-tab.active {
+        color: var(--text-primary);
+      }
+
+      .panel-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 8px;
+        right: 8px;
+        height: 2px;
+        background: var(--accent);
+        border-radius: 2px 2px 0 0;
+      }
+
+      /* Tab pulse animation for new items */
+      .panel-tab.pulse {
+        animation: tabPulse 1.5s ease-out;
+      }
+
+      @keyframes tabPulse {
+        0% { background: rgba(74, 222, 128, 0.3); }
+        100% { background: transparent; }
+      }
+
+      /* Content */
+      .panel-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+      }
+
+      .tab-content {
+        display: none;
+        height: 100%;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        min-height: 150px;
+        color: var(--text-muted);
+        text-align: center;
+        font-size: 13px;
+        gap: 12px;
+      }
+
+      .evidence-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      /* Evidence Card (Tag-First) */
+      .evidence-card {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        padding: 10px 12px;
+        background-color: var(--bg-secondary);
+        border-radius: 8px;
+        animation: slideIn 0.2s ease-out;
+      }
+
+      .evidence-card.newest {
+        background-color: #1e3a5f;
+      }
+
+      @keyframes slideIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .tag-badge {
+        min-width: 40px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 9px;
+        font-weight: 600;
+        text-align: center;
+        text-transform: uppercase;
+        flex-shrink: 0;
+        letter-spacing: 0.3px;
+      }
+
+      .tag-badge.pain { background: #f87171; color: #000; }
+      .tag-badge.goal { background: #4ade80; color: #000; }
+      .tag-badge.workflow { background: #60a5fa; color: #000; }
+      .tag-badge.tool { background: #a78bfa; color: #000; }
+      .tag-badge.probe { background: #fbbf24; color: #000; }
+      .tag-badge.note { background: #6b7280; color: #fff; }
+      .tag-badge.context { background: #94a3b8; color: #000; }
+
+      .evidence-content {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .evidence-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+
+      .evidence-speaker {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-primary);
+      }
+
+      .evidence-timestamp {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        color: var(--text-muted);
+      }
+
+      .evidence-gist {
+        font-size: 13px;
+        line-height: 1.4;
+        color: var(--text-primary);
+      }
+
+      /* Footer */
+      .panel-footer {
+        padding: 10px 12px;
+        background-color: var(--bg-secondary);
+        border-top: 1px solid var(--border-color);
+      }
+
+      .note-input-container {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .input-mode-toggle {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: border-color 150ms ease, color 150ms ease;
+        -webkit-app-region: no-drag;
+      }
+
+      .input-mode-toggle:hover {
+        border-color: var(--accent);
+        color: var(--text-primary);
+      }
+
+      .input-mode-toggle.task-mode {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+
+      .note-input {
+        flex: 1;
+        padding: 10px 14px;
+        background-color: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 13px;
+        outline: none;
+        transition: border-color 150ms ease, box-shadow 150ms ease;
+        -webkit-app-region: no-drag;
+      }
+
+      .note-input::placeholder {
+        color: var(--text-muted);
+      }
+
+      .note-input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
+      }
+
+      .note-submit {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: var(--accent);
+        border: none;
+        color: #fff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 150ms ease, transform 100ms ease;
+        flex-shrink: 0;
+        -webkit-app-region: no-drag;
+      }
+
+      .note-submit:hover {
+        background: var(--accent-hover);
+      }
+
+      .note-submit:active {
+        transform: scale(0.95);
+      }
+
+      /* Transcript list */
+      .transcript-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .transcript-entry {
+        padding: 8px 10px;
+        background-color: var(--bg-secondary);
+        border-radius: 6px;
+        animation: slideIn 0.2s ease-out;
+      }
+
+      .transcript-entry.newest {
+        background-color: #1e3a5f;
+      }
+
+      .transcript-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 4px;
+      }
+
+      .transcript-speaker {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--accent);
+      }
+
+      .transcript-time {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        color: var(--text-muted);
+      }
+
+      .transcript-text {
+        font-size: 13px;
+        line-height: 1.4;
+        color: var(--text-primary);
+      }
+
+      /* Listening indicator */
+      .listening-indicator {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px;
+        margin-bottom: 12px;
+        background: rgba(129, 140, 248, 0.1);
+        border-radius: 8px;
+        border: 1px solid rgba(129, 140, 248, 0.2);
+      }
+
+      .listening-indicator.active {
+        display: flex;
+      }
+
+      .listening-waves {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        height: 16px;
+      }
+
+      .listening-wave {
+        width: 3px;
+        background: var(--accent);
+        border-radius: 2px;
+        animation: wave 1s ease-in-out infinite;
+      }
+
+      .listening-wave:nth-child(1) { height: 6px; animation-delay: 0s; }
+      .listening-wave:nth-child(2) { height: 10px; animation-delay: 0.1s; }
+      .listening-wave:nth-child(3) { height: 14px; animation-delay: 0.2s; }
+      .listening-wave:nth-child(4) { height: 10px; animation-delay: 0.3s; }
+      .listening-wave:nth-child(5) { height: 6px; animation-delay: 0.4s; }
+
+      @keyframes wave {
+        0%, 100% { transform: scaleY(1); }
+        50% { transform: scaleY(0.5); }
+      }
+
+      .listening-text {
+        font-size: 12px;
+        color: var(--accent);
+        font-weight: 500;
+      }
+
+      /* Tasks list */
+      .tasks-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .task-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+        background-color: var(--bg-secondary);
+        border-radius: 8px;
+        animation: slideIn 0.2s ease-out;
+      }
+
+      .task-item.newest {
+        background-color: #1e3a5f;
+      }
+
+      .task-checkbox {
+        width: 18px;
+        height: 18px;
+        border: 2px solid var(--border-color);
+        border-radius: 4px;
+        cursor: pointer;
+        flex-shrink: 0;
+        margin-top: 2px;
+        transition: border-color 150ms ease, background-color 150ms ease;
+      }
+
+      .task-checkbox:hover {
+        border-color: var(--accent);
+      }
+
+      .task-checkbox.checked {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+
+      .task-text {
+        font-size: 13px;
+        line-height: 1.4;
+        color: var(--text-primary);
+        flex: 1;
+      }
+
+      .task-item.completed .task-text {
+        text-decoration: line-through;
+        color: var(--text-muted);
+      }
+
+      .task-time {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        color: var(--text-muted);
+        flex-shrink: 0;
+      }
+
+      /* Delete button */
+      .delete-btn {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 150ms ease, background-color 150ms ease, color 150ms ease;
+        flex-shrink: 0;
+      }
+
+      .evidence-card:hover .delete-btn,
+      .task-item:hover .delete-btn,
+      .transcript-entry:hover .delete-btn {
+        opacity: 1;
+      }
+
+      .delete-btn:hover {
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+      }
+
+      /* Close confirmation overlay */
+      .close-confirm {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--bg-primary);
+        border-radius: 12px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: 24px;
+        z-index: 100;
+      }
+
+      .close-confirm.active {
+        display: flex;
+      }
+
+      .close-confirm-icon {
+        color: var(--accent);
+      }
+
+      .close-confirm-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary);
+        text-align: center;
+      }
+
+      .close-confirm-text {
+        font-size: 13px;
+        color: var(--text-secondary);
+        text-align: center;
+        line-height: 1.5;
+      }
+
+      .close-confirm-buttons {
+        display: flex;
+        gap: 12px;
+        margin-top: 8px;
+      }
+
+      .close-confirm-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 150ms ease;
+        border: none;
+      }
+
+      .close-confirm-btn.cancel {
+        background: var(--border-color);
+        color: var(--text-primary);
+      }
+
+      .close-confirm-btn.cancel:hover {
+        background: #475569;
+      }
+
+      .close-confirm-btn.confirm {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .close-confirm-btn.confirm:hover {
+        background: var(--accent-hover);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="floating-panel" id="floatingPanel">
+      <!-- Header -->
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg class="panel-logo" width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="#818cf8" stroke-width="2"/>
+            <circle cx="12" cy="12" r="4" fill="#818cf8"/>
+          </svg>
+          <span class="panel-title-text">UpSight</span>
+          <div class="header-waves" id="headerWaves">
+            <div class="header-wave"></div>
+            <div class="header-wave"></div>
+            <div class="header-wave"></div>
+            <div class="header-wave"></div>
+            <div class="header-wave"></div>
+          </div>
+          <div class="recording-indicator" id="recordingIndicator">
+            <div class="recording-dot"></div>
+            <span class="recording-timer" id="recordingTimer">00:00</span>
+          </div>
+        </div>
+        <div class="panel-controls">
+          <button class="panel-btn logout-btn" id="logoutBtn" title="Sign out">
+            <svg class="logout-btn-icon" width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M16 17v-2h-5V9h5V7l5 5-5 5zM3 5h8v2H5v10h6v2H3V5z" fill="currentColor"/>
+            </svg>
+            <span class="btn-spinner" id="logoutBtnSpinner" aria-hidden="true"></span>
+            <span class="logout-btn-label" id="logoutBtnLabel">Sign out</span>
+          </button>
+          <button class="panel-btn" id="minimizeBtn" title="Minimize">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M19 13H5v-2h14v2z" fill="currentColor"/>
+            </svg>
+          </button>
+          <button class="panel-btn" id="expandBtn" title="Expand">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="currentColor"/>
+            </svg>
+          </button>
+          <button class="panel-btn" id="closeBtn" title="Close">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="panel-context">
+        <div class="routing-context" id="routingContext">
+          <div class="routing-context-header">
+            <span class="routing-context-label">Project</span>
+            <button class="routing-context-switch" id="contextSwitchBtn" style="display:none;">Switch</button>
+          </div>
+          <div class="routing-context-value" id="routingContextValue">Checking project access…</div>
+          <div class="routing-context-editor" id="routingContextEditor">
+            <span class="context-select-label">Team</span>
+            <select class="context-select" id="accountSelect"></select>
+            <span class="context-select-label">Project</span>
+            <select class="context-select" id="projectSelect"></select>
+            <div class="context-actions">
+              <button class="context-btn" id="contextCancelBtn">Cancel</button>
+              <button class="context-btn save" id="contextSaveBtn">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recording Controls -->
+      <div class="recording-controls">
+        <button class="record-btn" id="recordBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="record-icon">
+            <circle cx="12" cy="12" r="6" fill="currentColor"/>
+          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="stop-icon">
+            <rect x="6" y="6" width="12" height="12" fill="currentColor"/>
+          </svg>
+          <span id="recordLabel">Record</span>
+        </button>
+        <div class="recording-auth-status" id="recordingAuthStatus">
+          <span class="auth-status-spinner" id="authStatusSpinner" aria-hidden="true"></span>
+          <span class="auth-status-text" id="authStatusText">Checking sign-in...</span>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="panel-tabs">
+        <button class="panel-tab active" data-tab="notes">Notes</button>
+        <button class="panel-tab" data-tab="transcript">Transcript</button>
+      </div>
+
+      <!-- Content -->
+      <div class="panel-content">
+        <div class="tab-content active" id="notesTab">
+          <div class="empty-state" id="notesEmpty">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#64748b"/>
+            </svg>
+            <p>Insights and tasks will appear here during recording</p>
+          </div>
+          <div class="evidence-list" id="notesList" style="display: none;"></div>
+        </div>
+
+        <div class="tab-content" id="transcriptTab">
+          <div class="listening-indicator" id="listeningIndicator">
+            <div class="listening-waves">
+              <div class="listening-wave"></div>
+              <div class="listening-wave"></div>
+              <div class="listening-wave"></div>
+              <div class="listening-wave"></div>
+              <div class="listening-wave"></div>
+            </div>
+            <span class="listening-text">Listening...</span>
+          </div>
+          <div class="empty-state" id="transcriptEmpty">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+              <path d="M12 15c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V6zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-2.08c3.39-.49 6-3.39 6-6.92h-2z" fill="#64748b"/>
+            </svg>
+            <p>Live transcript will appear here</p>
+          </div>
+          <div class="transcript-list" id="transcriptList" style="display: none;"></div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="panel-footer">
+        <div class="note-input-container">
+          <button class="input-mode-toggle" id="inputModeToggle" title="Toggle Note/Task (⌘⇧T)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="mode-icon note-icon">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM14 8V2l6 6h-6zM16 13H8v-2h8v2zm0 4H8v-2h8v2z" fill="currentColor"/>
+            </svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="mode-icon task-icon" style="display:none;">
+              <path d="M19 3H14.82C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" fill="currentColor"/>
+            </svg>
+          </button>
+          <input type="text" class="note-input" id="noteInput" placeholder="Add a note... (⌘⇧N)">
+          <button class="note-submit" id="noteSubmit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Close Confirmation -->
+      <div class="close-confirm" id="closeConfirm">
+        <svg class="close-confirm-icon" width="48" height="48" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+          <circle cx="12" cy="12" r="4" fill="currentColor"/>
+        </svg>
+        <div class="close-confirm-title">End Session?</div>
+        <div class="close-confirm-text">
+          Your recording and insights have been saved.<br/>
+          You can review them anytime in the UpSight app.
+        </div>
+        <div class="close-confirm-buttons">
+          <button class="close-confirm-btn cancel" id="closeCancel">Keep Open</button>
+          <button class="close-confirm-btn confirm" id="closeConfirmBtn">Close</button>
+        </div>
+      </div>
+
+      <!-- Resize Handle -->
+      <div class="resize-handle" id="resizeHandle"></div>
+
+      <!-- Minimized Indicator (visible when panel is minimized) -->
+      <div class="minimized-indicator" id="minimizedIndicator">
+        <svg class="minimized-logo" width="28" height="28" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="#818cf8" stroke-width="2"/>
+          <circle cx="12" cy="12" r="4" fill="#818cf8"/>
+        </svg>
+        <div class="recording-pulse"></div>
+      </div>
+    </div>
+
+    <script>
+      // Panel state
+      let isExpanded = false;
+      let isRecording = false;
+      let recordingStartTime = null;
+      let timerInterval = null;
+      let currentTab = 'notes';
+      let inputMode = 'note'; // 'note' or 'task' - controls what Enter creates
+
+      // Resize handle drag logic
+      const resizeHandle = document.getElementById('resizeHandle');
+      let isResizing = false;
+      let resizeStartX, resizeStartY, resizeStartW, resizeStartH;
+
+      resizeHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        resizeStartX = e.screenX;
+        resizeStartY = e.screenY;
+        const panel = document.getElementById('floatingPanel');
+        resizeStartW = panel.offsetWidth;
+        resizeStartH = panel.offsetHeight;
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        const dw = e.screenX - resizeStartX;
+        const dh = e.screenY - resizeStartY;
+        const newW = Math.max(280, Math.min(800, resizeStartW + dw));
+        const newH = Math.max(300, Math.min(900, resizeStartH + dh));
+        const panel = document.getElementById('floatingPanel');
+        panel.style.width = newW + 'px';
+        panel.style.height = newH + 'px';
+        window.electronAPI?.resizePanel({ width: newW, height: newH });
+      });
+
+      document.addEventListener('mouseup', () => {
+        isResizing = false;
+      });
+
+      // DOM elements
+      const panel = document.getElementById('floatingPanel');
+      const minimizeBtn = document.getElementById('minimizeBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const logoutBtnLabel = document.getElementById('logoutBtnLabel');
+      const expandBtn = document.getElementById('expandBtn');
+      const closeBtn = document.getElementById('closeBtn');
+      const recordBtn = document.getElementById('recordBtn');
+      const recordLabel = document.getElementById('recordLabel');
+      const recordingIndicator = document.getElementById('recordingIndicator');
+      const recordingTimer = document.getElementById('recordingTimer');
+      const tabs = document.querySelectorAll('.panel-tab');
+      const noteInput = document.getElementById('noteInput');
+      const noteSubmit = document.getElementById('noteSubmit');
+      const notesList = document.getElementById('notesList');
+      const notesEmpty = document.getElementById('notesEmpty');
+      const transcriptList = document.getElementById('transcriptList');
+      const transcriptEmpty = document.getElementById('transcriptEmpty');
+      const listeningIndicator = document.getElementById('listeningIndicator');
+      const headerWaves = document.getElementById('headerWaves');
+      const closeConfirm = document.getElementById('closeConfirm');
+      const closeCancel = document.getElementById('closeCancel');
+      const closeConfirmBtn = document.getElementById('closeConfirmBtn');
+      const minimizedIndicator = document.getElementById('minimizedIndicator');
+      const recordingAuthStatus = document.getElementById('recordingAuthStatus');
+      const authStatusText = document.getElementById('authStatusText');
+      const contextSwitchBtn = document.getElementById('contextSwitchBtn');
+      const routingContextValue = document.getElementById('routingContextValue');
+      const routingContextEditor = document.getElementById('routingContextEditor');
+      const accountSelect = document.getElementById('accountSelect');
+      const projectSelect = document.getElementById('projectSelect');
+      const contextCancelBtn = document.getElementById('contextCancelBtn');
+      const contextSaveBtn = document.getElementById('contextSaveBtn');
+      let canStartRecording = false;
+      let authIsLoggedIn = false;
+      let authPending = false;
+      let authRefreshInFlight = false;
+      let authPollInterval = null;
+      let userContext = null;
+      let contextEditorOpen = false;
+
+      function setAuthControlMode(isLoggedIn) {
+        authIsLoggedIn = !!isLoggedIn;
+        if (authPending) {
+          return;
+        }
+        logoutBtn.classList.toggle('signed-out', !authIsLoggedIn);
+        logoutBtn.title = authIsLoggedIn ? 'Sign out' : 'Sign in';
+        logoutBtnLabel.textContent = authIsLoggedIn ? 'Sign out' : 'Sign in';
+        const hasMultipleAccounts = (userContext?.accounts?.length || 0) > 1;
+        const accountId = userContext?.default_account_id;
+        const projectCount = accountId ? getProjectsForAccount(accountId).length : 0;
+        const hasMultipleProjects = projectCount > 1;
+        contextSwitchBtn.style.display =
+          authIsLoggedIn && (hasMultipleAccounts || hasMultipleProjects)
+            ? 'inline-flex'
+            : 'none';
+      }
+
+      function setAuthPending(pending, label = 'Checking…') {
+        authPending = !!pending;
+        logoutBtn.classList.toggle('pending', authPending);
+        logoutBtn.disabled = authPending;
+
+        if (authPending) {
+          logoutBtn.title = 'Checking sign-in';
+          logoutBtnLabel.textContent = label;
+          contextSwitchBtn.style.display = 'none';
+          if (!authIsLoggedIn && !isRecording) {
+            routingContextValue.textContent = 'Checking project access…';
+          }
+          return;
+        }
+
+        setAuthControlMode(authIsLoggedIn);
+      }
+
+      function getAccountById(accountId) {
+        if (!userContext?.accounts?.length) return null;
+        return userContext.accounts.find((account) => account.id === accountId) || null;
+      }
+
+      function getProjectsForAccount(accountId) {
+        if (!userContext?.projects?.length) return [];
+        return userContext.projects.filter((project) => project.accountId === accountId);
+      }
+
+      function renderRoutingContextSummary() {
+        if (!authIsLoggedIn) {
+          routingContextValue.textContent = 'Sign in to load team/project';
+          return;
+        }
+
+        const account = getAccountById(userContext?.default_account_id);
+        const project = userContext?.projects?.find(
+          (candidate) => candidate.id === userContext?.default_project_id,
+        );
+
+        if (!account || !project) {
+          routingContextValue.textContent = 'Workspace context unavailable';
+          return;
+        }
+
+        routingContextValue.textContent = `${account.name} / ${project.name}`;
+      }
+
+      function closeContextEditor() {
+        contextEditorOpen = false;
+        routingContextEditor.classList.remove('active');
+      }
+
+      function populateContextEditor(accountId, projectId) {
+        accountSelect.innerHTML = '';
+        for (const account of userContext?.accounts || []) {
+          const option = document.createElement('option');
+          option.value = account.id;
+          option.textContent = account.name || 'Untitled Team';
+          accountSelect.appendChild(option);
+        }
+
+        accountSelect.value = accountId || accountSelect.options[0]?.value || '';
+        populateProjectOptions(accountSelect.value, projectId);
+      }
+
+      function populateProjectOptions(accountId, selectedProjectId = null) {
+        const scopedProjects = getProjectsForAccount(accountId);
+        projectSelect.innerHTML = '';
+
+        for (const project of scopedProjects) {
+          const option = document.createElement('option');
+          option.value = project.id;
+          option.textContent = project.name || 'Untitled Project';
+          projectSelect.appendChild(option);
+        }
+
+        if (selectedProjectId && scopedProjects.some((p) => p.id === selectedProjectId)) {
+          projectSelect.value = selectedProjectId;
+        } else {
+          projectSelect.value = scopedProjects[0]?.id || '';
+        }
+      }
+
+      // Minimize panel to small circle in corner
+      let isMinimized = false;
+      logoutBtn.addEventListener('click', async () => {
+        if (!window.electronAPI) return;
+        if (!authIsLoggedIn) {
+          setAuthPending(true);
+          await openAuthWindow();
+          showAuthStatus('Waiting for sign-in in the main window…', { loading: true });
+          return;
+        }
+        if (isRecording) {
+          showAuthStatus('Stop recording before signing out.', { tone: 'error' });
+          return;
+        }
+
+        try {
+          setAuthPending(true, 'Signing out…');
+          await window.electronAPI.logout();
+          await window.electronAPI.openAuthWindow?.();
+          setAuthPending(false);
+          setAuthControlMode(false);
+          userContext = null;
+          closeContextEditor();
+          renderRoutingContextSummary();
+          setRecordReady(false);
+          showAuthStatus('Signed out. Sign in to start recording.', { tone: 'error' });
+        } catch (_) {
+          setAuthPending(false);
+          showAuthStatus('Sign out failed. Retry.', { tone: 'error' });
+        }
+      });
+
+      minimizeBtn.addEventListener('click', () => {
+        isMinimized = true;
+        panel.classList.add('minimized');
+        if (isRecording) {
+          panel.classList.add('recording');
+        }
+        window.electronAPI?.minimizePanel();
+      });
+
+      // Restore panel from minimized state
+      minimizedIndicator.addEventListener('click', () => {
+        isMinimized = false;
+        panel.classList.remove('minimized');
+        panel.classList.remove('recording');
+        window.electronAPI?.restorePanel();
+      });
+
+      // Expand/collapse panel
+      expandBtn.addEventListener('click', () => {
+        isExpanded = !isExpanded;
+        panel.classList.toggle('expanded', isExpanded);
+        window.electronAPI?.resizePanel(isExpanded ? { width: 480, height: 600 } : { width: 320, height: 400 });
+      });
+
+      // Close panel - show confirmation
+      closeBtn.addEventListener('click', () => {
+        closeConfirm.classList.add('active');
+      });
+
+      // Close confirmation buttons
+      closeCancel.addEventListener('click', () => {
+        closeConfirm.classList.remove('active');
+      });
+
+      closeConfirmBtn.addEventListener('click', () => {
+        closeConfirm.classList.remove('active');
+        window.electronAPI?.closePanel();
+      });
+
+      contextSwitchBtn.addEventListener('click', () => {
+        if (!authIsLoggedIn || !userContext) return;
+        if (isRecording) {
+          showAuthStatus('Stop recording before switching team/project.', { tone: 'error' });
+          return;
+        }
+        if (!contextEditorOpen) {
+          populateContextEditor(
+            userContext.default_account_id,
+            userContext.default_project_id,
+          );
+          contextEditorOpen = true;
+          routingContextEditor.classList.add('active');
+        } else {
+          closeContextEditor();
+        }
+      });
+
+      accountSelect.addEventListener('change', () => {
+        populateProjectOptions(accountSelect.value, null);
+      });
+
+      contextCancelBtn.addEventListener('click', () => {
+        closeContextEditor();
+      });
+
+      contextSaveBtn.addEventListener('click', async () => {
+        if (!window.electronAPI) return;
+        if (isRecording) {
+          showAuthStatus('Stop recording before switching team/project.', { tone: 'error' });
+          return;
+        }
+        const accountId = accountSelect.value;
+        const projectId = projectSelect.value;
+        if (!accountId || !projectId) {
+          showAuthStatus('Choose a team and project first.', { tone: 'error' });
+          return;
+        }
+
+        contextSaveBtn.disabled = true;
+        contextSaveBtn.textContent = 'Saving...';
+        try {
+          const result = await window.electronAPI.setUserContextSelection({
+            accountId,
+            projectId,
+          });
+
+          if (!result?.success || !result?.data) {
+            showAuthStatus('Could not switch team/project. Retry.', { tone: 'error' });
+            return;
+          }
+
+          userContext = result.data;
+          setAuthControlMode(true);
+          renderRoutingContextSummary();
+          closeContextEditor();
+          hideAuthStatus();
+        } catch (_) {
+          showAuthStatus('Could not switch team/project. Retry.', { tone: 'error' });
+        } finally {
+          contextSaveBtn.disabled = false;
+          contextSaveBtn.textContent = 'Save';
+        }
+      });
+
+      // Record button
+      recordBtn.addEventListener('click', async () => {
+        if (!window.electronAPI) return;
+
+        if (!isRecording && !canStartRecording) {
+          const ready = await refreshRecordingReadiness();
+          if (!ready) return;
+        }
+
+        const result = await window.electronAPI.toggleRecording();
+        if (!result || result.success) return;
+
+        if (result.action === 'ignored' && result.reason === 'in_progress') {
+          showAuthStatus('Starting recording…');
+          return;
+        }
+
+        if (result.error === 'auth_required') {
+          setRecordReady(false);
+          showAuthStatus('Sign in to start meeting recording.', { tone: 'error' });
+          return;
+        }
+
+        if (result.error === 'upload_token_unavailable') {
+          setRecordReady(false);
+          showAuthStatus('Could not fetch upload token. Retry.', { tone: 'error' });
+          return;
+        }
+
+        if (result.error === 'No meeting detected') {
+          showAuthStatus('No active meeting detected yet.', {
+            tone: 'error',
+          });
+          return;
+        }
+
+        showAuthStatus('Could not start recording. Retry.', { tone: 'error' });
+      });
+
+      // Tab switching
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const tabId = tab.dataset.tab;
+          currentTab = tabId;
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          document.getElementById(`${tabId}Tab`).classList.add('active');
+          updateInputPlaceholder();
+        });
+      });
+
+      // Input mode toggle button
+      const inputModeToggle = document.getElementById('inputModeToggle');
+      const noteIcon = inputModeToggle.querySelector('.note-icon');
+      const taskIcon = inputModeToggle.querySelector('.task-icon');
+
+      inputModeToggle.addEventListener('click', () => {
+        inputMode = inputMode === 'note' ? 'task' : 'note';
+        updateInputMode();
+        noteInput.focus();
+      });
+
+      function updateInputMode() {
+        updateInputPlaceholder();
+        if (inputMode === 'task') {
+          noteIcon.style.display = 'none';
+          taskIcon.style.display = 'block';
+          inputModeToggle.classList.add('task-mode');
+        } else {
+          noteIcon.style.display = 'block';
+          taskIcon.style.display = 'none';
+          inputModeToggle.classList.remove('task-mode');
+        }
+      }
+
+      // Update input placeholder based on input mode
+      function updateInputPlaceholder() {
+        if (inputMode === 'task') {
+          noteInput.placeholder = 'Add a task... (⌘⇧T)';
+        } else {
+          noteInput.placeholder = 'Add a note... (⌘⇧N)';
+        }
+      }
+
+      function hideAuthStatus() {
+        recordingAuthStatus.classList.remove('show', 'error', 'ready', 'loading');
+        authStatusText.textContent = '';
+      }
+
+      function showAuthStatus(message, options = {}) {
+        const {
+          tone = 'info',
+          loading = false,
+        } = options;
+
+        recordingAuthStatus.classList.add('show');
+        recordingAuthStatus.classList.remove('error', 'ready', 'loading');
+        if (loading) {
+          recordingAuthStatus.classList.add('loading');
+        } else if (tone === 'error') {
+          recordingAuthStatus.classList.add('error');
+        } else if (tone === 'ready') {
+          recordingAuthStatus.classList.add('ready');
+        }
+
+        authStatusText.textContent = message;
+      }
+
+      function setRecordReady(ready) {
+        canStartRecording = ready;
+        if (!isRecording) {
+          recordBtn.disabled = !ready;
+        }
+      }
+
+      async function openAuthWindow() {
+        if (window.electronAPI?.openAuthWindow) {
+          await window.electronAPI.openAuthWindow();
+          return;
+        }
+        if (window.electronAPI?.navigateToHome) {
+          await window.electronAPI.navigateToHome();
+        }
+      }
+
+      async function refreshRecordingReadiness() {
+        if (!window.electronAPI || authRefreshInFlight) {
+          return canStartRecording;
+        }
+
+        authRefreshInFlight = true;
+        setAuthPending(true);
+        try {
+          showAuthStatus('Checking sign-in…', { loading: true });
+
+          const authStatus = await window.electronAPI.getAuthStatus();
+          if (!authStatus?.isLoggedIn) {
+            setAuthPending(false);
+            setAuthControlMode(false);
+            userContext = null;
+            closeContextEditor();
+            renderRoutingContextSummary();
+            setRecordReady(false);
+            showAuthStatus('Sign in to start meeting recording.', { tone: 'error' });
+            return false;
+          }
+
+          const contextResult = await window.electronAPI.getUserContext();
+          const context = contextResult?.data;
+          if (
+            !contextResult?.success ||
+            !context?.default_account_id ||
+            !context?.default_project_id
+          ) {
+            userContext = context || null;
+            setAuthPending(false);
+            setAuthControlMode(authStatus?.isLoggedIn);
+            renderRoutingContextSummary();
+            setRecordReady(false);
+            showAuthStatus('Workspace connection failed. Retry.', { tone: 'error' });
+            return false;
+          }
+
+          userContext = context;
+          setAuthPending(false);
+          setAuthControlMode(authStatus?.isLoggedIn);
+          renderRoutingContextSummary();
+          setRecordReady(true);
+          hideAuthStatus();
+          return true;
+        } catch (_) {
+          setAuthPending(false);
+          userContext = null;
+          closeContextEditor();
+          renderRoutingContextSummary();
+          setRecordReady(false);
+          showAuthStatus('Could not verify account. Retry.', { tone: 'error' });
+          return false;
+        } finally {
+          authRefreshInFlight = false;
+        }
+      }
+
+      // Note input
+      noteInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          submitNote();
+        }
+      });
+
+      noteSubmit.addEventListener('click', submitNote);
+
+      function submitNote() {
+        const text = noteInput.value.trim();
+        if (!text) return;
+
+        if (inputMode === 'task') {
+          addTask({
+            text: text,
+            timestamp: new Date().toISOString(),
+            completed: false
+          });
+        } else {
+          addEvidence({
+            gist: text,
+            speaker_label: 'Note',
+            category: 'note',
+            timestamp: new Date().toISOString()
+          });
+        }
+        window.electronAPI?.submitNote(text);
+
+        noteInput.value = '';
+        // Reset to note mode after submitting a task
+        inputMode = 'note';
+        updateInputMode();
+      }
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'n') {
+          e.preventDefault();
+          document.querySelector('[data-tab="notes"]').click();
+          inputMode = 'note';
+          updateInputMode();
+          noteInput.focus();
+        }
+        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 't') {
+          e.preventDefault();
+          document.querySelector('[data-tab="notes"]').click();
+          inputMode = 'task';
+          updateInputMode();
+          noteInput.focus();
+        }
+      });
+
+      // Update recording state
+      function updateRecordingState(recording, startTime) {
+        isRecording = recording;
+        recordBtn.classList.toggle('recording', recording);
+        recordLabel.textContent = recording ? 'Stop' : 'Record';
+        recordingIndicator.classList.toggle('active', recording);
+        listeningIndicator.classList.toggle('active', recording);
+        headerWaves.classList.toggle('active', recording);
+        contextSwitchBtn.disabled = recording;
+
+        if (recording) {
+          recordBtn.disabled = false;
+          closeContextEditor();
+          hideAuthStatus();
+          recordingStartTime = startTime || Date.now();
+          startTimer();
+        } else {
+          recordBtn.disabled = !canStartRecording;
+          stopTimer();
+          refreshRecordingReadiness();
+        }
+      }
+
+      function startTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+          const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+          const secs = (elapsed % 60).toString().padStart(2, '0');
+          recordingTimer.textContent = `${mins}:${secs}`;
+        }, 1000);
+      }
+
+      function stopTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        recordingTimer.textContent = '00:00';
+      }
+
+      // Add evidence to the combined notes list
+      function addEvidence(item) {
+        notesEmpty.style.display = 'none';
+        notesList.style.display = 'flex';
+
+        const card = document.createElement('div');
+        card.className = 'evidence-card newest';
+
+        // Extract category from facet_mentions or fall back to category field
+        let tagClass = 'context';
+        if (item.facet_mentions && item.facet_mentions.length > 0) {
+          tagClass = item.facet_mentions[0].kind_slug || 'context';
+        } else if (item.category) {
+          tagClass = item.category;
+        }
+
+        const speaker = item.speaker_label || '';
+
+        card.innerHTML = `
+          <div class="tag-badge ${tagClass}">${tagClass}</div>
+          <div class="evidence-content">
+            ${speaker ? `<div class="evidence-meta"><span class="evidence-speaker">${speaker}</span></div>` : ''}
+            <div class="evidence-gist">${item.gist}</div>
+          </div>
+          <button class="delete-btn" onclick="deleteItem(this)" title="Delete">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+            </svg>
+          </button>
+        `;
+
+        notesList.appendChild(card);
+
+        setTimeout(() => card.classList.remove('newest'), 2000);
+
+        // Pulse the Notes tab to draw attention
+        pulseTab('notes');
+
+        // Auto-scroll to bottom
+        scrollContentToBottom();
+
+        // Limit cards (remove oldest from top)
+        while (notesList.children.length > 100) {
+          notesList.removeChild(notesList.firstChild);
+        }
+      }
+
+      // Auto-scroll the panel content area to the bottom
+      function scrollContentToBottom() {
+        const panelContent = document.querySelector('.panel-content');
+        if (panelContent) {
+          requestAnimationFrame(() => {
+            panelContent.scrollTop = panelContent.scrollHeight;
+          });
+        }
+      }
+
+      // Pulse a tab to indicate new content
+      function pulseTab(tabId) {
+        const tab = document.querySelector(`[data-tab="${tabId}"]`);
+        if (tab && !tab.classList.contains('active')) {
+          tab.classList.add('pulse');
+          setTimeout(() => tab.classList.remove('pulse'), 1500);
+        }
+      }
+
+      // Delete an item (evidence, task, or transcript entry)
+      function deleteItem(btn) {
+        const item = btn.parentElement;
+        item.style.opacity = '0';
+        item.style.transform = 'translateX(20px)';
+        item.style.transition = 'opacity 200ms ease, transform 200ms ease';
+        setTimeout(() => {
+          item.remove();
+          // Show empty state if no items left in notes
+          if (notesList.children.length === 0) {
+            notesEmpty.style.display = 'flex';
+            notesList.style.display = 'none';
+          }
+        }, 200);
+      }
+
+      // Add task to the combined notes list (inline with evidence)
+      function addTask(item) {
+        notesEmpty.style.display = 'none';
+        notesList.style.display = 'flex';
+
+        const taskItem = document.createElement('div');
+        taskItem.className = 'task-item newest';
+
+        const text = item.text || '';
+        const time = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+        taskItem.innerHTML = `
+          <div class="task-checkbox" onclick="toggleTask(this)"></div>
+          <span class="task-text">${text}</span>
+          <span class="task-time">${time}</span>
+          <button class="delete-btn" onclick="deleteItem(this)" title="Delete">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+            </svg>
+          </button>
+        `;
+
+        notesList.appendChild(taskItem);
+
+        setTimeout(() => taskItem.classList.remove('newest'), 2000);
+
+        // Pulse the Notes tab
+        pulseTab('notes');
+
+        // Auto-scroll to bottom
+        scrollContentToBottom();
+
+        // Limit items (remove oldest from top)
+        while (notesList.children.length > 100) {
+          notesList.removeChild(notesList.firstChild);
+        }
+      }
+
+      // Toggle task completion
+      function toggleTask(checkbox) {
+        checkbox.classList.toggle('checked');
+        checkbox.parentElement.classList.toggle('completed');
+      }
+
+      // Add or merge transcript entry in list
+      function addTranscript(item) {
+        transcriptEmpty.style.display = 'none';
+        transcriptList.style.display = 'flex';
+
+        const time = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+        // If merged, update the last transcript entry instead of creating a new one
+        if (item.merged) {
+          const lastEntry = transcriptList.lastElementChild;
+          if (lastEntry) {
+            const textEl = lastEntry.querySelector('.transcript-text');
+            const timeEl = lastEntry.querySelector('.transcript-time');
+            if (textEl) textEl.textContent = item.text;
+            if (timeEl) timeEl.textContent = time;
+            scrollContentToBottom();
+            return;
+          }
+        }
+
+        const entry = document.createElement('div');
+        entry.className = 'transcript-entry newest';
+
+        const speaker = item.speaker || 'Unknown';
+        const text = item.text || '';
+
+        entry.innerHTML = `
+          <div class="transcript-header">
+            <span class="transcript-speaker">${speaker}</span>
+            <span class="transcript-time">${time}</span>
+          </div>
+          <div class="transcript-text">${text}</div>
+        `;
+
+        transcriptList.appendChild(entry);
+
+        setTimeout(() => entry.classList.remove('newest'), 2000);
+
+        // Auto-scroll to bottom
+        scrollContentToBottom();
+
+        // Limit entries (remove oldest from top)
+        while (transcriptList.children.length > 100) {
+          transcriptList.removeChild(transcriptList.firstChild);
+        }
+      }
+
+      // IPC handlers (will be set up by preload)
+      if (window.electronAPI) {
+        setAuthPending(true);
+        renderRoutingContextSummary();
+        setRecordReady(false);
+        showAuthStatus('Checking sign-in…', { loading: true });
+        refreshRecordingReadiness();
+
+        authPollInterval = setInterval(() => {
+          if (!isRecording) {
+            refreshRecordingReadiness();
+          }
+        }, 15000);
+
+        window.electronAPI.onRecordingState((state) => {
+          updateRecordingState(state.isRecording, state.startTime);
+        });
+
+        window.electronAPI.onEvidence((evidence) => {
+          evidence.forEach(item => addEvidence(item));
+        });
+
+        window.electronAPI.onTasks((tasks) => {
+          tasks.forEach(task => addTask({
+            text: task.text,
+            assignee: task.assignee,
+            due: task.due,
+            timestamp: new Date().toISOString()
+          }));
+        });
+
+        window.electronAPI.onTranscript((transcript) => {
+          addTranscript(transcript);
+        });
+      } else {
+        setAuthPending(false);
+        setAuthControlMode(false);
+        renderRoutingContextSummary();
+        setRecordReady(false);
+        showAuthStatus('Desktop connection unavailable.', { tone: 'error' });
+      }
+
+      window.addEventListener('beforeunload', () => {
+        if (authPollInterval) {
+          clearInterval(authPollInterval);
+        }
+      });
+    </script>
+  </body>
+</html>

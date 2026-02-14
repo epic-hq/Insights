@@ -1,6 +1,6 @@
 // app/components/InsightCardV2.tsx
 
-import consola from "consola"
+import consola from "consola";
 import {
 	AlertTriangle,
 	Check,
@@ -11,77 +11,77 @@ import {
 	Send,
 	Sparkles,
 	TrendingUp,
-} from "lucide-react"
-import React, { useState } from "react"
-import { useFetcher, useParams } from "react-router"
+} from "lucide-react";
+import React, { useState } from "react";
+import { useFetcher, useParams } from "react-router";
 
-import EditableTextarea from "~/components/EditableTextarea"
-import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
-import InlineEdit from "~/components/ui/inline-edit"
-import { Input } from "~/components/ui/input"
-import { Separator } from "~/components/ui/separator"
-import type { CommentView, Insight, InsightView } from "~/types"
+import EditableTextarea from "~/components/EditableTextarea";
+import { EntityInteractionPanel } from "~/components/EntityInteractionPanel";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card";
+import InlineEdit from "~/components/ui/inline-edit";
+import { Input } from "~/components/ui/input";
+import { Separator } from "~/components/ui/separator";
+import type { CommentView, Insight, InsightView } from "~/types";
 
 interface Comment {
-	id: string
-	author: string
-	text: string
-	timestamp: string
+	id: string;
+	author: string;
+	text: string;
+	timestamp: string;
 }
 
 interface InsightCardV2Props {
-	insight: Insight
-	onTagClick?: (tag: string) => void
-	onConvertToOpportunity?: () => void
-	onArchive?: () => void
-	onDontShowMe?: () => void
+	insight: Insight;
+	onTagClick?: (tag: string) => void;
+	onConvertToOpportunity?: () => void;
+	onArchive?: () => void;
+	onDontShowMe?: () => void;
 }
 
 // Helper function to validate insight ID
 const validateInsightId = (id: string | undefined): string | null => {
 	if (!id || id.trim() === "") {
-		consola.error("Invalid insight ID:", id)
-		return null
+		consola.error("Invalid insight ID:", id);
+		return null;
 	}
-	return id.trim()
-}
+	return id.trim();
+};
 
 const getCategoryColor = (category: string) => {
 	const colors = {
 		Onboarding: "bg-blue-100 text-blue-800 border-blue-200",
 		"Mobile Experience": "bg-green-100 text-green-800 border-green-200",
 		Dashboard: "bg-purple-100 text-purple-800 border-purple-200",
-	}
-	return colors[category as keyof typeof colors] || "bg-muted text-foreground border-border"
-}
+	};
+	return colors[category as keyof typeof colors] || "bg-muted text-foreground border-border";
+};
 
 const getJourneyStageColor = (stage: string) => {
 	const colors = {
 		Activation: "bg-orange-100 text-orange-800 border-orange-200",
 		Usage: "bg-teal-100 text-teal-800 border-teal-200",
 		Optimization: "bg-indigo-100 text-indigo-800 border-indigo-200",
-	}
-	return colors[stage as keyof typeof colors] || "bg-muted text-foreground border-border"
-}
+	};
+	return colors[stage as keyof typeof colors] || "bg-muted text-foreground border-border";
+};
 
 // Error boundary component (currently unused but kept for future use)
 class InsightCardErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
 	constructor(props: { children: React.ReactNode }) {
-		super(props)
-		this.state = { error: null }
+		super(props);
+		this.state = { error: null };
 	}
 	static getDerivedStateFromError(error: Error) {
-		return { error }
+		return { error };
 	}
 	componentDidCatch(_error: Error) {}
 	render() {
 		if (this.state.error) {
-			return <div style={{ color: "red" }}>An error occurred in InsightCardV2: {String(this.state.error)}</div>
+			return <div style={{ color: "red" }}>An error occurred in InsightCardV2: {String(this.state.error)}</div>;
 		}
-		return this.props.children
+		return this.props.children;
 	}
 }
 
@@ -92,26 +92,26 @@ export default function InsightCardV2({
 	onDontShowMe = () => {},
 	onTagClick = () => {},
 }: InsightCardV2Props) {
-	consola.trace("InsightCardV2")
-	const params = useParams()
-	const projectId = params.projectId
-	const commentFetcher = useFetcher()
-	const archiveFetcher = useFetcher()
+	consola.trace("InsightCardV2");
+	const params = useParams();
+	const projectId = params.projectId;
+	const commentFetcher = useFetcher();
+	const archiveFetcher = useFetcher();
 
-	const [editingValue, setEditingValue] = useState<string>("")
-	const [editingField, setEditingField] = useState<string | null>(null)
+	const [editingValue, setEditingValue] = useState<string>("");
+	const [editingField, setEditingField] = useState<string | null>(null);
 
 	// Helper to handle save
-	const [savingField, setSavingField] = useState<string | null>(null)
+	const [savingField, setSavingField] = useState<string | null>(null);
 
 	const handleSaveField = async (field: string, value?: string) => {
-		if (savingField === field) return // Prevent double-save
-		setSavingField(field)
+		if (savingField === field) return; // Prevent double-save
+		setSavingField(field);
 		try {
-			const newValue = typeof value === "string" ? value : editingValue
+			const newValue = typeof value === "string" ? value : editingValue;
 			if ((localInsight as Record<string, unknown>)[field] !== newValue) {
 				// Optimistically update local state
-				setLocalInsight((prev) => ({ ...prev, [field]: newValue }))
+				setLocalInsight((prev) => ({ ...prev, [field]: newValue }));
 				// Persist change to DB
 				await fetch("/insights/api/update-field", {
 					method: "POST",
@@ -122,24 +122,24 @@ export default function InsightCardV2({
 						field,
 						value: newValue,
 					}),
-				})
+				});
 			}
 		} finally {
-			setEditingField(null)
-			setSavingField(null)
+			setEditingField(null);
+			setSavingField(null);
 		}
-	}
+	};
 
 	// Helper to handle edit start
 	const handleEditStart = (field: string) => {
-		setEditingField(field)
-		setEditingValue(((localInsight as Record<string, unknown>)[field] as string) || "")
-	}
+		setEditingField(field);
+		setEditingValue(((localInsight as Record<string, unknown>)[field] as string) || "");
+	};
 
 	// Handler for inline text submit
 	const _handleTextSubmit = (newText: string) => {
-		handleSaveField(editingField!, newText)
-	}
+		handleSaveField(editingField!, newText);
+	};
 
 	// Reusable EditableField component
 	const EditableField = ({
@@ -148,14 +148,14 @@ export default function InsightCardV2({
 		placeholder,
 		multiline = false,
 	}: {
-		field: string
-		className?: string
-		placeholder?: string
-		multiline?: boolean
+		field: string;
+		className?: string;
+		placeholder?: string;
+		multiline?: boolean;
 	}) => {
-		const isEditing = editingField === field
-		const isSaving = savingField === field
-		const value = ((localInsight as Record<string, unknown>)[field] as string) || ""
+		const isEditing = editingField === field;
+		const isSaving = savingField === field;
+		const value = ((localInsight as Record<string, unknown>)[field] as string) || "";
 
 		return (
 			<div
@@ -196,8 +196,8 @@ export default function InsightCardV2({
 							type="button"
 							className="absolute top-1 right-0 z-10 p-1 opacity-100 transition-opacity"
 							onMouseDown={(e) => {
-								e.preventDefault()
-								handleSaveField(field)
+								e.preventDefault();
+								handleSaveField(field);
 							}}
 							aria-label={`Save ${field}`}
 						>
@@ -224,33 +224,33 @@ export default function InsightCardV2({
 					</>
 				)}
 			</div>
-		)
-	}
+		);
+	};
 
 	// TODO get away from defining local views unless necessary
 	// Extended insight state with UI-only fields
 	const [localInsight, setLocalInsight] = useState<InsightView>({
 		...insight,
 		comments: insight.comments || [],
-	})
-	const [_showMore, _setShowMoree] = useState(false)
+	});
+	const [_showMore, _setShowMoree] = useState(false);
 
 	// State for managing comments
-	const [showComments, setShowComments] = useState<{ [key: string]: boolean }>({})
-	const [newComments, setNewComments] = useState<{ [key: string]: string }>({})
+	const [showComments, setShowComments] = useState<{ [key: string]: boolean }>({});
+	const [newComments, setNewComments] = useState<{ [key: string]: string }>({});
 
 	const handleAddComment = async () => {
-		const insightId = validateInsightId(localInsight?.id)
+		const insightId = validateInsightId(localInsight?.id);
 		if (!insightId || !projectId) {
 			consola.error("Cannot add comment: missing insight ID or project ID", {
 				insightId,
 				projectId,
-			})
-			return
+			});
+			return;
 		}
 
-		const commentText = newComments[insightId]?.trim()
-		if (!commentText) return
+		const commentText = newComments[insightId]?.trim();
+		if (!commentText) return;
 
 		// Optimistically add comment to local state (matching CommentView structure)
 		const newComment: CommentView = {
@@ -265,14 +265,14 @@ export default function InsightCardV2({
 			author: "You",
 			timestamp: new Date().toISOString(),
 			text: commentText,
-		}
+		};
 
 		setLocalInsight((prev) => ({
 			...prev,
 			comments: [...(prev.comments || []), newComment],
-		}))
+		}));
 
-		setNewComments((prev) => ({ ...prev, [insightId]: "" }))
+		setNewComments((prev) => ({ ...prev, [insightId]: "" }));
 
 		// Submit to database
 		commentFetcher.submit(
@@ -282,20 +282,20 @@ export default function InsightCardV2({
 				action: "/insights/api/add-comment",
 				encType: "application/json",
 			}
-		)
-	}
+		);
+	};
 
 	const _handleHide = async () => {
-		const insightId = validateInsightId(localInsight?.id)
+		const insightId = validateInsightId(localInsight?.id);
 		if (!insightId || !projectId) {
 			consola.error("Cannot hide: missing insight ID or project ID", {
 				insightId,
 				projectId,
-			})
-			return
+			});
+			return;
 		}
 
-		onDontShowMe()
+		onDontShowMe();
 
 		// Submit to database
 		archiveFetcher.submit(
@@ -305,20 +305,20 @@ export default function InsightCardV2({
 				action: "/insights/api/archive",
 				encType: "application/json",
 			}
-		)
-	}
+		);
+	};
 
 	const _handleArchive = async () => {
-		const insightId = validateInsightId(localInsight?.id)
+		const insightId = validateInsightId(localInsight?.id);
 		if (!insightId || !projectId) {
 			consola.error("Cannot archive: missing insight ID or project ID", {
 				insightId,
 				projectId,
-			})
-			return
+			});
+			return;
 		}
 
-		onArchive()
+		onArchive();
 
 		// Submit to database
 		archiveFetcher.submit(
@@ -328,20 +328,20 @@ export default function InsightCardV2({
 				action: "/insights/api/archive",
 				encType: "application/json",
 			}
-		)
-	}
+		);
+	};
 
 	const _toggleComments = () => {
-		const insightId = validateInsightId(localInsight?.id)
+		const insightId = validateInsightId(localInsight?.id);
 		if (!insightId) {
-			consola.error("toggleComments: invalid insight ID", { localInsight })
-			return
+			consola.error("toggleComments: invalid insight ID", { localInsight });
+			return;
 		}
 		setShowComments((prev) => ({
 			...prev,
 			[insightId]: !prev[insightId],
-		}))
-	}
+		}));
+	};
 
 	return (
 		<Card className="flex flex-col border-0 bg-background text-foreground shadow-lg transition-all duration-300 hover:shadow-xl">
@@ -355,8 +355,8 @@ export default function InsightCardV2({
 							<InlineEdit
 								value={localInsight.pain || ""}
 								onSubmit={async (newValue: string) => {
-									setLocalInsight((prev) => ({ ...prev, pain: newValue }))
-									await handleSaveField("pain", newValue)
+									setLocalInsight((prev) => ({ ...prev, pain: newValue }));
+									await handleSaveField("pain", newValue);
 								}}
 								textClassName="text-foreground text-xl"
 								inputClassName="text-sm"
@@ -412,8 +412,8 @@ export default function InsightCardV2({
 										setLocalInsight((prev) => ({
 											...prev,
 											evidence: newValue,
-										}))
-										await handleSaveField("evidence", newValue)
+										}));
+										await handleSaveField("evidence", newValue);
 									}}
 									textClassName="font-medium text-blue-800 dark:text-blue-200 text-sm leading-relaxed"
 									inputClassName="text-sm"
@@ -433,8 +433,8 @@ export default function InsightCardV2({
 						<InlineEdit
 							value={localInsight.details || ""}
 							onSubmit={async (newValue: string) => {
-								setLocalInsight((prev) => ({ ...prev, details: newValue }))
-								await handleSaveField("details", newValue)
+								setLocalInsight((prev) => ({ ...prev, details: newValue }));
+								await handleSaveField("details", newValue);
 							}}
 							textClassName="text-gray-900 text-md"
 							inputClassName="text-sm"
@@ -455,8 +455,8 @@ export default function InsightCardV2({
 								setLocalInsight((prev) => ({
 									...prev,
 									desired_outcome: newValue,
-								}))
-								await handleSaveField("desired_outcome", newValue)
+								}));
+								await handleSaveField("desired_outcome", newValue);
 							}}
 							textClassName="text-gray-900 text-md"
 							inputClassName="text-sm"
@@ -478,8 +478,8 @@ export default function InsightCardV2({
 									setLocalInsight((prev) => ({
 										...prev,
 										emotional_response: newValue,
-									}))
-									await handleSaveField("emotional_response", newValue)
+									}));
+									await handleSaveField("emotional_response", newValue);
 								}}
 								textClassName="text-gray-900 text-md"
 								inputClassName="text-sm"
@@ -502,8 +502,8 @@ export default function InsightCardV2({
 									setLocalInsight((prev) => ({
 										...prev,
 										motivation: newValue,
-									}))
-									await handleSaveField("motivation", newValue)
+									}));
+									await handleSaveField("motivation", newValue);
 								}}
 								textClassName="text-gray-900 text-md"
 								inputClassName="text-sm"
@@ -561,8 +561,8 @@ export default function InsightCardV2({
 								<InlineEdit
 									value={localInsight.jtbd || ""}
 									onSubmit={async (newValue: string) => {
-										setLocalInsight((prev) => ({ ...prev, jtbd: newValue }))
-										await handleSaveField("jtbd", newValue)
+										setLocalInsight((prev) => ({ ...prev, jtbd: newValue }));
+										await handleSaveField("jtbd", newValue);
 									}}
 									textClassName="font-medium text-blue-800 dark:text-blue-200 text-sm leading-relaxed"
 									inputClassName="text-sm"
@@ -714,7 +714,7 @@ export default function InsightCardV2({
 								}
 								onKeyDown={(e) => {
 									if (e.key === "Enter") {
-										handleAddComment()
+										handleAddComment();
 									}
 								}}
 								className="flex-1"
@@ -731,5 +731,5 @@ export default function InsightCardV2({
 				<EntityInteractionPanel entityType="insight" entityId={insight.id} />
 			</CardFooter>
 		</Card>
-	)
+	);
 }

@@ -114,6 +114,18 @@ const questionCategories = [
 
 **Key Learning**: When dealing with constraints, make them visible in the interface.
 
+### Webhook URLs Behind Reverse Proxies Must Use x-forwarded-proto (2026-02-12)
+**Problem**: AssemblyAI webhook callbacks silently failed in production. `new URL(request.url).origin` returns `http://` behind Cloudflare/Netlify proxy, so the webhook URL was `http://getupsight.com/...` — AssemblyAI never called back and interviews got stuck.
+
+**Solution**:
+- Use `createDomain(request)` from `~/utils/http` which checks `x-forwarded-proto` header
+- Never use `new URL(request.url).origin` for constructing callback URLs in production
+
+**Affected files**: `app/routes/api.onboarding-start.tsx` (two locations)
+**Already correct**: `api.interviews.check-transcription.tsx`, `api.interview-restart.tsx` (hardcode `https://getupsight.com`)
+
+**Key Learning**: Behind reverse proxies, `request.url` reflects the internal HTTP connection, not the external HTTPS URL. Always use proxy-aware URL construction for webhook/callback URLs.
+
 ## Architecture Learnings
 
 ### Context vs Props for Data Flow

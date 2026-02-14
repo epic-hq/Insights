@@ -1,6 +1,39 @@
 const { FusesPlugin } = require("@electron-forge/plugin-fuses");
 const { FuseV1Options, FuseVersion } = require("@electron/fuses");
 
+const TEAM_ID = "MF6J364BXK";
+const hasAppleIdCreds = Boolean(
+  process.env.APPLE_ID && process.env.APPLE_ID_PASSWORD,
+);
+const hasKeychainProfile = Boolean(process.env.APPLE_NOTARY_KEYCHAIN_PROFILE);
+const requireNotarization = process.env.REQUIRE_NOTARIZATION === "1";
+
+if (requireNotarization && !hasAppleIdCreds && !hasKeychainProfile) {
+  throw new Error(
+    "REQUIRE_NOTARIZATION=1, but no notarization credentials were provided. " +
+      "Set APPLE_ID + APPLE_ID_PASSWORD, or APPLE_NOTARY_KEYCHAIN_PROFILE.",
+  );
+}
+
+const osxNotarize = hasKeychainProfile
+  ? {
+      keychainProfile: process.env.APPLE_NOTARY_KEYCHAIN_PROFILE,
+      teamId: TEAM_ID,
+    }
+  : hasAppleIdCreds
+    ? {
+        appleId: process.env.APPLE_ID,
+        appleIdPassword: process.env.APPLE_ID_PASSWORD,
+        teamId: TEAM_ID,
+      }
+    : null;
+
+if (!osxNotarize) {
+  console.warn(
+    "[forge] macOS notarization is disabled (no Apple notarization credentials provided).",
+  );
+}
+
 module.exports = {
   packagerConfig: {
     name: "UpSight",
@@ -9,19 +42,28 @@ module.exports = {
       unpackDir: "{node_modules/@recallai,node_modules/keytar}",
     },
     osxSign: {
-      continueOnError: false,
+      identity: "Developer ID Application: Richard MOY (MF6J364BXK)",
       optionsForFile: (_) => {
-        // Here, we keep it simple and return a single entitlements.plist file.
-        // You can use this callback to map different sets of entitlements
-        // to specific files in your packaged app.
         return {
           entitlements: "./Entitlements.plist",
+          "entitlements-inherit": "./Entitlements.plist",
         };
       },
     },
-    icon: "./upsight",
+    ...(osxNotarize
+      ? {
+          osxNotarize,
+        }
+      : {}),
+    icon: "./upsight.icns",
     extendInfo: {
       NSUserNotificationAlertStyle: "alert",
+      NSMicrophoneUsageDescription:
+        "UpSight needs microphone access to record meeting audio.",
+      NSCameraUsageDescription:
+        "UpSight needs camera access to record video meetings.",
+      NSScreenCaptureUsageDescription:
+        "UpSight needs to record your screen during meetings.",
     },
   },
   rebuildConfig: {},
@@ -76,6 +118,14 @@ module.exports = {
                 js: "./src/preload.js",
               },
             },
+            {
+              html: "./src/floating-panel.html",
+              js: "./src/floating-panel-renderer.js",
+              name: "floating_panel",
+              preload: {
+                js: "./src/preload.js",
+              },
+            },
           ],
         },
       },
@@ -92,7 +142,7 @@ module.exports = {
     new FusesPlugin({
       version: FuseVersion.V1,
       [FuseV1Options.RunAsNode]: false,
-      [FuseV1Options.EnableCookieEncryption]: true,
+      [FuseV1Options.EnableCookieEncryption]: false,
       [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
       [FuseV1Options.EnableNodeCliInspectArguments]: false,
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,

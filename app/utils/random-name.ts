@@ -42,7 +42,7 @@ const ADJECTIVES = [
 	"fresh",
 	"glossy",
 	"neat",
-]
+];
 
 const NOUNS = [
 	"bear",
@@ -85,14 +85,14 @@ const NOUNS = [
 	"forge",
 	"grove",
 	"harvest",
-]
+];
 
 function pick<T>(arr: T[]): T {
-	return arr[Math.floor(Math.random() * arr.length)]
+	return arr[Math.floor(Math.random() * arr.length)];
 }
 
 export function generateTwoWordSlug(separator = "-"): string {
-	const a = pick(ADJECTIVES)
-	const n = pick(NOUNS)
-	return `${a}${separator}${n}`.toLowerCase()
+	const a = pick(ADJECTIVES);
+	const n = pick(NOUNS);
+	return `${a}${separator}${n}`.toLowerCase();
 }

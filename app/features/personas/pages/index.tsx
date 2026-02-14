@@ -1,21 +1,21 @@
-import consola from "consola"
-import { LayoutGrid, Sparkle, Table as TableIcon, UserCircle, Users } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
-import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
-import { Link, useFetcher } from "react-router-dom"
-import { toast } from "sonner"
-import { UpgradeBadge } from "~/components/feature-gate"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Button } from "~/components/ui/button"
-import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
-import type { PlanId } from "~/config/plans"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard"
-import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
-import { PersonasDataTable, type PersonaTableRow } from "~/features/personas/components/PersonasDataTable"
-import { useFeatureGate } from "~/hooks/useFeatureGate"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { getServerClient } from "~/lib/supabase/client.server"
+import consola from "consola";
+import { LayoutGrid, Sparkle, Table as TableIcon, UserCircle, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router";
+import { Link, useFetcher } from "react-router-dom";
+import { toast } from "sonner";
+import { UpgradeBadge } from "~/components/feature-gate";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Button } from "~/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
+import type { PlanId } from "~/config/plans";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard";
+import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav";
+import { PersonasDataTable, type PersonaTableRow } from "~/features/personas/components/PersonasDataTable";
+import { useFeatureGate } from "~/hooks/useFeatureGate";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { getServerClient } from "~/lib/supabase/client.server";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -24,15 +24,15 @@ export const meta: MetaFunction = () => {
 			name: "description",
 			content: "User personas based on research insights",
 		},
-	]
-}
+	];
+};
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-	const { client: supabase } = getServerClient(request)
-	const projectId = params.projectId
+	const { client: supabase } = getServerClient(request);
+	const projectId = params.projectId;
 
 	if (!projectId) {
-		throw new Response("Project ID is required", { status: 400 })
+		throw new Response("Project ID is required", { status: 400 });
 	}
 
 	const { data: personas, error: personasError } = await supabase
@@ -44,46 +44,46 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			`
 		)
 		.eq("project_id", projectId)
-		.order("created_at", { ascending: false })
+		.order("created_at", { ascending: false });
 
 	if (personasError) {
 		throw new Response(`Error fetching personas: ${personasError.message}`, {
 			status: 500,
-		})
+		});
 	}
 
 	consola.log("Loaded personas for project", {
 		projectId,
 		count: personas?.length || 0,
-	})
+	});
 
 	// TODO: Get actual plan from account/billing provider
 	// For now, everyone is on free tier for testing feature gates
-	const currentPlan: PlanId = "free"
+	const currentPlan: PlanId = "free";
 
-	return { personas: personas || [], currentPlan }
+	return { personas: personas || [], currentPlan };
 }
 
 type PersonaRow = Awaited<ReturnType<typeof loader>> extends { personas: infer T }
 	? T extends Array<infer U>
 		? U
 		: never
-	: never
+	: never;
 
 export default function Personas() {
-	const { personas, currentPlan } = useLoaderData<typeof loader>()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const { personas, currentPlan } = useLoaderData<typeof loader>();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
-	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
+	const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
 
 	const sortedPersonas = useMemo(() => {
 		return [...personas].sort((a, b) => {
-			const aCount = a.people_personas?.[0]?.count ?? 0
-			const bCount = b.people_personas?.[0]?.count ?? 0
-			return bCount - aCount
-		})
-	}, [personas])
+			const aCount = a.people_personas?.[0]?.count ?? 0;
+			const bCount = b.people_personas?.[0]?.count ?? 0;
+			return bCount - aCount;
+		});
+	}, [personas]);
 
 	const tableRows = useMemo<PersonaTableRow[]>(() => {
 		return sortedPersonas.map((persona) => {
@@ -91,13 +91,13 @@ export default function Personas() {
 				? persona.goals
 				: typeof persona.goals === "string"
 					? [persona.goals]
-					: []
+					: [];
 			const pains = Array.isArray(persona.pains)
 				? persona.pains
 				: typeof persona.pains === "string"
 					? [persona.pains]
-					: []
-			const tags = Array.isArray(persona.tags) ? persona.tags : typeof persona.tags === "string" ? [persona.tags] : []
+					: [];
+			const tags = Array.isArray(persona.tags) ? persona.tags : typeof persona.tags === "string" ? [persona.tags] : [];
 
 			return {
 				id: persona.id,
@@ -109,9 +109,9 @@ export default function Personas() {
 				linkedPeople: persona.people_personas?.[0]?.count ?? 0,
 				updatedAt: persona.updated_at ?? null,
 				colorHex: persona.color_hex ?? undefined,
-			}
-		})
-	}, [sortedPersonas])
+			};
+		});
+	}, [sortedPersonas]);
 
 	return (
 		<>
@@ -170,40 +170,40 @@ export default function Personas() {
 				)}
 			</PageContainer>
 		</>
-	)
+	);
 }
 
 function GeneratePersonasButton({ planId }: { planId: PlanId }) {
-	const fetcher = useFetcher()
-	const { projectId } = useCurrentProject()
-	const isGenerating = fetcher.state === "submitting" || fetcher.state === "loading"
+	const fetcher = useFetcher();
+	const { projectId } = useCurrentProject();
+	const isGenerating = fetcher.state === "submitting" || fetcher.state === "loading";
 
 	// Check if smart_personas feature is enabled for this plan
-	const { isEnabled, upgradeUrl } = useFeatureGate("smart_personas", planId)
+	const { isEnabled, upgradeUrl } = useFeatureGate("smart_personas", planId);
 
 	useEffect(() => {
 		if (fetcher.data) {
 			if (fetcher.data.success) {
-				const count = fetcher.data.personas?.length || 0
-				toast.success(`Successfully generated ${count} persona${count === 1 ? "" : "s"}!`)
-				setTimeout(() => window.location.reload(), 1000)
+				const count = fetcher.data.personas?.length || 0;
+				toast.success(`Successfully generated ${count} persona${count === 1 ? "" : "s"}!`);
+				setTimeout(() => window.location.reload(), 1000);
 			} else {
-				toast.error(fetcher.data.message || "Failed to generate personas. Please try again.")
+				toast.error(fetcher.data.message || "Failed to generate personas. Please try again.");
 			}
 		}
-	}, [fetcher.data])
+	}, [fetcher.data]);
 
 	const handleGenerate = () => {
-		if (!projectId || !isEnabled) return
+		if (!projectId || !isEnabled) return;
 
-		const formData = new FormData()
-		formData.append("projectId", projectId)
+		const formData = new FormData();
+		formData.append("projectId", projectId);
 
 		fetcher.submit(formData, {
 			method: "post",
 			action: "/api/generate-icp-recommendations",
-		})
-	}
+		});
+	};
 
 	// Show upgrade badge if feature is not enabled
 	if (!isEnabled) {
@@ -215,7 +215,7 @@ function GeneratePersonasButton({ planId }: { planId: PlanId }) {
 				</Button>
 				<UpgradeBadge feature="smart_personas" size="sm" />
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -223,11 +223,11 @@ function GeneratePersonasButton({ planId }: { planId: PlanId }) {
 			<Sparkle className="mr-2 h-4 w-4" />
 			{isGenerating ? "Generating..." : "Generate Personas"}
 		</Button>
-	)
+	);
 }
 
 function EmptyPersonasCard({ planId, newPersonaUrl }: { planId: PlanId; newPersonaUrl: string }) {
-	const { isEnabled, requiredPlan } = useFeatureGate("smart_personas", planId)
+	const { isEnabled, requiredPlan } = useFeatureGate("smart_personas", planId);
 
 	return (
 		<div className="rounded-lg border border-dashed bg-muted/40 py-16 text-center">
@@ -267,5 +267,5 @@ function EmptyPersonasCard({ planId, newPersonaUrl }: { planId: PlanId; newPerso
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

@@ -1,30 +1,30 @@
-import consola from "consola"
-import { useCallback, useState } from "react"
-import { useNavigate, useRouteLoaderData } from "react-router"
+import consola from "consola";
+import { useCallback, useState } from "react";
+import { useNavigate, useRouteLoaderData } from "react-router";
 
 interface RecordNowOptions {
-	projectId?: string
-	redirect?: boolean
-	urlParams?: string
-	mode?: "notes" | "interview"
+	projectId?: string;
+	redirect?: boolean;
+	urlParams?: string;
+	mode?: "notes" | "interview";
 }
 
 interface RecordNowResult {
-	projectId: string
-	interviewId: string
-	path: string
+	projectId: string;
+	interviewId: string;
+	path: string;
 }
 
 interface ProtectedRouteData {
-	auth?: { accountId: string }
+	auth?: { accountId: string };
 }
 
 export function useRecordNow() {
-	const navigate = useNavigate()
-	const routeData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedRouteData | null
-	const accountId = routeData?.auth?.accountId
-	const accountBase = accountId ? `/a/${accountId}` : null
-	const [isRecording, setIsRecording] = useState(false)
+	const navigate = useNavigate();
+	const routeData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedRouteData | null;
+	const accountId = routeData?.auth?.accountId;
+	const accountBase = accountId ? `/a/${accountId}` : null;
+	const [isRecording, setIsRecording] = useState(false);
 
 	const recordNow = useCallback(
 		async ({
@@ -34,11 +34,11 @@ export function useRecordNow() {
 			mode = "notes",
 		}: RecordNowOptions = {}): Promise<RecordNowResult | null> => {
 			if (!accountId || !accountBase) {
-				consola.error("Record Now error: missing account context")
-				return null
+				consola.error("Record Now error: missing account context");
+				return null;
 			}
 
-			setIsRecording(true)
+			setIsRecording(true);
 
 			try {
 				if (projectId) {
@@ -46,49 +46,49 @@ export function useRecordNow() {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
 						body: JSON.stringify({}),
-					})
-					const data = await res.json()
-					if (!res.ok) throw new Error(data?.error || "Failed to start interview")
+					});
+					const data = await res.json();
+					if (!res.ok) throw new Error(data?.error || "Failed to start interview");
 
-					const baseParams = `autostart=true&mode=${mode}`
-					const fullParams = urlParams ? `${baseParams}&${urlParams}` : baseParams
-					const path = `${accountBase}/${projectId}/interviews/${data.interviewId}/realtime?${fullParams}`
-					if (redirect) navigate(path)
-					return { projectId, interviewId: data.interviewId, path }
+					const baseParams = `autostart=true&mode=${mode}`;
+					const fullParams = urlParams ? `${baseParams}&${urlParams}` : baseParams;
+					const path = `${accountBase}/${projectId}/interviews/${data.interviewId}/realtime?${fullParams}`;
+					if (redirect) navigate(path);
+					return { projectId, interviewId: data.interviewId, path };
 				}
 
-				const res = await fetch(`${accountBase}/api/interviews/record-now`, { method: "POST" })
-				const data = await res.json()
-				if (!res.ok) throw new Error(data?.error || "Failed to start quick recording")
+				const res = await fetch(`${accountBase}/api/interviews/record-now`, { method: "POST" });
+				const data = await res.json();
+				if (!res.ok) throw new Error(data?.error || "Failed to start quick recording");
 
-				const { projectId: newProjectId, interviewId } = data || {}
+				const { projectId: newProjectId, interviewId } = data || {};
 				if (newProjectId && interviewId) {
-					const baseParams = `autostart=true&mode=${mode}`
-					const fullParams = urlParams ? `${baseParams}&${urlParams}` : baseParams
-					const path = `${accountBase}/${newProjectId}/interviews/${interviewId}/realtime?${fullParams}`
-					if (redirect) navigate(path)
-					return { projectId: newProjectId, interviewId, path }
+					const baseParams = `autostart=true&mode=${mode}`;
+					const fullParams = urlParams ? `${baseParams}&${urlParams}` : baseParams;
+					const path = `${accountBase}/${newProjectId}/interviews/${interviewId}/realtime?${fullParams}`;
+					if (redirect) navigate(path);
+					return { projectId: newProjectId, interviewId, path };
 				}
 
-				throw new Error("Invalid response from Record Now API")
+				throw new Error("Invalid response from Record Now API");
 			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error)
-				consola.error("Record Now error:", message)
-				const fallback = `${accountBase}/projects/new?from=record`
-				if (redirect) navigate(fallback)
-				return null
+				const message = error instanceof Error ? error.message : String(error);
+				consola.error("Record Now error:", message);
+				const fallback = `${accountBase}/projects/new?from=record`;
+				if (redirect) navigate(fallback);
+				return null;
 			} finally {
-				setIsRecording(false)
+				setIsRecording(false);
 			}
 		},
 		[accountBase, accountId, navigate]
-	)
+	);
 
 	return {
 		recordNow,
 		isRecording,
 		accountId,
-	}
+	};
 }
 
-type UseRecordNow = typeof useRecordNow
+type UseRecordNow = typeof useRecordNow;

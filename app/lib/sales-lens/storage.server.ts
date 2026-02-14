@@ -1,18 +1,18 @@
-import { randomUUID } from "node:crypto"
+import { randomUUID } from "node:crypto";
 
-import type { SupabaseClient } from "@supabase/supabase-js"
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { Database } from "supabase/types"
-import { salesConversationExtractionSchema } from "./schema"
+import type { Database } from "supabase/types";
+import { salesConversationExtractionSchema } from "./schema";
 
-type DbClient = SupabaseClient<Database>
+type DbClient = SupabaseClient<Database>;
 
 type UpsertArgs = {
-	db: DbClient
-	payload: unknown
-	sourceKind?: string
-	computedBy?: string | null
-}
+	db: DbClient;
+	payload: unknown;
+	sourceKind?: string;
+	computedBy?: string | null;
+};
 
 /**
  * Persists a validated sales lens extraction into Supabase, replacing any prior
@@ -24,23 +24,23 @@ export async function upsertSalesLensFromExtraction({
 	sourceKind = "interview",
 	computedBy = null,
 }: UpsertArgs) {
-	const parsed = salesConversationExtractionSchema.parse(payload)
+	const parsed = salesConversationExtractionSchema.parse(payload);
 
 	const { data: existingSummaries, error: existingError } = await db
 		.from("sales_lens_summaries")
 		.select("id")
-		.eq("interview_id", parsed.meetingId)
+		.eq("interview_id", parsed.meetingId);
 
 	if (existingError) {
-		throw new Error(`Failed to inspect existing sales lens summaries: ${existingError.message}`)
+		throw new Error(`Failed to inspect existing sales lens summaries: ${existingError.message}`);
 	}
 
-	const existingIds = (existingSummaries ?? []).map((row) => row.id)
+	const existingIds = (existingSummaries ?? []).map((row) => row.id);
 	if (existingIds.length > 0) {
-		await db.from("sales_lens_hygiene_events").delete().in("summary_id", existingIds)
-		await db.from("sales_lens_stakeholders").delete().in("summary_id", existingIds)
-		await db.from("sales_lens_slots").delete().in("summary_id", existingIds)
-		await db.from("sales_lens_summaries").delete().in("id", existingIds)
+		await db.from("sales_lens_hygiene_events").delete().in("summary_id", existingIds);
+		await db.from("sales_lens_stakeholders").delete().in("summary_id", existingIds);
+		await db.from("sales_lens_slots").delete().in("summary_id", existingIds);
+		await db.from("sales_lens_summaries").delete().in("id", existingIds);
 	}
 
 	const attendeeUnlinked = parsed.entities.stakeholders
@@ -50,10 +50,10 @@ export async function upsertSalesLensFromExtraction({
 			personKey: stakeholder.personKey ?? null,
 			candidatePersonKey: stakeholder.candidatePersonKey ?? null,
 			role: stakeholder.role ?? null,
-		}))
+		}));
 
 	for (const framework of parsed.frameworks) {
-		const summaryId = randomUUID()
+		const summaryId = randomUUID();
 		const summaryRow = {
 			id: summaryId,
 			account_id: parsed.accountId,
@@ -71,20 +71,20 @@ export async function upsertSalesLensFromExtraction({
 			},
 			computed_at: new Date().toISOString(),
 			computed_by: computedBy,
-		}
+		};
 
-		const { error: summaryError } = await db.from("sales_lens_summaries").insert(summaryRow)
+		const { error: summaryError } = await db.from("sales_lens_summaries").insert(summaryRow);
 		if (summaryError) {
-			throw new Error(`Failed to insert sales lens summary (${framework.name}): ${summaryError.message}`)
+			throw new Error(`Failed to insert sales lens summary (${framework.name}): ${summaryError.message}`);
 		}
 
-		const slotIdByKey = new Map<string, string[]>()
+		const slotIdByKey = new Map<string, string[]>();
 		const slotRows = framework.slots.map((slot, index) => {
-			const slotId = randomUUID()
-			const key = slot.slot.toLowerCase()
-			const list = slotIdByKey.get(key) ?? []
-			list.push(slotId)
-			slotIdByKey.set(key, list)
+			const slotId = randomUUID();
+			const key = slot.slot.toLowerCase();
+			const list = slotIdByKey.get(key) ?? [];
+			list.push(slotId);
+			slotIdByKey.set(key, list);
 
 			return {
 				id: slotId,
@@ -109,13 +109,13 @@ export async function upsertSalesLensFromExtraction({
 				})),
 				hygiene: slot.hygiene ?? [],
 				position: index,
-			}
-		})
+			};
+		});
 
 		if (slotRows.length > 0) {
-			const { error: slotError } = await db.from("sales_lens_slots").insert(slotRows)
+			const { error: slotError } = await db.from("sales_lens_slots").insert(slotRows);
 			if (slotError) {
-				throw new Error(`Failed to insert sales lens slots (${framework.name}): ${slotError.message}`)
+				throw new Error(`Failed to insert sales lens slots (${framework.name}): ${slotError.message}`);
 			}
 		}
 
@@ -140,26 +140,26 @@ export async function upsertSalesLensFromExtraction({
 				end_ms: item.endMs ?? null,
 				transcript_snippet: item.transcriptSnippet ?? null,
 			})),
-		}))
+		}));
 
 		if (stakeholderRows.length > 0) {
-			const { error: stakeholderError } = await db.from("sales_lens_stakeholders").insert(stakeholderRows)
+			const { error: stakeholderError } = await db.from("sales_lens_stakeholders").insert(stakeholderRows);
 			if (stakeholderError) {
-				throw new Error(`Failed to insert sales lens stakeholders (${framework.name}): ${stakeholderError.message}`)
+				throw new Error(`Failed to insert sales lens stakeholders (${framework.name}): ${stakeholderError.message}`);
 			}
 		}
 
 		if (framework.hygiene.length > 0) {
 			const hygieneRows = framework.hygiene.map((issue) => {
-				const slotKey = issue.slot?.toLowerCase()
-				let slotId: string | null = null
+				const slotKey = issue.slot?.toLowerCase();
+				let slotId: string | null = null;
 				if (slotKey && slotIdByKey.has(slotKey)) {
-					const ids = slotIdByKey.get(slotKey) ?? []
-					slotId = ids.shift() ?? null
+					const ids = slotIdByKey.get(slotKey) ?? [];
+					slotId = ids.shift() ?? null;
 					if (ids.length > 0) {
-						slotIdByKey.set(slotKey, ids)
+						slotIdByKey.set(slotKey, ids);
 					} else {
-						slotIdByKey.delete(slotKey)
+						slotIdByKey.delete(slotKey);
 					}
 				}
 
@@ -170,15 +170,15 @@ export async function upsertSalesLensFromExtraction({
 					code: issue.code,
 					severity: issue.severity,
 					message: issue.message ?? null,
-				}
-			})
+				};
+			});
 
-			const { error: hygieneError } = await db.from("sales_lens_hygiene_events").insert(hygieneRows)
+			const { error: hygieneError } = await db.from("sales_lens_hygiene_events").insert(hygieneRows);
 			if (hygieneError) {
-				throw new Error(`Failed to insert hygiene events (${framework.name}): ${hygieneError.message}`)
+				throw new Error(`Failed to insert hygiene events (${framework.name}): ${hygieneError.message}`);
 			}
 		}
 	}
 
-	return { interviewId: parsed.meetingId, frameworks: parsed.frameworks.length }
+	return { interviewId: parsed.meetingId, frameworks: parsed.frameworks.length };
 }

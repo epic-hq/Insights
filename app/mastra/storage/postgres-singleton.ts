@@ -1,13 +1,13 @@
-import { PostgresStore } from "@mastra/pg"
+import { PostgresStore } from "@mastra/pg";
 
 // Global singleton to prevent duplicate database connections
-let postgresStoreInstance: PostgresStore | null = null
+let postgresStoreInstance: PostgresStore | null = null;
 
 export function getSharedPostgresStore(): PostgresStore {
 	if (!postgresStoreInstance) {
-		const connectionString = process.env.SUPABASE_DB_URL
+		const connectionString = process.env.SUPABASE_DB_URL;
 		if (!connectionString) {
-			throw new Error("SUPABASE_DB_URL environment variable is required for PostgresStore")
+			throw new Error("SUPABASE_DB_URL environment variable is required for PostgresStore");
 		}
 
 		postgresStoreInstance = new PostgresStore({
@@ -16,13 +16,13 @@ export function getSharedPostgresStore(): PostgresStore {
 			// Limit pool size to prevent "Max client connections reached" errors
 			// With multiple Fly.io instances/processes, we need to keep this low
 			max: 5,
-		})
+		});
 	}
 
-	return postgresStoreInstance
+	return postgresStoreInstance;
 }
 
 // For cleanup if needed
 function _resetPostgresStore(): void {
-	postgresStoreInstance = null
+	postgresStoreInstance = null;
 }

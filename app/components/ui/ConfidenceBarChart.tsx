@@ -1,14 +1,14 @@
-import { AlertCircle, CheckCircle, XCircle } from "lucide-react"
-import { cn } from "~/lib/utils"
+import { AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { cn } from "~/lib/utils";
 
-type ConfidenceLevel = "low" | "medium" | "high"
-export type ConfidenceVariant = "bars" | "icons"
+type ConfidenceLevel = "low" | "medium" | "high";
+export type ConfidenceVariant = "bars" | "icons";
 
 interface ConfidenceBarChartProps {
-	level: ConfidenceLevel | string | number
-	className?: string
-	size?: "sm" | "md" | "lg"
-	variant?: ConfidenceVariant
+	level: ConfidenceLevel | string | number;
+	className?: string;
+	size?: "sm" | "md" | "lg";
+	variant?: ConfidenceVariant;
 }
 
 /**
@@ -17,22 +17,22 @@ interface ConfidenceBarChartProps {
  */
 function normalizeConfidenceLevel(level: ConfidenceLevel | string | number): ConfidenceLevel {
 	if (typeof level === "string") {
-		const normalized = level.toLowerCase()
-		if (normalized === "high") return "high"
-		if (normalized === "medium") return "medium"
-		if (normalized === "low") return "low"
+		const normalized = level.toLowerCase();
+		if (normalized === "high") return "high";
+		if (normalized === "medium") return "medium";
+		if (normalized === "low") return "low";
 		// Fallback for invalid strings
-		return "low"
+		return "low";
 	}
 
 	if (typeof level === "number") {
 		// For count-based confidence (e.g., answered_answer_count)
-		if (level >= 3) return "high"
-		if (level >= 1) return "medium"
-		return "low"
+		if (level >= 3) return "high";
+		if (level >= 1) return "medium";
+		return "low";
 	}
 
-	return level
+	return level;
 }
 
 /**
@@ -40,9 +40,9 @@ function normalizeConfidenceLevel(level: ConfidenceLevel | string | number): Con
  * Used for AI-generated confidence scores
  */
 export function getConfidenceLevelFromScore(confidence: number): ConfidenceLevel {
-	if (confidence >= 0.8) return "high"
-	if (confidence >= 0.5) return "medium"
-	return "low"
+	if (confidence >= 0.8) return "high";
+	if (confidence >= 0.5) return "medium";
+	return "low";
 }
 
 /**
@@ -50,38 +50,38 @@ export function getConfidenceLevelFromScore(confidence: number): ConfidenceLevel
  * Used for research question metrics
  */
 export function getConfidenceLevelFromAnswerCount(answeredCount: number): ConfidenceLevel {
-	if (answeredCount >= 3) return "high"
-	if (answeredCount >= 1) return "medium"
-	return "low"
+	if (answeredCount >= 3) return "high";
+	if (answeredCount >= 1) return "medium";
+	return "low";
 }
 
 export function ConfidenceBarChart({ level, className, size = "md", variant = "bars" }: ConfidenceBarChartProps) {
-	const normalizedLevel = normalizeConfidenceLevel(level)
+	const normalizedLevel = normalizeConfidenceLevel(level);
 
 	const sizeClasses = {
 		sm: "w-4 h-4",
 		md: "w-5 h-5",
 		lg: "w-6 h-6",
-	}
+	};
 
 	// Icon variant - simpler Lucide icons
 	if (variant === "icons") {
 		const iconProps = {
 			className: cn(sizeClasses[size], className),
-		}
+		};
 
 		const getTooltipText = () => {
 			switch (normalizedLevel) {
 				case "high":
-					return "High"
+					return "High";
 				case "medium":
-					return "Medium"
+					return "Medium";
 				case "low":
-					return "Low"
+					return "Low";
 				default:
-					return "Low"
+					return "Low";
 			}
-		}
+		};
 
 		switch (normalizedLevel) {
 			case "high":
@@ -89,19 +89,19 @@ export function ConfidenceBarChart({ level, className, size = "md", variant = "b
 					<div title={getTooltipText()} className="inline-block">
 						<CheckCircle {...iconProps} className={cn(iconProps.className, "text-green-600")} />
 					</div>
-				)
+				);
 			case "medium":
 				return (
 					<div title={getTooltipText()} className="inline-block">
 						<AlertCircle {...iconProps} className={cn(iconProps.className, "text-yellow-600")} />
 					</div>
-				)
+				);
 			default:
 				return (
 					<div title={getTooltipText()} className="inline-block">
 						<XCircle {...iconProps} className={cn(iconProps.className, "text-red-600")} />
 					</div>
-				)
+				);
 		}
 	}
 
@@ -110,23 +110,23 @@ export function ConfidenceBarChart({ level, className, size = "md", variant = "b
 		low: "#dc2626", // red-600 (darker for better contrast)
 		medium: "#d97706", // amber-600 (better contrast than yellow)
 		high: "#16a34a", // green-600 (darker for better contrast)
-	}
+	};
 
-	const activeColor = barColors[normalizedLevel]
-	const inactiveColor = "#9ca3af" // gray-400 (lighter than gray-500)
+	const activeColor = barColors[normalizedLevel];
+	const inactiveColor = "#9ca3af"; // gray-400 (lighter than gray-500)
 
 	const getTooltipText = () => {
 		switch (normalizedLevel) {
 			case "high":
-				return "High"
+				return "High";
 			case "medium":
-				return "Medium"
+				return "Medium";
 			case "low":
-				return "Low"
+				return "Low";
 			default:
-				return "low"
+				return "low";
 		}
-	}
+	};
 
 	return (
 		<div title={getTooltipText()} className="inline-block">
@@ -166,5 +166,5 @@ export function ConfidenceBarChart({ level, className, size = "md", variant = "b
 				/>
 			</svg>
 		</div>
-	)
+	);
 }

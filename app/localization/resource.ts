@@ -1,26 +1,26 @@
-import english from "../../resources/locales/en/common.json"
+import english from "../../resources/locales/en/common.json";
 
-const languages = ["en"] as const
-export const supportedLanguages = [...languages]
-export type Language = (typeof languages)[number]
+const languages = ["en"] as const;
+export const supportedLanguages = [...languages];
+export type Language = (typeof languages)[number];
 
 export type Resource = {
-	common: typeof english
-}
+	common: typeof english;
+};
 
-export type Namespace = keyof Resource
+export type Namespace = keyof Resource;
 
 export const resources: Record<Language, Resource> = {
 	en: {
 		common: english,
 	},
-}
+};
 
 declare module "i18next" {
 	export interface CustomTypeOptions {
-		defaultNS: "common"
-		fallbackNS: "common"
+		defaultNS: "common";
+		fallbackNS: "common";
 		// custom resources type
-		resources: Resource
+		resources: Resource;
 	}
 }

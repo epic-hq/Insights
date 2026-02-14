@@ -1,15 +1,15 @@
-import { ChevronLeft } from "lucide-react"
-import { Link } from "react-router"
-import { cn } from "~/lib/utils"
-import { Button } from "./button"
+import { ChevronLeft } from "lucide-react";
+import { Link } from "react-router";
+import { cn } from "~/lib/utils";
+import { Button } from "./button";
 
 interface BackButtonProps {
-	to: string
-	label?: string
-	className?: string
-	variant?: "outline" | "ghost" | "default" | "destructive" | "secondary"
-	size?: "default" | "sm" | "lg"
-	position?: "absolute" | "relative"
+	to: string;
+	label?: string;
+	className?: string;
+	variant?: "outline" | "ghost" | "default" | "destructive" | "secondary";
+	size?: "default" | "sm" | "lg";
+	position?: "absolute" | "relative";
 }
 
 export function BackButton({
@@ -33,5 +33,5 @@ export function BackButton({
 				</Button>
 			</Link>
 		</div>
-	)
+	);
 }

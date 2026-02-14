@@ -4,43 +4,43 @@
  * Small badge-style component showing processing count with reset option.
  */
 
-import { Loader2, RotateCcw } from "lucide-react"
-import { useEffect, useState } from "react"
-import { useFetcher, useRevalidator } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { cn } from "~/lib/utils"
+import { Loader2, RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useFetcher, useRevalidator } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { cn } from "~/lib/utils";
 
 export interface ProcessingBadgeProps {
 	/** Number of items currently processing */
-	processingCount: number
+	processingCount: number;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 export function ProcessingBadge({ processingCount, className }: ProcessingBadgeProps) {
-	const [isResetting, setIsResetting] = useState(false)
-	const [open, setOpen] = useState(false)
-	const fetcher = useFetcher()
-	const revalidator = useRevalidator()
+	const [isResetting, setIsResetting] = useState(false);
+	const [open, setOpen] = useState(false);
+	const fetcher = useFetcher();
+	const revalidator = useRevalidator();
 
 	// Revalidate page data when reset completes successfully
 	useEffect(() => {
 		if (fetcher.state === "idle" && fetcher.data?.success && isResetting) {
-			revalidator.revalidate()
+			revalidator.revalidate();
 		}
-	}, [fetcher.state, fetcher.data, revalidator, isResetting])
+	}, [fetcher.state, fetcher.data, revalidator, isResetting]);
 
 	// Track when revalidation completes
 	useEffect(() => {
 		if (revalidator.state === "idle" && isResetting && fetcher.data?.success) {
-			setIsResetting(false)
-			setOpen(false)
+			setIsResetting(false);
+			setOpen(false);
 		}
-	}, [revalidator.state, isResetting, fetcher.data])
+	}, [revalidator.state, isResetting, fetcher.data]);
 
 	const handleReset = () => {
-		setIsResetting(true)
+		setIsResetting(true);
 		fetcher.submit(
 			{ fixAll: true },
 			{
@@ -48,11 +48,11 @@ export function ProcessingBadge({ processingCount, className }: ProcessingBadgeP
 				action: "/api/fix-stuck-interview",
 				encType: "application/json",
 			}
-		)
-	}
+		);
+	};
 
 	if (processingCount === 0) {
-		return null
+		return null;
 	}
 
 	return (
@@ -89,7 +89,7 @@ export function ProcessingBadge({ processingCount, className }: ProcessingBadgeP
 				</div>
 			</PopoverContent>
 		</Popover>
-	)
+	);
 }
 
-export default ProcessingBadge
+export default ProcessingBadge;

@@ -1,40 +1,40 @@
-"use client"
+"use client";
 
-import { AnimatePresence, motion } from "framer-motion"
-import { Crown, Edit3, Eye, UserMinus, Users } from "lucide-react"
-import * as React from "react"
-import { useState } from "react"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Separator } from "~/components/ui/separator"
-import { cn } from "~/lib/utils"
+import { AnimatePresence, motion } from "framer-motion";
+import { Crown, Edit3, Eye, UserMinus, Users } from "lucide-react";
+import * as React from "react";
+import { useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Separator } from "~/components/ui/separator";
+import { cn } from "~/lib/utils";
 
-export type PermissionLevel = "can-view" | "can-edit" | "admin"
+export type PermissionLevel = "can-view" | "can-edit" | "admin";
 
 export interface TeamMember {
-	id: string
-	name: string
-	email: string
-	avatar?: string
-	role: PermissionLevel
-	isOwner?: boolean
+	id: string;
+	name: string;
+	email: string;
+	avatar?: string;
+	role: PermissionLevel;
+	isOwner?: boolean;
 }
 
 interface TeamInviteProps {
-	className?: string
-	teamName: string
-	teamLogo?: string
-	totalMembers: number
-	members?: TeamMember[]
-	onInvite?: (email: string, permission: PermissionLevel) => void
-	onUpdateMemberPermission?: (memberId: string, permission: PermissionLevel) => void
-	onRemoveMember?: (memberId: string, memberName: string) => void
-	onCancel?: () => void
+	className?: string;
+	teamName: string;
+	teamLogo?: string;
+	totalMembers: number;
+	members?: TeamMember[];
+	onInvite?: (email: string, permission: PermissionLevel) => void;
+	onUpdateMemberPermission?: (memberId: string, permission: PermissionLevel) => void;
+	onRemoveMember?: (memberId: string, memberName: string) => void;
+	onCancel?: () => void;
 }
 
 const permissionOptions = [
@@ -50,46 +50,46 @@ const permissionOptions = [
 		description: "Edit and view access",
 		icon: Edit3,
 	},
-] as const
+] as const;
 
 const getPermissionIcon = (permission: PermissionLevel) => {
 	switch (permission) {
 		case "can-view":
-			return Eye
+			return Eye;
 		case "can-edit":
-			return Edit3
+			return Edit3;
 		case "admin":
-			return Crown
+			return Crown;
 		default:
-			return Eye
+			return Eye;
 	}
-}
+};
 
 const getPermissionLabel = (permission: PermissionLevel) => {
 	switch (permission) {
 		case "can-view":
-			return "Can view"
+			return "Can view";
 		case "can-edit":
-			return "Can edit"
+			return "Can edit";
 		case "admin":
-			return "Admin"
+			return "Admin";
 		default:
-			return "Can view"
+			return "Can view";
 	}
-}
+};
 
 const _getPermissionColor = (permission: PermissionLevel) => {
 	switch (permission) {
 		case "can-view":
-			return "default"
+			return "default";
 		case "can-edit":
-			return "secondary"
+			return "secondary";
 		case "admin":
-			return "destructive"
+			return "destructive";
 		default:
-			return "default"
+			return "default";
 	}
-}
+};
 
 const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 	(
@@ -107,26 +107,26 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 		},
 		ref
 	) => {
-		const [inviteEmail, setInviteEmail] = useState("")
-		const [invitePermission, setInvitePermission] = useState<PermissionLevel>("can-view")
-		const [isLoading, setIsLoading] = useState(false)
+		const [inviteEmail, setInviteEmail] = useState("");
+		const [invitePermission, setInvitePermission] = useState<PermissionLevel>("can-view");
+		const [isLoading, setIsLoading] = useState(false);
 
 		const handleInvite = async () => {
-			if (!inviteEmail.trim()) return
+			if (!inviteEmail.trim()) return;
 
-			setIsLoading(true)
+			setIsLoading(true);
 			try {
-				await onInvite?.(inviteEmail, invitePermission)
-				setInviteEmail("")
-				setInvitePermission("can-view")
+				await onInvite?.(inviteEmail, invitePermission);
+				setInviteEmail("");
+				setInvitePermission("can-view");
 			} finally {
-				setIsLoading(false)
+				setIsLoading(false);
 			}
-		}
+		};
 
 		const handleUpdatePermission = (memberId: string, permission: PermissionLevel) => {
-			onUpdateMemberPermission?.(memberId, permission)
-		}
+			onUpdateMemberPermission?.(memberId, permission);
+		};
 
 		const getInitials = (name: string) => {
 			return name
@@ -134,8 +134,8 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 				.map((n) => n[0])
 				.join("")
 				.toUpperCase()
-				.slice(0, 2)
-		}
+				.slice(0, 2);
+		};
 
 		return (
 			<Card ref={ref} className={cn("w-full max-w-9xl", className)} {...props}>
@@ -184,7 +184,7 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 										</SelectTrigger>
 										<SelectContent>
 											{permissionOptions.map((option) => {
-												const IconComponent = option.icon
+												const IconComponent = option.icon;
 												return (
 													<SelectItem key={option.value} value={option.value}>
 														<div className="flex items-center gap-2">
@@ -192,7 +192,7 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 															<span>{option.label}</span>
 														</div>
 													</SelectItem>
-												)
+												);
 											})}
 										</SelectContent>
 									</Select>
@@ -225,7 +225,7 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 								<div className="flex flex-col gap-3">
 									<AnimatePresence>
 										{members.map((member) => {
-											const PermissionIcon = getPermissionIcon(member.role)
+											const PermissionIcon = getPermissionIcon(member.role);
 
 											return (
 												<motion.div
@@ -273,7 +273,7 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 																	</SelectTrigger>
 																	<SelectContent>
 																		{permissionOptions.map((option) => {
-																			const IconComponent = option.icon
+																			const IconComponent = option.icon;
 																			return (
 																				<SelectItem key={option.value} value={option.value}>
 																					<div className="flex items-center gap-2">
@@ -284,7 +284,7 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 																						</div>
 																					</div>
 																				</SelectItem>
-																			)
+																			);
 																		})}
 																	</SelectContent>
 																</Select>
@@ -308,7 +308,7 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 														)}
 													</div>
 												</motion.div>
-											)
+											);
 										})}
 									</AnimatePresence>
 								</div>
@@ -330,10 +330,10 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 					)}
 				</CardContent>
 			</Card>
-		)
+		);
 	}
-)
+);
 
-TeamInvite.displayName = "TeamInvite"
+TeamInvite.displayName = "TeamInvite";
 
-export { TeamInvite }
+export { TeamInvite };

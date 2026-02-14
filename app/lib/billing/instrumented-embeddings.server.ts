@@ -16,39 +16,39 @@
  * ```
  */
 
-import consola from "consola"
-import { generateEmbedding, generateEmbeddingsBatch } from "~/lib/embeddings/openai.server"
-import type { BillingContext } from "./context"
-import { recordUsageOnly } from "./usage.server"
+import consola from "consola";
+import { generateEmbedding, generateEmbeddingsBatch } from "~/lib/embeddings/openai.server";
+import type { BillingContext } from "./context";
+import { recordUsageOnly } from "./usage.server";
 
 // Re-export for convenience
-export type { BillingContext } from "./context"
-export { systemBillingContext, userBillingContext } from "./context"
+export type { BillingContext } from "./context";
+export { systemBillingContext, userBillingContext } from "./context";
 
 // Embedding model constants
-const EMBEDDING_MODEL = "text-embedding-3-small"
-const EMBEDDING_PROVIDER = "openai"
+const EMBEDDING_MODEL = "text-embedding-3-small";
+const EMBEDDING_PROVIDER = "openai";
 // Cost: $0.02 per 1M tokens, ~4 chars per token
-const COST_PER_TOKEN = 0.00000002 // $0.02 / 1M = $0.00000002
+const COST_PER_TOKEN = 0.00000002; // $0.02 / 1M = $0.00000002
 
 /**
  * Options for embedding generation (mirrors openai.server interface)
  */
 interface BaseEmbeddingOptions {
 	/** Truncate input to this length (default: 8000 chars) */
-	maxLength?: number
+	maxLength?: number;
 	/** Retry attempts on failure (default: 2) */
-	retries?: number
+	retries?: number;
 	/** Label for logging (optional) */
-	label?: string
+	label?: string;
 }
 
 interface EmbeddingWithBillingOptions extends BaseEmbeddingOptions {
 	/** Unique key to prevent duplicate charges */
-	idempotencyKey: string
+	idempotencyKey: string;
 	/** Resource being embedded (for tracking) */
-	resourceType?: string
-	resourceId?: string
+	resourceType?: string;
+	resourceId?: string;
 }
 
 /**
@@ -64,15 +64,15 @@ export async function generateEmbeddingWithBilling(
 	text: string,
 	options: EmbeddingWithBillingOptions
 ): Promise<number[] | null> {
-	const startTime = Date.now()
+	const startTime = Date.now();
 
 	// Generate embedding using existing function
-	const embedding = await generateEmbedding(text, options)
+	const embedding = await generateEmbedding(text, options);
 
 	// Record usage (async, non-blocking)
 	if (embedding) {
-		const estimatedTokens = estimateTokens(text)
-		const estimatedCostUsd = estimatedTokens * COST_PER_TOKEN
+		const estimatedTokens = estimateTokens(text);
+		const estimatedCostUsd = estimatedTokens * COST_PER_TOKEN;
 
 		recordUsageOnly(
 			ctx,
@@ -87,11 +87,11 @@ export async function generateEmbeddingWithBilling(
 			},
 			options.idempotencyKey
 		).catch((err) => {
-			consola.error("[billing:embeddings] Failed to record usage:", err)
-		})
+			consola.error("[billing:embeddings] Failed to record usage:", err);
+		});
 	}
 
-	return embedding
+	return embedding;
 }
 
 /**
@@ -102,18 +102,18 @@ export async function generateEmbeddingWithBillingOrThrow(
 	text: string,
 	options: EmbeddingWithBillingOptions
 ): Promise<number[]> {
-	const embedding = await generateEmbeddingWithBilling(ctx, text, options)
+	const embedding = await generateEmbeddingWithBilling(ctx, text, options);
 	if (!embedding) {
-		throw new Error(`Failed to generate embedding${options.label ? ` for "${options.label}"` : ""}`)
+		throw new Error(`Failed to generate embedding${options.label ? ` for "${options.label}"` : ""}`);
 	}
-	return embedding
+	return embedding;
 }
 
 interface BatchEmbeddingWithBillingOptions extends BaseEmbeddingOptions {
 	/** Base key for idempotency (index will be appended) */
-	idempotencyKeyBase: string
+	idempotencyKeyBase: string;
 	/** Resource type being embedded */
-	resourceType?: string
+	resourceType?: string;
 }
 
 /**
@@ -130,15 +130,15 @@ export async function generateEmbeddingsBatchWithBilling(
 	options: BatchEmbeddingWithBillingOptions
 ): Promise<(number[] | null)[]> {
 	// Generate embeddings using existing batch function
-	const embeddings = await generateEmbeddingsBatch(texts, options)
+	const embeddings = await generateEmbeddingsBatch(texts, options);
 
 	// Record usage for successful embeddings
-	const successfulIndices = embeddings.map((e, i) => (e ? i : -1)).filter((i) => i >= 0)
+	const successfulIndices = embeddings.map((e, i) => (e ? i : -1)).filter((i) => i >= 0);
 
 	if (successfulIndices.length > 0) {
 		// Aggregate for single usage record
-		const totalTokens = successfulIndices.reduce((sum, i) => sum + estimateTokens(texts[i]), 0)
-		const estimatedCostUsd = totalTokens * COST_PER_TOKEN
+		const totalTokens = successfulIndices.reduce((sum, i) => sum + estimateTokens(texts[i]), 0);
+		const estimatedCostUsd = totalTokens * COST_PER_TOKEN;
 
 		recordUsageOnly(
 			ctx,
@@ -152,11 +152,11 @@ export async function generateEmbeddingsBatchWithBilling(
 			},
 			`${options.idempotencyKeyBase}:batch:${successfulIndices.length}`
 		).catch((err) => {
-			consola.error("[billing:embeddings] Failed to record batch usage:", err)
-		})
+			consola.error("[billing:embeddings] Failed to record batch usage:", err);
+		});
 	}
 
-	return embeddings
+	return embeddings;
 }
 
 /**
@@ -165,7 +165,7 @@ export async function generateEmbeddingsBatchWithBilling(
  */
 function estimateTokens(text: string): number {
 	// More accurate estimation: ~1.3 tokens per word, ~4 chars per token
-	return Math.ceil(text.length / 4)
+	return Math.ceil(text.length / 4);
 }
 
 /**
@@ -173,26 +173,26 @@ function estimateTokens(text: string): number {
  * Useful for pre-flight cost estimation.
  */
 export function estimateEmbeddingCost(text: string): {
-	tokens: number
-	costUsd: number
-	credits: number
+	tokens: number;
+	costUsd: number;
+	credits: number;
 } {
-	const tokens = estimateTokens(text)
-	const costUsd = tokens * COST_PER_TOKEN
-	const credits = Math.ceil(costUsd * 100)
-	return { tokens, costUsd, credits }
+	const tokens = estimateTokens(text);
+	const costUsd = tokens * COST_PER_TOKEN;
+	const credits = Math.ceil(costUsd * 100);
+	return { tokens, costUsd, credits };
 }
 
 /**
  * Get estimated cost for batch embedding.
  */
 export function estimateBatchEmbeddingCost(texts: string[]): {
-	totalTokens: number
-	costUsd: number
-	credits: number
+	totalTokens: number;
+	costUsd: number;
+	credits: number;
 } {
-	const totalTokens = texts.reduce((sum, text) => sum + estimateTokens(text), 0)
-	const costUsd = totalTokens * COST_PER_TOKEN
-	const credits = Math.ceil(costUsd * 100)
-	return { totalTokens, costUsd, credits }
+	const totalTokens = texts.reduce((sum, text) => sum + estimateTokens(text), 0);
+	const costUsd = totalTokens * COST_PER_TOKEN;
+	const credits = Math.ceil(costUsd * 100);
+	return { totalTokens, costUsd, credits };
 }

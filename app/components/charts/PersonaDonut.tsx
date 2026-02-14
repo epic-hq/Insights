@@ -1,19 +1,19 @@
-import type { CSSProperties } from "react"
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
+import type { CSSProperties } from "react";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 export interface PersonaSlice {
-	name: string
-	value: number
-	color: string // hex or tailwind color
+	name: string;
+	value: number;
+	color: string; // hex or tailwind color
 }
 
 interface PersonaDonutProps {
-	data: PersonaSlice[]
+	data: PersonaSlice[];
 	/** Optional inner label shown in center (e.g., count) */
-	centerLabel?: string | number
+	centerLabel?: string | number;
 	/** Height/width square */
-	size?: number
-	style?: CSSProperties
+	size?: number;
+	style?: CSSProperties;
 }
 
 export function PersonaDonut({ data, centerLabel, size = 160, style }: PersonaDonutProps) {
@@ -53,7 +53,7 @@ export function PersonaDonut({ data, centerLabel, size = 160, style }: PersonaDo
 				))}
 			</div> */}
 		</div>
-	)
+	);
 }
 
-export default PersonaDonut
+export default PersonaDonut;

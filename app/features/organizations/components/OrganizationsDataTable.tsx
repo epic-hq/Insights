@@ -5,34 +5,34 @@ import {
 	getSortedRowModel,
 	type SortingState,
 	useReactTable,
-} from "@tanstack/react-table"
-import { formatDistanceToNow } from "date-fns"
-import { useMemo, useState } from "react"
-import { Link } from "react-router-dom"
-import { Badge } from "~/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+} from "@tanstack/react-table";
+import { formatDistanceToNow } from "date-fns";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Badge } from "~/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 
 export interface OrganizationTableRow {
-	id: string
-	name: string
-	domain?: string | null
-	industry?: string | null
-	sizeRange?: string | null
-	contacts: Array<{ id: string; name: string | null; segment?: string | null }>
-	relationshipSignals: string[]
-	updatedAt?: string | null
+	id: string;
+	name: string;
+	domain?: string | null;
+	industry?: string | null;
+	sizeRange?: string | null;
+	contacts: Array<{ id: string; name: string | null; segment?: string | null }>;
+	relationshipSignals: string[];
+	updatedAt?: string | null;
 }
 
 interface OrganizationsDataTableProps {
-	rows: OrganizationTableRow[]
+	rows: OrganizationTableRow[];
 }
 
 export function OrganizationsDataTable({ rows }: OrganizationsDataTableProps) {
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
-	const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }])
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
+	const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
 
 	const columns = useMemo<ColumnDef<OrganizationTableRow>[]>(
 		() => [
@@ -40,8 +40,8 @@ export function OrganizationsDataTable({ rows }: OrganizationsDataTableProps) {
 				accessorKey: "name",
 				header: "Organization",
 				cell: ({ row }) => {
-					const organization = row.original
-					const domain = organization.domain?.replace?.(/^https?:\/\//, "")
+					const organization = row.original;
+					const domain = organization.domain?.replace?.(/^https?:\/\//, "");
 					return (
 						<div className="flex flex-col">
 							<Link
@@ -52,7 +52,7 @@ export function OrganizationsDataTable({ rows }: OrganizationsDataTableProps) {
 							</Link>
 							{domain && <span className="text-muted-foreground text-xs">{domain}</span>}
 						</div>
-					)
+					);
 				},
 				enableSorting: true,
 			},
@@ -60,16 +60,16 @@ export function OrganizationsDataTable({ rows }: OrganizationsDataTableProps) {
 				accessorKey: "industry",
 				header: "Focus",
 				cell: ({ row }) => {
-					const { industry, sizeRange } = row.original
+					const { industry, sizeRange } = row.original;
 					if (!industry && !sizeRange) {
-						return <span className="text-muted-foreground text-xs">—</span>
+						return <span className="text-muted-foreground text-xs">—</span>;
 					}
 					return (
 						<div className="flex flex-col text-foreground text-sm">
 							{industry && <span>{industry}</span>}
 							{sizeRange && <span className="text-muted-foreground text-xs">{sizeRange}</span>}
 						</div>
-					)
+					);
 				},
 				enableSorting: false,
 			},
@@ -77,12 +77,12 @@ export function OrganizationsDataTable({ rows }: OrganizationsDataTableProps) {
 				accessorKey: "contacts",
 				header: "Active Contacts",
 				cell: ({ row }) => {
-					const contacts = row.original.contacts
+					const contacts = row.original.contacts;
 					if (contacts.length === 0) {
-						return <span className="text-muted-foreground text-xs">—</span>
+						return <span className="text-muted-foreground text-xs">—</span>;
 					}
-					const visible = contacts.slice(0, 3)
-					const remaining = contacts.length - visible.length
+					const visible = contacts.slice(0, 3);
+					const remaining = contacts.length - visible.length;
 					return (
 						<div className="flex flex-wrap gap-1 text-sm">
 							{visible.map((contact) => (
@@ -101,7 +101,7 @@ export function OrganizationsDataTable({ rows }: OrganizationsDataTableProps) {
 								</span>
 							) : null}
 						</div>
-					)
+					);
 				},
 				enableSorting: false,
 			},
@@ -109,9 +109,9 @@ export function OrganizationsDataTable({ rows }: OrganizationsDataTableProps) {
 				accessorKey: "relationshipSignals",
 				header: "Relationship Signals",
 				cell: ({ row }) => {
-					const signals = row.original.relationshipSignals
+					const signals = row.original.relationshipSignals;
 					if (signals.length === 0) {
-						return <span className="text-muted-foreground text-xs">—</span>
+						return <span className="text-muted-foreground text-xs">—</span>;
 					}
 					return (
 						<div className="flex flex-wrap gap-1">
@@ -121,7 +121,7 @@ export function OrganizationsDataTable({ rows }: OrganizationsDataTableProps) {
 								</Badge>
 							))}
 						</div>
-					)
+					);
 				},
 				enableSorting: false,
 			},
@@ -129,25 +129,25 @@ export function OrganizationsDataTable({ rows }: OrganizationsDataTableProps) {
 				accessorKey: "updatedAt",
 				header: "Last Updated",
 				cell: ({ getValue }) => {
-					const updatedAt = getValue<string | null | undefined>()
-					if (!updatedAt) return <span className="text-muted-foreground text-xs">—</span>
+					const updatedAt = getValue<string | null | undefined>();
+					if (!updatedAt) return <span className="text-muted-foreground text-xs">—</span>;
 					return (
 						<span className="text-muted-foreground text-xs">
 							{formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
 						</span>
-					)
+					);
 				},
 				enableSorting: true,
 				sortDescFirst: true,
 				sortingFn: (a, b) => {
-					const aValue = a.original.updatedAt ? new Date(a.original.updatedAt).getTime() : 0
-					const bValue = b.original.updatedAt ? new Date(b.original.updatedAt).getTime() : 0
-					return aValue - bValue
+					const aValue = a.original.updatedAt ? new Date(a.original.updatedAt).getTime() : 0;
+					const bValue = b.original.updatedAt ? new Date(b.original.updatedAt).getTime() : 0;
+					return aValue - bValue;
 				},
 			},
 		],
 		[routes.organizations, routes.people]
-	)
+	);
 
 	const table = useReactTable({
 		data: rows,
@@ -156,7 +156,7 @@ export function OrganizationsDataTable({ rows }: OrganizationsDataTableProps) {
 		onSortingChange: setSorting,
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
-	})
+	});
 
 	return (
 		<div className="overflow-hidden rounded-lg border bg-background">
@@ -196,5 +196,5 @@ export function OrganizationsDataTable({ rows }: OrganizationsDataTableProps) {
 				</TableBody>
 			</Table>
 		</div>
-	)
+	);
 }

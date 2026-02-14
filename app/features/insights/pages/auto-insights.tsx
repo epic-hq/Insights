@@ -1,4 +1,4 @@
-import consola from "consola"
+import consola from "consola";
 import {
 	AlertTriangle,
 	ArrowRight,
@@ -10,62 +10,62 @@ import {
 	Target,
 	TrendingUp,
 	Users,
-} from "lucide-react"
-import { useState } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { useFetcher, useLoaderData } from "react-router-dom"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Label } from "~/components/ui/label"
-import { Textarea } from "~/components/ui/textarea"
-import { getServerClient } from "~/lib/supabase/client.server"
+} from "lucide-react";
+import { useState } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { useFetcher, useLoaderData } from "react-router-dom";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
+import { getServerClient } from "~/lib/supabase/client.server";
 
 export const meta: MetaFunction = () => {
 	return [
 		{ title: "Auto-Takeaways | Insights Platform" },
 		{ name: "description", content: "AI-powered takeaways from your conversations and insights" },
-	]
-}
+	];
+};
 
 interface LoaderData {
-	hasMinimumData: boolean
-	insightsCount: number
-	interviewsCount: number
-	message: string
+	hasMinimumData: boolean;
+	insightsCount: number;
+	interviewsCount: number;
+	message: string;
 }
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-	const projectId = params.projectId || ""
+	const projectId = params.projectId || "";
 	try {
-		consola.log("[AUTO-INSIGHTS LOADER] Starting loader...")
-		const { client: supabase } = getServerClient(request)
-		consola.log("[AUTO-INSIGHTS LOADER] Got supabase client")
+		consola.log("[AUTO-INSIGHTS LOADER] Starting loader...");
+		const { client: supabase } = getServerClient(request);
+		consola.log("[AUTO-INSIGHTS LOADER] Got supabase client");
 
-		const { data: jwt } = await supabase.auth.getClaims()
+		const { data: jwt } = await supabase.auth.getClaims();
 		// consola.log("[AUTO-INSIGHTS LOADER] JWT claims:", jwt)
 
-		const accountId = jwt?.claims.sub
+		const accountId = jwt?.claims.sub;
 		// consola.log("[AUTO-INSIGHTS LOADER] Account ID:", accountId)
 
 		if (!accountId) {
-			consola.error("[AUTO-INSIGHTS LOADER] No account ID found in JWT claims")
-			throw new Response("Unauthorized", { status: 401 })
+			consola.error("[AUTO-INSIGHTS LOADER] No account ID found in JWT claims");
+			throw new Response("Unauthorized", { status: 401 });
 		}
 
 		// Check if we have enough data for meaningful insights
-		consola.log("[AUTO-INSIGHTS LOADER] Fetching data counts...")
+		consola.log("[AUTO-INSIGHTS LOADER] Fetching data counts...");
 		const [insightsCount, interviewsCount] = await Promise.all([
 			supabase.from("themes").select("id", { count: "exact", head: true }).eq("project_id", projectId),
 			supabase.from("interviews").select("id", { count: "exact", head: true }).eq("project_id", projectId),
-		])
+		]);
 
 		consola.log("[AUTO-INSIGHTS LOADER] Data counts:", {
 			insights: insightsCount.count,
 			interviews: interviewsCount.count,
-		})
+		});
 
-		const hasMinimumData = (insightsCount.count || 0) >= 5 && (interviewsCount.count || 0) >= 2
+		const hasMinimumData = (insightsCount.count || 0) >= 5 && (interviewsCount.count || 0) >= 2;
 
 		return {
 			hasMinimumData,
@@ -74,33 +74,33 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			message: hasMinimumData
 				? "Ready to generate auto-takeaways"
 				: "Need at least 5 insights from 2+ interviews for meaningful analysis",
-		}
+		};
 	} catch (error) {
-		consola.error("[AUTO-INSIGHTS LOADER] Error:", error)
-		throw new Response("Internal server error", { status: 500 })
+		consola.error("[AUTO-INSIGHTS LOADER] Error:", error);
+		throw new Response("Internal server error", { status: 500 });
 	}
 }
 
 export default function AutoInsights() {
-	const { hasMinimumData, insightsCount, interviewsCount, message } = useLoaderData<LoaderData>()
-	const fetcher = useFetcher()
-	const [competitiveContext, setCompetitiveContext] = useState("")
-	const [businessGoals, setBusinessGoals] = useState("")
+	const { hasMinimumData, insightsCount, interviewsCount, message } = useLoaderData<LoaderData>();
+	const fetcher = useFetcher();
+	const [competitiveContext, setCompetitiveContext] = useState("");
+	const [businessGoals, setBusinessGoals] = useState("");
 
-	const isGenerating = fetcher.state === "submitting" && fetcher.formData?.get("action") === "generate"
-	const isExecutingAction = fetcher.state === "submitting" && fetcher.formData?.get("action") === "execute_action"
+	const isGenerating = fetcher.state === "submitting" && fetcher.formData?.get("action") === "generate";
+	const isExecutingAction = fetcher.state === "submitting" && fetcher.formData?.get("action") === "execute_action";
 
-	const autoInsightsData = fetcher.data?.success ? fetcher.data.data : null
-	const error = fetcher.data?.success === false ? fetcher.data.error : null
+	const autoInsightsData = fetcher.data?.success ? fetcher.data.data : null;
+	const error = fetcher.data?.success === false ? fetcher.data.error : null;
 
 	const handleActionClick = (actionType: string, parameters: any) => {
-		const formData = new FormData()
-		formData.append("action", "execute_action")
-		formData.append("action_type", actionType)
-		formData.append("parameters", JSON.stringify(parameters))
+		const formData = new FormData();
+		formData.append("action", "execute_action");
+		formData.append("action_type", actionType);
+		formData.append("parameters", JSON.stringify(parameters));
 
-		fetcher.submit(formData, { method: "post", action: "/api/auto-insights" })
-	}
+		fetcher.submit(formData, { method: "post", action: "/api/auto-insights" });
+	};
 
 	return (
 		<div className="container mx-auto max-w-2xl space-y-6 py-6">
@@ -503,7 +503,7 @@ export default function AutoInsights() {
 						<Button
 							onClick={() => {
 								// Reset the data and show the form again
-								window.location.reload()
+								window.location.reload();
 							}}
 							variant="outline"
 						>
@@ -514,5 +514,5 @@ export default function AutoInsights() {
 				</div>
 			)}
 		</div>
-	)
+	);
 }

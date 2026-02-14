@@ -1,12 +1,12 @@
-import { QRCodeSVG } from "qrcode.react"
-import { Button } from "~/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog"
+import { QRCodeSVG } from "qrcode.react";
+import { Button } from "~/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 
 interface QRCodeModalProps {
-	isOpen: boolean
-	onClose: () => void
-	url: string
-	title: string
+	isOpen: boolean;
+	onClose: () => void;
+	url: string;
+	title: string;
 }
 
 export function QRCodeModal({ isOpen, onClose, url, title }: QRCodeModalProps) {
@@ -38,5 +38,5 @@ export function QRCodeModal({ isOpen, onClose, url, title }: QRCodeModalProps) {
 				</div>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }

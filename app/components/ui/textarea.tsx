@@ -1,9 +1,9 @@
-import type { ComponentPropsWithRef } from "react"
-import { forwardRef } from "react"
+import type { ComponentPropsWithRef } from "react";
+import { forwardRef } from "react";
 
-import { cn } from "~/lib/utils"
+import { cn } from "~/lib/utils";
 
-export type TextareaProps = ComponentPropsWithRef<"textarea">
+export type TextareaProps = ComponentPropsWithRef<"textarea">;
 
 const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea({ className, ...props }, ref) {
 	return (
@@ -16,7 +16,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textare
 			)}
 			{...props}
 		/>
-	)
-})
+	);
+});
 
-export { Textarea }
+export { Textarea };

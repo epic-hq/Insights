@@ -1,20 +1,20 @@
-import consola from "consola"
-import type { LangfuseSpanClient, LangfuseTraceClient } from "langfuse"
-import { createR2PresignedUrl, uploadToR2 } from "~/utils/r2.server"
+import consola from "consola";
+import type { LangfuseSpanClient, LangfuseTraceClient } from "langfuse";
+import { createR2PresignedUrl, uploadToR2 } from "~/utils/r2.server";
 
 interface StoreAudioResult {
-	mediaUrl: string | null // R2 key for storage
-	presignedUrl?: string // Temporary presigned URL for immediate use
-	error?: string
+	mediaUrl: string | null; // R2 key for storage
+	presignedUrl?: string; // Temporary presigned URL for immediate use
+	error?: string;
 }
 
 interface StoreAudioFileParams {
-	projectId: string
-	interviewId: string
-	source: File | Blob | string
-	originalFilename?: string
-	contentType?: string
-	langfuseParent?: LangfuseTraceClient | LangfuseSpanClient
+	projectId: string;
+	interviewId: string;
+	source: File | Blob | string;
+	originalFilename?: string;
+	contentType?: string;
+	langfuseParent?: LangfuseTraceClient | LangfuseSpanClient;
 }
 
 /**
@@ -33,12 +33,12 @@ export async function storeAudioFile({
 		interviewId,
 		originalFilename: originalFilename ?? null,
 		sourceKind: typeof source === "string" ? "url" : isFile(source) ? "file" : "blob",
-	}
-	let uploadSpan: LangfuseSpanClient | undefined
+	};
+	let uploadSpan: LangfuseSpanClient | undefined;
 	try {
-		const timestamp = Date.now()
+		const timestamp = Date.now();
 
-		const resolvedSource = await resolveSourceBlob(source, originalFilename, contentType)
+		const resolvedSource = await resolveSourceBlob(source, originalFilename, contentType);
 		if (resolvedSource.error) {
 			langfuseParent
 				?.span?.({
@@ -54,11 +54,11 @@ export async function storeAudioFile({
 				?.end?.({
 					level: "ERROR",
 					statusMessage: resolvedSource.error,
-				})
-			return { mediaUrl: null, error: resolvedSource.error }
+				});
+			return { mediaUrl: null, error: resolvedSource.error };
 		}
 
-		const { blob, detectedContentType, inferredFilename } = resolvedSource
+		const { blob, detectedContentType, inferredFilename } = resolvedSource;
 
 		uploadSpan = langfuseParent?.span?.({
 			name: "storage.r2.upload",
@@ -73,57 +73,57 @@ export async function storeAudioFile({
 				providedContentType: contentType ?? null,
 				detectedContentType: detectedContentType ?? null,
 			},
-		})
+		});
 
 		const extension = getFileExtension(
 			typeof source === "string" ? source : blob,
 			originalFilename ?? inferredFilename,
 			contentType ?? detectedContentType
-		)
-		const filename = `interviews/${projectId}/${interviewId}-${timestamp}.${extension}`
+		);
+		const filename = `interviews/${projectId}/${interviewId}-${timestamp}.${extension}`;
 
-		const payload = await blobToUint8Array(blob)
+		const payload = await blobToUint8Array(blob);
 		if (!payload.length) {
 			uploadSpan?.end?.({
 				level: "ERROR",
 				statusMessage: "Audio file is empty",
-			})
-			return { mediaUrl: null, error: "Audio file is empty" }
+			});
+			return { mediaUrl: null, error: "Audio file is empty" };
 		}
 
-		const mimeType = contentType || detectedContentType || inferMimeType(extension) || "application/octet-stream"
+		const mimeType = contentType || detectedContentType || inferMimeType(extension) || "application/octet-stream";
 
-		consola.log("Uploading audio file to Cloudflare R2:", filename)
-		const uploadResult = await uploadToR2({ key: filename, body: payload, contentType: mimeType })
+		consola.log("Uploading audio file to Cloudflare R2:", filename);
+		const uploadResult = await uploadToR2({ key: filename, body: payload, contentType: mimeType });
 
 		if (!uploadResult.success) {
-			consola.error("Audio upload to R2 failed:", uploadResult.error)
+			consola.error("Audio upload to R2 failed:", uploadResult.error);
 			uploadSpan?.end?.({
 				level: "ERROR",
 				statusMessage: uploadResult.error ?? "Failed to upload audio",
 				metadata: {
 					errorCode: uploadResult.error ?? null,
 				},
-			})
-			return { mediaUrl: null, error: uploadResult.error ?? "Failed to upload audio" }
+			});
+			return { mediaUrl: null, error: uploadResult.error ?? "Failed to upload audio" };
 		}
 
 		// Generate a presigned URL valid for 24 hours (for immediate use like AssemblyAI transcription)
 		const presignedResult = createR2PresignedUrl({
 			key: filename,
 			expiresInSeconds: 24 * 60 * 60, // 24 hours
-		})
+		});
 
 		if (!presignedResult) {
-			consola.error("Failed to generate R2 presigned URL")
+			consola.error("Failed to generate R2 presigned URL");
 			uploadSpan?.end?.({
 				level: "ERROR",
 				statusMessage: "Failed to generate presigned URL for R2 file",
-			})
-			return { mediaUrl: null, error: "Failed to generate presigned URL for R2 file" }
+			});
+			return { mediaUrl: null, error: "Failed to generate presigned URL for R2 file" };
 		}
 
-		consola.log("Audio file stored successfully in R2. Key:", filename)
+		consola.log("Audio file stored successfully in R2. Key:", filename);
 		uploadSpan?.end?.({
 			output: {
 				r2Key: filename,
@@ -132,21 +132,21 @@ export async function storeAudioFile({
 				contentType: mimeType,
 				expiresAt: presignedResult.expiresAt,
 			},
-		})
+		});
 
 		// Return R2 key for DB storage and presigned URL for immediate use
 		return {
 			mediaUrl: filename, // Store just the key in DB
 			presignedUrl: presignedResult.url, // Use this for immediate transcription
-		}
+		};
 	} catch (error) {
-		const message = error instanceof Error ? error.message : "Unknown error"
-		consola.error("Error storing audio file in R2:", error)
+		const message = error instanceof Error ? error.message : "Unknown error";
+		consola.error("Error storing audio file in R2:", error);
 		uploadSpan?.end?.({
 			level: "ERROR",
 			statusMessage: message,
-		})
-		return { mediaUrl: null, error: message }
+		});
+		return { mediaUrl: null, error: message };
 	}
 }
 
@@ -159,129 +159,129 @@ async function resolveSourceBlob(
 	| { error: string; blob?: undefined; detectedContentType?: undefined; inferredFilename?: undefined }
 > {
 	if (typeof source === "string") {
-		consola.log("Fetching audio from URL:", source)
+		consola.log("Fetching audio from URL:", source);
 		try {
 			const response = await fetch(source, {
 				redirect: "follow",
 				headers: {
 					"User-Agent": "Insights-Audio-Fetcher/1.0",
 				},
-			})
+			});
 
 			if (!response.ok) {
-				return { error: `Failed to fetch audio from URL: ${response.status}` }
+				return { error: `Failed to fetch audio from URL: ${response.status}` };
 			}
 
-			const blob = await response.blob()
+			const blob = await response.blob();
 			if (blob.size === 0) {
-				return { error: "Downloaded file is empty" }
+				return { error: "Downloaded file is empty" };
 			}
 
-			const detectedContentType = providedContentType || response.headers.get("content-type") || blob.type || undefined
+			const detectedContentType = providedContentType || response.headers.get("content-type") || blob.type || undefined;
 
 			return {
 				blob,
 				detectedContentType,
 				inferredFilename: originalFilename ?? inferFilenameFromUrl(source),
-			}
+			};
 		} catch (fetchError) {
-			const errorMsg = fetchError instanceof Error ? fetchError.message : String(fetchError)
-			consola.error("Error fetching audio from URL:", errorMsg)
-			return { error: `Failed to download audio: ${errorMsg}` }
+			const errorMsg = fetchError instanceof Error ? fetchError.message : String(fetchError);
+			consola.error("Error fetching audio from URL:", errorMsg);
+			return { error: `Failed to download audio: ${errorMsg}` };
 		}
 	}
 
 	if (isBlob(source)) {
 		if (source.size === 0) {
-			return { error: "Audio file is empty" }
+			return { error: "Audio file is empty" };
 		}
 
-		const detectedContentType = providedContentType || source.type || undefined
-		const inferredFilename = originalFilename ?? (isFile(source) ? source.name : undefined)
+		const detectedContentType = providedContentType || source.type || undefined;
+		const inferredFilename = originalFilename ?? (isFile(source) ? source.name : undefined);
 
-		return { blob: source, detectedContentType, inferredFilename }
+		return { blob: source, detectedContentType, inferredFilename };
 	}
 
-	return { error: "Unsupported audio source type" }
+	return { error: "Unsupported audio source type" };
 }
 
 function isBlob(value: unknown): value is Blob {
-	return typeof Blob !== "undefined" && value instanceof Blob
+	return typeof Blob !== "undefined" && value instanceof Blob;
 }
 
 function isFile(value: Blob): value is File {
-	return typeof File !== "undefined" && value instanceof File
+	return typeof File !== "undefined" && value instanceof File;
 }
 
 async function blobToUint8Array(blob: Blob): Promise<Uint8Array> {
-	const arrayBuffer = await blob.arrayBuffer()
-	return new Uint8Array(arrayBuffer)
+	const arrayBuffer = await blob.arrayBuffer();
+	return new Uint8Array(arrayBuffer);
 }
 
 function getFileExtension(source: File | Blob | string, originalFilename?: string, contentType?: string): string {
 	if (originalFilename) {
-		const fromName = getExtensionFromFilename(originalFilename)
-		if (fromName) return fromName
+		const fromName = getExtensionFromFilename(originalFilename);
+		if (fromName) return fromName;
 	}
 
 	if (typeof source === "string") {
 		try {
-			const url = new URL(source)
-			const match = url.pathname.match(/\.([a-zA-Z0-9]+)(?:$|\?)/)
-			if (match) return match[1]
+			const url = new URL(source);
+			const match = url.pathname.match(/\.([a-zA-Z0-9]+)(?:$|\?)/);
+			if (match) return match[1];
 		} catch {
 			/* ignore invalid URLs */
 		}
 
-		const fromContentType = extensionFromContentType(contentType)
-		if (fromContentType) return fromContentType
+		const fromContentType = extensionFromContentType(contentType);
+		if (fromContentType) return fromContentType;
 
-		return "mp3"
+		return "mp3";
 	}
 
 	if (isFile(source)) {
-		const fromName = getExtensionFromFilename(source.name)
-		if (fromName) return fromName
+		const fromName = getExtensionFromFilename(source.name);
+		if (fromName) return fromName;
 	}
 
 	if (contentType) {
-		const fromContentType = extensionFromContentType(contentType)
-		if (fromContentType) return fromContentType
+		const fromContentType = extensionFromContentType(contentType);
+		if (fromContentType) return fromContentType;
 	}
 
 	if (source.type) {
-		const fromType = extensionFromContentType(source.type)
-		if (fromType) return fromType
+		const fromType = extensionFromContentType(source.type);
+		if (fromType) return fromType;
 	}
 
-	return "webm"
+	return "webm";
 }
 
 function getExtensionFromFilename(filename: string): string | null {
-	const match = filename.match(/\.([a-zA-Z0-9]+)$/)
-	return match ? match[1] : null
+	const match = filename.match(/\.([a-zA-Z0-9]+)$/);
+	return match ? match[1] : null;
 }
 
 function extensionFromContentType(contentType?: string | null): string | null {
-	if (!contentType) return null
-	const normalized = contentType.split(";")[0]?.trim().toLowerCase()
-	return CONTENT_TYPE_TO_EXTENSION[normalized] ?? null
+	if (!contentType) return null;
+	const normalized = contentType.split(";")[0]?.trim().toLowerCase();
+	return CONTENT_TYPE_TO_EXTENSION[normalized] ?? null;
 }
 
 function inferMimeType(extension: string): string | undefined {
-	return MIME_TYPES[extension.toLowerCase()]
+	return MIME_TYPES[extension.toLowerCase()];
 }
 
 function inferFilenameFromUrl(url: string): string | undefined {
 	try {
-		const parsed = new URL(url)
-		const parts = parsed.pathname.split("/")
-		const last = parts.pop()
-		if (last?.includes(".")) return last
+		const parsed = new URL(url);
+		const parts = parsed.pathname.split("/");
+		const last = parts.pop();
+		if (last?.includes(".")) return last;
 	} catch {
 		/* ignore */
 	}
-	return undefined
+	return undefined;
 }
 
 const MIME_TYPES: Record<string, string> = {
@@ -294,7 +294,7 @@ const MIME_TYPES: Record<string, string> = {
 	ogg: "audio/ogg",
 	aac: "audio/aac",
 	flac: "audio/flac",
-}
+};
 
 const CONTENT_TYPE_TO_EXTENSION: Record<string, string> = {
 	"audio/webm": "webm",
@@ -306,4 +306,4 @@ const CONTENT_TYPE_TO_EXTENSION: Record<string, string> = {
 	"audio/ogg": "ogg",
 	"audio/aac": "aac",
 	"audio/flac": "flac",
-}
+};

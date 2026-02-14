@@ -167,6 +167,17 @@ export enum BBValues {
   Wisdom = "Wisdom",
 }
 
+export enum ConditionOperator {
+  EQUALS = "EQUALS",
+  NOT_EQUALS = "NOT_EQUALS",
+  CONTAINS = "CONTAINS",
+  NOT_CONTAINS = "NOT_CONTAINS",
+  SELECTED = "SELECTED",
+  NOT_SELECTED = "NOT_SELECTED",
+  ANSWERED = "ANSWERED",
+  NOT_ANSWERED = "NOT_ANSWERED",
+}
+
 export enum Emotions {
   Abandoned = "Abandoned",
   Accepted = "Accepted",
@@ -296,6 +307,11 @@ export enum Emotions {
   Worthless = "Worthless",
 }
 
+export enum GuidelineAction {
+  SKIP_TO = "SKIP_TO",
+  END_SURVEY = "END_SURVEY",
+}
+
 export enum InteractionContext {
   Research = "Research",
   Sales = "Sales",
@@ -321,6 +337,12 @@ export enum JobFunction {
   IT = "IT",
   Research = "Research",
   Other = "Other",
+}
+
+export enum RuleConfidence {
+  HIGH = "HIGH",
+  MEDIUM = "MEDIUM",
+  LOW = "LOW",
 }
 
 export enum SeniorityLevel {
@@ -511,6 +533,38 @@ export interface ConversationTakeaways {
   
 }
 
+export interface CrossLensFinding {
+  title: string
+  description: string
+  severity: "critical" | "important" | "notable"
+  people_count: number
+  mention_count: number
+  category: string
+  supporting_lenses: string[]
+  
+}
+
+export interface CrossLensRecommendedAction {
+  title: string
+  description: string
+  priority: "high" | "medium" | "low"
+  category: string
+  
+}
+
+export interface CrossLensSynthesisResult {
+  executive_summary: string
+  key_findings: CrossLensFinding[]
+  person_snapshots: PersonSnapshot[]
+  recommended_actions: CrossLensRecommendedAction[]
+  patterns: string[]
+  risks: string[]
+  overall_confidence: number
+  analysis_count: number
+  lens_count: number
+  
+}
+
 export interface DealAdvisorRecommendation {
   status_assessment: string
   recommendations: string[]
@@ -639,21 +693,17 @@ export interface EvidenceSet {
 }
 
 export interface EvidenceTurn {
+  index: number
   person_key: string
   speaker_label?: string | null
   gist: string
   chunk: string
   verbatim: string
   anchors: TurnAnchors
+  confidence?: string | null
   why_it_matters?: string | null
   facet_mentions: FacetMention[]
   isQuestion?: boolean | null
-  says?: string[] | null
-  does?: string[] | null
-  thinks?: string[] | null
-  feels?: string[] | null
-  pains?: string[] | null
-  gains?: string[] | null
   
 }
 
@@ -676,6 +726,21 @@ export interface ExecutiveSummary {
   completion_percentage: number
   confidence: number
   next_action: string
+  
+}
+
+export interface ExtractedEvidence {
+  gist: string
+  verbatim: string
+  context_summary: string
+  category: "pain" | "goal" | "workflow" | "tool" | "context"
+  confidence: number
+  says: string[]
+  thinks: string[]
+  feels: string[]
+  pains: string[]
+  gains: string[]
+  theme_matches: string[]
   
 }
 
@@ -705,7 +770,6 @@ export interface ExtractedInsight {
 export interface Extraction {
   people: Person[]
   evidence: EvidenceTurn[]
-  facet_mentions: FacetMention[]
   scenes: Scene[]
   interaction_context: InteractionContext
   context_confidence: number
@@ -749,10 +813,12 @@ export interface FacetGroupSummary {
 }
 
 export interface FacetMention {
+  parent_index: number
   person_key: string
   kind_slug: string
   value: string
   quote?: string | null
+  confidence?: number | null
   
 }
 
@@ -890,6 +956,14 @@ export interface GoalLensExtraction {
   research_learnings: ResearchLearning[]
   goal_completion_score: number
   recommended_follow_ups: string[]
+  
+}
+
+export interface GuidelineParseResult {
+  guidelines: ParsedGuideline[]
+  unparseableSegments: string[]
+  suggestedClarifications: string[]
+  overallConfidence: RuleConfidence
   
 }
 
@@ -1144,6 +1218,29 @@ export interface PainMatrixInsightsInput {
   
 }
 
+export interface ParsedCondition {
+  questionId: string
+  questionPrompt: string
+  operator: ConditionOperator
+  value?: string | null
+  
+}
+
+export interface ParsedGuideline {
+  id: string
+  naturalLanguage: string
+  summary: string
+  condition: ParsedCondition
+  action: GuidelineAction
+  targetQuestionId?: string | null
+  targetQuestionPrompt?: string | null
+  guidance?: string | null
+  reasoning: string
+  confidence: RuleConfidence
+  ambiguityNotes?: string | null
+  
+}
+
 export interface Participant {
   name?: string | null
   persona?: string | null
@@ -1167,7 +1264,24 @@ export interface Person {
   speaker_label?: string | null
   person_name?: string | null
   inferred_name?: string | null
+  job_title?: string | null
+  job_function?: string | null
+  
+}
+
+export interface PersonContext {
+  name: string
+  title?: string | null
+  company?: string | null
   role?: string | null
+  seniority_level?: string | null
+  icp_band?: string | null
+  icp_score?: number | null
+  facets: PersonFacets
+  missing_fields: string[]
+  conversation_themes: string[]
+  last_interaction_date?: string | null
+  sparse_mode: boolean
   
 }
 
@@ -1206,6 +1320,14 @@ export interface PersonFacetLensResponse {
   
 }
 
+export interface PersonFacets {
+  pains: string[]
+  goals: string[]
+  workflows: string[]
+  tools: string[]
+  
+}
+
 export interface PersonLensMetadata {
   person_id: string
   name?: string | null
@@ -1214,6 +1336,34 @@ export interface PersonLensMetadata {
   segment?: string | null
   persona?: string | null
   quick_facts: string[]
+  
+}
+
+export interface PersonNextStep {
+  action: string
+  reasoning: string
+  priority: number
+  
+}
+
+export interface PersonNextStepsInput {
+  name?: string | null
+  title?: string | null
+  company?: string | null
+  description?: string | null
+  icp_band?: string | null
+  icp_score?: number | null
+  days_since_last_contact?: number | null
+  conversation_count: number
+  survey_count: number
+  themes: string[]
+  recent_evidence: string[]
+  facets: string[]
+  
+}
+
+export interface PersonNextStepsOutput {
+  steps: PersonNextStep[]
   
 }
 
@@ -1245,6 +1395,15 @@ export interface PersonSegmentInput {
   title?: string | null
   role?: string | null
   company?: string | null
+  
+}
+
+export interface PersonSnapshot {
+  person_name: string
+  role?: string | null
+  organization?: string | null
+  key_needs: string[]
+  engagement_signal: string
   
 }
 
@@ -1441,6 +1600,15 @@ export interface PersonaSet {
   
 }
 
+export interface PersonalizedQuestion {
+  text: string
+  rationale: string
+  uses_attributes: string[]
+  evidence_type: string
+  order: number
+  
+}
+
 export interface ProductGap {
   gap_description: string
   impact: string
@@ -1468,6 +1636,13 @@ export interface ProjectAnalysis {
   key_discoveries: string[]
   confidence_score: number
   next_steps: string[]
+  
+}
+
+export interface ProjectContext {
+  research_goals: string[]
+  themes_needing_validation: ThemeValidation[]
+  decision_questions: string[]
   
 }
 
@@ -1601,12 +1776,12 @@ export interface QuestionPolicy {
 }
 
 export interface QuestionSet {
-  sessionId: string
-  policy: QuestionPolicy
+  sessionId?: string | null
+  policy?: QuestionPolicy | null
   categories: Category[]
   questions: Question[]
   history: HistoryItem[]
-  round: number
+  round?: number | null
   
 }
 
@@ -1880,6 +2055,21 @@ export interface SuggestedQuestion {
   
 }
 
+export interface SurveyGoal {
+  goal: "validate" | "discover" | "deep_dive" | "pricing"
+  focus_theme?: string | null
+  target_segment?: string | null
+  
+}
+
+export interface SurveyQuestionInput {
+  id: string
+  prompt: string
+  type: string
+  options?: string[] | null
+  
+}
+
 export interface SynthesisDiscrepancy {
   interview_id: string
   interview_title: string
@@ -1904,6 +2094,14 @@ export interface TargetFitAssessment {
   reasoning: string
   signals: string[]
   evidence_ids: string[]
+  
+}
+
+export interface ThemeValidation {
+  theme_name: string
+  evidence_count: number
+  target_count: number
+  confidence: string
   
 }
 

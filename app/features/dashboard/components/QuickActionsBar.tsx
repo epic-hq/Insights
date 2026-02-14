@@ -5,22 +5,22 @@
  * based on project state. Mobile-first with large touch targets.
  */
 
-import { Glasses, Plus, Target, Upload } from "lucide-react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
-import { cn } from "~/lib/utils"
+import { Glasses, Plus, Target, Upload } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
 export interface QuickActionsBarProps {
 	/** Link to upload content */
-	uploadHref: string
+	uploadHref: string;
 	/** Link to project goals/setup */
-	goalsHref: string
+	goalsHref: string;
 	/** Link to lens library */
-	lensLibraryHref: string
+	lensLibraryHref: string;
 	/** Current project state affects which action is emphasized */
-	projectState?: "empty" | "processing" | "hasData"
+	projectState?: "empty" | "processing" | "hasData";
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 export function QuickActionsBar({
@@ -31,8 +31,8 @@ export function QuickActionsBar({
 	className,
 }: QuickActionsBarProps) {
 	// Determine which action should be primary based on state
-	const isPrimaryUpload = projectState === "empty" || projectState === "hasData"
-	const isPrimaryGoals = projectState === "empty"
+	const isPrimaryUpload = projectState === "empty" || projectState === "hasData";
+	const isPrimaryGoals = projectState === "empty";
 
 	return (
 		<div className={cn("flex flex-wrap gap-2", className)}>
@@ -70,7 +70,7 @@ export function QuickActionsBar({
 				</Link>
 			</Button>
 		</div>
-	)
+	);
 }
 
 /**
@@ -100,7 +100,7 @@ export function QuickActionsCompact({
 				</Link>
 			</Button>
 		</div>
-	)
+	);
 }
 
-export default QuickActionsBar
+export default QuickActionsBar;

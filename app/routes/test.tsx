@@ -1,20 +1,20 @@
-import type { MetaFunction } from "react-router"
-import { useLoaderData } from "react-router"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import type { Resource } from "~/localization/resource"
-import { convertDateToUserTz } from "~/utils/dates"
-import type { Route } from "../+types/root"
-import "@dotenvx/dotenvx/config"
+import type { MetaFunction } from "react-router";
+import { useLoaderData } from "react-router";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import type { Resource } from "~/localization/resource";
+import { convertDateToUserTz } from "~/utils/dates";
+import type { Route } from "../+types/root";
+import "@dotenvx/dotenvx/config";
 
 export const meta: MetaFunction = () => {
-	return [{ title: "New Remix App" }, { name: "description", content: "Welcome to Remix!" }]
-}
+	return [{ title: "New Remix App" }, { name: "description", content: "Welcome to Remix!" }];
+};
 
 export async function loader(args: Route.LoaderArgs) {
-	const now = new Date()
-	const userDate = convertDateToUserTz(now, args.request)
+	const now = new Date();
+	const userDate = convertDateToUserTz(now, args.request);
 	// Get environment variables from context
-	const { clientEnv } = args.context
+	const { clientEnv } = args.context;
 	// console.log("clientEnv", clientEnv)
 	// console.debug(`process.env.SUPABASE_URL: ${process.env.SUPABASE_URL}`)
 	return {
@@ -22,11 +22,11 @@ export async function loader(args: Route.LoaderArgs) {
 		currentDate: userDate,
 		// Access environment variables from server context instead of process.env
 		helloValue: clientEnv ? (clientEnv as Record<string, string>).HELLO || "Not set" : "Not available",
-	}
+	};
 }
 
 export default function Index() {
-	const { myurl, currentDate, helloValue } = useLoaderData()
+	const { myurl, currentDate, helloValue } = useLoaderData();
 
 	// Using Resource type for type checking
 	const resourceExample: Resource = {
@@ -55,7 +55,7 @@ export default function Index() {
 				},
 			},
 		},
-	}
+	};
 
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 p-4 dark:from-blue-950 dark:to-blue-900 dark:text-white">
@@ -71,5 +71,5 @@ export default function Index() {
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }

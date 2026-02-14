@@ -1,19 +1,19 @@
-import { type ChangeEvent, useId } from "react"
+import { type ChangeEvent, useId } from "react";
 
 interface TagCountSelectorProps {
-	value: number
-	onChange: (value: number) => void
-	min?: number
-	max?: number
-	step?: number
+	value: number;
+	onChange: (value: number) => void;
+	min?: number;
+	max?: number;
+	step?: number;
 }
 
 export default function TagCountSelector({ value, onChange, min = 5, max = 25, step = 1 }: TagCountSelectorProps) {
-	const sliderId = useId()
+	const sliderId = useId();
 
 	const handleSliderChange = (event: ChangeEvent<HTMLInputElement>) => {
-		onChange(Number(event.target.value))
-	}
+		onChange(Number(event.target.value));
+	};
 
 	return (
 		<div className="flex items-center gap-3">
@@ -36,5 +36,5 @@ export default function TagCountSelector({ value, onChange, min = 5, max = 25, s
 				<span className="w-6 text-center font-semibold text-blue-600 text-sm dark:text-blue-400">{value}</span>
 			</div>
 		</div>
-	)
+	);
 }

@@ -1,0 +1,32 @@
+[
+	{
+		"id": "ux-interviews",
+		"prompt": "How do I run better user interviews this week?",
+		"expectedMode": "ux_research_mode",
+		"seedResponse": "Start with one clear research objective and one target participant profile."
+	},
+	{
+		"id": "gtm-positioning",
+		"prompt": "Best way to position and launch this product for pipeline growth?",
+		"expectedMode": "gtm_mode",
+		"seedResponse": "Pick one ICP segment and one promise before testing channels."
+	},
+	{
+		"id": "ux-where-to-start",
+		"prompt": "Where do I start to validate onboarding friction?",
+		"expectedMode": "ux_research_mode",
+		"seedResponse": "Capture the top 3 drop-off moments and test one hypothesis at a time."
+	},
+	{
+		"id": "gtm-teach-me",
+		"prompt": "Teach me the best way to tighten messaging before launch",
+		"expectedMode": "gtm_mode",
+		"seedResponse": "Rewrite the headline using exact buyer pain language and one proof point."
+	},
+	{
+		"id": "fallback-empty",
+		"prompt": "How do I decide what to test first?",
+		"expectedMode": "ux_research_mode",
+		"seedResponse": ""
+	}
+]

@@ -1,4 +1,4 @@
-import consola from "consola"
+import consola from "consola";
 import {
 	ChevronDown,
 	ChevronRight,
@@ -12,43 +12,43 @@ import {
 	Target,
 	Users,
 	X,
-} from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { Link } from "react-router"
-import { toast } from "sonner"
-import { z } from "zod"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader } from "~/components/ui/card"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
-import InlineEdit from "~/components/ui/inline-edit"
-import { Input } from "~/components/ui/input"
-import { ProgressDots } from "~/components/ui/ProgressDots"
-import { StatusPill } from "~/components/ui/StatusPill"
-import { Textarea } from "~/components/ui/textarea"
-import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { getProjectContextGeneric } from "~/features/questions/db"
-import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
-import { createClient } from "~/lib/supabase/client"
-import type { Project } from "~/types"
-import type { ResearchMode } from "~/types/research"
-import { useAutoSave } from "../hooks/useAutoSave"
-import ContextualSuggestions from "./ContextualSuggestions"
-import { WebsiteResearchCard } from "./WebsiteResearchCard"
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
+import { toast } from "sonner";
+import { z } from "zod";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader } from "~/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
+import InlineEdit from "~/components/ui/inline-edit";
+import { Input } from "~/components/ui/input";
+import { ProgressDots } from "~/components/ui/ProgressDots";
+import { StatusPill } from "~/components/ui/StatusPill";
+import { Textarea } from "~/components/ui/textarea";
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { getProjectContextGeneric } from "~/features/questions/db";
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
+import { createClient } from "~/lib/supabase/client";
+import type { Project } from "~/types";
+import type { ResearchMode } from "~/types/research";
+import { useAutoSave } from "../hooks/useAutoSave";
+import ContextualSuggestions from "./ContextualSuggestions";
+import { WebsiteResearchCard } from "./WebsiteResearchCard";
 
 type TemplatePrefill = {
-	template_key: string
-	customer_problem: string
-	target_orgs: string[]
-	target_roles: string[]
-	offerings: string[]
-	competitors: string[]
-	research_goal: string
-	decision_questions: string[]
-	assumptions: string[]
-	unknowns: string[]
-	custom_instructions: string
-}
+	template_key: string;
+	customer_problem: string;
+	target_orgs: string[];
+	target_roles: string[];
+	offerings: string[];
+	competitors: string[];
+	research_goal: string;
+	decision_questions: string[];
+	assumptions: string[];
+	unknowns: string[];
+	custom_instructions: string;
+};
 
 // Removed sampleData to prevent auto-population
 
@@ -65,9 +65,9 @@ const projectGoalsSchema = z.object({
 	assumptions: z.array(z.string()).default([]),
 	unknowns: z.array(z.string()).min(1, "At least one unknown is required"),
 	custom_instructions: z.string().optional(),
-})
+});
 
-type ProjectGoalsData = z.infer<typeof projectGoalsSchema>
+type ProjectGoalsData = z.infer<typeof projectGoalsSchema>;
 
 // Removed sampleGoals to prevent auto-population
 
@@ -77,25 +77,25 @@ type ProjectGoalsData = z.infer<typeof projectGoalsSchema>
 
 interface ProjectGoalsScreenProps {
 	onNext: (data: {
-		customer_problem: string
-		target_orgs: string[]
-		target_roles: string[]
-		offerings: string[]
-		competitors: string[]
-		research_goal: string
-		decision_questions: string[]
-		assumptions: string[]
-		unknowns: string[]
-		custom_instructions?: string
-		projectId?: string
-	}) => void
-	project?: Project
-	projectId?: string
-	accountId?: string
-	showStepper?: boolean
-	showNextButton?: boolean
-	templateKey?: string
-	prefill?: TemplatePrefill
+		customer_problem: string;
+		target_orgs: string[];
+		target_roles: string[];
+		offerings: string[];
+		competitors: string[];
+		research_goal: string;
+		decision_questions: string[];
+		assumptions: string[];
+		unknowns: string[];
+		custom_instructions?: string;
+		projectId?: string;
+	}) => void;
+	project?: Project;
+	projectId?: string;
+	accountId?: string;
+	showStepper?: boolean;
+	showNextButton?: boolean;
+	templateKey?: string;
+	prefill?: TemplatePrefill;
 }
 
 export default function ProjectGoalsScreen({
@@ -108,162 +108,162 @@ export default function ProjectGoalsScreen({
 	templateKey,
 	prefill,
 }: ProjectGoalsScreenProps) {
-	const [customer_problem, setCustomerProblem] = useState("")
-	const [target_orgs, setTargetOrgs] = useState<string[]>([])
-	const [target_roles, setTargetRoles] = useState<string[]>([])
-	const [offerings, setOfferings] = useState<string[]>([])
-	const [competitors, setCompetitors] = useState<string[]>([])
-	const [newOrg, setNewOrg] = useState("")
-	const [newRole, setNewRole] = useState("")
-	const [newOffering, setNewOffering] = useState("")
-	const [newCompetitor, setNewCompetitor] = useState("")
-	const [research_goal, setResearchGoal] = useState("")
-	const [decision_questions, setDecisionQuestions] = useState<string[]>([])
-	const [newDecisionQuestion, setNewDecisionQuestion] = useState("")
-	const [assumptions, setAssumptions] = useState<string[]>([])
-	const [unknowns, setUnknowns] = useState<string[]>([])
-	const [newAssumption, setNewAssumption] = useState("")
-	const [newUnknown, setNewUnknown] = useState("")
-	const [custom_instructions, setCustomInstructions] = useState("")
-	const [target_conversations, setTargetConversations] = useState(10)
-	const [researchMode, setResearchMode] = useState<ResearchMode>("exploratory")
-	const [interview_duration, setInterviewDuration] = useState<number>(30)
-	const [isLoading, setIsLoading] = useState(false)
-	const [contextLoaded, setContextLoaded] = useState(false)
-	const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(projectId)
-	const [isCreatingProject, setIsCreatingProject] = useState(false)
-	const [ensuringStructure, setEnsuringStructure] = useState(false)
-	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
+	const [customer_problem, setCustomerProblem] = useState("");
+	const [target_orgs, setTargetOrgs] = useState<string[]>([]);
+	const [target_roles, setTargetRoles] = useState<string[]>([]);
+	const [offerings, setOfferings] = useState<string[]>([]);
+	const [competitors, setCompetitors] = useState<string[]>([]);
+	const [newOrg, setNewOrg] = useState("");
+	const [newRole, setNewRole] = useState("");
+	const [newOffering, setNewOffering] = useState("");
+	const [newCompetitor, setNewCompetitor] = useState("");
+	const [research_goal, setResearchGoal] = useState("");
+	const [decision_questions, setDecisionQuestions] = useState<string[]>([]);
+	const [newDecisionQuestion, setNewDecisionQuestion] = useState("");
+	const [assumptions, setAssumptions] = useState<string[]>([]);
+	const [unknowns, setUnknowns] = useState<string[]>([]);
+	const [newAssumption, setNewAssumption] = useState("");
+	const [newUnknown, setNewUnknown] = useState("");
+	const [custom_instructions, setCustomInstructions] = useState("");
+	const [target_conversations, setTargetConversations] = useState(10);
+	const [researchMode, setResearchMode] = useState<ResearchMode>("exploratory");
+	const [interview_duration, setInterviewDuration] = useState<number>(30);
+	const [isLoading, setIsLoading] = useState(false);
+	const [contextLoaded, setContextLoaded] = useState(false);
+	const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(projectId);
+	const [isCreatingProject, setIsCreatingProject] = useState(false);
+	const [ensuringStructure, setEnsuringStructure] = useState(false);
+	const [showCustomInstructions, setShowCustomInstructions] = useState(false);
 	// Removed showGoalSuggestions state - no longer using fallback suggestions
-	const [_showDecisionQuestionSuggestions, _setShowDecisionQuestionSuggestions] = useState(false)
-	const [showDecisionQuestionInput, setShowDecisionQuestionInput] = useState(false)
-	const [showOrgSuggestions, setShowOrgSuggestions] = useState(false)
-	const [showRoleSuggestions, setShowRoleSuggestions] = useState(false)
-	const [_showOfferingSuggestions, _setShowOfferingSuggestions] = useState(false)
-	const [showAssumptionSuggestions, setShowAssumptionSuggestions] = useState(false)
-	const [showUnknownSuggestions, setShowUnknownSuggestions] = useState(false)
-	const [activeSuggestionType, setActiveSuggestionType] = useState<string | null>(null)
-	const [shownSuggestionsByType, setShownSuggestionsByType] = useState<Record<string, string[]>>({})
-	const [_validationErrors, setValidationErrors] = useState<Record<string, string>>({})
-	const [_hasAttemptedNext, setHasAttemptedNext] = useState(false)
-	const supabase = createClient()
+	const [_showDecisionQuestionSuggestions, _setShowDecisionQuestionSuggestions] = useState(false);
+	const [showDecisionQuestionInput, setShowDecisionQuestionInput] = useState(false);
+	const [showOrgSuggestions, setShowOrgSuggestions] = useState(false);
+	const [showRoleSuggestions, setShowRoleSuggestions] = useState(false);
+	const [_showOfferingSuggestions, _setShowOfferingSuggestions] = useState(false);
+	const [showAssumptionSuggestions, setShowAssumptionSuggestions] = useState(false);
+	const [showUnknownSuggestions, setShowUnknownSuggestions] = useState(false);
+	const [activeSuggestionType, setActiveSuggestionType] = useState<string | null>(null);
+	const [shownSuggestionsByType, setShownSuggestionsByType] = useState<Record<string, string[]>>({});
+	const [_validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+	const [_hasAttemptedNext, setHasAttemptedNext] = useState(false);
+	const supabase = createClient();
 
 	// Feature flag for chat setup button
-	const { isEnabled: isSetupChatEnabled, isLoading: isFeatureFlagLoading } = usePostHogFeatureFlag("ffSetupChat")
+	const { isEnabled: isSetupChatEnabled, isLoading: isFeatureFlagLoading } = usePostHogFeatureFlag("ffSetupChat");
 
 	// Accordion state - only one section can be open at a time
-	const [openAccordion, setOpenAccordion] = useState<string | null>("research-goal")
+	const [openAccordion, setOpenAccordion] = useState<string | null>("research-goal");
 	// Reset active suggestion type when accordion changes
 	useEffect(() => {
-		setActiveSuggestionType(null)
-	}, [])
+		setActiveSuggestionType(null);
+	}, []);
 
 	// Helper function to format research mode display
 	const getResearchModeDisplay = (mode: ResearchMode) => {
 		switch (mode) {
 			case "exploratory":
-				return "Exploratory"
+				return "Exploratory";
 			case "validation":
-				return "Validation"
+				return "Validation";
 			case "user_testing":
-				return "User Testing"
+				return "User Testing";
 			default:
-				return "Exploratory"
+				return "Exploratory";
 		}
-	}
+	};
 
 	// Refs for input fields
-	const decisionQuestionInputRef = useRef<HTMLTextAreaElement>(null)
-	const orgInputRef = useRef<HTMLTextAreaElement>(null)
-	const roleInputRef = useRef<HTMLTextAreaElement>(null)
-	const assumptionInputRef = useRef<HTMLTextAreaElement>(null)
-	const unknownInputRef = useRef<HTMLTextAreaElement>(null)
+	const decisionQuestionInputRef = useRef<HTMLTextAreaElement>(null);
+	const orgInputRef = useRef<HTMLTextAreaElement>(null);
+	const roleInputRef = useRef<HTMLTextAreaElement>(null);
+	const assumptionInputRef = useRef<HTMLTextAreaElement>(null);
+	const unknownInputRef = useRef<HTMLTextAreaElement>(null);
 
 	// Construct the protected API path
 	const apiPath =
 		accountId && currentProjectId
 			? `/a/${accountId}/${currentProjectId}/api/contextual-suggestions`
-			: "/api/contextual-suggestions" // fallback
+			: "/api/contextual-suggestions"; // fallback
 
 	const { saveSection, isSaving } = useAutoSave({
 		projectId: currentProjectId || "",
 		debounceMs: 2000,
 		onSaveStart: () => {
-			consola.log("🔄 Auto-save started", { projectId: currentProjectId })
+			consola.log("🔄 Auto-save started", { projectId: currentProjectId });
 		},
 		onSaveComplete: () => {
-			consola.log("✅ Auto-save completed", { projectId: currentProjectId })
+			consola.log("✅ Auto-save completed", { projectId: currentProjectId });
 		},
 		onSaveError: (error) => {
 			consola.error("❌ Auto-save error:", error, {
 				projectId: currentProjectId,
-			})
+			});
 		},
-	})
+	});
 
 	// Save settings - upserts to preserve other settings
 	const saveSettings = useCallback(
 		(updates: { target_conversations?: number; research_mode?: ResearchMode; interview_duration?: number }) => {
-			const payload = updates.research_mode ? { ...updates, conversation_type: updates.research_mode } : updates
-			saveSection("settings", payload)
+			const payload = updates.research_mode ? { ...updates, conversation_type: updates.research_mode } : updates;
+			saveSection("settings", payload);
 		},
 		[saveSection]
-	)
+	);
 
 	const ensureResearchStructure = useCallback(
 		async (projectIdToUse: string | undefined) => {
-			if (!projectIdToUse) return projectIdToUse
-			if (ensuringStructure) return projectIdToUse
-			if (!research_goal.trim() || target_roles.length === 0) return projectIdToUse
+			if (!projectIdToUse) return projectIdToUse;
+			if (ensuringStructure) return projectIdToUse;
+			if (!research_goal.trim() || target_roles.length === 0) return projectIdToUse;
 
-			setEnsuringStructure(true)
+			setEnsuringStructure(true);
 			try {
-				const checkResponse = await fetch(`/api/check-research-structure?project_id=${projectIdToUse}`)
-				const checkBody = await checkResponse.json()
+				const checkResponse = await fetch(`/api/check-research-structure?project_id=${projectIdToUse}`);
+				const checkBody = await checkResponse.json();
 				if (!checkResponse.ok) {
-					throw new Error(checkBody.error || checkBody.details || "Failed to check research structure")
+					throw new Error(checkBody.error || checkBody.details || "Failed to check research structure");
 				}
 
-				const summary = (checkBody.summary as Record<string, unknown>) || {}
-				const hasExistingStructure = Boolean(summary.has_decision_questions && summary.has_research_questions)
+				const summary = (checkBody.summary as Record<string, unknown>) || {};
+				const hasExistingStructure = Boolean(summary.has_decision_questions && summary.has_research_questions);
 				if (hasExistingStructure) {
-					return projectIdToUse
+					return projectIdToUse;
 				}
 
-				const formData = new FormData()
-				formData.append("project_id", projectIdToUse)
-				formData.append("research_goal", research_goal)
-				formData.append("research_mode", researchMode)
-				if (customer_problem.trim()) formData.append("customer_problem", customer_problem)
-				if (target_roles.length > 0) formData.append("target_roles", target_roles.join(", "))
-				if (target_orgs.length > 0) formData.append("target_orgs", target_orgs.join(", "))
-				if (offerings.length > 0) formData.append("offerings", offerings.join(", "))
-				if (competitors.length > 0) formData.append("competitors", competitors.join(", "))
-				if (assumptions.length > 0) formData.append("assumptions", assumptions.join("\n"))
-				if (unknowns.length > 0) formData.append("unknowns", unknowns.join("\n"))
-				if (custom_instructions.trim()) formData.append("custom_instructions", custom_instructions)
+				const formData = new FormData();
+				formData.append("project_id", projectIdToUse);
+				formData.append("research_goal", research_goal);
+				formData.append("research_mode", researchMode);
+				if (customer_problem.trim()) formData.append("customer_problem", customer_problem);
+				if (target_roles.length > 0) formData.append("target_roles", target_roles.join(", "));
+				if (target_orgs.length > 0) formData.append("target_orgs", target_orgs.join(", "));
+				if (offerings.length > 0) formData.append("offerings", offerings.join(", "));
+				if (competitors.length > 0) formData.append("competitors", competitors.join(", "));
+				if (assumptions.length > 0) formData.append("assumptions", assumptions.join("\n"));
+				if (unknowns.length > 0) formData.append("unknowns", unknowns.join("\n"));
+				if (custom_instructions.trim()) formData.append("custom_instructions", custom_instructions);
 
 				const generateResponse = await fetch("/api/generate-research-structure", {
 					method: "POST",
 					body: formData,
-				})
-				const generateBody = await generateResponse.json()
+				});
+				const generateBody = await generateResponse.json();
 				if (!generateResponse.ok || !generateBody?.success) {
-					throw new Error(generateBody?.details || generateBody?.error || "Failed to generate research structure")
+					throw new Error(generateBody?.details || generateBody?.error || "Failed to generate research structure");
 				}
 
 				consola.log("[ProjectGoals] Automatically generated research structure", {
 					projectId: projectIdToUse,
 					decisionQuestions: generateBody?.structure?.decision_questions?.length ?? 0,
 					researchQuestions: generateBody?.structure?.research_questions?.length ?? 0,
-				})
-				return projectIdToUse
+				});
+				return projectIdToUse;
 			} catch (error) {
-				consola.error("[ProjectGoals] ensureResearchStructure failed", error)
-				toast.error(error instanceof Error ? error.message : "Failed to generate research structure")
-				throw error
+				consola.error("[ProjectGoals] ensureResearchStructure failed", error);
+				toast.error(error instanceof Error ? error.message : "Failed to generate research structure");
+				throw error;
 			} finally {
-				setEnsuringStructure(false)
+				setEnsuringStructure(false);
 			}
 		},
 		[
@@ -279,14 +279,14 @@ export default function ProjectGoalsScreen({
 			target_roles,
 			unknowns,
 		]
-	)
+	);
 
 	const createProjectIfNeeded = useCallback(async () => {
-		if (currentProjectId || isCreatingProject) return currentProjectId
+		if (currentProjectId || isCreatingProject) return currentProjectId;
 
-		setIsCreatingProject(true)
+		setIsCreatingProject(true);
 		try {
-			const formData = new FormData()
+			const formData = new FormData();
 			formData.append(
 				"projectData",
 				JSON.stringify({
@@ -294,39 +294,39 @@ export default function ProjectGoalsScreen({
 					target_roles: target_roles,
 					research_goal: research_goal,
 				})
-			)
+			);
 
 			const response = await fetch("/api/create-project", {
 				method: "POST",
 				body: formData,
 				credentials: "include",
-			})
+			});
 
 			if (!response.ok) {
-				throw new Error("Project creation failed")
+				throw new Error("Project creation failed");
 			}
 
-			const result = await response.json()
-			const newProjectId = result.project?.id
+			const result = await response.json();
+			const newProjectId = result.project?.id;
 
 			if (newProjectId) {
-				setCurrentProjectId(newProjectId)
-				consola.log("🎯 Created project on first input:", newProjectId)
+				setCurrentProjectId(newProjectId);
+				consola.log("🎯 Created project on first input:", newProjectId);
 
 				setTimeout(() => {
-					if (assumptions.length > 0) saveSection("assumptions", assumptions)
-					if (unknowns.length > 0) saveSection("unknowns", unknowns)
-					if (research_goal.trim()) saveSection("research_goal", research_goal)
-				}, 200)
+					if (assumptions.length > 0) saveSection("assumptions", assumptions);
+					if (unknowns.length > 0) saveSection("unknowns", unknowns);
+					if (research_goal.trim()) saveSection("research_goal", research_goal);
+				}, 200);
 
-				return newProjectId
+				return newProjectId;
 			}
 		} catch (error) {
-			consola.error("Failed to create project:", error)
+			consola.error("Failed to create project:", error);
 		} finally {
-			setIsCreatingProject(false)
+			setIsCreatingProject(false);
 		}
-		return currentProjectId
+		return currentProjectId;
 	}, [
 		currentProjectId,
 		isCreatingProject,
@@ -337,17 +337,17 @@ export default function ProjectGoalsScreen({
 		unknowns,
 
 		saveSection,
-	])
+	]);
 
 	const loadProjectData = useCallback(async () => {
-		if (!currentProjectId) return
-		setIsLoading(true)
+		if (!currentProjectId) return;
+		setIsLoading(true);
 
 		try {
-			const ctx = await getProjectContextGeneric(supabase, currentProjectId)
-			let populatedFromContext = false
+			const ctx = await getProjectContextGeneric(supabase, currentProjectId);
+			let populatedFromContext = false;
 			if (ctx?.merged) {
-				const m = ctx.merged as Record<string, unknown>
+				const m = ctx.merged as Record<string, unknown>;
 				const hasAny =
 					(typeof m.customer_problem === "string" && (m.customer_problem as string).length > 0) ||
 					(Array.isArray(m.target_orgs) && (m.target_orgs as unknown[]).length > 0) ||
@@ -359,88 +359,88 @@ export default function ProjectGoalsScreen({
 					(Array.isArray(m.decision_questions) && (m.decision_questions as unknown[]).length > 0) ||
 					(Array.isArray(m.assumptions) && (m.assumptions as unknown[]).length > 0) ||
 					(Array.isArray(m.unknowns) && (m.unknowns as unknown[]).length > 0) ||
-					(typeof m.custom_instructions === "string" && (m.custom_instructions as string).length > 0)
+					(typeof m.custom_instructions === "string" && (m.custom_instructions as string).length > 0);
 
 				if (hasAny) {
-					setCustomerProblem((m.customer_problem as string) ?? "")
-					setTargetOrgs((m.target_orgs as string[]) ?? [])
-					setTargetRoles((m.target_roles as string[]) ?? [])
+					setCustomerProblem((m.customer_problem as string) ?? "");
+					setTargetOrgs((m.target_orgs as string[]) ?? []);
+					setTargetRoles((m.target_roles as string[]) ?? []);
 					// Handle offerings - convert string to array if needed, guard against null
-					const loadedOfferings = m.offerings
+					const loadedOfferings = m.offerings;
 					if (Array.isArray(loadedOfferings)) {
-						setOfferings(loadedOfferings)
+						setOfferings(loadedOfferings);
 					} else if (typeof loadedOfferings === "string" && loadedOfferings.trim()) {
-						setOfferings([loadedOfferings])
+						setOfferings([loadedOfferings]);
 					} else {
-						setOfferings([])
+						setOfferings([]);
 					}
-					setCompetitors((m.competitors as string[]) ?? [])
-					setResearchGoal((m.research_goal as string) ?? "")
-					setAssumptions((m.assumptions as string[]) ?? [])
-					setDecisionQuestions((m.decision_questions as string[]) ?? [])
-					setUnknowns((m.unknowns as string[]) ?? [])
-					setCustomInstructions((m.custom_instructions as string) ?? "")
-					setTargetConversations((m.target_conversations as number) ?? 10)
+					setCompetitors((m.competitors as string[]) ?? []);
+					setResearchGoal((m.research_goal as string) ?? "");
+					setAssumptions((m.assumptions as string[]) ?? []);
+					setDecisionQuestions((m.decision_questions as string[]) ?? []);
+					setUnknowns((m.unknowns as string[]) ?? []);
+					setCustomInstructions((m.custom_instructions as string) ?? "");
+					setTargetConversations((m.target_conversations as number) ?? 10);
 					const mergedMode =
-						(m.research_mode as ResearchMode | undefined) ?? (m.conversation_type as ResearchMode | undefined)
-					setResearchMode(mergedMode ?? "exploratory")
-					setInterviewDuration((m.interview_duration as number) ?? 30)
-					populatedFromContext = true
-					consola.log("Loaded project context from project_sections (merged)")
+						(m.research_mode as ResearchMode | undefined) ?? (m.conversation_type as ResearchMode | undefined);
+					setResearchMode(mergedMode ?? "exploratory");
+					setInterviewDuration((m.interview_duration as number) ?? 30);
+					populatedFromContext = true;
+					consola.log("Loaded project context from project_sections (merged)");
 				}
 			}
 
 			if (!populatedFromContext) {
-				const response = await fetch(`/api/load-project-goals?projectId=${currentProjectId}`)
-				const result = await response.json()
+				const response = await fetch(`/api/load-project-goals?projectId=${currentProjectId}`);
+				const result = await response.json();
 				if (result.success && result.data) {
-					const data = result.data
-					setCustomerProblem(data.customer_problem || "")
-					setTargetOrgs(data.target_orgs || [])
-					setTargetRoles(data.target_roles || [])
+					const data = result.data;
+					setCustomerProblem(data.customer_problem || "");
+					setTargetOrgs(data.target_orgs || []);
+					setTargetRoles(data.target_roles || []);
 					// Handle offerings - convert string to array if needed, guard against null
 					if (Array.isArray(data.offerings)) {
-						setOfferings(data.offerings)
+						setOfferings(data.offerings);
 					} else if (typeof data.offerings === "string" && data.offerings.trim()) {
-						setOfferings([data.offerings])
+						setOfferings([data.offerings]);
 					} else {
-						setOfferings([])
+						setOfferings([]);
 					}
-					setCompetitors(data.competitors || [])
-					setResearchGoal(data.research_goal || "")
-					setAssumptions(data.assumptions || [])
-					setDecisionQuestions(data.decision_questions || [])
-					setUnknowns(data.unknowns || [])
-					setCustomInstructions(data.custom_instructions || "")
-					setTargetConversations(data.target_conversations || 10)
+					setCompetitors(data.competitors || []);
+					setResearchGoal(data.research_goal || "");
+					setAssumptions(data.assumptions || []);
+					setDecisionQuestions(data.decision_questions || []);
+					setUnknowns(data.unknowns || []);
+					setCustomInstructions(data.custom_instructions || "");
+					setTargetConversations(data.target_conversations || 10);
 					const fallbackMode =
-						(data.research_mode as ResearchMode | undefined) ?? (data.conversation_type as ResearchMode | undefined)
-					setResearchMode(fallbackMode || "exploratory")
-					setInterviewDuration(data.interview_duration || 30)
-					consola.log("Loaded project goals via API fallback")
+						(data.research_mode as ResearchMode | undefined) ?? (data.conversation_type as ResearchMode | undefined);
+					setResearchMode(fallbackMode || "exploratory");
+					setInterviewDuration(data.interview_duration || 30);
+					consola.log("Loaded project goals via API fallback");
 				}
 			}
 		} catch (error) {
-			consola.error("Failed to load project data:", error)
+			consola.error("Failed to load project data:", error);
 		} finally {
-			setIsLoading(false)
-			setContextLoaded(true)
+			setIsLoading(false);
+			setContextLoaded(true);
 		}
-	}, [currentProjectId, supabase])
+	}, [currentProjectId, supabase]);
 
 	useEffect(() => {
 		if (currentProjectId) {
-			loadProjectData()
+			loadProjectData();
 		}
-	}, [currentProjectId, loadProjectData])
+	}, [currentProjectId, loadProjectData]);
 
 	// Track if we've already applied prefill to prevent infinite loops
-	const prefillAppliedRef = useRef(false)
+	const prefillAppliedRef = useRef(false);
 
 	useEffect(() => {
-		if (!prefill) return
-		if (!contextLoaded) return
-		if (prefillAppliedRef.current) return // Only apply prefill once
+		if (!prefill) return;
+		if (!contextLoaded) return;
+		if (prefillAppliedRef.current) return; // Only apply prefill once
 
 		const noData =
 			target_orgs.length === 0 &&
@@ -448,42 +448,42 @@ export default function ProjectGoalsScreen({
 			!research_goal &&
 			assumptions.length === 0 &&
 			unknowns.length === 0 &&
-			!custom_instructions
+			!custom_instructions;
 
 		if (noData) {
-			setCustomerProblem(prefill.customer_problem || "")
-			setTargetOrgs(prefill.target_orgs || [])
-			setTargetRoles(prefill.target_roles || [])
+			setCustomerProblem(prefill.customer_problem || "");
+			setTargetOrgs(prefill.target_orgs || []);
+			setTargetRoles(prefill.target_roles || []);
 			// Handle offerings - convert string to array if needed, guard against null
 			if (Array.isArray(prefill.offerings)) {
-				setOfferings(prefill.offerings)
+				setOfferings(prefill.offerings);
 			} else if (typeof prefill.offerings === "string" && prefill.offerings.trim()) {
-				setOfferings([prefill.offerings])
+				setOfferings([prefill.offerings]);
 			} else {
-				setOfferings([])
+				setOfferings([]);
 			}
-			setCompetitors(prefill.competitors || [])
-			setResearchGoal(prefill.research_goal || "")
-			setAssumptions(prefill.assumptions || [])
-			setUnknowns(prefill.unknowns || [])
-			setCustomInstructions(prefill.custom_instructions || "")
+			setCompetitors(prefill.competitors || []);
+			setResearchGoal(prefill.research_goal || "");
+			setAssumptions(prefill.assumptions || []);
+			setUnknowns(prefill.unknowns || []);
+			setCustomInstructions(prefill.custom_instructions || "");
 			if ((prefill.decision_questions || []).length > 0) {
-				setDecisionQuestions(prefill.decision_questions)
+				setDecisionQuestions(prefill.decision_questions);
 			}
 
 			if (currentProjectId) {
-				if (prefill.customer_problem) saveSection("customer_problem", prefill.customer_problem)
-				if ((prefill.target_orgs || []).length > 0) saveSection("target_orgs", prefill.target_orgs)
-				if ((prefill.target_roles || []).length > 0) saveSection("target_roles", prefill.target_roles)
-				if ((prefill.offerings || []).length > 0) saveSection("offerings", prefill.offerings)
-				if ((prefill.competitors || []).length > 0) saveSection("competitors", prefill.competitors)
-				if (prefill.research_goal) saveSection("research_goal", prefill.research_goal)
-				if ((prefill.assumptions || []).length > 0) saveSection("assumptions", prefill.assumptions)
-				if ((prefill.unknowns || []).length > 0) saveSection("unknowns", prefill.unknowns)
-				if (prefill.custom_instructions) saveSection("custom_instructions", prefill.custom_instructions)
+				if (prefill.customer_problem) saveSection("customer_problem", prefill.customer_problem);
+				if ((prefill.target_orgs || []).length > 0) saveSection("target_orgs", prefill.target_orgs);
+				if ((prefill.target_roles || []).length > 0) saveSection("target_roles", prefill.target_roles);
+				if ((prefill.offerings || []).length > 0) saveSection("offerings", prefill.offerings);
+				if ((prefill.competitors || []).length > 0) saveSection("competitors", prefill.competitors);
+				if (prefill.research_goal) saveSection("research_goal", prefill.research_goal);
+				if ((prefill.assumptions || []).length > 0) saveSection("assumptions", prefill.assumptions);
+				if ((prefill.unknowns || []).length > 0) saveSection("unknowns", prefill.unknowns);
+				if (prefill.custom_instructions) saveSection("custom_instructions", prefill.custom_instructions);
 			}
 
-			prefillAppliedRef.current = true
+			prefillAppliedRef.current = true;
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [
@@ -497,126 +497,126 @@ export default function ProjectGoalsScreen({
 		target_orgs.length,
 		target_roles.length,
 		unknowns.length,
-	])
+	]);
 
 	const addOrg = async () => {
 		if (newOrg.trim() && !target_orgs.includes(newOrg.trim())) {
-			await createProjectIfNeeded()
-			const newOrgs = [...target_orgs, newOrg.trim()]
-			setTargetOrgs(newOrgs)
-			setNewOrg("")
-			saveSection("target_orgs", newOrgs)
+			await createProjectIfNeeded();
+			const newOrgs = [...target_orgs, newOrg.trim()];
+			setTargetOrgs(newOrgs);
+			setNewOrg("");
+			saveSection("target_orgs", newOrgs);
 		}
-	}
+	};
 
 	const removeOrg = (org: string) => {
-		const newOrgs = target_orgs.filter((o) => o !== org)
-		setTargetOrgs(newOrgs)
-		saveSection("target_orgs", newOrgs)
-	}
+		const newOrgs = target_orgs.filter((o) => o !== org);
+		setTargetOrgs(newOrgs);
+		saveSection("target_orgs", newOrgs);
+	};
 
 	const addRole = async () => {
 		if (newRole.trim() && !target_roles.includes(newRole.trim())) {
-			await createProjectIfNeeded()
-			const newRoles = [...target_roles, newRole.trim()]
-			setTargetRoles(newRoles)
-			setNewRole("")
-			saveSection("target_roles", newRoles)
+			await createProjectIfNeeded();
+			const newRoles = [...target_roles, newRole.trim()];
+			setTargetRoles(newRoles);
+			setNewRole("");
+			saveSection("target_roles", newRoles);
 		}
-	}
+	};
 
 	const removeRole = (role: string) => {
-		const newRoles = target_roles.filter((r) => r !== role)
-		setTargetRoles(newRoles)
-		saveSection("target_roles", newRoles)
-	}
+		const newRoles = target_roles.filter((r) => r !== role);
+		setTargetRoles(newRoles);
+		saveSection("target_roles", newRoles);
+	};
 
 	// Helper to focus input and move cursor to end
 	const focusInputAtEnd = (ref: React.RefObject<HTMLTextAreaElement | null>) => {
 		if (ref.current) {
-			ref.current.focus()
-			const len = ref.current.value.length
-			ref.current.setSelectionRange(len, len)
+			ref.current.focus();
+			const len = ref.current.value.length;
+			ref.current.setSelectionRange(len, len);
 		}
-	}
+	};
 
 	const addDecisionQuestion = async () => {
 		if (newDecisionQuestion.trim() && !decision_questions.includes(newDecisionQuestion.trim())) {
-			await createProjectIfNeeded()
-			const newQuestions = [...decision_questions, newDecisionQuestion.trim()]
-			setDecisionQuestions(newQuestions)
-			setNewDecisionQuestion("")
-			saveSection("decision_questions", newQuestions)
+			await createProjectIfNeeded();
+			const newQuestions = [...decision_questions, newDecisionQuestion.trim()];
+			setDecisionQuestions(newQuestions);
+			setNewDecisionQuestion("");
+			saveSection("decision_questions", newQuestions);
 		}
-	}
+	};
 
 	const updateDecisionQuestion = (index: number, value: string) => {
-		const v = value.trim()
-		if (!v) return
-		const updated = [...decision_questions]
-		updated[index] = v
-		setDecisionQuestions(updated)
-		saveSection("decision_questions", updated)
-	}
+		const v = value.trim();
+		if (!v) return;
+		const updated = [...decision_questions];
+		updated[index] = v;
+		setDecisionQuestions(updated);
+		saveSection("decision_questions", updated);
+	};
 
 	const removeDecisionQuestion = (index: number) => {
-		const newQuestions = decision_questions.filter((_, i) => i !== index)
-		setDecisionQuestions(newQuestions)
-		saveSection("decision_questions", newQuestions)
-	}
+		const newQuestions = decision_questions.filter((_, i) => i !== index);
+		setDecisionQuestions(newQuestions);
+		saveSection("decision_questions", newQuestions);
+	};
 
 	const addAssumption = async () => {
 		if (newAssumption.trim() && !assumptions.includes(newAssumption.trim())) {
-			await createProjectIfNeeded()
-			const newAssumptions = [...assumptions, newAssumption.trim()]
-			setAssumptions(newAssumptions)
-			setNewAssumption("")
-			saveSection("assumptions", newAssumptions)
+			await createProjectIfNeeded();
+			const newAssumptions = [...assumptions, newAssumption.trim()];
+			setAssumptions(newAssumptions);
+			setNewAssumption("");
+			saveSection("assumptions", newAssumptions);
 		}
-	}
+	};
 
 	const updateAssumption = (index: number, value: string) => {
-		const v = value.trim()
-		if (!v) return
-		const updated = [...assumptions]
-		updated[index] = v
-		setAssumptions(updated)
-		saveSection("assumptions", updated)
-	}
+		const v = value.trim();
+		if (!v) return;
+		const updated = [...assumptions];
+		updated[index] = v;
+		setAssumptions(updated);
+		saveSection("assumptions", updated);
+	};
 
 	const addUnknown = async () => {
 		if (newUnknown.trim()) {
-			await createProjectIfNeeded()
-			const newUnknowns = [...unknowns, newUnknown.trim()]
-			setUnknowns(newUnknowns)
-			setNewUnknown("")
-			saveSection("unknowns", newUnknowns)
+			await createProjectIfNeeded();
+			const newUnknowns = [...unknowns, newUnknown.trim()];
+			setUnknowns(newUnknowns);
+			setNewUnknown("");
+			saveSection("unknowns", newUnknowns);
 		}
-	}
+	};
 
 	const updateUnknown = (index: number, value: string) => {
-		const v = value.trim()
-		if (!v) return
-		const updated = [...unknowns]
-		updated[index] = v
-		setUnknowns(updated)
-		saveSection("unknowns", updated)
-	}
+		const v = value.trim();
+		if (!v) return;
+		const updated = [...unknowns];
+		updated[index] = v;
+		setUnknowns(updated);
+		saveSection("unknowns", updated);
+	};
 
 	const removeAssumption = (index: number) => {
-		const newAssumptions = assumptions.filter((_, i) => i !== index)
-		setAssumptions(newAssumptions)
-		saveSection("assumptions", newAssumptions)
-	}
+		const newAssumptions = assumptions.filter((_, i) => i !== index);
+		setAssumptions(newAssumptions);
+		saveSection("assumptions", newAssumptions);
+	};
 
 	const removeUnknown = (index: number) => {
-		const newUnknowns = unknowns.filter((_, i) => i !== index)
-		setUnknowns(newUnknowns)
-		saveSection("unknowns", newUnknowns)
-	}
+		const newUnknowns = unknowns.filter((_, i) => i !== index);
+		setUnknowns(newUnknowns);
+		saveSection("unknowns", newUnknowns);
+	};
 
 	const handleNext = useCallback(async () => {
-		setHasAttemptedNext(true)
+		setHasAttemptedNext(true);
 
 		// Validate using Zod schema
 		const validationResult = projectGoalsSchema.safeParse({
@@ -630,22 +630,22 @@ export default function ProjectGoalsScreen({
 			assumptions,
 			unknowns,
 			custom_instructions,
-		})
+		});
 
-		consola.log("[ProjectGoals] Validation result:", validationResult)
+		consola.log("[ProjectGoals] Validation result:", validationResult);
 
 		if (!validationResult.success) {
 			// Extract and set validation errors
-			const errors: Record<string, string> = {}
-			const missingFields: string[] = []
+			const errors: Record<string, string> = {};
+			const missingFields: string[] = [];
 
-			consola.log("[ProjectGoals] Raw validation errors:", validationResult.error.issues)
+			consola.log("[ProjectGoals] Raw validation errors:", validationResult.error.issues);
 
 			validationResult.error?.issues?.forEach((err) => {
-				consola.log("[ProjectGoals] Processing error:", err)
-				const path = err.path.join(".")
-				consola.log("[ProjectGoals] Path:", path, "Message:", err.message)
-				errors[path] = err.message
+				consola.log("[ProjectGoals] Processing error:", err);
+				const path = err.path.join(".");
+				consola.log("[ProjectGoals] Path:", path, "Message:", err.message);
+				errors[path] = err.message;
 
 				// Map field names to user-friendly labels
 				const fieldLabels: Record<string, string> = {
@@ -654,53 +654,53 @@ export default function ProjectGoalsScreen({
 					research_goal: "Research Goal",
 					decision_questions: "Key Decisions",
 					unknowns: "Unknowns",
-				}
+				};
 
-				const fieldLabel = fieldLabels[path]
-				consola.log("[ProjectGoals] Field label for", path, ":", fieldLabel)
+				const fieldLabel = fieldLabels[path];
+				consola.log("[ProjectGoals] Field label for", path, ":", fieldLabel);
 				if (fieldLabel && !missingFields.includes(fieldLabel)) {
-					missingFields.push(fieldLabel)
-					consola.log("[ProjectGoals] Added missing field:", fieldLabel)
+					missingFields.push(fieldLabel);
+					consola.log("[ProjectGoals] Added missing field:", fieldLabel);
 				}
-			})
+			});
 
-			setValidationErrors(errors)
+			setValidationErrors(errors);
 
-			consola.log("[ProjectGoals] Final validation errors:", errors)
-			consola.log("[ProjectGoals] Final missing fields:", missingFields)
+			consola.log("[ProjectGoals] Final validation errors:", errors);
+			consola.log("[ProjectGoals] Final missing fields:", missingFields);
 
 			// Show error with missing fields - ALWAYS show the toast
 			const errorMessage =
 				missingFields.length > 0
 					? `Missing required fields: ${missingFields.join(", ")}`
-					: "Please fill in all required fields"
+					: "Please fill in all required fields";
 
-			consola.log("[ProjectGoals] About to show toast with message:", errorMessage)
+			consola.log("[ProjectGoals] About to show toast with message:", errorMessage);
 
 			try {
 				toast.error(errorMessage, {
 					duration: 5000,
-				})
-				consola.log("[ProjectGoals] Toast.error called successfully")
+				});
+				consola.log("[ProjectGoals] Toast.error called successfully");
 			} catch (toastError) {
-				consola.error("[ProjectGoals] Error calling toast.error:", toastError)
+				consola.error("[ProjectGoals] Error calling toast.error:", toastError);
 			}
 
-			return
+			return;
 		}
 
 		// Clear validation errors if validation passes
-		setValidationErrors({})
+		setValidationErrors({});
 
 		try {
-			const resolvedProjectId = (await createProjectIfNeeded()) || currentProjectId
+			const resolvedProjectId = (await createProjectIfNeeded()) || currentProjectId;
 			if (!resolvedProjectId) {
-				toast.error("Unable to determine project. Please try again.")
-				return
+				toast.error("Unable to determine project. Please try again.");
+				return;
 			}
 
-			await ensureResearchStructure(resolvedProjectId)
-			saveSection("research_goal", research_goal)
+			await ensureResearchStructure(resolvedProjectId);
+			saveSection("research_goal", research_goal);
 			onNext({
 				customer_problem,
 				target_orgs,
@@ -713,9 +713,9 @@ export default function ProjectGoalsScreen({
 				unknowns,
 				custom_instructions: custom_instructions || undefined,
 				projectId: resolvedProjectId,
-			})
+			});
 		} catch (error) {
-			consola.error("[ProjectGoals] Unable to proceed to questions", error)
+			consola.error("[ProjectGoals] Unable to proceed to questions", error);
 		}
 	}, [
 		assumptions,
@@ -733,19 +733,19 @@ export default function ProjectGoalsScreen({
 		target_orgs,
 		target_roles,
 		unknowns,
-	])
+	]);
 
 	const handleResearchGoalBlur = async () => {
-		if (!research_goal.trim()) return
-		if (!currentProjectId) await createProjectIfNeeded()
-		saveSection("research_goal", research_goal)
-	}
+		if (!research_goal.trim()) return;
+		if (!currentProjectId) await createProjectIfNeeded();
+		saveSection("research_goal", research_goal);
+	};
 
 	const handleCustomInstructionsBlur = () => {
 		saveSection("custom_instructions", custom_instructions, {
 			debounced: true,
-		})
-	}
+		});
+	};
 
 	// Removed contextualSuggestions fallback - rely only on AI-generated suggestions
 
@@ -753,7 +753,7 @@ export default function ProjectGoalsScreen({
 		{ id: "goals", title: "Project Goals" },
 		{ id: "questions", title: "Questions" },
 		{ id: "upload", title: "Upload" },
-	]
+	];
 
 	// Removed auto-population logic - rely on contextual AI suggestions instead
 
@@ -825,11 +825,11 @@ export default function ProjectGoalsScreen({
 					<WebsiteResearchCard
 						onResearchComplete={(data) => {
 							// Auto-fill fields from research
-							if (data.customer_problem) setCustomerProblem(data.customer_problem)
-							if (data.offerings?.length) setOfferings(data.offerings)
-							if (data.competitors?.length) setCompetitors(data.competitors)
-							if (data.target_orgs?.length) setTargetOrgs(data.target_orgs)
-							toast.success("Company research complete! Fields updated.")
+							if (data.customer_problem) setCustomerProblem(data.customer_problem);
+							if (data.offerings?.length) setOfferings(data.offerings);
+							if (data.competitors?.length) setCompetitors(data.competitors);
+							if (data.target_orgs?.length) setTargetOrgs(data.target_orgs);
+							toast.success("Company research complete! Fields updated.");
 						}}
 					/>
 
@@ -862,10 +862,10 @@ export default function ProjectGoalsScreen({
 								placeholder="e.g., Small businesses struggle to manage customer relationships efficiently without expensive CRM tools"
 								value={customer_problem}
 								onChange={(e) => {
-									setCustomerProblem(e.target.value)
+									setCustomerProblem(e.target.value);
 									saveSection("customer_problem", e.target.value, {
 										debounced: true,
-									})
+									});
 								}}
 								rows={3}
 								className="min-h-[80px]"
@@ -968,12 +968,12 @@ export default function ProjectGoalsScreen({
 													<InlineEdit
 														value={org}
 														onSubmit={(val) => {
-															const v = val.trim()
-															if (!v) return
-															const list = [...target_orgs]
-															list[index] = v
-															setTargetOrgs(list)
-															saveSection("target_orgs", list)
+															const v = val.trim();
+															if (!v) return;
+															const list = [...target_orgs];
+															list[index] = v;
+															setTargetOrgs(list);
+															saveSection("target_orgs", list);
 														}}
 														textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
 														inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
@@ -990,8 +990,8 @@ export default function ProjectGoalsScreen({
 										{!showOrgSuggestions ? (
 											<Button
 												onClick={() => {
-													setShowOrgSuggestions(true)
-													setActiveSuggestionType("organizations")
+													setShowOrgSuggestions(true);
+													setActiveSuggestionType("organizations");
 												}}
 												variant="outline"
 												size="sm"
@@ -1018,8 +1018,8 @@ export default function ProjectGoalsScreen({
 													</Button>
 													<Button
 														onClick={() => {
-															setShowOrgSuggestions(false)
-															setNewOrg("")
+															setShowOrgSuggestions(false);
+															setNewOrg("");
 														}}
 														variant="ghost"
 														size="sm"
@@ -1038,20 +1038,20 @@ export default function ProjectGoalsScreen({
 													isActive={activeSuggestionType === null || activeSuggestionType === "organizations"}
 													onSuggestionClick={async (suggestion) => {
 														if (!target_orgs.includes(suggestion.trim())) {
-															await createProjectIfNeeded()
-															const newOrgs = [...target_orgs, suggestion.trim()]
-															setTargetOrgs(newOrgs)
-															saveSection("target_orgs", newOrgs)
+															await createProjectIfNeeded();
+															const newOrgs = [...target_orgs, suggestion.trim()];
+															setTargetOrgs(newOrgs);
+															saveSection("target_orgs", newOrgs);
 														}
 													}}
 													onSuggestionShown={(suggestions) => {
 														if (activeSuggestionType === null) {
-															setActiveSuggestionType("organizations")
+															setActiveSuggestionType("organizations");
 														}
 														setShownSuggestionsByType((prev) => ({
 															...prev,
 															organizations: suggestions,
-														}))
+														}));
 													}}
 												/>
 											</div>
@@ -1072,12 +1072,12 @@ export default function ProjectGoalsScreen({
 													<InlineEdit
 														value={role}
 														onSubmit={(val) => {
-															const v = val.trim()
-															if (!v) return
-															const list = [...target_roles]
-															list[index] = v
-															setTargetRoles(list)
-															saveSection("target_roles", list)
+															const v = val.trim();
+															if (!v) return;
+															const list = [...target_roles];
+															list[index] = v;
+															setTargetRoles(list);
+															saveSection("target_roles", list);
 														}}
 														textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
 														inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
@@ -1094,8 +1094,8 @@ export default function ProjectGoalsScreen({
 										{!showRoleSuggestions ? (
 											<Button
 												onClick={() => {
-													setShowRoleSuggestions(true)
-													setActiveSuggestionType("roles")
+													setShowRoleSuggestions(true);
+													setActiveSuggestionType("roles");
 												}}
 												variant="outline"
 												size="sm"
@@ -1122,8 +1122,8 @@ export default function ProjectGoalsScreen({
 													</Button>
 													<Button
 														onClick={() => {
-															setShowRoleSuggestions(false)
-															setNewRole("")
+															setShowRoleSuggestions(false);
+															setNewRole("");
 														}}
 														variant="ghost"
 														size="sm"
@@ -1142,20 +1142,20 @@ export default function ProjectGoalsScreen({
 													isActive={activeSuggestionType === null || activeSuggestionType === "roles"}
 													onSuggestionClick={async (suggestion) => {
 														if (!target_roles.includes(suggestion.trim())) {
-															await createProjectIfNeeded()
-															const newRoles = [...target_roles, suggestion.trim()]
-															setTargetRoles(newRoles)
-															saveSection("target_roles", newRoles)
+															await createProjectIfNeeded();
+															const newRoles = [...target_roles, suggestion.trim()];
+															setTargetRoles(newRoles);
+															saveSection("target_roles", newRoles);
 														}
 													}}
 													onSuggestionShown={(suggestions) => {
 														if (activeSuggestionType === null) {
-															setActiveSuggestionType("roles")
+															setActiveSuggestionType("roles");
 														}
 														setShownSuggestionsByType((prev) => ({
 															...prev,
 															roles: [...(prev.roles || []), ...suggestions],
-														}))
+														}));
 													}}
 												/>
 											</div>
@@ -1200,21 +1200,21 @@ export default function ProjectGoalsScreen({
 										<InlineEdit
 											value={offering}
 											onSubmit={(val) => {
-												const v = val.trim()
-												if (!v) return
-												const list = [...offerings]
-												list[index] = v
-												setOfferings(list)
-												saveSection("offerings", list)
+												const v = val.trim();
+												if (!v) return;
+												const list = [...offerings];
+												list[index] = v;
+												setOfferings(list);
+												saveSection("offerings", list);
 											}}
 											textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
 											inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
 										/>
 										<button
 											onClick={() => {
-												const newOfferings = offerings.filter((_, i) => i !== index)
-												setOfferings(newOfferings)
-												saveSection("offerings", newOfferings)
+												const newOfferings = offerings.filter((_, i) => i !== index);
+												setOfferings(newOfferings);
+												saveSection("offerings", newOfferings);
 											}}
 											className="rounded-md p-0.5 opacity-60 transition-all hover:bg-blue-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
 										>
@@ -1230,10 +1230,10 @@ export default function ProjectGoalsScreen({
 									onChange={(e) => setNewOffering(e.target.value)}
 									onKeyDown={(e) => {
 										if (e.key === "Enter" && newOffering.trim()) {
-											const newOfferings = [...offerings, newOffering.trim()]
-											setOfferings(newOfferings)
-											setNewOffering("")
-											saveSection("offerings", newOfferings)
+											const newOfferings = [...offerings, newOffering.trim()];
+											setOfferings(newOfferings);
+											setNewOffering("");
+											saveSection("offerings", newOfferings);
 										}
 									}}
 									className="flex-1"
@@ -1241,10 +1241,10 @@ export default function ProjectGoalsScreen({
 								<Button
 									onClick={() => {
 										if (newOffering.trim()) {
-											const newOfferings = [...offerings, newOffering.trim()]
-											setOfferings(newOfferings)
-											setNewOffering("")
-											saveSection("offerings", newOfferings)
+											const newOfferings = [...offerings, newOffering.trim()];
+											setOfferings(newOfferings);
+											setNewOffering("");
+											saveSection("offerings", newOfferings);
 										}
 									}}
 									variant="outline"
@@ -1290,21 +1290,21 @@ export default function ProjectGoalsScreen({
 										<InlineEdit
 											value={competitor}
 											onSubmit={(val) => {
-												const v = val.trim()
-												if (!v) return
-												const list = [...competitors]
-												list[index] = v
-												setCompetitors(list)
-												saveSection("competitors", list)
+												const v = val.trim();
+												if (!v) return;
+												const list = [...competitors];
+												list[index] = v;
+												setCompetitors(list);
+												saveSection("competitors", list);
 											}}
 											textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
 											inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
 										/>
 										<button
 											onClick={() => {
-												const newCompetitors = competitors.filter((_, i) => i !== index)
-												setCompetitors(newCompetitors)
-												saveSection("competitors", newCompetitors)
+												const newCompetitors = competitors.filter((_, i) => i !== index);
+												setCompetitors(newCompetitors);
+												saveSection("competitors", newCompetitors);
 											}}
 											className="rounded-md p-0.5 opacity-60 transition-all hover:bg-blue-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
 										>
@@ -1320,10 +1320,10 @@ export default function ProjectGoalsScreen({
 									onChange={(e) => setNewCompetitor(e.target.value)}
 									onKeyDown={(e) => {
 										if (e.key === "Enter" && newCompetitor.trim()) {
-											const newCompetitors = [...competitors, newCompetitor.trim()]
-											setCompetitors(newCompetitors)
-											setNewCompetitor("")
-											saveSection("competitors", newCompetitors)
+											const newCompetitors = [...competitors, newCompetitor.trim()];
+											setCompetitors(newCompetitors);
+											setNewCompetitor("");
+											saveSection("competitors", newCompetitors);
 										}
 									}}
 									className="flex-1"
@@ -1331,10 +1331,10 @@ export default function ProjectGoalsScreen({
 								<Button
 									onClick={() => {
 										if (newCompetitor.trim()) {
-											const newCompetitors = [...competitors, newCompetitor.trim()]
-											setCompetitors(newCompetitors)
-											setNewCompetitor("")
-											saveSection("competitors", newCompetitors)
+											const newCompetitors = [...competitors, newCompetitor.trim()];
+											setCompetitors(newCompetitors);
+											setNewCompetitor("");
+											saveSection("competitors", newCompetitors);
 										}
 									}}
 									variant="outline"
@@ -1419,8 +1419,8 @@ export default function ProjectGoalsScreen({
 									{!showDecisionQuestionInput ? (
 										<Button
 											onClick={() => {
-												setShowDecisionQuestionInput(true)
-												setActiveSuggestionType("decision_questions")
+												setShowDecisionQuestionInput(true);
+												setActiveSuggestionType("decision_questions");
 											}}
 											variant="outline"
 											size="sm"
@@ -1452,8 +1452,8 @@ export default function ProjectGoalsScreen({
 												</Button>
 												<Button
 													onClick={() => {
-														setShowDecisionQuestionInput(false)
-														setNewDecisionQuestion("")
+														setShowDecisionQuestionInput(false);
+														setNewDecisionQuestion("");
 													}}
 													variant="ghost"
 													size="sm"
@@ -1473,20 +1473,20 @@ export default function ProjectGoalsScreen({
 												isActive={activeSuggestionType === null || activeSuggestionType === "decision_questions"}
 												onSuggestionClick={async (suggestion) => {
 													if (!decision_questions.includes(suggestion.trim())) {
-														await createProjectIfNeeded()
-														const newQuestions = [...decision_questions, suggestion.trim()]
-														setDecisionQuestions(newQuestions)
-														saveSection("decision_questions", newQuestions)
+														await createProjectIfNeeded();
+														const newQuestions = [...decision_questions, suggestion.trim()];
+														setDecisionQuestions(newQuestions);
+														saveSection("decision_questions", newQuestions);
 													}
 												}}
 												onSuggestionShown={(suggestions) => {
 													if (activeSuggestionType === null) {
-														setActiveSuggestionType("decision_questions")
+														setActiveSuggestionType("decision_questions");
 													}
 													setShownSuggestionsByType((prev) => ({
 														...prev,
 														decision_questions: [...(prev.decision_questions || []), ...suggestions],
-													}))
+													}));
 												}}
 											/>
 										</div>
@@ -1566,8 +1566,8 @@ export default function ProjectGoalsScreen({
 											{!showAssumptionSuggestions ? (
 												<Button
 													onClick={() => {
-														setShowAssumptionSuggestions(true)
-														setActiveSuggestionType("assumptions")
+														setShowAssumptionSuggestions(true);
+														setActiveSuggestionType("assumptions");
 													}}
 													variant="outline"
 													size="sm"
@@ -1594,8 +1594,8 @@ export default function ProjectGoalsScreen({
 														</Button>
 														<Button
 															onClick={() => {
-																setShowAssumptionSuggestions(false)
-																setNewAssumption("")
+																setShowAssumptionSuggestions(false);
+																setNewAssumption("");
 															}}
 															variant="ghost"
 															size="sm"
@@ -1613,17 +1613,17 @@ export default function ProjectGoalsScreen({
 														shownSuggestions={shownSuggestionsByType.assumptions || []}
 														isActive={activeSuggestionType === null || activeSuggestionType === "assumptions"}
 														onSuggestionClick={(suggestion) => {
-															setNewAssumption(suggestion)
-															focusInputAtEnd(assumptionInputRef)
+															setNewAssumption(suggestion);
+															focusInputAtEnd(assumptionInputRef);
 														}}
 														onSuggestionShown={(suggestions) => {
 															if (activeSuggestionType === null) {
-																setActiveSuggestionType("assumptions")
+																setActiveSuggestionType("assumptions");
 															}
 															setShownSuggestionsByType((prev) => ({
 																...prev,
 																assumptions: [...(prev.assumptions || []), ...suggestions],
-															}))
+															}));
 														}}
 													/>
 												</div>
@@ -1665,8 +1665,8 @@ export default function ProjectGoalsScreen({
 											{!showUnknownSuggestions ? (
 												<Button
 													onClick={() => {
-														setShowUnknownSuggestions(true)
-														setActiveSuggestionType("unknowns")
+														setShowUnknownSuggestions(true);
+														setActiveSuggestionType("unknowns");
 													}}
 													variant="outline"
 													size="sm"
@@ -1693,8 +1693,8 @@ export default function ProjectGoalsScreen({
 														</Button>
 														<Button
 															onClick={() => {
-																setShowUnknownSuggestions(false)
-																setNewUnknown("")
+																setShowUnknownSuggestions(false);
+																setNewUnknown("");
 															}}
 															variant="ghost"
 															size="sm"
@@ -1713,20 +1713,20 @@ export default function ProjectGoalsScreen({
 														isActive={activeSuggestionType === null || activeSuggestionType === "unknowns"}
 														onSuggestionClick={async (suggestion) => {
 															if (!unknowns.includes(suggestion.trim())) {
-																await createProjectIfNeeded()
-																const newUnknowns = [...unknowns, suggestion.trim()]
-																setUnknowns(newUnknowns)
-																saveSection("unknowns", newUnknowns)
+																await createProjectIfNeeded();
+																const newUnknowns = [...unknowns, suggestion.trim()];
+																setUnknowns(newUnknowns);
+																saveSection("unknowns", newUnknowns);
 															}
 														}}
 														onSuggestionShown={(suggestions) => {
 															if (activeSuggestionType === null) {
-																setActiveSuggestionType("unknowns")
+																setActiveSuggestionType("unknowns");
 															}
 															setShownSuggestionsByType((prev) => ({
 																...prev,
 																unknowns: [...(prev.unknowns || []), ...suggestions],
-															}))
+															}));
 														}}
 													/>
 												</div>
@@ -1781,10 +1781,10 @@ export default function ProjectGoalsScreen({
 												<ToggleGroup
 													className="grid w-full grid-cols-1 gap-2"
 													onValueChange={(value) => {
-														if (!value) return
-														const mode = value as ResearchMode
-														setResearchMode(mode)
-														saveSettings({ research_mode: mode })
+														if (!value) return;
+														const mode = value as ResearchMode;
+														setResearchMode(mode);
+														saveSettings({ research_mode: mode });
 													}}
 													type="single"
 													value={researchMode}
@@ -1828,10 +1828,10 @@ export default function ProjectGoalsScreen({
 													<Input
 														value={interview_duration}
 														onChange={(e) => {
-															const value = Number(e.target.value)
+															const value = Number(e.target.value);
 															if (!Number.isNaN(value)) {
-																setInterviewDuration(value)
-																saveSettings({ interview_duration: value })
+																setInterviewDuration(value);
+																saveSettings({ interview_duration: value });
 															}
 														}}
 														type="number"
@@ -1852,10 +1852,10 @@ export default function ProjectGoalsScreen({
 													<Input
 														value={target_conversations}
 														onChange={(e) => {
-															const value = Number(e.target.value)
+															const value = Number(e.target.value);
 															if (!Number.isNaN(value)) {
-																setTargetConversations(value)
-																saveSettings({ target_conversations: value })
+																setTargetConversations(value);
+																saveSettings({ target_conversations: value });
 															}
 														}}
 														type="number"
@@ -1940,5 +1940,5 @@ export default function ProjectGoalsScreen({
 				)}
 			</div>
 		</TooltipProvider>
-	)
+	);
 }

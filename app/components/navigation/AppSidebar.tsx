@@ -1,9 +1,9 @@
 // app/components/layout/AppSidebar.tsx
-import { Briefcase, Building2, Handshake, HandshakeIcon, Plus, SquareCheckBig, Users } from "lucide-react"
-import { useMemo } from "react"
-import { Link, NavLink, useLocation, useRouteLoaderData } from "react-router-dom"
-import { Badge } from "~/components/ui/badge" // ⬅️ for right-aligned counts
-import { Button } from "~/components/ui/button"
+import { Briefcase, Building2, Handshake, HandshakeIcon, Plus, SquareCheckBig, Users } from "lucide-react";
+import { useMemo } from "react";
+import { Link, NavLink, useLocation, useRouteLoaderData } from "react-router-dom";
+import { Badge } from "~/components/ui/badge"; // ⬅️ for right-aligned counts
+import { Button } from "~/components/ui/button";
 import {
 	Sidebar,
 	SidebarContent,
@@ -18,143 +18,144 @@ import {
 	SidebarRail,
 	SidebarTrigger,
 	useSidebar,
-} from "~/components/ui/sidebar"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useValidationView } from "~/contexts/ValidationViewContext"
-import { useCurrentProjectData } from "~/hooks/useCurrentProjectData"
-import { useJourneyProgress } from "~/hooks/useJourneyProgress"
-import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
-import { useProjectDataAvailability } from "~/hooks/useProjectDataAvailability"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { useSidebarCounts } from "~/hooks/useSidebarCounts" // ⬅️ counts hook
-import { UserProfile } from "../auth/UserProfile"
-import { Logo, LogoBrand } from "../branding"
-import type { AppSidebarSection } from "./app-sidebar.config"
-import { APP_SIDEBAR_SECTIONS, APP_SIDEBAR_UTILITY_LINKS } from "./app-sidebar.config"
-import { InviteTeamModal } from "./InviteTeamModal"
-import { type JourneyPhase, JourneySidebarGroup, type PlanSubStep } from "./JourneySidebarGroup"
-import { TeamSwitcher } from "./TeamSwitcher"
+} from "~/components/ui/sidebar";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useValidationView } from "~/contexts/ValidationViewContext";
+import { useCurrentProjectData } from "~/hooks/useCurrentProjectData";
+import { useJourneyProgress } from "~/hooks/useJourneyProgress";
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
+import { useProjectDataAvailability } from "~/hooks/useProjectDataAvailability";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { useSidebarCounts } from "~/hooks/useSidebarCounts"; // ⬅️ counts hook
+import { UserProfile } from "../auth/UserProfile";
+import { Logo, LogoBrand } from "../branding";
+import type { AppSidebarSection } from "./app-sidebar.config";
+import { APP_SIDEBAR_SECTIONS, APP_SIDEBAR_UTILITY_LINKS } from "./app-sidebar.config";
+import { InviteTeamModal } from "./InviteTeamModal";
+import { type JourneyPhase, JourneySidebarGroup, type PlanSubStep } from "./JourneySidebarGroup";
+import { TeamSwitcher } from "./TeamSwitcher";
 
 interface ProjectRecord {
-	id: string
-	account_id: string
-	name?: string | null
-	slug?: string | null
-	workflow_type?: string | null
+	id: string;
+	account_id: string;
+	name?: string | null;
+	slug?: string | null;
+	workflow_type?: string | null;
 }
 
 interface AccountRecord {
-	account_id: string
-	name?: string | null
-	personal_account?: boolean | null
-	projects?: ProjectRecord[] | null
+	account_id: string;
+	name?: string | null;
+	personal_account?: boolean | null;
+	projects?: ProjectRecord[] | null;
 }
 
 interface ProtectedLayoutData {
-	accounts?: AccountRecord[] | null
+	accounts?: AccountRecord[] | null;
 	user_settings?: {
-		last_used_account_id?: string | null
-		last_used_project_id?: string | null
-	} | null
+		last_used_account_id?: string | null;
+		last_used_project_id?: string | null;
+	} | null;
 }
 
 export function AppSidebar() {
-	const { accountId, projectId, projectPath } = useCurrentProject()
-	const location = useLocation()
-	const { state } = useSidebar()
-	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null
-	const { hasAnalysisData } = useProjectDataAvailability()
-	const { isEnabled: icpFeatureEnabled } = usePostHogFeatureFlag("ffICP")
-	const { project } = useCurrentProjectData()
-	const { showValidationView, setShowValidationView } = useValidationView()
-	const { isEnabled: salesCrmEnabled } = usePostHogFeatureFlag("ffSalesCRM")
-	const { isEnabled: prioritiesEnabled } = usePostHogFeatureFlag("ffPriorities")
+	const { accountId, projectId, projectPath } = useCurrentProject();
+	const location = useLocation();
+	const { state } = useSidebar();
+	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null;
+	const { hasAnalysisData } = useProjectDataAvailability();
+	const { isEnabled: icpFeatureEnabled } = usePostHogFeatureFlag("ffICP");
+	const { project } = useCurrentProjectData();
+	const { showValidationView, setShowValidationView } = useValidationView();
+	const { isEnabled: salesCrmEnabled } = usePostHogFeatureFlag("ffSalesCRM");
+	const { isEnabled: prioritiesEnabled } = usePostHogFeatureFlag("ffPriorities");
+	const { isEnabled: journeyMapEnabled } = usePostHogFeatureFlag("ffYourJourney");
 
 	// Journey progress for onboarding sidebar
-	const { progress: journeyProgress, allComplete: journeyComplete } = useJourneyProgress(projectId)
+	const { progress: journeyProgress, allComplete: journeyComplete } = useJourneyProgress(projectId);
 
 	// Determine if Plan phase is complete (context + prompts)
-	const planComplete = journeyProgress.contextComplete && journeyProgress.promptsComplete
+	const planComplete = journeyProgress.contextComplete && journeyProgress.promptsComplete;
 
 	// Derive current journey phase from location
 	const journeyPhaseInfo = useMemo(() => {
-		const pathname = location.pathname
-		let currentPhase: JourneyPhase = "plan"
-		let planSubStep: PlanSubStep | undefined
+		const pathname = location.pathname;
+		let currentPhase: JourneyPhase = "plan";
+		let planSubStep: PlanSubStep | undefined;
 
 		if (pathname.endsWith("/setup")) {
-			currentPhase = "plan"
-			planSubStep = "context"
+			currentPhase = "plan";
+			planSubStep = "context";
 		} else if (pathname.endsWith("/questions")) {
-			currentPhase = "plan"
-			planSubStep = "prompts"
+			currentPhase = "plan";
+			planSubStep = "prompts";
 		} else if (pathname.includes("/interviews")) {
-			currentPhase = "collect"
+			currentPhase = "collect";
 		} else if (pathname.includes("/insights")) {
-			currentPhase = "learn"
+			currentPhase = "learn";
 		} else {
 			// Default to plan phase, context sub-step
-			currentPhase = "plan"
-			planSubStep = "context"
+			currentPhase = "plan";
+			planSubStep = "context";
 		}
 
-		return { currentPhase, planSubStep }
-	}, [location.pathname])
+		return { currentPhase, planSubStep };
+	}, [location.pathname]);
 
 	const accounts = useMemo(() => {
-		if (!protectedData?.accounts) return [] as AccountRecord[]
-		return protectedData.accounts.filter(Boolean) as AccountRecord[]
-	}, [protectedData?.accounts])
+		if (!protectedData?.accounts) return [] as AccountRecord[];
+		return protectedData.accounts.filter(Boolean) as AccountRecord[];
+	}, [protectedData?.accounts]);
 
 	const fallbackAccount = useMemo(() => {
 		if (accountId) {
-			return accounts.find((acct) => acct.account_id === accountId) || null
+			return accounts.find((acct) => acct.account_id === accountId) || null;
 		}
-		return accounts[0] || null
-	}, [accounts, accountId])
+		return accounts[0] || null;
+	}, [accounts, accountId]);
 
 	const fallbackProject = useMemo(() => {
-		if (projectId) return { id: projectId }
+		if (projectId) return { id: projectId };
 
-		const lastUsedProjectId = protectedData?.user_settings?.last_used_project_id
+		const lastUsedProjectId = protectedData?.user_settings?.last_used_project_id;
 		if (lastUsedProjectId && fallbackAccount?.projects?.length) {
-			const lastUsedProject = fallbackAccount.projects.find((p) => p.id === lastUsedProjectId)
+			const lastUsedProject = fallbackAccount.projects.find((p) => p.id === lastUsedProjectId);
 			if (lastUsedProject) {
-				console.log("[AppSidebar] Using last_used_project_id:", lastUsedProjectId)
-				return lastUsedProject
+				console.log("[AppSidebar] Using last_used_project_id:", lastUsedProjectId);
+				return lastUsedProject;
 			}
 			console.warn("[AppSidebar] last_used_project_id not found in current account projects:", {
 				lastUsedProjectId,
 				availableProjects: fallbackAccount?.projects?.map((p) => p.id),
-			})
+			});
 		}
 
 		if (fallbackAccount?.projects?.length) {
-			console.log("[AppSidebar] Falling back to first project:", fallbackAccount.projects[0].id)
-			return fallbackAccount.projects[0] || null
+			console.log("[AppSidebar] Falling back to first project:", fallbackAccount.projects[0].id);
+			return fallbackAccount.projects[0] || null;
 		}
-		return null
-	}, [fallbackAccount, projectId, protectedData?.user_settings?.last_used_project_id])
+		return null;
+	}, [fallbackAccount, projectId, protectedData?.user_settings?.last_used_project_id]);
 
-	const effectiveAccountId = accountId || fallbackAccount?.account_id || ""
-	const effectiveProjectId = fallbackProject?.id || ""
+	const effectiveAccountId = accountId || fallbackAccount?.account_id || "";
+	const effectiveProjectId = fallbackProject?.id || "";
 
 	// Construct proper project path
 	const effectiveProjectPath =
-		effectiveAccountId && effectiveProjectId ? `/a/${effectiveAccountId}/${effectiveProjectId}` : projectPath || ""
+		effectiveAccountId && effectiveProjectId ? `/a/${effectiveAccountId}/${effectiveProjectId}` : projectPath || "";
 
-	const routes = useProjectRoutes(effectiveProjectPath)
-	const canNavigate = Boolean(effectiveAccountId && effectiveProjectId)
-	const isCollapsed = state === "collapsed"
+	const routes = useProjectRoutes(effectiveProjectPath);
+	const canNavigate = Boolean(effectiveAccountId && effectiveProjectId);
+	const isCollapsed = state === "collapsed";
 	const salesProject = useMemo(() => {
 		const account = (accounts.find((acct) => acct.account_id === effectiveAccountId) ||
 			fallbackAccount ||
-			null) as AccountRecord | null
+			null) as AccountRecord | null;
 		const fromAccounts =
-			account?.projects?.find((proj) => (proj as ProjectRecord | null)?.workflow_type === "sales") || null
+			account?.projects?.find((proj) => (proj as ProjectRecord | null)?.workflow_type === "sales") || null;
 
 		if (fromAccounts) {
-			return fromAccounts
+			return fromAccounts;
 		}
 
 		if (project?.workflow_type === "sales" && effectiveAccountId && projectId) {
@@ -164,38 +165,38 @@ export function AppSidebar() {
 				name: project?.name,
 				slug: project?.slug,
 				workflow_type: "sales",
-			} satisfies ProjectRecord
+			} satisfies ProjectRecord;
 		}
 
-		return null
-	}, [accounts, effectiveAccountId, fallbackAccount, project, projectId])
+		return null;
+	}, [accounts, effectiveAccountId, fallbackAccount, project, projectId]);
 
 	const salesProjectBasePath = useMemo(() => {
-		if (!salesProject) return null
-		const accountIdForSales = salesProject.account_id || effectiveAccountId
-		if (!accountIdForSales || !salesProject.id) return null
-		return `/a/${accountIdForSales}/${salesProject.id}`
-	}, [salesProject, effectiveAccountId])
+		if (!salesProject) return null;
+		const accountIdForSales = salesProject.account_id || effectiveAccountId;
+		if (!accountIdForSales || !salesProject.id) return null;
+		return `/a/${accountIdForSales}/${salesProject.id}`;
+	}, [salesProject, effectiveAccountId]);
 
-	const salesRoutes = useProjectRoutes(salesProjectBasePath ?? "")
+	const salesRoutes = useProjectRoutes(salesProjectBasePath ?? "");
 
 	// Filter sections based on data availability
 	const visibleSections = useMemo(() => {
 		return APP_SIDEBAR_SECTIONS.filter((section) => {
 			if (section.key === "analyze") {
-				return hasAnalysisData
+				return hasAnalysisData;
 			}
-			return true
-		})
-	}, [hasAnalysisData])
+			return true;
+		});
+	}, [hasAnalysisData]);
 
 	const salesSection = useMemo<AppSidebarSection | null>(() => {
 		if (!salesCrmEnabled || !salesProject || !salesProjectBasePath) {
-			return null
+			return null;
 		}
 
-		const base = salesRoutes.salesBase()
-		if (!base) return null
+		const base = salesRoutes.salesBase();
+		if (!base) return null;
 
 		return {
 			key: "sales",
@@ -226,20 +227,20 @@ export function AppSidebar() {
 					to: (_routes) => `${base}/opportunities`,
 				},
 			],
-		}
-	}, [salesCrmEnabled, salesProject, salesProjectBasePath, salesRoutes])
+		};
+	}, [salesCrmEnabled, salesProject, salesProjectBasePath, salesRoutes]);
 
-	const { counts, loading: countsLoading } = useSidebarCounts(accountId, effectiveProjectId, project?.workflow_type)
+	const { counts, loading: countsLoading } = useSidebarCounts(accountId, effectiveProjectId, project?.workflow_type);
 
-	const hasContent = hasAnalysisData || (counts.content ?? 0) > 0
-	const hasInsights = (counts.insights ?? counts.themes ?? 0) > 0
-	const insightsLocked = !hasContent
-	const lensesLocked = !hasInsights
-	const isSalesMode = Boolean(project?.workflow_type === "sales" || salesCrmEnabled)
-	const shouldShowOpportunities = (counts.organizations ?? 0) > 0 || isSalesMode
+	const hasContent = hasAnalysisData || (counts.content ?? 0) > 0;
+	const hasInsights = (counts.insights ?? counts.themes ?? 0) > 0;
+	const insightsLocked = !hasContent;
+	const lensesLocked = !hasInsights;
+	const isSalesMode = Boolean(project?.workflow_type === "sales" || salesCrmEnabled);
+	const shouldShowOpportunities = (counts.organizations ?? 0) > 0 || isSalesMode;
 
 	const sectionsToRender = useMemo(() => {
-		const baseSections = salesSection ? [...visibleSections, salesSection] : visibleSections
+		const baseSections = salesSection ? [...visibleSections, salesSection] : visibleSections;
 
 		// Filter items within sections based on feature flags
 		return baseSections
@@ -248,24 +249,41 @@ export function AppSidebar() {
 				items: section.items.filter((item) => {
 					// Hide ICP-specific features when flag is off
 					if (!icpFeatureEnabled && ["segments", "product-lens"].includes(item.key)) {
-						return false
+						return false;
 					}
 					// Only show BANT Lens when the ffSalesCRM flag is on
 					if (item.key === "bant-lens") {
-						return salesCrmEnabled
+						return salesCrmEnabled;
 					}
 					// Check generic featureFlag property
 					if (item.key === "priorities" && !prioritiesEnabled) {
-						return false
+						return false;
+					}
+					// Journey map: show when feature flag is enabled or in local dev
+					if (
+						item.key === "journey" &&
+						!journeyMapEnabled &&
+						typeof window !== "undefined" &&
+						window.location.hostname !== "localhost"
+					) {
+						return false;
 					}
 					if (item.key === "opportunities") {
-						return shouldShowOpportunities
+						return shouldShowOpportunities;
 					}
-					return true
+					return true;
 				}),
 			}))
-			.filter((section) => section.items.length > 0) // Remove sections with no items
-	}, [visibleSections, salesSection, salesCrmEnabled, icpFeatureEnabled, prioritiesEnabled, shouldShowOpportunities])
+			.filter((section) => section.items.length > 0); // Remove sections with no items
+	}, [
+		visibleSections,
+		salesSection,
+		salesCrmEnabled,
+		icpFeatureEnabled,
+		prioritiesEnabled,
+		journeyMapEnabled,
+		shouldShowOpportunities,
+	]);
 
 	// ────────────────────────────────────────────────────────────────
 	// Counts → show small badges on matching items
@@ -290,6 +308,8 @@ export function AppSidebar() {
 		conversations: "encounters", // Conversations = encounters/interviews count
 		insights: "insights",
 		content: "content", // Content = conversations + notes + files
+		"notes-files": "content", // Notes & Files = content count
+		responses: "surveyResponses", // Responses = survey responses count
 		tasks: "highPriorityTasks", // Tasks = high priority tasks count
 		ask: "surveyResponses",
 
@@ -306,11 +326,11 @@ export function AppSidebar() {
 		accounts: "accounts",
 		deals: "deals",
 		contacts: "contacts",
-	}
+	};
 
 	const renderRightBadge = (itemKey: string, isActive: boolean) => {
-		const countKey = COUNT_KEY_BY_ITEM[itemKey]
-		const countVal = countKey ? counts[countKey] : undefined
+		const countKey = COUNT_KEY_BY_ITEM[itemKey];
+		const countVal = countKey ? counts[countKey] : undefined;
 
 		if (typeof countVal === "number") {
 			return (
@@ -320,43 +340,43 @@ export function AppSidebar() {
 				>
 					{countVal}
 				</Badge>
-			)
+			);
 		}
 
 		// Optional: subtle placeholder while loading counts
 		if (countsLoading && countKey) {
-			return <span className="ml-2 h-4 w-6 animate-pulse rounded-full bg-muted-foreground/20" />
+			return <span className="ml-2 h-4 w-6 animate-pulse rounded-full bg-muted-foreground/20" />;
 		}
 
-		return null
-	}
+		return null;
+	};
 	// ────────────────────────────────────────────────────────────────
 	const buildTooltip = (title: string, description?: string, hint?: string) =>
-		[title, description, hint].filter(Boolean).join(" • ") || undefined
+		[title, description, hint].filter(Boolean).join(" • ") || undefined;
 
 	const resolveItemState = (itemKey: string) => {
 		if (itemKey === "insights") {
 			return {
 				locked: insightsLocked,
 				hint: insightsLocked ? "Add content to unlock" : undefined,
-			}
+			};
 		}
 		if (itemKey === "lenses") {
 			return {
 				locked: lensesLocked,
 				hint: lensesLocked ? "Generate insights first" : undefined,
-			}
+			};
 		}
 
-		return { locked: false, hint: undefined }
-	}
+		return { locked: false, hint: undefined };
+	};
 
 	const renderLabel = (title: string, hint?: string) => (
 		<div className="flex flex-col text-left">
 			<span>{title}</span>
 			{hint && !isCollapsed && <span className="text-muted-foreground text-xs">{hint}</span>}
 		</div>
-	)
+	);
 
 	return (
 		<Sidebar collapsible="icon" variant="sidebar">
@@ -402,10 +422,10 @@ export function AppSidebar() {
 						<SidebarGroupContent>
 							<SidebarMenu>
 								{section.items.map((item) => {
-									const { locked, hint } = resolveItemState(item.key)
-									const href = !locked && canNavigate ? item.to(routes) : undefined
-									const isActive = href ? location.pathname === href : false
-									const tooltip = buildTooltip(item.title, item.description, hint)
+									const { locked, hint } = resolveItemState(item.key);
+									const href = !locked && canNavigate ? item.to(routes) : undefined;
+									const isActive = href ? location.pathname === href : false;
+									const tooltip = buildTooltip(item.title, item.description, hint);
 
 									return (
 										<SidebarMenuItem key={item.key} className="py-0.5">
@@ -430,7 +450,7 @@ export function AppSidebar() {
 												</SidebarMenuButton>
 											)}
 										</SidebarMenuItem>
-									)
+									);
 								})}
 							</SidebarMenu>
 						</SidebarGroupContent>
@@ -475,9 +495,9 @@ export function AppSidebar() {
 				<SidebarMenu>
 					{/* Other utility links */}
 					{APP_SIDEBAR_UTILITY_LINKS.map((item) => {
-						const href = item.to ? (canNavigate ? item.to(routes) : undefined) : undefined
-						const isActive = href ? location.pathname === href : false
-						const tooltip = buildTooltip(item.title, item.description)
+						const href = item.to ? (canNavigate ? item.to(routes) : undefined) : undefined;
+						const isActive = href ? location.pathname === href : false;
+						const tooltip = buildTooltip(item.title, item.description);
 
 						return (
 							<SidebarMenuItem key={item.key} className="py-0.5">
@@ -500,7 +520,7 @@ export function AppSidebar() {
 									</SidebarMenuButton>
 								)}
 							</SidebarMenuItem>
-						)
+						);
 					})}
 
 					{/* Access */}
@@ -517,5 +537,5 @@ export function AppSidebar() {
 				<SidebarTrigger title="Toggle sidebar" className="mt-3" />
 			</SidebarRail>
 		</Sidebar>
-	)
+	);
 }

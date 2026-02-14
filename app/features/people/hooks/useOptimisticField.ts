@@ -5,35 +5,35 @@
  * from the fetcher's pending submission data.
  */
 
-import { useCallback, useEffect, useRef } from "react"
-import { useFetcher } from "react-router-dom"
+import { useCallback, useEffect, useRef } from "react";
+import { useFetcher } from "react-router-dom";
 
 interface UseOptimisticFieldOptions<T> {
 	/** Current value from the server */
-	value: T
+	value: T;
 	/** API endpoint for updates */
-	endpoint: string
+	endpoint: string;
 	/** Field name for the update */
-	field: string
+	field: string;
 	/** Person ID for the update */
-	personId: string
+	personId: string;
 	/** Optional organization ID for org-linked fields */
-	organizationId?: string
+	organizationId?: string;
 	/** Optional org field name (for organization-level updates) */
-	orgField?: string
+	orgField?: string;
 	/** Called when an error occurs */
-	onError?: (error: string) => void
+	onError?: (error: string) => void;
 }
 
 interface UseOptimisticFieldReturn<T> {
 	/** The optimistic value (pending or current) */
-	optimisticValue: T
+	optimisticValue: T;
 	/** Whether a save is in progress */
-	isPending: boolean
+	isPending: boolean;
 	/** Whether the last save failed */
-	hasError: boolean
+	hasError: boolean;
 	/** Submit a new value */
-	submit: (newValue: T) => void
+	submit: (newValue: T) => void;
 }
 
 export function useOptimisticField<T extends string | null>({
@@ -45,95 +45,95 @@ export function useOptimisticField<T extends string | null>({
 	orgField,
 	onError,
 }: UseOptimisticFieldOptions<T>): UseOptimisticFieldReturn<T> {
-	const fetcher = useFetcher()
-	const lastSubmittedValue = useRef<T | undefined>(undefined)
+	const fetcher = useFetcher();
+	const lastSubmittedValue = useRef<T | undefined>(undefined);
 
 	// Track if we're in a pending state
-	const isPending = fetcher.state !== "idle"
+	const isPending = fetcher.state !== "idle";
 
 	// Get the optimistic value from pending form data
-	const pendingValue = fetcher.formData?.get("value") as T | undefined
-	const optimisticValue = isPending && pendingValue !== undefined ? pendingValue : value
+	const pendingValue = fetcher.formData?.get("value") as T | undefined;
+	const optimisticValue = isPending && pendingValue !== undefined ? pendingValue : value;
 
 	// Track errors
-	const hasError = fetcher.data?.error != null
+	const hasError = fetcher.data?.error != null;
 
 	// Handle errors
 	useEffect(() => {
 		if (hasError && onError && fetcher.data?.error) {
-			onError(fetcher.data.error)
+			onError(fetcher.data.error);
 		}
-	}, [hasError, fetcher.data?.error, onError])
+	}, [hasError, fetcher.data?.error, onError]);
 
 	// Submit a new value
 	const submit = useCallback(
 		(newValue: T) => {
-			lastSubmittedValue.current = newValue
+			lastSubmittedValue.current = newValue;
 
-			const formData = new FormData()
-			formData.append("personId", personId)
-			formData.append("field", field)
-			formData.append("value", newValue ?? "")
+			const formData = new FormData();
+			formData.append("personId", personId);
+			formData.append("field", field);
+			formData.append("value", newValue ?? "");
 
 			if (organizationId) {
-				formData.append("organizationId", organizationId)
+				formData.append("organizationId", organizationId);
 			}
 			if (orgField) {
-				formData.append("orgField", orgField)
+				formData.append("orgField", orgField);
 			}
 
 			fetcher.submit(formData, {
 				method: "POST",
 				action: endpoint,
-			})
+			});
 		},
 		[fetcher, personId, field, endpoint, organizationId, orgField]
-	)
+	);
 
 	return {
 		optimisticValue,
 		isPending,
 		hasError,
 		submit,
-	}
+	};
 }
 
 /**
  * Hook for tracking multiple optimistic updates in a table context
  */
 interface PendingUpdate {
-	personId: string
-	field: string
-	value: string | null
-	timestamp: number
+	personId: string;
+	field: string;
+	value: string | null;
+	timestamp: number;
 }
 
 interface UseOptimisticTableOptions {
 	/** The server data */
-	serverData: Array<{ id: string; [key: string]: unknown }>
+	serverData: Array<{ id: string; [key: string]: unknown }>;
 	/** API endpoint for updates */
-	endpoint: string
+	endpoint: string;
 }
 
 export function useOptimisticTable<T extends { id: string }>({ serverData, endpoint }: UseOptimisticTableOptions) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	// Get pending updates from fetcher
 	const getPendingValue = useCallback(
 		(personId: string, field: string): string | null | undefined => {
-			if (fetcher.state === "idle") return undefined
+			if (fetcher.state === "idle") return undefined;
 
-			const formPersonId = fetcher.formData?.get("personId")
-			const formField = fetcher.formData?.get("field")
-			const formValue = fetcher.formData?.get("value")
+			const formPersonId = fetcher.formData?.get("personId");
+			const formField = fetcher.formData?.get("field");
+			const formValue = fetcher.formData?.get("value");
 
 			if (formPersonId === personId && formField === field) {
-				return formValue as string | null
+				return formValue as string | null;
 			}
-			return undefined
+			return undefined;
 		},
 		[fetcher.state, fetcher.formData]
-	)
+	);
 
 	// Submit an update
 	const submitUpdate = useCallback(
@@ -142,33 +142,33 @@ export function useOptimisticTable<T extends { id: string }>({ serverData, endpo
 			field: string,
 			value: string | null,
 			options?: {
-				organizationId?: string
-				orgField?: string
-				newOrganizationName?: string
+				organizationId?: string;
+				orgField?: string;
+				newOrganizationName?: string;
 			}
 		) => {
-			const formData = new FormData()
-			formData.append("personId", personId)
-			formData.append("field", field)
-			formData.append("value", value ?? "")
+			const formData = new FormData();
+			formData.append("personId", personId);
+			formData.append("field", field);
+			formData.append("value", value ?? "");
 
 			if (options?.organizationId) {
-				formData.append("organizationId", options.organizationId)
+				formData.append("organizationId", options.organizationId);
 			}
 			if (options?.orgField) {
-				formData.append("orgField", options.orgField)
+				formData.append("orgField", options.orgField);
 			}
 			if (options?.newOrganizationName) {
-				formData.append("newOrganizationName", options.newOrganizationName)
+				formData.append("newOrganizationName", options.newOrganizationName);
 			}
 
 			fetcher.submit(formData, {
 				method: "POST",
 				action: endpoint,
-			})
+			});
 		},
 		[fetcher, endpoint]
-	)
+	);
 
 	return {
 		isPending: fetcher.state !== "idle",
@@ -176,5 +176,5 @@ export function useOptimisticTable<T extends { id: string }>({ serverData, endpo
 		errorMessage: fetcher.data?.error as string | undefined,
 		getPendingValue,
 		submitUpdate,
-	}
+	};
 }

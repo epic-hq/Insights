@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react-vite"
+import type { Meta, StoryObj } from "@storybook/react-vite";
 
 const TestComponent = () => {
 	return (
@@ -10,8 +10,8 @@ const TestComponent = () => {
 			</div>
 			<div className="mt-4 rounded-lg border border-border p-4">This should have a border</div>
 		</div>
-	)
-}
+	);
+};
 
 const meta = {
 	title: "Test/Tailwind",
@@ -19,9 +19,9 @@ const meta = {
 	parameters: {
 		layout: "padded",
 	},
-} satisfies Meta<typeof TestComponent>
+} satisfies Meta<typeof TestComponent>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {}
+export const Default: Story = {};

@@ -1,4 +1,4 @@
-import Page from "./dashboard"
+import Page from "./dashboard";
 
 describe("Dashboard route", () => {
 	it("renders the dashboard layout", async ({ renderStub }) => {
@@ -10,9 +10,9 @@ describe("Dashboard route", () => {
 					Component: Page,
 				},
 			],
-		})
+		});
 
-		expect(getByText("Building Your Application")).not.toBeNull()
-		expect(getByText("Data Fetching")).not.toBeNull()
-	})
-})
+		expect(getByText("Building Your Application")).not.toBeNull();
+		expect(getByText("Data Fetching")).not.toBeNull();
+	});
+});

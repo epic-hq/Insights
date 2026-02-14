@@ -5,10 +5,10 @@
  * for collecting responses from external participants via a shareable public link.
  */
 
-import { Check, Copy, ExternalLink, FileText, Loader2, MessageSquare, Settings2 } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
-import { toast } from "sonner"
-import { Button } from "~/components/ui/button"
+import { Check, Copy, ExternalLink, FileText, Loader2, MessageSquare, Settings2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "~/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -16,28 +16,28 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "~/components/ui/dialog"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Switch } from "~/components/ui/switch"
-import { createClient } from "~/lib/supabase/client"
+} from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Switch } from "~/components/ui/switch";
+import { createClient } from "~/lib/supabase/client";
 
 interface MethodSettingsProps {
-	projectId: string
-	accountId: string
-	projectName?: string
+	projectId: string;
+	accountId: string;
+	projectName?: string;
 }
 
 interface ResearchLink {
-	id: string
-	slug: string
-	allow_chat: boolean
-	default_response_mode: "form" | "chat"
-	is_live: boolean
+	id: string;
+	slug: string;
+	allow_chat: boolean;
+	default_response_mode: "form" | "chat";
+	is_live: boolean;
 }
 
 export function MethodSettingsButton({ projectId, accountId, projectName }: MethodSettingsProps) {
-	const [open, setOpen] = useState(false)
+	const [open, setOpen] = useState(false);
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
@@ -62,7 +62,7 @@ export function MethodSettingsButton({ projectId, accountId, projectName }: Meth
 				/>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }
 
 function MethodSettingsContent({
@@ -71,17 +71,17 @@ function MethodSettingsContent({
 	projectName,
 	onClose,
 }: MethodSettingsProps & { onClose: () => void }) {
-	const supabase = createClient()
-	const [isLoading, setIsLoading] = useState(true)
-	const [isSaving, setIsSaving] = useState(false)
-	const [researchLink, setResearchLink] = useState<ResearchLink | null>(null)
-	const [copied, setCopied] = useState(false)
+	const supabase = createClient();
+	const [isLoading, setIsLoading] = useState(true);
+	const [isSaving, setIsSaving] = useState(false);
+	const [researchLink, setResearchLink] = useState<ResearchLink | null>(null);
+	const [copied, setCopied] = useState(false);
 
 	// Channel states
-	const [surveyEnabled, setSurveyEnabled] = useState(false)
-	const [chatEnabled, setChatEnabled] = useState(false)
-	const [isLive, setIsLive] = useState(false)
-	const [slug, setSlug] = useState("")
+	const [surveyEnabled, setSurveyEnabled] = useState(false);
+	const [chatEnabled, setChatEnabled] = useState(false);
+	const [isLive, setIsLive] = useState(false);
+	const [slug, setSlug] = useState("");
 
 	// Generate default slug from project name
 	const generateSlug = useCallback((name: string) => {
@@ -89,70 +89,70 @@ function MethodSettingsContent({
 			.toLowerCase()
 			.replace(/[^a-z0-9]+/g, "-")
 			.replace(/^-|-$/g, "")
-			.substring(0, 50)
-	}, [])
+			.substring(0, 50);
+	}, []);
 
 	// Load existing research link for this project
 	useEffect(() => {
 		const load = async () => {
-			setIsLoading(true)
+			setIsLoading(true);
 			try {
 				const { data, error } = await supabase
 					.from("research_links")
 					.select("id, slug, allow_chat, default_response_mode, is_live")
 					.eq("project_id", projectId)
-					.maybeSingle()
+					.maybeSingle();
 
 				if (error) {
-					console.warn("[MethodSettings] Failed to load research link:", error)
-					return
+					console.warn("[MethodSettings] Failed to load research link:", error);
+					return;
 				}
 
 				if (data) {
 					setResearchLink({
 						...data,
 						default_response_mode: data.default_response_mode as "form" | "chat",
-					})
-					setSurveyEnabled(true)
-					setChatEnabled(data.allow_chat)
-					setIsLive(data.is_live)
-					setSlug(data.slug)
+					});
+					setSurveyEnabled(true);
+					setChatEnabled(data.allow_chat);
+					setIsLive(data.is_live);
+					setSlug(data.slug);
 				} else {
-					setSlug(generateSlug(projectName || `project-${projectId.slice(0, 8)}`))
+					setSlug(generateSlug(projectName || `project-${projectId.slice(0, 8)}`));
 				}
 			} finally {
-				setIsLoading(false)
+				setIsLoading(false);
 			}
-		}
+		};
 
-		load()
-	}, [projectId, projectName, supabase, generateSlug])
+		load();
+	}, [projectId, projectName, supabase, generateSlug]);
 
 	// Create or update research link
 	const saveSettings = useCallback(async () => {
 		if (!surveyEnabled && !chatEnabled) {
 			if (researchLink) {
-				setIsSaving(true)
+				setIsSaving(true);
 				try {
-					const { error } = await supabase.from("research_links").update({ is_live: false }).eq("id", researchLink.id)
+					const { error } = await supabase.from("research_links").update({ is_live: false }).eq("id", researchLink.id);
 
-					if (error) throw error
+					if (error) throw error;
 
-					setResearchLink({ ...researchLink, is_live: false })
-					setIsLive(false)
-					toast.success("Collection methods disabled")
-					onClose()
+					setResearchLink({ ...researchLink, is_live: false });
+					setIsLive(false);
+					toast.success("Collection methods disabled");
+					onClose();
 				} catch (err) {
-					const message = err instanceof Error ? err.message : "Failed to save"
-					toast.error(message)
+					const message = err instanceof Error ? err.message : "Failed to save";
+					toast.error(message);
 				} finally {
-					setIsSaving(false)
+					setIsSaving(false);
 				}
 			}
-			return
+			return;
 		}
 
-		setIsSaving(true)
+		setIsSaving(true);
 		try {
 			if (researchLink) {
 				const { error } = await supabase
@@ -163,9 +163,9 @@ function MethodSettingsContent({
 						default_response_mode: chatEnabled ? "chat" : "form",
 						is_live: isLive,
 					})
-					.eq("id", researchLink.id)
+					.eq("id", researchLink.id);
 
-				if (error) throw error
+				if (error) throw error;
 
 				setResearchLink({
 					...researchLink,
@@ -173,9 +173,9 @@ function MethodSettingsContent({
 					allow_chat: chatEnabled,
 					default_response_mode: chatEnabled ? "chat" : "form",
 					is_live: isLive,
-				})
-				toast.success("Settings saved")
-				onClose()
+				});
+				toast.success("Settings saved");
+				onClose();
 			} else {
 				const { data, error } = await supabase
 					.from("research_links")
@@ -192,57 +192,57 @@ function MethodSettingsContent({
 						questions: [],
 					})
 					.select("id, slug, allow_chat, default_response_mode, is_live")
-					.single()
+					.single();
 
 				if (error) {
 					if (error.code === "23505") {
-						toast.error("That URL slug is already in use. Please choose a different one.")
-						return
+						toast.error("That URL slug is already in use. Please choose a different one.");
+						return;
 					}
-					throw error
+					throw error;
 				}
 
 				setResearchLink({
 					...data,
 					default_response_mode: data.default_response_mode as "form" | "chat",
-				})
-				toast.success("Collection method enabled")
-				onClose()
+				});
+				toast.success("Collection method enabled");
+				onClose();
 			}
 		} catch (err) {
-			const message = err instanceof Error ? err.message : "Failed to save"
-			toast.error(message)
+			const message = err instanceof Error ? err.message : "Failed to save";
+			toast.error(message);
 		} finally {
-			setIsSaving(false)
+			setIsSaving(false);
 		}
-	}, [surveyEnabled, chatEnabled, isLive, slug, researchLink, projectId, accountId, projectName, supabase, onClose])
+	}, [surveyEnabled, chatEnabled, isLive, slug, researchLink, projectId, accountId, projectName, supabase, onClose]);
 
 	// Copy link to clipboard
 	const copyLink = useCallback(() => {
-		const url = `${window.location.origin}/r/${slug}`
-		navigator.clipboard.writeText(url)
-		setCopied(true)
-		toast.success("Link copied to clipboard")
-		setTimeout(() => setCopied(false), 2000)
-	}, [slug])
+		const url = `${window.location.origin}/r/${slug}`;
+		navigator.clipboard.writeText(url);
+		setCopied(true);
+		toast.success("Link copied to clipboard");
+		setTimeout(() => setCopied(false), 2000);
+	}, [slug]);
 
 	// Open link in new tab
 	const openLink = useCallback(() => {
-		const url = `${window.location.origin}/r/${slug}`
-		window.open(url, "_blank")
-	}, [slug])
+		const url = `${window.location.origin}/r/${slug}`;
+		window.open(url, "_blank");
+	}, [slug]);
 
 	if (isLoading) {
 		return (
 			<div className="flex items-center justify-center py-8">
 				<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
 			</div>
-		)
+		);
 	}
 
 	const hasChanges = researchLink
 		? researchLink.allow_chat !== chatEnabled || researchLink.is_live !== isLive || researchLink.slug !== slug
-		: surveyEnabled || chatEnabled
+		: surveyEnabled || chatEnabled;
 
 	return (
 		<div className="space-y-6">
@@ -261,8 +261,8 @@ function MethodSettingsContent({
 					<Switch
 						checked={surveyEnabled}
 						onCheckedChange={(checked) => {
-							setSurveyEnabled(checked)
-							if (!checked) setChatEnabled(false)
+							setSurveyEnabled(checked);
+							if (!checked) setChatEnabled(false);
 						}}
 					/>
 				</div>
@@ -360,8 +360,8 @@ function MethodSettingsContent({
 				</Button>
 			</div>
 		</div>
-	)
+	);
 }
 
 // Keep backward compatibility export
-export const InputChannelSettings = MethodSettingsButton
+export const InputChannelSettings = MethodSettingsButton;

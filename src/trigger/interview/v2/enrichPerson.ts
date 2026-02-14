@@ -166,76 +166,8 @@ export const enrichPersonTaskV2 = task({
             );
           }
 
-          // Link to organization if company name is present but no organization link exists
-          if (person.company && !person.default_organization_id) {
-            try {
-              // Search for existing organization by name
-              const { data: orgs, error: orgSearchError } = await client
-                .from("organizations")
-                .select("id, name")
-                .eq("account_id", accountId)
-                .ilike("name", `%${person.company}%`)
-                .limit(1);
-
-              if (orgSearchError) {
-                throw orgSearchError;
-              }
-
-              let orgId: string | null = null;
-
-              if (orgs && orgs.length > 0) {
-                // Found matching organization
-                orgId = orgs[0].id;
-                consola.info(
-                  `[enrichPerson] Matched person ${pid} to existing org: ${orgs[0].name}`,
-                );
-              } else {
-                // Create new organization
-                const { data: newOrg, error: createOrgError } = await client
-                  .from("organizations")
-                  .insert({
-                    account_id: accountId,
-                    name: person.company,
-                    description: `Auto-created from interview ${interviewId}`,
-                  })
-                  .select("id")
-                  .single();
-
-                if (createOrgError) {
-                  throw createOrgError;
-                }
-
-                if (newOrg) {
-                  orgId = newOrg.id;
-                  consola.success(
-                    `[enrichPerson] Created new organization: ${person.company}`,
-                  );
-                }
-              }
-
-              // Link person to organization
-              if (orgId) {
-                const { error: linkOrgError } = await client
-                  .from("people")
-                  .update({ default_organization_id: orgId })
-                  .eq("id", pid);
-
-                if (linkOrgError) {
-                  throw linkOrgError;
-                }
-
-                organizationLinked = true;
-                consola.success(
-                  `[enrichPerson] Linked person ${pid} to organization ${orgId}`,
-                );
-              }
-            } catch (orgError) {
-              consola.warn(
-                `[enrichPerson] Could not link organization for person ${pid}:`,
-                orgError,
-              );
-            }
-          }
+          // Organization linking now handled at person creation time via resolveOrCreatePerson
+          organizationLinked = !!person.default_organization_id;
 
           enrichedPeople.push({
             personId: pid,

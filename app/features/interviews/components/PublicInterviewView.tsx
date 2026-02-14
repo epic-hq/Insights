@@ -18,83 +18,83 @@ import {
 	MessageSquare,
 	Pencil,
 	Sparkles,
-} from "lucide-react"
-import { useState } from "react"
-import { Streamdown } from "streamdown"
-import { LogoBrand } from "~/components/branding"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { MediaPlayer } from "~/components/ui/MediaPlayer"
-import { Timeline } from "~/components/ui/timeline"
-import { normalizeTranscriptUtterances } from "~/utils/transcript/normalizeUtterances"
-import { TranscriptResults } from "./TranscriptResults"
+} from "lucide-react";
+import { useState } from "react";
+import { Streamdown } from "streamdown";
+import { LogoBrand } from "~/components/branding";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { MediaPlayer } from "~/components/ui/MediaPlayer";
+import { Timeline } from "~/components/ui/timeline";
+import { normalizeTranscriptUtterances } from "~/utils/transcript/normalizeUtterances";
+import { TranscriptResults } from "./TranscriptResults";
 
 // Transcript data structure from loader
 interface TranscriptData {
-	fullTranscript: string | null
+	fullTranscript: string | null;
 	speakerTranscripts: Array<{
-		speaker?: string
-		text?: string
-		start?: number
-		end?: number
-		start_time?: number
-		end_time?: number
-		confidence?: number
-	}>
-	audio_duration?: number | null
-	topicDetection: unknown
+		speaker?: string;
+		text?: string;
+		start?: number;
+		end?: number;
+		start_time?: number;
+		end_time?: number;
+		confidence?: number;
+	}>;
+	audio_duration?: number | null;
+	topicDetection: unknown;
 	chapters?: Array<{
-		start_ms: number
-		end_ms?: number
-		summary?: string
-		title?: string
-	}>
+		start_ms: number;
+		end_ms?: number;
+		summary?: string;
+		title?: string;
+	}>;
 }
 
 interface PublicInterviewViewProps {
 	interview: {
-		id: string
-		title: string | null
-		interview_date: string | null
-		duration_sec: number | null
-		key_takeaways: string | null
-		media_url: string | null
-		thumbnail_url: string | null
-		media_type: string | null
-		source_type: string | null
-		created_at: string
-		conversation_analysis: unknown
-		observations_and_notes: string | null
-	}
-	transcriptData?: TranscriptData
+		id: string;
+		title: string | null;
+		interview_date: string | null;
+		duration_sec: number | null;
+		key_takeaways: string | null;
+		media_url: string | null;
+		thumbnail_url: string | null;
+		media_type: string | null;
+		source_type: string | null;
+		created_at: string;
+		conversation_analysis: unknown;
+		observations_and_notes: string | null;
+	};
+	transcriptData?: TranscriptData;
 	evidence: Array<{
-		id: string
-		gist: string | null
-		verbatim: string | null
-		anchors: Array<{ start_ms?: number; end_ms?: number }> | null
-		created_at: string
-		topic?: string | null
-	}>
+		id: string;
+		gist: string | null;
+		verbatim: string | null;
+		anchors: Array<{ start_ms?: number; end_ms?: number }> | null;
+		created_at: string;
+		topic?: string | null;
+	}>;
 	participants: Array<{
-		id: string | number
-		role: string | null
-		transcript_key?: string | null
-		display_name: string | null
+		id: string | number;
+		role: string | null;
+		transcript_key?: string | null;
+		display_name: string | null;
 		people: {
-			id: string
-			name: string | null
-			segment: string | null
-		} | null
-	}>
-	teamName: string | null
-	shareUrl?: string
+			id: string;
+			name: string | null;
+			segment: string | null;
+		} | null;
+	}>;
+	teamName: string | null;
+	shareUrl?: string;
 }
 
 function formatDuration(seconds: number): string {
-	const mins = Math.floor(seconds / 60)
-	const secs = seconds % 60
-	return `${mins}m ${secs}s`
+	const mins = Math.floor(seconds / 60);
+	const secs = seconds % 60;
+	return `${mins}m ${secs}s`;
 }
 
 function formatDate(dateString: string): string {
@@ -103,16 +103,16 @@ function formatDate(dateString: string): string {
 			year: "numeric",
 			month: "long",
 			day: "numeric",
-		})
+		});
 	} catch {
-		return dateString
+		return dateString;
 	}
 }
 
 function formatTimestamp(seconds: number): string {
-	const mins = Math.floor(seconds / 60)
-	const secs = Math.floor(seconds % 60)
-	return `${mins}:${secs.toString().padStart(2, "0")}`
+	const mins = Math.floor(seconds / 60);
+	const secs = Math.floor(seconds % 60);
+	return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 // Parse key takeaways from conversation_analysis
@@ -120,14 +120,14 @@ function parseKeyTakeaways(
 	conversationAnalysis: unknown
 ): Array<{ priority: string; summary: string; evidenceSnippets: string[] }> {
 	if (!conversationAnalysis || typeof conversationAnalysis !== "object") {
-		return []
+		return [];
 	}
 
-	const analysis = conversationAnalysis as Record<string, unknown>
-	const keyTakeaways = analysis.key_takeaways
+	const analysis = conversationAnalysis as Record<string, unknown>;
+	const keyTakeaways = analysis.key_takeaways;
 
 	if (!Array.isArray(keyTakeaways)) {
-		return []
+		return [];
 	}
 
 	return keyTakeaways
@@ -139,19 +139,19 @@ function parseKeyTakeaways(
 			summary: String(t.summary || ""),
 			evidenceSnippets: Array.isArray(t.evidence) ? t.evidence.filter((e): e is string => typeof e === "string") : [],
 		}))
-		.filter((t) => t.summary)
+		.filter((t) => t.summary);
 }
 
 function badgeVariantForPriority(priority: string): "default" | "secondary" | "destructive" | "outline" {
 	switch (priority.toLowerCase()) {
 		case "high":
-			return "destructive"
+			return "destructive";
 		case "medium":
-			return "default"
+			return "default";
 		case "low":
-			return "secondary"
+			return "secondary";
 		default:
-			return "outline"
+			return "outline";
 	}
 }
 
@@ -163,94 +163,94 @@ export function PublicInterviewView({
 	teamName,
 	shareUrl,
 }: PublicInterviewViewProps) {
-	const [linkCopied, setLinkCopied] = useState(false)
-	const [timelineExpanded, setTimelineExpanded] = useState(false)
-	const [transcriptExpanded, setTranscriptExpanded] = useState(false)
-	const keyTakeaways = parseKeyTakeaways(interview.conversation_analysis)
+	const [linkCopied, setLinkCopied] = useState(false);
+	const [timelineExpanded, setTimelineExpanded] = useState(false);
+	const [transcriptExpanded, setTranscriptExpanded] = useState(false);
+	const keyTakeaways = parseKeyTakeaways(interview.conversation_analysis);
 
 	// Copy share link to clipboard
 	const copyShareLink = async () => {
-		if (!shareUrl) return
+		if (!shareUrl) return;
 		try {
-			await navigator.clipboard.writeText(shareUrl)
-			setLinkCopied(true)
-			setTimeout(() => setLinkCopied(false), 2000)
+			await navigator.clipboard.writeText(shareUrl);
+			setLinkCopied(true);
+			setTimeout(() => setLinkCopied(false), 2000);
 		} catch {
 			// Fallback for older browsers
-			const textarea = document.createElement("textarea")
-			textarea.value = shareUrl
-			document.body.appendChild(textarea)
-			textarea.select()
-			document.execCommand("copy")
-			document.body.removeChild(textarea)
-			setLinkCopied(true)
-			setTimeout(() => setLinkCopied(false), 2000)
+			const textarea = document.createElement("textarea");
+			textarea.value = shareUrl;
+			document.body.appendChild(textarea);
+			textarea.select();
+			document.execCommand("copy");
+			document.body.removeChild(textarea);
+			setLinkCopied(true);
+			setTimeout(() => setLinkCopied(false), 2000);
 		}
-	}
+	};
 
 	// Helper to extract anchor start time from anchors JSONB
 	const getAnchorStart = (anchors: Array<{ start_ms?: number; end_ms?: number }> | null): number | null => {
-		if (!anchors || !Array.isArray(anchors) || anchors.length === 0) return null
-		const first = anchors[0]
-		if (typeof first?.start_ms === "number") return first.start_ms / 1000
-		return null
-	}
+		if (!anchors || !Array.isArray(anchors) || anchors.length === 0) return null;
+		const first = anchors[0];
+		if (typeof first?.start_ms === "number") return first.start_ms / 1000;
+		return null;
+	};
 
 	// Build conversation timeline from evidence topics (like PlayByPlayTimeline)
 	const buildTopicGroups = () => {
 		type TopicGroup = {
-			topic: string
-			firstEvidence: (typeof evidence)[0]
-			firstSeconds: number | null
-			count: number
-		}
-		const byTopic = new Map<string, TopicGroup>()
+			topic: string;
+			firstEvidence: (typeof evidence)[0];
+			firstSeconds: number | null;
+			count: number;
+		};
+		const byTopic = new Map<string, TopicGroup>();
 
 		for (const item of evidence) {
-			const topic = item.topic
-			if (!topic || topic.trim().length === 0) continue
-			const seconds = getAnchorStart(item.anchors)
-			const existing = byTopic.get(topic)
+			const topic = item.topic;
+			if (!topic || topic.trim().length === 0) continue;
+			const seconds = getAnchorStart(item.anchors);
+			const existing = byTopic.get(topic);
 			if (!existing) {
 				byTopic.set(topic, {
 					topic,
 					firstEvidence: item,
 					firstSeconds: seconds,
 					count: 1,
-				})
+				});
 			} else {
-				existing.count += 1
+				existing.count += 1;
 				if (
 					(seconds !== null && existing.firstSeconds === null) ||
 					(seconds !== null && existing.firstSeconds !== null && seconds < existing.firstSeconds)
 				) {
-					existing.firstEvidence = item
-					existing.firstSeconds = seconds
+					existing.firstEvidence = item;
+					existing.firstSeconds = seconds;
 				}
 			}
 		}
 
 		return Array.from(byTopic.values()).sort((a, b) => {
-			const aKey = a.firstSeconds ?? new Date(a.firstEvidence.created_at).getTime() / 1000
-			const bKey = b.firstSeconds ?? new Date(b.firstEvidence.created_at).getTime() / 1000
-			return aKey - bKey
-		})
-	}
+			const aKey = a.firstSeconds ?? new Date(a.firstEvidence.created_at).getTime() / 1000;
+			const bKey = b.firstSeconds ?? new Date(b.firstEvidence.created_at).getTime() / 1000;
+			return aKey - bKey;
+		});
+	};
 
-	const topicGroups = buildTopicGroups()
-	const displayedTopics = timelineExpanded ? topicGroups : topicGroups.slice(0, 5)
+	const topicGroups = buildTopicGroups();
+	const displayedTopics = timelineExpanded ? topicGroups : topicGroups.slice(0, 5);
 
 	// Convert speaker transcripts to utterances format for TranscriptResults
-	const audioDurationSec = transcriptData?.audio_duration ?? interview.duration_sec ?? null
+	const audioDurationSec = transcriptData?.audio_duration ?? interview.duration_sec ?? null;
 
 	const transcriptUtterances = normalizeTranscriptUtterances(transcriptData?.speakerTranscripts || [], {
 		audioDurationSec,
-	})
+	});
 
-	const hasTranscript = transcriptUtterances.length > 0 || !!transcriptData?.fullTranscript
+	const hasTranscript = transcriptUtterances.length > 0 || !!transcriptData?.fullTranscript;
 
 	// Get linked participants with names
-	const linkedParticipants = participants.filter((p) => p.people?.name)
+	const linkedParticipants = participants.filter((p) => p.people?.name);
 
 	return (
 		<div className="min-h-screen bg-background">
@@ -590,5 +590,5 @@ export function PublicInterviewView({
 				</div>
 			</footer>
 		</div>
-	)
+	);
 }

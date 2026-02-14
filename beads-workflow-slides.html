@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beads Development Workflow Guide</title>
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&f[]=cabinet-grotesk@700,800&f[]=jetbrains-mono@400,500&display=swap">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (THEME)
+           =========================================== */
+        :root {
+            /* Colors */
+            --bg-primary: #0c0c0f;
+            --bg-secondary: #16161a;
+            --bg-card: #1c1c21;
+            --bg-card-hover: #242429;
+            --text-primary: #fffffe;
+            --text-secondary: #94a1b2;
+            --text-muted: #72757e;
+            --accent: #7f5af0;
+            --accent-glow: rgba(127, 90, 240, 0.4);
+            --accent-secondary: #2cb67d;
+            --accent-tertiary: #ff8906;
+            --accent-blue: #4299E1;
+            --accent-purple: #9F7AEA;
+            --accent-red: #F56565;
+            --border: #242629;
+            --border-light: #30363d;
+
+            /* Phase colors */
+            --phase-capture: #9F7AEA;
+            --phase-refine: #4299E1;
+            --phase-approve: #48BB78;
+            --phase-plan: #ED8936;
+            --phase-execute: #F56565;
+
+            /* Typography */
+            --font-display: 'Cabinet Grotesk', sans-serif;
+            --font-body: 'General Sans', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --title-size: clamp(1.75rem, 5vw, 3.5rem);
+            --h2-size: clamp(1.25rem, 3vw, 2rem);
+            --h3-size: clamp(1rem, 2vw, 1.25rem);
+            --body-size: clamp(0.75rem, 1.3vw, 1rem);
+            --small-size: clamp(0.65rem, 1vw, 0.875rem);
+            --code-size: clamp(0.65rem, 1.1vw, 0.85rem);
+
+            /* Spacing */
+            --slide-padding: clamp(1.5rem, 4vw, 4rem);
+            --content-gap: clamp(0.75rem, 2vw, 1.5rem);
+            --element-gap: clamp(0.4rem, 1vw, 0.75rem);
+
+            /* Animation */
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.6s;
+        }
+
+        /* ===========================================
+           BASE STYLES
+           =========================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            scroll-snap-type: y mandatory;
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100%;
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+
+        /* ===========================================
+           SLIDE CONTAINER
+           =========================================== */
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            padding: var(--slide-padding);
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-height: 100%;
+            overflow: hidden;
+            position: relative;
+            z-index: 5;
+        }
+
+        /* ===========================================
+           BACKGROUND EFFECTS
+           =========================================== */
+        .gradient-mesh {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .gradient-mesh.purple {
+            background:
+                radial-gradient(ellipse at 10% 20%, rgba(127, 90, 240, 0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 80%, rgba(44, 182, 125, 0.08) 0%, transparent 50%);
+        }
+
+        .gradient-mesh.blue {
+            background:
+                radial-gradient(ellipse at 80% 20%, rgba(66, 153, 225, 0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 20% 80%, rgba(127, 90, 240, 0.08) 0%, transparent 50%);
+        }
+
+        .gradient-mesh.green {
+            background:
+                radial-gradient(ellipse at 20% 30%, rgba(44, 182, 125, 0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 70%, rgba(255, 137, 6, 0.08) 0%, transparent 50%);
+        }
+
+        .gradient-mesh.orange {
+            background:
+                radial-gradient(ellipse at 70% 20%, rgba(255, 137, 6, 0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 30% 80%, rgba(245, 101, 101, 0.08) 0%, transparent 50%);
+        }
+
+        /* ===========================================
+           TYPOGRAPHY
+           =========================================== */
+        h1 {
+            font-family: var(--font-display);
+            font-size: var(--title-size);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: var(--content-gap);
+        }
+
+        h2 {
+            font-family: var(--font-display);
+            font-size: var(--h2-size);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: var(--content-gap);
+        }
+
+        h3 {
+            font-family: var(--font-body);
+            font-size: var(--h3-size);
+            font-weight: 600;
+            margin-bottom: var(--element-gap);
+        }
+
+        p {
+            font-size: var(--body-size);
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 50%, var(--accent-tertiary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .accent { color: var(--accent); }
+        .accent-green { color: var(--accent-secondary); }
+        .accent-orange { color: var(--accent-tertiary); }
+
+        /* ===========================================
+           MERMAID DIAGRAMS
+           =========================================== */
+        .mermaid-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(1rem, 2vw, 1.5rem);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .mermaid {
+            width: 100%;
+            max-height: 100%;
+        }
+
+        .mermaid svg {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        /* ===========================================
+           CODE BLOCKS
+           =========================================== */
+        code {
+            font-family: var(--font-mono);
+            font-size: var(--code-size);
+            background: var(--bg-card);
+            padding: 0.15em 0.4em;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        pre {
+            font-family: var(--font-mono);
+            font-size: var(--code-size);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: clamp(0.75rem, 2vw, 1rem);
+            overflow-x: auto;
+            line-height: 1.5;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            border: none;
+        }
+
+        .cmd { color: var(--accent-secondary); }
+        .flag { color: var(--accent-blue); }
+        .arg { color: var(--accent-tertiary); }
+        .comment { color: var(--text-muted); }
+
+        /* ===========================================
+           CARDS & CONTAINERS
+           =========================================== */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(0.75rem, 2vw, 1.25rem);
+        }
+
+        .card-grid {
+            display: grid;
+            gap: var(--element-gap);
+        }
+
+        .card-grid.cols-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .card-grid.cols-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .card-grid.cols-5 {
+            grid-template-columns: repeat(5, 1fr);
+        }
+
+        /* ===========================================
+           PHASE CARDS
+           =========================================== */
+        .phase-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--phase-color, var(--accent));
+            border-radius: 0 8px 8px 0;
+            padding: clamp(0.5rem, 1.5vw, 1rem);
+        }
+
+        .phase-card.capture { --phase-color: var(--phase-capture); }
+        .phase-card.refine { --phase-color: var(--phase-refine); }
+        .phase-card.approve { --phase-color: var(--phase-approve); }
+        .phase-card.plan { --phase-color: var(--phase-plan); }
+        .phase-card.execute { --phase-color: var(--phase-execute); }
+
+        .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .phase-number {
+            width: clamp(20px, 3vw, 28px);
+            height: clamp(20px, 3vw, 28px);
+            background: var(--phase-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--small-size);
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .phase-title {
+            font-weight: 600;
+            font-size: var(--body-size);
+        }
+
+        .phase-desc {
+            font-size: var(--small-size);
+            color: var(--text-secondary);
+        }
+
+        /* ===========================================
+           TABLES
+           =========================================== */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: var(--small-size);
+        }
+
+        th, td {
+            padding: clamp(0.4rem, 1vw, 0.6rem);
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: clamp(0.6rem, 0.9vw, 0.75rem);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        td code {
+            font-size: clamp(0.6rem, 0.9vw, 0.75rem);
+        }
+
+        /* ===========================================
+           LISTS
+           =========================================== */
+        .checklist {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: var(--element-gap);
+        }
+
+        .checklist li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            font-size: var(--body-size);
+        }
+
+        .checklist li::before {
+            content: "☐";
+            color: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .bullet-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: clamp(0.3rem, 0.8vw, 0.5rem);
+        }
+
+        .bullet-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            font-size: var(--small-size);
+            color: var(--text-secondary);
+        }
+
+        .bullet-list li::before {
+            content: "→";
+            color: var(--accent-secondary);
+            flex-shrink: 0;
+        }
+
+        /* ===========================================
+           SPECIAL COMPONENTS
+           =========================================== */
+        .icon-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .icon-dot {
+            width: clamp(6px, 1vw, 10px);
+            height: clamp(6px, 1vw, 10px);
+            border-radius: 50%;
+        }
+
+        .icon-line {
+            width: clamp(20px, 3vw, 40px);
+            height: 2px;
+            background: var(--border);
+        }
+
+        .layer-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.8rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: var(--small-size);
+            font-weight: 500;
+        }
+
+        .layer-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .warning-box {
+            background: rgba(255, 137, 6, 0.1);
+            border: 1px solid rgba(255, 137, 6, 0.3);
+            border-radius: 8px;
+            padding: clamp(0.5rem, 1.5vw, 1rem);
+            font-size: var(--small-size);
+        }
+
+        .warning-box strong {
+            color: var(--accent-tertiary);
+        }
+
+        .tip-box {
+            background: rgba(44, 182, 125, 0.1);
+            border: 1px solid rgba(44, 182, 125, 0.3);
+            border-radius: 8px;
+            padding: clamp(0.5rem, 1.5vw, 1rem);
+            font-size: var(--small-size);
+        }
+
+        .tip-box strong {
+            color: var(--accent-secondary);
+        }
+
+        /* Claude prompt boxes */
+        .claude-prompt {
+            background: linear-gradient(135deg, rgba(127, 90, 240, 0.15) 0%, rgba(127, 90, 240, 0.05) 100%);
+            border: 1px solid rgba(127, 90, 240, 0.4);
+            border-radius: 8px;
+            padding: clamp(0.5rem, 1.5vw, 1rem);
+            font-size: var(--small-size);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .claude-prompt:hover {
+            border-color: var(--accent);
+            background: linear-gradient(135deg, rgba(127, 90, 240, 0.2) 0%, rgba(127, 90, 240, 0.1) 100%);
+        }
+
+        .claude-prompt::before {
+            content: "🤖 ";
+        }
+
+        .claude-prompt-label {
+            font-size: clamp(0.55rem, 0.8vw, 0.7rem);
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+
+        .claude-prompt-text {
+            color: var(--text-primary);
+            font-style: italic;
+        }
+
+        .claude-prompt .copy-hint {
+            position: absolute;
+            right: 0.5rem;
+            top: 0.5rem;
+            font-size: clamp(0.5rem, 0.7vw, 0.65rem);
+            color: var(--text-muted);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .claude-prompt:hover .copy-hint {
+            opacity: 1;
+        }
+
+        .prompt-grid {
+            display: grid;
+            gap: var(--element-gap);
+        }
+
+        .prompt-grid.cols-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        /* Daily ritual */
+        .time-block {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .time-label {
+            background: var(--accent-secondary);
+            color: var(--bg-primary);
+            padding: 0.25rem 0.6rem;
+            border-radius: 100px;
+            font-size: var(--small-size);
+            font-weight: 600;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* Dependency types */
+        .dep-type {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: clamp(0.5rem, 1vw, 0.75rem);
+            background: var(--bg-card);
+            border-radius: 8px;
+        }
+
+        .dep-arrow {
+            font-size: var(--body-size);
+        }
+
+        /* ===========================================
+           DYNAMIC TASKS
+           =========================================== */
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .task-item:hover {
+            border-color: var(--accent);
+            background: var(--bg-card-hover);
+        }
+
+        .task-item.in-progress {
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .task-item.ready {
+            border-left: 3px solid var(--accent-secondary);
+        }
+
+        .task-item.blocked {
+            border-left: 3px solid var(--accent-tertiary);
+            opacity: 0.7;
+        }
+
+        /* Expandable task details */
+        .task-item {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .task-item.expanded {
+            background: var(--bg-secondary);
+            border-color: var(--accent);
+        }
+
+        .task-details {
+            display: none;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border);
+            font-size: var(--small-size);
+        }
+
+        .task-item.expanded .task-details {
+            display: block;
+        }
+
+        .task-reasons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .task-reason {
+            color: var(--text-secondary);
+            padding-left: 0.5rem;
+        }
+
+        .task-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .task-meta-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: clamp(0.6rem, 0.9vw, 0.75rem);
+        }
+
+        .task-meta-item.unblocks {
+            border-color: var(--accent-secondary);
+            color: var(--accent-secondary);
+        }
+
+        .task-meta-item.blocked-by {
+            border-color: var(--accent-tertiary);
+            color: var(--accent-tertiary);
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .task-action-btn {
+            padding: 0.35rem 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: clamp(0.55rem, 0.8vw, 0.7rem);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .task-action-btn:hover {
+            border-color: var(--accent);
+            background: var(--bg-card-hover);
+        }
+
+        .task-action-btn.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .task-action-btn.primary:hover {
+            background: var(--accent-secondary);
+            border-color: var(--accent-secondary);
+        }
+
+        .copy-feedback {
+            position: fixed;
+            bottom: 4rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent-secondary);
+            color: var(--bg-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: var(--small-size);
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+
+        .copy-feedback.show {
+            opacity: 1;
+        }
+
+        .expand-hint {
+            font-size: clamp(0.55rem, 0.8vw, 0.7rem);
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        .task-id {
+            font-family: var(--font-mono);
+            font-size: var(--small-size);
+            color: var(--accent);
+            background: var(--bg-secondary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .task-title {
+            flex: 1;
+            font-size: var(--body-size);
+        }
+
+        .task-priority {
+            font-size: var(--small-size);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .task-priority.p0 { background: #F56565; color: white; }
+        .task-priority.p1 { background: #ED8936; color: white; }
+        .task-priority.p2 { background: #4299E1; color: white; }
+        .task-priority.p3 { background: #48BB78; color: white; }
+
+        .task-status {
+            font-size: var(--small-size);
+            color: var(--text-muted);
+        }
+
+        .refresh-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: var(--small-size);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .refresh-btn:hover {
+            border-color: var(--accent);
+            background: var(--bg-card-hover);
+        }
+
+        .refresh-btn.loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: var(--font-display);
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            font-size: var(--small-size);
+            color: var(--text-muted);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .last-updated {
+            font-size: var(--small-size);
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+
+        .slide.visible .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reveal:nth-child(1) { transition-delay: 0.05s; }
+        .reveal:nth-child(2) { transition-delay: 0.1s; }
+        .reveal:nth-child(3) { transition-delay: 0.15s; }
+        .reveal:nth-child(4) { transition-delay: 0.2s; }
+        .reveal:nth-child(5) { transition-delay: 0.25s; }
+        .reveal:nth-child(6) { transition-delay: 0.3s; }
+
+        /* ===========================================
+           NAVIGATION
+           =========================================== */
+        .nav-dots {
+            position: fixed;
+            right: clamp(0.75rem, 2vw, 1.5rem);
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .nav-dot:hover {
+            background: var(--text-secondary);
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-secondary));
+            z-index: 100;
+            transition: width 0.3s ease;
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: clamp(1rem, 2vw, 1.5rem);
+            right: clamp(1rem, 2vw, 1.5rem);
+            font-family: var(--font-mono);
+            font-size: var(--small-size);
+            color: var(--text-muted);
+            z-index: 100;
+        }
+
+        .keyboard-hint {
+            position: fixed;
+            bottom: clamp(1rem, 2vw, 1.5rem);
+            left: clamp(1rem, 2vw, 1.5rem);
+            font-size: clamp(0.6rem, 0.8vw, 0.75rem);
+            color: var(--text-muted);
+            z-index: 100;
+        }
+
+        .keyboard-hint kbd {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+        }
+
+        /* ===========================================
+           RESPONSIVE
+           =========================================== */
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(1rem, 3vw, 2rem);
+                --content-gap: clamp(0.5rem, 1.5vw, 1rem);
+                --title-size: clamp(1.5rem, 4vw, 2.5rem);
+            }
+        }
+
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 2.5vw, 1.5rem);
+                --content-gap: clamp(0.4rem, 1vw, 0.75rem);
+                --title-size: clamp(1.25rem, 3.5vw, 2rem);
+                --body-size: clamp(0.7rem, 1.1vw, 0.875rem);
+            }
+
+            .nav-dots, .keyboard-hint {
+                display: none;
+            }
+        }
+
+        @media (max-height: 500px) {
+            :root {
+                --slide-padding: clamp(0.5rem, 2vw, 1rem);
+                --title-size: clamp(1rem, 3vw, 1.5rem);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .card-grid.cols-2,
+            .card-grid.cols-3,
+            .card-grid.cols-5 {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .nav-dots {
+                display: none;
+            }
+        }
+
+        @media (max-width: 600px) {
+            :root {
+                --title-size: clamp(1.25rem, 6vw, 2rem);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .reveal {
+                transition: opacity 0.3s ease;
+                transform: none;
+            }
+
+            html {
+                scroll-behavior: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progress"></div>
+
+    <nav class="nav-dots" id="navDots"></nav>
+
+    <div class="slide-counter" id="slideCounter">1 / 16</div>
+
+    <div class="keyboard-hint">
+        <kbd>←</kbd> <kbd>→</kbd> or <kbd>Space</kbd> to navigate • <kbd>R</kbd> to refresh • Click task to expand
+    </div>
+
+    <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+
+    <!-- ============================================
+         SLIDE 1: TITLE
+         ============================================ -->
+    <section class="slide" data-title="Title">
+        <div class="gradient-mesh purple"></div>
+        <div class="slide-content" style="text-align: center; align-items: center;">
+            <div class="icon-flow reveal">
+                <span class="icon-dot" style="background: var(--accent);"></span>
+                <span class="icon-line"></span>
+                <span class="icon-dot" style="background: var(--accent-secondary);"></span>
+                <span class="icon-line"></span>
+                <span class="icon-dot" style="background: var(--accent-tertiary);"></span>
+            </div>
+            <h1 class="reveal"><span class="gradient-text">Beads Workflow</span><br>Daily Reference</h1>
+            <p class="reveal" style="max-width: 500px; margin: 0 auto var(--content-gap);">Specs before tasks. Diagrams before code. Alignment before execution.</p>
+            <div class="reveal" style="display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center;">
+                <span class="layer-badge"><span class="layer-dot" style="background: var(--phase-capture);"></span> Requirements</span>
+                <span class="layer-badge"><span class="layer-dot" style="background: var(--phase-refine);"></span> Specification</span>
+                <span class="layer-badge"><span class="layer-dot" style="background: var(--phase-approve);"></span> Execution</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 2: TODAY'S TRIAGE (DYNAMIC)
+         ============================================ -->
+    <section class="slide" data-title="Today's Triage">
+        <div class="gradient-mesh green"></div>
+        <div class="slide-content">
+            <div class="reveal" style="display: flex; align-items: center; gap: 1rem; margin-bottom: var(--content-gap); flex-wrap: wrap;">
+                <h2 style="margin-bottom: 0;">📋 Today's Triage</h2>
+                <button class="refresh-btn" id="refreshBtn" onclick="loadTriage()">
+                    <span id="refreshIcon">↻</span> Refresh
+                </button>
+                <a href="beads-graph.html" target="_blank" class="refresh-btn" style="text-decoration: none;">
+                    🔗 Dependency Graph
+                </a>
+                <span class="last-updated" id="lastUpdated"></span>
+            </div>
+
+            <div class="stats-grid reveal" id="statsGrid" style="grid-template-columns: repeat(6, 1fr);">
+                <div class="stat-card">
+                    <div class="stat-value" id="statActionable">-</div>
+                    <div class="stat-label">Actionable</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statInProgress">-</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statBlocked">-</div>
+                    <div class="stat-label">Blocked</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statTotal">-</div>
+                    <div class="stat-label">Total Open</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statClosed7d">-</div>
+                    <div class="stat-label">Closed 7d</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statAvgDays">-</div>
+                    <div class="stat-label">Avg Days</div>
+                </div>
+            </div>
+
+            <h3 class="reveal" style="margin-top: var(--content-gap); color: var(--accent-secondary);">🎯 Top Picks (by bv triage score)</h3>
+            <div class="task-list reveal" id="taskList">
+                <div class="empty-state">
+                    <p>Press <kbd>R</kbd> or click Refresh to load triage from <code>bv --robot-triage</code></p>
+                    <p style="margin-top: 0.5rem; font-size: var(--small-size);">
+                        Or run: <code>./beads-slides-sync.sh</code>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 3: THE THREE LAYERS (DIAGRAM)
+         ============================================ -->
+    <section class="slide" data-title="Three Layers">
+        <div class="gradient-mesh blue"></div>
+        <div class="slide-content">
+            <h2 class="reveal">The Three Layers</h2>
+            <div class="mermaid-container reveal" style="flex: 1; min-height: 0;">
+                <pre class="mermaid">
+%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#7f5af0', 'primaryTextColor': '#fff', 'primaryBorderColor': '#7f5af0', 'lineColor': '#94a1b2', 'secondaryColor': '#2cb67d', 'tertiaryColor': '#1c1c21', 'background': '#16161a', 'mainBkg': '#1c1c21', 'nodeBorder': '#30363d', 'clusterBkg': '#1c1c21', 'clusterBorder': '#30363d', 'fontSize': '14px' }}}%%
+flowchart TD
+    subgraph layer1["🎯 REQUIREMENTS"]
+        REQ[Business Need]
+        EPIC[Epic in Beads]
+    end
+
+    subgraph layer2["📝 SPECIFICATION"]
+        SPEC_DOC[Feature Spec Markdown]
+        REFINE[Refinement Cycle<br/>with Claude]
+        MERMAID[Mermaid Diagrams]
+    end
+
+    subgraph layer3["⚡ EXECUTION"]
+        TASKS[Tasks in Beads]
+        BV[BV Prioritization]
+        WORK[Implementation]
+    end
+
+    REQ --> EPIC
+    EPIC --> SPEC_DOC
+    SPEC_DOC <--> REFINE
+    REFINE --> MERMAID
+    MERMAID --> SPEC_DOC
+    SPEC_DOC -->|Approved| TASKS
+    TASKS --> BV
+    BV --> WORK
+    WORK -->|Discovered Work| TASKS
+
+    style layer1 fill:#2d1f4e,stroke:#9F7AEA
+    style layer2 fill:#1a3a52,stroke:#4299E1
+    style layer3 fill:#1a3d2e,stroke:#48BB78
+                </pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 4: THE FIVE PHASES OVERVIEW
+         ============================================ -->
+    <section class="slide" data-title="Five Phases">
+        <div class="gradient-mesh green"></div>
+        <div class="slide-content">
+            <h2 class="reveal">The Five Phases</h2>
+            <div class="card-grid cols-5 reveal">
+                <div class="phase-card capture">
+                    <div class="phase-header">
+                        <span class="phase-number">1</span>
+                        <span class="phase-title">CAPTURE</span>
+                    </div>
+                    <p class="phase-desc">Anchor requirement + create spec file</p>
+                </div>
+                <div class="phase-card refine">
+                    <div class="phase-header">
+                        <span class="phase-number">2</span>
+                        <span class="phase-title">REFINE</span>
+                    </div>
+                    <p class="phase-desc">Iterate with Claude to align spec</p>
+                </div>
+                <div class="phase-card approve">
+                    <div class="phase-header">
+                        <span class="phase-number">3</span>
+                        <span class="phase-title">APPROVE</span>
+                    </div>
+                    <p class="phase-desc">Get alignment before creating tasks</p>
+                </div>
+                <div class="phase-card plan">
+                    <div class="phase-header">
+                        <span class="phase-number">4</span>
+                        <span class="phase-title">PLAN</span>
+                    </div>
+                    <p class="phase-desc">Generate tasks with dependencies</p>
+                </div>
+                <div class="phase-card execute">
+                    <div class="phase-header">
+                        <span class="phase-number">5</span>
+                        <span class="phase-title">EXECUTE</span>
+                    </div>
+                    <p class="phase-desc">Work, discover, keep beads updated</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 5: REFINE PHASE DIAGRAM
+         ============================================ -->
+    <section class="slide" data-title="Refine Cycle">
+        <div class="gradient-mesh blue"></div>
+        <div class="slide-content">
+            <h2 class="reveal"><span style="color: var(--phase-refine);">2.</span> REFINE - Iteration Cycle</h2>
+            <div class="mermaid-container reveal" style="flex: 1; min-height: 0;">
+                <pre class="mermaid">
+%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#4299E1', 'primaryTextColor': '#fff', 'primaryBorderColor': '#4299E1', 'lineColor': '#94a1b2', 'secondaryColor': '#2cb67d', 'tertiaryColor': '#1c1c21', 'background': '#16161a', 'mainBkg': '#1c1c21', 'nodeBorder': '#30363d' }}}%%
+flowchart LR
+    DRAFT[Draft Section] --> REVIEW[Review w/ Claude]
+    REVIEW --> CODEBASE[Check Codebase]
+    CODEBASE --> UPDATE[Update Spec]
+    UPDATE --> VIZ[Add Mermaid]
+    VIZ -->|More sections| DRAFT
+    VIZ -->|Complete| DONE[✓ Ready]
+
+    style DONE fill:#48BB78,color:#fff,stroke:#48BB78
+    style DRAFT fill:#4299E1,color:#fff,stroke:#4299E1
+                </pre>
+            </div>
+            <div class="reveal tip-box" style="margin-top: var(--content-gap);">
+                <strong>Refinement cycles:</strong> Problem → Existing Code → Approach → Risks → Breakdown
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 6: EXECUTE PHASE DIAGRAM
+         ============================================ -->
+    <section class="slide" data-title="Execute Loop">
+        <div class="gradient-mesh orange"></div>
+        <div class="slide-content">
+            <h2 class="reveal"><span style="color: var(--phase-execute);">5.</span> EXECUTE - Daily Loop</h2>
+            <div class="mermaid-container reveal" style="flex: 1; min-height: 0;">
+                <pre class="mermaid">
+%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#F56565', 'primaryTextColor': '#fff', 'primaryBorderColor': '#F56565', 'lineColor': '#94a1b2', 'secondaryColor': '#2cb67d', 'tertiaryColor': '#1c1c21', 'background': '#16161a', 'mainBkg': '#1c1c21', 'nodeBorder': '#30363d' }}}%%
+flowchart LR
+    ORIENT[Orient] --> PICK[Pick Task]
+    PICK --> WORK[Implement]
+    WORK --> DISCOVER{Discover<br/>New Work?}
+    DISCOVER -->|Yes| FILE[File Issue]
+    FILE --> WORK
+    DISCOVER -->|No| CLOSE[Close Task]
+    CLOSE --> SYNC[Sync]
+    SYNC --> ORIENT
+
+    style ORIENT fill:#4299E1,color:#fff,stroke:#4299E1
+    style CLOSE fill:#48BB78,color:#fff,stroke:#48BB78
+    style SYNC fill:#7f5af0,color:#fff,stroke:#7f5af0
+                </pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 7: DEPENDENCY TYPES DIAGRAM
+         ============================================ -->
+    <section class="slide" data-title="Dependency Types">
+        <div class="gradient-mesh purple"></div>
+        <div class="slide-content">
+            <h2 class="reveal">🔗 Dependency Types</h2>
+            <div class="mermaid-container reveal" style="flex: 1; min-height: 0;">
+                <pre class="mermaid">
+%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#7f5af0', 'primaryTextColor': '#fff', 'lineColor': '#94a1b2', 'tertiaryColor': '#1c1c21', 'background': '#16161a', 'mainBkg': '#1c1c21', 'nodeBorder': '#30363d' }}}%%
+flowchart LR
+    subgraph blocks["blocks (hard dependency)"]
+        B1[Task B] -->|"can't start until"| B2[Task A done]
+    end
+
+    subgraph related["related (soft link)"]
+        R1[Task X] -.-|"connected to"| R2[Task Y]
+    end
+
+    subgraph discovered["discovered-from (audit trail)"]
+        D1[New Bug] -->|"found while working on"| D2[Parent Task]
+    end
+
+    style blocks fill:#3d1f1f,stroke:#F56565
+    style related fill:#2d1f4e,stroke:#9F7AEA
+    style discovered fill:#3d3010,stroke:#ED8936
+                </pre>
+            </div>
+            <div class="reveal warning-box" style="margin-top: var(--content-gap);">
+                <strong>Only <code>blocks</code> affects ready work detection.</strong> Use <code>related</code> for context, <code>discovered-from</code> for audit trail.
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 8: PHASE 1 - CAPTURE
+         ============================================ -->
+    <section class="slide" data-title="1. Capture">
+        <div class="gradient-mesh purple"></div>
+        <div class="slide-content">
+            <h2 class="reveal"><span style="color: var(--phase-capture);">1.</span> CAPTURE</h2>
+            <p class="reveal" style="margin-bottom: var(--content-gap);">Anchor the requirement in beads + create spec file</p>
+
+            <div class="claude-prompt reveal" style="margin-bottom: var(--content-gap);" onclick="copyPrompt(this)">
+                <span class="claude-prompt-label">Tell Claude</span>
+                <span class="copy-hint">click to copy</span>
+                <span class="claude-prompt-text">"Create a new epic in beads for [feature name]. Description: [what it does and why]. Create the spec document at docs/specs/ following the standard template. Priority [1-4]."</span>
+            </div>
+
+            <div class="reveal tip-box">
+                <strong>Claude will:</strong> Create the epic, generate the spec file with proper naming (bd-{id}-{slug}.md), and scaffold the standard sections (Problem, User Journey, Integration Map, Risks, Task Breakdown).
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 9: PHASE 3 - APPROVE
+         ============================================ -->
+    <section class="slide" data-title="3. Approve">
+        <div class="gradient-mesh green"></div>
+        <div class="slide-content">
+            <h2 class="reveal"><span style="color: var(--phase-approve);">3.</span> APPROVE</h2>
+            <p class="reveal" style="margin-bottom: var(--content-gap);">Get alignment before creating tasks</p>
+
+            <div class="claude-prompt reveal" style="margin-bottom: var(--content-gap);" onclick="copyPrompt(this)">
+                <span class="claude-prompt-label">Tell Claude</span>
+                <span class="copy-hint">click to copy</span>
+                <span class="claude-prompt-text">"Review the spec for [epic-id]. Check if it's ready for task breakdown: Does it have clear success criteria? Are the mermaid diagrams complete? Are risks documented? Identify any gaps."</span>
+            </div>
+
+            <div class="card reveal">
+                <h3>Approval Checklist</h3>
+                <ul class="checklist" style="margin-top: 0.5rem;">
+                    <li>Problem & success criteria clear?</li>
+                    <li>User journey diagrams complete?</li>
+                    <li>Integration map (existing vs. new) documented?</li>
+                    <li>Risks identified with mitigations?</li>
+                    <li>Task breakdown with dependencies defined?</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 10: PHASE 4 - PLAN
+         ============================================ -->
+    <section class="slide" data-title="4. Plan">
+        <div class="gradient-mesh orange"></div>
+        <div class="slide-content">
+            <h2 class="reveal"><span style="color: var(--phase-plan);">4.</span> PLAN</h2>
+            <p class="reveal" style="margin-bottom: var(--content-gap);">Generate tasks in beads with proper dependencies</p>
+
+            <div class="claude-prompt reveal" style="margin-bottom: var(--content-gap);" onclick="copyPrompt(this)">
+                <span class="claude-prompt-label">Tell Claude</span>
+                <span class="copy-hint">click to copy</span>
+                <span class="claude-prompt-text">"Break down [epic-id] into tasks based on its spec. Create proper dependency chains (schema before API, API before UI, etc). Check for cycles and validate the execution order. Show me the dependency graph."</span>
+            </div>
+
+            <div class="reveal tip-box">
+                <strong>Claude will:</strong> Read the spec, create tasks with bd create, set up dependency chains with bd dep add, validate no cycles exist, and regenerate the graph. Dependencies use "blocks" type for hard requirements.
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 11: DAILY RITUAL (Claude Prompts)
+         ============================================ -->
+    <section class="slide" data-title="Daily Ritual">
+        <div class="gradient-mesh green"></div>
+        <div class="slide-content">
+            <h2 class="reveal">🌅 Daily Ritual <span style="font-size: var(--body-size); color: var(--accent);">(Claude Prompts)</span></h2>
+            <div class="card-grid" style="gap: var(--content-gap);">
+                <div class="card reveal">
+                    <div class="time-block">
+                        <span class="time-label">START</span>
+                        <div style="flex: 1;">
+                            <strong style="color: var(--text-primary);">Orient & Pick</strong>
+                            <div class="claude-prompt" style="margin-top: 0.5rem;" onclick="copyPrompt(this)">
+                                <span class="copy-hint">click to copy</span>
+                                <span class="claude-prompt-text">"Check beads triage - what's the highest impact task I should work on today? Consider what unblocks others and my recent velocity. Claim it for me."</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card reveal">
+                    <div class="time-block">
+                        <span class="time-label" style="background: var(--accent);">DURING</span>
+                        <div style="flex: 1;">
+                            <strong style="color: var(--text-primary);">Work & Discover</strong>
+                            <div class="claude-prompt" style="margin-top: 0.5rem;" onclick="copyPrompt(this)">
+                                <span class="copy-hint">click to copy</span>
+                                <span class="claude-prompt-text">"I found an issue while working on [current task]: [describe issue]. Create a beads issue for it, link it as discovered-from my current task, and set appropriate priority."</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card reveal">
+                    <div class="time-block">
+                        <span class="time-label" style="background: var(--accent-tertiary);">END</span>
+                        <div style="flex: 1;">
+                            <strong style="color: var(--text-primary);">Close & Sync</strong>
+                            <div class="claude-prompt" style="margin-top: 0.5rem;" onclick="copyPrompt(this)">
+                                <span class="copy-hint">click to copy</span>
+                                <span class="claude-prompt-text">"I finished [task]. Close it with a summary of what was done, sync beads, commit changes, and tell me what got unblocked."</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 12: CLAUDE PROMPTS REFERENCE
+         ============================================ -->
+    <section class="slide" data-title="Claude Prompts">
+        <div class="gradient-mesh purple"></div>
+        <div class="slide-content">
+            <h2 class="reveal">🤖 Claude Prompts Reference</h2>
+            <div class="prompt-grid cols-2 reveal" style="margin-top: var(--content-gap);">
+                <div class="claude-prompt" onclick="copyPrompt(this)">
+                    <span class="claude-prompt-label">Blocked? Unblock</span>
+                    <span class="copy-hint">click to copy</span>
+                    <span class="claude-prompt-text">"What's blocking [task-id]? Help me clear the blockers or suggest an alternative approach."</span>
+                </div>
+                <div class="claude-prompt" onclick="copyPrompt(this)">
+                    <span class="claude-prompt-label">Context Switch</span>
+                    <span class="copy-hint">click to copy</span>
+                    <span class="claude-prompt-text">"I need to switch to [task-id]. Give me full context: what it does, what's blocking it, what it unblocks, and where to start."</span>
+                </div>
+                <div class="claude-prompt" onclick="copyPrompt(this)">
+                    <span class="claude-prompt-label">Scope Creep</span>
+                    <span class="copy-hint">click to copy</span>
+                    <span class="claude-prompt-text">"This task is getting too big. Help me split [task-id] into smaller pieces with proper dependencies. Keep the original as a parent."</span>
+                </div>
+                <div class="claude-prompt" onclick="copyPrompt(this)">
+                    <span class="claude-prompt-label">Health Check</span>
+                    <span class="copy-hint">click to copy</span>
+                    <span class="claude-prompt-text">"Run a beads health check: any cycles? stale tasks? bottlenecks? What should I prioritize to improve flow?"</span>
+                </div>
+                <div class="claude-prompt" onclick="copyPrompt(this)">
+                    <span class="claude-prompt-label">Session End</span>
+                    <span class="copy-hint">click to copy</span>
+                    <span class="claude-prompt-text">"Wrap up my session: update task statuses, sync beads, commit changes, and summarize what I accomplished and what's next."</span>
+                </div>
+                <div class="claude-prompt" onclick="copyPrompt(this)">
+                    <span class="claude-prompt-label">Reassess Priority</span>
+                    <span class="copy-hint">click to copy</span>
+                    <span class="claude-prompt-text">"Re-triage the backlog. What should change priority based on current dependencies and what we've learned?"</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 13: COMMAND REFERENCE - CREATING
+         ============================================ -->
+    <section class="slide" data-title="Commands: Create">
+        <div class="gradient-mesh blue"></div>
+        <div class="slide-content">
+            <h2 class="reveal">📝 Creating & Updating</h2>
+            <table class="reveal">
+                <thead>
+                    <tr><th>Action</th><th>Command</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Create epic</td><td><code><span class="cmd">bd create</span> <span class="arg">"X"</span> <span class="flag">-t epic -p 1</span></code></td></tr>
+                    <tr><td>Create task</td><td><code><span class="cmd">bd create</span> <span class="arg">"X"</span> <span class="flag">-t task -p 2</span></code></td></tr>
+                    <tr><td>Create bug</td><td><code><span class="cmd">bd create</span> <span class="arg">"X"</span> <span class="flag">-t bug -p 1</span></code></td></tr>
+                    <tr><td>Start work</td><td><code><span class="cmd">bd update</span> ID <span class="flag">--status in_progress</span></code></td></tr>
+                    <tr><td>Close</td><td><code><span class="cmd">bd close</span> ID <span class="flag">--reason</span> <span class="arg">"..."</span></code></td></tr>
+                    <tr><td>Add labels</td><td><code><span class="cmd">bd label add</span> ID tag1,tag2</code></td></tr>
+                    <tr><td>Assign</td><td><code><span class="cmd">bd update</span> ID <span class="flag">--assignee</span> name</code></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 13: COMMAND REFERENCE - DEPENDENCIES
+         ============================================ -->
+    <section class="slide" data-title="Commands: Dependencies">
+        <div class="gradient-mesh orange"></div>
+        <div class="slide-content">
+            <h2 class="reveal">🔗 Dependency Commands</h2>
+            <table class="reveal">
+                <thead><tr><th>Action</th><th>Command</th></tr></thead>
+                <tbody>
+                    <tr><td>Add blocker</td><td><code><span class="cmd">bd dep add</span> BLOCKED BLOCKER <span class="flag">--type blocks</span></code></td></tr>
+                    <tr><td>Link related</td><td><code><span class="cmd">bd dep add</span> A B <span class="flag">--type related</span></code></td></tr>
+                    <tr><td>Track discovery</td><td><code><span class="cmd">bd dep add</span> NEW PARENT <span class="flag">--type discovered-from</span></code></td></tr>
+                    <tr><td>Remove dep</td><td><code><span class="cmd">bd dep remove</span> A B</code></td></tr>
+                    <tr><td>View tree</td><td><code><span class="cmd">bd dep tree</span> ID</code></td></tr>
+                    <tr><td>Find cycles</td><td><code><span class="cmd">bd dep cycles</span></code></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 14: COMMAND REFERENCE - FINDING WORK & BV
+         ============================================ -->
+    <section class="slide" data-title="Commands: Find Work">
+        <div class="gradient-mesh purple"></div>
+        <div class="slide-content">
+            <h2 class="reveal">🔍 Finding Work & BV</h2>
+            <div class="card-grid cols-2 reveal">
+                <div>
+                    <h3>Finding Work</h3>
+                    <table style="margin-top: 0.5rem;">
+                        <tbody>
+                            <tr><td>Ready work</td><td><code><span class="cmd">bd ready</span></code></td></tr>
+                            <tr><td>Blocked work</td><td><code><span class="cmd">bd blocked</span></code></td></tr>
+                            <tr><td>All issues</td><td><code><span class="cmd">bd list</span></code></td></tr>
+                            <tr><td>By status</td><td><code><span class="cmd">bd list</span> <span class="flag">--status open</span></code></td></tr>
+                            <tr><td>By priority</td><td><code><span class="cmd">bd list</span> <span class="flag">--priority 1</span></code></td></tr>
+                            <tr><td>Show details</td><td><code><span class="cmd">bd show</span> ID</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div>
+                    <h3>BV Visualization</h3>
+                    <table style="margin-top: 0.5rem;">
+                        <thead><tr><th>Key</th><th>View</th></tr></thead>
+                        <tbody>
+                            <tr><td><kbd>i</kbd></td><td>Insights dashboard</td></tr>
+                            <tr><td><kbd>b</kbd></td><td>Kanban board</td></tr>
+                            <tr><td><kbd>g</kbd></td><td>Dependency graph</td></tr>
+                            <tr><td><kbd>p</kbd></td><td>Priority hints overlay</td></tr>
+                            <tr><td><kbd>r</kbd></td><td>Filter: ready only</td></tr>
+                            <tr><td><kbd>/</kbd></td><td>Fuzzy search</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 15: BV METRICS
+         ============================================ -->
+    <section class="slide" data-title="BV Metrics">
+        <div class="gradient-mesh green"></div>
+        <div class="slide-content">
+            <h2 class="reveal">📊 BV Metrics Explained</h2>
+            <table class="reveal">
+                <thead>
+                    <tr><th>Metric</th><th>What It Measures</th><th>High Score Means</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><strong>PageRank</strong></td><td>Recursive importance</td><td>Foundational blocker - many things depend on this</td></tr>
+                    <tr><td><strong>Betweenness</strong></td><td>Bridge position</td><td>Bottleneck - blocks multiple parallel streams</td></tr>
+                    <tr><td><strong>Critical Path</strong></td><td>Longest chain depth</td><td>Keystone - any delay cascades to final delivery</td></tr>
+                    <tr><td><strong>HITS Hub</strong></td><td>Dependency aggregator</td><td>Epic/Feature - pulls together many tasks</td></tr>
+                    <tr><td><strong>HITS Authority</strong></td><td>Widely depended on</td><td>Utility - many things use this</td></tr>
+                </tbody>
+            </table>
+            <div class="reveal tip-box" style="margin-top: var(--content-gap);">
+                <strong>Tip:</strong> Press <kbd>p</kbd> in BV to see priority hints: ⬆ means impact suggests higher priority, ⬇ means lower.
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 16: COMMON PITFALLS
+         ============================================ -->
+    <section class="slide" data-title="Pitfalls">
+        <div class="gradient-mesh orange"></div>
+        <div class="slide-content">
+            <h2 class="reveal">⚠️ Common Pitfalls</h2>
+            <div class="card-grid cols-2 reveal" style="gap: var(--content-gap);">
+                <div class="warning-box">
+                    <strong>Skipping the spec phase</strong><br>
+                    Going straight from idea to tasks leads to rework. Always refine with Claude first.
+                </div>
+                <div class="warning-box">
+                    <strong>Forgetting to sync</strong><br>
+                    Always <code>bd sync</code> at session end. Your work is only saved when it's in git.
+                </div>
+                <div class="warning-box">
+                    <strong>Circular dependencies</strong><br>
+                    Check <code>bv --robot-insights | jq '.cycles'</code> before starting work. Cycles = blocked forever.
+                </div>
+                <div class="warning-box">
+                    <strong>Not linking discovered work</strong><br>
+                    Always <code>bd dep add NEW CURRENT --type discovered-from</code> to maintain audit trail.
+                </div>
+            </div>
+            <div class="reveal" style="text-align: center; margin-top: var(--content-gap);">
+                <p style="font-size: var(--h3-size); font-weight: 600;">
+                    <span class="accent">bd</span> for management • <span class="accent-green">bv</span> for visualization
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        /* ===========================================
+           MERMAID INITIALIZATION
+           =========================================== */
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#16161a',
+                primaryColor: '#7f5af0',
+                primaryTextColor: '#fffffe',
+                primaryBorderColor: '#30363d',
+                lineColor: '#94a1b2',
+                secondaryColor: '#2cb67d',
+                tertiaryColor: '#1c1c21'
+            },
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+
+        /* ===========================================
+           DYNAMIC TRIAGE LOADING (bv --robot-triage)
+           =========================================== */
+
+        // Load triage data from multiple sources
+        async function loadTriage() {
+            const btn = document.getElementById('refreshBtn');
+            const icon = document.getElementById('refreshIcon');
+            btn.classList.add('loading');
+            icon.style.animation = 'spin 1s linear infinite';
+
+            try {
+                let data = null;
+
+                // Method 1: Try fetch from local dev server endpoint
+                try {
+                    const response = await fetch('http://localhost:3847/beads-triage');
+                    if (response.ok) {
+                        data = await response.json();
+                    }
+                } catch (e) {
+                    // Server not running, try alternative
+                }
+
+                // Method 2: Try loading from localStorage
+                if (!data) {
+                    const stored = localStorage.getItem('beads-triage');
+                    if (stored) {
+                        try {
+                            data = JSON.parse(stored);
+                        } catch (e) {}
+                    }
+                }
+
+                // Method 3: Show instructions if no data
+                if (!data || (!data.topPicks?.length && !data.recommendations?.length)) {
+                    showEmptyState();
+                    return;
+                }
+
+                renderTriage(data);
+                document.getElementById('lastUpdated').textContent =
+                    `Updated: ${new Date().toLocaleTimeString()}`;
+
+            } catch (error) {
+                console.error('Failed to load triage:', error);
+                showEmptyState();
+            } finally {
+                btn.classList.remove('loading');
+                icon.style.animation = '';
+            }
+        }
+
+        // Store full data for detail views
+        let triageData = null;
+
+        function renderTriage(data) {
+            triageData = data;
+            const taskList = document.getElementById('taskList');
+            const stats = data.stats || {};
+
+            // Update stats
+            document.getElementById('statActionable').textContent = stats.actionable || 0;
+            document.getElementById('statInProgress').textContent = stats.inProgress || 0;
+            document.getElementById('statBlocked').textContent = stats.blocked || 0;
+            document.getElementById('statTotal').textContent = stats.open || 0;
+            document.getElementById('statClosed7d').textContent = stats.closed7d || 0;
+            document.getElementById('statAvgDays').textContent =
+                typeof stats.avgDaysToClose === 'number' ? stats.avgDaysToClose.toFixed(1) : '-';
+
+            // Use recommendations for full detail (fallback to topPicks)
+            const items = data.recommendations?.length ? data.recommendations : data.topPicks || [];
+
+            if (items.length === 0) {
+                showEmptyState();
+                return;
+            }
+
+            taskList.innerHTML = items.slice(0, 5).map((item, idx) => {
+                const unblocks = item.unblocks_ids?.length || item.unblocks || 0;
+                const blockedBy = item.blocked_by || [];
+                const scorePercent = Math.round((item.score || 0) * 100);
+                const reasons = item.reasons || [];
+                const action = item.action || '';
+                const type = item.type || 'task';
+                const priority = item.priority ?? 2;
+
+                // Commands
+                const claimCmd = `bd update ${item.id} --status in_progress`;
+                const showCmd = `bd show ${item.id}`;
+
+                return `
+                    <div class="task-item ready" onclick="toggleTaskExpand(this, event)" data-task-id="${item.id}">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; width: 100%;">
+                            <span class="task-id">${item.id}</span>
+                            <span class="task-title" style="flex: 1;">${escapeHtml(item.title)}</span>
+                            <span class="task-priority p${priority}">${scorePercent}%</span>
+                            ${unblocks > 0 ? `<span style="font-size: var(--small-size); color: var(--accent-secondary);">🔓 ${unblocks}</span>` : ''}
+                            ${blockedBy.length > 0 ? `<span style="font-size: var(--small-size); color: var(--accent-tertiary);">⏳ ${blockedBy.length}</span>` : ''}
+                            <span class="expand-hint">▼</span>
+                        </div>
+
+                        <div class="task-details">
+                            ${action ? `<div style="margin-bottom: 0.75rem; color: var(--accent-secondary); font-weight: 500;">💡 ${escapeHtml(action)}</div>` : ''}
+
+                            <div class="task-reasons">
+                                ${reasons.map(r => `<div class="task-reason">• ${escapeHtml(r)}</div>`).join('')}
+                            </div>
+
+                            <div class="task-meta">
+                                <span class="task-meta-item">Type: ${type}</span>
+                                <span class="task-meta-item">Priority: P${priority}</span>
+                                ${unblocks > 0 ? `<span class="task-meta-item unblocks">🔓 Unblocks: ${(item.unblocks_ids || []).join(', ') || unblocks}</span>` : ''}
+                                ${blockedBy.length > 0 ? `<span class="task-meta-item blocked-by">⏳ Blocked by: ${blockedBy.join(', ')}</span>` : ''}
+                            </div>
+
+                            <div class="task-actions">
+                                <button class="task-action-btn primary" onclick="copyToClipboard('${claimCmd}', event)">
+                                    📋 Copy: claim
+                                </button>
+                                <button class="task-action-btn" onclick="copyToClipboard('${showCmd}', event)">
+                                    📋 Copy: show
+                                </button>
+                                <button class="task-action-btn" onclick="openInGraph('${item.id}', event)">
+                                    🔗 View in Graph
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleTaskExpand(element, event) {
+            // Don't toggle if clicking a button
+            if (event.target.closest('.task-action-btn')) return;
+
+            element.classList.toggle('expanded');
+            const hint = element.querySelector('.expand-hint');
+            if (hint) {
+                hint.textContent = element.classList.contains('expanded') ? '▲' : '▼';
+            }
+        }
+
+        function copyToClipboard(text, event) {
+            event.stopPropagation();
+            navigator.clipboard.writeText(text).then(() => {
+                const feedback = document.getElementById('copyFeedback');
+                feedback.textContent = `Copied: ${text}`;
+                feedback.classList.add('show');
+                setTimeout(() => feedback.classList.remove('show'), 2000);
+            });
+        }
+
+        function copyPrompt(element) {
+            const textEl = element.querySelector('.claude-prompt-text');
+            if (textEl) {
+                const text = textEl.textContent.trim();
+                navigator.clipboard.writeText(text).then(() => {
+                    const feedback = document.getElementById('copyFeedback');
+                    feedback.textContent = `Copied prompt to clipboard!`;
+                    feedback.classList.add('show');
+                    setTimeout(() => feedback.classList.remove('show'), 2000);
+                });
+            }
+        }
+
+        function openInGraph(taskId, event) {
+            event.stopPropagation();
+            // Open graph with task ID as hash for potential highlighting
+            window.open(`beads-graph.html#${taskId}`, '_blank');
+        }
+
+        function showEmptyState() {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = `
+                <div class="empty-state">
+                    <p>No triage data loaded yet</p>
+                    <p style="margin-top: 0.75rem; font-size: var(--small-size);">
+                        <strong>Option 1:</strong> Run the sync script:<br>
+                        <code style="display: block; margin: 0.5rem 0;">./beads-slides-sync.sh</code>
+                    </p>
+                    <p style="margin-top: 0.5rem; font-size: var(--small-size);">
+                        <strong>Option 2:</strong> Start live server:<br>
+                        <code>./beads-slides-sync.sh --server</code>
+                    </p>
+                </div>
+            `;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        // Allow loading from console
+        window.loadTriageFromJSON = function(data) {
+            localStorage.setItem('beads-triage', JSON.stringify(data));
+            loadTriage();
+        };
+
+        // Backwards compat
+        window.loadTasksFromJSON = window.loadTriageFromJSON;
+
+        // Add spin animation
+        const style = document.createElement('style');
+        style.textContent = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
+        document.head.appendChild(style);
+
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.navDots = document.getElementById('navDots');
+                this.progressBar = document.getElementById('progress');
+                this.slideCounter = document.getElementById('slideCounter');
+                this.currentSlide = 0;
+                this.totalSlides = this.slides.length;
+
+                this.init();
+            }
+
+            init() {
+                this.createNavDots();
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.updateUI();
+
+                // Try to load triage on init
+                setTimeout(() => loadTriage(), 500);
+            }
+
+            createNavDots() {
+                this.slides.forEach((slide, index) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot';
+                    dot.setAttribute('aria-label', `Go to slide ${index + 1}: ${slide.dataset.title || ''}`);
+                    dot.addEventListener('click', () => this.goToSlide(index));
+                    this.navDots.appendChild(dot);
+                });
+            }
+
+            setupIntersectionObserver() {
+                const options = {
+                    root: null,
+                    rootMargin: '0px',
+                    threshold: 0.5
+                };
+
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            this.currentSlide = Array.from(this.slides).indexOf(entry.target);
+                            this.updateUI();
+                        }
+                    });
+                }, options);
+
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    switch(e.key) {
+                        case 'ArrowRight':
+                        case 'ArrowDown':
+                        case ' ':
+                            e.preventDefault();
+                            this.nextSlide();
+                            break;
+                        case 'ArrowLeft':
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            this.prevSlide();
+                            break;
+                        case 'Home':
+                            e.preventDefault();
+                            this.goToSlide(0);
+                            break;
+                        case 'End':
+                            e.preventDefault();
+                            this.goToSlide(this.totalSlides - 1);
+                            break;
+                        case 'r':
+                        case 'R':
+                            e.preventDefault();
+                            loadTriage();
+                            break;
+                    }
+                });
+            }
+
+            setupTouchNav() {
+                let startY = 0;
+                let startX = 0;
+
+                document.addEventListener('touchstart', (e) => {
+                    startY = e.touches[0].clientY;
+                    startX = e.touches[0].clientX;
+                }, { passive: true });
+
+                document.addEventListener('touchend', (e) => {
+                    const endY = e.changedTouches[0].clientY;
+                    const endX = e.changedTouches[0].clientX;
+                    const diffY = startY - endY;
+                    const diffX = startX - endX;
+
+                    if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 50) {
+                        if (diffY > 0) {
+                            this.nextSlide();
+                        } else {
+                            this.prevSlide();
+                        }
+                    }
+                }, { passive: true });
+            }
+
+            goToSlide(index) {
+                if (index >= 0 && index < this.totalSlides) {
+                    this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+
+            nextSlide() {
+                if (this.currentSlide < this.totalSlides - 1) {
+                    this.goToSlide(this.currentSlide + 1);
+                }
+            }
+
+            prevSlide() {
+                if (this.currentSlide > 0) {
+                    this.goToSlide(this.currentSlide - 1);
+                }
+            }
+
+            updateUI() {
+                const dots = this.navDots.querySelectorAll('.nav-dot');
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+
+                const progress = ((this.currentSlide + 1) / this.totalSlides) * 100;
+                this.progressBar.style.width = `${progress}%`;
+
+                this.slideCounter.textContent = `${this.currentSlide + 1} / ${this.totalSlides}`;
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            new SlidePresentation();
+        });
+    </script>
+</body>
+</html>

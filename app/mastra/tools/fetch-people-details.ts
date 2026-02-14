@@ -1,100 +1,100 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { HOST } from "~/paths"
-import type { contactInfoSchema } from "~/schemas"
-import { personDetailSchema } from "~/schemas"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import { HOST } from "../../paths";
+import type { contactInfoSchema } from "../../schemas";
+import { personDetailSchema } from "../../schemas";
 import type {
 	Database,
 	Interview,
 	InterviewPeople,
-	Organizations,
+	Organization,
 	PeopleOrganization,
 	PeoplePersona,
 	Person,
 	ProjectPeople,
-} from "~/types"
-import { createRouteDefinitions } from "~/utils/route-definitions"
+} from "../../types";
+import { createRouteDefinitions } from "../../utils/route-definitions";
 
 type PeopleOrganizationRow = PeopleOrganization & {
 	organization?: Pick<
-		Organizations,
+		Organization,
 		"id" | "name" | "website_url" | "domain" | "industry" | "size_range" | "headquarters_location"
-	> | null
-}
+	> | null;
+};
 
 type PeoplePersonaRow = PeoplePersona & {
-	personas?: Database["public"]["Tables"]["personas"]["Row"] | null
-}
+	personas?: Database["public"]["Tables"]["personas"]["Row"] | null;
+};
 
 type PersonFacetRow = Database["public"]["Tables"]["person_facet"]["Row"] & {
 	facet?: {
-		id?: number | null
-		label?: string | null
-		kind?: { slug?: string | null; label?: string | null } | null
-	} | null
-}
+		id?: number | null;
+		label?: string | null;
+		kind?: { slug?: string | null; label?: string | null } | null;
+	} | null;
+};
 
-type PersonScaleRow = Database["public"]["Tables"]["person_scale"]["Row"]
+type PersonScaleRow = Database["public"]["Tables"]["person_scale"]["Row"];
 
 type EvidenceRow = Database["public"]["Tables"]["evidence"]["Row"] & {
-	interview?: Pick<Interview, "id" | "title" | "interview_date"> | null
-}
+	interview?: Pick<Interview, "id" | "title" | "interview_date"> | null;
+};
 
 type ProjectPeopleRow = ProjectPeople & {
-	person?: Person
-	people_personas?: PeoplePersonaRow[] | null
-	people_organizations?: PeopleOrganizationRow[] | null
-}
+	person?: Person;
+	people_personas?: PeoplePersonaRow[] | null;
+	people_organizations?: PeopleOrganizationRow[] | null;
+};
 
 type InterviewPeopleRow = InterviewPeople & {
-	interview?: Interview | null
-}
+	interview?: Interview | null;
+};
 
 function normalizeDate(value: unknown) {
-	if (!value) return null
-	if (value instanceof Date) return value.toISOString()
-	if (typeof value === "string") return value
-	return null
+	if (!value) return null;
+	if (value instanceof Date) return value.toISOString();
+	if (typeof value === "string") return value;
+	return null;
 }
 
 function toStringArray(value: unknown): string[] {
-	if (!Array.isArray(value)) return []
+	if (!Array.isArray(value)) return [];
 	const cleaned = value
 		.map((item) => (typeof item === "string" ? item.trim() : ""))
-		.filter((item): item is string => Boolean(item))
-	return Array.from(new Set(cleaned))
+		.filter((item): item is string => Boolean(item));
+	return Array.from(new Set(cleaned));
 }
 
 function buildSearchableText(row: ProjectPeopleRow): string {
-	const person = row.person
-	const parts: string[] = []
+	const person = row.person;
+	const parts: string[] = [];
 	const append = (value?: string | null) => {
 		if (value && typeof value === "string") {
-			const trimmed = value.trim()
-			if (trimmed.length) parts.push(trimmed)
+			const trimmed = value.trim();
+			if (trimmed.length) parts.push(trimmed);
 		}
-	}
+	};
 
-	append(person?.name)
-	append(person?.title)
-	append(person?.role)
-	append(person?.company)
-	append(person?.segment)
-	append(row.role)
+	append(person?.name);
+	append(person?.title);
+	append(person?.role);
+	append((person as any)?.default_organization?.name);
+	append(person?.segment);
+	append(row.role);
 
 	for (const personaLink of row.people_personas ?? []) {
-		append(personaLink.personas?.name ?? null)
+		append(personaLink.personas?.name ?? null);
 	}
 
 	for (const orgLink of row.people_organizations ?? []) {
-		append(orgLink.organization?.name ?? null)
-		append(orgLink.organization?.domain ?? null)
+		append(orgLink.organization?.name ?? null);
+		append(orgLink.organization?.domain ?? null);
 	}
 
-	return parts.join(" ").toLowerCase()
+	return parts.join(" ").toLowerCase();
 }
 
 function _computeSearchScore({
@@ -102,42 +102,42 @@ function _computeSearchScore({
 	normalizedSearch,
 	tokens,
 }: {
-	row: ProjectPeopleRow
-	normalizedSearch: string
-	tokens: string[]
+	row: ProjectPeopleRow;
+	normalizedSearch: string;
+	tokens: string[];
 }): number {
-	if (!normalizedSearch) return 0
-	const text = buildSearchableText(row)
-	if (!text) return 0
+	if (!normalizedSearch) return 0;
+	const text = buildSearchableText(row);
+	if (!text) return 0;
 
-	let score = 0
-	let matchedTokens = 0
+	let score = 0;
+	let matchedTokens = 0;
 
 	for (const token of tokens) {
 		if (token && text.includes(token)) {
-			matchedTokens += 1
-			score += 2
+			matchedTokens += 1;
+			score += 2;
 		}
 	}
 
 	if (matchedTokens === tokens.length && tokens.length > 0) {
-		score += 3
+		score += 3;
 	}
 
 	if (normalizedSearch && text.includes(normalizedSearch)) {
-		score += 2
+		score += 2;
 	}
 
-	const name = row.person?.name?.toLowerCase().trim()
+	const name = row.person?.name?.toLowerCase().trim();
 	if (name) {
 		if (name === normalizedSearch) {
-			score += 6
+			score += 6;
 		} else if (name.startsWith(normalizedSearch)) {
-			score += 3
+			score += 3;
 		}
 	}
 
-	return score
+	return score;
 }
 
 export const fetchPeopleDetailsTool = createTool({
@@ -168,18 +168,18 @@ export const fetchPeopleDetailsTool = createTool({
 		searchApplied: z.string().nullable(),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeAccountId = context?.requestContext?.get?.("account_id")
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const runtimeAccountId = context?.requestContext?.get?.("account_id");
 
-		const projectId = input.projectId
-		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : undefined
-		const peopleSearch = (input.peopleSearch ?? "").trim()
-		const sanitizedPersonSearch = peopleSearch.replace(/[%*"'()]/g, "").trim()
-		const peopleLimit = input.peopleLimit ?? 20
-		const includeEvidence = input.includeEvidence ?? true
-		const includePersonas = input.includePersonas ?? true
-		const includeFacets = input.includeFacets ?? false
-		const specificPersonIds = input.specificPersonIds ?? []
+		const projectId = input.projectId;
+		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : undefined;
+		const peopleSearch = (input.peopleSearch ?? "").trim();
+		const sanitizedPersonSearch = peopleSearch.replace(/[%*"'()]/g, "").trim();
+		const peopleLimit = input.peopleLimit ?? 20;
+		const includeEvidence = input.includeEvidence ?? true;
+		const includePersonas = input.includePersonas ?? true;
+		const includeFacets = input.includeFacets ?? false;
+		const specificPersonIds = input.specificPersonIds ?? [];
 
 		consola.debug("fetch-people-details: execute start", {
 			projectId,
@@ -190,10 +190,10 @@ export const fetchPeopleDetailsTool = createTool({
 			includePersonas,
 			includeFacets,
 			specificPersonIds: specificPersonIds.length,
-		})
+		});
 
 		if (!projectId || projectId.trim() === "") {
-			consola.warn("fetch-people-details: missing or empty projectId")
+			consola.warn("fetch-people-details: missing or empty projectId");
 			return {
 				success: false,
 				message: "Missing or empty projectId. A valid project ID is required.",
@@ -201,20 +201,20 @@ export const fetchPeopleDetailsTool = createTool({
 				people: [],
 				totalCount: 0,
 				searchApplied: null,
-			}
+			};
 		}
 
 		try {
 			// First try project-scoped search using project_people junction table
 			const { data: projectPeopleData, error: peopleError } = await supabase
 				.from("people")
-				.select("*, project_people!inner(project_id)")
+				.select("*, project_people!inner(project_id), default_organization:organizations!default_organization_id(name)")
 				.eq("project_people.project_id", projectId)
 				.eq("account_id", accountId || "")
-				.limit(sanitizedPersonSearch ? 100 : peopleLimit)
+				.limit(sanitizedPersonSearch ? 100 : peopleLimit);
 
-			let searchScope: "project" | "account" = "project"
-			let peopleData: Person[] | null = projectPeopleData as Person[] | null
+			let searchScope: "project" | "account" = "project";
+			let peopleData: Person[] | null = projectPeopleData as Person[] | null;
 
 			// If searching and no results in project, expand to account level
 			if (sanitizedPersonSearch && (!peopleData || peopleData.length === 0) && accountId) {
@@ -222,30 +222,34 @@ export const fetchPeopleDetailsTool = createTool({
 					projectId,
 					accountId,
 					searchTerm: sanitizedPersonSearch,
-				})
+				});
 
-				const accountQuery = await supabase.from("people").select("*").eq("account_id", accountId).limit(100)
+				const accountQuery = await supabase
+					.from("people")
+					.select("*, default_organization:organizations!default_organization_id(name)")
+					.eq("account_id", accountId)
+					.limit(100);
 
 				if (accountQuery.data && accountQuery.data.length > 0) {
-					peopleData = accountQuery.data as Person[]
-					searchScope = "account"
+					peopleData = accountQuery.data as Person[];
+					searchScope = "account";
 					consola.debug("fetch-people-details: found results at account scope", {
 						count: peopleData?.length || 0,
-					})
+					});
 				}
 			}
 
 			if (peopleError) {
-				consola.error("fetch-people-details: failed to fetch people", peopleError)
-				throw peopleError
+				consola.error("fetch-people-details: failed to fetch people", peopleError);
+				throw peopleError;
 			}
 
 			// Debug: Log raw response to see exact structure
 			if (peopleData && peopleData.length > 0) {
-				consola.debug("fetch-people-details: RAW first result", JSON.stringify(peopleData[0], null, 2))
+				consola.debug("fetch-people-details: RAW first result", JSON.stringify(peopleData[0], null, 2));
 			}
 
-			let people = peopleData ?? []
+			let people = peopleData ?? [];
 
 			consola.debug("fetch-people-details: query results", {
 				projectId,
@@ -257,44 +261,45 @@ export const fetchPeopleDetailsTool = createTool({
 								person_id: people[0].id,
 								name: people[0].name,
 								title: people[0].title,
-								company: people[0].company,
+								company: (people[0] as any).default_organization?.name ?? null,
 							}
 						: null,
-			})
+			});
 
 			// Application-side search filtering
 			if (sanitizedPersonSearch) {
-				const searchLower = sanitizedPersonSearch.toLowerCase()
+				const searchLower = sanitizedPersonSearch.toLowerCase();
 
 				// Filter to only matching records
 				people = people.filter((person) => {
-					const nameMatch = person.name?.toLowerCase().includes(searchLower)
-					const titleMatch = person.title?.toLowerCase().includes(searchLower)
-					const companyMatch = person.company?.toLowerCase().includes(searchLower)
-					const roleMatch = person.role?.toLowerCase().includes(searchLower)
+					const nameMatch = person.name?.toLowerCase().includes(searchLower);
+					const titleMatch = person.title?.toLowerCase().includes(searchLower);
+					const orgName = (person as any).default_organization?.name;
+					const companyMatch = orgName?.toLowerCase().includes(searchLower);
+					const roleMatch = person.role?.toLowerCase().includes(searchLower);
 
-					return nameMatch || titleMatch || companyMatch || roleMatch
-				})
+					return nameMatch || titleMatch || companyMatch || roleMatch;
+				});
 
 				consola.debug("fetch-people-details: after search filter", {
 					projectId,
 					searchTerm: sanitizedPersonSearch,
 					filteredResultsCount: people.length,
-				})
+				});
 			}
 
 			// Apply specific person IDs filter if provided
 			if (specificPersonIds.length > 0) {
-				people = people.filter((person) => specificPersonIds.includes(person.id))
+				people = people.filter((person) => specificPersonIds.includes(person.id));
 			}
 
 			if (people.length > peopleLimit) {
-				people = people.slice(0, peopleLimit)
+				people = people.slice(0, peopleLimit);
 			}
-			const personIds = people.map((person) => person.id)
+			const personIds = people.map((person) => person.id);
 
 			// Get total count - just use the filtered array length since we fetched all matching records
-			const totalCount = people.length
+			const totalCount = people.length;
 
 			// Fetch additional data if requested
 			const [personaData, interviewData, evidenceData, facetData, scaleData] = await Promise.all([
@@ -406,28 +411,28 @@ export const fetchPeopleDetailsTool = createTool({
 							.eq("project_id", projectId)
 							.in("person_id", personIds)
 					: Promise.resolve({ data: null }),
-			])
+			]);
 
 			// Organize the additional data by person_id
-			const personasByPerson = new Map<string, PeoplePersonaRow[]>()
-			const interviewsByPerson = new Map<string, InterviewPeopleRow[]>()
-			const evidenceByPerson = new Map<string, EvidenceRow[]>()
-			const facetsByPerson = new Map<string, PersonFacetRow[]>()
-			const scalesByPerson = new Map<string, PersonScaleRow[]>()
+			const personasByPerson = new Map<string, PeoplePersonaRow[]>();
+			const interviewsByPerson = new Map<string, InterviewPeopleRow[]>();
+			const evidenceByPerson = new Map<string, EvidenceRow[]>();
+			const facetsByPerson = new Map<string, PersonFacetRow[]>();
+			const scalesByPerson = new Map<string, PersonScaleRow[]>();
 
 			if (personaData.data) {
 				for (const row of personaData.data as PeoplePersonaRow[]) {
-					const existing = personasByPerson.get(row.person_id) ?? []
-					existing.push(row)
-					personasByPerson.set(row.person_id, existing)
+					const existing = personasByPerson.get(row.person_id) ?? [];
+					existing.push(row);
+					personasByPerson.set(row.person_id, existing);
 				}
 			}
 
 			if (interviewData.data) {
 				for (const row of interviewData.data as InterviewPeopleRow[]) {
-					const existing = interviewsByPerson.get(row.person_id) ?? []
-					existing.push(row)
-					interviewsByPerson.set(row.person_id, existing)
+					const existing = interviewsByPerson.get(row.person_id) ?? [];
+					existing.push(row);
+					interviewsByPerson.set(row.person_id, existing);
 				}
 			}
 
@@ -436,54 +441,54 @@ export const fetchPeopleDetailsTool = createTool({
 					// Find which person this evidence belongs to by looking up interview_people
 					const interviewPeople = (interviewData.data as InterviewPeopleRow[])?.find(
 						(ip) => ip.interview?.id === evidence.interview_id
-					)
+					);
 					if (interviewPeople) {
-						const existing = evidenceByPerson.get(interviewPeople.person_id) ?? []
-						existing.push(evidence)
-						evidenceByPerson.set(interviewPeople.person_id, existing)
+						const existing = evidenceByPerson.get(interviewPeople.person_id) ?? [];
+						existing.push(evidence);
+						evidenceByPerson.set(interviewPeople.person_id, existing);
 					}
 				}
 			}
 
 			if (facetData.data) {
 				for (const facet of facetData.data as PersonFacetRow[]) {
-					const existing = facetsByPerson.get(facet.person_id) ?? []
-					existing.push(facet)
-					facetsByPerson.set(facet.person_id, existing)
+					const existing = facetsByPerson.get(facet.person_id) ?? [];
+					existing.push(facet);
+					facetsByPerson.set(facet.person_id, existing);
 				}
 			}
 
 			if (scaleData.data) {
 				for (const scale of scaleData.data as PersonScaleRow[]) {
-					const existing = scalesByPerson.get(scale.person_id) ?? []
-					existing.push(scale)
-					scalesByPerson.set(scale.person_id, existing)
+					const existing = scalesByPerson.get(scale.person_id) ?? [];
+					existing.push(scale);
+					scalesByPerson.set(scale.person_id, existing);
 				}
 			}
 
 			// Generate route definitions for URL generation
-			const projectPath = accountId && projectId ? `/a/${accountId}/${projectId}` : ""
-			const routes = createRouteDefinitions(projectPath)
+			const projectPath = accountId && projectId ? `/a/${accountId}/${projectId}` : "";
+			const routes = createRouteDefinitions(projectPath);
 
 			// Build the final result
 			const result = people
 				.map((person) => {
-					const personPersonas = personasByPerson.get(person.id) ?? []
-					const personInterviews = interviewsByPerson.get(person.id) ?? []
-					const personEvidence = evidenceByPerson.get(person.id) ?? []
-					const personFacets = facetsByPerson.get(person.id) ?? []
-					const personScales = scalesByPerson.get(person.id) ?? []
+					const personPersonas = personasByPerson.get(person.id) ?? [];
+					const personInterviews = interviewsByPerson.get(person.id) ?? [];
+					const personEvidence = evidenceByPerson.get(person.id) ?? [];
+					const personFacets = facetsByPerson.get(person.id) ?? [];
+					const personScales = scalesByPerson.get(person.id) ?? [];
 
 					// Calculate evidence count for backward compatibility
-					const evidenceCount = personEvidence.length
+					const evidenceCount = personEvidence.length;
 
 					const interviews = personInterviews
 						.map((ip) => {
-							const interview = ip.interview
-							if (!interview) return null
+							const interview = ip.interview;
+							if (!interview) return null;
 
 							// Count evidence for this specific interview
-							const interviewEvidenceCount = personEvidence.filter((ev) => ev.interview_id === interview.id).length
+							const interviewEvidenceCount = personEvidence.filter((ev) => ev.interview_id === interview.id).length;
 
 							return {
 								id: interview.id,
@@ -492,9 +497,9 @@ export const fetchPeopleDetailsTool = createTool({
 								status: interview.status,
 								evidenceCount: interviewEvidenceCount,
 								url: projectPath ? `${HOST}${routes.interviews.detail(interview.id)}` : null,
-							}
+							};
 						})
-						.filter(Boolean)
+						.filter(Boolean);
 
 					return {
 						personId: person.id,
@@ -503,11 +508,11 @@ export const fetchPeopleDetailsTool = createTool({
 						gender: person.gender,
 						pronouns: person.pronouns,
 						title: person.title,
-						company: person.company,
-						occupation: person.occupation,
+						company: (person as any).default_organization?.name ?? null,
+						occupation: null,
 						role: person.role,
 						segment: person.segment,
-						industry: person.industry,
+						industry: null,
 						income: person.income,
 						location: person.location,
 						timezone: person.timezone,
@@ -522,7 +527,7 @@ export const fetchPeopleDetailsTool = createTool({
 						contactInfo: person.contact_info as z.infer<typeof contactInfoSchema> | null,
 						primary_email: person.primary_email,
 						primary_phone: person.primary_phone,
-						projectRole: person.role, // Use person.role instead of project_people.role
+						projectRole: null, // DEPRECATED: people.role no longer populated
 						interviewCount: personInterviews.length, // Calculate from actual interviews
 						firstSeenAt: null, // Not available without project_people junction
 						lastSeenAt: null, // Not available without project_people junction
@@ -574,15 +579,15 @@ export const fetchPeopleDetailsTool = createTool({
 						created_at: normalizeDate(person.created_at),
 						updated_at: normalizeDate(person.updated_at),
 						url: projectPath ? `${HOST}${routes.people.detail(person.id)}` : null,
-					}
+					};
 				})
-				.filter(Boolean) as z.infer<typeof personDetailSchema>[]
+				.filter(Boolean) as z.infer<typeof personDetailSchema>[];
 
 			const message = sanitizedPersonSearch
 				? searchScope === "account"
 					? `Found ${result.length} people matching "${sanitizedPersonSearch}" across account (searched beyond current project).`
 					: `Found ${result.length} people matching "${sanitizedPersonSearch}" in current project.`
-				: `Retrieved ${result.length} people from current project.`
+				: `Retrieved ${result.length} people from current project.`;
 
 			consola.debug("fetch-people-details: final result", {
 				projectId,
@@ -600,7 +605,7 @@ export const fetchPeopleDetailsTool = createTool({
 								company: result[0].company,
 							}
 						: null,
-			})
+			});
 
 			return {
 				success: true,
@@ -609,9 +614,9 @@ export const fetchPeopleDetailsTool = createTool({
 				people: result.filter((p): p is NonNullable<typeof p> => p !== null),
 				totalCount: totalCount ?? 0,
 				searchApplied: sanitizedPersonSearch || null,
-			}
+			};
 		} catch (error) {
-			consola.error("fetch-people-details: unexpected error", error)
+			consola.error("fetch-people-details: unexpected error", error);
 			return {
 				success: false,
 				message: "Unexpected error fetching people details.",
@@ -619,7 +624,7 @@ export const fetchPeopleDetailsTool = createTool({
 				people: [],
 				totalCount: 0,
 				searchApplied: null,
-			}
+			};
 		}
 	},
-})
+});

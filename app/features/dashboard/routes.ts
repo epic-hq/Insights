@@ -1,4 +1,4 @@
-import { type RouteConfig, route } from "@react-router/dev/routes"
+import { type RouteConfig, route } from "@react-router/dev/routes";
 
 export default [
 	// Make metro-index the default dashboard for mobile-first experience
@@ -13,4 +13,4 @@ export default [
 	// ...prefix("dashboard", [index("./features/featurex/pages/index.tsx")
 	// route("new", "./features/featurex/pages/new.tsx"),
 	// route(":id", "./features/featurex/pages/:id.tsx")]),
-] satisfies RouteConfig
+] satisfies RouteConfig;

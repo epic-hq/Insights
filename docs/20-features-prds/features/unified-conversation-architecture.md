@@ -1,7 +1,7 @@
 # Unified Conversation Architecture
 
 > **Status:** Phase 1 complete (schema), Phase 2 in progress
-> **Updated:** 2026-01-13
+> **Updated:** 2026-02-12
 > **Created:** 2024-12-26
 
 ## Overview
@@ -161,6 +161,7 @@ erDiagram
     projects ||--o{ interview_prompts : has
     projects ||--o{ interviews : has
     projects ||--o{ research_links : has
+    projects ||--o{ project_people : tracks
     projects {
         uuid id PK
         uuid account_id FK
@@ -202,10 +203,10 @@ erDiagram
     }
 
     interviews ||--o{ evidence : generates
+    interviews ||--o{ interview_people : participants
     interviews {
         uuid id PK
         uuid project_id FK
-        uuid person_id FK
         uuid research_link_id FK
         text source_type
         interview_status status
@@ -214,25 +215,56 @@ erDiagram
         jsonb conversation_analysis
     }
 
-    people ||--o{ interviews : participates
+    people ||--o{ interview_people : "participates in"
     people ||--o{ evidence_people : linked
+    people ||--o{ people_organizations : "works at"
+    people ||--o{ project_people : "tracked in"
     people {
         uuid id PK
         text firstname
         text lastname
-        text title
-        text company
-        text industry
+        text name "generated: first + last"
+        text title "raw job title text"
         uuid default_organization_id FK
+        text job_function "AI-inferred enum"
+        text seniority_level "AI-inferred enum"
+        text primary_email
+        jsonb contact_info
     }
 
-    organizations ||--o{ people : employs
+    organizations ||--o{ people_organizations : employs
+    organizations ||--o{ people : "default org"
     organizations {
         uuid id PK
         text name
         text industry
         text size_range
         int employee_count
+        text domain
+        text funding_stage
+    }
+
+    people_organizations {
+        uuid id PK
+        uuid person_id FK
+        uuid organization_id FK
+        text job_title "title at this org"
+        text relationship_status
+        boolean is_primary
+    }
+
+    project_people {
+        uuid id PK
+        uuid project_id FK
+        uuid person_id FK
+        text relationship_type "primary_user, stakeholder, etc"
+    }
+
+    interview_people {
+        uuid id PK
+        uuid interview_id FK
+        uuid person_id FK
+        text role "interviewer or participant"
     }
 
     evidence ||--o{ theme_evidence : grouped
@@ -253,6 +285,13 @@ erDiagram
         text inclusion_criteria
     }
 ```
+
+> **Schema cleanup note (2026-02-09):** The `people` table previously had overlapping fields
+> (`role`, `company`, `industry`, `occupation`, `segment`) that caused confusion.
+> Phases 1-2 renamed ambiguous junction columns (`people_organizations.role` -> `job_title`,
+> `project_people.role` -> `relationship_type`), deprecated `people.role`, and fixed facet kind
+> mismatches. Phase 3 will remove `people.company` in favor of `default_organization_id` FK.
+> See `_bmad-output/schema-cleanup-people-table.md` for full spec.
 
 ## Schema Changes
 
@@ -501,6 +540,43 @@ When an Ask response is completed:
    ↓
 7. Evidence appears in unified views with source badges
 ```
+
+### Desktop Realtime Meeting Flow (Current)
+
+This is the current production flow for desktop live meeting capture and finalization:
+
+```text
+Recall SDK meeting detected
+  ↓
+Desktop floating panel shown (single notification per meeting fingerprint)
+  ↓
+User starts recording (requires desktop auth + account/project context + upload token)
+  ↓
+Realtime transcript + participant join events stream from Recall SDK
+  ↓
+Desktop queues utterances and calls POST /api/desktop/realtime-evidence in batches
+  ↓
+Realtime evidence/tasks/people persist to DB (interview_id scoped)
+  ↓
+On stop/recording-ended, desktop flushes pending extraction
+  ↓
+Desktop resolves people via POST /api/desktop/people/resolve
+  ↓
+Desktop finalizes via POST /api/desktop/interviews/finalize
+  ↓
+Finalize writes transcript_formatted, upserts interview_people, links evidence_people/evidence_facet.person_id, sets interview status=ready
+```
+
+### People/Org Normalization Alignment
+
+- Desktop does not implement person resolution logic locally.
+- Desktop sends enriched participant signals (name/email/platform user ID) to `/api/desktop/people/resolve`.
+- Web app shared resolver (`app/lib/people/resolution.server.ts`) is the single source of truth for matching:
+  - email
+  - platform user ID
+  - name + organization/company context
+  - create fallback
+- Organization linkage is normalized through web-side people/org models (`people.default_organization_id` and `people_organizations`), not separate desktop-only logic.
 
 ### Currently Missing (To Implement)
 

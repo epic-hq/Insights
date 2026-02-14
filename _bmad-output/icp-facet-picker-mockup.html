@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ideal Customer Profile — Facet Picker Mockup v3</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    background: #0f1117;
+    color: #e5e7eb;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px;
+  }
+
+  /* Card */
+  .card {
+    background: #1a1d27;
+    border: 1px solid #2a2d37;
+    border-radius: 12px;
+    padding: 24px;
+    width: 100%;
+    max-width: 860px;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .card-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-icon {
+    width: 36px; height: 36px;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: #3b82f6;
+  }
+  .card-title { font-size: 16px; font-weight: 600; color: #e5e7eb; }
+  .card-subtitle { font-size: 12px; color: #6b7280; margin-top: 1px; }
+
+  /* Criteria grid */
+  .criteria-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+  .criteria-col {}
+  .criteria-label {
+    font-size: 11px; font-weight: 500; color: #6b7280;
+    text-transform: uppercase; letter-spacing: .4px;
+    margin-bottom: 8px;
+  }
+  .criteria-values { display: flex; flex-wrap: wrap; gap: 6px; }
+  .criteria-tag {
+    display: inline-flex; align-items: center;
+    padding: 5px 10px;
+    background: #2a2d37;
+    border: 1px solid #3a3d47;
+    border-radius: 6px;
+    font-size: 14px; font-weight: 500;
+    color: #e5e7eb;
+  }
+  .criteria-empty {
+    font-size: 13px; color: #4b5563; font-style: italic;
+  }
+
+  /* Distribution bar */
+  .distribution {
+    display: flex; align-items: center; gap: 20px;
+    margin-top: 20px; padding-top: 16px;
+    border-top: 1px solid #2a2d37;
+  }
+  .dist-item { display: flex; align-items: baseline; gap: 5px; }
+  .dist-num { font-size: 20px; font-weight: 600; }
+  .dist-num.high { color: #22c55e; }
+  .dist-num.med { color: #f59e0b; }
+  .dist-num.low { color: #f97316; }
+  .dist-num.none { color: #6b7280; }
+  .dist-label { font-size: 12px; color: #6b7280; }
+
+  /* Button */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 8px;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all .2s;
+    border: 1px solid;
+  }
+  .btn-outline {
+    background: transparent; border-color: #2a2d37; color: #9ca3af;
+  }
+  .btn-outline:hover { background: #2a2d37; color: #e5e7eb; }
+  .btn-primary {
+    background: #3b82f6; border-color: #3b82f6; color: white;
+  }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-ghost {
+    background: transparent; border-color: transparent; color: #9ca3af;
+    padding: 6px;
+  }
+  .btn-ghost:hover { color: #e5e7eb; background: #2a2d37; }
+
+  /* Dialog overlay */
+  .dialog-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.6);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 100;
+  }
+  .dialog-backdrop.open { display: flex; }
+  .dialog {
+    background: #1a1d27;
+    border: 1px solid #2a2d37;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    width: 100%; max-width: 780px;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 24px;
+    animation: fadeIn .2s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(.97); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .dialog-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .dialog-title { font-size: 17px; font-weight: 600; color: #e5e7eb; }
+  .dialog-desc { font-size: 13px; color: #6b7280; margin-top: 2px; }
+
+  /* Two-column layout */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .col { display: flex; flex-direction: column; gap: 14px; }
+  .col-header {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .5px; color: #6b7280;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #2a2d37;
+  }
+
+  /* Form fields */
+  .field label {
+    display: block; font-size: 13px; font-weight: 500;
+    color: #9ca3af; margin-bottom: 5px;
+  }
+  .field input[type="text"] {
+    width: 100%; padding: 8px 12px;
+    background: #0f1117;
+    border: 1px solid #2a2d37; border-radius: 8px;
+    font-size: 14px; color: #e5e7eb;
+    outline: none; transition: border-color .2s;
+  }
+  .field input[type="text"]:focus {
+    border-color: #3b82f6;
+  }
+  .field input[type="text"]::placeholder { color: #4b5563; }
+
+  /* Selected facets badges */
+  .selected-facets { display: flex; flex-wrap: wrap; gap: 6px; min-height: 8px; }
+  .facet-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 6px;
+    padding: 5px 6px 5px 10px;
+    font-size: 13px; font-weight: 500; color: #e5e7eb;
+  }
+  .facet-badge .kind-tag {
+    font-size: 10px; color: #6b7280;
+    background: #0f1117;
+    border: 1px solid #2a2d37; border-radius: 4px;
+    padding: 1px 5px; text-transform: uppercase;
+    letter-spacing: .2px; line-height: 16px;
+  }
+  .facet-badge button {
+    background: none; border: none; cursor: pointer;
+    color: #6b7280; padding: 2px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  .facet-badge button:hover { color: #ef4444; background: rgba(239,68,68,.15); }
+
+  /* Combobox trigger */
+  .combo-trigger {
+    width: 100%; padding: 8px 12px;
+    background: #0f1117;
+    border: 1px dashed #3a3d47; border-radius: 8px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: #6b7280;
+    transition: all .15s;
+  }
+  .combo-trigger:hover { border-color: #3b82f6; border-style: solid; color: #9ca3af; }
+
+  .max-reached { font-size: 11px; color: #4b5563; font-style: italic; }
+
+  /* Dropdown */
+  .combo-wrap { position: relative; }
+  .combo-dropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: #1a1d27;
+    border: 1px solid #3a3d47;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    z-index: 200; display: none;
+  }
+  .combo-dropdown.open { display: block; }
+  .combo-dropdown .search-wrap {
+    padding: 8px; border-bottom: 1px solid #2a2d37;
+    position: relative;
+  }
+  .combo-dropdown .search-wrap input {
+    width: 100%; padding: 7px 10px 7px 32px;
+    background: #0f1117;
+    border: 1px solid #2a2d37; border-radius: 6px;
+    font-size: 13px; color: #e5e7eb; outline: none;
+  }
+  .combo-dropdown .search-wrap input:focus { border-color: #3b82f6; }
+  .combo-dropdown .search-icon {
+    position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+    color: #6b7280;
+  }
+  .combo-list { max-height: 220px; overflow-y: auto; padding: 4px; }
+  .combo-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px; border-radius: 6px; cursor: pointer;
+    transition: background .1s;
+  }
+  .combo-item:hover { background: rgba(59, 130, 246, 0.08); }
+  .combo-item .left { display: flex; align-items: center; gap: 8px; }
+  .combo-item .facet-label { font-size: 13px; font-weight: 500; color: #e5e7eb; }
+  .combo-item .kind-tag {
+    font-size: 10px; color: #6b7280;
+    background: #0f1117;
+    border: 1px solid #2a2d37; border-radius: 4px;
+    padding: 1px 5px; text-transform: uppercase;
+    letter-spacing: .2px; line-height: 16px;
+  }
+  .combo-item .count { font-size: 12px; color: #4b5563; white-space: nowrap; }
+  .combo-empty { padding: 20px; text-align: center; font-size: 13px; color: #4b5563; }
+
+  /* Dialog footer */
+  .dialog-footer {
+    display: flex; justify-content: flex-end; gap: 8px;
+    margin-top: 20px; padding-top: 16px; border-top: 1px solid #2a2d37;
+  }
+</style>
+</head>
+<body>
+
+<!-- Summary Card -->
+<div class="card" id="summaryCard">
+  <div class="card-header">
+    <div class="card-title-group">
+      <div class="card-icon">
+        <i data-lucide="target" style="width:18px; height:18px;"></i>
+      </div>
+      <div>
+        <div class="card-title">Ideal Customer Profile</div>
+        <div class="card-subtitle">AI-powered matching against your criteria</div>
+      </div>
+    </div>
+    <button class="btn btn-outline" onclick="openDialog()">
+      <i data-lucide="pencil" style="width:14px; height:14px;"></i>
+      Edit Criteria
+    </button>
+  </div>
+
+  <div class="criteria-grid">
+    <div class="criteria-col">
+      <div class="criteria-label">Roles</div>
+      <div class="criteria-values" id="sumRoles">
+        <span class="criteria-tag">Founder</span>
+        <span class="criteria-tag">VP Product</span>
+      </div>
+    </div>
+    <div class="criteria-col">
+      <div class="criteria-label">Organizations</div>
+      <div class="criteria-values" id="sumOrgs">
+        <span class="criteria-tag">B2B SaaS</span>
+      </div>
+    </div>
+    <div class="criteria-col">
+      <div class="criteria-label">Company Sizes</div>
+      <div class="criteria-values" id="sumSizes">
+        <span class="criteria-tag">Startup</span>
+        <span class="criteria-tag">SMB</span>
+      </div>
+    </div>
+    <div class="criteria-col">
+      <div class="criteria-label">Facets</div>
+      <div class="criteria-values" id="sumFacets">
+        <span class="criteria-empty">(not set)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="distribution">
+    <div class="dist-item">
+      <span class="dist-num high">8</span>
+      <span class="dist-label">High</span>
+    </div>
+    <div class="dist-item">
+      <span class="dist-num med">12</span>
+      <span class="dist-label">Medium</span>
+    </div>
+    <div class="dist-item">
+      <span class="dist-num low">5</span>
+      <span class="dist-label">Low</span>
+    </div>
+    <div class="dist-item">
+      <span class="dist-num none">3</span>
+      <span class="dist-label">No match</span>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Dialog -->
+<div class="dialog-backdrop" id="dialogBackdrop">
+<div class="dialog">
+  <div class="dialog-header">
+    <div>
+      <div class="dialog-title">Ideal Customer Profile</div>
+      <div class="dialog-desc">AI handles synonyms and variations automatically.</div>
+    </div>
+    <button class="btn-ghost" onclick="closeDialog()" style="border-radius:6px;">
+      <i data-lucide="x" style="width:18px; height:18px;"></i>
+    </button>
+  </div>
+
+  <div class="two-col">
+    <!-- Left: text criteria -->
+    <div class="col">
+      <div class="col-header">Criteria</div>
+      <div class="field">
+        <label>Roles</label>
+        <input type="text" id="editRoles" placeholder="Job titles — e.g. Founder, VP Product" value="Founder, VP Product">
+      </div>
+      <div class="field">
+        <label>Organizations</label>
+        <input type="text" id="editOrgs" placeholder="Industries or verticals — e.g. B2B SaaS" value="B2B SaaS">
+      </div>
+      <div class="field">
+        <label>Company Sizes</label>
+        <input type="text" id="editSizes" placeholder="Stage or size — e.g. Startup, SMB, Enterprise" value="Startup, SMB">
+      </div>
+    </div>
+
+    <!-- Right: facet picker -->
+    <div class="col">
+      <div class="col-header">Facets <span style="font-weight:400; text-transform:none; letter-spacing:0; color:#4b5563;">(up to 2)</span></div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="selected-facets" id="selectedFacets"></div>
+        <div class="combo-wrap" id="comboWrap">
+          <button class="combo-trigger" onclick="toggleDropdown()">
+            <i data-lucide="search" style="width:14px; height:14px;"></i>
+            Search vocabulary...
+          </button>
+          <div class="combo-dropdown" id="comboDropdown">
+            <div class="search-wrap">
+              <i data-lucide="search" class="search-icon" style="width:14px; height:14px;"></i>
+              <input type="text" id="comboSearch" placeholder="Search facets..." oninput="filterFacets()">
+            </div>
+            <div class="combo-list" id="comboList"></div>
+          </div>
+        </div>
+        <div class="max-reached" id="maxReached" style="display:none;">Max 2 selected. Remove one to swap.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dialog-footer">
+    <button class="btn btn-outline" onclick="closeDialog()">Cancel</button>
+    <button class="btn btn-primary" onclick="handleSave()">
+      <i data-lucide="check" style="width:14px; height:14px;"></i>
+      Save &amp; Re-score
+    </button>
+  </div>
+</div>
+</div>
+
+<script>
+const ALL_FACETS = [
+  { id: 1, label: "Move Faster", kind_label: "Goal", person_count: 24 },
+  { id: 2, label: "Data Integration Challenges", kind_label: "Pain", person_count: 19 },
+  { id: 3, label: "Weekly Standup", kind_label: "Workflow", person_count: 17 },
+  { id: 4, label: "Too Expensive", kind_label: "Pain", person_count: 15 },
+  { id: 5, label: "Reduce Manual Work", kind_label: "Goal", person_count: 14 },
+  { id: 6, label: "Slack", kind_label: "Tool", person_count: 13 },
+  { id: 7, label: "Cross-Team Collaboration", kind_label: "Workflow", person_count: 12 },
+  { id: 8, label: "Onboarding New Hires", kind_label: "Task", person_count: 11 },
+  { id: 9, label: "Enterprise Buyer", kind_label: "Demographic", person_count: 9 },
+  { id: 10, label: "Self-Serve Preference", kind_label: "Preference", person_count: 8 },
+  { id: 11, label: "Pipeline Visibility", kind_label: "Goal", person_count: 7 },
+  { id: 12, label: "Compliance Concerns", kind_label: "Pain", person_count: 6 },
+  { id: 13, label: "Product-Led Growth", kind_label: "Context", person_count: 5 },
+  { id: 14, label: "Technical Decision Maker", kind_label: "Demographic", person_count: 4 },
+  { id: 15, label: "Jira", kind_label: "Tool", person_count: 3 },
+];
+
+let selected = [];
+
+function render() {
+  const container = document.getElementById('selectedFacets');
+  const comboWrap = document.getElementById('comboWrap');
+  const maxMsg = document.getElementById('maxReached');
+
+  container.innerHTML = selected.map(f =>
+    `<span class="facet-badge">
+      ${f.label}
+      <span class="kind-tag">${f.kind_label}</span>
+      <button onclick="removeFacet(${f.id})" title="Remove">
+        <i data-lucide="x" style="width:12px; height:12px;"></i>
+      </button>
+    </span>`
+  ).join('');
+
+  comboWrap.style.display = selected.length >= 2 ? 'none' : 'block';
+  maxMsg.style.display = selected.length >= 2 ? 'block' : 'none';
+
+  renderList();
+  lucide.createIcons();
+}
+
+function renderList() {
+  const list = document.getElementById('comboList');
+  const search = document.getElementById('comboSearch').value.toLowerCase();
+  const ids = new Set(selected.map(f => f.id));
+  const filtered = ALL_FACETS.filter(f => !ids.has(f.id) && f.label.toLowerCase().includes(search));
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="combo-empty">No facets found.</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(f =>
+    `<div class="combo-item" onclick="selectFacet(${f.id})">
+      <div class="left">
+        <span class="facet-label">${f.label}</span>
+        <span class="kind-tag">${f.kind_label}</span>
+      </div>
+      <span class="count">${f.person_count} people</span>
+    </div>`
+  ).join('');
+}
+
+function selectFacet(id) {
+  if (selected.length >= 2) return;
+  const f = ALL_FACETS.find(x => x.id === id);
+  if (f && !selected.some(x => x.id === id)) {
+    selected.push(f);
+    closeDropdown();
+    render();
+  }
+}
+
+function removeFacet(id) {
+  selected = selected.filter(f => f.id !== id);
+  render();
+}
+
+function toggleDropdown() {
+  const dd = document.getElementById('comboDropdown');
+  if (dd.classList.contains('open')) { closeDropdown(); return; }
+  dd.classList.add('open');
+  document.getElementById('comboSearch').value = '';
+  renderList();
+  document.getElementById('comboSearch').focus();
+}
+
+function closeDropdown() {
+  document.getElementById('comboDropdown').classList.remove('open');
+}
+
+function filterFacets() { renderList(); }
+
+document.addEventListener('click', e => {
+  if (!document.getElementById('comboWrap').contains(e.target)) closeDropdown();
+});
+
+function openDialog() {
+  document.getElementById('dialogBackdrop').classList.add('open');
+}
+
+function closeDialog() {
+  document.getElementById('dialogBackdrop').classList.remove('open');
+}
+
+function handleSave() {
+  // Update summary facets
+  const el = document.getElementById('sumFacets');
+  el.innerHTML = selected.length
+    ? selected.map(f => `<span class="criteria-tag">${f.label}</span>`).join('')
+    : '<span class="criteria-empty">(not set)</span>';
+  closeDialog();
+}
+
+// Init
+render();
+lucide.createIcons();
+</script>
+</body>
+</html>

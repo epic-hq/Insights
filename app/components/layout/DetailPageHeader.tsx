@@ -1,38 +1,38 @@
-import type { LucideIcon } from "lucide-react"
-import { Trash2 } from "lucide-react"
-import type { ReactNode } from "react"
-import { Form, Link } from "react-router-dom"
-import { LinkOrganizationDialog } from "~/components/dialogs/LinkOrganizationDialog"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import type { LucideIcon } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import type { ReactNode } from "react";
+import { Form, Link } from "react-router-dom";
+import { LinkOrganizationDialog } from "~/components/dialogs/LinkOrganizationDialog";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 
 interface DetailPageHeaderProps {
 	/** Icon component to display in the badge */
-	icon: LucideIcon
+	icon: LucideIcon;
 	/** Type label (e.g., "Organization", "Person", "Persona") */
-	typeLabel: string
+	typeLabel: string;
 	/** Main title/name - can be string or editable component */
-	title: string | ReactNode
+	title: string | ReactNode;
 	/** Optional subtitle or metadata row */
-	metadata?: ReactNode
+	metadata?: ReactNode;
 	/** Optional badges row */
-	badges?: ReactNode
+	badges?: ReactNode;
 	/** Optional description/bio content - can be string or editable component */
-	description?: string | ReactNode | null
+	description?: string | ReactNode | null;
 	/** Optional avatar to display */
-	avatar?: ReactNode
+	avatar?: ReactNode;
 	/** Optional content to display above the description */
-	aboveDescription?: ReactNode
+	aboveDescription?: ReactNode;
 	/** Optional organization data for inline organization management */
 	organizations?: {
-		personId: string
-		sortedLinkedOrganizations: any[]
-		availableOrganizations: any[]
-		routes: any
-	}
+		personId: string;
+		sortedLinkedOrganizations: any[];
+		availableOrganizations: any[];
+		routes: any;
+	};
 	/** Optional additional content in the card body */
-	children?: ReactNode
+	children?: ReactNode;
 }
 
 export function DetailPageHeader({
@@ -87,8 +87,8 @@ export function DetailPageHeader({
 								{organizations.sortedLinkedOrganizations.length > 0 ? (
 									<div className="grid gap-3 sm:grid-cols-2">
 										{organizations.sortedLinkedOrganizations.map((link) => {
-											const organization = link.organization
-											if (!organization) return null
+											const organization = link.organization;
+											if (!organization) return null;
 											return (
 												<div
 													key={link.id}
@@ -119,7 +119,7 @@ export function DetailPageHeader({
 														</Button>
 													</Form>
 												</div>
-											)
+											);
 										})}
 									</div>
 								) : (
@@ -135,5 +135,5 @@ export function DetailPageHeader({
 				)}
 			</Card>
 		</div>
-	)
+	);
 }

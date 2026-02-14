@@ -7,38 +7,38 @@
  * - 1 = Low (1 bar filled, slate)
  */
 
-import { cn } from "~/lib/utils"
+import { cn } from "~/lib/utils";
 
 /** Priority configuration */
 export const priorityConfig = {
 	3: { label: "High", color: "bg-emerald-600" },
 	2: { label: "Medium", color: "bg-amber-600" },
 	1: { label: "Low", color: "bg-slate-600" },
-}
+};
 
 interface PriorityBarsProps {
-	priority: number
+	priority: number;
 	/** Size variant */
-	size?: "sm" | "default" | "lg"
+	size?: "sm" | "default" | "lg";
 	/** Show text label next to bars */
-	showLabel?: boolean
-	className?: string
+	showLabel?: boolean;
+	className?: string;
 }
 
 /** Renders a priority bar chart */
 export function PriorityBars({ priority, size = "default", showLabel = false, className }: PriorityBarsProps) {
-	const config = priorityConfig[priority as 1 | 2 | 3] || priorityConfig[1]
-	const color = config.color
-	const mutedColor = "bg-muted-foreground/30"
+	const config = priorityConfig[priority as 1 | 2 | 3] || priorityConfig[1];
+	const color = config.color;
+	const mutedColor = "bg-muted-foreground/30";
 
 	// Size variants
 	const sizeClasses = {
 		sm: { bar1: "h-2 w-0.5", bar2: "h-2.5 w-0.5", bar3: "h-3 w-0.5", gap: "gap-0.5" },
 		default: { bar1: "h-2.5 w-1", bar2: "h-3 w-1", bar3: "h-3.5 w-1", gap: "gap-0.5" },
 		lg: { bar1: "h-3 w-1.5", bar2: "h-4 w-1.5", bar3: "h-5 w-1.5", gap: "gap-1" },
-	}
+	};
 
-	const s = sizeClasses[size]
+	const s = sizeClasses[size];
 
 	const bars = (
 		<div className={cn("flex items-end", s.gap)} title={`${config.label} priority`}>
@@ -46,7 +46,7 @@ export function PriorityBars({ priority, size = "default", showLabel = false, cl
 			<div className={cn("rounded-sm", s.bar2, priority >= 2 ? color : mutedColor)} />
 			<div className={cn("rounded-sm", s.bar3, priority >= 3 ? color : mutedColor)} />
 		</div>
-	)
+	);
 
 	if (showLabel) {
 		return (
@@ -54,17 +54,17 @@ export function PriorityBars({ priority, size = "default", showLabel = false, cl
 				{bars}
 				<span className="text-muted-foreground text-xs">{config.label}</span>
 			</div>
-		)
+		);
 	}
 
-	return <div className={className}>{bars}</div>
+	return <div className={className}>{bars}</div>;
 }
 
 interface PrioritySelectProps {
-	priority: number
-	taskId: string
-	onPriorityChange?: (taskId: string, newPriority: number) => void
-	className?: string
+	priority: number;
+	taskId: string;
+	onPriorityChange?: (taskId: string, newPriority: number) => void;
+	className?: string;
 }
 
 /** Interactive priority selector with bar visualization */
@@ -86,5 +86,5 @@ export function PrioritySelect({ priority, taskId, onPriorityChange, className }
 				</button>
 			))}
 		</div>
-	)
+	);
 }

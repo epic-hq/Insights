@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { useLoaderData } from "react-router"
+import { useMemo, useState } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { useLoaderData } from "react-router";
 import {
 	CartesianGrid,
 	Legend,
@@ -11,8 +11,8 @@ import {
 	XAxis,
 	YAxis,
 	ZAxis,
-} from "recharts"
-import { getServerClient } from "~/lib/supabase/client.server"
+} from "recharts";
+import { getServerClient } from "~/lib/supabase/client.server";
 
 // ---------------------------------------------------------------------------
 // Remix Route: /projects/:projectId/personas/spectrum
@@ -26,40 +26,40 @@ import { getServerClient } from "~/lib/supabase/client.server"
 export const meta: MetaFunction = () => [
 	{ title: "Persona Spectrum | Insights" },
 	{ name: "description", content: "Compare personas on configurable spectrums with clear labels." },
-]
+];
 
 // ----------------------
 // Types
 // ----------------------
-type SpectrumPoint = { x: number; y: number; z?: number; label?: string }
+type SpectrumPoint = { x: number; y: number; z?: number; label?: string };
 export type PersonaRow = {
-	id: string
-	name_and_tagline: string
-	differentiators: string[] | null
-	spectrum_positions: Record<string, SpectrumPoint> | null
-	kind?: "provisional" | "contrast" | "core" | string | null
-}
+	id: string;
+	name_and_tagline: string;
+	differentiators: string[] | null;
+	spectrum_positions: Record<string, SpectrumPoint> | null;
+	kind?: "provisional" | "contrast" | "core" | string | null;
+};
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-	const { client: supabase } = getServerClient(request)
-	const projectId = params.projectId as string | undefined
+	const { client: supabase } = getServerClient(request);
+	const projectId = params.projectId as string | undefined;
 
 	// If we have Supabase configured on server, pull real data.
 	try {
-		if (!projectId) throw new Error("Missing projectId route param")
+		if (!projectId) throw new Error("Missing projectId route param");
 
 		const { data, error } = await supabase
 			.from("personas")
 			.select("id,name_and_tagline,differentiators,spectrum_positions,kind")
 			.eq("project_id", projectId)
-			.order("created_at", { ascending: false })
+			.order("created_at", { ascending: false });
 
-		if (error) throw error
+		if (error) throw error;
 
 		return {
 			personas: (data || []) as PersonaRow[],
 			hasSupabase: true,
-		}
+		};
 	} catch (_e) {
 		// Safe _eemo fallback when env/DB is not available in sandbox
 		const demo: PersonaRow[] = [
@@ -83,9 +83,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 				},
 				kind: "provisional",
 			},
-		]
+		];
 
-		return { personas: demo, hasSupabase: false }
+		return { personas: demo, hasSupabase: false };
 	}
 }
 
@@ -93,72 +93,72 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 // Helpers
 // ----------------------
 function parseAxisSides(axis: string): [string, string] {
-	const parts = axis.split("↔")
-	if (parts.length === 2) return [parts[0].trim(), parts[1].trim()]
-	const hy = axis.split("-")
-	if (hy.length === 2) return [hy[0].trim(), hy[1].trim()]
-	return ["Left", "Right"]
+	const parts = axis.split("↔");
+	if (parts.length === 2) return [parts[0].trim(), parts[1].trim()];
+	const hy = axis.split("-");
+	if (hy.length === 2) return [hy[0].trim(), hy[1].trim()];
+	return ["Left", "Right"];
 }
 
 function bucketName(kind?: string | null) {
-	const k = (kind || "").toLowerCase()
-	if (k.includes("contrast")) return "Contrast"
-	if (k.includes("provisional")) return "Provisional"
-	if (k.includes("core")) return "Core"
-	return "Other"
+	const k = (kind || "").toLowerCase();
+	if (k.includes("contrast")) return "Contrast";
+	if (k.includes("provisional")) return "Provisional";
+	if (k.includes("core")) return "Core";
+	return "Other";
 }
 
 function colorForBucket(name: string) {
-	const n = name.toLowerCase()
-	if (n.includes("contrast")) return "#34d399" // emerald
-	if (n.includes("provisional")) return "#818cf8" // indigo
-	if (n.includes("core")) return "#94a3b8" // slate
-	return "#a78bfa" // violet fallback
+	const n = name.toLowerCase();
+	if (n.includes("contrast")) return "#34d399"; // emerald
+	if (n.includes("provisional")) return "#818cf8"; // indigo
+	if (n.includes("core")) return "#94a3b8"; // slate
+	return "#a78bfa"; // violet fallback
 }
 
 // Optional mapper when spectrum_positions[axis] is missing
 function mapFromDifferentiators(p: PersonaRow, axis: string): SpectrumPoint | null {
-	const diffs = (p.differentiators || []).map((d) => d.toLowerCase())
-	const has = (s: string) => diffs.some((d) => d.includes(s))
+	const diffs = (p.differentiators || []).map((d) => d.toLowerCase());
+	const has = (s: string) => diffs.some((d) => d.includes(s));
 
 	if (axis.includes("Autonomy") && axis.includes("Guidance")) {
-		const x = has("autonomy") || has("explore") ? 80 : has("structure") || has("guided") ? 20 : 50
-		const y = has("nudges") ? 30 : 70 // y ~ nudge sensitivity (lower = needs nudges)
-		return { x, y, z: 80, label: has("autonomy") ? "Autonomy" : has("guided") ? "Guidance" : "Neutral" }
+		const x = has("autonomy") || has("explore") ? 80 : has("structure") || has("guided") ? 20 : 50;
+		const y = has("nudges") ? 30 : 70; // y ~ nudge sensitivity (lower = needs nudges)
+		return { x, y, z: 80, label: has("autonomy") ? "Autonomy" : has("guided") ? "Guidance" : "Neutral" };
 	}
 	if (axis.includes("Speed") && axis.includes("Depth")) {
-		const x = has("fast") || has("speed") || has("sprint") ? 80 : has("depth") || has("mastery") ? 20 : 50
-		const y = has("planning") ? 60 : 40 // y ~ planning vs improvisation
-		return { x, y, z: 80, label: has("depth") ? "Depth" : "Speed" }
+		const x = has("fast") || has("speed") || has("sprint") ? 80 : has("depth") || has("mastery") ? 20 : 50;
+		const y = has("planning") ? 60 : 40; // y ~ planning vs improvisation
+		return { x, y, z: 80, label: has("depth") ? "Depth" : "Speed" };
 	}
-	return null
+	return null;
 }
 
 // ----------------------
 // React Component
 // ----------------------
 export default function SpectrumRoute() {
-	const { personas, hasSupabase } = useLoaderData<typeof loader>()
+	const { personas, hasSupabase } = useLoaderData<typeof loader>();
 
-	const [spectrum, setSpectrum] = useState("Autonomy ↔ Guidance")
-	const [xLabel, setXLabel] = useState("Autonomy → Guidance (0–100)")
-	const [yLabel, setYLabel] = useState("Nudge‑Sensitivity (0–100)")
-	const [left, right] = parseAxisSides(spectrum)
+	const [spectrum, setSpectrum] = useState("Autonomy ↔ Guidance");
+	const [xLabel, setXLabel] = useState("Autonomy → Guidance (0–100)");
+	const [yLabel, setYLabel] = useState("Nudge‑Sensitivity (0–100)");
+	const [left, right] = parseAxisSides(spectrum);
 
 	// Build datasets for recharts
 	const dataSets = useMemo(() => {
-		const buckets = new Map<string, { name: string; color: string; points: any[] }>()
+		const buckets = new Map<string, { name: string; color: string; points: any[] }>();
 
 		for (const p of personas) {
-			const pt = p.spectrum_positions?.[spectrum] || mapFromDifferentiators(p, spectrum)
-			if (!pt) continue
-			const bname = bucketName(p.kind)
-			const bucket = buckets.get(bname) || { name: bname, color: colorForBucket(bname), points: [] }
-			bucket.points.push({ ...pt, personaId: p.id, personaName: p.name_and_tagline })
-			buckets.set(bname, bucket)
+			const pt = p.spectrum_positions?.[spectrum] || mapFromDifferentiators(p, spectrum);
+			if (!pt) continue;
+			const bname = bucketName(p.kind);
+			const bucket = buckets.get(bname) || { name: bname, color: colorForBucket(bname), points: [] };
+			bucket.points.push({ ...pt, personaId: p.id, personaName: p.name_and_tagline });
+			buckets.set(bname, bucket);
 		}
-		return Array.from(buckets.values())
-	}, [personas, spectrum])
+		return Array.from(buckets.values());
+	}, [personas, spectrum]);
 
 	return (
 		<div className="mx-auto max-w-6xl p-6">
@@ -246,8 +246,8 @@ export default function SpectrumRoute() {
 							<Tooltip
 								cursor={{ strokeDasharray: "3 3" }}
 								content={({ active, payload }) => {
-									if (!active || !payload || !payload.length) return null
-									const p: any = payload[0].payload
+									if (!active || !payload || !payload.length) return null;
+									const p: any = payload[0].payload;
 									return (
 										<div className="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs text-zinc-200">
 											<div className="font-medium">{p.personaName || "Unknown"}</div>
@@ -264,7 +264,7 @@ export default function SpectrumRoute() {
 												)}
 											</div>
 										</div>
-									)
+									);
 								}}
 							/>
 							<Legend wrapperStyle={{ color: "#a1a1aa" }} />
@@ -300,7 +300,7 @@ export default function SpectrumRoute() {
 				</ol>
 			</div>
 		</div>
-	)
+	);
 }
 
 // ---------------------------------------------------------------------------

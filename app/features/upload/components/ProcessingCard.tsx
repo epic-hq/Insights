@@ -1,27 +1,27 @@
-import { AlertTriangleIcon, CheckCircle } from "lucide-react"
-import { useEffect, useState } from "react"
+import { AlertTriangleIcon, CheckCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 
-export type ProcessingState = "uploaded" | "transcribing" | "analyzing" | "ready" | "error"
+export type ProcessingState = "uploaded" | "transcribing" | "analyzing" | "ready" | "error";
 
 export interface ProcessingCardProps {
-	id: string
-	filename: string
-	progress?: number // 0-100
-	state: ProcessingState
-	onClick?: () => void
+	id: string;
+	filename: string;
+	progress?: number; // 0-100
+	state: ProcessingState;
+	onClick?: () => void;
 }
 
 export default function ProcessingCard({ filename, progress = 0, state, onClick }: ProcessingCardProps) {
-	const [internalProgress, setInternalProgress] = useState(progress)
+	const [internalProgress, setInternalProgress] = useState(progress);
 
 	// Simulate progress if only state changes without explicit percentage (demo mode)
 	useEffect(() => {
 		if (state === "ready" || state === "error") {
-			setInternalProgress(100)
+			setInternalProgress(100);
 		} else if (progress !== undefined) {
-			setInternalProgress(progress)
+			setInternalProgress(progress);
 		}
-	}, [state, progress])
+	}, [state, progress]);
 
 	const stateColor: Record<ProcessingState, string> = {
 		uploaded: "bg-gray-300",
@@ -29,7 +29,7 @@ export default function ProcessingCard({ filename, progress = 0, state, onClick 
 		analyzing: "bg-blue-400",
 		ready: "bg-green-500",
 		error: "bg-red-500",
-	}
+	};
 
 	const stateLabel: Record<ProcessingState, string> = {
 		uploaded: "Uploaded",
@@ -37,7 +37,7 @@ export default function ProcessingCard({ filename, progress = 0, state, onClick 
 		analyzing: "Analyzing",
 		ready: "Ready",
 		error: "Error",
-	}
+	};
 
 	return (
 		<div
@@ -62,5 +62,5 @@ export default function ProcessingCard({ filename, progress = 0, state, onClick 
 			</div>
 			<p className="mt-1 text-gray-600 text-xs dark:text-gray-400">{stateLabel[state]}</p>
 		</div>
-	)
+	);
 }

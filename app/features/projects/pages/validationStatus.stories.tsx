@@ -1,6 +1,6 @@
-import { withRouter } from ".storybook/with-router"
-import type { Meta, StoryObj } from "@storybook/react-vite"
-import { AnalyzeStageValidation } from "./validationStatus"
+import { withRouter } from ".storybook/with-router";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { AnalyzeStageValidation } from "./validationStatus";
 
 const meta = {
 	title: "Features/Projects/Pages/validationStatus",
@@ -10,10 +10,10 @@ const meta = {
 		layout: "centered",
 	},
 	tags: ["autodocs"],
-} satisfies Meta<typeof AnalyzeStageValidation>
+} satisfies Meta<typeof AnalyzeStageValidation>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 // Mock data that would normally come from loader
 export const Default: Story = {
@@ -23,4 +23,4 @@ export const Default: Story = {
 			// For now, empty object - add fields as you discover what's needed
 		},
 	},
-}
+};

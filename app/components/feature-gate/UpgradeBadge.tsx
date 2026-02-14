@@ -5,23 +5,23 @@
  * Links directly to checkout for the required plan.
  */
 
-import { Sparkles } from "lucide-react"
-import { Link } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import type { PlanId } from "~/config/plans"
-import { useFeatureGate } from "~/hooks/useFeatureGate"
-import { getFeatureDisplayName } from "~/lib/feature-gate"
-import type { FeatureKey, LimitKey } from "~/lib/feature-gate/types"
+import { Sparkles } from "lucide-react";
+import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import type { PlanId } from "~/config/plans";
+import { useFeatureGate } from "~/hooks/useFeatureGate";
+import { getFeatureDisplayName } from "~/lib/feature-gate";
+import type { FeatureKey, LimitKey } from "~/lib/feature-gate/types";
 
 interface UpgradeBadgeProps {
 	/** Feature or limit key */
-	feature: FeatureKey | LimitKey
+	feature: FeatureKey | LimitKey;
 	/** Current plan ID (used to determine upgrade URL) */
-	planId?: PlanId
+	planId?: PlanId;
 	/** Size variant */
-	size?: "sm" | "md"
+	size?: "sm" | "md";
 	/** Optional custom label */
-	label?: string
+	label?: string;
 }
 
 /**
@@ -32,8 +32,8 @@ interface UpgradeBadgeProps {
  * <UpgradeBadge feature="smart_personas" planId="free" size="md" />
  */
 export function UpgradeBadge({ feature, planId = "free", size = "sm", label }: UpgradeBadgeProps) {
-	const { upgradeUrl } = useFeatureGate(feature as FeatureKey, planId)
-	const displayLabel = label ?? (size === "md" ? "Upgrade to unlock" : "Upgrade")
+	const { upgradeUrl } = useFeatureGate(feature as FeatureKey, planId);
+	const displayLabel = label ?? (size === "md" ? "Upgrade to unlock" : "Upgrade");
 
 	return (
 		<Link to={upgradeUrl ?? "/pricing"}>
@@ -45,7 +45,7 @@ export function UpgradeBadge({ feature, planId = "free", size = "sm", label }: U
 				{displayLabel}
 			</Badge>
 		</Link>
-	)
+	);
 }
 
 /**
@@ -61,5 +61,5 @@ export function FeatureLabel({ feature }: { feature: FeatureKey }) {
 			{getFeatureDisplayName(feature)}
 			<UpgradeBadge feature={feature} size="sm" />
 		</span>
-	)
+	);
 }

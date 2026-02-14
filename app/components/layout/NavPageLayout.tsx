@@ -1,33 +1,33 @@
-import { ArrowLeft } from "lucide-react"
-import type React from "react"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
+import { ArrowLeft } from "lucide-react";
+import type React from "react";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 
 interface NavPageLayoutProps {
-	title: string
-	description?: string
-	onBack?: () => void
-	backLabel?: string
-	children: React.ReactNode
+	title: string;
+	description?: string;
+	onBack?: () => void;
+	backLabel?: string;
+	children: React.ReactNode;
 
 	// View toggles
-	viewMode?: "cards" | "table"
-	onViewModeChange?: (mode: "cards" | "table") => void
-	showViewToggle?: boolean
+	viewMode?: "cards" | "table";
+	onViewModeChange?: (mode: "cards" | "table") => void;
+	showViewToggle?: boolean;
 
 	// Action buttons
-	actionButtons?: React.ReactNode[]
-	primaryAction?: React.ReactNode
+	actionButtons?: React.ReactNode[];
+	primaryAction?: React.ReactNode;
 
 	// Header badges/indicators
-	headerBadge?: React.ReactNode
-	itemCount?: number
+	headerBadge?: React.ReactNode;
+	itemCount?: number;
 
 	// Layout options
-	maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "6xl" | "7xl"
-	padding?: "sm" | "md" | "lg"
-	showSubnav?: boolean
-	subnav?: React.ReactNode
+	maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "6xl" | "7xl";
+	padding?: "sm" | "md" | "lg";
+	showSubnav?: boolean;
+	subnav?: React.ReactNode;
 }
 
 function NavPageLayout({
@@ -56,13 +56,13 @@ function NavPageLayout({
 		"2xl": "max-w-2xl",
 		"6xl": "max-w-6xl",
 		"7xl": "max-w-7xl",
-	}[maxWidth]
+	}[maxWidth];
 
 	const paddingClass = {
 		sm: "px-4 py-4",
 		md: "px-6 py-8",
 		lg: "px-8 py-12",
-	}[padding]
+	}[padding];
 
 	return (
 		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -141,7 +141,7 @@ function NavPageLayout({
 			{/* Main Content */}
 			<div className={`mx-auto ${maxWidthClass} ${paddingClass}`}>{children}</div>
 		</div>
-	)
+	);
 }
 
-export default NavPageLayout
+export default NavPageLayout;

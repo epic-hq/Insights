@@ -1,17 +1,17 @@
-import { useState } from "react"
-import { Badge } from "~/components/ui/badge"
-import type { PainMatrix, PainMatrixCell } from "../services/generatePainMatrix.server"
+import { useState } from "react";
+import { Badge } from "~/components/ui/badge";
+import type { PainMatrix, PainMatrixCell } from "../services/generatePainMatrix.server";
 
 export interface PainMatrixProps {
-	matrix: PainMatrix
-	onCellClick?: (cell: PainMatrixCell) => void
+	matrix: PainMatrix;
+	onCellClick?: (cell: PainMatrixCell) => void;
 	segments?: Array<{
-		kind: string
-		label: string
-		person_count: number
-	}>
-	selectedSegmentSlug?: string | null
-	onSegmentChange?: (kindSlug: string) => void
+		kind: string;
+		label: string;
+		person_count: number;
+	}>;
+	selectedSegmentSlug?: string | null;
+	onSegmentChange?: (kindSlug: string) => void;
 }
 
 /**
@@ -25,44 +25,44 @@ export function PainMatrixComponent({
 	selectedSegmentSlug,
 	onSegmentChange,
 }: PainMatrixProps) {
-	const [sortBy, setSortBy] = useState<"impact" | "frequency">("impact")
-	const [minImpact, setMinImpact] = useState(0)
+	const [sortBy, setSortBy] = useState<"impact" | "frequency">("impact");
+	const [minImpact, setMinImpact] = useState(0);
 
 	// Create lookup map for cells
-	const cellLookup = new Map<string, PainMatrixCell>()
+	const cellLookup = new Map<string, PainMatrixCell>();
 	for (const cell of matrix.cells) {
-		const key = `${cell.pain_theme_id}::${cell.user_group.name}`
-		cellLookup.set(key, cell)
+		const key = `${cell.pain_theme_id}::${cell.user_group.name}`;
+		cellLookup.set(key, cell);
 	}
 
 	// Get unique user groups
-	const userGroups = matrix.user_groups
+	const userGroups = matrix.user_groups;
 
 	// Sort and filter pain themes based on their max impact across all groups
 	const painThemesWithMaxImpact = matrix.pain_themes.map((pain) => {
 		// Find max impact score for this pain across all groups
-		const cellsForPain = matrix.cells.filter((c) => c.pain_theme_id === pain.id)
-		const maxImpact = Math.max(...cellsForPain.map((c) => c.metrics.impact_score), 0)
-		const totalAffected = cellsForPain.reduce((sum, c) => sum + c.evidence.person_count, 0)
-		return { pain, maxImpact, totalAffected }
-	})
+		const cellsForPain = matrix.cells.filter((c) => c.pain_theme_id === pain.id);
+		const maxImpact = Math.max(...cellsForPain.map((c) => c.metrics.impact_score), 0);
+		const totalAffected = cellsForPain.reduce((sum, c) => sum + c.evidence.person_count, 0);
+		return { pain, maxImpact, totalAffected };
+	});
 
 	// Filter by minimum impact
-	const filteredPainThemes = painThemesWithMaxImpact.filter((p) => p.maxImpact >= minImpact)
+	const filteredPainThemes = painThemesWithMaxImpact.filter((p) => p.maxImpact >= minImpact);
 
 	// Sort by selected metric
 	const sortedPainThemes = [...filteredPainThemes].sort((a, b) => {
 		if (sortBy === "impact") {
-			return b.maxImpact - a.maxImpact
+			return b.maxImpact - a.maxImpact;
 		}
 		// For frequency, use total affected as proxy
-		return b.totalAffected - a.totalAffected
-	})
+		return b.totalAffected - a.totalAffected;
+	});
 
-	const painThemes = sortedPainThemes.map((p) => p.pain)
+	const painThemes = sortedPainThemes.map((p) => p.pain);
 
 	// Use pre-generated insights from the server (LLM-generated)
-	const insights = matrix.insights || "Generating insights from pain matrix data..."
+	const insights = matrix.insights || "Generating insights from pain matrix data...";
 
 	return (
 		<div className="space-y-6">
@@ -111,10 +111,10 @@ export function PainMatrixComponent({
 							<h4 className="mb-2 font-medium text-sm">Top 3 Actions</h4>
 							<div className="space-y-2">
 								{(() => {
-									const actionsText = insights.split("\n\nTop 3 Actions:")[1] || ""
-									if (!actionsText) return <p className="text-muted-foreground text-sm">No actions available</p>
+									const actionsText = insights.split("\n\nTop 3 Actions:")[1] || "";
+									if (!actionsText) return <p className="text-muted-foreground text-sm">No actions available</p>;
 
-									const actions = actionsText.split("\n").filter((line) => line.trim())
+									const actions = actionsText.split("\n").filter((line) => line.trim());
 									return actions.map((action) => (
 										<div key={action} className="flex items-start gap-2">
 											<span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center bg-primary font-semibold text-primary-foreground text-xs">
@@ -122,7 +122,7 @@ export function PainMatrixComponent({
 											</span>
 											<p className="text-sm leading-relaxed">{action.replace(/^\d+\.\s*/, "")}</p>
 										</div>
-									))
+									));
 								})()}
 							</div>
 						</div>
@@ -192,7 +192,7 @@ export function PainMatrixComponent({
 									<div className="text-muted-foreground text-xs">{pain.evidence_count} evidence</div>
 								</td>
 								{userGroups.map((group) => {
-									const cell = cellLookup.get(`${pain.id}::${group.name}`)
+									const cell = cellLookup.get(`${pain.id}::${group.name}`);
 									return (
 										<td key={`${pain.id}::${group.name}`} className="px-2 py-2 text-center">
 											{cell ? (
@@ -201,7 +201,7 @@ export function PainMatrixComponent({
 												<div className="text-muted-foreground text-xs">—</div>
 											)}
 										</td>
-									)
+									);
 								})}
 							</tr>
 						))}
@@ -236,19 +236,19 @@ export function PainMatrixComponent({
 				</div>
 			</details>
 		</div>
-	)
+	);
 }
 
 /**
  * Individual cell in the heat map
  */
 function MatrixCell({ cell, onClick }: { cell: PainMatrixCell; onClick?: () => void }) {
-	const impactScore = cell.metrics.impact_score
-	const frequency = cell.metrics.frequency
-	const isHighWTP = cell.metrics.willingness_to_pay === "high"
+	const impactScore = cell.metrics.impact_score;
+	const frequency = cell.metrics.frequency;
+	const isHighWTP = cell.metrics.willingness_to_pay === "high";
 
 	// Color intensity based on impact score
-	const bgColor = getImpactColor(impactScore)
+	const bgColor = getImpactColor(impactScore);
 
 	return (
 		<button
@@ -293,7 +293,7 @@ function MatrixCell({ cell, onClick }: { cell: PainMatrixCell; onClick?: () => v
 				)}
 			</div>
 		</button>
-	)
+	);
 }
 
 /**
@@ -305,7 +305,7 @@ function ColorLegendItem({ color, label }: { color: string; label: string }) {
 			<div className="h-4 w-8 rounded border" style={{ backgroundColor: color }} />
 			<span className="text-xs">{label}</span>
 		</div>
-	)
+	);
 }
 
 /**
@@ -313,9 +313,9 @@ function ColorLegendItem({ color, label }: { color: string; label: string }) {
  * Adjusted for small sample sizes where scores typically range 0-3
  */
 function getImpactColor(score: number): string {
-	if (score >= 2.0) return "rgba(239, 68, 68, 0.3)" // red-500 at 30% - Critical (2.0+)
-	if (score >= 1.5) return "rgba(249, 115, 22, 0.3)" // orange-500 at 30% - High (1.5-2.0)
-	if (score >= 1.0) return "rgba(234, 179, 8, 0.3)" // yellow-500 at 30% - Medium (1.0-1.5)
-	if (score >= 0.5) return "rgba(34, 197, 94, 0.3)" // green-500 at 30% - Low (0.5-1.0)
-	return "rgba(148, 163, 184, 0.1)" // slate-400 at 10% - Minimal (<0.5)
+	if (score >= 2.0) return "rgba(239, 68, 68, 0.3)"; // red-500 at 30% - Critical (2.0+)
+	if (score >= 1.5) return "rgba(249, 115, 22, 0.3)"; // orange-500 at 30% - High (1.5-2.0)
+	if (score >= 1.0) return "rgba(234, 179, 8, 0.3)"; // yellow-500 at 30% - Medium (1.0-1.5)
+	if (score >= 0.5) return "rgba(34, 197, 94, 0.3)"; // green-500 at 30% - Low (0.5-1.0)
+	return "rgba(148, 163, 184, 0.1)"; // slate-400 at 10% - Minimal (<0.5)
 }

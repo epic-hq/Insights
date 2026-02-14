@@ -1,7 +1,7 @@
 import consola from "consola";
 import { Mail } from "lucide-react";
 import posthog from "posthog-js";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Link,
   redirect,
@@ -12,13 +12,26 @@ import {
   useRouteLoaderData,
 } from "react-router";
 import { TrialBanner, type TrialInfo } from "~/components/billing/TrialBanner";
+import {
+  UpgradeLimitModal,
+  type LimitExceededInfo,
+} from "~/components/billing/UpgradeLimitModal";
+import {
+  UsageLimitBanner,
+  type UsageLimitInfo,
+} from "~/components/billing/UsageLimitBanner";
 import { AppLayout } from "~/components/layout/AppLayout";
+import { OnboardingProvider } from "~/components/onboarding";
 import { PLANS, type PlanId } from "~/config/plans";
 import { AuthProvider } from "~/contexts/AuthContext";
 import { CurrentProjectProvider } from "~/contexts/current-project-context";
 import { getProjects } from "~/features/projects/db";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
-import { provisionLegacyTrial } from "~/lib/billing/polar.server";
+import { provisionTrial } from "~/lib/billing/polar.server";
+import {
+  buildFeatureGateContext,
+  checkLimitAccess,
+} from "~/lib/feature-gate/check-limit.server";
 import {
   getAuthenticatedUser,
   getRlsClient,
@@ -235,7 +248,7 @@ export async function loader({ context }: Route.LoaderArgs) {
       }
     }
 
-    // Check for existing subscription or provision legacy trial (once per user)
+    // Check for existing subscription or provision free trial (once per user)
     let trialInfo: TrialInfo = {
       isOnTrial: false,
       planName: "",
@@ -273,12 +286,12 @@ export async function loader({ context }: Route.LoaderArgs) {
         }
         // If active/canceled/etc, trialInfo stays as default (not on trial)
       } else {
-        // No subscription for current account - check if we should provision legacy trial
+        // No subscription for current account - check if we should provision trial
         // Only provision ONCE per user (check user_settings flag)
-        const legacyTrialProvisioned =
+        const trialProvisioned =
           user.user_settings?.legacy_trial_provisioned_at;
 
-        if (!legacyTrialProvisioned) {
+        if (!trialProvisioned) {
           // IMPORTANT: Provision trial to user's OWNED team account, not current account
           // This ensures trials go to the team the user owns, not to invited teams
           const ownedTeamAccount = (user.accounts || []).find(
@@ -296,7 +309,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 
             if (!existingSub) {
               consola.info(
-                "[PROTECTED_LAYOUT] No subscription on owned team, provisioning legacy trial",
+                "[PROTECTED_LAYOUT] No subscription on owned team, provisioning trial",
                 {
                   ownedTeamAccountId: ownedTeamAccount.account_id,
                   ownedTeamName: ownedTeamAccount.name,
@@ -305,14 +318,14 @@ export async function loader({ context }: Route.LoaderArgs) {
                 },
               );
 
-              const legacyTrial = await provisionLegacyTrial({
+              const trial = await provisionTrial({
                 accountId: ownedTeamAccount.account_id,
                 email: user.claims?.email,
-                planId: "pro", // Give existing users Pro trial
+                planId: "pro", // Give new users Pro trial
               });
 
-              if (legacyTrial) {
-                // Mark user as having received legacy trial
+              if (trial) {
+                // Mark user as having received trial
                 await supabaseAdmin
                   .from("user_settings")
                   .update({
@@ -323,22 +336,24 @@ export async function loader({ context }: Route.LoaderArgs) {
                 // Only show trial info if the owned team is the current account
                 if (ownedTeamAccount.account_id === currentAccountId) {
                   trialInfo = {
-                    isOnTrial: legacyTrial.isOnTrial,
-                    planName: legacyTrial.planName,
-                    trialEnd: legacyTrial.trialEnd,
+                    isOnTrial: trial.isOnTrial,
+                    planName: trial.planName,
+                    trialEnd: trial.trialEnd,
                     accountId: ownedTeamAccount.account_id,
                   };
                 }
 
-                consola.info("[PROTECTED_LAYOUT] Legacy trial provisioned", {
+                consola.info("[PROTECTED_LAYOUT] Trial provisioned", {
                   accountId: ownedTeamAccount.account_id,
-                  trialEnd: legacyTrial.trialEnd,
+                  trialEnd: trial.trialEnd,
                 });
               }
             } else {
               consola.debug(
                 "[PROTECTED_LAYOUT] Owned team already has subscription, marking trial as provisioned",
-                { ownedTeamAccountId: ownedTeamAccount.account_id },
+                {
+                  ownedTeamAccountId: ownedTeamAccount.account_id,
+                },
               );
               // Mark as provisioned so we don't keep checking
               await supabaseAdmin
@@ -351,13 +366,17 @@ export async function loader({ context }: Route.LoaderArgs) {
           } else {
             consola.debug(
               "[PROTECTED_LAYOUT] User has no owned team account, skipping trial provisioning",
-              { userId: user.claims.sub },
+              {
+                userId: user.claims.sub,
+              },
             );
           }
         } else {
           consola.debug(
-            "[PROTECTED_LAYOUT] Legacy trial already provisioned, skipping",
-            { provisionedAt: legacyTrialProvisioned },
+            "[PROTECTED_LAYOUT] Trial already provisioned, skipping",
+            {
+              provisionedAt: trialProvisioned,
+            },
           );
         }
       }
@@ -365,6 +384,58 @@ export async function loader({ context }: Route.LoaderArgs) {
       consola.error(
         "[PROTECTED_LAYOUT] Failed to check/provision trial:",
         trialError,
+      );
+    }
+
+    // Check usage limits for banner/modal
+    let usageLimitInfo: UsageLimitInfo = {
+      isApproaching: false,
+      limitName: "",
+      currentUsage: 0,
+      limit: 0,
+      percentUsed: 0,
+      accountId: currentAccountId,
+    };
+    let limitExceededInfo: LimitExceededInfo = {
+      isExceeded: false,
+      limitName: "",
+      currentUsage: 0,
+      limit: 0,
+      accountId: currentAccountId,
+    };
+    try {
+      const gateCtx = await buildFeatureGateContext(
+        currentAccountId,
+        user.claims.sub,
+      );
+      const aiCheck = await checkLimitAccess(gateCtx, "ai_analyses");
+
+      if (!aiCheck.allowed && aiCheck.reason === "limit_exceeded") {
+        limitExceededInfo = {
+          isExceeded: true,
+          limitName: "AI Analyses",
+          currentUsage: aiCheck.currentUsage ?? 0,
+          limit: aiCheck.limit ?? 0,
+          accountId: currentAccountId,
+          requiredPlan: aiCheck.requiredPlan,
+        };
+      } else if (
+        aiCheck.reason === "limit_approaching" &&
+        aiCheck.percentUsed
+      ) {
+        usageLimitInfo = {
+          isApproaching: true,
+          limitName: "AI analyses",
+          currentUsage: aiCheck.currentUsage ?? 0,
+          limit: aiCheck.limit ?? 0,
+          percentUsed: Math.round(aiCheck.percentUsed),
+          accountId: currentAccountId,
+        };
+      }
+    } catch (limitError) {
+      consola.debug(
+        "[PROTECTED_LAYOUT] Failed to check usage limits:",
+        limitError,
       );
     }
 
@@ -378,6 +449,8 @@ export async function loader({ context }: Route.LoaderArgs) {
       user_settings: user.user_settings || {},
       pendingInvites,
       trialInfo,
+      usageLimitInfo,
+      limitExceededInfo,
     };
 
     // Include auth headers (for token refresh) in the response if present
@@ -393,8 +466,16 @@ export async function loader({ context }: Route.LoaderArgs) {
 }
 
 export default function ProtectedLayout() {
-  const { auth, accounts, user_settings, pendingInvites, trialInfo } =
-    useLoaderData<typeof loader>();
+  const {
+    auth,
+    accounts,
+    user_settings,
+    pendingInvites,
+    trialInfo,
+    usageLimitInfo,
+    limitExceededInfo,
+  } = useLoaderData<typeof loader>();
+  const [showLimitModal, setShowLimitModal] = useState(true);
   const { clientEnv } = useRouteLoaderData("root");
   const _params = useParams();
   const navigation = useNavigation();
@@ -461,51 +542,65 @@ export default function ProtectedLayout() {
       user_settings={user_settings}
     >
       <CurrentProjectProvider>
-        <div className="min-h-screen bg-background">
-          {/* Trial Banner */}
-          <TrialBanner trial={trialInfo} />
+        <OnboardingProvider>
+          <div className="flex h-screen flex-col overflow-hidden bg-background">
+            {/* Trial Banner */}
+            <TrialBanner trial={trialInfo} />
 
-          {/* Pending Invite Banner */}
-          {showInviteBanner && (
-            <div className="border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-950/50">
-              <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-                <div className="flex items-center gap-2 text-emerald-800 text-sm dark:text-emerald-200">
-                  <Mail className="h-4 w-4" />
-                  <span>
-                    You have {pendingInvites.length} pending team{" "}
-                    {pendingInvites.length === 1 ? "invitation" : "invitations"}
-                    {pendingInvites[0]?.account_name && (
-                      <span>
-                        {" "}
-                        from <strong>{pendingInvites[0].account_name}</strong>
-                      </span>
-                    )}
-                  </span>
+            {/* Usage Limit Warning Banner (80%+) */}
+            <UsageLimitBanner usage={usageLimitInfo} />
+
+            {/* Upgrade Modal (100%) */}
+            <UpgradeLimitModal
+              info={limitExceededInfo}
+              open={showLimitModal && limitExceededInfo.isExceeded}
+              onOpenChange={setShowLimitModal}
+            />
+
+            {/* Pending Invite Banner */}
+            {showInviteBanner && (
+              <div className="border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-950/50">
+                <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 text-emerald-800 text-sm dark:text-emerald-200">
+                    <Mail className="h-4 w-4" />
+                    <span>
+                      You have {pendingInvites.length} pending team{" "}
+                      {pendingInvites.length === 1
+                        ? "invitation"
+                        : "invitations"}
+                      {pendingInvites[0]?.account_name && (
+                        <span>
+                          {" "}
+                          from <strong>{pendingInvites[0].account_name}</strong>
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <Link
+                    to={`/accept-invite?invite_token=${encodeURIComponent(pendingInvites[0]?.token || "")}`}
+                    className="rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-sm text-white transition-colors hover:bg-emerald-700"
+                  >
+                    Accept Invitation
+                  </Link>
                 </div>
-                <Link
-                  to={`/accept-invite?invite_token=${encodeURIComponent(pendingInvites[0]?.token || "")}`}
-                  className="rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-sm text-white transition-colors hover:bg-emerald-700"
+              </div>
+            )}
+
+            {/* Global Loading Indicator */}
+            {isLoading && (
+              <div className="fixed top-0 right-0 left-0 z-50 h-1 bg-gray-200">
+                <div
+                  className="h-full animate-pulse bg-blue-600"
+                  style={{ width: "30%" }}
                 >
-                  Accept Invitation
-                </Link>
+                  <div className="h-full animate-[loading_2s_ease-in-out_infinite] bg-gradient-to-r from-blue-600 to-blue-400" />
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Global Loading Indicator */}
-          {isLoading && (
-            <div className="fixed top-0 right-0 left-0 z-50 h-1 bg-gray-200">
-              <div
-                className="h-full animate-pulse bg-blue-600"
-                style={{ width: "30%" }}
-              >
-                <div className="h-full animate-[loading_2s_ease-in-out_infinite] bg-gradient-to-r from-blue-600 to-blue-400" />
-              </div>
-            </div>
-          )}
-
-          <AppLayout showJourneyNav={showJourneyNav} />
-        </div>
+            <AppLayout showJourneyNav={showJourneyNav} />
+          </div>
+        </OnboardingProvider>
       </CurrentProjectProvider>
     </AuthProvider>
   );

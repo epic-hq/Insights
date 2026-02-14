@@ -12,11 +12,11 @@ import {
 	type RowSelectionState,
 	type SortingState,
 	useReactTable,
-} from "@tanstack/react-table"
-import { formatDistanceToNow } from "date-fns"
-import { ArrowUpDown, ExternalLink, Loader2, Play, Search, Trash2, User, Video } from "lucide-react"
-import { useMemo, useState } from "react"
-import { Link, useFetcher, useRevalidator } from "react-router-dom"
+} from "@tanstack/react-table";
+import { formatDistanceToNow } from "date-fns";
+import { ArrowUpDown, ExternalLink, Loader2, Play, Search, Trash2, User, Video } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link, useFetcher, useRevalidator } from "react-router-dom";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -26,26 +26,26 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-} from "~/components/ui/alert-dialog"
-import { Button } from "~/components/ui/button"
-import { Checkbox } from "~/components/ui/checkbox"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
-import { Input } from "~/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
-import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip"
-import type { ResponseWithPerson } from "../db"
-import type { ResearchLinkQuestion } from "../schemas"
-import { extractAnswer } from "../utils"
+} from "~/components/ui/alert-dialog";
+import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
+import type { ResponseWithPerson } from "../db";
+import type { ResearchLinkQuestion } from "../schemas";
+import { extractAnswer } from "../utils";
 
 type ResponseWithSignedVideo = ResponseWithPerson & {
-	signed_video_url?: string | null
-}
+	signed_video_url?: string | null;
+};
 
 interface ResearchLinkResponsesDataTableProps {
-	questions: ResearchLinkQuestion[]
-	responses: ResponseWithSignedVideo[]
-	basePath: string // e.g., /a/:accountId/:projectId
-	listId: string
+	questions: ResearchLinkQuestion[];
+	responses: ResponseWithSignedVideo[];
+	basePath: string; // e.g., /a/:accountId/:projectId
+	listId: string;
 }
 
 export function ResearchLinkResponsesDataTable({
@@ -54,47 +54,47 @@ export function ResearchLinkResponsesDataTable({
 	basePath,
 	listId,
 }: ResearchLinkResponsesDataTableProps) {
-	const [sorting, setSorting] = useState<SortingState>([{ id: "createdAt", desc: true }])
-	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-	const [globalFilter, setGlobalFilter] = useState("")
-	const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+	const [sorting, setSorting] = useState<SortingState>([{ id: "createdAt", desc: true }]);
+	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+	const [globalFilter, setGlobalFilter] = useState("");
+	const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 	const [videoModal, setVideoModal] = useState<{
-		open: boolean
-		url: string | null
-		email: string
-	}>({ open: false, url: null, email: "" })
+		open: boolean;
+		url: string | null;
+		email: string;
+	}>({ open: false, url: null, email: "" });
 	const [deleteConfirm, setDeleteConfirm] = useState<{
-		open: boolean
-		mode: "single" | "bulk"
-		responseId: string | null
-		responseIds: string[]
-		email: string
+		open: boolean;
+		mode: "single" | "bulk";
+		responseId: string | null;
+		responseIds: string[];
+		email: string;
 	}>({
 		open: false,
 		mode: "single",
 		responseId: null,
 		responseIds: [],
 		email: "",
-	})
+	});
 
-	const deleteFetcher = useFetcher()
-	const revalidator = useRevalidator()
-	const isDeleting = deleteFetcher.state !== "idle"
+	const deleteFetcher = useFetcher();
+	const revalidator = useRevalidator();
+	const isDeleting = deleteFetcher.state !== "idle";
 
 	const handleDeleteSingle = (responseId: string) => {
 		deleteFetcher.submit(null, {
 			method: "DELETE",
 			action: `/api/research-links/${listId}/responses/${responseId}/delete`,
-		})
+		});
 		setDeleteConfirm({
 			open: false,
 			mode: "single",
 			responseId: null,
 			responseIds: [],
 			email: "",
-		})
-		setTimeout(() => revalidator.revalidate(), 100)
-	}
+		});
+		setTimeout(() => revalidator.revalidate(), 100);
+	};
 
 	const handleDeleteBulk = (responseIds: string[]) => {
 		deleteFetcher.submit(
@@ -104,20 +104,20 @@ export function ResearchLinkResponsesDataTable({
 				action: `/api/research-links/${listId}/responses/delete`,
 				encType: "application/json",
 			}
-		)
+		);
 		setDeleteConfirm({
 			open: false,
 			mode: "single",
 			responseId: null,
 			responseIds: [],
 			email: "",
-		})
-		setRowSelection({})
-		setTimeout(() => revalidator.revalidate(), 100)
-	}
+		});
+		setRowSelection({});
+		setTimeout(() => revalidator.revalidate(), 100);
+	};
 
-	const selectedRows = Object.keys(rowSelection).filter((key) => rowSelection[key])
-	const selectedCount = selectedRows.length
+	const selectedRows = Object.keys(rowSelection).filter((key) => rowSelection[key]);
+	const selectedCount = selectedRows.length;
 
 	const columns = useMemo<ColumnDef<ResponseWithSignedVideo>[]>(
 		() => [
@@ -157,8 +157,8 @@ export function ResearchLinkResponsesDataTable({
 					</Button>
 				),
 				cell: ({ row }) => {
-					const email = row.original.email
-					const person = row.original.person
+					const email = row.original.email;
+					const person = row.original.person;
 					return (
 						<div className="flex items-center gap-2">
 							<a href={`mailto:${email}`} className="truncate text-primary hover:underline">
@@ -178,7 +178,7 @@ export function ResearchLinkResponsesDataTable({
 								</Tooltip>
 							)}
 						</div>
-					)
+					);
 				},
 				size: 220,
 			},
@@ -202,11 +202,11 @@ export function ResearchLinkResponsesDataTable({
 					</Tooltip>
 				),
 				cell: ({ getValue }: { getValue: () => unknown }) => {
-					const answer = getValue() as string | null
+					const answer = getValue() as string | null;
 					if (!answer) {
-						return <span className="text-muted-foreground text-xs">—</span>
+						return <span className="text-muted-foreground text-xs">—</span>;
 					}
-					const isLong = answer.length > 100
+					const isLong = answer.length > 100;
 					return (
 						<Tooltip>
 							<TooltipTrigger asChild>
@@ -214,7 +214,7 @@ export function ResearchLinkResponsesDataTable({
 							</TooltipTrigger>
 							{isLong && <TooltipContent className="max-w-md whitespace-pre-wrap">{answer}</TooltipContent>}
 						</Tooltip>
-					)
+					);
 				},
 				size: 200,
 			})),
@@ -232,10 +232,10 @@ export function ResearchLinkResponsesDataTable({
 					</Tooltip>
 				),
 				cell: ({ row }) => {
-					const signedUrl = row.original.signed_video_url
-					const email = row.original.email
+					const signedUrl = row.original.signed_video_url;
+					const email = row.original.email;
 					if (!signedUrl) {
-						return <span className="text-muted-foreground/40">—</span>
+						return <span className="text-muted-foreground/40">—</span>;
 					}
 					return (
 						<Tooltip>
@@ -250,7 +250,7 @@ export function ResearchLinkResponsesDataTable({
 							</TooltipTrigger>
 							<TooltipContent>Play video response</TooltipContent>
 						</Tooltip>
-					)
+					);
 				},
 				size: 50,
 			},
@@ -259,7 +259,7 @@ export function ResearchLinkResponsesDataTable({
 				accessorKey: "completed",
 				header: "Status",
 				cell: ({ getValue }) => {
-					const completed = getValue() as boolean
+					const completed = getValue() as boolean;
 					return (
 						<span
 							className={`rounded-full px-2 py-0.5 text-xs ${
@@ -270,7 +270,7 @@ export function ResearchLinkResponsesDataTable({
 						>
 							{completed ? "Complete" : "In progress"}
 						</span>
-					)
+					);
 				},
 				size: 100,
 			},
@@ -289,9 +289,9 @@ export function ResearchLinkResponsesDataTable({
 					</Button>
 				),
 				cell: ({ getValue }) => {
-					const createdAt = getValue() as string | null
+					const createdAt = getValue() as string | null;
 					if (!createdAt) {
-						return <span className="text-muted-foreground text-xs">—</span>
+						return <span className="text-muted-foreground text-xs">—</span>;
 					}
 					return (
 						<Tooltip>
@@ -304,12 +304,12 @@ export function ResearchLinkResponsesDataTable({
 							</TooltipTrigger>
 							<TooltipContent>{new Date(createdAt).toLocaleString()}</TooltipContent>
 						</Tooltip>
-					)
+					);
 				},
 				sortingFn: (a, b) => {
-					const aTime = a.original.created_at ? new Date(a.original.created_at).getTime() : 0
-					const bTime = b.original.created_at ? new Date(b.original.created_at).getTime() : 0
-					return aTime - bTime
+					const aTime = a.original.created_at ? new Date(a.original.created_at).getTime() : 0;
+					const bTime = b.original.created_at ? new Date(b.original.created_at).getTime() : 0;
+					return aTime - bTime;
 				},
 				size: 120,
 			},
@@ -355,7 +355,7 @@ export function ResearchLinkResponsesDataTable({
 			},
 		],
 		[questions, basePath, listId]
-	)
+	);
 
 	const table = useReactTable({
 		data: responses,
@@ -370,18 +370,18 @@ export function ResearchLinkResponsesDataTable({
 		getFilteredRowModel: getFilteredRowModel(),
 		globalFilterFn: "includesString",
 		getRowId: (row) => row.id,
-	})
+	});
 
 	const handleBulkDeleteClick = () => {
-		const selectedIds = table.getSelectedRowModel().rows.map((row) => row.original.id)
+		const selectedIds = table.getSelectedRowModel().rows.map((row) => row.original.id);
 		setDeleteConfirm({
 			open: true,
 			mode: "bulk",
 			responseId: null,
 			responseIds: selectedIds,
 			email: "",
-		})
-	}
+		});
+	};
 
 	return (
 		<div className="space-y-4">
@@ -506,9 +506,9 @@ export function ResearchLinkResponsesDataTable({
 						<AlertDialogAction
 							onClick={() => {
 								if (deleteConfirm.mode === "bulk") {
-									handleDeleteBulk(deleteConfirm.responseIds)
+									handleDeleteBulk(deleteConfirm.responseIds);
 								} else if (deleteConfirm.responseId) {
-									handleDeleteSingle(deleteConfirm.responseId)
+									handleDeleteSingle(deleteConfirm.responseId);
 								}
 							}}
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -527,5 +527,5 @@ export function ResearchLinkResponsesDataTable({
 				</AlertDialogContent>
 			</AlertDialog>
 		</div>
-	)
+	);
 }

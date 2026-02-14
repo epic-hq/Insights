@@ -1,47 +1,47 @@
-import consola from "consola"
-import { data, redirect, useLoaderData } from "react-router"
-import { Button } from "~/components/ui/button"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
+import consola from "consola";
+import { data, redirect, useLoaderData } from "react-router";
+import { Button } from "~/components/ui/button";
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server";
 
 interface InviteItem {
-	account_id: string
-	account_name: string | null
-	account_role: string
-	invitation_type: string
-	created_at: string
-	token: string
+	account_id: string;
+	account_name: string | null;
+	account_role: string;
+	invitation_type: string;
+	created_at: string;
+	token: string;
 }
 
 export async function loader({ request }: { request: Request }) {
 	// Require auth
-	const { user } = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request);
 	if (!user) {
-		const next = "/invites"
-		throw redirect(`/login?next=${encodeURIComponent(next)}`)
+		const next = "/invites";
+		throw redirect(`/login?next=${encodeURIComponent(next)}`);
 	}
 
-	const { client: supabase, headers } = getServerClient(request)
+	const { client: supabase, headers } = getServerClient(request);
 
-	const { data: raw, error } = await supabase.rpc("list_invitations_for_current_user")
+	const { data: raw, error } = await supabase.rpc("list_invitations_for_current_user");
 
 	if (error) {
-		consola.error("[INVITES] Failed to list invitations:", error)
-		return data({ ok: false, error: error.message, invites: [] as InviteItem[] }, { headers, status: 500 })
+		consola.error("[INVITES] Failed to list invitations:", error);
+		return data({ ok: false, error: error.message, invites: [] as InviteItem[] }, { headers, status: 500 });
 	}
 
-	let invites: InviteItem[] = []
+	let invites: InviteItem[] = [];
 	try {
-		invites = Array.isArray(raw) ? (raw as InviteItem[]) : JSON.parse(String(raw || "[]"))
+		invites = Array.isArray(raw) ? (raw as InviteItem[]) : JSON.parse(String(raw || "[]"));
 	} catch {
 		// If parsing fails, keep as empty
-		invites = []
+		invites = [];
 	}
 
-	return data({ ok: true, invites }, { headers })
+	return data({ ok: true, invites }, { headers });
 }
 
 export default function InvitesPage() {
-	const { invites } = useLoaderData() as { ok: boolean; invites: InviteItem[] }
+	const { invites } = useLoaderData() as { ok: boolean; invites: InviteItem[] };
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
@@ -96,5 +96,5 @@ export default function InvitesPage() {
 				)}
 			</div>
 		</div>
-	)
+	);
 }

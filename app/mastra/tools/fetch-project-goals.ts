@@ -1,11 +1,11 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { getProjectContextGeneric } from "~/features/questions/db"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { projectGoalsSchema } from "~/schemas"
-import type { Database } from "~/types"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { getProjectContextGeneric } from "../../features/questions/db";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import { projectGoalsSchema } from "../../schemas";
+import type { Database } from "../../types";
 
 export const fetchProjectGoalsTool = createTool({
 	id: "fetch-project-goals",
@@ -24,45 +24,45 @@ export const fetchProjectGoalsTool = createTool({
 		projectGoals: projectGoalsSchema.nullable(),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
-		const runtimeAccountId = context?.requestContext?.get?.("account_id")
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const runtimeAccountId = context?.requestContext?.get?.("account_id");
 
-		const projectId = input.projectId ?? runtimeProjectId ?? null
+		const projectId = input.projectId ?? runtimeProjectId ?? null;
 
 		consola.debug("fetch-project-goals: execute start", {
 			projectId,
 			accountId: runtimeAccountId,
-		})
+		});
 
 		if (!projectId) {
-			consola.warn("fetch-project-goals: missing projectId")
+			consola.warn("fetch-project-goals: missing projectId");
 			return {
 				success: false,
 				message: "Missing projectId. Pass one explicitly or ensure the runtime context sets project_id.",
 				projectId: null,
 				projectGoals: null,
-			}
+			};
 		}
 
 		// At this point, projectId is guaranteed to be a string
-		const projectIdStr = projectId as string
+		const projectIdStr = projectId as string;
 
 		try {
 			// Use the existing project context function to get merged sections
-			const projectContext = await getProjectContextGeneric(supabase, projectIdStr)
+			const projectContext = await getProjectContextGeneric(supabase, projectIdStr);
 
 			if (!projectContext?.merged) {
-				consola.debug("fetch-project-goals: no project sections found")
+				consola.debug("fetch-project-goals: no project sections found");
 				return {
 					success: true,
 					message: "No project goals found for this project.",
 					projectId,
 					projectGoals: null,
-				}
+				};
 			}
 
-			const merged = projectContext.merged
+			const merged = projectContext.merged;
 
 			// Extract and transform the data to match our schema
 			const projectGoals = {
@@ -84,22 +84,22 @@ export const fetchProjectGoalsTool = createTool({
 								interview_duration: merged.interview_duration,
 							}
 						: null,
-			}
+			};
 
 			return {
 				success: true,
 				message: "Successfully fetched project goals.",
 				projectId: projectIdStr,
 				projectGoals,
-			}
+			};
 		} catch (error) {
-			consola.error("fetch-project-goals: unexpected error", error)
+			consola.error("fetch-project-goals: unexpected error", error);
 			return {
 				success: false,
 				message: "Unexpected error fetching project goals.",
 				projectId: projectIdStr,
 				projectGoals: null,
-			}
+			};
 		}
 	},
-})
+});

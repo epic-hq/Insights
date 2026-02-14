@@ -24,7 +24,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   logout: () => ipcRenderer.invoke("logout"),
   getAccessToken: () => ipcRenderer.invoke("getAccessToken"),
   getUserContext: () => ipcRenderer.invoke("getUserContext"),
+  setUserContextSelection: (selection) =>
+    ipcRenderer.invoke("setUserContextSelection", selection),
   navigateToHome: () => ipcRenderer.invoke("navigateToHome"),
+  openAuthWindow: () => ipcRenderer.invoke("openAuthWindow"),
 
   // Meetings data
   saveMeetingsData: (data) => ipcRenderer.invoke("saveMeetingsData", data),
@@ -69,4 +72,26 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("meeting-detection-status", (_, data) => callback(data)),
   onMeetingTitleUpdated: (callback) =>
     ipcRenderer.on("meeting-title-updated", (_, data) => callback(data)),
+  onEvidenceUpdated: (callback) =>
+    ipcRenderer.on("evidence-updated", (_, data) => callback(data)),
+
+  // Floating Panel APIs
+  resizePanel: (size) => ipcRenderer.invoke("resizePanel", size),
+  closePanel: () => ipcRenderer.invoke("closePanel"),
+  minimizePanel: () => ipcRenderer.invoke("minimizePanel"),
+  restorePanel: () => ipcRenderer.invoke("restorePanel"),
+  toggleRecording: () => ipcRenderer.invoke("toggleRecordingFromPanel"),
+  submitNote: (text) => ipcRenderer.invoke("submitNoteFromPanel", text),
+  showFloatingPanel: () => ipcRenderer.invoke("showFloatingPanel"),
+  hideFloatingPanel: () => ipcRenderer.invoke("hideFloatingPanel"),
+
+  // Floating Panel Event Listeners
+  onRecordingState: (callback) =>
+    ipcRenderer.on("recording-state", (_, data) => callback(data)),
+  onEvidence: (callback) =>
+    ipcRenderer.on("evidence-update", (_, data) => callback(data)),
+  onTasks: (callback) =>
+    ipcRenderer.on("tasks-update", (_, data) => callback(data)),
+  onTranscript: (callback) =>
+    ipcRenderer.on("transcript-update", (_, data) => callback(data)),
 });

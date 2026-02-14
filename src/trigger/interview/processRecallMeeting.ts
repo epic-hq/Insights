@@ -12,10 +12,19 @@ import { task, metadata } from "@trigger.dev/sdk";
 import consola from "consola";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { workflowRetryConfig } from "./v2/config";
-import type {
-  TranscriptData,
-  TranscriptUtterance,
-} from "~/utils/processInterview.server";
+
+type TranscriptUtterance = {
+  speaker: string;
+  text: string;
+  start: number;
+  end: number;
+};
+
+type TranscriptData = {
+  full_transcript: string;
+  utterances: TranscriptUtterance[];
+  audio_duration: number;
+};
 
 interface RecallTranscriptEntry {
   participant: {
@@ -170,9 +179,7 @@ export const processRecallMeetingTask = task({
             .update({ transcript: recallTranscript.rawText })
             .eq("id", interviewId);
         } else {
-          consola.warn(
-            `[ProcessRecallMeeting] Recall transcript was empty`,
-          );
+          consola.warn(`[ProcessRecallMeeting] Recall transcript was empty`);
         }
       } else {
         consola.warn(
@@ -202,34 +209,13 @@ export const processRecallMeetingTask = task({
         consola.info(`[ProcessRecallMeeting] Video uploaded to R2: ${r2Key}`);
       }
 
-      metadata.set("stageLabel", "Creating analysis job");
+      metadata.set("stageLabel", "Triggering analysis orchestrator");
       metadata.set("progressPercent", 40);
 
-      // Step 3: Create analysis job and trigger v2 orchestrator
-      const { data: analysisJob, error: jobError } = await client
-        .from("analysis_jobs")
-        .insert({
-          account_id: accountId,
-          project_id: projectId,
-          interview_id: interviewId,
-          status: "pending",
-          status_detail: "Created from Recall.ai recording",
-        })
-        .select("id")
-        .single();
-
-      if (jobError) {
-        throw new Error(`Failed to create analysis job: ${jobError.message}`);
-      }
-
-      consola.info(
-        `[ProcessRecallMeeting] Created analysis job ${analysisJob.id}`,
-      );
-
-      // Step 4: Trigger the v2 orchestrator for evidence extraction
-      const { processInterviewOrchestratorV2 } = await import(
-        "./v2/orchestrator"
-      );
+      // Step 3: Trigger the v2 orchestrator for evidence extraction
+      // Note: analysisJobId is now the interview ID (analysis_jobs table was consolidated)
+      const { processInterviewOrchestratorV2 } =
+        await import("./v2/orchestrator");
 
       await processInterviewOrchestratorV2.trigger({
         metadata: {
@@ -237,7 +223,7 @@ export const processRecallMeetingTask = task({
           projectId,
         },
         existingInterviewId: interviewId,
-        analysisJobId: analysisJob.id,
+        analysisJobId: interviewId, // Interview ID = Analysis Job ID
         transcriptData: transcriptData
           ? {
               full_transcript: transcriptData.full_transcript,
@@ -257,7 +243,7 @@ export const processRecallMeetingTask = task({
       return {
         success: true,
         interviewId,
-        analysisJobId: analysisJob.id,
+        analysisJobId: interviewId,
       };
     } catch (error) {
       consola.error(

@@ -1,17 +1,17 @@
-import StatCard from "./StatCard"
+import StatCard from "./StatCard";
 
 export interface KPI {
-	label: string
-	value: string | number
-	change?: string
-	href?: string
-	icon?: string
+	label: string;
+	value: string | number;
+	change?: string;
+	href?: string;
+	icon?: string;
 }
 
 interface KPIBarProps {
-	kpis: KPI[]
+	kpis: KPI[];
 	/** Whether to use compact mode for stat cards (default: true) */
-	compact?: boolean
+	compact?: boolean;
 }
 
 export default function KPIBar({ kpis, compact = true }: KPIBarProps) {
@@ -23,5 +23,5 @@ export default function KPIBar({ kpis, compact = true }: KPIBarProps) {
 				))}
 			</div>
 		</div>
-	)
+	);
 }

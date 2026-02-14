@@ -3,51 +3,51 @@
  * Integrates junction table helpers with server-side Supabase client
  */
 
-import { getServerClient } from "~/lib/supabase/client.server"
-import { createJunctionTableManager, type JunctionTableManager } from "./junction-helpers"
+import { getServerClient } from "~/lib/supabase/client.server";
+import { createJunctionTableManager, type JunctionTableManager } from "./junction-helpers";
 
 /**
  * Get junction table manager for server-side operations
  */
 export async function getJunctionManager(request: Request): Promise<JunctionTableManager> {
-	const supabase = getServerClient(request)
-	return createJunctionTableManager(supabase)
+	const supabase = getServerClient(request);
+	return createJunctionTableManager(supabase);
 }
 
 /**
  * Helper to get account ID from request
  */
 export async function getAccountId(request: Request): Promise<string> {
-	const supabase = getServerClient(request)
+	const supabase = getServerClient(request);
 	const {
 		data: { user },
-	} = await supabase.auth.getUser()
+	} = await supabase.auth.getUser();
 
 	if (!user) {
-		throw new Error("User not authenticated")
+		throw new Error("User not authenticated");
 	}
 
 	// Extract account ID from JWT claims
-	const jwt = await supabase.auth.getSession()
-	const accountId = jwt.data.session?.user?.app_metadata?.claims?.sub
+	const jwt = await supabase.auth.getSession();
+	const accountId = jwt.data.session?.user?.app_metadata?.claims?.sub;
 
 	if (!accountId) {
-		throw new Error("Account ID not found in user claims")
+		throw new Error("Account ID not found in user claims");
 	}
 
-	return accountId
+	return accountId;
 }
 
 /**
  * Server-side junction table operations with authentication
  */
 export class ServerJunctionManager {
-	private junctionManager: JunctionTableManager
-	private accountId: string
+	private junctionManager: JunctionTableManager;
+	private accountId: string;
 
 	constructor(junctionManager: JunctionTableManager, accountId: string) {
-		this.junctionManager = junctionManager
-		this.accountId = accountId
+		this.junctionManager = junctionManager;
+		this.accountId = accountId;
 	}
 
 	/**
@@ -58,7 +58,7 @@ export class ServerJunctionManager {
 			insightId,
 			tags,
 			accountId: this.accountId,
-		})
+		});
 	}
 
 	/**
@@ -69,7 +69,7 @@ export class ServerJunctionManager {
 			interviewId,
 			tags,
 			accountId: this.accountId,
-		})
+		});
 	}
 
 	/**
@@ -80,14 +80,14 @@ export class ServerJunctionManager {
 			opportunityId,
 			insightIds,
 			weights,
-		})
+		});
 	}
 
 	/**
 	 * Auto-link insight to personas based on interview participants
 	 */
 	async autoLinkInsightToPersonas(insightId: string) {
-		return this.junctionManager.personaInsights.autoLinkInsightToPersonas(insightId)
+		return this.junctionManager.personaInsights.autoLinkInsightToPersonas(insightId);
 	}
 
 	/**
@@ -98,14 +98,14 @@ export class ServerJunctionManager {
 			projectId,
 			personId,
 			role,
-		})
+		});
 	}
 
 	/**
 	 * Migrate all array-based data for this account
 	 */
 	async migrateArrayData() {
-		return this.junctionManager.migrateArrayData(this.accountId)
+		return this.junctionManager.migrateArrayData(this.accountId);
 	}
 }
 
@@ -113,9 +113,9 @@ export class ServerJunctionManager {
  * Factory function to create authenticated server junction manager
  */
 export async function createServerJunctionManager(request: Request): Promise<ServerJunctionManager> {
-	const junctionManager = await getJunctionManager(request)
-	const accountId = await getAccountId(request)
-	return new ServerJunctionManager(junctionManager, accountId)
+	const junctionManager = await getJunctionManager(request);
+	const accountId = await getAccountId(request);
+	return new ServerJunctionManager(junctionManager, accountId);
 }
 
 /**
@@ -126,15 +126,15 @@ export const junctionRouteHelpers = {
 	 * Process insight creation/update with tags
 	 */
 	async processInsightWithTags(request: Request, insightId: string, tags: string[]) {
-		const manager = await createServerJunctionManager(request)
+		const manager = await createServerJunctionManager(request);
 
 		// Sync tags
-		await manager.syncInsightTags(insightId, tags)
+		await manager.syncInsightTags(insightId, tags);
 
 		// Auto-link to personas
-		await manager.autoLinkInsightToPersonas(insightId)
+		await manager.autoLinkInsightToPersonas(insightId);
 
-		return { success: true }
+		return { success: true };
 	},
 
 	/**
@@ -146,12 +146,12 @@ export const junctionRouteHelpers = {
 		insightIds: string[],
 		weights?: Record<string, number>
 	) {
-		const manager = await createServerJunctionManager(request)
+		const manager = await createServerJunctionManager(request);
 
 		// Sync insights
-		await manager.syncOpportunityInsights(opportunityId, insightIds, weights)
+		await manager.syncOpportunityInsights(opportunityId, insightIds, weights);
 
-		return { success: true }
+		return { success: true };
 	},
 
 	/**
@@ -164,18 +164,18 @@ export const junctionRouteHelpers = {
 		peopleIds: string[],
 		tags: string[] = []
 	) {
-		const manager = await createServerJunctionManager(request)
+		const manager = await createServerJunctionManager(request);
 
 		// Sync interview tags
 		if (tags.length > 0) {
-			await manager.syncInterviewTags(interviewId, tags)
+			await manager.syncInterviewTags(interviewId, tags);
 		}
 
 		// Update project-people stats for all participants
 		for (const personId of peopleIds) {
-			await manager.updateProjectPeopleStats(projectId, personId)
+			await manager.updateProjectPeopleStats(projectId, personId);
 		}
 
-		return { success: true }
+		return { success: true };
 	},
-}
+};

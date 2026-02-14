@@ -13,7 +13,7 @@
 import { schemaTask } from "@trigger.dev/sdk";
 import consola from "consola";
 import { z } from "zod";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { createSupabaseAdminClient } from "../../../app/lib/supabase/client.server";
 
 /** Question types that produce text evidence */
 const TEXT_QUESTION_TYPES = new Set(["short_text", "long_text", "auto"]);
@@ -76,7 +76,64 @@ export const extractSurveyEvidenceTask = schemaTask({
       throw new Error(`Research link not found for response: ${responseId}`);
     }
 
-    const { account_id, project_id, name: surveyName } = researchLinkData;
+    const {
+      account_id: linkAccountId,
+      project_id: linkProjectId,
+      name: surveyName,
+    } = researchLinkData;
+    let accountId =
+      typeof linkAccountId === "string" && linkAccountId.length > 0
+        ? linkAccountId
+        : null;
+    let projectId =
+      typeof linkProjectId === "string" && linkProjectId.length > 0
+        ? linkProjectId
+        : null;
+
+    // Defensive fallback for legacy/corrupt rows: resolve account from project/person if missing.
+    if (!accountId && projectId) {
+      const { data: projectData, error: projectError } = await db
+        .from("projects")
+        .select("account_id")
+        .eq("id", projectId)
+        .maybeSingle();
+      if (projectError) {
+        consola.warn(
+          `[extractSurveyEvidence] Failed project lookup for ${projectId}:`,
+          projectError,
+        );
+      } else if (projectData?.account_id) {
+        accountId = projectData.account_id;
+      }
+    }
+
+    if (!accountId && response.person_id) {
+      const { data: personData, error: personError } = await db
+        .from("people")
+        .select("account_id, project_id")
+        .eq("id", response.person_id)
+        .maybeSingle();
+      if (personError) {
+        consola.warn(
+          `[extractSurveyEvidence] Failed person lookup for ${response.person_id}:`,
+          personError,
+        );
+      } else {
+        if (personData?.account_id) {
+          accountId = personData.account_id;
+        }
+        if (!projectId && personData?.project_id) {
+          projectId = personData.project_id;
+        }
+      }
+    }
+
+    if (!accountId) {
+      throw new Error(
+        `Missing account_id for survey response ${responseId} (research_link_id=${response.research_link_id})`,
+      );
+    }
+
     const questions = Array.isArray(researchLinkData.questions)
       ? (researchLinkData.questions as Array<{
           id: string;
@@ -143,8 +200,8 @@ export const extractSurveyEvidenceTask = schemaTask({
 
     // 4. Create evidence records
     const evidenceRecords = textQuestionsWithAnswers.map((qa) => ({
-      account_id,
-      project_id,
+      account_id: accountId,
+      project_id: projectId,
       research_link_response_id: responseId,
       // Content
       verbatim: qa.answer,
@@ -178,8 +235,8 @@ export const extractSurveyEvidenceTask = schemaTask({
       const evidencePeopleRecords = insertedIds.map((evidenceId) => ({
         evidence_id: evidenceId,
         person_id: response.person_id,
-        account_id,
-        project_id,
+        account_id: accountId,
+        project_id: projectId,
         role: "respondent",
       }));
 

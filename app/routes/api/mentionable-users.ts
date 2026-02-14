@@ -3,31 +3,31 @@
  * Returns list of users and people that can be @mentioned in comments
  */
 
-import consola from "consola"
-import type { LoaderFunctionArgs } from "react-router"
-import { userContext } from "~/server/user-context"
+import consola from "consola";
+import type { LoaderFunctionArgs } from "react-router";
+import { userContext } from "~/server/user-context";
 
 export interface MentionableUser {
-	id: string
-	name: string
-	avatar_url: string | null
-	type: "user" | "person"
-	subtitle?: string // email for users, title for people
+	id: string;
+	name: string;
+	avatar_url: string | null;
+	type: "user" | "person";
+	subtitle?: string; // email for users, title for people
 }
 
 export async function loader({ request, context, params }: LoaderFunctionArgs) {
-	const { accountId, projectId } = params
+	const { accountId, projectId } = params;
 
 	if (!accountId || !projectId) {
-		return Response.json({ error: { message: "Missing accountId or projectId" } }, { status: 400 })
+		return Response.json({ error: { message: "Missing accountId or projectId" } }, { status: 400 });
 	}
 
-	const ctx = context.get(userContext)
+	const ctx = context.get(userContext);
 	if (!ctx?.supabase) {
-		return Response.json({ error: { message: "Unauthorized" } }, { status: 401 })
+		return Response.json({ error: { message: "Unauthorized" } }, { status: 401 });
 	}
 
-	const supabase = ctx.supabase
+	const supabase = ctx.supabase;
 
 	try {
 		// Fetch team members from account_user + user_settings
@@ -35,9 +35,9 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
 			.schema("accounts")
 			.from("account_user")
 			.select("user_id")
-			.eq("account_id", accountId)
+			.eq("account_id", accountId);
 
-		const userIds = accountUsers?.map((u) => u.user_id) || []
+		const userIds = accountUsers?.map((u) => u.user_id) || [];
 
 		const { data: userProfiles } =
 			userIds.length > 0
@@ -45,56 +45,56 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
 						.from("user_settings")
 						.select("user_id, first_name, last_name, email, image_url")
 						.in("user_id", userIds)
-				: { data: [] }
+				: { data: [] };
 
 		// Fetch project people
 		const { data: projectPeople } = await supabase
 			.from("people")
 			.select("id, firstname, lastname, name, title, primary_email, image_url, person_type, user_id")
 			.eq("project_id", projectId)
-			.limit(100)
+			.limit(100);
 
 		// Build mentionable users list
-		const mentionableUsers: MentionableUser[] = []
+		const mentionableUsers: MentionableUser[] = [];
 
 		// Add team members
 		for (const profile of userProfiles || []) {
-			const name = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || profile.email || "User"
+			const name = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || profile.email || "User";
 			mentionableUsers.push({
 				id: profile.user_id,
 				name,
 				avatar_url: profile.image_url,
 				type: "user",
 				subtitle: profile.email || undefined,
-			})
+			});
 		}
 
 		// Add project people
 		for (const person of (projectPeople || []) as Array<{
-			id: string
-			firstname: string | null
-			lastname: string | null
-			name: string | null
-			title: string | null
-			primary_email: string | null
-			image_url: string | null
-			person_type?: string | null
-			user_id?: string | null
+			id: string;
+			firstname: string | null;
+			lastname: string | null;
+			name: string | null;
+			title: string | null;
+			primary_email: string | null;
+			image_url: string | null;
+			person_type?: string | null;
+			user_id?: string | null;
 		}>) {
-			if (person.person_type === "internal" || person.user_id) continue
-			const name = person.name || [person.firstname, person.lastname].filter(Boolean).join(" ") || "Unknown"
+			if (person.person_type === "internal" || person.user_id) continue;
+			const name = person.name || [person.firstname, person.lastname].filter(Boolean).join(" ") || "Unknown";
 			mentionableUsers.push({
 				id: person.id,
 				name,
 				avatar_url: person.image_url,
 				type: "person",
 				subtitle: person.title || person.primary_email || undefined,
-			})
+			});
 		}
 
-		return Response.json({ users: mentionableUsers })
+		return Response.json({ users: mentionableUsers });
 	} catch (error) {
-		consola.error("Error fetching mentionable users:", error)
-		return Response.json({ error: { message: "Failed to fetch users" } }, { status: 500 })
+		consola.error("Error fetching mentionable users:", error);
+		return Response.json({ error: { message: "Failed to fetch users" } }, { status: 500 });
 	}
 }

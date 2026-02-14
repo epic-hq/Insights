@@ -3,56 +3,56 @@
  * Uses embedding similarity via the find_similar_themes RPC
  */
 
-import { Loader2, Sparkles } from "lucide-react"
-import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
-import { Badge } from "~/components/ui/badge"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { Loader2, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Badge } from "~/components/ui/badge";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 
 interface SimilarTheme {
-	id: string
-	name: string
-	statement: string | null
-	similarity: number
+	id: string;
+	name: string;
+	statement: string | null;
+	similarity: number;
 }
 
 interface RelatedThemesProps {
-	themeId: string
-	projectId: string
-	projectPath: string
-	limit?: number
+	themeId: string;
+	projectId: string;
+	projectPath: string;
+	limit?: number;
 }
 
 export function RelatedThemes({ themeId, projectId, projectPath, limit = 5 }: RelatedThemesProps) {
-	const [themes, setThemes] = useState<SimilarTheme[]>([])
-	const [loading, setLoading] = useState(true)
-	const [error, setError] = useState<string | null>(null)
-	const routes = useProjectRoutes(projectPath)
+	const [themes, setThemes] = useState<SimilarTheme[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+	const routes = useProjectRoutes(projectPath);
 
 	useEffect(() => {
 		async function fetchSimilarThemes() {
-			setLoading(true)
-			setError(null)
+			setLoading(true);
+			setError(null);
 
 			try {
-				const response = await fetch(`/api/similar-themes?theme_id=${themeId}&project_id=${projectId}&limit=${limit}`)
-				const data = await response.json()
+				const response = await fetch(`/api/similar-themes?theme_id=${themeId}&project_id=${projectId}&limit=${limit}`);
+				const data = await response.json();
 
 				if (!response.ok) {
-					setError(data.error || "Failed to fetch similar themes")
-					return
+					setError(data.error || "Failed to fetch similar themes");
+					return;
 				}
 
-				setThemes(data.similar_themes || [])
+				setThemes(data.similar_themes || []);
 			} catch {
-				setError("Failed to fetch similar themes")
+				setError("Failed to fetch similar themes");
 			} finally {
-				setLoading(false)
+				setLoading(false);
 			}
 		}
 
-		fetchSimilarThemes()
-	}, [themeId, projectId, limit])
+		fetchSimilarThemes();
+	}, [themeId, projectId, limit]);
 
 	if (loading) {
 		return (
@@ -60,11 +60,11 @@ export function RelatedThemes({ themeId, projectId, projectPath, limit = 5 }: Re
 				<Loader2 className="h-4 w-4 animate-spin" />
 				Finding related themes...
 			</div>
-		)
+		);
 	}
 
 	if (error || themes.length === 0) {
-		return null // Don't show section if no related themes
+		return null; // Don't show section if no related themes
 	}
 
 	return (
@@ -88,5 +88,5 @@ export function RelatedThemes({ themeId, projectId, projectPath, limit = 5 }: Re
 				))}
 			</div>
 		</div>
-	)
+	);
 }

@@ -1,32 +1,32 @@
-import consola from "consola"
-import ProcessingScreen from "../components/ProcessingScreen"
-import ProjectGoalsScreen from "../components/ProjectGoalsScreen"
-import ProjectStatusScreen from "../components/ProjectStatusScreen"
-import QuestionsScreen from "../components/QuestionsScreen"
-import UploadScreen from "../components/UploadScreen"
+import consola from "consola";
+import ProcessingScreen from "../components/ProcessingScreen";
+import ProjectGoalsScreen from "../components/ProjectGoalsScreen";
+import ProjectStatusScreen from "../components/ProjectStatusScreen";
+import QuestionsScreen from "../components/QuestionsScreen";
+import UploadScreen from "../components/UploadScreen";
 
 // Mock data for testing components
 const mockQuestionsData = {
 	icp: "College students",
 	goal: "needs",
-}
+};
 
 function MockWelcomeScreen() {
 	const handleNext = (data: { icp: string; goal: string; customGoal?: string }) => {
-		consola.log("Welcome screen next:", data)
-	}
+		consola.log("Welcome screen next:", data);
+	};
 
-	return <ProjectGoalsScreen onNext={handleNext} />
+	return <ProjectGoalsScreen onNext={handleNext} />;
 }
 
 function MockQuestionsScreen() {
 	const handleNext = (questions: string[]) => {
-		consola.log("Questions screen next:", questions)
-	}
+		consola.log("Questions screen next:", questions);
+	};
 
 	const handleBack = () => {
-		consola.log("Questions screen back")
-	}
+		consola.log("Questions screen back");
+	};
 
 	return (
 		<QuestionsScreen
@@ -35,41 +35,41 @@ function MockQuestionsScreen() {
 			onNext={handleNext}
 			onBack={handleBack}
 		/>
-	)
+	);
 }
 
 function MockUploadScreen() {
 	const handleNext = (file: File, mediaType: string) => {
-		consola.log("Upload screen next:", { fileName: file.name, mediaType })
-	}
+		consola.log("Upload screen next:", { fileName: file.name, mediaType });
+	};
 
-	const handleUploadFromUrl = async (url: string) => {
-		consola.log("Upload from URL:", url)
-	}
+	const handleUploadFromUrl = async (items: Array<{ url: string; personId?: string }>) => {
+		consola.log("Upload from URL:", items);
+	};
 
 	const handleBack = () => {
-		consola.log("Upload screen back")
-	}
+		consola.log("Upload screen back");
+	};
 
-	return <UploadScreen onNext={handleNext} onUploadFromUrl={handleUploadFromUrl} onBack={handleBack} />
+	return <UploadScreen onNext={handleNext} onUploadFromUrl={handleUploadFromUrl} onBack={handleBack} />;
 }
 
 function MockProcessingScreen() {
 	const handleComplete = () => {
-		consola.log("Processing complete")
-	}
+		consola.log("Processing complete");
+	};
 
-	return <ProcessingScreen fileName="customer-interview.mp3" onComplete={handleComplete} />
+	return <ProcessingScreen fileName="customer-interview.mp3" onComplete={handleComplete} />;
 }
 
 function MockProjectStatusScreen() {
 	const handleAddMore = () => {
-		consola.log("Add more interviews")
-	}
+		consola.log("Add more interviews");
+	};
 
 	const handleViewResults = () => {
-		consola.log("View results")
-	}
+		consola.log("View results");
+	};
 
 	return (
 		<ProjectStatusScreen
@@ -78,7 +78,7 @@ function MockProjectStatusScreen() {
 			onAddMore={handleAddMore}
 			onViewResults={handleViewResults}
 		/>
-	)
+	);
 }
 
 // Main page component showing all onboarding screens
@@ -143,5 +143,5 @@ export default function OnboardingMockPage() {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

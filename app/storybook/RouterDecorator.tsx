@@ -1,10 +1,10 @@
-import type { Decorator } from "@storybook/react"
-import { useEffect, useState } from "react"
-import { HashRouter, useLocation } from "react-router-dom"
-import Breadcrumbs from "~/components/navigation/Breadcrumbs"
-import { sampleData } from "~/data/sampleData"
-import Dashboard from "~/features/dashboard/components/Dashboard"
-import InterviewsList from "~/features/interviews/components/InterviewsList"
+import type { Decorator } from "@storybook/react";
+import { useEffect, useState } from "react";
+import { HashRouter, useLocation } from "react-router-dom";
+import Breadcrumbs from "~/components/navigation/Breadcrumbs";
+import { sampleData } from "~/data/sampleData";
+import Dashboard from "~/features/dashboard/components/Dashboard";
+import InterviewsList from "~/features/interviews/components/InterviewsList";
 
 // Map of route segments to display names
 const routeLabels: Record<string, string> = {
@@ -15,31 +15,31 @@ const routeLabels: Record<string, string> = {
 	"early-adopters": "Early Adopters",
 	"mainstream-learners": "Mainstream Learners",
 	skeptics: "Skeptics",
-}
+};
 
 // Helper function to get display name for the current route
 const getRouteDisplayName = (path: string): string => {
-	const segments = path.split("/").filter(Boolean)
+	const segments = path.split("/").filter(Boolean);
 
 	// Handle persona detail routes
 	if (segments.length === 2 && segments[0] === "personas") {
-		const personaSlug = segments[1]
-		return routeLabels[personaSlug] || "Persona Details"
+		const personaSlug = segments[1];
+		return routeLabels[personaSlug] || "Persona Details";
 	}
 
 	// Handle regular routes
-	const mainSegment = segments[0] || ""
-	return routeLabels[mainSegment] || mainSegment
-}
+	const mainSegment = segments[0] || "";
+	return routeLabels[mainSegment] || mainSegment;
+};
 
 // Component to handle route changes and display current route
 const RouteDisplay = () => {
-	const location = useLocation()
-	const [activeRoute, setActiveRoute] = useState<string>(location.pathname)
+	const location = useLocation();
+	const [activeRoute, setActiveRoute] = useState<string>(location.pathname);
 
 	useEffect(() => {
-		setActiveRoute(location.pathname)
-	}, [location])
+		setActiveRoute(location.pathname);
+	}, [location]);
 
 	// This component renders the appropriate content based on the current route
 	const renderRouteContent = () => {
@@ -52,7 +52,7 @@ const RouteDisplay = () => {
 		// Handle other routes
 		switch (activeRoute) {
 			case "/interviews":
-				return <InterviewsList interviews={sampleData.interviews} />
+				return <InterviewsList interviews={sampleData.interviews} />;
 			// case "/insights":
 			// 	return <InsightsList insights={sampleData.insights || []} getInsightId={(_, index) => `insight-${index}`} />
 			// case "/opportunities":
@@ -60,15 +60,15 @@ const RouteDisplay = () => {
 			// case "/personas":
 			// 	return <PersonasList personas={sampleData.personas} totalParticipants={80} />
 			case "/":
-				return <Dashboard {...sampleData} />
+				return <Dashboard {...sampleData} />;
 			default:
-				return null
+				return null;
 		}
-	}
+	};
 
 	// Only show route content if we're not at the root
 	if (activeRoute === "/") {
-		return null
+		return null;
 	}
 
 	return (
@@ -81,8 +81,8 @@ const RouteDisplay = () => {
 				{renderRouteContent()}
 			</div>
 		</div>
-	)
-}
+	);
+};
 
 /**
  * RouterDecorator provides HashRouter context for Storybook stories
@@ -101,5 +101,5 @@ export const RouterDecorator: Decorator = (Story) => {
 				</div>
 			</div>
 		</HashRouter>
-	)
-}
+	);
+};

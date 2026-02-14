@@ -1,37 +1,37 @@
-import { useState } from "react"
-import { useSearchParams } from "react-router"
-import { Button } from "~/components/ui/button"
-import { createClient } from "~/lib/supabase/client"
-import { cn } from "~/lib/utils"
+import { useState } from "react";
+import { useSearchParams } from "react-router";
+import { Button } from "~/components/ui/button";
+import { createClient } from "~/lib/supabase/client";
+import { cn } from "~/lib/utils";
 
 export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRef<"div">) {
-	const [error, setError] = useState<string | null>(null)
-	const [isLoading, setIsLoading] = useState(false)
-	const [searchParams] = useSearchParams()
+	const [error, setError] = useState<string | null>(null);
+	const [isLoading, setIsLoading] = useState(false);
+	const [searchParams] = useSearchParams();
 
 	const handleSocialLogin = async (e: React.FormEvent) => {
-		e.preventDefault()
-		const supabase = createClient()
-		setIsLoading(true)
-		setError(null)
+		e.preventDefault();
+		const supabase = createClient();
+		setIsLoading(true);
+		setError(null);
 
 		try {
 			// Get the redirect URL from query params, fallback to /home
-			const redirectUrl = searchParams.get("next") || searchParams.get("redirect") || "/home"
+			const redirectUrl = searchParams.get("next") || searchParams.get("redirect") || "/home";
 
 			const { error } = await supabase.auth.signInWithOAuth({
 				provider: "google",
 				options: {
 					redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectUrl)}`,
 				},
-			})
+			});
 
-			if (error) throw error
+			if (error) throw error;
 		} catch (error: unknown) {
-			setError(error instanceof Error ? error.message : "An error occurred")
-			setIsLoading(false)
+			setError(error instanceof Error ? error.message : "An error occurred");
+			setIsLoading(false);
 		}
-	}
+	};
 
 	return (
 		<div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -49,5 +49,5 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
 				</div>
 			</form>
 		</div>
-	)
+	);
 }

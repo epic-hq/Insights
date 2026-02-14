@@ -1,5 +1,5 @@
-import { useNavigate } from "react-router"
-import { Link } from "~/library/link"
+import { useNavigate } from "react-router";
+import { Link } from "~/library/link";
 
 // Cute error illustration with broken pieces
 const ErrorIllustration = () => (
@@ -72,15 +72,15 @@ const ErrorIllustration = () => (
 			</text>
 		</g>
 	</svg>
-)
+);
 
 interface ErrorBoundaryProps {
-	error?: Error
-	reset?: () => void
+	error?: Error;
+	reset?: () => void;
 }
 
 export default function ErrorBoundary({ error, reset }: ErrorBoundaryProps) {
-	const navigate = useNavigate()
+	const navigate = useNavigate();
 
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 p-4 dark:from-slate-900 dark:via-red-900 dark:to-orange-900">
@@ -171,5 +171,5 @@ export default function ErrorBoundary({ error, reset }: ErrorBoundaryProps) {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

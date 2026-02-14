@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { upsertSalesLensFromExtraction } from "~/lib/sales-lens/storage.server";
 import { buildSalesLensFromEvidence } from "~/lib/sales-lens/baml-extraction.server";
 import { buildInitialSalesLensExtraction } from "~/utils/salesLens.server";
-import { workflowRetryConfig } from "~/utils/processInterview.server";
+import { workflowRetryConfig } from "../interview/v2/config";
 import {
   runBamlWithBilling,
   systemBillingContext,
@@ -63,6 +63,8 @@ async function generateConversationTakeaways(
                         `,
       )
       .eq("interview_id", interviewId)
+      .is("deleted_at", null)
+      .eq("is_archived", false)
       .order("created_at", { ascending: true });
 
     if (evidenceError) {

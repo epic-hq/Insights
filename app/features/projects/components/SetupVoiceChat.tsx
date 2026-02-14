@@ -5,76 +5,76 @@
  * Extracts project context from natural conversation with the AI agent.
  */
 
-import { LiveKitRoom, RoomAudioRenderer, useLocalParticipant, useRoomContext } from "@livekit/components-react"
-import "@livekit/components-styles"
-import { type ConnectionState, type DisconnectReason, type Participant, RoomEvent } from "livekit-client"
-import { Mic, MicOff, Phone, PhoneOff } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { Button } from "~/components/ui/button"
-import { VoiceOrb, type VoiceOrbState } from "~/components/ui/voice-orb"
+import { LiveKitRoom, RoomAudioRenderer, useLocalParticipant, useRoomContext } from "@livekit/components-react";
+import "@livekit/components-styles";
+import { type ConnectionState, type DisconnectReason, type Participant, RoomEvent } from "livekit-client";
+import { Mic, MicOff, Phone, PhoneOff } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "~/components/ui/button";
+import { VoiceOrb, type VoiceOrbState } from "~/components/ui/voice-orb";
 
 interface SetupVoiceChatProps {
-	accountId: string
-	projectId: string
-	projectName: string
-	onSetupComplete?: () => void
+	accountId: string;
+	projectId: string;
+	projectName: string;
+	onSetupComplete?: () => void;
 }
 
 interface LiveKitSession {
-	token: string
-	url: string
-	roomName: string
-	identity: string
+	token: string;
+	url: string;
+	roomName: string;
+	identity: string;
 }
 
 export function SetupVoiceChat({ accountId, projectId, projectName, onSetupComplete }: SetupVoiceChatProps) {
-	const [isClient, setIsClient] = useState(false)
-	const [isConnecting, setIsConnecting] = useState(false)
-	const [session, setSession] = useState<LiveKitSession | null>(null)
-	const [error, setError] = useState<string | null>(null)
-	const [connectionState, setConnectionState] = useState<ConnectionState | null>(null)
+	const [isClient, setIsClient] = useState(false);
+	const [isConnecting, setIsConnecting] = useState(false);
+	const [session, setSession] = useState<LiveKitSession | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [connectionState, setConnectionState] = useState<ConnectionState | null>(null);
 
 	useEffect(() => {
-		setIsClient(true)
-	}, [])
+		setIsClient(true);
+	}, []);
 
 	const startVoiceChat = useCallback(async () => {
 		if (!projectId || !accountId) {
-			setError("Missing project context for voice setup")
-			return
+			setError("Missing project context for voice setup");
+			return;
 		}
 
-		setIsConnecting(true)
-		setError(null)
-		setConnectionState("connecting")
+		setIsConnecting(true);
+		setError(null);
+		setConnectionState("connecting");
 
 		try {
 			const response = await fetch("/api.livekit-token", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ projectId, accountId }),
-			})
+			});
 
 			if (!response.ok) {
-				const payload = await response.json().catch(() => ({}))
-				throw new Error(payload.error || "Unable to start voice chat")
+				const payload = await response.json().catch(() => ({}));
+				throw new Error(payload.error || "Unable to start voice chat");
 			}
 
-			const payload = (await response.json()) as LiveKitSession
-			setSession(payload)
+			const payload = (await response.json()) as LiveKitSession;
+			setSession(payload);
 		} catch (e) {
-			const message = e instanceof Error ? e.message : "Unable to connect"
-			setError(message)
-			setConnectionState("disconnected")
+			const message = e instanceof Error ? e.message : "Unable to connect";
+			setError(message);
+			setConnectionState("disconnected");
 		} finally {
-			setIsConnecting(false)
+			setIsConnecting(false);
 		}
-	}, [projectId, accountId])
+	}, [projectId, accountId]);
 
 	const stopVoiceChat = useCallback(() => {
-		setSession(null)
-		setConnectionState(null)
-	}, [])
+		setSession(null);
+		setConnectionState(null);
+	}, []);
 
 	// Pre-call state
 	if (!session) {
@@ -95,11 +95,11 @@ export function SetupVoiceChat({ accountId, projectId, projectName, onSetupCompl
 					{isConnecting ? "Connecting..." : "Start Voice Chat"}
 				</Button>
 			</div>
-		)
+		);
 	}
 
 	// Active call state
-	if (!isClient) return null
+	if (!isClient) return null;
 
 	return (
 		<LiveKitRoom
@@ -113,16 +113,16 @@ export function SetupVoiceChat({ accountId, projectId, projectName, onSetupCompl
 			className="rounded-2xl border border-border bg-card p-1 text-foreground shadow-sm"
 			onConnected={() => setConnectionState("connected")}
 			onDisconnected={(reason?: DisconnectReason) => {
-				setConnectionState("disconnected")
+				setConnectionState("disconnected");
 				if (reason) {
-					setError(typeof reason === "string" ? reason : "Disconnected from LiveKit")
+					setError(typeof reason === "string" ? reason : "Disconnected from LiveKit");
 				}
-				stopVoiceChat()
+				stopVoiceChat();
 			}}
 			onError={(roomError: Error) => {
-				setError(roomError.message || "LiveKit connection error")
-				setConnectionState("disconnected")
-				stopVoiceChat()
+				setError(roomError.message || "LiveKit connection error");
+				setConnectionState("disconnected");
+				stopVoiceChat();
 			}}
 		>
 			<VoiceChatUI
@@ -135,16 +135,16 @@ export function SetupVoiceChat({ accountId, projectId, projectName, onSetupCompl
 			/>
 			<RoomAudioRenderer />
 		</LiveKitRoom>
-	)
+	);
 }
 
 interface VoiceChatUIProps {
-	projectName: string
-	onEnd: () => void
-	onComplete?: () => void
-	connectionState: ConnectionState | null
-	onConnectionStateChange: (state: ConnectionState) => void
-	error?: string | null
+	projectName: string;
+	onEnd: () => void;
+	onComplete?: () => void;
+	connectionState: ConnectionState | null;
+	onConnectionStateChange: (state: ConnectionState) => void;
+	error?: string | null;
 }
 
 function VoiceChatUI({
@@ -155,108 +155,108 @@ function VoiceChatUI({
 	onConnectionStateChange,
 	error,
 }: VoiceChatUIProps) {
-	const room = useRoomContext()
-	const { isMicrophoneEnabled, localParticipant } = useLocalParticipant()
-	const [orbState, setOrbState] = useState<VoiceOrbState>("idle")
-	const [audioLevel, setAudioLevel] = useState(0)
+	const room = useRoomContext();
+	const { isMicrophoneEnabled, localParticipant } = useLocalParticipant();
+	const [orbState, setOrbState] = useState<VoiceOrbState>("idle");
+	const [audioLevel, setAudioLevel] = useState(0);
 
 	// Track connection state directly from room events
 	useEffect(() => {
 		const handleConnectionChange = (state: ConnectionState) => {
-			onConnectionStateChange(state)
+			onConnectionStateChange(state);
 			if (state === "connected") {
-				setOrbState(isMicrophoneEnabled ? "listening" : "idle")
+				setOrbState(isMicrophoneEnabled ? "listening" : "idle");
 			} else if (state === "reconnecting" || state === "connecting") {
-				setOrbState("processing")
+				setOrbState("processing");
 			} else {
-				setOrbState("idle")
+				setOrbState("idle");
 			}
-		}
+		};
 
-		const handleReconnected = () => handleConnectionChange("connected")
-		const handleReconnecting = () => handleConnectionChange("reconnecting")
-		const handleDisconnected = () => handleConnectionChange("disconnected")
+		const handleReconnected = () => handleConnectionChange("connected");
+		const handleReconnecting = () => handleConnectionChange("reconnecting");
+		const handleDisconnected = () => handleConnectionChange("disconnected");
 
-		handleConnectionChange(room.state)
+		handleConnectionChange(room.state);
 
-		room.on(RoomEvent.ConnectionStateChanged, handleConnectionChange)
-		room.on(RoomEvent.Reconnected, handleReconnected)
-		room.on(RoomEvent.Reconnecting, handleReconnecting)
-		room.on(RoomEvent.Disconnected, handleDisconnected)
+		room.on(RoomEvent.ConnectionStateChanged, handleConnectionChange);
+		room.on(RoomEvent.Reconnected, handleReconnected);
+		room.on(RoomEvent.Reconnecting, handleReconnecting);
+		room.on(RoomEvent.Disconnected, handleDisconnected);
 
 		return () => {
-			room.off(RoomEvent.ConnectionStateChanged, handleConnectionChange)
-			room.off(RoomEvent.Reconnected, handleReconnected)
-			room.off(RoomEvent.Reconnecting, handleReconnecting)
-			room.off(RoomEvent.Disconnected, handleDisconnected)
-		}
-	}, [room, isMicrophoneEnabled, onConnectionStateChange])
+			room.off(RoomEvent.ConnectionStateChanged, handleConnectionChange);
+			room.off(RoomEvent.Reconnected, handleReconnected);
+			room.off(RoomEvent.Reconnecting, handleReconnecting);
+			room.off(RoomEvent.Disconnected, handleDisconnected);
+		};
+	}, [room, isMicrophoneEnabled, onConnectionStateChange]);
 
 	// Track connection state
 	useEffect(() => {
 		const handleActiveSpeakers = (speakers: Participant[]) => {
-			const localSpeaker = speakers.find((p) => p.isLocal)
-			const remoteSpeaker = speakers.find((p) => !p.isLocal)
+			const localSpeaker = speakers.find((p) => p.isLocal);
+			const remoteSpeaker = speakers.find((p) => !p.isLocal);
 
-			setAudioLevel(localSpeaker?.audioLevel ?? 0)
+			setAudioLevel(localSpeaker?.audioLevel ?? 0);
 
 			if (remoteSpeaker) {
-				setOrbState("speaking")
+				setOrbState("speaking");
 			} else if (connectionState === "connected") {
-				setOrbState(isMicrophoneEnabled ? "listening" : "idle")
+				setOrbState(isMicrophoneEnabled ? "listening" : "idle");
 			}
-		}
+		};
 
-		room.on(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakers)
+		room.on(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakers);
 
 		return () => {
-			room.off(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakers)
-		}
-	}, [connectionState, isMicrophoneEnabled, room])
+			room.off(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakers);
+		};
+	}, [connectionState, isMicrophoneEnabled, room]);
 
 	// Track audio levels for visualization
 	useEffect(() => {
-		if (!localParticipant) return
+		if (!localParticipant) return;
 
 		const interval = setInterval(() => {
 			// Use the SDK-provided audio level to animate the orb
-			setAudioLevel(localParticipant.audioLevel ?? 0)
-		}, 100)
+			setAudioLevel(localParticipant.audioLevel ?? 0);
+		}, 100);
 
-		return () => clearInterval(interval)
-	}, [localParticipant])
+		return () => clearInterval(interval);
+	}, [localParticipant]);
 
 	const statusText = useMemo(() => {
 		switch (connectionState) {
 			case "connected":
-				return `Connected to ${projectName}`
+				return `Connected to ${projectName}`;
 			case "reconnecting":
-				return "Reconnecting to voice agent..."
+				return "Reconnecting to voice agent...";
 			case "disconnected":
-				return "Disconnected"
+				return "Disconnected";
 			case "connecting":
 			default:
-				return "Connecting..."
+				return "Connecting...";
 		}
-	}, [connectionState, projectName])
+	}, [connectionState, projectName]);
 
 	const toggleMute = useCallback(async () => {
 		if (localParticipant) {
-			await localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled)
+			await localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
 		}
-	}, [localParticipant, isMicrophoneEnabled])
+	}, [localParticipant, isMicrophoneEnabled]);
 
 	const handleEnd = useCallback(() => {
-		room.disconnect()
-		onConnectionStateChange("disconnected")
-		onEnd()
-	}, [room, onConnectionStateChange, onEnd])
+		room.disconnect();
+		onConnectionStateChange("disconnected");
+		onEnd();
+	}, [room, onConnectionStateChange, onEnd]);
 
 	const handleDone = useCallback(() => {
-		room.disconnect()
-		onConnectionStateChange("disconnected")
-		onComplete?.()
-	}, [room, onComplete, onConnectionStateChange])
+		room.disconnect();
+		onConnectionStateChange("disconnected");
+		onComplete?.();
+	}, [room, onComplete, onConnectionStateChange]);
 
 	return (
 		<div className="flex flex-col items-center justify-center rounded-2xl bg-background px-6 py-8 text-center text-foreground">
@@ -298,5 +298,5 @@ function VoiceChatUI({
 				</Button>
 			)}
 		</div>
-	)
+	);
 }

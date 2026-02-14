@@ -38,6 +38,7 @@ It covers the conceptual architecture, how each agent runs in practice, and the 
 
 - **Thread key**: `projectStatusAgent-<userId>-<projectId>`.
 - **Message handling**: only the newest user turn is passed to Mastra; history is pulled from memory.
+- **Intent routing**: API route uses a structured-output LLM router (not regex heuristics) to select between `projectStatusAgent`, `chiefOfStaffAgent`, `researchAgent`, and `projectSetupAgent`.
 - **RequestContext**: `user_id`, `account_id`, `project_id`, `user_timezone` are set in the API route.
 - **Memory**: Postgres-backed with working memory enabled (schema: `ProjectStatusMemoryState`).
 - **Token cap**: `TokenLimiterProcessor(100_000)` to prevent overflow.
@@ -94,6 +95,7 @@ It covers the conceptual architecture, how each agent runs in practice, and the 
 - Provides data quality oversight (e.g., detecting people needing segment inference).
 - Returns 2-3 prioritized recommendations based on real project data.
 - Uses deterministic recommendation rules, not LLM generation, for consistency.
+- Serves as the strategic worker for broad "what next" and ICP-oriented prioritization guidance.
 
 ### Where it lives
 
@@ -150,6 +152,8 @@ The recommendation engine generates suggestions based on project state:
 
 ## Related References
 
+- `docs/00-foundation/agents/responsibility-phase-map.md` (current -> phased target responsibility map)
+- `docs/00-foundation/agents/recommendation-memory.md` (recommendation tracking & decision memory)
 - `docs/20-features-prds/features/project-chat.md` (project setup workflow)
 - `docs/10-architecture/api/mobile-api-reference.md` (project status agent API)
 - `docs/architecture/agentic-system-strategy.md` (system-level strategy)

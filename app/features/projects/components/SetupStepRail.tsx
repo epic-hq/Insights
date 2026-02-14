@@ -5,16 +5,16 @@
  * Clicking a step navigates to that section.
  */
 
-import { Check, Compass, Inbox, Lightbulb, ListChecks, Sparkles } from "lucide-react"
-import { cn } from "~/lib/utils"
-import { useProjectSetup } from "../contexts/project-setup-context"
-import type { SetupStep } from "../stores/project-setup-store"
+import { Check, Compass, Inbox, Lightbulb, ListChecks, Sparkles } from "lucide-react";
+import { cn } from "~/lib/utils";
+import { useProjectSetup } from "../contexts/project-setup-context";
+import type { SetupStep } from "../stores/project-setup-store";
 
 interface Step {
-	id: SetupStep
-	label: string
-	description: string
-	icon: React.ComponentType<{ className?: string }>
+	id: SetupStep;
+	label: string;
+	description: string;
+	icon: React.ComponentType<{ className?: string }>;
 }
 
 const STEPS: Step[] = [
@@ -48,22 +48,22 @@ const STEPS: Step[] = [
 		description: "Decide what matters",
 		icon: Lightbulb,
 	},
-]
+];
 
-type StepStatus = "complete" | "current" | "upcoming"
+type StepStatus = "complete" | "current" | "upcoming";
 
 interface SetupStepRailProps {
-	className?: string
+	className?: string;
 }
 
 export function SetupStepRail({ className }: SetupStepRailProps) {
-	const { currentStep, completedSteps, setCurrentStep } = useProjectSetup()
+	const { currentStep, completedSteps, setCurrentStep } = useProjectSetup();
 
 	const getStepStatus = (stepId: SetupStep): StepStatus => {
-		if (completedSteps.includes(stepId)) return "complete"
-		if (stepId === currentStep) return "current"
-		return "upcoming"
-	}
+		if (completedSteps.includes(stepId)) return "complete";
+		if (stepId === currentStep) return "current";
+		return "upcoming";
+	};
 
 	return (
 		<nav
@@ -77,8 +77,8 @@ export function SetupStepRail({ className }: SetupStepRailProps) {
 
 			<div className="space-y-1">
 				{STEPS.map((step, index) => {
-					const status = getStepStatus(step.id)
-					const Icon = step.icon
+					const status = getStepStatus(step.id);
+					const Icon = step.icon;
 
 					return (
 						<button
@@ -127,26 +127,26 @@ export function SetupStepRail({ className }: SetupStepRailProps) {
 								<p className="mt-0.5 truncate text-muted-foreground text-xs">{step.description}</p>
 							</div>
 						</button>
-					)
+					);
 				})}
 			</div>
 		</nav>
-	)
+	);
 }
 
 /**
  * Horizontal step indicator for mobile/compact layouts
  */
 export function SetupStepIndicatorCompact({ className }: { className?: string }) {
-	const { currentStep, completedSteps } = useProjectSetup()
+	const { currentStep, completedSteps } = useProjectSetup();
 
-	const currentIndex = STEPS.findIndex((s) => s.id === currentStep)
+	const currentIndex = STEPS.findIndex((s) => s.id === currentStep);
 
 	return (
 		<div className={cn("flex items-center justify-center gap-2", className)}>
 			{STEPS.map((step, index) => {
-				const isComplete = completedSteps.includes(step.id)
-				const isCurrent = step.id === currentStep
+				const isComplete = completedSteps.includes(step.id);
+				const isCurrent = step.id === currentStep;
 
 				return (
 					<div key={step.id} className="flex items-center gap-2">
@@ -171,8 +171,8 @@ export function SetupStepIndicatorCompact({ className }: { className?: string })
 							/>
 						)}
 					</div>
-				)
+				);
 			})}
 		</div>
-	)
+	);
 }

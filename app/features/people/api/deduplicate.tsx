@@ -10,23 +10,23 @@
  * - duplicateIds: string[] (required for "merge" action)
  */
 
-import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
-import { getServerClient } from "~/lib/supabase/client.server"
-import { autoMergeDuplicates, findDuplicates, mergePeople } from "../deduplicate"
+import consola from "consola";
+import type { ActionFunctionArgs } from "react-router";
+import { getServerClient } from "~/lib/supabase/client.server";
+import { autoMergeDuplicates, findDuplicates, mergePeople } from "../deduplicate";
 
 export async function action({ request, params }: ActionFunctionArgs) {
-	const { client: supabase } = getServerClient(request)
-	const accountId = params.accountId
-	const projectId = params.projectId
+	const { client: supabase } = getServerClient(request);
+	const accountId = params.accountId;
+	const projectId = params.projectId;
 
 	if (!accountId || !projectId) {
-		return Response.json({ error: "Account ID and Project ID are required" }, { status: 400 })
+		return Response.json({ error: "Account ID and Project ID are required" }, { status: 400 });
 	}
 
 	try {
-		const body = await request.json()
-		const { action: actionType, dryRun = true } = body
+		const body = await request.json();
+		const { action: actionType, dryRun = true } = body;
 
 		switch (actionType) {
 			case "find": {
@@ -34,7 +34,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					supabase,
 					accountId,
 					projectId,
-				})
+				});
 
 				return Response.json({
 					success: result.success,
@@ -46,17 +46,17 @@ export async function action({ request, params }: ActionFunctionArgs) {
 							name: p.name,
 							primary_email: p.primary_email,
 							linkedin_url: p.linkedin_url,
-							company: p.company,
+							company: (p as any).people_organizations?.[0]?.organization?.name ?? null,
 							title: p.title,
 							created_at: p.created_at,
 						})),
 					})),
 					errors: result.errors,
-				})
+				});
 			}
 
 			case "merge": {
-				const { primaryId, duplicateIds } = body
+				const { primaryId, duplicateIds } = body;
 
 				if (!primaryId || !Array.isArray(duplicateIds) || duplicateIds.length === 0) {
 					return Response.json(
@@ -64,7 +64,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 							error: "primaryId and duplicateIds are required for merge action",
 						},
 						{ status: 400 }
-					)
+					);
 				}
 
 				const result = await mergePeople({
@@ -74,9 +74,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					primaryId,
 					duplicateIds,
 					dryRun,
-				})
+				});
 
-				return Response.json(result)
+				return Response.json(result);
 			}
 
 			case "auto-merge": {
@@ -85,9 +85,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					accountId,
 					projectId,
 					dryRun,
-				})
+				});
 
-				return Response.json(result)
+				return Response.json(result);
 			}
 
 			default:
@@ -96,10 +96,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 						error: `Unknown action: ${actionType}. Valid actions: find, merge, auto-merge`,
 					},
 					{ status: 400 }
-				)
+				);
 		}
 	} catch (error) {
-		consola.error("Deduplicate API error:", error)
-		return Response.json({ error: `Failed to process request: ${String(error)}` }, { status: 500 })
+		consola.error("Deduplicate API error:", error);
+		return Response.json({ error: `Failed to process request: ${String(error)}` }, { status: 500 });
 	}
 }

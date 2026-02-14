@@ -3,15 +3,15 @@
  * GET /api/evidence/:evidenceId
  */
 
-import type { LoaderFunctionArgs } from "react-router"
-import { userContext } from "~/server/user-context"
+import type { LoaderFunctionArgs } from "react-router";
+import { userContext } from "~/server/user-context";
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const { supabase } = context.get(userContext)
-	const { evidenceId } = params
+	const { supabase } = context.get(userContext);
+	const { evidenceId } = params;
 
 	if (!evidenceId) {
-		return Response.json({ error: "Missing evidenceId" }, { status: 400 })
+		return Response.json({ error: "Missing evidenceId" }, { status: 400 });
 	}
 
 	// Fetch evidence with interview data
@@ -39,51 +39,57 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		`
 		)
 		.eq("id", evidenceId)
-		.single()
+		.is("deleted_at", null)
+		.single();
 
 	if (error || !evidence) {
-		return Response.json({ error: "Evidence not found" }, { status: 404 })
+		return Response.json({ error: "Evidence not found" }, { status: 404 });
 	}
 
-	// Fetch people separately
+	// Fetch linked people and facets without relational joins.
 	const { data: peopleData } = await supabase
 		.from("evidence_people")
-		.select(
-			`
-			role,
-			people:person_id!inner(
-				id,
-				name
-			)
-		`
-		)
-		.eq("evidence_id", evidenceId)
-
-	// Fetch facets with their owners via person_id
+		.select("role, person_id")
+		.eq("evidence_id", evidenceId);
 	const { data: facetData } = await supabase
 		.from("evidence_facet")
-		.select(
-			`
-			kind_slug,
-			label,
-			person:person_id(id, name)
-		`
-		)
-		.eq("evidence_id", evidenceId)
+		.select("kind_slug, label, person_id")
+		.eq("evidence_id", evidenceId);
+
+	const personIds = new Set<string>();
+	for (const row of (peopleData ?? []) as Array<{ person_id: string | null }>) {
+		if (row.person_id) personIds.add(row.person_id);
+	}
+	for (const row of (facetData ?? []) as Array<{ person_id: string | null }>) {
+		if (row.person_id) personIds.add(row.person_id);
+	}
+
+	const personNameById = new Map<string, string | null>();
+	if (personIds.size > 0) {
+		const { data: personRows } = await supabase.from("people").select("id, name").in("id", Array.from(personIds));
+		for (const row of (personRows ?? []) as Array<{
+			id: string;
+			name: string | null;
+		}>) {
+			personNameById.set(row.id, row.name ?? null);
+		}
+	}
 
 	// Transform people data (participants with roles)
-	const people = (peopleData ?? []).map((row: any) => ({
-		id: row.people?.id,
-		name: row.people?.name,
-		role: row.role,
-	}))
+	const people = (peopleData ?? [])
+		.filter((row: any) => Boolean(row.person_id))
+		.map((row: any) => ({
+			id: row.person_id,
+			name: personNameById.get(row.person_id) ?? null,
+			role: row.role,
+		}));
 
 	// Transform facets (with owner info)
 	const facets = (facetData ?? []).map((row: any) => ({
 		kind_slug: row.kind_slug,
 		label: row.label,
-		person: row.person ? { id: row.person.id, name: row.person.name } : null,
-	}))
+		person: row.person_id ? { id: row.person_id, name: personNameById.get(row.person_id) ?? null } : null,
+	}));
 
 	return Response.json({
 		evidence: {
@@ -91,5 +97,5 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			people,
 			facets,
 		},
-	})
+	});
 }

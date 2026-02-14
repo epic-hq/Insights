@@ -276,7 +276,7 @@ RQs connect DQs ⇄ Prompts, so you can see both: “did we answer it?” and �
 * **Target Audience (Ideal Customer)**: Project‑level definition of **Organization** and **Role(s)** we’re designing for.
 * **Goal (project goal)**: What the team wants to learn/achieve now (e.g., price sensitivity, improve retention). Includes assumptions and unknowns.
 * **Interview**: A session that yields a transcript (speaker turns, chapters). Links to People and generates Evidence.
-* **Person / Participant**: Individual in the study with attributes (role, company, segment). Rolls into Personas.
+* **Person / Participant**: Individual in the study with attributes (role, company, segment). Rolls into Personas. **Person resolution** uses 4-tier matching (email > platform_id > name+company > create) to prevent duplicates across realtime and batch ingestion paths (see `app/lib/people/resolution.server.ts`).
 * **Experiment**: Any method that generates information (interview, usability test, survey, log study, market scan). Holds protocol + metadata.
 * **Evidence** (atomic): Discrete, citable unit from any source (quote, metric, observation, market stat, artifact). May support/refute/neutral.
 * **Theme** (cluster): Named pattern formed by grouping related evidence (tags + semantics). Reusable across people, personas, time.
@@ -624,17 +624,19 @@ CREATE INDEX ON evidence USING GIN ((anchors) jsonb_path_ops);
 **Pipeline**
 
 1. `ExtractEvidenceFromTranscriptV2` emits `facet_mentions[]` per evidence unit.
-2. `processInterview.server.ts` matches each `{kind_slug, value}` against the merged facet catalog (project → account → global).
-3. Confident matches are written to `evidence_facet` with a reference (`facet_ref`) and normalized label. Unknown values become `facet_candidate` rows for analyst approval.
+2. `processInterview.server.ts` matches each `{kind_slug, value}` against the merged facet catalog (account + global seeds).
+3. Confident matches are written to `evidence_facet` using `facet_account_id` and normalized label.
 4. Persona synthesis uses the same catalog via `persistFacetObservations`, populating `person_facet`/`person_scale`.
 5. Themes, research-question linking, and UI filters source their vocabulary directly from `evidence_facet` (no more ad-hoc tag strings).
 
 **Schema sketch**
 
-* `evidence_facet(evidence_id, kind_slug, facet_ref?, label, quote?, confidence, source)`
-* `facet_candidate(account_id, project_id, kind_slug, label, status, resolved_facet_ref?)`
-* `facet_account` / `project_facet` for promoted vocabulary
-* `person_facet(person_id, facet_ref, source, confidence)`
+* `evidence_facet(evidence_id, kind_slug, facet_account_id, person_id?, label, quote?, confidence, source)`
+* `facet_account(account_id, kind_id, label, slug, synonyms, is_active)`
+* `person_facet(person_id, facet_account_id, source, confidence)`
+* `person_scale(person_id, kind_slug, score, confidence, source)`
+
+**Legacy note**: `facet_ref`, `facet_candidate`, and `project_facet` are removed from the active model.
 
 **AI rubric tip**: facet values should stay atomic (≤12 words, include trigger/condition when useful) so that catalog matches remain unambiguous.
 

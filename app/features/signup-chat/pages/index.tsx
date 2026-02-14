@@ -1,47 +1,47 @@
-import { Command, CommandInput } from "~/components/ui/command"
-import { DropdownMenu } from "~/components/ui/dropdown-menu"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import { CategoryFilterChipBasic } from "~/features/signup-chat/components/FilterChips"
-import { IdeasBoard } from "~/features/signup-chat/components/IdeasBoard"
+import { Command, CommandInput } from "~/components/ui/command";
+import { DropdownMenu } from "~/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { CategoryFilterChipBasic } from "~/features/signup-chat/components/FilterChips";
+import { IdeasBoard } from "~/features/signup-chat/components/IdeasBoard";
 // import { CategoryFilterChip } from "~/components/CategoryFilterChip";
-import { InsightsList } from "~/features/signup-chat/components/InsightsList"
+import { InsightsList } from "~/features/signup-chat/components/InsightsList";
 // import { ChatSheet } from "~/features/insights/pages/ChatSheet";
 
-import consola from "consola"
-import { useState } from "react"
-import type { LoaderFunctionArgs } from "react-router"
-import { NavLink, useLoaderData } from "react-router"
-import { getInsights } from "~/features/insights/db"
-import AddInterviewButton from "~/features/upload/components/AddInterviewButton"
-import { currentProjectContext } from "~/server/current-project-context"
-import { userContext } from "~/server/user-context"
-import type { Insight } from "~/types"
-import ChatSheet from "../components/ChatSheet"
+import consola from "consola";
+import { useState } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { NavLink, useLoaderData } from "react-router";
+import { getInsights } from "~/features/insights/db";
+import AddInterviewButton from "~/features/upload/components/AddInterviewButton";
+import { currentProjectContext } from "~/server/current-project-context";
+import { userContext } from "~/server/user-context";
+import type { Insight } from "~/types";
+import ChatSheet from "../components/ChatSheet";
 
 export async function loader({ context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
-	const ctx_project = context.get(currentProjectContext)
-	const projectId = ctx_project.projectId || ""
-	const accountId = ctx_project.accountId || ""
+	const ctx_project = context.get(currentProjectContext);
+	const projectId = ctx_project.projectId || "";
+	const accountId = ctx_project.accountId || "";
 
 	const { data: insights, error } = await getInsights({
 		supabase,
 		accountId,
 		projectId,
-	})
+	});
 
 	if (error) {
-		consola.error("Insights query error:", error)
-		throw new Response(`Error fetching insights: ${error.message}`, { status: 500 })
+		consola.error("Insights query error:", error);
+		throw new Response(`Error fetching insights: ${error.message}`, { status: 500 });
 	}
 
-	consola.log(`Found ${insights?.length || 0} insights`)
+	consola.log(`Found ${insights?.length || 0} insights`);
 
 	return {
 		insights: insights || [],
-	}
+	};
 }
 
 function Tab({ to, label }: { to: string; label: string }) {
@@ -57,7 +57,7 @@ function Tab({ to, label }: { to: string; label: string }) {
 		>
 			{label}
 		</NavLink>
-	)
+	);
 }
 
 export function AppHeader({ onNew }: { onNew: () => void }) {
@@ -80,20 +80,20 @@ export function AppHeader({ onNew }: { onNew: () => void }) {
 				</button>
 			</div>
 		</header>
-	)
+	);
 }
 
 export default function QuickInsights() {
-	const { insights } = useLoaderData<typeof loader>()
-	const [searchQuery, _setSearchQuery] = useState("")
-	const [selected, _setSelected] = useState<Insight | null>(null)
+	const { insights } = useLoaderData<typeof loader>();
+	const [searchQuery, _setSearchQuery] = useState("");
+	const [selected, _setSelected] = useState<Insight | null>(null);
 	const _filtered = insights.filter(
 		(insight: Insight) =>
 			insight.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			insight.details?.toLowerCase().includes(searchQuery.toLowerCase())
-	)
+	);
 
-	consola.log("Selected insight:", selected)
+	consola.log("Selected insight:", selected);
 	return (
 		<div className="min-h-screen bg-gray-50 p-4">
 			{/* Header with tabs */}
@@ -130,5 +130,5 @@ export default function QuickInsights() {
 				</TabsContent>
 			</Tabs>
 		</div>
-	)
+	);
 }

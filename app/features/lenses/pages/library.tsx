@@ -5,7 +5,7 @@
  * Lenses are sorted by category then alphabetically.
  */
 
-import consola from "consola"
+import consola from "consola";
 import {
 	Briefcase,
 	Eye,
@@ -20,8 +20,8 @@ import {
 	Trash2,
 	Users,
 	Wand2,
-} from "lucide-react"
-import { useState } from "react"
+} from "lucide-react";
+import { useState } from "react";
 import {
 	type ActionFunctionArgs,
 	type LoaderFunctionArgs,
@@ -29,10 +29,10 @@ import {
 	useFetcher,
 	useLoaderData,
 	useRevalidator,
-} from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+} from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -41,45 +41,48 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "~/components/ui/dialog"
+} from "~/components/ui/dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
-import InlineEdit from "~/components/ui/inline-edit"
-import { Switch } from "~/components/ui/switch"
-import { Textarea } from "~/components/ui/textarea"
-import { type AccountSettingsMetadata, PLATFORM_DEFAULT_LENS_KEYS } from "~/features/opportunities/stage-config"
-import { userContext } from "~/server/user-context"
-import { CreateLensDialog } from "../components/CreateLensDialog"
-import { EditLensDialog } from "../components/EditLensDialog"
-import { type LensTemplate, loadLensTemplates } from "../lib/loadLensAnalyses.server"
+} from "~/components/ui/dropdown-menu";
+import InlineEdit from "~/components/ui/inline-edit";
+import { Switch } from "~/components/ui/switch";
+import { Textarea } from "~/components/ui/textarea";
+import { type AccountSettingsMetadata, PLATFORM_DEFAULT_LENS_KEYS } from "~/features/opportunities/stage-config";
+import { userContext } from "~/server/user-context";
+import { CreateLensDialog } from "../components/CreateLensDialog";
+import { EditLensDialog } from "../components/EditLensDialog";
+import { type LensTemplate, loadLensTemplates } from "../lib/loadLensAnalyses.server";
 
 export const meta: MetaFunction = () => {
-	return [{ title: "Lens Library | Insights" }, { name: "description", content: "Browse conversation analysis lenses" }]
-}
+	return [
+		{ title: "Lens Library | Insights" },
+		{ name: "description", content: "Browse conversation analysis lenses" },
+	];
+};
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const projectId = params.projectId
-	const accountId = params.accountId
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const projectId = params.projectId;
+	const accountId = params.accountId;
 
 	if (!supabase) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const templates = await loadLensTemplates(supabase as any)
+	const templates = await loadLensTemplates(supabase as any);
 
 	// Load enabled lenses using hierarchy:
 	// 1. project_settings.enabled_lenses (if configured)
 	// 2. account_settings.metadata.default_lens_keys (account defaults)
 	// 3. PLATFORM_DEFAULT_LENS_KEYS (platform fallback)
-	let enabledLenses: string[] = [...PLATFORM_DEFAULT_LENS_KEYS]
-	let interviewCount = 0
+	let enabledLenses: string[] = [...PLATFORM_DEFAULT_LENS_KEYS];
+	let interviewCount = 0;
 
 	// First, try to get account defaults
 	if (accountId) {
@@ -87,24 +90,24 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			.from("account_settings")
 			.select("metadata")
 			.eq("account_id", accountId)
-			.maybeSingle()
+			.maybeSingle();
 
 		if (accountSettings?.metadata) {
-			const metadata = accountSettings.metadata as AccountSettingsMetadata
+			const metadata = accountSettings.metadata as AccountSettingsMetadata;
 			if (Array.isArray(metadata.default_lens_keys) && metadata.default_lens_keys.length > 0) {
-				enabledLenses = metadata.default_lens_keys
+				enabledLenses = metadata.default_lens_keys;
 			}
 		}
 	}
 
 	// Then, check for project-specific overrides
 	if (projectId) {
-		const { data: project } = await supabase.from("projects").select("project_settings").eq("id", projectId).single()
+		const { data: project } = await supabase.from("projects").select("project_settings").eq("id", projectId).single();
 
 		if (project?.project_settings) {
-			const settings = project.project_settings as Record<string, unknown>
+			const settings = project.project_settings as Record<string, unknown>;
 			if (Array.isArray(settings.enabled_lenses) && settings.enabled_lenses.length > 0) {
-				enabledLenses = settings.enabled_lenses as string[]
+				enabledLenses = settings.enabled_lenses as string[];
 			}
 		}
 
@@ -112,9 +115,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		const { count } = await supabase
 			.from("interviews")
 			.select("id", { count: "exact", head: true })
-			.eq("project_id", projectId)
+			.eq("project_id", projectId);
 
-		interviewCount = count || 0
+		interviewCount = count || 0;
 	}
 
 	return {
@@ -124,37 +127,37 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		projectId,
 		accountId,
 		userId: ctx.claims?.sub,
-	}
+	};
 }
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
-	const formData = await request.formData()
-	const intent = formData.get("intent") as string
+	const formData = await request.formData();
+	const intent = formData.get("intent") as string;
 
 	if (intent !== "update_lens_settings") {
-		return { error: "Unknown action" }
+		return { error: "Unknown action" };
 	}
 
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const projectId = params.projectId
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const projectId = params.projectId;
 
 	if (!supabase) {
-		return { error: "Unauthorized" }
+		return { error: "Unauthorized" };
 	}
 
 	if (!projectId) {
-		return { error: "Project ID required" }
+		return { error: "Project ID required" };
 	}
 
-	const enabledLensesJson = (formData.get("enabled_lenses") as string) || "[]"
-	const applyToExisting = formData.get("apply_to_existing") === "true"
+	const enabledLensesJson = (formData.get("enabled_lenses") as string) || "[]";
+	const applyToExisting = formData.get("apply_to_existing") === "true";
 
-	let enabledLenses: string[]
+	let enabledLenses: string[];
 	try {
-		enabledLenses = JSON.parse(enabledLensesJson)
+		enabledLenses = JSON.parse(enabledLensesJson);
 	} catch {
-		return { error: "Invalid lens settings" }
+		return { error: "Invalid lens settings" };
 	}
 
 	// Get current project settings
@@ -162,25 +165,25 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		.from("projects")
 		.select("project_settings, account_id")
 		.eq("id", projectId)
-		.single()
+		.single();
 
-	const currentSettings = (project?.project_settings as Record<string, unknown>) || {}
-	let previousLenses = currentSettings.enabled_lenses as string[] | undefined
+	const currentSettings = (project?.project_settings as Record<string, unknown>) || {};
+	let previousLenses = currentSettings.enabled_lenses as string[] | undefined;
 
 	// If no project settings, get previous from account defaults or platform defaults
 	if (!previousLenses || previousLenses.length === 0) {
-		const accountId = params.accountId
+		const accountId = params.accountId;
 		if (accountId) {
 			const { data: accountSettings } = await supabase
 				.from("account_settings")
 				.select("metadata")
 				.eq("account_id", accountId)
-				.maybeSingle()
+				.maybeSingle();
 
-			const metadata = (accountSettings?.metadata || {}) as AccountSettingsMetadata
-			previousLenses = metadata.default_lens_keys || PLATFORM_DEFAULT_LENS_KEYS
+			const metadata = (accountSettings?.metadata || {}) as AccountSettingsMetadata;
+			previousLenses = metadata.default_lens_keys || PLATFORM_DEFAULT_LENS_KEYS;
 		} else {
-			previousLenses = PLATFORM_DEFAULT_LENS_KEYS
+			previousLenses = PLATFORM_DEFAULT_LENS_KEYS;
 		}
 	}
 
@@ -188,7 +191,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const newSettings = {
 		...currentSettings,
 		enabled_lenses: enabledLenses,
-	}
+	};
 
 	const { error } = await supabase
 		.from("projects")
@@ -196,47 +199,47 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			project_settings: newSettings,
 			updated_at: new Date().toISOString(),
 		})
-		.eq("id", projectId)
+		.eq("id", projectId);
 
 	if (error) {
-		return { error: `Failed to save lens settings: ${error.message}` }
+		return { error: `Failed to save lens settings: ${error.message}` };
 	}
 
 	// If apply to existing, trigger backfill
-	let backfillTriggered = false
+	let backfillTriggered = false;
 	if (applyToExisting && project?.account_id) {
-		const newlyEnabled = enabledLenses.filter((lens) => !previousLenses.includes(lens))
+		const newlyEnabled = enabledLenses.filter((lens) => !previousLenses.includes(lens));
 
 		if (newlyEnabled.length > 0) {
 			const { data: interviews } = await supabase
 				.from("interviews")
 				.select("id")
 				.eq("project_id", projectId)
-				.neq("lens_visibility", "private")
+				.neq("lens_visibility", "private");
 
 			if (interviews && interviews.length > 0) {
 				try {
-					const { applyAllLensesTask } = await import("~/../src/trigger/lens/applyAllLenses")
+					const { tasks } = await import("@trigger.dev/sdk");
 
 					for (const interview of interviews) {
-						await applyAllLensesTask.trigger({
+						await tasks.trigger("lens.apply-all-lenses", {
 							interviewId: interview.id,
 							accountId: project.account_id,
 							projectId,
 							lensesToApply: newlyEnabled,
-						})
+						});
 					}
 
-					backfillTriggered = true
-					consola.info(`[LensSettings] Triggered backfill for ${interviews.length} interviews`)
+					backfillTriggered = true;
+					consola.info(`[LensSettings] Triggered backfill for ${interviews.length} interviews`);
 				} catch (err) {
-					consola.error("[LensSettings] Failed to trigger backfill:", err)
+					consola.error("[LensSettings] Failed to trigger backfill:", err);
 				}
 			}
 		}
 	}
 
-	return { success: true, backfillTriggered }
+	return { success: true, backfillTriggered };
 }
 
 /**
@@ -245,13 +248,13 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 function getCategoryIcon(category: string | null) {
 	switch (category) {
 		case "research":
-			return <FlaskConical className="h-5 w-5" />
+			return <FlaskConical className="h-5 w-5" />;
 		case "sales":
-			return <Briefcase className="h-5 w-5" />
+			return <Briefcase className="h-5 w-5" />;
 		case "product":
-			return <Package className="h-5 w-5" />
+			return <Package className="h-5 w-5" />;
 		default:
-			return <Sparkles className="h-5 w-5" />
+			return <Sparkles className="h-5 w-5" />;
 	}
 }
 
@@ -259,10 +262,10 @@ function getCategoryIcon(category: string | null) {
  * Get color scheme for a lens category
  */
 function getCategoryColors(category: string | null): {
-	bg: string
-	text: string
-	border: string
-	iconBg: string
+	bg: string;
+	text: string;
+	border: string;
+	iconBg: string;
 } {
 	switch (category) {
 		case "research":
@@ -271,28 +274,28 @@ function getCategoryColors(category: string | null): {
 				text: "text-purple-700",
 				border: "border-purple-200",
 				iconBg: "bg-purple-100",
-			}
+			};
 		case "sales":
 			return {
 				bg: "bg-blue-50",
 				text: "text-blue-700",
 				border: "border-blue-200",
 				iconBg: "bg-blue-100",
-			}
+			};
 		case "product":
 			return {
 				bg: "bg-green-50",
 				text: "text-green-700",
 				border: "border-green-200",
 				iconBg: "bg-green-100",
-			}
+			};
 		default:
 			return {
 				bg: "bg-gray-50",
 				text: "text-gray-700",
 				border: "border-gray-200",
 				iconBg: "bg-gray-100",
-			}
+			};
 	}
 }
 
@@ -300,20 +303,20 @@ function getCategoryColors(category: string | null): {
  * Card for creating a new custom lens - shows textarea and generate button
  */
 function CreateLensCard({ accountId, onCreated }: { accountId: string; onCreated?: () => void }) {
-	const [description, setDescription] = useState("")
-	const fetcher = useFetcher()
+	const [description, setDescription] = useState("");
+	const fetcher = useFetcher();
 
-	const isGenerating = fetcher.state === "submitting"
-	const canGenerate = description.trim().length >= 10
+	const isGenerating = fetcher.state === "submitting";
+	const canGenerate = description.trim().length >= 10;
 
 	// Handle successful creation - reset and notify parent
 	if (fetcher.data?.ok && !isGenerating) {
-		setDescription("")
-		onCreated?.()
+		setDescription("");
+		onCreated?.();
 	}
 
 	function handleGenerate() {
-		if (!canGenerate) return
+		if (!canGenerate) return;
 
 		fetcher.submit(
 			{
@@ -326,7 +329,7 @@ function CreateLensCard({ accountId, onCreated }: { accountId: string; onCreated
 				method: "POST",
 				action: "/api/lens-templates",
 			}
-		)
+		);
 	}
 
 	return (
@@ -366,7 +369,7 @@ function CreateLensCard({ accountId, onCreated }: { accountId: string; onCreated
 				{fetcher.data?.error && <p className="text-red-500 text-sm">{fetcher.data.error}</p>}
 			</CardContent>
 		</Card>
-	)
+	);
 }
 
 /**
@@ -383,23 +386,23 @@ function LensCard({
 	isSubmitting,
 	isOwner,
 }: {
-	template: LensTemplate
-	isEnabled: boolean
-	onToggle: (templateKey: string, enabled: boolean) => void
-	onDelete?: (templateKey: string) => void
-	onToggleVisibility?: (templateKey: string, isPublic: boolean) => void
-	onEdit?: (template: LensTemplate) => void
-	onUpdateField?: (templateKey: string, field: "template_name" | "summary", value: string) => void
-	isSubmitting: boolean
-	isOwner: boolean
+	template: LensTemplate;
+	isEnabled: boolean;
+	onToggle: (templateKey: string, enabled: boolean) => void;
+	onDelete?: (templateKey: string) => void;
+	onToggleVisibility?: (templateKey: string, isPublic: boolean) => void;
+	onEdit?: (template: LensTemplate) => void;
+	onUpdateField?: (templateKey: string, field: "template_name" | "summary", value: string) => void;
+	isSubmitting: boolean;
+	isOwner: boolean;
 }) {
-	const [dialogOpen, setDialogOpen] = useState(false)
-	const colors = getCategoryColors(template.category)
-	const isCustom = !template.is_system
+	const [dialogOpen, setDialogOpen] = useState(false);
+	const colors = getCategoryColors(template.category);
+	const isCustom = !template.is_system;
 
 	function handleEditClick() {
-		setDialogOpen(false)
-		onEdit?.(template)
+		setDialogOpen(false);
+		onEdit?.(template);
 	}
 
 	return (
@@ -597,71 +600,71 @@ function LensCard({
 				)}
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }
 /**
  * Sort templates by category then alphabetically by name
  */
 function sortTemplates(templates: LensTemplate[]): LensTemplate[] {
-	const categoryOrder = ["sales", "research", "product"]
+	const categoryOrder = ["sales", "research", "product"];
 
 	return [...templates].sort((a, b) => {
 		// Sort by category first
-		const catA = a.category || "zzz" // Put uncategorized last
-		const catB = b.category || "zzz"
-		const catIndexA = categoryOrder.indexOf(catA)
-		const catIndexB = categoryOrder.indexOf(catB)
+		const catA = a.category || "zzz"; // Put uncategorized last
+		const catB = b.category || "zzz";
+		const catIndexA = categoryOrder.indexOf(catA);
+		const catIndexB = categoryOrder.indexOf(catB);
 
 		// If both in order, use that order; if one not in order, put it after
-		const orderA = catIndexA === -1 ? categoryOrder.length : catIndexA
-		const orderB = catIndexB === -1 ? categoryOrder.length : catIndexB
+		const orderA = catIndexA === -1 ? categoryOrder.length : catIndexA;
+		const orderB = catIndexB === -1 ? categoryOrder.length : catIndexB;
 
 		if (orderA !== orderB) {
-			return orderA - orderB
+			return orderA - orderB;
 		}
 
 		// Same category: sort alphabetically by name
-		return a.template_name.localeCompare(b.template_name)
-	})
+		return a.template_name.localeCompare(b.template_name);
+	});
 }
 
 export default function LensLibrary() {
-	const { templates, enabledLenses, projectId, accountId, userId } = useLoaderData<typeof loader>()
-	const fetcher = useFetcher()
-	const deleteFetcher = useFetcher()
-	const visibilityFetcher = useFetcher()
-	const revalidator = useRevalidator()
+	const { templates, enabledLenses, projectId, accountId, userId } = useLoaderData<typeof loader>();
+	const fetcher = useFetcher();
+	const deleteFetcher = useFetcher();
+	const visibilityFetcher = useFetcher();
+	const revalidator = useRevalidator();
 
 	// Edit dialog state
-	const [editingTemplate, setEditingTemplate] = useState<LensTemplate | null>(null)
+	const [editingTemplate, setEditingTemplate] = useState<LensTemplate | null>(null);
 
 	// Track pending toggle for optimistic UI
-	const pendingToggle = fetcher.formData?.get("toggle_lens") as string | null
-	const isSubmitting = fetcher.state === "submitting"
+	const pendingToggle = fetcher.formData?.get("toggle_lens") as string | null;
+	const isSubmitting = fetcher.state === "submitting";
 
 	// Compute current enabled lenses (with optimistic update)
 	const currentEnabledLenses = (() => {
 		if (pendingToggle && fetcher.formData) {
-			const enabled = fetcher.formData.get("enabled") === "true"
+			const enabled = fetcher.formData.get("enabled") === "true";
 			if (enabled) {
-				return [...enabledLenses, pendingToggle]
+				return [...enabledLenses, pendingToggle];
 			}
-			return enabledLenses.filter((key) => key !== pendingToggle)
+			return enabledLenses.filter((key) => key !== pendingToggle);
 		}
-		return enabledLenses
-	})()
+		return enabledLenses;
+	})();
 
 	// Sort templates by category then alphabetically
-	const sortedTemplates = sortTemplates(templates)
+	const sortedTemplates = sortTemplates(templates);
 
 	// Handle toggle - immediately submit to save
 	const handleToggle = (templateKey: string, enabled: boolean) => {
-		if (!projectId) return
+		if (!projectId) return;
 
 		// Calculate new enabled lenses
 		const newEnabledLenses = enabled
 			? [...enabledLenses, templateKey]
-			: enabledLenses.filter((key) => key !== templateKey)
+			: enabledLenses.filter((key) => key !== templateKey);
 
 		fetcher.submit(
 			{
@@ -672,12 +675,12 @@ export default function LensLibrary() {
 				enabled: String(enabled),
 			},
 			{ method: "post" }
-		)
-	}
+		);
+	};
 
 	// Handle delete custom lens
 	const handleDelete = (templateKey: string) => {
-		if (!accountId || !confirm("Delete this custom lens? This cannot be undone.")) return
+		if (!accountId || !confirm("Delete this custom lens? This cannot be undone.")) return;
 
 		deleteFetcher.submit(
 			{
@@ -689,12 +692,12 @@ export default function LensLibrary() {
 				method: "POST",
 				action: "/api/lens-templates",
 			}
-		)
-	}
+		);
+	};
 
 	// Handle toggle visibility
 	const handleToggleVisibility = (templateKey: string, isPublic: boolean) => {
-		if (!accountId) return
+		if (!accountId) return;
 
 		visibilityFetcher.submit(
 			{
@@ -707,28 +710,28 @@ export default function LensLibrary() {
 				method: "POST",
 				action: "/api/lens-templates",
 			}
-		)
-	}
+		);
+	};
 
 	// Handle lens created - revalidate to show new lens
 	const handleLensCreated = () => {
-		revalidator.revalidate()
-	}
+		revalidator.revalidate();
+	};
 
 	// Handle edit custom lens
 	const handleEdit = (template: LensTemplate) => {
-		setEditingTemplate(template)
-	}
+		setEditingTemplate(template);
+	};
 
 	// Handle lens updated - revalidate and close dialog
 	const handleLensUpdated = () => {
-		revalidator.revalidate()
-		setEditingTemplate(null)
-	}
+		revalidator.revalidate();
+		setEditingTemplate(null);
+	};
 
 	// Handle inline field update
 	const handleUpdateField = (templateKey: string, field: "template_name" | "summary", value: string) => {
-		if (!accountId) return
+		if (!accountId) return;
 
 		visibilityFetcher.submit(
 			{
@@ -741,15 +744,15 @@ export default function LensLibrary() {
 				method: "POST",
 				action: "/api/lens-templates",
 			}
-		)
-	}
+		);
+	};
 
 	// Count enabled lenses
-	const enabledCount = currentEnabledLenses.filter((key) => templates.some((t) => t.template_key === key)).length
+	const enabledCount = currentEnabledLenses.filter((key) => templates.some((t) => t.template_key === key)).length;
 
 	// Group templates: custom first, then system
-	const customTemplates = sortedTemplates.filter((t) => !t.is_system)
-	const systemTemplates = sortedTemplates.filter((t) => t.is_system)
+	const customTemplates = sortedTemplates.filter((t) => !t.is_system);
+	const systemTemplates = sortedTemplates.filter((t) => t.is_system);
 
 	// Helper to render a lens card
 	const renderLensCard = (template: LensTemplate) => (
@@ -765,7 +768,7 @@ export default function LensLibrary() {
 			isSubmitting={isSubmitting && pendingToggle === template.template_key}
 			isOwner={template.created_by === userId}
 		/>
-	)
+	);
 
 	return (
 		<div className="container max-w-6xl py-8">
@@ -836,5 +839,5 @@ export default function LensLibrary() {
 				</div>
 			)}
 		</div>
-	)
+	);
 }

@@ -1,5 +1,5 @@
-import { openai } from "@ai-sdk/openai"
-import { Agent } from "@mastra/core/agent"
+import { Agent } from "@mastra/core/agent";
+import { openai } from "../../lib/billing/instrumented-openai.server";
 
 export const researchAssistantAgent = new Agent({
 	id: "research-assistant-agent",
@@ -37,4 +37,4 @@ Topics you can help with:
 `,
 	model: openai("gpt-5-mini"),
 	tools: {},
-})
+});

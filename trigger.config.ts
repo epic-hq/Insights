@@ -99,6 +99,61 @@ export default defineConfig({
             name: "ENABLE_PERSONA_ANALYSIS",
             value: process.env.ENABLE_PERSONA_ANALYSIS || "",
           },
+          {
+            name: "POSTHOG_API_KEY",
+            value: process.env.POSTHOG_API_KEY || "",
+          },
+          {
+            name: "POSTHOG_HOST",
+            value: process.env.POSTHOG_HOST || "",
+          },
+          {
+            name: "POSTHOG_PROJECT_ID",
+            value: process.env.POSTHOG_PROJECT_ID || "",
+          },
+          {
+            name: "BAML_DEFAULT_MODEL",
+            value: process.env.BAML_DEFAULT_MODEL || "",
+          },
+          {
+            name: "BAML_EXTRACT_EVIDENCE_MODEL",
+            value: process.env.BAML_EXTRACT_EVIDENCE_MODEL || "",
+          },
+          {
+            name: "BAML_PERSONA_SYNTHESIS_MODEL",
+            value: process.env.BAML_PERSONA_SYNTHESIS_MODEL || "",
+          },
+          {
+            name: "BAML_EXTRACT_EVIDENCE_PROMPT_COST_PER_1K_TOKENS",
+            value:
+              process.env.BAML_EXTRACT_EVIDENCE_PROMPT_COST_PER_1K_TOKENS || "",
+          },
+          {
+            name: "BAML_EXTRACT_EVIDENCE_COMPLETION_COST_PER_1K_TOKENS",
+            value:
+              process.env.BAML_EXTRACT_EVIDENCE_COMPLETION_COST_PER_1K_TOKENS ||
+              "",
+          },
+          {
+            name: "BAML_PERSONA_SYNTHESIS_PROMPT_COST_PER_1K_TOKENS",
+            value:
+              process.env.BAML_PERSONA_SYNTHESIS_PROMPT_COST_PER_1K_TOKENS ||
+              "",
+          },
+          {
+            name: "BAML_PERSONA_SYNTHESIS_COMPLETION_COST_PER_1K_TOKENS",
+            value:
+              process.env.BAML_PERSONA_SYNTHESIS_COMPLETION_COST_PER_1K_TOKENS ||
+              "",
+          },
+          {
+            name: "EVIDENCE_BATCH_SIZE",
+            value: process.env.EVIDENCE_BATCH_SIZE || "",
+          },
+          {
+            name: "EVIDENCE_MAX_CONCURRENT_BATCHES",
+            value: process.env.EVIDENCE_MAX_CONCURRENT_BATCHES || "",
+          },
         ];
       }),
     ],

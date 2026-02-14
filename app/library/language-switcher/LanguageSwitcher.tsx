@@ -1,11 +1,11 @@
-import { useTranslation } from "react-i18next"
-import { useLocation } from "react-router"
-import { supportedLanguages } from "~/localization/resource"
-import { Link } from "../link"
+import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router";
+import { supportedLanguages } from "~/localization/resource";
+import { Link } from "../link";
 
 const LanguageSwitcher = () => {
-	const { i18n } = useTranslation()
-	const location = useLocation()
+	const { i18n } = useTranslation();
+	const location = useLocation();
 
 	return (
 		<div className="fixed top-0 right-0 z-10 flex w-min gap-2 p-2">
@@ -24,7 +24,7 @@ const LanguageSwitcher = () => {
 				</Link>
 			))}
 		</div>
-	)
-}
+	);
+};
 
-export { LanguageSwitcher }
+export { LanguageSwitcher };

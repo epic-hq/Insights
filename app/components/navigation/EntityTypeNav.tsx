@@ -1,15 +1,15 @@
-import { Building2, User, Users } from "lucide-react"
-import { Link } from "react-router-dom"
-import { cn } from "~/lib/utils"
+import { Building2, User, Users } from "lucide-react";
+import { Link } from "react-router-dom";
+import { cn } from "~/lib/utils";
 
 interface EntityTypeNavProps {
-	activeType: "people" | "personas" | "organizations"
+	activeType: "people" | "personas" | "organizations";
 	routes: {
-		people: { index: () => string }
-		personas: { index: () => string }
-		organizations: { index: () => string }
-	}
-	className?: string
+		people: { index: () => string };
+		personas: { index: () => string };
+		organizations: { index: () => string };
+	};
+	className?: string;
 }
 
 export function EntityTypeNav({ activeType, routes, className }: EntityTypeNavProps) {
@@ -32,13 +32,13 @@ export function EntityTypeNav({ activeType, routes, className }: EntityTypeNavPr
 			icon: Building2,
 			href: routes.organizations.index(),
 		},
-	]
+	];
 
 	return (
 		<nav className={cn("mb-6 flex gap-1 rounded-lg border bg-muted/30 p-1", className)}>
 			{navItems.map((item) => {
-				const Icon = item.icon
-				const isActive = activeType === item.type
+				const Icon = item.icon;
+				const isActive = activeType === item.type;
 
 				return (
 					<Link
@@ -54,8 +54,8 @@ export function EntityTypeNav({ activeType, routes, className }: EntityTypeNavPr
 						<Icon className="h-4 w-4" />
 						<span>{item.label}</span>
 					</Link>
-				)
+				);
 			})}
 		</nav>
-	)
+	);
 }

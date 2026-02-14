@@ -1,34 +1,34 @@
-import type { ElementType, ReactNode } from "react"
-import { useId } from "react"
-import { Link } from "react-router-dom"
-import type { SparklineDatum } from "~/components/charts/SparklineKPI"
-import SparklineKPI from "~/components/charts/SparklineKPI"
+import type { ElementType, ReactNode } from "react";
+import { useId } from "react";
+import { Link } from "react-router-dom";
+import type { SparklineDatum } from "~/components/charts/SparklineKPI";
+import SparklineKPI from "~/components/charts/SparklineKPI";
 
 interface StatCardProps {
-	label: string
-	value: string | number
-	change?: string // e.g., "+12%"
+	label: string;
+	value: string | number;
+	change?: string; // e.g., "+12%"
 	/** Optional sparkline data; if omitted we render a simple card like before */
-	trendData?: SparklineDatum[]
+	trendData?: SparklineDatum[];
 	/** Optional baseline reference for sparkline */
-	baseline?: number
-	href?: string
-	onClick?: () => void
-	className?: string
+	baseline?: number;
+	href?: string;
+	onClick?: () => void;
+	className?: string;
 	/** Optional icon name (e.g., 'users', 'lightbulb', 'chart-bar', 'clipboard') */
-	icon?: string
+	icon?: string;
 	/** Optional description text */
-	description?: string
+	description?: string;
 	/** Optional highlight color for the card border */
-	highlightColor?: string
+	highlightColor?: string;
 	/** Compact mode - lean display with just text, number, and small icon (default: true) */
-	compact?: boolean
+	compact?: boolean;
 }
 
 // Helper function to render icon based on name
 const renderIcon = (iconName?: string, compact = true, titleId?: string) => {
-	if (!iconName || !titleId) return null
-	const iconSize = compact ? "h-4 w-4" : "h-5 w-5"
+	if (!iconName || !titleId) return null;
+	const iconSize = compact ? "h-4 w-4" : "h-5 w-5";
 
 	const icons: Record<string, ReactNode> = {
 		users: (
@@ -128,10 +128,10 @@ const renderIcon = (iconName?: string, compact = true, titleId?: string) => {
 				/>
 			</svg>
 		),
-	}
+	};
 
-	return icons[iconName] || null
-}
+	return icons[iconName] || null;
+};
 
 export default function StatCard({
 	label,
@@ -155,19 +155,19 @@ export default function StatCard({
 		: // Use Link for internal routes, 'a' for external
 			onClick
 			? "button"
-			: "div"
-	const iconTitleId = useId()
-	const trendUpTitleId = useId()
-	const trendDownTitleId = useId()
-	const linkIndicatorTitleId = useId()
-	const isUp = change?.startsWith("+")
+			: "div";
+	const iconTitleId = useId();
+	const trendUpTitleId = useId();
+	const trendDownTitleId = useId();
+	const linkIndicatorTitleId = useId();
+	const isUp = change?.startsWith("+");
 
 	// Determine border style based on highlightColor
-	const borderStyle = highlightColor ? { borderLeft: `4px solid ${highlightColor}` } : {}
+	const borderStyle = highlightColor ? { borderLeft: `4px solid ${highlightColor}` } : {};
 
 	if (compact) {
-		const next = href ? (href.startsWith("/") ? { to: href } : { href }) : {}
-		const clickable = href || onClick
+		const next = href ? (href.startsWith("/") ? { to: href } : { href }) : {};
+		const clickable = href || onClick;
 
 		return (
 			<Wrapper
@@ -193,7 +193,7 @@ export default function StatCard({
 				{/* tiny change indicator */}
 				{change && <span className={`ml-0.5 text-[9px] ${isUp ? "text-emerald-600" : "text-rose-600"}`}>{change}</span>}
 			</Wrapper>
-		)
+		);
 	}
 
 	// Full mode - original display with graphs and more spacing
@@ -281,5 +281,5 @@ export default function StatCard({
 				)}
 			</div>
 		</Wrapper>
-	)
+	);
 }

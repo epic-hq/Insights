@@ -1,49 +1,49 @@
-import consola from "consola"
-import { ArrowRight, Check, Clock, Plus, Sparkles, Trash2, X } from "lucide-react"
-import { useCallback, useState } from "react"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Textarea } from "~/components/ui/textarea"
+import consola from "consola";
+import { ArrowRight, Check, Clock, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { useCallback, useState } from "react";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Textarea } from "~/components/ui/textarea";
 
 export interface Question {
-	id: string
-	text: string
-	isCustom: boolean
-	priority: number
-	rationale?: string
-	categoryId?: string
+	id: string;
+	text: string;
+	isCustom: boolean;
+	priority: number;
+	rationale?: string;
+	categoryId?: string;
 	scores?: {
-		importance?: number
-		goalMatch?: number
-		novelty?: number
-	}
-	status?: "pending" | "answered" | "followup" | "skipped"
+		importance?: number;
+		goalMatch?: number;
+		novelty?: number;
+	};
+	status?: "pending" | "answered" | "followup" | "skipped";
 }
 
 interface QuestionWidgetProps {
 	// Core data
-	questions: Question[]
-	onQuestionsChange: (questions: Question[]) => void
+	questions: Question[];
+	onQuestionsChange: (questions: Question[]) => void;
 
 	// Generation params
-	target_orgs: string[]
-	target_roles: string[]
-	research_goal: string
-	research_goal_details: string
-	assumptions: string[]
-	unknowns: string[]
+	target_orgs: string[];
+	target_roles: string[];
+	research_goal: string;
+	research_goal_details: string;
+	assumptions: string[];
+	unknowns: string[];
 
 	// UI customization
-	mode?: "onboarding" | "realtime"
-	showGenerateButton?: boolean
-	showCustomQuestions?: boolean
-	maxQuestions?: number
+	mode?: "onboarding" | "realtime";
+	showGenerateButton?: boolean;
+	showCustomQuestions?: boolean;
+	maxQuestions?: number;
 
 	// Callbacks
-	onQuestionStatusChange?: (questionId: string, status: Question["status"]) => void
-	onGenerateQuestions?: (instructions?: string) => Promise<void>
+	onQuestionStatusChange?: (questionId: string, status: Question["status"]) => void;
+	onGenerateQuestions?: (instructions?: string) => Promise<void>;
 }
 
 export function QuestionWidget({
@@ -62,57 +62,57 @@ export function QuestionWidget({
 	onQuestionStatusChange,
 	onGenerateQuestions,
 }: QuestionWidgetProps) {
-	const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false)
-	const [customQuestion, setCustomQuestion] = useState("")
-	const [customInstructions, setCustomInstructions] = useState("")
+	const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+	const [customQuestion, setCustomQuestion] = useState("");
+	const [customInstructions, setCustomInstructions] = useState("");
 
 	const generateSmartQuestions = useCallback(
 		async (instructions?: string) => {
 			if (isGeneratingQuestions) {
-				consola.log("Already generating questions, skipping duplicate call")
-				return
+				consola.log("Already generating questions, skipping duplicate call");
+				return;
 			}
 
-			setIsGeneratingQuestions(true)
+			setIsGeneratingQuestions(true);
 			try {
-				const formData = new FormData()
-				formData.append("target_orgs", target_orgs.join(", "))
-				formData.append("target_roles", target_roles.join(", "))
-				formData.append("research_goal", research_goal)
-				formData.append("research_goal_details", research_goal_details)
-				formData.append("assumptions", assumptions.join(", "))
-				formData.append("unknowns", unknowns.join(", "))
-				formData.append("session_id", `session_${Date.now()}`)
-				formData.append("round", "1")
-				formData.append("total_per_round", maxQuestions.toString())
-				formData.append("per_category_min", "2")
-				formData.append("per_category_max", "4")
+				const formData = new FormData();
+				formData.append("target_orgs", target_orgs.join(", "));
+				formData.append("target_roles", target_roles.join(", "));
+				formData.append("research_goal", research_goal);
+				formData.append("research_goal_details", research_goal_details);
+				formData.append("assumptions", assumptions.join(", "));
+				formData.append("unknowns", unknowns.join(", "));
+				formData.append("session_id", `session_${Date.now()}`);
+				formData.append("round", "1");
+				formData.append("total_per_round", maxQuestions.toString());
+				formData.append("per_category_min", "2");
+				formData.append("per_category_max", "4");
 				if (instructions) {
-					formData.append("custom_instructions", instructions)
+					formData.append("custom_instructions", instructions);
 				}
 
 				const response = await fetch("/api/generate-questions", {
 					method: "POST",
 					body: formData,
-				})
+				});
 
 				if (response.ok) {
-					const data = await response.json()
-					consola.log("Generated questions response:", data)
+					const data = await response.json();
+					consola.log("Generated questions response:", data);
 
 					// Handle new QuestionSet format
 					if (data.success && data.questionSet?.questions?.length > 0) {
 						interface QuestionWithScore {
-							id: string
-							text: string
-							categoryId: string
-							rationale?: string
+							id: string;
+							text: string;
+							categoryId: string;
+							rationale?: string;
 							scores: {
-								importance?: number
-								goalMatch?: number
-								novelty?: number
-							}
-							compositeScore: number
+								importance?: number;
+								goalMatch?: number;
+								novelty?: number;
+							};
+							compositeScore: number;
 						}
 
 						const sortedQuestions = data.questionSet.questions
@@ -121,7 +121,7 @@ export function QuestionWidget({
 								compositeScore: (q.scores.importance || 0) * (q.scores.goalMatch || 0) * (1 + (q.scores.novelty || 0)),
 							}))
 							.sort((a: QuestionWithScore, b: QuestionWithScore) => b.compositeScore - a.compositeScore)
-							.slice(0, maxQuestions)
+							.slice(0, maxQuestions);
 
 						const smartQuestions = sortedQuestions.map((q: QuestionWithScore, index: number) => ({
 							id: q.id || `smart_${index}`,
@@ -132,17 +132,17 @@ export function QuestionWidget({
 							categoryId: q.categoryId,
 							scores: q.scores,
 							status: "pending" as const,
-						}))
+						}));
 
-						const existingCustomQuestions = questions.filter((q) => q.isCustom)
-						onQuestionsChange([...existingCustomQuestions, ...smartQuestions])
+						const existingCustomQuestions = questions.filter((q) => q.isCustom);
+						onQuestionsChange([...existingCustomQuestions, ...smartQuestions]);
 					}
 					// Handle current API response format (simple questions array)
 					else if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {
 						interface SimpleQuestion {
-							question: string
-							priority?: number
-							rationale?: string
+							question: string;
+							priority?: number;
+							rationale?: string;
 						}
 
 						const smartQuestions = data.questions.slice(0, maxQuestions).map((q: SimpleQuestion, index: number) => ({
@@ -152,17 +152,17 @@ export function QuestionWidget({
 							priority: q.priority || 2,
 							rationale: q.rationale,
 							status: "pending" as const,
-						}))
+						}));
 
-						const existingCustomQuestions = questions.filter((q) => q.isCustom)
-						onQuestionsChange([...existingCustomQuestions, ...smartQuestions])
+						const existingCustomQuestions = questions.filter((q) => q.isCustom);
+						onQuestionsChange([...existingCustomQuestions, ...smartQuestions]);
 					}
 					// Fallback to categorized legacy format
 					else if (data.success && data.questions && typeof data.questions === "object") {
 						interface LegacyQuestion {
-							question: string
-							priority?: number
-							rationale?: string
+							question: string;
+							priority?: number;
+							rationale?: string;
 						}
 
 						const allLegacyQuestions = [
@@ -171,7 +171,7 @@ export function QuestionWidget({
 							...(data.questions.pain_point_questions || []),
 							...(data.questions.solution_questions || []),
 							...(data.questions.context_questions || []),
-						].slice(0, maxQuestions)
+						].slice(0, maxQuestions);
 
 						const smartQuestions = allLegacyQuestions.map((q: LegacyQuestion, index: number) => ({
 							id: `smart_${index}`,
@@ -180,20 +180,20 @@ export function QuestionWidget({
 							priority: q.priority || 2,
 							rationale: q.rationale,
 							status: "pending" as const,
-						}))
+						}));
 
-						const existingCustomQuestions = questions.filter((q) => q.isCustom)
-						onQuestionsChange([...existingCustomQuestions, ...smartQuestions])
+						const existingCustomQuestions = questions.filter((q) => q.isCustom);
+						onQuestionsChange([...existingCustomQuestions, ...smartQuestions]);
 					} else {
-						consola.log("No questions in response or success was false")
+						consola.log("No questions in response or success was false");
 					}
 				} else {
-					consola.error("API response not ok:", response.status, response.statusText)
+					consola.error("API response not ok:", response.status, response.statusText);
 				}
 			} catch (error) {
-				consola.error("Failed to generate questions:", error)
+				consola.error("Failed to generate questions:", error);
 			} finally {
-				setIsGeneratingQuestions(false)
+				setIsGeneratingQuestions(false);
 			}
 		},
 		[
@@ -208,7 +208,7 @@ export function QuestionWidget({
 			maxQuestions,
 			isGeneratingQuestions,
 		]
-	)
+	);
 
 	const addCustomQuestion = useCallback(() => {
 		if (customQuestion.trim()) {
@@ -218,56 +218,56 @@ export function QuestionWidget({
 				isCustom: true,
 				priority: 2,
 				status: "pending",
-			}
-			onQuestionsChange([...questions, newQuestion])
-			setCustomQuestion("")
+			};
+			onQuestionsChange([...questions, newQuestion]);
+			setCustomQuestion("");
 		}
-	}, [customQuestion, questions, onQuestionsChange])
+	}, [customQuestion, questions, onQuestionsChange]);
 
 	const removeQuestion = useCallback(
 		(questionId: string) => {
-			onQuestionsChange(questions.filter((q) => q.id !== questionId))
+			onQuestionsChange(questions.filter((q) => q.id !== questionId));
 		},
 		[questions, onQuestionsChange]
-	)
+	);
 
 	const updateQuestionStatus = useCallback(
 		(questionId: string, status: Question["status"]) => {
-			const updatedQuestions = questions.map((q) => (q.id === questionId ? { ...q, status } : q))
-			onQuestionsChange(updatedQuestions)
-			onQuestionStatusChange?.(questionId, status)
+			const updatedQuestions = questions.map((q) => (q.id === questionId ? { ...q, status } : q));
+			onQuestionsChange(updatedQuestions);
+			onQuestionStatusChange?.(questionId, status);
 		},
 		[questions, onQuestionsChange, onQuestionStatusChange]
-	)
+	);
 
 	const getPriorityColor = (priority: number) => {
 		switch (priority) {
 			case 1:
-				return "bg-red-100 text-red-800 border-red-200"
+				return "bg-red-100 text-red-800 border-red-200";
 			case 2:
-				return "bg-yellow-100 text-yellow-800 border-yellow-200"
+				return "bg-yellow-100 text-yellow-800 border-yellow-200";
 			case 3:
-				return "bg-green-100 text-green-800 border-green-200"
+				return "bg-green-100 text-green-800 border-green-200";
 			default:
-				return "bg-gray-100 text-gray-800 border-gray-200"
+				return "bg-gray-100 text-gray-800 border-gray-200";
 		}
-	}
+	};
 
 	const getStatusIcon = (status?: Question["status"]) => {
 		switch (status) {
 			case "answered":
-				return <Check className="h-4 w-4 text-green-600" />
+				return <Check className="h-4 w-4 text-green-600" />;
 			case "followup":
-				return <ArrowRight className="h-4 w-4 text-blue-600" />
+				return <ArrowRight className="h-4 w-4 text-blue-600" />;
 			case "skipped":
-				return <X className="h-4 w-4 text-gray-600" />
+				return <X className="h-4 w-4 text-gray-600" />;
 			default:
-				return <Clock className="h-4 w-4 text-yellow-600" />
+				return <Clock className="h-4 w-4 text-yellow-600" />;
 		}
-	}
+	};
 
 	// Use the external generate function if provided, otherwise use internal
-	const handleGenerateQuestions = onGenerateQuestions || generateSmartQuestions
+	const handleGenerateQuestions = onGenerateQuestions || generateSmartQuestions;
 
 	return (
 		<Card className="w-full">
@@ -319,8 +319,8 @@ export function QuestionWidget({
 							onChange={(e) => setCustomQuestion(e.target.value)}
 							onKeyDown={(e) => {
 								if (e.key === "Enter") {
-									e.preventDefault()
-									addCustomQuestion()
+									e.preventDefault();
+									addCustomQuestion();
 								}
 							}}
 						/>
@@ -398,5 +398,5 @@ export function QuestionWidget({
 				)}
 			</CardContent>
 		</Card>
-	)
+	);
 }

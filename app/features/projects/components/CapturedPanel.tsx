@@ -5,54 +5,54 @@
  * Collapsible, draggable position, and allows inline editing.
  */
 
-import { AnimatePresence, motion } from "framer-motion"
-import { Check, ChevronDown, ChevronUp, Edit2, Loader2, Sparkles } from "lucide-react"
-import { useState } from "react"
-import { Button } from "~/components/ui/button"
-import { cn } from "~/lib/utils"
+import { AnimatePresence, motion } from "framer-motion";
+import { Check, ChevronDown, ChevronUp, Edit2, Loader2, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
-export type CapturedItemStatus = "pending" | "in_progress" | "complete"
+export type CapturedItemStatus = "pending" | "in_progress" | "complete";
 
 export interface CapturedItem {
 	/** Unique key for the field */
-	key: string
+	key: string;
 	/** Display label */
-	label: string
+	label: string;
 	/** Current status */
-	status: CapturedItemStatus
+	status: CapturedItemStatus;
 	/** Preview of captured value (truncated) */
-	preview?: string
+	preview?: string;
 	/** Whether this field is required */
-	required?: boolean
+	required?: boolean;
 }
 
 export interface CapturedPanelProps {
 	/** Items being captured */
-	items: CapturedItem[]
+	items: CapturedItem[];
 	/** Callback when an item is clicked for editing */
-	onItemClick?: (key: string) => void
+	onItemClick?: (key: string) => void;
 	/** Whether panel is collapsed */
-	collapsed?: boolean
+	collapsed?: boolean;
 	/** Toggle collapsed state */
-	onToggle?: () => void
+	onToggle?: () => void;
 	/** Custom className */
-	className?: string
+	className?: string;
 	/** Position on screen */
-	position?: "top-right" | "bottom-right" | "top-left" | "bottom-left"
+	position?: "top-right" | "bottom-right" | "top-left" | "bottom-left";
 }
 
 const statusIcons = {
 	pending: null,
 	in_progress: <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />,
 	complete: <Check className="h-3.5 w-3.5 text-emerald-500" />,
-}
+};
 
 const positionClasses = {
 	"top-right": "top-4 right-4",
 	"bottom-right": "bottom-4 right-4",
 	"top-left": "top-4 left-4",
 	"bottom-left": "bottom-4 left-4",
-}
+};
 
 export function CapturedPanel({
 	items,
@@ -62,18 +62,18 @@ export function CapturedPanel({
 	className,
 	position = "top-right",
 }: CapturedPanelProps) {
-	const [hoveredItem, setHoveredItem] = useState<string | null>(null)
+	const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-	const completedCount = items.filter((i) => i.status === "complete").length
-	const requiredItems = items.filter((i) => i.required)
-	const requiredCompleted = requiredItems.filter((i) => i.status === "complete").length
+	const completedCount = items.filter((i) => i.status === "complete").length;
+	const requiredItems = items.filter((i) => i.required);
+	const requiredCompleted = requiredItems.filter((i) => i.status === "complete").length;
 
 	// Progress percentage (based on required items if any, otherwise all)
-	const progressBase = requiredItems.length > 0 ? requiredItems : items
+	const progressBase = requiredItems.length > 0 ? requiredItems : items;
 	const progressPercent =
 		progressBase.length > 0
 			? Math.round((progressBase.filter((i) => i.status === "complete").length / progressBase.length) * 100)
-			: 0
+			: 0;
 
 	return (
 		<motion.div
@@ -216,37 +216,37 @@ export function CapturedPanel({
 				)}
 			</AnimatePresence>
 		</motion.div>
-	)
+	);
 }
 
 /**
  * Hook to manage captured panel state
  */
 export function useCapturedPanel(initialItems: CapturedItem[]) {
-	const [items, setItems] = useState<CapturedItem[]>(initialItems)
-	const [collapsed, setCollapsed] = useState(false)
+	const [items, setItems] = useState<CapturedItem[]>(initialItems);
+	const [collapsed, setCollapsed] = useState(false);
 
 	const updateItem = (key: string, updates: Partial<Omit<CapturedItem, "key">>) => {
-		setItems((prev) => prev.map((item) => (item.key === key ? { ...item, ...updates } : item)))
-	}
+		setItems((prev) => prev.map((item) => (item.key === key ? { ...item, ...updates } : item)));
+	};
 
 	const setStatus = (key: string, status: CapturedItemStatus) => {
-		updateItem(key, { status })
-	}
+		updateItem(key, { status });
+	};
 
 	const setPreview = (key: string, preview: string) => {
-		updateItem(key, { preview })
-	}
+		updateItem(key, { preview });
+	};
 
 	const markComplete = (key: string, preview?: string) => {
-		updateItem(key, { status: "complete", preview })
-	}
+		updateItem(key, { status: "complete", preview });
+	};
 
 	const markInProgress = (key: string) => {
-		updateItem(key, { status: "in_progress" })
-	}
+		updateItem(key, { status: "in_progress" });
+	};
 
-	const toggle = () => setCollapsed((prev) => !prev)
+	const toggle = () => setCollapsed((prev) => !prev);
 
 	return {
 		items,
@@ -259,5 +259,5 @@ export function useCapturedPanel(initialItems: CapturedItem[]) {
 		markInProgress,
 		toggle,
 		setCollapsed,
-	}
+	};
 }

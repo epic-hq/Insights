@@ -5,25 +5,25 @@
  * Designed to encourage chat engagement.
  */
 
-import { ChevronRight, MessageSquare, Sparkles } from "lucide-react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { cn } from "~/lib/utils"
+import { ChevronRight, MessageSquare, Sparkles } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { cn } from "~/lib/utils";
 
 export interface AiInsightCardProps {
 	/** The insight text to display */
-	insight: string
+	insight: string;
 	/** Optional source/context for the insight */
-	source?: string
+	source?: string;
 	/** Link to the AI assistant page */
-	href?: string
+	href?: string;
 	/** Callback when user wants to explore further (deprecated, use href) */
-	onAskFollowUp?: () => void
+	onAskFollowUp?: () => void;
 	/** Whether the card should be interactive */
-	interactive?: boolean
+	interactive?: boolean;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 export function AiInsightCard({
@@ -69,8 +69,8 @@ export function AiInsightCard({
 								onClick={
 									!href && onAskFollowUp
 										? (e) => {
-												e.stopPropagation()
-												onAskFollowUp()
+												e.stopPropagation();
+												onAskFollowUp();
 											}
 										: undefined
 								}
@@ -102,7 +102,7 @@ export function AiInsightCard({
 				</div>
 			</CardContent>
 		</Card>
-	)
+	);
 
 	// Wrap entire card in Link if href is provided
 	if (href && interactive) {
@@ -110,10 +110,10 @@ export function AiInsightCard({
 			<Link to={href} className="block">
 				{cardContent}
 			</Link>
-		)
+		);
 	}
 
-	return cardContent
+	return cardContent;
 }
 
 /**
@@ -124,9 +124,9 @@ export function AiInsightPill({
 	onClick,
 	className,
 }: {
-	insight: string
-	onClick?: () => void
-	className?: string
+	insight: string;
+	onClick?: () => void;
+	className?: string;
 }) {
 	return (
 		<button
@@ -144,7 +144,7 @@ export function AiInsightPill({
 			<span className="max-w-[200px] truncate">{insight}</span>
 			<ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
 		</button>
-	)
+	);
 }
 
-export default AiInsightCard
+export default AiInsightCard;

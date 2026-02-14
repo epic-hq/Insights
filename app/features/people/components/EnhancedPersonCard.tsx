@@ -1,53 +1,56 @@
-import { formatDistance } from "date-fns"
-import { motion } from "framer-motion"
-import { Building2, User } from "lucide-react"
-import { useState } from "react"
-import { Link } from "react-router-dom"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import type { Person } from "~/types"
+import { formatDistance } from "date-fns";
+import { motion } from "framer-motion";
+import { Building2, User } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { BandBadge } from "~/features/lenses/components/ICPMatchSection";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import type { Person } from "~/types";
 
 // Type for person with nested personas from interview participants query
 interface PersonWithPersonas {
-	id: string
-	name: string | null
-	image_url: string | null
+	id: string;
+	name: string | null;
+	image_url: string | null;
 	people_personas?: Array<{
-		persona_id: string
+		persona_id: string;
 		personas: {
-			id: string
-			name: string
-			color_hex: string
-		}
-	}>
+			id: string;
+			name: string;
+			color_hex: string;
+		};
+	}>;
 	people_organizations?: Array<{
 		organization?: {
-			id: string
-			name: string | null
-			website_url: string | null
-		}
-		role?: string | null
-	}>
+			id: string;
+			name: string | null;
+			website_url: string | null;
+		};
+		job_title?: string | null;
+	}>;
 }
 
 interface EnhancedPersonCardProps {
-	person: Person
-	className?: string
-	facets?: PersonFacetSummary[]
-	conversationCount?: number
-	evidenceCount?: number
+	person: Person;
+	className?: string;
+	facets?: PersonFacetSummary[];
+	conversationCount?: number;
+	evidenceCount?: number;
+	icpBand?: string | null;
+	icpConfidence?: number | null;
 }
 
 interface PersonFacetSummary {
-	facet_account_id: number
-	label: string
-	kind_slug: string
-	source: string | null
-	confidence: number | null
+	facet_account_id: number;
+	label: string;
+	kind_slug: string;
+	source: string | null;
+	confidence: number | null;
 }
 
 export default function EnhancedPersonCard({
@@ -56,38 +59,45 @@ export default function EnhancedPersonCard({
 	facets,
 	conversationCount,
 	evidenceCount,
+	icpBand,
+	icpConfidence,
 }: EnhancedPersonCardProps) {
-	const [isHovered, setIsHovered] = useState(false)
-	const currentProjectContext = useCurrentProject()
-	const routes = useProjectRoutes(currentProjectContext?.projectPath)
+	const [isHovered, setIsHovered] = useState(false);
+	const currentProjectContext = useCurrentProject();
+	const routes = useProjectRoutes(currentProjectContext?.projectPath);
 
 	// Persona color or fallback
-	const persona = person.people_personas?.[0]?.personas
-	const themeColor = persona?.color_hex || "#6366f1" // Indigo fallback
+	const persona = person.people_personas?.[0]?.personas;
+	const themeColor = persona?.color_hex || "#6366f1"; // Indigo fallback
 
 	// Name and avatar logic
-	const name = person.name || "Unnamed Person"
+	const name = person.name || "Unnamed Person";
 	const initials =
 		name
 			.split(" ")
 			.map((word) => word[0])
 			.join("")
 			.toUpperCase()
-			.slice(0, 2) || "?"
+			.slice(0, 2) || "?";
 
-	const topFacets = facets?.slice(0, 3) ?? []
-	const primaryOrganization = person.people_organizations?.[0]?.organization
-	const primaryOrganizationLabel = primaryOrganization?.name || primaryOrganization?.website_url || undefined
+	const topFacets = facets?.slice(0, 3) ?? [];
+	const primaryOrganization = person.people_organizations?.[0]?.organization;
+	const primaryOrganizationLabel = primaryOrganization?.name || primaryOrganization?.website_url || undefined;
 	const primaryRole =
-		person.people_organizations?.find((link) => link.is_primary)?.role ?? person.people_organizations?.[0]?.role ?? null
+		person.people_organizations?.find((link) => link.is_primary)?.job_title ??
+		person.people_organizations?.[0]?.job_title ??
+		null;
 
 	return (
 		<Link to={routes.people.detail(person.id)} tabIndex={0} aria-label={`View details for ${name}`}>
 			<motion.div
 				className={cn(
-					"group relative cursor-pointer overflow-hidden rounded-xl border border-border bg-background",
+					"group relative cursor-pointer overflow-hidden rounded-xl border border-border/90 bg-card shadow-sm",
+					"dark:border-white/15 dark:bg-[linear-gradient(180deg,hsla(240,8%,14%,0.96)_0%,hsla(240,7%,11%,0.96)_100%)]",
+					"dark:shadow-[0_10px_28px_-18px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.08)]",
 					"transition-all duration-300 ease-out",
-					"hover:shadow-black/10 hover:shadow-lg dark:hover:shadow-white/5",
+					"hover:border-border hover:shadow-black/10 hover:shadow-md",
+					"dark:hover:border-white/25 dark:hover:shadow-[0_14px_30px_-16px_rgba(0,0,0,0.95),inset_0_1px_0_rgba(255,255,255,0.12)]",
 					className
 				)}
 				onMouseEnter={() => setIsHovered(true)}
@@ -112,7 +122,7 @@ export default function EnhancedPersonCard({
 					<CardHeader className="pb-3">
 						<div className="flex items-start">
 							<motion.div className="relative" whileHover={{ scale: 1.1 }} transition={{ duration: 0.2 }}>
-								<Avatar className="h-16 w-16 border-2" style={{ borderColor: themeColor }}>
+								<Avatar className="h-14 w-14 border-2 sm:h-16 sm:w-16" style={{ borderColor: themeColor }}>
 									{person.image_url && <AvatarImage src={person.image_url} alt={name} />}
 									<AvatarFallback className="font-medium text-lg text-white" style={{ backgroundColor: themeColor }}>
 										{initials}
@@ -130,7 +140,7 @@ export default function EnhancedPersonCard({
 							<div className="flex w-full items-start justify-between">
 								<div>
 									<motion.h3
-										className="mb-3 ml-4 font-bold text-foreground text-xl leading-tight"
+										className="mb-2 ml-3 font-bold text-foreground text-lg leading-tight sm:ml-4 sm:text-xl"
 										style={{ color: isHovered ? themeColor : undefined }}
 										transition={{ duration: 0.3 }}
 									>
@@ -138,7 +148,7 @@ export default function EnhancedPersonCard({
 									</motion.h3>
 									{persona?.name && (
 										<div
-											className="mt-1 ml-4 inline-block rounded-full px-2 py-0.5 font-semibold text-xs"
+											className="mt-1 ml-3 inline-block rounded-full px-2 py-0.5 font-semibold text-xs sm:ml-4"
 											style={{
 												backgroundColor: `${themeColor}22`,
 												color: themeColor,
@@ -163,12 +173,13 @@ export default function EnhancedPersonCard({
 							</div>
 						)}
 						{/* Description, segment, etc. */}
-						<p className="mb-3 line-clamp-2 text-muted-foreground text-sm leading-relaxed">
+						<p className="mb-3 line-clamp-2 text-foreground/80 text-sm leading-relaxed dark:text-foreground/90">
 							{person.description || "No description yet."}
 						</p>
 						{/* Segment data badges */}
-						{(person.job_function || person.seniority_level || person.segment) && (
+						{(person.job_function || person.seniority_level || person.segment || icpBand) && (
 							<div className="mb-3 flex flex-wrap gap-1.5">
+								{icpBand && <BandBadge band={icpBand} confidence={icpConfidence} />}
 								{person.job_function && (
 									<Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
 										{person.job_function}
@@ -201,10 +212,14 @@ export default function EnhancedPersonCard({
 						)}
 						<div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
 							{typeof conversationCount === "number" && (
-								<span className="rounded bg-muted px-2 py-0.5">{conversationCount} conversations</span>
+								<span className="rounded border border-transparent bg-muted/80 px-2 py-0.5 text-foreground/80 dark:border-white/10 dark:bg-white/10 dark:text-foreground/90">
+									{conversationCount} conversations
+								</span>
 							)}
 							{typeof evidenceCount === "number" && (
-								<span className="rounded bg-muted px-2 py-0.5">{evidenceCount} evidence</span>
+								<span className="rounded border border-transparent bg-muted/80 px-2 py-0.5 text-foreground/80 dark:border-white/10 dark:bg-white/10 dark:text-foreground/90">
+									{evidenceCount} evidence
+								</span>
 							)}
 						</div>
 					</CardContent>
@@ -232,46 +247,62 @@ export default function EnhancedPersonCard({
 				/>
 			</motion.div>
 		</Link>
-	)
+	);
 }
 
 // Make a MiniPersonCard that shows the person's name, avatar, persona, & segment
-export function MiniPersonCard({ person }: { person: PersonWithPersonas }) {
-	const currentProjectContext = useCurrentProject()
-	const routes = useProjectRoutes(currentProjectContext?.projectPath)
+export function MiniPersonCard({
+	person,
+	disableLinks = false,
+}: {
+	person: PersonWithPersonas;
+	disableLinks?: boolean;
+}) {
+	const currentProjectContext = useCurrentProject();
+	const routes = useProjectRoutes(currentProjectContext?.projectPath);
 
-	const persona = person.people_personas?.[0]?.personas
-	const themeColor = persona?.color_hex || "#6366f1" // Indigo fallback
-	const name = person.name || "Unnamed Person"
+	const persona = person.people_personas?.[0]?.personas;
+	const themeColor = persona?.color_hex || "#6366f1"; // Indigo fallback
+	const name = person.name || "Unnamed Person";
 	const initials =
 		name
 			.split(" ")
 			.map((word) => word[0])
 			.join("")
 			.toUpperCase()
-			.slice(0, 2) || "?"
+			.slice(0, 2) || "?";
 	// consola.log("MiniPersonCard person: ", person, persona)
+
+	const Wrapper = disableLinks ? "span" : Link;
+	const avatarLinkProps = disableLinks ? {} : { to: routes.people.detail(person.id) };
+	const nameLinkProps = disableLinks ? {} : { to: routes.people.detail(person.id) };
 
 	return (
 		<div className="flex items-center gap-2">
-			<Link to={routes.people.detail(person.id)}>
+			<Wrapper {...avatarLinkProps}>
 				<Avatar className="h-8 w-8">
 					{person.image_url && <AvatarImage src={person.image_url} alt={person.name} />}
 					<AvatarFallback className="font-medium text-sm text-white" style={{ backgroundColor: themeColor }}>
 						{initials}
 					</AvatarFallback>
 				</Avatar>
-			</Link>
+			</Wrapper>
 			<div className="flex flex-col">
-				<Link to={routes.people.detail(person.id)}>
+				<Wrapper {...nameLinkProps}>
 					<h3 className="font-medium text-sm">{person.name}</h3>
-				</Link>
+				</Wrapper>
 				{persona?.name && "id" in persona && persona.id && (
-					<Link to={routes.personas.detail(persona.id)}>
-						<div className="rounded-sm border p-2 text-foreground text-xs">{persona.name}</div>
-					</Link>
+					<>
+						{disableLinks ? (
+							<div className="rounded-sm border p-2 text-foreground text-xs">{persona.name}</div>
+						) : (
+							<Link to={routes.personas.detail(persona.id)}>
+								<div className="rounded-sm border p-2 text-foreground text-xs">{persona.name}</div>
+							</Link>
+						)}
+					</>
 				)}
 			</div>
 		</div>
-	)
+	);
 }

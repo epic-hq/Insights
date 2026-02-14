@@ -1,26 +1,26 @@
-import { Quote } from "lucide-react"
-import { useState } from "react"
-import { Link } from "react-router-dom"
-import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
-import { StyledTag } from "~/components/TagDisplay"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog"
-import { EmotionBadge } from "~/components/ui/emotion-badge"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { RelatedThemes } from "~/features/insights/components/RelatedThemes"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { Insight } from "~/types"
+import { Quote } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { EntityInteractionPanel } from "~/components/EntityInteractionPanel";
+import { StyledTag } from "~/components/TagDisplay";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent } from "~/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { EmotionBadge } from "~/components/ui/emotion-badge";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { RelatedThemes } from "~/features/insights/components/RelatedThemes";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import type { Insight } from "~/types";
 
 interface InsightCardV3Props {
-	insight: Insight
+	insight: Insight;
 }
 
 export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
-	const [selected, setSelected] = useState<Insight | null>(null)
-	const _projectId = insight.project_id
-	const { accountId, projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const [selected, setSelected] = useState<Insight | null>(null);
+	const _projectId = insight.project_id;
+	const { accountId, projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
 	return (
 		<>
@@ -187,8 +187,8 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 									<h4 className="font-medium text-foreground text-sm">Tags</h4>
 									<div className="flex flex-wrap gap-2">
 										{selected.insight_tags?.map((tag: any, idx: number) => {
-											const tagName = tag?.tags?.tag || tag?.tag || null
-											if (!tagName) return null
+											const tagName = tag?.tags?.tag || tag?.tag || null;
+											if (!tagName) return null;
 											return (
 												<StyledTag
 													key={`${tagName}-${idx}`}
@@ -196,7 +196,7 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 													style={tag.style}
 													frequency={tag.frequency}
 												/>
-											)
+											);
 										})}
 									</div>
 								</div>
@@ -210,5 +210,5 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 				</Dialog>
 			)}
 		</>
-	)
+	);
 }

@@ -17,7 +17,7 @@ import {
 } from "~/lib/billing/instrumented-baml.server";
 import type { TaskStatus } from "~/features/tasks/types";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
-import { workflowRetryConfig } from "~/utils/processInterview.server";
+import { workflowRetryConfig } from "../interview/v2/config";
 
 // Progress stages for lens application
 const LENS_STAGES = {
@@ -50,6 +50,15 @@ export type ApplyLensPayload = {
   computedBy?: string | null;
   customInstructions?: string | null;
 };
+
+function toUuidOrNull(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidPattern.test(trimmed) ? trimmed : null;
+}
 
 /**
  * Map lens template category to task cluster
@@ -391,6 +400,7 @@ export const applyLensTask = task({
       computedBy,
       customInstructions,
     } = payload;
+    const computedByUserId = toUuidOrNull(computedBy);
     const client = createSupabaseAdminClient();
 
     consola.info(
@@ -463,7 +473,7 @@ export const applyLensTask = task({
       return { skipped: true, reason: "private" };
     }
 
-    // 3. Load evidence
+    // 3. Load evidence (interview evidence + survey evidence from same project)
     type EvidenceRow = {
       id: string;
       gist: string | null;
@@ -473,10 +483,14 @@ export const applyLensTask = task({
       created_at: string;
     };
 
-    const { data: evidence, error: evidenceError } = (await (client as any)
+    const { data: interviewEvidence, error: evidenceError } = (await (
+      client as any
+    )
       .from("evidence")
       .select("id, gist, verbatim, chunk, anchors, created_at")
       .eq("interview_id", interviewId)
+      .is("deleted_at", null)
+      .eq("is_archived", false)
       .order("created_at", { ascending: true })) as {
       data: EvidenceRow[] | null;
       error: any;
@@ -485,6 +499,32 @@ export const applyLensTask = task({
     if (evidenceError) {
       throw new Error(`Failed to load evidence: ${evidenceError.message}`);
     }
+
+    // Also load survey evidence for the same project (if projectId is available)
+    let surveyEvidence: EvidenceRow[] = [];
+    const effectiveProject = projectId || interview.project_id;
+    if (effectiveProject) {
+      const { data: surveyEv } = (await (client as any)
+        .from("evidence")
+        .select("id, gist, verbatim, chunk, anchors, created_at")
+        .eq("project_id", effectiveProject)
+        .not("research_link_response_id", "is", null)
+        .is("interview_id", null)
+        .is("deleted_at", null)
+        .eq("is_archived", false)
+        .order("created_at", { ascending: true })
+        .limit(100)) as { data: EvidenceRow[] | null; error: any };
+
+      surveyEvidence = surveyEv || [];
+      if (surveyEvidence.length > 0) {
+        consola.info(
+          `[applyLens] Including ${surveyEvidence.length} survey evidence records`,
+        );
+      }
+    }
+
+    // Combine interview and survey evidence
+    const evidence = [...(interviewEvidence || []), ...surveyEvidence];
 
     if (!evidence || evidence.length === 0) {
       consola.warn(
@@ -501,7 +541,7 @@ export const applyLensTask = task({
           auto_detected: true,
           status: "completed",
           processed_at: new Date().toISOString(),
-          processed_by: computedBy,
+          processed_by: computedByUserId,
         },
         { onConflict: "interview_id,template_key" },
       );
@@ -603,7 +643,7 @@ export const applyLensTask = task({
           status: "failed",
           error_message: error instanceof Error ? error.message : String(error),
           processed_at: new Date().toISOString(),
-          processed_by: computedBy,
+          processed_by: computedByUserId,
         },
         { onConflict: "interview_id,template_key" },
       );
@@ -732,7 +772,7 @@ export const applyLensTask = task({
               supabase: client as any,
               accountId,
               projectId: effectiveProjectId,
-              userId: computedBy || "system",
+              userId: computedByUserId,
               data: {
                 title,
                 description: nextStep.owner
@@ -807,7 +847,7 @@ export const applyLensTask = task({
           auto_detected: true,
           status: "completed",
           processed_at: new Date().toISOString(),
-          processed_by: computedBy,
+          processed_by: computedByUserId,
         },
         { onConflict: "interview_id,template_key" },
       );

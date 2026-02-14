@@ -1,21 +1,21 @@
-import { ArrowLeft, Award, Building2, Calendar, Clock, TrendingUp } from "lucide-react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router"
-import { getPostBySlug } from "~/lib/cms/payload.server"
-import { formatDate, getImageUrl, getReadingTime } from "~/lib/cms/utils"
+import { ArrowLeft, Award, Building2, Calendar, Clock, TrendingUp } from "lucide-react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Link, useLoaderData } from "react-router";
+import { getPostBySlug } from "~/lib/cms/payload.server";
+import { formatDate, getImageUrl, getReadingTime } from "~/lib/cms/utils";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	if (!data?.caseStudy) {
-		return [{ title: "Case Study Not Found | Upsight" }]
+		return [{ title: "Case Study Not Found | Upsight" }];
 	}
 
-	const { caseStudy } = data
-	const seoTitle = caseStudy.seo?.title || `${caseStudy.title} - Case Study | Upsight`
+	const { caseStudy } = data;
+	const seoTitle = caseStudy.seo?.title || `${caseStudy.title} - Case Study | Upsight`;
 	const seoDescription =
 		caseStudy.seo?.description ||
 		caseStudy.excerpt ||
-		`Read how ${caseStudy.company || "this team"} achieved success with Upsight`
-	const seoImage = caseStudy.seo?.image
+		`Read how ${caseStudy.company || "this team"} achieved success with Upsight`;
+	const seoImage = caseStudy.seo?.image;
 
 	return [
 		{ title: seoTitle },
@@ -24,31 +24,31 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 		{ property: "og:description", content: seoDescription },
 		{ property: "og:type", content: "article" },
 		...(seoImage ? [{ property: "og:image", content: getImageUrl(seoImage) }] : []),
-	]
-}
+	];
+};
 
 export async function loader({ params }: LoaderFunctionArgs) {
-	const { caseStudyId } = params
+	const { caseStudyId } = params;
 
 	if (!caseStudyId) {
-		throw new Response("Case study ID is required", { status: 400 })
+		throw new Response("Case study ID is required", { status: 400 });
 	}
 
-	const caseStudy = await getPostBySlug(caseStudyId)
+	const caseStudy = await getPostBySlug(caseStudyId);
 
 	if (!caseStudy) {
-		throw new Response("Case study not found", { status: 404 })
+		throw new Response("Case study not found", { status: 404 });
 	}
 
-	return { caseStudy }
+	return { caseStudy };
 }
 
 export default function CaseStudyDetail() {
-	const { caseStudy } = useLoaderData<typeof loader>()
+	const { caseStudy } = useLoaderData<typeof loader>();
 
-	const imageUrl = getImageUrl(caseStudy.featured_image)
-	const publishedDate = formatDate(caseStudy.publishedAt)
-	const readingTime = getReadingTime(caseStudy.content)
+	const imageUrl = getImageUrl(caseStudy.featured_image);
+	const publishedDate = formatDate(caseStudy.publishedAt);
+	const readingTime = getReadingTime(caseStudy.content);
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -189,5 +189,5 @@ export default function CaseStudyDetail() {
 				</div>
 			</section>
 		</div>
-	)
+	);
 }

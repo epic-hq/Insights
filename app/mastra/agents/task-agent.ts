@@ -1,9 +1,9 @@
-import { Agent } from "@mastra/core/agent"
-import { TokenLimiterProcessor } from "@mastra/core/processors"
-import { openai } from "../../lib/billing/instrumented-openai.server"
-import { getCurrentDateTool } from "../tools/get-current-date"
-import { createTaskTool, deleteTaskTool, fetchTasksTool, updateTaskTool } from "../tools/manage-tasks"
-import { markTaskCompleteTool } from "../tools/mark-task-complete"
+import { Agent } from "@mastra/core/agent";
+import { TokenLimiterProcessor } from "@mastra/core/processors";
+import { openai } from "../../lib/billing/instrumented-openai.server";
+import { getCurrentDateTool } from "../tools/get-current-date";
+import { createTaskTool, deleteTaskTool, fetchTasksTool, updateTaskTool } from "../tools/manage-tasks";
+import { markTaskCompleteTool } from "../tools/mark-task-complete";
 
 export const taskAgent = new Agent({
 	id: "task-agent",
@@ -11,9 +11,9 @@ export const taskAgent = new Agent({
 	description:
 		"Specialized agent for task management operations. Handles creating, updating, completing, deleting, and querying tasks. Use when user wants to manage tasks, mark tasks complete, or query task status.",
 	instructions: async ({ requestContext }) => {
-		const projectId = requestContext.get("project_id")
-		const accountId = requestContext.get("account_id")
-		const userId = requestContext.get("user_id")
+		const projectId = requestContext.get("project_id");
+		const accountId = requestContext.get("account_id");
+		const userId = requestContext.get("user_id");
 
 		return `You are a focused task management assistant for project ${projectId}.
 
@@ -69,7 +69,7 @@ When user asks about tasks:
 - Project: ${projectId}
 - User: ${userId}
 
-Remember: You are a specialist. Do your job efficiently and return control.`
+Remember: You are a specialist. Do your job efficiently and return control.`;
 	},
 	model: openai("gpt-4o-mini"),
 	tools: {
@@ -81,4 +81,4 @@ Remember: You are a specialist. Do your job efficiently and return control.`
 		getCurrentDate: getCurrentDateTool,
 	},
 	outputProcessors: [new TokenLimiterProcessor(20_000)],
-})
+});

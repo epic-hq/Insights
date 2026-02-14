@@ -27,6 +27,7 @@
         <div class="header-right">
           <button class="btn new-note-btn" id="newNoteBtn">Record In-person Meeting</button>
           <button class="btn join-meeting-btn" id="joinMeetingBtn">Record Meeting</button>
+          <button class="btn debug-mode-btn" id="toggleDebugPanelBtn" style="display: none;">Debug</button>
           <button id="toggleSidebar" class="btn toggle-sidebar-btn" style="display: none;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M3 18H21V16H3V18ZM3 13H21V11H3V13ZM3 6V8H21V6H3Z" fill="#666666"/>
@@ -212,7 +213,13 @@ Chat with meeting transcript: https://notes.granola.ai/d/393a95cf-4788-4a47-9deb
     <!-- Debug Panel -->
     <div class="debug-panel hidden" id="debugPanel">
       <div class="debug-panel-header" id="debug-drag-region">
-        <h3>Debugging Tools</h3>
+        <div class="debug-panel-title-row">
+          <h3>UpSight Live Debug</h3>
+          <div class="recording-indicator hidden" id="recordingIndicator">
+            <div class="recording-dot"></div>
+            <span class="recording-timer" id="recordingTimer">00:00</span>
+          </div>
+        </div>
         <button class="debug-panel-close" id="closeDebugPanelBtn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
@@ -285,12 +292,133 @@ Chat with meeting transcript: https://notes.granola.ai/d/393a95cf-4788-4a47-9deb
             </div>
           </div>
         </div>
+
+        <!-- Real-time Evidence Section -->
+        <div class="debug-section" id="evidenceSection">
+          <div class="debug-section-header">
+            <h4>Real-time Evidence</h4>
+            <span class="evidence-count" id="evidenceCount">0 insights</span>
+          </div>
+          <div class="debug-section-content" id="evidenceContent">
+            <div class="placeholder-content">
+              <p>Insights will appear here during recording</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
     <button class="debug-panel-toggle panel-hidden" id="debugPanelToggle">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z" fill="currentColor"/>
+      </svg>
+    </button>
+
+    <!-- Floating Panel (New UX Design) - DISABLED: Now uses separate window -->
+    <div class="floating-panel compact hidden" id="floatingPanel" style="display: none !important;">
+      <div class="floating-panel-header" id="floatingPanelDragRegion">
+        <div class="floating-panel-title">
+          <svg class="floating-panel-logo" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="#818cf8" stroke-width="2"/>
+            <circle cx="12" cy="12" r="4" fill="#818cf8"/>
+          </svg>
+          <span class="floating-panel-title-text">UpSight</span>
+          <div class="recording-indicator hidden" id="floatingRecordingIndicator">
+            <div class="recording-dot"></div>
+            <span class="recording-timer" id="floatingRecordingTimer">00:00</span>
+          </div>
+        </div>
+        <div class="floating-panel-controls">
+          <button class="floating-panel-btn" id="floatingPanelMinimize" title="Minimize">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M19 13H5v-2h14v2z" fill="currentColor"/>
+            </svg>
+          </button>
+          <button class="floating-panel-btn" id="floatingPanelExpand" title="Expand">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="currentColor"/>
+            </svg>
+          </button>
+          <button class="floating-panel-btn" id="floatingPanelClose" title="Close">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Recording Controls -->
+      <div class="floating-panel-recording-controls" id="floatingRecordingControls">
+        <button class="floating-record-btn" id="floatingRecordBtn" title="Start Recording">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="record-icon">
+            <circle cx="12" cy="12" r="6" fill="currentColor"/>
+          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="stop-icon" style="display: none;">
+            <rect x="6" y="6" width="12" height="12" fill="currentColor"/>
+          </svg>
+          <span class="floating-record-label" id="floatingRecordLabel">Record</span>
+        </button>
+      </div>
+
+      <div class="floating-panel-tabs" id="floatingPanelTabs">
+        <button class="floating-panel-tab active" data-tab="evidence">Evidence</button>
+        <button class="floating-panel-tab" data-tab="tasks">Tasks</button>
+        <button class="floating-panel-tab" data-tab="transcript">Transcript</button>
+      </div>
+
+      <div class="floating-panel-content" id="floatingPanelContent">
+        <!-- Evidence Tab -->
+        <div class="floating-panel-tab-content active" id="evidenceTabContent">
+          <div class="evidence-empty-state" id="evidenceEmptyState">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#64748b"/>
+            </svg>
+            <p>Insights will appear here during recording</p>
+          </div>
+          <div class="evidence-list" id="floatingEvidenceList" style="display: none;"></div>
+        </div>
+
+        <!-- Tasks Tab -->
+        <div class="floating-panel-tab-content" id="tasksTabContent">
+          <div class="tasks-empty-state">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M19 3H14.82C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" fill="#64748b"/>
+            </svg>
+            <p>Action items will appear here</p>
+          </div>
+          <div class="tasks-list" id="floatingTasksList" style="display: none;"></div>
+        </div>
+
+        <!-- Transcript Tab -->
+        <div class="floating-panel-tab-content" id="transcriptTabContent">
+          <div class="transcript-empty-state">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 15c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V6zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-2.08c3.39-.49 6-3.39 6-6.92h-2z" fill="#64748b"/>
+            </svg>
+            <p>Live transcript will appear here</p>
+          </div>
+          <div class="transcript-list" id="floatingTranscriptList" style="display: none;"></div>
+        </div>
+      </div>
+
+      <!-- Note Input (Cmd+Shift+N) -->
+      <div class="floating-panel-footer" id="floatingPanelFooter">
+        <div class="note-input-container">
+          <input type="text" class="note-input" id="floatingNoteInput" placeholder="Add a note... (⌘+⇧+N)">
+          <button class="note-submit-btn" id="floatingNoteSubmit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Minimized Floating Panel Button -->
+    <button class="floating-panel-minimized hidden" id="floatingPanelMinimizedBtn">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" stroke="#818cf8" stroke-width="2"/>
+        <circle cx="12" cy="12" r="4" fill="#818cf8"/>
       </svg>
     </button>
   </body>

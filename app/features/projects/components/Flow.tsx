@@ -1,7 +1,7 @@
-import { motion } from "framer-motion"
-import { ArrowDown } from "lucide-react"
-import type React from "react"
-import { useMemo } from "react"
+import { motion } from "framer-motion";
+import { ArrowDown } from "lucide-react";
+import type React from "react";
+import { useMemo } from "react";
 
 /**
  * FlowDiagram
@@ -22,59 +22,59 @@ import { useMemo } from "react"
 // ---------------------------
 // Types
 // ---------------------------
-type Countish = number | undefined | null
+type Countish = number | undefined | null;
 
 interface FlowCounts {
-	questionsTotal?: Countish
-	questionsAnswered?: Countish
-	inputs?: Countish // interviews/conversations/etc
-	evidence?: Countish
-	quotes?: Countish
-	people?: Countish
-	personas?: Countish
-	themes?: Countish
-	insights?: Countish
-	opportunities?: Countish
+	questionsTotal?: Countish;
+	questionsAnswered?: Countish;
+	inputs?: Countish; // interviews/conversations/etc
+	evidence?: Countish;
+	quotes?: Countish;
+	people?: Countish;
+	personas?: Countish;
+	themes?: Countish;
+	insights?: Countish;
+	opportunities?: Countish;
 }
 
 interface FlowLabels {
-	researchGoals?: string // sublabel under Research Goals
-	inputs?: string // sublabel under Inputs
-	evidence?: string // sublabel under Evidence group
-	personasThemes?: string // sublabel under Personas & Themes group
-	insights?: string // sublabel under Insights
-	opportunities?: string // sublabel under Opportunities
+	researchGoals?: string; // sublabel under Research Goals
+	inputs?: string; // sublabel under Inputs
+	evidence?: string; // sublabel under Evidence group
+	personasThemes?: string; // sublabel under Personas & Themes group
+	insights?: string; // sublabel under Insights
+	opportunities?: string; // sublabel under Opportunities
 }
 
 interface FlowDiagramProps {
-	counts?: FlowCounts
-	labels?: FlowLabels
-	compact?: boolean // tighter spacing
-	onNodeClick?: (id: string) => void
-	className?: string
+	counts?: FlowCounts;
+	labels?: FlowLabels;
+	compact?: boolean; // tighter spacing
+	onNodeClick?: (id: string) => void;
+	className?: string;
 }
 
 // ---------------------------
 // Helpers
 // ---------------------------
 function clsx(...xs: Array<string | false | undefined>) {
-	return xs.filter(Boolean).join(" ")
+	return xs.filter(Boolean).join(" ");
 }
 
 function pct(a?: Countish, b?: Countish) {
-	const ans = Number(a ?? 0)
-	const tot = Number(b ?? 0)
-	if (!tot || tot <= 0) return 0
-	return Math.max(0, Math.min(100, Math.round((ans / tot) * 100)))
+	const ans = Number(a ?? 0);
+	const tot = Number(b ?? 0);
+	if (!tot || tot <= 0) return 0;
+	return Math.max(0, Math.min(100, Math.round((ans / tot) * 100)));
 }
 
 function Badge({ value }: { value?: Countish }) {
-	if (value == null) return null
+	if (value == null) return null;
 	return (
 		<span className="-top-2 -right-2 absolute rounded-full bg-slate-900 px-2 py-1 font-semibold text-white text-xs shadow-sm">
 			{value}
 		</span>
-	)
+	);
 }
 
 function NodeCard({
@@ -86,13 +86,13 @@ function NodeCard({
 	highlight = false,
 	children,
 }: {
-	id: string
-	title: string
-	count?: Countish
-	sublabel?: string
-	onClick?: (id: string) => void
-	highlight?: boolean
-	children?: React.ReactNode
+	id: string;
+	title: string;
+	count?: Countish;
+	sublabel?: string;
+	onClick?: (id: string) => void;
+	highlight?: boolean;
+	children?: React.ReactNode;
 }) {
 	return (
 		<motion.div
@@ -112,14 +112,14 @@ function NodeCard({
 			{children}
 			{sublabel ? <div className="mt-2 max-w-[220px] text-slate-500 text-xs">{sublabel}</div> : null}
 		</motion.div>
-	)
+	);
 }
 
 function RadialPercent({ value }: { value: number }) {
-	const r = 22
-	const c = 2 * Math.PI * r
-	const dash = (value / 100) * c
-	const gap = c - dash
+	const r = 22;
+	const c = 2 * Math.PI * r;
+	const dash = (value / 100) * c;
+	const gap = c - dash;
 	return (
 		<svg viewBox="0 0 60 60" width={60} height={60} className="mt-2">
 			<circle cx={30} cy={30} r={r} fill="none" stroke="#e2e8f0" strokeWidth={8} />
@@ -145,7 +145,7 @@ function RadialPercent({ value }: { value: number }) {
 				{value}%
 			</text>
 		</svg>
-	)
+	);
 }
 
 function VerticalArrow() {
@@ -153,7 +153,7 @@ function VerticalArrow() {
 		<div className="my-2 flex items-center justify-center">
 			<ArrowDown className="h-6 w-6 text-slate-400" />
 		</div>
-	)
+	);
 }
 
 // Group card with stacked mini-nodes
@@ -164,11 +164,11 @@ function GroupCard({
 	sublabel,
 	onClick,
 }: {
-	id: string
-	title: string
-	items: Array<{ id: string; label: string; count?: Countish }>
-	sublabel?: string
-	onClick?: (id: string) => void
+	id: string;
+	title: string;
+	items: Array<{ id: string; label: string; count?: Countish }>;
+	sublabel?: string;
+	onClick?: (id: string) => void;
 }) {
 	return (
 		<div className="relative min-w-[220px] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -191,14 +191,14 @@ function GroupCard({
 			</div>
 			{sublabel ? <div className="mt-2 text-center text-slate-500 text-xs">{sublabel}</div> : null}
 		</div>
-	)
+	);
 }
 
 export function FlowDiagram({ counts, labels, compact = false, onNodeClick, className }: FlowDiagramProps) {
 	const answeredPct = useMemo(
 		() => pct(counts?.questionsAnswered, counts?.questionsTotal),
 		[counts?.questionsAnswered, counts?.questionsTotal]
-	)
+	);
 
 	return (
 		<div className={clsx("w-full overflow-y-auto", className)}>
@@ -281,7 +281,7 @@ export function FlowDiagram({ counts, labels, compact = false, onNodeClick, clas
 				/>
 			</div>
 		</div>
-	)
+	);
 }
 
 // ---------------------------
@@ -316,5 +316,5 @@ function _DemoFlowDiagram() {
 				/>
 			</div>
 		</div>
-	)
+	);
 }

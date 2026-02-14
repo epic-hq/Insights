@@ -1,4 +1,4 @@
-import type React from "react"
+import type React from "react";
 
 const tailwindColors = [
 	"blue",
@@ -22,9 +22,9 @@ const tailwindColors = [
 	"zinc",
 	"neutral",
 	"stone",
-]
+];
 
-const shadeSteps = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]
+const shadeSteps = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
 
 export const ThemeMatrix: React.FC = () => {
 	return (
@@ -54,5 +54,5 @@ export const ThemeMatrix: React.FC = () => {
 				</tbody>
 			</table>
 		</div>
-	)
-}
+	);
+};

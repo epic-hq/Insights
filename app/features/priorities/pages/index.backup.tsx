@@ -12,35 +12,35 @@ import {
 	getSortedRowModel,
 	type SortingState,
 	useReactTable,
-} from "@tanstack/react-table"
-import { Bot, ChevronDown, ChevronRight } from "lucide-react"
-import * as React from "react"
-import { Button } from "~/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
+} from "@tanstack/react-table";
+import { Bot, ChevronDown, ChevronRight } from "lucide-react";
+import * as React from "react";
+import { Button } from "~/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { useProjectStatusAgent } from "~/contexts/project-status-agent-context";
 
-type Stage = "activation" | "onboarding" | "retention"
-type Impact = 1 | 2 | 3
-type Priority = 1 | 2 | 3
+type Stage = "activation" | "onboarding" | "retention";
+type Impact = 1 | 2 | 3;
+type Priority = 1 | 2 | 3;
 type Cluster =
 	| "Core product – capture & workflow"
 	| "Core product – intelligence"
 	| "Foundation – reliability & UX"
 	| "Monetization & pricing"
 	| "Engagement & analytics"
-	| "Acquisition & marketing"
+	| "Acquisition & marketing";
 
 export type FeatureRow = {
-	id: string
-	feature: string
-	benefit: string
-	segments: string
-	impact: Impact
-	stage: Stage
-	priority: Priority
-	reason: string
-	cluster: Cluster
-}
+	id: string;
+	feature: string;
+	benefit: string;
+	segments: string;
+	impact: Impact;
+	stage: Stage;
+	priority: Priority;
+	reason: string;
+	cluster: Cluster;
+};
 
 const DATA: FeatureRow[] = [
 	{
@@ -252,7 +252,7 @@ const DATA: FeatureRow[] = [
 		reason: "Useful, but can be done manually early.",
 		cluster: "Acquisition & marketing",
 	},
-]
+];
 
 const columns: ColumnDef<FeatureRow>[] = [
 	{
@@ -277,7 +277,7 @@ const columns: ColumnDef<FeatureRow>[] = [
 		accessorKey: "impact",
 		header: "Impact",
 		cell: ({ row }) => {
-			const impact = row.original.impact
+			const impact = row.original.impact;
 			// High impact (3): 3 bars
 			if (impact === 3) {
 				return (
@@ -286,7 +286,7 @@ const columns: ColumnDef<FeatureRow>[] = [
 						<div className="h-3 w-1 rounded-sm bg-emerald-600" />
 						<div className="h-3.5 w-1 rounded-sm bg-emerald-600" />
 					</div>
-				)
+				);
 			}
 			// Medium impact (2): 2 bars
 			if (impact === 2) {
@@ -296,7 +296,7 @@ const columns: ColumnDef<FeatureRow>[] = [
 						<div className="h-3 w-1 rounded-sm bg-amber-600" />
 						<div className="h-3.5 w-1 rounded-sm bg-muted-foreground/30" />
 					</div>
-				)
+				);
 			}
 			// Low impact (1): 1 bar
 			return (
@@ -305,7 +305,7 @@ const columns: ColumnDef<FeatureRow>[] = [
 					<div className="h-3 w-1 rounded-sm bg-muted-foreground/30" />
 					<div className="h-3.5 w-1 rounded-sm bg-muted-foreground/30" />
 				</div>
-			)
+			);
 		},
 	},
 	{
@@ -317,18 +317,18 @@ const columns: ColumnDef<FeatureRow>[] = [
 		accessorKey: "priority",
 		header: "Priority",
 		cell: ({ row }) => {
-			const priority = row.original.priority
+			const priority = row.original.priority;
 			const badges = {
 				1: { label: "Now", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" },
 				2: { label: "Next", className: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" },
 				3: { label: "Later", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
-			}
-			const badge = badges[priority as 1 | 2 | 3]
+			};
+			const badge = badges[priority as 1 | 2 | 3];
 			return (
 				<span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${badge.className}`}>
 					{badge.label}
 				</span>
-			)
+			);
 		},
 	},
 	{
@@ -340,11 +340,11 @@ const columns: ColumnDef<FeatureRow>[] = [
 		header: "",
 		cell: ({ row }) => <AskUppyCell row={row.original} />,
 	},
-]
+];
 
 function AskUppyCell({ row }: { row: FeatureRow }) {
-	const { insertText } = useProjectStatusAgent()
-	const [open, setOpen] = React.useState(false)
+	const { insertText } = useProjectStatusAgent();
+	const [open, setOpen] = React.useState(false);
 
 	const handleAskUppy = () => {
 		const question = `Given this initiative: "${row.feature}".
@@ -358,12 +358,12 @@ Context:
 - Reason: ${row.reason}
 - Cluster: ${row.cluster}
 
-`
+`;
 
 		// Insert text into ProjectStatusAgent without navigating
-		insertText(question)
-		setOpen(false)
-	}
+		insertText(question);
+		setOpen(false);
+	};
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -388,17 +388,17 @@ Context:
 				</div>
 			</PopoverContent>
 		</Popover>
-	)
+	);
 }
 
 export default function FeaturePrioritizationPage() {
 	const [sorting, setSorting] = React.useState<SortingState>([
 		{ id: "priority", desc: false },
 		{ id: "impact", desc: true },
-	])
-	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-	const [grouping, setGrouping] = React.useState<GroupingState>(["cluster"])
-	const [expanded, setExpanded] = React.useState<ExpandedState>(true)
+	]);
+	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+	const [grouping, setGrouping] = React.useState<GroupingState>(["cluster"]);
+	const [expanded, setExpanded] = React.useState<ExpandedState>(true);
 
 	const table = useReactTable({
 		data: DATA,
@@ -419,9 +419,9 @@ export default function FeaturePrioritizationPage() {
 		getGroupedRowModel: getGroupedRowModel(),
 		getExpandedRowModel: getExpandedRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
-	})
+	});
 
-	const stageOptions: Stage[] = ["activation", "onboarding", "retention"]
+	const stageOptions: Stage[] = ["activation", "onboarding", "retention"];
 	const clusterOptions: Cluster[] = [
 		"Core product – capture & workflow",
 		"Core product – intelligence",
@@ -429,7 +429,7 @@ export default function FeaturePrioritizationPage() {
 		"Monetization & pricing",
 		"Engagement & analytics",
 		"Acquisition & marketing",
-	]
+	];
 
 	return (
 		<div className="container mx-auto p-6">
@@ -509,8 +509,8 @@ export default function FeaturePrioritizationPage() {
 							{table.getHeaderGroups().map((hg) => (
 								<tr key={hg.id}>
 									{hg.headers.map((header) => {
-										const canSort = header.column.getCanSort()
-										const sortDir = header.column.getIsSorted()
+										const canSort = header.column.getCanSort();
+										const sortDir = header.column.getIsSorted();
 										return (
 											<th
 												key={header.id}
@@ -529,7 +529,7 @@ export default function FeaturePrioritizationPage() {
 													flexRender(header.column.columnDef.header, header.getContext())
 												)}
 											</th>
-										)
+										);
 									})}
 								</tr>
 							))}
@@ -560,7 +560,7 @@ export default function FeaturePrioritizationPage() {
 													</button>
 												</td>
 											</tr>
-										)
+										);
 									}
 
 									// Regular data row
@@ -568,22 +568,22 @@ export default function FeaturePrioritizationPage() {
 										<tr key={row.id} className="border-border border-b even:bg-muted/30 hover:bg-muted/50">
 											{row.getVisibleCells().map((cell) => {
 												if (cell.getIsGrouped()) {
-													return null
+													return null;
 												}
 												if (cell.getIsAggregated()) {
-													return null
+													return null;
 												}
 												if (cell.getIsPlaceholder()) {
-													return <td key={cell.id} />
+													return <td key={cell.id} />;
 												}
 												return (
 													<td key={cell.id} className="px-3 py-2 align-top">
 														{flexRender(cell.column.columnDef.cell, cell.getContext())}
 													</td>
-												)
+												);
 											})}
 										</tr>
-									)
+									);
 								})
 							)}
 						</tbody>
@@ -614,5 +614,5 @@ export default function FeaturePrioritizationPage() {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

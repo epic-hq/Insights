@@ -2,10 +2,10 @@
  * Tool for deleting/archiving surveys (research_links)
  * Supports soft delete (archive) or hard delete
  */
-import { createTool } from "@mastra/core/tools"
-import consola from "consola"
-import { z } from "zod"
-import { resolveProjectContext } from "./context-utils"
+import { createTool } from "@mastra/core/tools";
+import consola from "consola";
+import { z } from "zod";
+import { resolveProjectContext } from "./context-utils";
 
 export const deleteSurveyTool = createTool({
 	id: "delete-survey",
@@ -29,31 +29,31 @@ Use hardDelete=true only when explicitly requested to permanently remove the sur
 		success: z.boolean(),
 		message: z.string(),
 		deleted: z.boolean().describe("Whether the survey was deleted"),
-		surveyId: z.string().optional(),
-		surveyName: z.string().optional(),
-		responseCount: z.number().optional().describe("Number of responses that were affected"),
+		surveyId: z.string().nullish(),
+		surveyName: z.string().nullish(),
+		responseCount: z.number().nullish().describe("Number of responses that were affected"),
 	}),
 	execute: async (input, context?) => {
-		const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server")
-		const supabase = createSupabaseAdminClient()
+		const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
+		const supabase = createSupabaseAdminClient();
 
 		// Resolve project context
-		let projectId: string
+		let projectId: string;
 
 		try {
-			const resolved = await resolveProjectContext(context, "delete-survey")
-			projectId = input.projectId ?? resolved.projectId
+			const resolved = await resolveProjectContext(context, "delete-survey");
+			projectId = input.projectId ?? resolved.projectId;
 		} catch (error) {
-			const runtimeProjectId = context?.requestContext?.get?.("project_id")
-			projectId = input.projectId ?? (runtimeProjectId ? String(runtimeProjectId).trim() : "")
+			const runtimeProjectId = context?.requestContext?.get?.("project_id");
+			projectId = input.projectId ?? (runtimeProjectId ? String(runtimeProjectId).trim() : "");
 
 			if (!projectId) {
-				consola.error("delete-survey: No project context available")
+				consola.error("delete-survey: No project context available");
 				return {
 					success: false,
 					message: "Missing project context. Pass projectId parameter or ensure context is set.",
 					deleted: false,
-				}
+				};
 			}
 		}
 
@@ -62,14 +62,14 @@ Use hardDelete=true only when explicitly requested to permanently remove the sur
 				success: false,
 				message: "surveyId is required",
 				deleted: false,
-			}
+			};
 		}
 
 		consola.info("delete-survey: execute start", {
 			projectId,
 			surveyId: input.surveyId,
 			hardDelete: input.hardDelete,
-		})
+		});
 
 		try {
 			// First, fetch the survey to verify it exists and belongs to this project
@@ -78,15 +78,15 @@ Use hardDelete=true only when explicitly requested to permanently remove the sur
 				.select("id, name, project_id")
 				.eq("id", input.surveyId)
 				.eq("project_id", projectId)
-				.maybeSingle()
+				.maybeSingle();
 
 			if (fetchError) {
-				consola.error("delete-survey: fetch error", fetchError)
+				consola.error("delete-survey: fetch error", fetchError);
 				return {
 					success: false,
 					message: `Database error: ${fetchError.message}`,
 					deleted: false,
-				}
+				};
 			}
 
 			if (!survey) {
@@ -94,14 +94,14 @@ Use hardDelete=true only when explicitly requested to permanently remove the sur
 					success: false,
 					message: "Survey not found or does not belong to this project.",
 					deleted: false,
-				}
+				};
 			}
 
 			// Get response count
 			const { count: responseCount } = await supabase
 				.from("research_link_responses")
 				.select("id", { count: "exact", head: true })
-				.eq("research_link_id", input.surveyId)
+				.eq("research_link_id", input.surveyId);
 
 			if (input.hardDelete) {
 				// Hard delete: remove responses first, then the survey
@@ -109,21 +109,21 @@ Use hardDelete=true only when explicitly requested to permanently remove the sur
 					surveyId: input.surveyId,
 					surveyName: survey.name,
 					responseCount,
-				})
+				});
 
 				// Delete all responses
 				const { error: responsesDeleteError } = await supabase
 					.from("research_link_responses")
 					.delete()
-					.eq("research_link_id", input.surveyId)
+					.eq("research_link_id", input.surveyId);
 
 				if (responsesDeleteError) {
-					consola.error("delete-survey: responses delete error", responsesDeleteError)
+					consola.error("delete-survey: responses delete error", responsesDeleteError);
 					return {
 						success: false,
 						message: `Failed to delete responses: ${responsesDeleteError.message}`,
 						deleted: false,
-					}
+					};
 				}
 
 				// Delete the survey
@@ -131,22 +131,22 @@ Use hardDelete=true only when explicitly requested to permanently remove the sur
 					.from("research_links")
 					.delete()
 					.eq("id", input.surveyId)
-					.eq("project_id", projectId)
+					.eq("project_id", projectId);
 
 				if (surveyDeleteError) {
-					consola.error("delete-survey: survey delete error", surveyDeleteError)
+					consola.error("delete-survey: survey delete error", surveyDeleteError);
 					return {
 						success: false,
 						message: `Failed to delete survey: ${surveyDeleteError.message}`,
 						deleted: false,
-					}
+					};
 				}
 
 				consola.info("delete-survey: hard delete success", {
 					surveyId: input.surveyId,
 					surveyName: survey.name,
 					responsesDeleted: responseCount,
-				})
+				});
 
 				return {
 					success: true,
@@ -155,13 +155,13 @@ Use hardDelete=true only when explicitly requested to permanently remove the sur
 					surveyId: input.surveyId,
 					surveyName: survey.name,
 					responseCount: responseCount ?? 0,
-				}
+				};
 			}
 
 			// Soft delete: archive the survey
 			const archiveDescription = input.reason
 				? `[ARCHIVED: ${input.reason}] ${survey.name}`
-				: `[ARCHIVED] ${survey.name}`
+				: `[ARCHIVED] ${survey.name}`;
 
 			const { error: updateError } = await supabase
 				.from("research_links")
@@ -172,21 +172,21 @@ Use hardDelete=true only when explicitly requested to permanently remove the sur
 					updated_at: new Date().toISOString(),
 				})
 				.eq("id", input.surveyId)
-				.eq("project_id", projectId)
+				.eq("project_id", projectId);
 
 			if (updateError) {
-				consola.error("delete-survey: archive error", updateError)
+				consola.error("delete-survey: archive error", updateError);
 				return {
 					success: false,
 					message: `Failed to archive survey: ${updateError.message}`,
 					deleted: false,
-				}
+				};
 			}
 
 			consola.info("delete-survey: soft delete (archive) success", {
 				surveyId: input.surveyId,
 				surveyName: survey.name,
-			})
+			});
 
 			return {
 				success: true,
@@ -195,14 +195,14 @@ Use hardDelete=true only when explicitly requested to permanently remove the sur
 				surveyId: input.surveyId,
 				surveyName: survey.name,
 				responseCount: responseCount ?? 0,
-			}
+			};
 		} catch (error) {
-			consola.error("delete-survey: unexpected error", error)
+			consola.error("delete-survey: unexpected error", error);
 			return {
 				success: false,
 				message: error instanceof Error ? error.message : "Unexpected error deleting survey",
 				deleted: false,
-			}
+			};
 		}
 	},
-})
+});

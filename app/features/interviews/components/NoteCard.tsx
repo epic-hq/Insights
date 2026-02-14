@@ -1,8 +1,8 @@
-import { formatDistance } from "date-fns"
-import { motion } from "framer-motion"
-import { Calendar, Loader2, MoreVertical, RefreshCw, Trash2, Users } from "lucide-react"
-import { useState } from "react"
-import { Link, useFetcher } from "react-router"
+import { formatDistance } from "date-fns";
+import { motion } from "framer-motion";
+import { Calendar, Loader2, MoreVertical, RefreshCw, Trash2, Users } from "lucide-react";
+import { useState } from "react";
+import { Link, useFetcher } from "react-router";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -12,83 +12,88 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-} from "~/components/ui/alert-dialog"
-import { Badge } from "~/components/ui/badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
+} from "~/components/ui/alert-dialog";
+import { Badge } from "~/components/ui/badge";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
 
 interface NoteCardProps {
 	note: {
-		id: string
-		title: string
-		content_md?: string
-		created_at: string
-		note_type: string
-		media_type?: string | null
-		source_type?: string | null
-		tags?: string[]
-		status?: string | null
+		id: string;
+		title: string;
+		content_md?: string;
+		created_at: string;
+		note_type: string;
+		media_type?: string | null;
+		source_type?: string | null;
+		tags?: string[];
+		status?: string | null;
 		interview_people?: Array<{
 			people?: {
-				name?: string | null
-				segment?: string | null
-			} | null
-			role?: string | null
-		}>
+				name?: string | null;
+				segment?: string | null;
+			} | null;
+			role?: string | null;
+		}>;
 		conversation_analysis?: {
-			indexed_at?: string
-			evidence_count?: number
-		} | null
-	}
-	className?: string
+			indexed_at?: string;
+			evidence_count?: number;
+		} | null;
+	};
+	className?: string;
 }
 
 export default function NoteCard({ note, className }: NoteCardProps) {
-	const [isHovered, setIsHovered] = useState(false)
-	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-	const { projectPath, projectId } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const [isHovered, setIsHovered] = useState(false);
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+	const { projectPath, projectId } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 	const deleteFetcher = useFetcher<{
-		success?: boolean
-		redirectTo?: string
-		error?: string
-	}>()
-	const reprocessFetcher = useFetcher()
+		success?: boolean;
+		redirectTo?: string;
+		error?: string;
+	}>();
+	const reprocessFetcher = useFetcher();
 
-	const isDeleting = deleteFetcher.state !== "idle"
-	const isReprocessing = reprocessFetcher.state !== "idle"
+	const isDeleting = deleteFetcher.state !== "idle";
+	const isReprocessing = reprocessFetcher.state !== "idle";
 
 	// Truncate content for preview
 	const contentPreview = note.content_md
 		? note.content_md.slice(0, 120) + (note.content_md.length > 120 ? "..." : "")
-		: ""
+		: "";
 
 	const participant_names = Array.from(
 		new Set(
 			(note.interview_people ?? []).map((p) => p.people?.name?.trim()).filter((name): name is string => Boolean(name))
 		)
-	)
-	const displayed_participant_names = participant_names.slice(0, 3)
-	const remaining_participant_count = Math.max(0, participant_names.length - displayed_participant_names.length)
+	);
+	const displayed_participant_names = participant_names.slice(0, 3);
+	const remaining_participant_count = Math.max(0, participant_names.length - displayed_participant_names.length);
 	const participants_label =
 		displayed_participant_names.length > 0
 			? remaining_participant_count > 0
 				? `${displayed_participant_names.join(", ")} +${remaining_participant_count}`
 				: displayed_participant_names.join(", ")
-			: null
+			: null;
 
 	const handleReprocess = (e: React.MouseEvent) => {
-		e.preventDefault()
-		e.stopPropagation()
-		reprocessFetcher.submit({ interviewId: note.id }, { method: "post", action: "/api/index-note" })
-	}
+		e.preventDefault();
+		e.stopPropagation();
+		reprocessFetcher.submit({ interviewId: note.id }, { method: "post", action: "/api/index-note" });
+	};
 
 	const handleDelete = () => {
-		deleteFetcher.submit({ interviewId: note.id, projectId }, { method: "post", action: "/api/interviews/delete" })
-	}
+		deleteFetcher.submit({ interviewId: note.id, projectId }, { method: "post", action: "/api/interviews/delete" });
+	};
 
 	return (
 		<>
@@ -115,8 +120,8 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 						<DropdownMenu>
 							<DropdownMenuTrigger
 								onClick={(e) => {
-									e.preventDefault()
-									e.stopPropagation()
+									e.preventDefault();
+									e.stopPropagation();
 								}}
 								className="rounded-md bg-white/80 p-1.5 hover:bg-white dark:bg-gray-800/80 dark:hover:bg-gray-800"
 							>
@@ -129,9 +134,9 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 								</DropdownMenuItem>
 								<DropdownMenuItem
 									onClick={(e) => {
-										e.preventDefault()
-										e.stopPropagation()
-										setDeleteDialogOpen(true)
+										e.preventDefault();
+										e.stopPropagation();
+										setDeleteDialogOpen(true);
 									}}
 									disabled={isDeleting}
 									className="text-destructive focus:text-destructive"
@@ -236,5 +241,5 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 				</AlertDialogContent>
 			</AlertDialog>
 		</>
-	)
+	);
 }

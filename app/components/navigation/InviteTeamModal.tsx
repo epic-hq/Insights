@@ -1,14 +1,14 @@
-import { UserPlus } from "lucide-react"
-import { Link } from "react-router-dom"
-import { SidebarMenuButton } from "~/components/ui/sidebar"
+import { UserPlus } from "lucide-react";
+import { Link } from "react-router-dom";
+import { SidebarMenuButton } from "~/components/ui/sidebar";
 
 interface InviteTeamModalProps {
-	accountId?: string
+	accountId?: string;
 }
 
 export function InviteTeamModal({ accountId }: InviteTeamModalProps) {
-	const tooltip = "Access • Collaborate on insights."
-	const manageTeamUrl = accountId ? `/a/${accountId}/team/manage` : "/teams"
+	const tooltip = "Access • Collaborate on insights.";
+	const manageTeamUrl = accountId ? `/a/${accountId}/team/manage` : "/teams";
 
 	return (
 		<SidebarMenuButton asChild tooltip={tooltip} showTooltipWhenExpanded>
@@ -17,5 +17,5 @@ export function InviteTeamModal({ accountId }: InviteTeamModalProps) {
 				<span>Access</span>
 			</Link>
 		</SidebarMenuButton>
-	)
+	);
 }

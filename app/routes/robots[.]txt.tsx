@@ -1,4 +1,4 @@
-import type { LoaderFunctionArgs } from "react-router"
+import type { LoaderFunctionArgs } from "react-router";
 
 /**
  * Dynamic Robots.txt Generator
@@ -11,8 +11,8 @@ import type { LoaderFunctionArgs } from "react-router"
  */
 
 export async function loader({ request }: LoaderFunctionArgs) {
-	const baseUrl = new URL(request.url).origin
-	const isDev = process.env.NODE_ENV === "development"
+	const baseUrl = new URL(request.url).origin;
+	const isDev = process.env.NODE_ENV === "development";
 
 	// In development, disallow all crawling
 	// In production, allow with specific rules
@@ -36,7 +36,7 @@ Allow: /auth/register
 
 # Sitemap location
 Sitemap: ${baseUrl}/sitemap.xml
-`
+`;
 
 	return new Response(robotsTxt, {
 		status: 200,
@@ -44,5 +44,5 @@ Sitemap: ${baseUrl}/sitemap.xml
 			"Content-Type": "text/plain",
 			"Cache-Control": "public, max-age=86400", // Cache for 24 hours
 		},
-	})
+	});
 }

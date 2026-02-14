@@ -1,6 +1,6 @@
-import { createTool } from "@mastra/core/tools"
-import consola from "consola"
-import { z } from "zod"
+import { createTool } from "@mastra/core/tools";
+import consola from "consola";
+import { z } from "zod";
 
 export const getCurrentDateTool = createTool({
 	id: "get-current-date",
@@ -27,19 +27,19 @@ export const getCurrentDateTool = createTool({
 			contextTimezone: input.timezone,
 			runtimeContextAvailable: !!context,
 			userTimezone: context?.requestContext?.get?.("user_timezone"),
-		})
+		});
 
 		// Priority: explicit param > runtime context user_timezone > UTC fallback
 		const timezone =
 			input.timezone ||
 			context?.requestContext?.get?.("user_timezone") ||
 			context?.requestContext?.get?.("timezone") ||
-			"UTC"
+			"UTC";
 
-		consola.debug("getCurrentDate using timezone", { timezone })
+		consola.debug("getCurrentDate using timezone", { timezone });
 
 		try {
-			const now = new Date()
+			const now = new Date();
 			const formatter = new Intl.DateTimeFormat("en-US", {
 				timeZone: timezone,
 				weekday: "long",
@@ -50,18 +50,18 @@ export const getCurrentDateTool = createTool({
 				minute: "2-digit",
 				second: "2-digit",
 				hour12: false,
-			})
+			});
 
-			const parts = formatter.formatToParts(now)
-			const getPart = (type: string) => parts.find((p) => p.type === type)?.value || ""
+			const parts = formatter.formatToParts(now);
+			const getPart = (type: string) => parts.find((p) => p.type === type)?.value || "";
 
-			const year = getPart("year")
-			const month = getPart("month")
-			const day = getPart("day")
-			const hour = getPart("hour")
-			const minute = getPart("minute")
-			const second = getPart("second")
-			const dayOfWeek = getPart("weekday")
+			const year = getPart("year");
+			const month = getPart("month");
+			const day = getPart("day");
+			const hour = getPart("hour");
+			const minute = getPart("minute");
+			const second = getPart("second");
+			const dayOfWeek = getPart("weekday");
 
 			return {
 				date: `${year}-${month}-${day}`,
@@ -69,17 +69,17 @@ export const getCurrentDateTool = createTool({
 				dayOfWeek,
 				timestamp: now.toISOString(),
 				timezone,
-			}
+			};
 		} catch {
 			// Fallback to UTC if timezone is invalid
-			const now = new Date()
+			const now = new Date();
 			return {
 				date: now.toISOString().split("T")[0],
 				time: now.toISOString().split("T")[1].split(".")[0],
 				dayOfWeek: now.toLocaleDateString("en-US", { weekday: "long" }),
 				timestamp: now.toISOString(),
 				timezone: "UTC",
-			}
+			};
 		}
 	},
-})
+});

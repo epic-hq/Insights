@@ -1,23 +1,23 @@
-import { Settings2 } from "lucide-react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { Project } from "~/types"
+import { Settings2 } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import type { Project } from "~/types";
 
 type ProjectEditButtonProps = {
-	project?: Pick<Project, "id">
-	projectId?: string | null
-}
+	project?: Pick<Project, "id">;
+	projectId?: string | null;
+};
 
 export const ProjectEditButton = ({ project, projectId: projectIdProp }: ProjectEditButtonProps) => {
-	const { projectId: contextProjectId, projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
-	const projectId = project?.id ?? projectIdProp ?? contextProjectId
+	const { projectId: contextProjectId, projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
+	const projectId = project?.id ?? projectIdProp ?? contextProjectId;
 
 	if (!projectId) {
-		return null
+		return null;
 	}
 
 	return (
@@ -39,5 +39,5 @@ export const ProjectEditButton = ({ project, projectId: projectIdProp }: Project
 				<TooltipContent side="left">Edit</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
-	)
-}
+	);
+};

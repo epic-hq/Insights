@@ -1,1 +1,1 @@
-export { default } from "./ProjectGoalsScreenRedesigned"
+export { default } from "./ProjectGoalsScreenRedesigned";

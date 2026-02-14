@@ -1,23 +1,23 @@
-import { ChevronRight, Command, Lightbulb, MessageSquare, Mic, TrendingUp, Users } from "lucide-react"
-import { useState } from "react"
-import { NavLink, useLocation, useNavigate, useRouteLoaderData } from "react-router"
-import { UserProfile } from "~/components/auth/UserProfile"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import { createRouteDefinitions } from "~/utils/route-definitions"
+import { ChevronRight, Command, Lightbulb, MessageSquare, Mic, TrendingUp, Users } from "lucide-react";
+import { useState } from "react";
+import { NavLink, useLocation, useNavigate, useRouteLoaderData } from "react-router";
+import { UserProfile } from "~/components/auth/UserProfile";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import { createRouteDefinitions } from "~/utils/route-definitions";
 
 interface JourneyStep {
-	key: string
-	title: string
-	description: string
-	icon: React.ComponentType<{ className?: string }>
-	routes: string[]
+	key: string;
+	title: string;
+	description: string;
+	icon: React.ComponentType<{ className?: string }>;
+	routes: string[];
 	subItems?: {
-		label: string
-		route: string
-		description?: string
-	}[]
+		label: string;
+		route: string;
+		description?: string;
+	}[];
 }
 
 const journeySteps: JourneyStep[] = [
@@ -102,73 +102,73 @@ const journeySteps: JourneyStep[] = [
 			},
 		],
 	},
-]
+];
 
 interface JourneyNavProps {
-	variant?: "sidebar" | "bottom" | "stepper"
-	className?: string
+	variant?: "sidebar" | "bottom" | "stepper";
+	className?: string;
 }
 
 interface ProjectRecord {
-	id: string
-	account_id: string
-	name?: string | null
-	slug?: string | null
+	id: string;
+	account_id: string;
+	name?: string | null;
+	slug?: string | null;
 }
 
 interface AccountRecord {
-	account_id: string
-	name?: string | null
-	personal_account?: boolean | null
-	projects?: ProjectRecord[] | null
+	account_id: string;
+	name?: string | null;
+	personal_account?: boolean | null;
+	projects?: ProjectRecord[] | null;
 }
 
 interface ProtectedLayoutData {
-	accounts?: AccountRecord[] | null
+	accounts?: AccountRecord[] | null;
 }
 
 export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) {
-	const location = useLocation()
-	const navigate = useNavigate()
-	const { accountId, projectId, projectPath, setLastProjectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
-	const [_teamSwitcherOpen, setTeamSwitcherOpen] = useState(false)
-	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null
+	const location = useLocation();
+	const navigate = useNavigate();
+	const { accountId, projectId, projectPath, setLastProjectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
+	const [_teamSwitcherOpen, setTeamSwitcherOpen] = useState(false);
+	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null;
 
-	const accounts = (protectedData?.accounts || []).filter((acct) => !acct.personal_account)
-	const currentAccount = accounts.find((acct) => acct.account_id === accountId) || accounts[0]
+	const accounts = (protectedData?.accounts || []).filter((acct) => !acct.personal_account);
+	const currentAccount = accounts.find((acct) => acct.account_id === accountId) || accounts[0];
 	const currentProject =
-		currentAccount?.projects?.find((proj) => proj.id === projectId) || currentAccount?.projects?.[0]
-	const _initials = currentProject?.name?.charAt(0)?.toUpperCase() || "P"
+		currentAccount?.projects?.find((proj) => proj.id === projectId) || currentAccount?.projects?.[0];
+	const _initials = currentProject?.name?.charAt(0)?.toUpperCase() || "P";
 
 	const _handleSelectProject = (acctId: string, projId: string) => {
-		if (!acctId || !projId) return
-		setLastProjectPath({ accountId: acctId, projectId: projId })
-		const basePath = `/a/${acctId}/${projId}`
-		const projectRoutes = createRouteDefinitions(basePath)
-		navigate(projectRoutes.dashboard())
-		setTeamSwitcherOpen(false)
-	}
+		if (!acctId || !projId) return;
+		setLastProjectPath({ accountId: acctId, projectId: projId });
+		const basePath = `/a/${acctId}/${projId}`;
+		const projectRoutes = createRouteDefinitions(basePath);
+		navigate(projectRoutes.dashboard());
+		setTeamSwitcherOpen(false);
+	};
 
 	const getCurrentStep = () => {
-		const currentPath = location.pathname
+		const currentPath = location.pathname;
 
 		// Extract the route segment after the project path (e.g., /a/123/456/interviews -> /interviews)
 		// This handles paths like /a/:accountId/:projectId/interviews
-		const pathSegments = currentPath.split("/").filter(Boolean)
-		const routeSegment = pathSegments.length >= 3 ? `/${pathSegments.slice(3).join("/")}` : currentPath
+		const pathSegments = currentPath.split("/").filter(Boolean);
+		const routeSegment = pathSegments.length >= 3 ? `/${pathSegments.slice(3).join("/")}` : currentPath;
 
 		// Find the most specific match (longest route that matches)
-		let bestMatch: JourneyStep | undefined
-		let bestMatchLength = 0
+		let bestMatch: JourneyStep | undefined;
+		let bestMatchLength = 0;
 
 		for (const step of journeySteps) {
 			// Check direct routes
 			for (const route of step.routes) {
 				// Match if routeSegment starts with the route pattern
 				if (routeSegment.startsWith(route) && route.length > bestMatchLength) {
-					bestMatch = step
-					bestMatchLength = route.length
+					bestMatch = step;
+					bestMatchLength = route.length;
 				}
 			}
 
@@ -176,18 +176,18 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 			if (step.subItems) {
 				for (const item of step.subItems) {
 					if (routeSegment.startsWith(item.route) && item.route.length > bestMatchLength) {
-						bestMatch = step
-						bestMatchLength = item.route.length
+						bestMatch = step;
+						bestMatchLength = item.route.length;
 					}
 				}
 			}
 		}
 
-		return bestMatch?.key || "research"
-	}
+		return bestMatch?.key || "research";
+	};
 
-	const currentStep = getCurrentStep()
-	const currentStepIndex = journeySteps.findIndex((step) => step.key === currentStep)
+	const currentStep = getCurrentStep();
+	const currentStepIndex = journeySteps.findIndex((step) => step.key === currentStep);
 
 	const getRouteUrl = (route: string): string => {
 		const routeMap: Record<string, () => string> = {
@@ -202,9 +202,9 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 			"/project-chat": () => `${projectPath}/project-chat`,
 			"/assistant": () => `${projectPath}/assistant`,
 			"/login": () => routes.login(),
-		}
-		return routeMap[route]?.() || route
-	}
+		};
+		return routeMap[route]?.() || route;
+	};
 
 	if (variant === "stepper") {
 		return (
@@ -212,10 +212,10 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 				<div className="mx-auto max-w-[1440px] px-4">
 					<div className="flex items-center py-3">
 						{journeySteps.map((step, index) => {
-							const isActive = step.key === currentStep
-							const isCompleted = index < currentStepIndex
-							const Icon = step.icon
-							const primaryRoute = step.subItems?.[0]?.route || step.routes[0]
+							const isActive = step.key === currentStep;
+							const isCompleted = index < currentStepIndex;
+							const Icon = step.icon;
+							const primaryRoute = step.subItems?.[0]?.route || step.routes[0];
 
 							return (
 								<div key={step.key} className="flex items-center">
@@ -235,12 +235,12 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 									</NavLink>
 									{index < journeySteps.length - 1 && <ChevronRight className="mx-2 h-4 w-4 text-muted-foreground" />}
 								</div>
-							)
+							);
 						})}
 					</div>
 				</div>
 			</div>
-		)
+		);
 	}
 
 	if (variant === "bottom") {
@@ -263,7 +263,7 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 				icon: MessageSquare,
 				route: "/assistant",
 			},
-		]
+		];
 
 		return (
 			<nav
@@ -274,8 +274,8 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 			>
 				{/* Mobile Nav Items */}
 				{mobileNavItems.map((item) => {
-					const isActive = location.pathname.includes(item.route)
-					const Icon = item.icon
+					const isActive = location.pathname.includes(item.route);
+					const Icon = item.icon;
 
 					return (
 						<NavLink
@@ -288,7 +288,7 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 						>
 							<Icon className="h-6 w-6" />
 						</NavLink>
-					)
+					);
 				})}
 
 				{/* Account - UserProfile Dropdown */}
@@ -296,7 +296,7 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 					<UserProfile collapsed={true} className="w-auto" />
 				</div>
 			</nav>
-		)
+		);
 	}
 
 	// Default sidebar variant
@@ -308,8 +308,8 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 			</div>
 			<div className="flex-1 overflow-y-auto">
 				{journeySteps.map((step, _stepIndex) => {
-					const isActive = step.key === currentStep
-					const Icon = step.icon
+					const isActive = step.key === currentStep;
+					const Icon = step.icon;
 
 					return (
 						<div key={step.key} className="p-2">
@@ -346,9 +346,9 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 								</div>
 							)}
 						</div>
-					)
+					);
 				})}
 			</div>
 		</nav>
-	)
+	);
 }

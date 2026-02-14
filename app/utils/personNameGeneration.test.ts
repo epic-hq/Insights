@@ -3,19 +3,19 @@
  * Tests the smart fallback naming system used in person creation
  */
 
-import { describe, expect, it } from "vitest"
+import { describe, expect, it } from "vitest";
 
 /**
  * Extract the person name generation logic for testing
  * This mirrors the logic in processInterview.server.ts
  */
 function generateFallbackPersonName(options: {
-	fileName?: string
-	interviewTitle?: string
-	interviewDate?: string
-	interviewId?: string
+	fileName?: string;
+	interviewTitle?: string;
+	interviewDate?: string;
+	interviewId?: string;
 }): string {
-	const { fileName, interviewTitle, interviewDate, interviewId } = options
+	const { fileName, interviewTitle, interviewDate, interviewId } = options;
 
 	// Try filename first
 	if (fileName && fileName.length > 4) {
@@ -23,10 +23,10 @@ function generateFallbackPersonName(options: {
 			.replace(/\.[^/.]+$/, "") // Remove extension
 			.replace(/[_-]/g, " ") // Replace underscores and hyphens with spaces
 			.replace(/\b\w/g, (l) => l.toUpperCase()) // Title case
-			.trim()
+			.trim();
 
 		if (nameFromFile.length > 0 && !nameFromFile.toLowerCase().match(/^(rec|recording|audio|video|file)$/)) {
-			return `Participant (${nameFromFile})`
+			return `Participant (${nameFromFile})`;
 		}
 	}
 
@@ -35,26 +35,26 @@ function generateFallbackPersonName(options: {
 		const cleanTitle = interviewTitle
 			.replace(/^Interview\s*-?\s*/i, "") // Remove "Interview -" prefix
 			.replace(/\d{4}-\d{2}-\d{2}/, "") // Remove dates
-			.trim()
+			.trim();
 
 		if (cleanTitle.length > 0) {
-			return `Participant (${cleanTitle})`
+			return `Participant (${cleanTitle})`;
 		}
 	}
 
 	// Try interview date
 	if (interviewDate) {
-		return `Participant (${interviewDate})`
+		return `Participant (${interviewDate})`;
 	}
 
 	// Final fallback: use interview ID
 	if (interviewId) {
-		const shortId = interviewId.slice(-8) // Last 8 characters
-		return `Participant (${shortId})`
+		const shortId = interviewId.slice(-8); // Last 8 characters
+		return `Participant (${shortId})`;
 	}
 
 	// Ultimate fallback
-	return "Participant (Unknown)"
+	return "Participant (Unknown)";
 }
 
 describe("Person Name Generation", () => {
@@ -81,46 +81,46 @@ describe("Person Name Generation", () => {
 					fileName: "product_manager_interview.aac",
 					expected: "Participant (Product Manager Interview)",
 				},
-			]
+			];
 
 			for (const testCase of testCases) {
-				const result = generateFallbackPersonName({ fileName: testCase.fileName })
-				expect(result).toBe(testCase.expected)
+				const result = generateFallbackPersonName({ fileName: testCase.fileName });
+				expect(result).toBe(testCase.expected);
 			}
-		})
+		});
 
 		it("should skip generic filenames and use fallback", () => {
-			const genericFiles = ["rec.mp3", "recording.wav", "audio.m4a", "video.mp4", "file.aac"]
+			const genericFiles = ["rec.mp3", "recording.wav", "audio.m4a", "video.mp4", "file.aac"];
 
 			for (const fileName of genericFiles) {
 				const result = generateFallbackPersonName({
 					fileName,
 					interviewDate: "2025-01-25",
-				})
+				});
 				// Note: Current implementation doesn't filter generic names, so expect transformed filename
 				if (fileName === "rec.mp3") {
-					expect(result).toBe("Participant (Rec)")
+					expect(result).toBe("Participant (Rec)");
 				} else if (fileName === "recording.wav") {
-					expect(result).toBe("Participant (Recording)")
+					expect(result).toBe("Participant (Recording)");
 				} else {
-					expect(result).toBe("Participant (2025-01-25)")
+					expect(result).toBe("Participant (2025-01-25)");
 				}
 			}
-		})
+		});
 
 		it("should handle very short filenames", () => {
 			const result = generateFallbackPersonName({
 				fileName: "x.mp3",
 				interviewDate: "2025-01-25",
-			})
-			expect(result).toBe("Participant (X)")
-		})
+			});
+			expect(result).toBe("Participant (X)");
+		});
 
 		it("should handle filenames without extensions", () => {
-			const result = generateFallbackPersonName({ fileName: "customer_interview_jane" })
-			expect(result).toBe("Participant (Customer Interview Jane)")
-		})
-	})
+			const result = generateFallbackPersonName({ fileName: "customer_interview_jane" });
+			expect(result).toBe("Participant (Customer Interview Jane)");
+		});
+	});
 
 	describe("Interview title-based naming", () => {
 		it("should use meaningful interview titles", () => {
@@ -137,38 +137,38 @@ describe("Person Name Generation", () => {
 					title: "User Experience Study",
 					expected: "Participant (User Experience Study)",
 				},
-			]
+			];
 
 			for (const testCase of testCases) {
 				const result = generateFallbackPersonName({
 					fileName: "rec.mp3", // Generic filename to force title usage
 					interviewTitle: testCase.title,
-				})
-				expect(result).toBe(testCase.expected)
+				});
+				expect(result).toBe(testCase.expected);
 			}
-		})
+		});
 
 		it("should skip generic interview titles", () => {
-			const genericTitles = ["Interview - 2025-01-25", "Interview - John Doe", "Interview - Customer"]
+			const genericTitles = ["Interview - 2025-01-25", "Interview - John Doe", "Interview - Customer"];
 
 			for (const title of genericTitles) {
 				const result = generateFallbackPersonName({
 					fileName: "rec.mp3",
 					interviewTitle: title,
 					interviewDate: "2025-01-25",
-				})
-				expect(result).toBe("Participant (2025-01-25)")
+				});
+				expect(result).toBe("Participant (2025-01-25)");
 			}
-		})
+		});
 
 		it("should clean up interview titles with dates", () => {
 			const result = generateFallbackPersonName({
 				fileName: "rec.mp3",
 				interviewTitle: "Customer Research 2025-01-25 Session",
-			})
-			expect(result).toBe("Participant (Customer Research  Session)")
-		})
-	})
+			});
+			expect(result).toBe("Participant (Customer Research  Session)");
+		});
+	});
 
 	describe("Date-based naming", () => {
 		it("should use interview date when other options fail", () => {
@@ -176,22 +176,22 @@ describe("Person Name Generation", () => {
 				fileName: "rec.mp3",
 				interviewTitle: "Interview - Generic",
 				interviewDate: "2025-01-25",
-			})
-			expect(result).toBe("Participant (2025-01-25)")
-		})
+			});
+			expect(result).toBe("Participant (2025-01-25)");
+		});
 
 		it("should handle different date formats", () => {
-			const dates = ["2025-01-25", "2025/01/25", "25-01-2025"]
+			const dates = ["2025-01-25", "2025/01/25", "25-01-2025"];
 
 			for (const date of dates) {
 				const result = generateFallbackPersonName({
 					fileName: "rec.mp3",
 					interviewDate: date,
-				})
-				expect(result).toBe(`Participant (${date})`)
+				});
+				expect(result).toBe(`Participant (${date})`);
 			}
-		})
-	})
+		});
+	});
 
 	describe("Interview ID-based naming", () => {
 		it("should use interview ID as final fallback", () => {
@@ -208,17 +208,17 @@ describe("Person Name Generation", () => {
 					interviewId: "short",
 					expected: "Participant (short)",
 				},
-			]
+			];
 
 			for (const testCase of testCases) {
 				const result = generateFallbackPersonName({
 					fileName: "rec.mp3",
 					interviewId: testCase.interviewId,
-				})
-				expect(result).toBe(testCase.expected)
+				});
+				expect(result).toBe(testCase.expected);
 			}
-		})
-	})
+		});
+	});
 
 	describe("Fallback priority order", () => {
 		it("should prefer filename over title", () => {
@@ -227,9 +227,9 @@ describe("Person Name Generation", () => {
 				interviewTitle: "Customer Research Session",
 				interviewDate: "2025-01-25",
 				interviewId: "interview-123",
-			})
-			expect(result).toBe("Participant (Sarah Interview)")
-		})
+			});
+			expect(result).toBe("Participant (Sarah Interview)");
+		});
 
 		it("should prefer title over date when filename is generic", () => {
 			const result = generateFallbackPersonName({
@@ -237,9 +237,9 @@ describe("Person Name Generation", () => {
 				interviewTitle: "Product Feedback Session",
 				interviewDate: "2025-01-25",
 				interviewId: "interview-123",
-			})
-			expect(result).toBe("Participant (Product Feedback Session)")
-		})
+			});
+			expect(result).toBe("Participant (Product Feedback Session)");
+		});
 
 		it("should prefer date over ID when title is generic", () => {
 			const result = generateFallbackPersonName({
@@ -247,24 +247,24 @@ describe("Person Name Generation", () => {
 				interviewTitle: "Interview - Generic",
 				interviewDate: "2025-01-25",
 				interviewId: "interview-123",
-			})
-			expect(result).toBe("Participant (2025-01-25)")
-		})
+			});
+			expect(result).toBe("Participant (2025-01-25)");
+		});
 
 		it("should use ID when all else fails", () => {
 			const result = generateFallbackPersonName({
 				fileName: "rec.mp3",
 				interviewTitle: "Interview - Generic",
 				interviewId: "interview-abcd1234",
-			})
-			expect(result).toBe("Participant (abcd1234)")
-		})
+			});
+			expect(result).toBe("Participant (abcd1234)");
+		});
 
 		it("should use ultimate fallback when nothing is available", () => {
-			const result = generateFallbackPersonName({})
-			expect(result).toBe("Participant (Unknown)")
-		})
-	})
+			const result = generateFallbackPersonName({});
+			expect(result).toBe("Participant (Unknown)");
+		});
+	});
 
 	describe("Edge cases", () => {
 		it("should handle empty strings gracefully", () => {
@@ -273,9 +273,9 @@ describe("Person Name Generation", () => {
 				interviewTitle: "",
 				interviewDate: "",
 				interviewId: "",
-			})
-			expect(result).toBe("Participant (Unknown)")
-		})
+			});
+			expect(result).toBe("Participant (Unknown)");
+		});
 
 		it("should handle whitespace-only strings", () => {
 			const result = generateFallbackPersonName({
@@ -283,30 +283,30 @@ describe("Person Name Generation", () => {
 				interviewTitle: "   ",
 				interviewDate: "   ",
 				interviewId: "   ",
-			})
-			expect(result).toBe("Participant (   )")
-		})
+			});
+			expect(result).toBe("Participant (   )");
+		});
 
 		it("should handle special characters in filenames", () => {
 			const result = generateFallbackPersonName({
 				fileName: "interview@#$%^&*()_+john_doe.mp3",
-			})
-			expect(result).toBe("Participant (Interview@#$%^&*() +John Doe)")
-		})
+			});
+			expect(result).toBe("Participant (Interview@#$%^&*() +John Doe)");
+		});
 
 		it("should handle very long filenames", () => {
-			const longFileName = "this_is_a_very_long_filename_that_contains_many_words_and_should_still_work_properly.mp3"
-			const result = generateFallbackPersonName({ fileName: longFileName })
+			const longFileName = "this_is_a_very_long_filename_that_contains_many_words_and_should_still_work_properly.mp3";
+			const result = generateFallbackPersonName({ fileName: longFileName });
 			expect(result).toBe(
 				"Participant (This Is A Very Long Filename That Contains Many Words And Should Still Work Properly)"
-			)
-		})
+			);
+		});
 
 		it("should handle unicode characters", () => {
 			const result = generateFallbackPersonName({
 				fileName: "entrevista_josé_maría.mp3",
-			})
-			expect(result).toBe("Participant (Entrevista José MaríA)")
-		})
-	})
-})
+			});
+			expect(result).toBe("Participant (Entrevista José MaríA)");
+		});
+	});
+});

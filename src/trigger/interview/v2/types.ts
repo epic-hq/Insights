@@ -8,6 +8,7 @@ export interface InterviewMetadata {
 	accountId: string
 	userId?: string
 	projectId?: string
+	triggerRunId?: string
 	interviewTitle?: string
 	interviewDate?: string
 	fileName?: string
@@ -144,6 +145,7 @@ export interface ProcessInterviewOrchestratorPayload {
 	// Resume capability
 	resumeFrom?: WorkflowStep
 	skipSteps?: WorkflowStep[] // Optional: skip specific steps (e.g., for testing)
+	includeDeferredSteps?: boolean // Opt-in for enrich/personas/answers pass
 }
 
 export interface ProcessInterviewOrchestratorResult {

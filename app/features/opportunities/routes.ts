@@ -1,4 +1,4 @@
-import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes"
+import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes";
 
 export default [
 	...prefix("opportunities", [
@@ -7,4 +7,4 @@ export default [
 		route(":opportunityId", "./features/opportunities/pages/opportunityDetail.tsx"),
 		route(":opportunityId/edit", "./features/opportunities/pages/edit.tsx"),
 	]),
-] satisfies RouteConfig
+] satisfies RouteConfig;

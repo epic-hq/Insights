@@ -1,35 +1,35 @@
-import { formatDistance } from "date-fns"
-import { motion } from "framer-motion"
-import { Users } from "lucide-react"
-import { useState } from "react"
-import { Link } from "react-router-dom"
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import type { Database } from "~/types"
+import { formatDistance } from "date-fns";
+import { motion } from "framer-motion";
+import { Users } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Avatar, AvatarFallback } from "~/components/ui/avatar";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import type { Database } from "~/types";
 
-type PersonaRow = Database["public"]["Tables"]["personas"]["Row"]
+type PersonaRow = Database["public"]["Tables"]["personas"]["Row"];
 
 interface EnhancedPersonaCardProps {
 	persona: PersonaRow & {
-		people_personas?: Array<{ count: number }>
-	}
-	className?: string
+		people_personas?: Array<{ count: number }>;
+	};
+	className?: string;
 }
 
 export default function EnhancedPersonaCard({ persona, className }: EnhancedPersonaCardProps) {
-	const [isHovered, setIsHovered] = useState(false)
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const [isHovered, setIsHovered] = useState(false);
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
 	// Calculate people count from junction table
-	const peopleCount = persona.people_personas?.[0]?.count || 0
+	const peopleCount = persona.people_personas?.[0]?.count || 0;
 
 	// Get persona details with fallbacks
-	const name = persona.name || "Untitled Persona"
-	const description = persona.description || "No description available"
-	const themeColor = persona.color_hex || "#6b7280"
+	const name = persona.name || "Untitled Persona";
+	const description = persona.description || "No description available";
+	const themeColor = persona.color_hex || "#6b7280";
 
 	// Get initials for avatar
 	const initials =
@@ -39,7 +39,7 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 			.map((word) => word[0])
 			.join("")
 			.toUpperCase()
-			.slice(0, 2) || "?"
+			.slice(0, 2) || "?";
 
 	return (
 		<Link to={routes.personas.detail(persona.id)}>
@@ -137,5 +137,5 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 				/>
 			</motion.div>
 		</Link>
-	)
+	);
 }

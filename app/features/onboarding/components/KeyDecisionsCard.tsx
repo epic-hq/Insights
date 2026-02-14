@@ -1,50 +1,50 @@
-import { AlertCircle, CheckCircle, Lightbulb, XCircle } from "lucide-react"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import type { DecisionQuestionNode, ResearchQuestionNode } from "~/features/research/components/ResearchAnswers"
+import { AlertCircle, CheckCircle, Lightbulb, XCircle } from "lucide-react";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import type { DecisionQuestionNode, ResearchQuestionNode } from "~/features/research/components/ResearchAnswers";
 
 export interface DecoratedResearchQuestion extends ResearchQuestionNode {
-	decisionText: string | null
+	decisionText: string | null;
 }
 
 interface QuestionAnalysis {
-	question_type: "decision" | "research"
-	question_id: string
-	summary: string
-	confidence: number
-	next_steps: string | null
-	goal_achievement_summary: string | null
+	question_type: "decision" | "research";
+	question_id: string;
+	summary: string;
+	confidence: number;
+	next_steps: string | null;
+	goal_achievement_summary: string | null;
 }
 
 interface KeyDecisionsCardProps {
-	decisionSummaries: DecisionQuestionNode[]
-	topResearchQuestions: DecoratedResearchQuestion[]
-	analysisResults?: QuestionAnalysis[]
+	decisionSummaries: DecisionQuestionNode[];
+	topResearchQuestions: DecoratedResearchQuestion[];
+	analysisResults?: QuestionAnalysis[];
 }
 
 function _KeyDecisionsCard({ decisionSummaries, topResearchQuestions, analysisResults = [] }: KeyDecisionsCardProps) {
 	const getDirectionIcon = (confidence: number) => {
-		if (confidence >= 0.8) return <CheckCircle className="h-4 w-4 text-success" />
-		if (confidence >= 0.5) return <AlertCircle className="h-4 w-4 text-warning" />
-		return <XCircle className="h-4 w-4 text-destructive" />
-	}
+		if (confidence >= 0.8) return <CheckCircle className="h-4 w-4 text-success" />;
+		if (confidence >= 0.5) return <AlertCircle className="h-4 w-4 text-warning" />;
+		return <XCircle className="h-4 w-4 text-destructive" />;
+	};
 
 	const getDirectionLabel = (confidence: number) => {
-		if (confidence >= 0.8) return "High Confidence"
-		if (confidence >= 0.5) return "Medium Confidence"
-		return "Low Confidence"
-	}
+		if (confidence >= 0.8) return "High Confidence";
+		if (confidence >= 0.5) return "Medium Confidence";
+		return "Low Confidence";
+	};
 
 	const getConfidenceColor = (confidence: number) => {
-		if (confidence >= 0.8) return "text-success"
-		if (confidence >= 0.5) return "text-warning"
-		return "text-destructive"
-	}
+		if (confidence >= 0.8) return "text-success";
+		if (confidence >= 0.5) return "text-warning";
+		return "text-destructive";
+	};
 
 	// Create analysis map for quick lookup keyed by question type to avoid collisions
 	const analysisMap = new Map(
 		analysisResults.map((analysis) => [`${analysis.question_type}:${analysis.question_id}`, analysis])
-	)
+	);
 	return (
 		<div>
 			<div className="mb-3 text-foreground text-sm">Key Decisions</div>
@@ -53,19 +53,19 @@ function _KeyDecisionsCard({ decisionSummaries, topResearchQuestions, analysisRe
 					<p className="text-muted-foreground text-sm">Pending</p>
 				) : (
 					decisionSummaries.map((decision) => {
-						const analysisResult = analysisMap.get(`decision:${decision.id}`)
+						const analysisResult = analysisMap.get(`decision:${decision.id}`);
 						const analysis = {
 							summary: analysisResult?.summary ?? decision.analysis?.summary ?? null,
 							next_steps: analysisResult?.next_steps ?? decision.analysis?.next_steps ?? null,
 							goal_achievement_summary:
 								analysisResult?.goal_achievement_summary ?? decision.analysis?.goal_achievement_summary ?? null,
 							confidence: analysisResult?.confidence ?? decision.analysis?.confidence ?? null,
-						}
-						const confidence = analysis.confidence ?? 0
-						const answeredCount = decision.metrics.answered_answer_count ?? 0
-						const openCount = decision.metrics.open_answer_count ?? 0
+						};
+						const confidence = analysis.confidence ?? 0;
+						const answeredCount = decision.metrics.answered_answer_count ?? 0;
+						const openCount = decision.metrics.open_answer_count ?? 0;
 						const researchInsights = decision.research_questions.map((rq) => {
-							const rqAnalysisResult = analysisMap.get(`research:${rq.id}`)
+							const rqAnalysisResult = analysisMap.get(`research:${rq.id}`);
 							return {
 								id: rq.id,
 								text: rq.text,
@@ -73,8 +73,8 @@ function _KeyDecisionsCard({ decisionSummaries, topResearchQuestions, analysisRe
 								next_steps: rqAnalysisResult?.next_steps ?? rq.analysis?.next_steps ?? null,
 								confidence: rqAnalysisResult?.confidence ?? rq.analysis?.confidence ?? null,
 								metrics: rq.metrics,
-							}
-						})
+							};
+						});
 
 						return (
 							<Card key={decision.id} className="transition-all">
@@ -145,7 +145,7 @@ function _KeyDecisionsCard({ decisionSummaries, topResearchQuestions, analysisRe
 									)}
 								</CardContent>
 							</Card>
-						)
+						);
 					})
 				)}
 
@@ -177,5 +177,5 @@ function _KeyDecisionsCard({ decisionSummaries, topResearchQuestions, analysisRe
 				)}
 			</div>
 		</div>
-	)
+	);
 }

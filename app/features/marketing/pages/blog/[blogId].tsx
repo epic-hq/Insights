@@ -1,22 +1,22 @@
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router"
-import type { PayloadPost } from "~/lib/cms/payload.server"
-import { getPostBySlug, getRecentPosts } from "~/lib/cms/payload.server"
-import { formatDate, getImageUrl, getReadingTime, lexicalToHtml } from "~/lib/cms/utils"
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Link, useLoaderData } from "react-router";
+import type { PayloadPost } from "~/lib/cms/payload.server";
+import { getPostBySlug, getRecentPosts } from "~/lib/cms/payload.server";
+import { formatDate, getImageUrl, getReadingTime, lexicalToHtml } from "~/lib/cms/utils";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	if (!data?.post) {
-		return [{ title: "Post Not Found | Upsight" }]
+		return [{ title: "Post Not Found | Upsight" }];
 	}
 
-	const { post } = data
-	const seoTitle = post.seo?.title || post.title
-	const seoDescription = post.seo?.description || post.excerpt || `Read ${post.title} on the Upsight blog`
+	const { post } = data;
+	const seoTitle = post.seo?.title || post.title;
+	const seoDescription = post.seo?.description || post.excerpt || `Read ${post.title} on the Upsight blog`;
 	const seoImage = post.seo?.image
 		? getImageUrl(post.seo.image)
 		: post.featured_image
 			? getImageUrl(post.featured_image)
-			: undefined
+			: undefined;
 
 	return [
 		{ title: `${seoTitle} | Upsight Blog` },
@@ -30,57 +30,57 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 		{ property: "article:published_time", content: post.publishedAt },
 		{ property: "article:modified_time", content: post.updatedAt },
 		...(post.author ? [{ property: "article:author", content: post.author.name }] : []),
-	]
-}
+	];
+};
 
 export async function loader({ params }: LoaderFunctionArgs) {
-	const { blogId } = params
+	const { blogId } = params;
 
 	if (!blogId) {
-		throw new Response("Not Found", { status: 404 })
+		throw new Response("Not Found", { status: 404 });
 	}
 
 	try {
-		const [post, recentPosts] = await Promise.all([getPostBySlug(blogId), getRecentPosts(5)])
+		const [post, recentPosts] = await Promise.all([getPostBySlug(blogId), getRecentPosts(5)]);
 
 		if (!post) {
-			throw new Response("Post Not Found", { status: 404 })
+			throw new Response("Post Not Found", { status: 404 });
 		}
 
 		// Convert Lexical content to HTML in the loader
-		const htmlContent = await lexicalToHtml(post.content)
+		const htmlContent = await lexicalToHtml(post.content);
 
 		// Normalize author field: CMS returns authors/populatedAuthors array, but component expects author singular
 		const normalizedPost = {
 			...post,
 			author: post.populatedAuthors?.[0] || post.author,
-		}
+		};
 
 		// Filter out current post from recent posts
-		const filteredRecentPosts = recentPosts.filter((p) => p.id !== post.id).slice(0, 4)
+		const filteredRecentPosts = recentPosts.filter((p) => p.id !== post.id).slice(0, 4);
 
 		return {
 			post: normalizedPost,
 			htmlContent,
 			recentPosts: filteredRecentPosts,
-		}
+		};
 	} catch (error) {
-		console.error("Failed to fetch blog post:", error)
-		throw new Response("Failed to load blog post", { status: 500 })
+		console.error("Failed to fetch blog post:", error);
+		throw new Response("Failed to load blog post", { status: 500 });
 	}
 }
 
 export default function BlogPost() {
-	const { post, htmlContent, recentPosts } = useLoaderData<typeof loader>()
+	const { post, htmlContent, recentPosts } = useLoaderData<typeof loader>();
 
 	const heroImageUrl: string | undefined = post.heroImage?.url
 		? post.heroImage.url.startsWith("/")
 			? `https://upsight-cms.vercel.app${post.heroImage.url}`
 			: post.heroImage.url
-		: undefined
+		: undefined;
 	const imageUrl: string | undefined =
-		heroImageUrl ?? (post.featured_image ? getImageUrl(post.featured_image) || undefined : undefined)
-	const readingTime = getReadingTime(post.content)
+		heroImageUrl ?? (post.featured_image ? getImageUrl(post.featured_image) || undefined : undefined);
+	const readingTime = getReadingTime(post.content);
 
 	// Structured data for SEO
 	const structuredData = {
@@ -105,7 +105,7 @@ export default function BlogPost() {
 			},
 		},
 		description: post.excerpt || post.seo?.description,
-	}
+	};
 
 	return (
 		<>
@@ -256,12 +256,12 @@ export default function BlogPost() {
 				)}
 			</div>
 		</>
-	)
+	);
 }
 
 function RecentPostCard({ post }: { post: PayloadPost }) {
-	const imageUrl = getImageUrl(post.featured_image)
-	const _publishedDate = formatDate(post.publishedAt)
+	const imageUrl = getImageUrl(post.featured_image);
+	const _publishedDate = formatDate(post.publishedAt);
 
 	return (
 		<Link to={`/blog/${post.slug}`} className="group">
@@ -283,5 +283,5 @@ function RecentPostCard({ post }: { post: PayloadPost }) {
 				</div>
 			</article>
 		</Link>
-	)
+	);
 }

@@ -1,21 +1,21 @@
 export type OpportunityStageConfig = {
-	id: string
-	label: string
-	description?: string
-	discovery_focus?: string
-}
+	id: string;
+	label: string;
+	description?: string;
+	discovery_focus?: string;
+};
 
 export type AccountSettingsMetadata = {
-	opportunity_stages?: OpportunityStageConfig[] | null
-	journey_stages?: OpportunityStageConfig[] | null
-	priority_clusters?: OpportunityStageConfig[] | null
+	opportunity_stages?: OpportunityStageConfig[] | null;
+	journey_stages?: OpportunityStageConfig[] | null;
+	priority_clusters?: OpportunityStageConfig[] | null;
 	/** Default lenses enabled for new projects in this account */
-	default_lens_keys?: string[] | null
-	[key: string]: unknown
-}
+	default_lens_keys?: string[] | null;
+	[key: string]: unknown;
+};
 
 /** Platform fallback when account has no default_lens_keys configured */
-export const PLATFORM_DEFAULT_LENS_KEYS = ["sales-bant", "customer-discovery"]
+export const PLATFORM_DEFAULT_LENS_KEYS = ["sales-bant", "customer-discovery"];
 
 export const DEFAULT_OPPORTUNITY_STAGES: OpportunityStageConfig[] = [
 	{
@@ -50,7 +50,7 @@ export const DEFAULT_OPPORTUNITY_STAGES: OpportunityStageConfig[] = [
 	},
 	{ id: "closed-won", label: "Closed Won", description: "Signed and activated" },
 	{ id: "closed-lost", label: "Closed Lost", description: "Exited pipeline" },
-]
+];
 
 export function normalizeStageId(value: string | null | undefined) {
 	return (
@@ -60,49 +60,49 @@ export function normalizeStageId(value: string | null | undefined) {
 			.toLowerCase()
 			.replace(/[^a-z0-9]+/g, "-")
 			.replace(/^-+|-+$/g, "") || ""
-	)
+	);
 }
 
 export function resolveOpportunityStages(settings?: AccountSettingsMetadata | null): OpportunityStageConfig[] {
-	const rawStages = Array.isArray(settings?.opportunity_stages) ? settings?.opportunity_stages : []
+	const rawStages = Array.isArray(settings?.opportunity_stages) ? settings?.opportunity_stages : [];
 
 	const cleaned = (rawStages || [])
 		.map((stage, index) => {
 			const labelCandidate =
 				(typeof stage?.label === "string" && stage.label.trim()) ||
 				(typeof stage?.id === "string" && stage.id.trim()) ||
-				`Stage ${index + 1}`
+				`Stage ${index + 1}`;
 
-			const id = normalizeStageId(stage?.id || labelCandidate)
-			if (!id || !labelCandidate) return null
+			const id = normalizeStageId(stage?.id || labelCandidate);
+			if (!id || !labelCandidate) return null;
 
 			const description =
 				typeof stage?.description === "string" && stage.description.trim().length > 0
 					? stage.description.trim()
-					: undefined
+					: undefined;
 
 			return {
 				id,
 				label: labelCandidate,
 				description,
-			}
+			};
 		})
-		.filter(Boolean) as OpportunityStageConfig[]
+		.filter(Boolean) as OpportunityStageConfig[];
 
-	return cleaned.length ? cleaned : DEFAULT_OPPORTUNITY_STAGES
+	return cleaned.length ? cleaned : DEFAULT_OPPORTUNITY_STAGES;
 }
 
 export function stageLabelForValue(value: string | null | undefined, stages: OpportunityStageConfig[]) {
-	if (!value) return null
-	const normalizedValue = normalizeStageId(value)
-	const match = stages.find((stage) => stage.id === normalizedValue)
-	return match?.label || value
+	if (!value) return null;
+	const normalizedValue = normalizeStageId(value);
+	const match = stages.find((stage) => stage.id === normalizedValue);
+	return match?.label || value;
 }
 
 export function ensureStageValue(value: string | null | undefined, stages: OpportunityStageConfig[]) {
-	const normalizedValue = normalizeStageId(value)
+	const normalizedValue = normalizeStageId(value);
 	if (normalizedValue && stages.some((stage) => stage.id === normalizedValue)) {
-		return normalizedValue
+		return normalizedValue;
 	}
-	return stages[0]?.id || ""
+	return stages[0]?.id || "";
 }

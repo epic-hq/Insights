@@ -14,51 +14,56 @@ import {
 	MessageCircleQuestionIcon,
 	MoreVertical,
 	SparkleIcon,
-} from "lucide-react"
-import { BackButton } from "~/components/ui/back-button"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import InlineEdit from "~/components/ui/inline-edit"
-import { MediaPlayer } from "~/components/ui/MediaPlayer"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "~/components/ui/sheet"
-import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
+} from "lucide-react";
+import { BackButton } from "~/components/ui/back-button";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import InlineEdit from "~/components/ui/inline-edit";
+import { MediaPlayer } from "~/components/ui/MediaPlayer";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "~/components/ui/sheet";
+import { LazyTranscriptResults } from "../components/LazyTranscriptResults";
 
 // Mock data types
 interface MockInterviewData {
-	interview: any
-	insights: any[]
-	peopleOptions: any[]
-	salesLens: any
-	analysisJobs: any[]
-	evidence?: any[]
-	empathyMap?: any
-	conversationAnalysis?: any
+	interview: any;
+	insights: any[];
+	peopleOptions: any[];
+	salesLens: any;
+	analysisJobs: any[];
+	evidence?: any[];
+	empathyMap?: any;
+	conversationAnalysis?: any;
 }
 
 export default function InterviewDetailStorybook({ data }: { data: MockInterviewData }) {
-	const { interview, insights = [], peopleOptions = [], salesLens, analysisJobs = [], conversationAnalysis } = data
+	const { interview, insights = [], peopleOptions = [], salesLens, analysisJobs = [], conversationAnalysis } = data;
 
-	const analysisJob = analysisJobs[0] || null
-	const isProcessing = analysisJob?.status === "in_progress" || analysisJob?.status === "pending"
-	const hasAnalysis = !!conversationAnalysis
+	const analysisJob = analysisJobs[0] || null;
+	const isProcessing = analysisJob?.status === "in_progress" || analysisJob?.status === "pending";
+	const hasAnalysis = !!conversationAnalysis;
 
 	const formatReadable = (dateString: string) => {
-		const d = new Date(dateString)
+		const d = new Date(dateString);
 		return d.toLocaleDateString("en-US", {
 			month: "short",
 			day: "2-digit",
 			hour: "2-digit",
 			minute: "2-digit",
 			hour12: true,
-		})
-	}
+		});
+	};
 
 	const formatDuration = (seconds: number) => {
-		const mins = Math.floor(seconds / 60)
-		const secs = seconds % 60
-		return `${mins}:${secs.toString().padStart(2, "0")}`
-	}
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins}:${secs.toString().padStart(2, "0")}`;
+	};
 
 	return (
 		<div className="flex h-screen flex-col bg-background">
@@ -375,5 +380,5 @@ export default function InterviewDetailStorybook({ data }: { data: MockInterview
 				</Sheet>
 			</div>
 		</div>
-	)
+	);
 }

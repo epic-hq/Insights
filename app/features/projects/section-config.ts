@@ -11,21 +11,21 @@
  * use the `manageDocuments` tool or upsertProjectSection directly - no config needed!
  */
 
-export type SectionType = "string" | "string[]" | "object"
-export type ArrayFormatter = "numbered" | "spaced"
+export type SectionType = "string" | "string[]" | "object";
+export type ArrayFormatter = "numbered" | "spaced";
 
 export interface SectionConfig {
-	kind: string
-	type: SectionType
-	defaultValue: string | string[] | Record<string, unknown>
+	kind: string;
+	type: SectionType;
+	defaultValue: string | string[] | Record<string, unknown>;
 	/** For array types, specify how to format the content_md */
-	arrayFormatter?: ArrayFormatter
+	arrayFormatter?: ArrayFormatter;
 	/** Allow empty values to be saved (for deletions) */
-	allowEmpty?: boolean
+	allowEmpty?: boolean;
 	/** Display name for UI (optional) */
-	displayName?: string
+	displayName?: string;
 	/** Category for grouping in UI (optional) */
-	category?: "setup" | "research" | "strategic" | "marketing" | "product" | "custom"
+	category?: "setup" | "research" | "strategic" | "marketing" | "product" | "custom";
 }
 
 /**
@@ -48,16 +48,16 @@ export const PROJECT_SECTIONS: SectionConfig[] = [
 	{ kind: "assumptions", type: "string[]", defaultValue: [], arrayFormatter: "spaced" },
 	{ kind: "unknowns", type: "string[]", defaultValue: [], arrayFormatter: "spaced" },
 	{ kind: "custom_instructions", type: "string", defaultValue: "" },
-]
+];
 
-export const SECTION_KINDS = PROJECT_SECTIONS.map((s) => s.kind)
+export const SECTION_KINDS = PROJECT_SECTIONS.map((s) => s.kind);
 
 export function getSectionConfig(kind: string): SectionConfig | undefined {
-	return PROJECT_SECTIONS.find((s) => s.kind === kind)
+	return PROJECT_SECTIONS.find((s) => s.kind === kind);
 }
 
 export function getSectionDefaultValue(kind: string): string | string[] | Record<string, unknown> {
-	return getSectionConfig(kind)?.defaultValue ?? ""
+	return getSectionConfig(kind)?.defaultValue ?? "";
 }
 
 /**
@@ -65,14 +65,14 @@ export function getSectionDefaultValue(kind: string): string | string[] | Record
  * or a dynamic document type (any other value)
  */
 export function isStructuredSection(kind: string): boolean {
-	return SECTION_KINDS.includes(kind)
+	return SECTION_KINDS.includes(kind);
 }
 
 /**
  * Check if a section kind is a dynamic document type (not in PROJECT_SECTIONS)
  */
 export function isDynamicDocument(kind: string): boolean {
-	return !isStructuredSection(kind)
+	return !isStructuredSection(kind);
 }
 
 /**
@@ -85,4 +85,4 @@ export const COMMON_DYNAMIC_DOCUMENTS = {
 	product: ["feature_specs", "user_stories", "technical_specs", "design_docs", "product_requirements"],
 	research: ["meeting_notes", "research_notes", "interview_notes", "user_feedback", "observation_log"],
 	business: ["pricing_strategy", "sales_playbook", "partner_strategy", "budget_plan", "quarterly_goals"],
-} as const
+} as const;

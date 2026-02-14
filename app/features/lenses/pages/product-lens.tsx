@@ -3,41 +3,41 @@
  * Analyzes pain points, bullseye scores, and customer segments to recommend target ICPs
  */
 
-import consola from "consola"
-import { useState } from "react"
-import { type LoaderFunctionArgs, useFetcher, useLoaderData, useNavigate, useNavigation } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { getSegmentKindSummaries } from "~/features/segments/services/segmentData.server"
-import { userContext } from "~/server/user-context"
-import { PainMatrixComponent } from "../components/PainMatrix"
-import { generatePainMatrix, type PainMatrixCell } from "../services/generatePainMatrix.server"
+import consola from "consola";
+import { useState } from "react";
+import { type LoaderFunctionArgs, useFetcher, useLoaderData, useNavigate, useNavigation } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { getSegmentKindSummaries } from "~/features/segments/services/segmentData.server";
+import { userContext } from "~/server/user-context";
+import { PainMatrixComponent } from "../components/PainMatrix";
+import { generatePainMatrix, type PainMatrixCell } from "../services/generatePainMatrix.server";
 
 export async function loader({ context, params, request }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	if (!supabase) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const projectId = params.projectId as string
+	const projectId = params.projectId as string;
 
 	if (!projectId) {
-		throw new Response("Project ID required", { status: 400 })
+		throw new Response("Project ID required", { status: 400 });
 	}
 
 	// Get selected segment kind from query params
-	const url = new URL(request.url)
-	let segmentKindSlug = url.searchParams.get("segment")
+	const url = new URL(request.url);
+	let segmentKindSlug = url.searchParams.get("segment");
 
 	try {
-		const segments = await getSegmentKindSummaries(supabase, projectId)
+		const segments = await getSegmentKindSummaries(supabase, projectId);
 
 		// If no segment specified, default to first one with people
 		if (!segmentKindSlug) {
-			const segmentWithPeople = segments.find((s) => s.person_count > 0)
-			segmentKindSlug = segmentWithPeople?.kind || "preference" // Fallback to preference if none found
+			const segmentWithPeople = segments.find((s) => s.person_count > 0);
+			segmentKindSlug = segmentWithPeople?.kind || "preference"; // Fallback to preference if none found
 		}
 
 		const matrix = await generatePainMatrix({
@@ -46,14 +46,14 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			segmentKindSlug,
 			minEvidencePerPain: 1, // Lowered from 2 to capture more themes
 			minGroupSize: 1,
-		})
+		});
 
 		// Fetch existing ICP recommendations
 		const { data: icpRecs } = await supabase
 			.from("icp_recommendations")
 			.select("*")
 			.eq("project_id", projectId)
-			.single()
+			.single();
 
 		return {
 			matrix,
@@ -61,54 +61,54 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			segments,
 			selectedSegmentSlug: segmentKindSlug,
 			icpRecommendations: icpRecs?.recommendations || null,
-		}
+		};
 	} catch (error) {
-		consola.error("Product Lens loader error:", error)
-		throw new Response("Failed to generate pain matrix", { status: 500 })
+		consola.error("Product Lens loader error:", error);
+		throw new Response("Failed to generate pain matrix", { status: 500 });
 	}
 }
 
 export default function ProductLens() {
-	const { matrix, segments, selectedSegmentSlug, icpRecommendations, projectId } = useLoaderData<typeof loader>()
-	const [selectedCell, setSelectedCell] = useState<PainMatrixCell | null>(null)
-	const navigate = useNavigate()
-	const navigation = useNavigation()
+	const { matrix, segments, selectedSegmentSlug, icpRecommendations, projectId } = useLoaderData<typeof loader>();
+	const [selectedCell, setSelectedCell] = useState<PainMatrixCell | null>(null);
+	const navigate = useNavigate();
+	const navigation = useNavigation();
 
-	const isLoading = navigation.state === "loading"
+	const isLoading = navigation.state === "loading";
 
 	const handleSegmentChange = (kindSlug: string) => {
-		navigate(`?segment=${kindSlug}`)
-	}
+		navigate(`?segment=${kindSlug}`);
+	};
 
 	if (!matrix) {
 		return (
 			<div className="rounded-lg border bg-muted p-6 text-center">
 				<p className="text-muted-foreground">No pain matrix data available</p>
 			</div>
-		)
+		);
 	}
 
-	const generateFetcher = useFetcher()
-	const isGenerating = generateFetcher.state !== "idle"
+	const generateFetcher = useFetcher();
+	const isGenerating = generateFetcher.state !== "idle";
 
-	const createPersonaFetcher = useFetcher()
+	const createPersonaFetcher = useFetcher();
 
 	const handleCreatePersona = (icp: any) => {
 		// Create persona with ICP data
-		const formData = new FormData()
-		formData.append("name", icp.name)
+		const formData = new FormData();
+		formData.append("name", icp.name);
 		formData.append(
 			"description",
 			`Target customer: ${icp.name}\n\nMarket size: ${icp.stats.count} people\nAvg Bullseye: ${icp.stats.bullseye_avg?.toFixed(1) || "N/A"}\n\nTop Pains:\n${icp.stats.top_pains?.map((p: string) => `• ${p}`).join("\n") || "None"}`
-		)
-		formData.append("facets", JSON.stringify(icp.facets))
-		formData.append("projectId", projectId)
+		);
+		formData.append("facets", JSON.stringify(icp.facets));
+		formData.append("projectId", projectId);
 
 		createPersonaFetcher.submit(formData, {
 			method: "post",
 			action: "/api/create-persona-from-icp",
-		})
-	}
+		});
+	};
 
 	return (
 		<div className="space-y-6 p-6">
@@ -281,7 +281,7 @@ export default function ProductLens() {
 				</div>
 			)}
 		</div>
-	)
+	);
 }
 
 function MetricDisplay({ label, value }: { label: string; value: string }) {
@@ -290,5 +290,5 @@ function MetricDisplay({ label, value }: { label: string; value: string }) {
 			<div className="text-muted-foreground text-sm">{label}</div>
 			<div className="mt-1 font-bold text-2xl">{value}</div>
 		</div>
-	)
+	);
 }

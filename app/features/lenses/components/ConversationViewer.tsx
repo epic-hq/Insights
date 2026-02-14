@@ -1,20 +1,20 @@
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Separator } from "~/components/ui/separator"
-import type { LensMilestone, LensNextStep, LensObjection } from "~/features/lenses/types"
-import { LensEvidenceList } from "./EditableLensContent"
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Separator } from "~/components/ui/separator";
+import type { LensMilestone, LensNextStep, LensObjection } from "~/features/lenses/types";
+import { LensEvidenceList } from "./EditableLensContent";
 
 type ExecutionPanelProps = {
-	nextSteps?: LensNextStep[]
-	mapMilestones?: LensMilestone[]
-	objections?: LensObjection[]
-	className?: string
-}
+	nextSteps?: LensNextStep[];
+	mapMilestones?: LensMilestone[];
+	objections?: LensObjection[];
+	className?: string;
+};
 
 export function LensExecutionPanel({ nextSteps, mapMilestones, objections, className }: ExecutionPanelProps) {
-	const hasNextSteps = (nextSteps?.length ?? 0) > 0
-	const hasMilestones = (mapMilestones?.length ?? 0) > 0
-	const hasObjections = (objections?.length ?? 0) > 0
+	const hasNextSteps = (nextSteps?.length ?? 0) > 0;
+	const hasMilestones = (mapMilestones?.length ?? 0) > 0;
+	const hasObjections = (objections?.length ?? 0) > 0;
 
 	if (!hasNextSteps && !hasMilestones && !hasObjections) {
 		return (
@@ -26,7 +26,7 @@ export function LensExecutionPanel({ nextSteps, mapMilestones, objections, class
 					<p className="text-muted-foreground text-sm">No next steps or deal risks captured yet.</p>
 				</CardContent>
 			</Card>
-		)
+		);
 	}
 
 	return (
@@ -137,12 +137,12 @@ export function LensExecutionPanel({ nextSteps, mapMilestones, objections, class
 				) : null}
 			</CardContent>
 		</Card>
-	)
+	);
 }
 
 function titleCase(value: string) {
 	return value
 		.split(/[_\s-]+/)
 		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-		.join(" ")
+		.join(" ");
 }

@@ -691,6 +691,83 @@ insert into public.conversation_lens_templates (
   template_definition = excluded.template_definition,
   is_system = true;
 
+-- Conversation Overview (always-on foundational lens)
+-- Stores output of AnalyzeStandaloneConversation BAML function.
+-- Moves structured analysis (key_takeaways, recommendations, open_questions,
+-- participant_goals) from interviews.conversation_analysis JSONB into the
+-- lens pipeline for cross-interview synthesis.
+insert into public.conversation_lens_templates (
+  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active, is_system
+) values (
+  'conversation-overview',
+  'Conversation Overview',
+  'Structured analysis with key takeaways, recommendations, open questions, and participant goals',
+  'Produce a comprehensive overview of the conversation including prioritized takeaways, actionable recommendations, unanswered questions, and participant motivations',
+  'research',
+  1,
+  '{
+    "sections": [
+      {
+        "section_key": "overview",
+        "section_name": "Overview",
+        "description": "High-level summary of the conversation",
+        "fields": [
+          {"field_key": "summary", "field_name": "Summary", "field_type": "text", "description": "Executive summary of the conversation"}
+        ]
+      },
+      {
+        "section_key": "key_takeaways",
+        "section_name": "Key Takeaways",
+        "description": "Prioritized insights from the conversation",
+        "fields": [
+          {"field_key": "priority", "field_name": "Priority", "field_type": "text", "description": "high, medium, or low"},
+          {"field_key": "summary", "field_name": "Takeaway", "field_type": "text", "description": "The key insight"},
+          {"field_key": "evidence_snippets", "field_name": "Evidence", "field_type": "text_array", "description": "Supporting quotes or references"}
+        ]
+      },
+      {
+        "section_key": "recommendations",
+        "section_name": "Recommended Next Steps",
+        "description": "Actionable recommendations based on the conversation",
+        "fields": [
+          {"field_key": "focus_area", "field_name": "Focus Area", "field_type": "text"},
+          {"field_key": "action", "field_name": "Action", "field_type": "text"},
+          {"field_key": "rationale", "field_name": "Rationale", "field_type": "text"}
+        ]
+      },
+      {
+        "section_key": "open_questions",
+        "section_name": "Open Questions",
+        "description": "Unresolved questions that need follow-up",
+        "fields": [
+          {"field_key": "questions", "field_name": "Questions", "field_type": "text_array"}
+        ]
+      },
+      {
+        "section_key": "participant_goals",
+        "section_name": "Participant Goals",
+        "description": "Goals and motivations expressed by participants",
+        "fields": [
+          {"field_key": "speaker", "field_name": "Speaker", "field_type": "text"},
+          {"field_key": "goal", "field_name": "Goal", "field_type": "text"},
+          {"field_key": "evidence_snippet", "field_name": "Evidence", "field_type": "text"},
+          {"field_key": "confidence", "field_name": "Confidence", "field_type": "numeric"}
+        ]
+      }
+    ],
+    "entities": [],
+    "recommendations_enabled": true
+  }'::jsonb,
+  true,
+  true
+) on conflict (template_key) do update set
+  template_name = excluded.template_name,
+  summary = excluded.summary,
+  primary_objective = excluded.primary_objective,
+  template_definition = excluded.template_definition,
+  display_order = excluded.display_order,
+  is_system = true;
+
 comment on table public.conversation_lens_templates is
   'Reusable conversation analysis templates/frameworks. Defines structure for analyzing interviews through different lenses.';
 

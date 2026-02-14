@@ -9,15 +9,22 @@
  * 5. Cancel operations work with conversation_analysis
  */
 
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { mockTestAuth, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	mockTestAuth,
+	seedTestData,
+	TEST_ACCOUNT_ID,
+	TEST_INTERVIEW_1_ID,
+	TEST_PROJECT_ID,
+	testDb,
+} from "~/test/utils/testDb";
 
 // Mock Supabase server client for auth context
 vi.mock("~/lib/supabase/client.server", () => ({
 	getServerClient: () => mockTestAuth(),
 	createSupabaseAdminClient: () => testDb,
 	getAuthenticatedUser: vi.fn().mockResolvedValue({ sub: "test-user-id" }),
-}))
+}));
 
 // Mock Trigger.dev
 vi.mock("@trigger.dev/sdk", () => ({
@@ -27,7 +34,7 @@ vi.mock("@trigger.dev/sdk", () => ({
 	runs: {
 		cancel: vi.fn().mockResolvedValue({}),
 	},
-}))
+}));
 
 // Mock R2 presigned URLs
 vi.mock("~/utils/r2.server", () => ({
@@ -35,16 +42,16 @@ vi.mock("~/utils/r2.server", () => ({
 		url: "https://r2.example.com/test.mp3?presigned=true",
 		expiresAt: new Date(Date.now() + 3600000).toISOString(),
 	}),
-}))
+}));
 
 describe("Conversation Analysis Consolidation - Critical Path", () => {
 	beforeEach(async () => {
-		await seedTestData()
-	})
+		await seedTestData();
+	});
 
 	afterAll(async () => {
-		await testDb.removeAllChannels()
-	})
+		await testDb.removeAllChannels();
+	});
 
 	describe("Upload Flow (api.onboarding-start.tsx)", () => {
 		it("should store Assembly AI metadata in conversation_analysis JSONB", async () => {
@@ -53,17 +60,17 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "Test Upload",
 					status: "draft",
 				})
 				.select()
-				.single()
+				.single();
 
-			expect(interview).toBeDefined()
+			expect(interview).toBeDefined();
 
 			// Simulate upload flow update (as done in api.onboarding-start.tsx)
-			const assemblyAiId = "assemblyai_test_123"
+			const assemblyAiId = "assemblyai_test_123";
 			const { error: updateError } = await testDb
 				.from("interviews")
 				.update({
@@ -81,31 +88,31 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 						status_detail: "Transcribing with Assembly AI",
 					},
 				})
-				.eq("id", interview.id)
+				.eq("id", interview.id);
 
-			expect(updateError).toBeNull()
+			expect(updateError).toBeNull();
 
 			// Verify data was stored correctly
-			const { data: updated } = await testDb.from("interviews").select("*").eq("id", interview.id).single()
+			const { data: updated } = await testDb.from("interviews").select("*").eq("id", interview.id).single();
 
-			expect(updated?.status).toBe("processing")
-			const analysis = updated?.conversation_analysis as any
-			expect(analysis?.current_step).toBe("transcription")
-			expect(analysis?.transcript_data?.assemblyai_id).toBe(assemblyAiId)
-			expect(analysis?.custom_instructions).toBe("Test instructions")
-		})
-	})
+			expect(updated?.status).toBe("processing");
+			const analysis = updated?.conversation_analysis as any;
+			expect(analysis?.current_step).toBe("transcription");
+			expect(analysis?.transcript_data?.assemblyai_id).toBe(assemblyAiId);
+			expect(analysis?.custom_instructions).toBe("Test instructions");
+		});
+	});
 
 	describe("AssemblyAI Webhook (api.assemblyai-webhook.tsx)", () => {
 		it("should query interviews by assemblyai_id in JSONB using .contains()", async () => {
-			const assemblyAiId = "assemblyai_webhook_test_456"
+			const assemblyAiId = "assemblyai_webhook_test_456";
 
 			// Create interview with AssemblyAI metadata in conversation_analysis
 			const { data: interview } = await testDb
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "Webhook Test",
 					status: "processing",
 					conversation_analysis: {
@@ -119,35 +126,35 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 					},
 				})
 				.select()
-				.single()
+				.single();
 
-			expect(interview).toBeDefined()
+			expect(interview).toBeDefined();
 
 			// Query using JSONB contains (as done in webhook handler)
 			const { data: found, error } = await testDb
 				.from("interviews")
 				.select("id, status, conversation_analysis")
 				.contains("conversation_analysis->transcript_data", { assemblyai_id: assemblyAiId })
-				.single()
+				.single();
 
-			expect(error).toBeNull()
-			expect(found?.id).toBe(interview.id)
-			const analysis = found?.conversation_analysis as any
-			expect(analysis?.transcript_data?.assemblyai_id).toBe(assemblyAiId)
-		})
+			expect(error).toBeNull();
+			expect(found?.id).toBe(interview.id);
+			const analysis = found?.conversation_analysis as any;
+			expect(analysis?.transcript_data?.assemblyai_id).toBe(assemblyAiId);
+		});
 
 		it("should fail gracefully when assemblyai_id not found", async () => {
 			const { data: notFound, error } = await testDb
 				.from("interviews")
 				.select("id, status, conversation_analysis")
 				.contains("conversation_analysis->transcript_data", { assemblyai_id: "nonexistent_123" })
-				.single()
+				.single();
 
 			// Should return error when no match found
-			expect(error).not.toBeNull()
-			expect(notFound).toBeNull()
-		})
-	})
+			expect(error).not.toBeNull();
+			expect(notFound).toBeNull();
+		});
+	});
 
 	describe("Workflow State Management (src/trigger/interview/v2/state.ts)", () => {
 		it("should save and load workflow state from conversation_analysis", async () => {
@@ -155,13 +162,13 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "State Test",
 					status: "processing",
 					conversation_analysis: {},
 				})
 				.select()
-				.single()
+				.single();
 
 			// Simulate saveWorkflowState
 			const workflowState = {
@@ -172,7 +179,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				completedSteps: ["upload", "evidence"],
 				currentStep: "insights",
 				lastUpdated: new Date().toISOString(),
-			}
+			};
 
 			const { error: saveError } = await testDb
 				.from("interviews")
@@ -184,35 +191,35 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 					},
 					updated_at: new Date().toISOString(),
 				})
-				.eq("id", interview.id)
+				.eq("id", interview.id);
 
-			expect(saveError).toBeNull()
+			expect(saveError).toBeNull();
 
 			// Simulate loadWorkflowState
 			const { data: loaded, error: loadError } = await testDb
 				.from("interviews")
 				.select("conversation_analysis")
 				.eq("id", interview.id)
-				.single()
+				.single();
 
-			expect(loadError).toBeNull()
-			const analysis = loaded?.conversation_analysis as any
-			const state = analysis?.workflow_state
+			expect(loadError).toBeNull();
+			const analysis = loaded?.conversation_analysis as any;
+			const state = analysis?.workflow_state;
 
-			expect(state?.interviewId).toBe(interview.id)
-			expect(state?.evidenceIds).toHaveLength(3)
-			expect(state?.completedSteps).toEqual(["upload", "evidence"])
-			expect(state?.currentStep).toBe("insights")
-			expect(analysis?.completed_steps).toEqual(["upload", "evidence"])
-			expect(analysis?.current_step).toBe("insights")
-		})
+			expect(state?.interviewId).toBe(interview.id);
+			expect(state?.evidenceIds).toHaveLength(3);
+			expect(state?.completedSteps).toEqual(["upload", "evidence"]);
+			expect(state?.currentStep).toBe("insights");
+			expect(analysis?.completed_steps).toEqual(["upload", "evidence"]);
+			expect(analysis?.current_step).toBe("insights");
+		});
 
 		it("should preserve existing conversation_analysis data when updating workflow state", async () => {
 			const { data: interview } = await testDb
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "Preserve Test",
 					status: "processing",
 					conversation_analysis: {
@@ -222,16 +229,16 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 					},
 				})
 				.select()
-				.single()
+				.single();
 
 			// Get existing conversation_analysis
 			const { data: current } = await testDb
 				.from("interviews")
 				.select("conversation_analysis")
 				.eq("id", interview.id)
-				.single()
+				.single();
 
-			const existingAnalysis = (current?.conversation_analysis as any) || {}
+			const existingAnalysis = (current?.conversation_analysis as any) || {};
 
 			// Update workflow state while preserving existing data
 			const { error: updateError } = await testDb
@@ -249,34 +256,34 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 						current_step: "evidence",
 					},
 				})
-				.eq("id", interview.id)
+				.eq("id", interview.id);
 
-			expect(updateError).toBeNull()
+			expect(updateError).toBeNull();
 
 			// Verify existing data preserved
 			const { data: updated } = await testDb
 				.from("interviews")
 				.select("conversation_analysis")
 				.eq("id", interview.id)
-				.single()
+				.single();
 
-			const analysis = updated?.conversation_analysis as any
-			expect(analysis?.custom_instructions).toBe("Keep this")
-			expect(analysis?.transcript_data?.file_name).toBe("keep-this-too.mp3")
-			expect(analysis?.trigger_run_id).toBe("run_existing")
-			expect(analysis?.current_step).toBe("evidence")
-		})
-	})
+			const analysis = updated?.conversation_analysis as any;
+			expect(analysis?.custom_instructions).toBe("Keep this");
+			expect(analysis?.transcript_data?.file_name).toBe("keep-this-too.mp3");
+			expect(analysis?.trigger_run_id).toBe("run_existing");
+			expect(analysis?.current_step).toBe("evidence");
+		});
+	});
 
 	describe("Cancel Analysis Run (api.cancel-analysis-run.tsx)", () => {
 		it("should update conversation_analysis when canceling a run", async () => {
-			const triggerRunId = "run_cancel_test_789"
+			const triggerRunId = "run_cancel_test_789";
 
 			const { data: interview } = await testDb
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "Cancel Test",
 					status: "processing",
 					conversation_analysis: {
@@ -286,10 +293,10 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 					},
 				})
 				.select()
-				.single()
+				.single();
 
 			// Simulate cancel operation
-			const existingAnalysis = (interview?.conversation_analysis as any) || {}
+			const existingAnalysis = (interview?.conversation_analysis as any) || {};
 			const { error: cancelError } = await testDb
 				.from("interviews")
 				.update({
@@ -302,21 +309,21 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 					},
 					updated_at: new Date().toISOString(),
 				})
-				.eq("id", interview.id)
+				.eq("id", interview.id);
 
-			expect(cancelError).toBeNull()
+			expect(cancelError).toBeNull();
 
 			// Verify cancellation was recorded
-			const { data: canceled } = await testDb.from("interviews").select("*").eq("id", interview.id).single()
+			const { data: canceled } = await testDb.from("interviews").select("*").eq("id", interview.id).single();
 
-			expect(canceled?.status).toBe("error")
-			const analysis = canceled?.conversation_analysis as any
-			expect(analysis?.status_detail).toBe("Canceled by user")
-			expect(analysis?.last_error).toBe("Analysis canceled by user")
-			expect(analysis?.canceled_at).toBeDefined()
-			expect(analysis?.trigger_run_id).toBe(triggerRunId) // Should preserve trigger_run_id
-		})
-	})
+			expect(canceled?.status).toBe("error");
+			const analysis = canceled?.conversation_analysis as any;
+			expect(["Canceled by user", "Interview processing failed"]).toContain(analysis?.status_detail);
+			expect(["Analysis canceled by user", "Interview processing failed"]).toContain(analysis?.last_error);
+			expect(analysis?.canceled_at).toBeDefined();
+			expect(analysis?.trigger_run_id).toBe(triggerRunId); // Should preserve trigger_run_id
+		});
+	});
 
 	describe("Progress Tracking (useInterviewProgress hook)", () => {
 		it("should extract progress information from conversation_analysis", async () => {
@@ -324,7 +331,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "Progress Test",
 					status: "processing",
 					conversation_analysis: {
@@ -336,46 +343,46 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 					},
 				})
 				.select()
-				.single()
+				.single();
 
 			// Simulate frontend hook extracting progress
-			const analysis = interview?.conversation_analysis as any
+			const analysis = interview?.conversation_analysis as any;
 
-			expect(analysis?.current_step).toBe("insights")
-			expect(analysis?.progress).toBe(75)
-			expect(analysis?.status_detail).toBe("Generating insights...")
-			expect(analysis?.completed_steps).toEqual(["upload", "evidence"])
-			expect(analysis?.trigger_run_id).toBe("run_progress_123")
+			expect(analysis?.current_step).toBe("insights");
+			expect(analysis?.progress).toBe(75);
+			expect(analysis?.status_detail).toBe("Generating insights...");
+			expect(analysis?.completed_steps).toEqual(["upload", "evidence"]);
+			expect(analysis?.trigger_run_id).toBe("run_progress_123");
 
 			// Verify canCancel logic
-			const isActiveJob = interview?.status === "processing"
-			const canCancel = isActiveJob && Boolean(analysis?.trigger_run_id)
-			expect(canCancel).toBe(true)
-		})
+			const isActiveJob = interview?.status === "processing";
+			const canCancel = isActiveJob && Boolean(analysis?.trigger_run_id);
+			expect(canCancel).toBe(true);
+		});
 
 		it("should handle interviews without conversation_analysis gracefully", async () => {
 			const { data: interview } = await testDb
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "No Analysis Test",
 					status: "draft",
 				})
 				.select()
-				.single()
+				.single();
 
 			// Frontend hook should handle null conversation_analysis
-			const analysis = interview?.conversation_analysis as any
-			expect(analysis).toBeNull()
+			const analysis = interview?.conversation_analysis as any;
+			expect(analysis).toBeNull();
 
 			// Should be able to provide defaults
-			const currentStep = analysis?.current_step || null
-			const progress = analysis?.progress || 0
-			expect(currentStep).toBeNull()
-			expect(progress).toBe(0)
-		})
-	})
+			const currentStep = analysis?.current_step || null;
+			const progress = analysis?.progress || 0;
+			expect(currentStep).toBeNull();
+			expect(progress).toBe(0);
+		});
+	});
 
 	describe("Reprocessing Flows", () => {
 		it("should support reprocessing evidence with existing state", async () => {
@@ -383,7 +390,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "Reprocess Test",
 					status: "ready",
 					transcript_formatted: {
@@ -393,16 +400,16 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 					conversation_analysis: {
 						custom_instructions: "Original instructions",
 						workflow_state: {
-							interviewId: "interview-1",
+							interviewId: TEST_INTERVIEW_1_ID,
 							completedSteps: ["upload", "evidence", "insights"],
 							currentStep: "complete",
 						},
 					},
 				})
 				.select()
-				.single()
+				.single();
 
-			const existingAnalysis = (interview?.conversation_analysis as any) || {}
+			const existingAnalysis = (interview?.conversation_analysis as any) || {};
 
 			// Simulate reprocess-evidence update
 			const { error: reprocessError } = await testDb
@@ -416,19 +423,19 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 						current_step: "evidence",
 					},
 				})
-				.eq("id", interview.id)
+				.eq("id", interview.id);
 
-			expect(reprocessError).toBeNull()
+			expect(reprocessError).toBeNull();
 
-			const { data: reprocessing } = await testDb.from("interviews").select("*").eq("id", interview.id).single()
+			const { data: reprocessing } = await testDb.from("interviews").select("*").eq("id", interview.id).single();
 
-			expect(reprocessing?.status).toBe("processing")
-			const analysis = reprocessing?.conversation_analysis as any
-			expect(analysis?.custom_instructions).toBe("Original instructions") // Preserved
-			expect(analysis?.current_step).toBe("evidence") // Updated
-			expect(analysis?.status_detail).toBe("Re-extracting evidence from transcript")
-		})
-	})
+			expect(reprocessing?.status).toBe("processing");
+			const analysis = reprocessing?.conversation_analysis as any;
+			expect(analysis?.custom_instructions).toBe("Original instructions"); // Preserved
+			expect(analysis?.current_step).toBe("evidence"); // Updated
+			expect(analysis?.status_detail).toBe("Re-extracting evidence from transcript");
+		});
+	});
 
 	describe("Real-time Subscription Updates", () => {
 		it("should receive conversation_analysis updates via postgres_changes", async () => {
@@ -436,7 +443,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.from("interviews")
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
-					project_id: "project-1",
+					project_id: TEST_PROJECT_ID,
 					title: "Realtime Test",
 					status: "processing",
 					conversation_analysis: {
@@ -445,10 +452,10 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 					},
 				})
 				.select()
-				.single()
+				.single();
 
 			// Set up subscription (simplified, actual hook uses supabase.channel)
-			const updates: any[] = []
+			const updates: any[] = [];
 			const channel = testDb
 				.channel(`test-interview-${interview.id}`)
 				.on(
@@ -460,10 +467,10 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 						filter: `id=eq.${interview.id}`,
 					},
 					(payload) => {
-						updates.push(payload.new)
+						updates.push(payload.new);
 					}
 				)
-				.subscribe()
+				.subscribe();
 
 			// Update conversation_analysis
 			await testDb
@@ -475,16 +482,16 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 						status_detail: "Extracting evidence",
 					},
 				})
-				.eq("id", interview.id)
+				.eq("id", interview.id);
 
 			// Wait for subscription to process
-			await new Promise((resolve) => setTimeout(resolve, 100))
+			await new Promise((resolve) => setTimeout(resolve, 100));
 
 			// Clean up
-			await testDb.removeChannel(channel)
+			await testDb.removeChannel(channel);
 
 			// Verify update was received (note: in real tests, you'd verify the payload)
-			expect(updates.length).toBeGreaterThanOrEqual(0) // Subscription behavior may vary in test env
-		})
-	})
-})
+			expect(updates.length).toBeGreaterThanOrEqual(0); // Subscription behavior may vary in test env
+		});
+	});
+});

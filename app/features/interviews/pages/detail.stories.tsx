@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react-vite"
-import InterviewDetailStorybook from "./detail.storybook"
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import InterviewDetailStorybook from "./detail.storybook";
 
 const meta = {
 	title: "Features/Interviews/Pages/Detail",
@@ -8,10 +8,10 @@ const meta = {
 		layout: "fullscreen",
 	},
 	tags: ["autodocs"],
-} satisfies Meta<typeof InterviewDetailStorybook>
+} satisfies Meta<typeof InterviewDetailStorybook>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 // Mock interview data with full structure
 const mockInterview = {
@@ -128,14 +128,14 @@ const mockInterview = {
 	},
 	hasTranscript: true,
 	hasFormattedTranscript: true,
-}
+};
 
 const mockPeopleOptions = [
 	{ id: "person-1", name: "Alex Johnson", segment: "Enterprise" },
 	{ id: "person-2", name: "Sarah Chen", segment: null },
 	{ id: "person-3", name: "Michael Brown", segment: "Mid-Market" },
 	{ id: "person-4", name: "Jennifer Liu", segment: "SMB" },
-]
+];
 
 const mockInsights = [
 	{
@@ -152,7 +152,7 @@ const mockInsights = [
 		theme_names: ["Security", "Enterprise Requirements"],
 		created_at: "2025-01-10T17:05:00Z",
 	},
-]
+];
 
 const mockSalesLens = {
 	bant: {
@@ -184,7 +184,7 @@ const mockSalesLens = {
 		"Share security documentation",
 		"Introduce to Director of Platform Engineering",
 	],
-}
+};
 
 const mockAnalysisJobs = [
 	{
@@ -196,7 +196,7 @@ const mockAnalysisJobs = [
 		created_at: "2025-01-10T16:00:00Z",
 		updated_at: "2025-01-10T16:45:00Z",
 	},
-]
+];
 
 export const Default: Story = {
 	args: {
@@ -209,7 +209,7 @@ export const Default: Story = {
 			conversationAnalysis: mockInterview.conversation_analysis,
 		},
 	},
-}
+};
 
 export const NoAnalysis: Story = {
 	args: {
@@ -235,7 +235,7 @@ export const NoAnalysis: Story = {
 			conversationAnalysis: null,
 		},
 	},
-}
+};
 
 export const Processing: Story = {
 	args: {
@@ -262,7 +262,7 @@ export const Processing: Story = {
 			conversationAnalysis: null,
 		},
 	},
-}
+};
 
 export const NoTranscript: Story = {
 	args: {
@@ -281,7 +281,7 @@ export const NoTranscript: Story = {
 			conversationAnalysis: null,
 		},
 	},
-}
+};
 
 export const MinimalInterview: Story = {
 	args: {
@@ -302,4 +302,4 @@ export const MinimalInterview: Story = {
 			conversationAnalysis: null,
 		},
 	},
-}
+};

@@ -1,5 +1,7 @@
 # Interview Processing: How It Works
 
+> **Note (2026-02-12):** Person resolution now uses unified `resolveOrCreatePerson()` module for all ingestion paths (desktop realtime + batch upload). Desktop realtime uses `/api/desktop/people/resolve` + `/api/desktop/interviews/finalize` for parity with batch pipelines. See [`CONTEXT-people-pipeline-integration.md`](../20-features-prds/features/people/CONTEXT-people-pipeline-integration.md) for details.
+
 ## Simple Explanation (8th Grade Level)
 
 When you upload an interview recording, our system does three main things:
@@ -35,6 +37,28 @@ Phase 2: Persona Synthesis (BAML + GPT-4)
    ↓
 Database: Store everything
 ```
+
+### Desktop Realtime Path (Current)
+
+For desktop live capture, the flow is incremental and API-driven:
+
+```text
+Recall SDK transcript/participant events
+  ↓
+desktop/src/main.js queues utterances + participant metadata
+  ↓
+POST /api/desktop/realtime-evidence (batched during meeting)
+  ↓
+Evidence/tasks/people persisted during recording
+  ↓
+POST /api/desktop/people/resolve (on stop/finalize)
+  ↓
+POST /api/desktop/interviews/finalize
+  ↓
+interview status=ready + transcript_formatted + person/evidence links
+```
+
+This keeps realtime desktop output aligned with batch processing and the shared people/org model.
 
 ### Phase 0: Transcription
 
@@ -76,12 +100,14 @@ Database: Store everything
    - Link to evidence unit via index
 
 4. **Store in Database**:
-   - Insert people records → `people` table
+   - **Resolve people** → `people` table via `resolveOrCreatePerson()` (4-tier matching: email > platform_id > name+company > create)
    - Insert evidence → `evidence` table (embeddings generated async via queue)
    - Insert facet mentions → `evidence_facet` table (junction)
    - Link evidence to people → `interview_people` table (junction)
 
    > **Note:** Evidence embeddings are generated asynchronously via DB trigger → pgmq queue → edge function. This happens within ~1 minute of insertion. See `supabase/schemas/50_queues.sql` for the trigger definition.
+
+   > **Person Resolution (2026-02-07):** All ingestion paths now use unified `resolveOrCreatePerson()` from `app/lib/people/resolution.server.ts`. This prevents duplicates across desktop (realtime) and upload (batch) paths by matching on email, platform user IDs, or name+company before creating new records. See implementation in `src/trigger/interview/v2/personMapping.ts`.
 
 **Key Data Structure:**
 ```typescript

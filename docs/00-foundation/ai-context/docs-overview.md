@@ -44,9 +44,18 @@ This project has extensive documentation organized by purpose. AI agents should 
 ### Analytics & Monitoring
 | Guide | When to Use |
 |-------|-------------|
-| [PostHog Tracking](/docs/posthog-tracking.md) | Adding analytics events |
-| [PostHog Events](/docs/posthog-events-implemented.md) | Existing event catalog |
-| [Langfuse](/docs/observability/langfuse.md) | LLM observability |
+| [PostHog Setup Guide](/docs/60-ops-observability/posthog-setup-guide.md) | **START HERE** - Setting up dashboards and funnels |
+| [PostHog Tracking](/docs/60-ops-observability/posthog-tracking.md) | Adding analytics events |
+| [PostHog Events](/docs/60-ops-observability/posthog-events-implemented.md) | Existing event catalog (21 PLG events) |
+| [Langfuse](/docs/60-ops-observability/langfuse.md) | LLM observability |
+
+### PLG & Nurture
+| Guide | When to Use |
+|-------|-------------|
+| [PLG Nurture Plan](/docs/70-PLG/nurture/plan.md) | Single source of truth for PLG nurture |
+| [Brevo Setup](/docs/70-PLG/nurture/brevo-setup.md) | Email delivery, lists, and automations |
+| [Activation Strategy](/docs/70-PLG/strategy/activation-strategy.md) | Reverse trial + discount strategy |
+| [PLG Instrumentation Plan](/docs/70-PLG/strategy/instrumentation-plan.md) | PLG event taxonomy and triggers |
 
 ---
 

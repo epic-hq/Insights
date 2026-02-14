@@ -1,19 +1,19 @@
-import { cacheHeader } from "pretty-cache-header"
-import { z } from "zod/v4"
-import { type Language, type Namespace, resources } from "~/localization/resource"
-import type { Route } from "./+types/resource.locales"
+import { cacheHeader } from "pretty-cache-header";
+import { z } from "zod/v4";
+import { type Language, type Namespace, resources } from "~/localization/resource";
+import type { Route } from "./+types/resource.locales";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
-	const { isProductionDeployment } = context
-	const url = new URL(request.url)
+	const { isProductionDeployment } = context;
+	const url = new URL(request.url);
 
-	const lng = z.enum(Object.keys(resources) as Language[]).parse(url.searchParams.get("lng"))
+	const lng = z.enum(Object.keys(resources) as Language[]).parse(url.searchParams.get("lng"));
 
-	const namespaces = resources[lng]
+	const namespaces = resources[lng];
 
-	const ns = z.enum(Object.keys(resources[lng]) as Namespace[]).parse(url.searchParams.get("ns"))
+	const ns = z.enum(Object.keys(resources[lng]) as Namespace[]).parse(url.searchParams.get("ns"));
 
-	const headers = new Headers()
+	const headers = new Headers();
 
 	// On production, we want to add cache headers to the response
 	if (isProductionDeployment) {
@@ -25,8 +25,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 				staleWhileRevalidate: "7d",
 				staleIfError: "7d",
 			})
-		)
+		);
 	}
 
-	return Response.json(namespaces[ns], { headers })
+	return Response.json(namespaces[ns], { headers });
 }

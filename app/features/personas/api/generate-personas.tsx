@@ -1,89 +1,89 @@
-import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
-import { b } from "~/../baml_client"
-import { getServerClient } from "~/lib/supabase/client.server"
-import type { Interview, Person } from "~/types"
+import consola from "consola";
+import type { ActionFunctionArgs } from "react-router";
+import { b } from "~/../baml_client";
+import { getServerClient } from "~/lib/supabase/client.server";
+import type { Interview, Person } from "~/types";
 
 export async function action({ request, params }: ActionFunctionArgs) {
 	try {
-		const { client: supabase } = getServerClient(request)
-		const { data: jwt } = await supabase.auth.getClaims()
-		const accountId = params.accountId as string
-		const projectId = params.projectId as string
+		const { client: supabase } = getServerClient(request);
+		const { data: jwt } = await supabase.auth.getClaims();
+		const accountId = params.accountId as string;
+		const projectId = params.projectId as string;
 
 		if (!projectId || !accountId) {
-			consola.error("[Generate Personas API] Missing project context")
-			throw new Response("Missing project context", { status: 400 })
+			consola.error("[Generate Personas API] Missing project context");
+			throw new Response("Missing project context", { status: 400 });
 		}
 
 		// 1. Aggregate all interviews for the project
 		const { data: interviews, error: interviewsError } = await supabase
 			.from("interviews")
 			.select("id")
-			.eq("project_id", projectId)
+			.eq("project_id", projectId);
 
 		if (interviewsError) {
-			consola.error("[Generate Personas API] Error fetching interviews:", interviewsError)
-			throw new Response("Failed to fetch interviews", { status: 500 })
+			consola.error("[Generate Personas API] Error fetching interviews:", interviewsError);
+			throw new Response("Failed to fetch interviews", { status: 500 });
 		}
 
 		// 2. Aggregate all people linked to those interviews
-		const interviewIds = (interviews ?? []).map((i: Interview) => i.id)
-		let people: Person[] = []
+		const interviewIds = (interviews ?? []).map((i: Interview) => i.id);
+		let people: Person[] = [];
 		if (interviewIds.length > 0) {
 			const { data: interviewPeople, error: interviewPeopleError } = await supabase
 				.from("interview_people")
 				.select("person_id, people(*)")
-				.in("interview_id", interviewIds)
+				.in("interview_id", interviewIds);
 
 			if (interviewPeopleError) {
-				consola.error("[Generate Personas API] Error fetching interview_people:", interviewPeopleError)
-				throw new Response("Failed to fetch people", { status: 500 })
+				consola.error("[Generate Personas API] Error fetching interview_people:", interviewPeopleError);
+				throw new Response("Failed to fetch people", { status: 500 });
 			}
 			// Supabase join returns people as an array, so flatten and filter
 			people = (interviewPeople ?? [])
 				.map((ip: { people: Person | Person[] }) => (Array.isArray(ip.people) ? ip.people[0] : ip.people))
-				.filter(Boolean)
+				.filter(Boolean);
 		}
 
 		// 3. Aggregate relevant Evidence
 		const { data: evidence, error: evidenceError } = await supabase
 			.from("evidence")
 			.select("*")
-			.eq("project_id", projectId)
+			.eq("project_id", projectId);
 
 		if (evidenceError) {
-			consola.error("[Generate Personas API] Error fetching evidence:", evidenceError)
-			throw new Response("Failed to fetch evidence", { status: 500 })
+			consola.error("[Generate Personas API] Error fetching evidence:", evidenceError);
+			throw new Response("Failed to fetch evidence", { status: 500 });
 		}
 		// 3. Aggregate all insights for the 	project
 		const { data: insights, error: insightsError } = await supabase
 			.from("themes")
 			.select("*")
-			.eq("project_id", projectId)
+			.eq("project_id", projectId);
 
 		if (insightsError) {
-			consola.error("[Generate Personas API] Error fetching insights:", insightsError)
-			throw new Response("Failed to fetch insights", { status: 500 })
+			consola.error("[Generate Personas API] Error fetching insights:", insightsError);
+			throw new Response("Failed to fetch insights", { status: 500 });
 		}
 
 		// 4. Call BAML GeneratePersonas
-		const people_len = people.reduce((len, p) => len + JSON.stringify(p).length, 0)
-		const insights_len = insights.reduce((len, i) => len + JSON.stringify(i).length, 0)
-		const interviews_len = interviews.reduce((len, i) => len + JSON.stringify(i).length, 0)
-		const evidence_len = evidence.reduce((len, e) => len + JSON.stringify(e).length, 0)
+		const people_len = people.reduce((len, p) => len + JSON.stringify(p).length, 0);
+		const insights_len = insights.reduce((len, i) => len + JSON.stringify(i).length, 0);
+		const interviews_len = interviews.reduce((len, i) => len + JSON.stringify(i).length, 0);
+		const evidence_len = evidence.reduce((len, e) => len + JSON.stringify(e).length, 0);
 		consola.log(
 			`[Generate Personas API] Input lengths: people=${people_len}, insights=${insights_len}, interviews=${interviews_len}, evidence=${evidence_len}`
-		)
+		);
 
 		const bamlResult = await b.GeneratePersonas(
 			JSON.stringify([]),
 			JSON.stringify(people ?? []),
 			JSON.stringify(insights ?? []),
 			JSON.stringify(evidence ?? [])
-		)
+		);
 
-		consola.log("[Generate Personas API] BAML Result:", bamlResult)
+		consola.log("[Generate Personas API] BAML Result:", bamlResult);
 
 		// 5. Store personas in the database (upsert by name+account)
 		for (const persona of bamlResult) {
@@ -119,15 +119,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				quotes: persona.quotes,
 				percentage: persona.percentage,
 				updated_at: new Date().toISOString(),
-			})
+			});
 			if (insertError) {
-				consola.warn("[Generate Personas API] Failed to insert persona:", persona.name, insertError)
+				consola.warn("[Generate Personas API] Failed to insert persona:", persona.name, insertError);
 			}
 		}
 
-		return { success: true, personas: bamlResult }
+		return { success: true, personas: bamlResult };
 	} catch (error) {
-		consola.error("[Generate Personas API] Error:", error)
-		throw new Response("Internal server error", { status: 500 })
+		consola.error("[Generate Personas API] Error:", error);
+		throw new Response("Internal server error", { status: 500 });
 	}
 }

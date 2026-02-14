@@ -3,7 +3,7 @@
  * No mocks needed - testing business logic directly
  */
 
-import { describe, expect, it } from "vitest"
+import { describe, expect, it } from "vitest";
 import {
 	calculateBackfillStats,
 	calculatePersonCreationPriority,
@@ -15,7 +15,7 @@ import {
 	type Person,
 	prioritizeInterviewsForPersonCreation,
 	validateBackfillOperation,
-} from "./backfillStats"
+} from "./backfillStats";
 
 describe("Backfill Statistics Logic", () => {
 	const mockInterviews: Interview[] = [
@@ -51,19 +51,19 @@ describe("Backfill Statistics Logic", () => {
 			interview_date: null,
 			created_at: "2025-01-23T11:20:00Z",
 		},
-	]
+	];
 
 	const mockPeople: Person[] = [
 		{ id: "person-1", name: "Sarah Chen", account_id: "account-123" },
 		{ id: "person-2", name: "John Doe", account_id: "account-123" },
 		{ id: "person-3", name: "Sarah Chen", account_id: "account-123" }, // Duplicate
-	]
+	];
 
-	const mockLinks: InterviewPeopleLink[] = [{ interview_id: "interview-1", person_id: "person-1" }]
+	const mockLinks: InterviewPeopleLink[] = [{ interview_id: "interview-1", person_id: "person-1" }];
 
 	describe("calculateBackfillStats", () => {
 		it("should calculate correct statistics", () => {
-			const stats = calculateBackfillStats(mockInterviews, mockPeople, mockLinks)
+			const stats = calculateBackfillStats(mockInterviews, mockPeople, mockLinks);
 
 			expect(stats).toEqual({
 				totalInterviews: 4,
@@ -71,11 +71,11 @@ describe("Backfill Statistics Logic", () => {
 				interviewsWithPeople: 1, // Only interview-1 is linked
 				interviewsWithoutPeople: 3,
 				duplicatePeople: 1, // "Sarah Chen" appears twice
-			})
-		})
+			});
+		});
 
 		it("should handle empty arrays", () => {
-			const stats = calculateBackfillStats([], [], [])
+			const stats = calculateBackfillStats([], [], []);
 
 			expect(stats).toEqual({
 				totalInterviews: 0,
@@ -83,28 +83,28 @@ describe("Backfill Statistics Logic", () => {
 				interviewsWithPeople: 0,
 				interviewsWithoutPeople: 0,
 				duplicatePeople: 0,
-			})
-		})
+			});
+		});
 
 		it("should handle duplicate links correctly", () => {
 			const duplicateLinks: InterviewPeopleLink[] = [
 				{ interview_id: "interview-1", person_id: "person-1" },
 				{ interview_id: "interview-1", person_id: "person-2" }, // Same interview, different person
 				{ interview_id: "interview-1", person_id: "person-1" }, // Duplicate
-			]
+			];
 
-			const stats = calculateBackfillStats(mockInterviews, mockPeople, duplicateLinks)
-			expect(stats.interviewsWithPeople).toBe(1) // Should count interview-1 only once
-		})
-	})
+			const stats = calculateBackfillStats(mockInterviews, mockPeople, duplicateLinks);
+			expect(stats.interviewsWithPeople).toBe(1); // Should count interview-1 only once
+		});
+	});
 
 	describe("identifyInterviewsWithoutPeople", () => {
 		it("should identify interviews without people links", () => {
-			const result = identifyInterviewsWithoutPeople(mockInterviews, mockLinks)
+			const result = identifyInterviewsWithoutPeople(mockInterviews, mockLinks);
 
-			expect(result).toHaveLength(3)
-			expect(result.map((i) => i.id)).toEqual(["interview-2", "interview-3", "interview-4"])
-		})
+			expect(result).toHaveLength(3);
+			expect(result.map((i) => i.id)).toEqual(["interview-2", "interview-3", "interview-4"]);
+		});
 
 		it("should return empty array when all interviews have people", () => {
 			const allLinked: InterviewPeopleLink[] = [
@@ -112,27 +112,27 @@ describe("Backfill Statistics Logic", () => {
 				{ interview_id: "interview-2", person_id: "person-2" },
 				{ interview_id: "interview-3", person_id: "person-3" },
 				{ interview_id: "interview-4", person_id: "person-1" },
-			]
+			];
 
-			const result = identifyInterviewsWithoutPeople(mockInterviews, allLinked)
-			expect(result).toHaveLength(0)
-		})
+			const result = identifyInterviewsWithoutPeople(mockInterviews, allLinked);
+			expect(result).toHaveLength(0);
+		});
 
 		it("should return all interviews when no links exist", () => {
-			const result = identifyInterviewsWithoutPeople(mockInterviews, [])
-			expect(result).toHaveLength(4)
-		})
-	})
+			const result = identifyInterviewsWithoutPeople(mockInterviews, []);
+			expect(result).toHaveLength(4);
+		});
+	});
 
 	describe("groupInterviewsByPotentialPerson", () => {
 		it("should group by participant pseudonym", () => {
-			const groups = groupInterviewsByPotentialPerson(mockInterviews)
+			const groups = groupInterviewsByPotentialPerson(mockInterviews);
 
-			expect(groups.get("Sarah Chen")).toHaveLength(2)
-			expect(groups.get("Sarah Chen")?.map((i) => i.id)).toEqual(["interview-1", "interview-4"])
-			expect(groups.get("consumer")).toHaveLength(1)
-			expect(groups.get("unknown")).toHaveLength(1)
-		})
+			expect(groups.get("Sarah Chen")).toHaveLength(2);
+			expect(groups.get("Sarah Chen")?.map((i) => i.id)).toEqual(["interview-1", "interview-4"]);
+			expect(groups.get("consumer")).toHaveLength(1);
+			expect(groups.get("unknown")).toHaveLength(1);
+		});
 
 		it("should handle interviews with no identifying information", () => {
 			const interviews: Interview[] = [
@@ -144,18 +144,18 @@ describe("Backfill Statistics Logic", () => {
 					interview_date: null,
 					created_at: "2025-01-20T14:30:00Z",
 				},
-			]
+			];
 
-			const groups = groupInterviewsByPotentialPerson(interviews)
-			expect(groups.get("unknown")).toHaveLength(1)
-		})
-	})
+			const groups = groupInterviewsByPotentialPerson(interviews);
+			expect(groups.get("unknown")).toHaveLength(1);
+		});
+	});
 
 	describe("calculatePersonCreationPriority", () => {
 		it("should give highest priority to interviews with pseudonyms", () => {
-			const priority = calculatePersonCreationPriority(mockInterviews[0]) // Has pseudonym
-			expect(priority).toBeGreaterThan(100)
-		})
+			const priority = calculatePersonCreationPriority(mockInterviews[0]); // Has pseudonym
+			expect(priority).toBeGreaterThan(100);
+		});
 
 		it("should give medium priority to meaningful titles", () => {
 			const interview: Interview = {
@@ -165,11 +165,11 @@ describe("Backfill Statistics Logic", () => {
 				segment: "enterprise",
 				interview_date: "2025-01-25",
 				created_at: "2025-01-25T10:00:00Z",
-			}
+			};
 
-			const priority = calculatePersonCreationPriority(interview)
-			expect(priority).toBe(85) // 50 (title) + 25 (segment) + 10 (date)
-		})
+			const priority = calculatePersonCreationPriority(interview);
+			expect(priority).toBe(85); // 50 (title) + 25 (segment) + 10 (date)
+		});
 
 		it("should give low priority to generic interviews", () => {
 			const interview: Interview = {
@@ -179,11 +179,11 @@ describe("Backfill Statistics Logic", () => {
 				segment: null,
 				interview_date: null,
 				created_at: "2025-01-01T10:00:00Z", // Old interview
-			}
+			};
 
-			const priority = calculatePersonCreationPriority(interview)
-			expect(priority).toBe(0) // No meaningful data
-		})
+			const priority = calculatePersonCreationPriority(interview);
+			expect(priority).toBe(0); // No meaningful data
+		});
 
 		it("should give bonus to recent interviews", () => {
 			const recentInterview: Interview = {
@@ -193,32 +193,32 @@ describe("Backfill Statistics Logic", () => {
 				segment: null,
 				interview_date: null,
 				created_at: new Date().toISOString(), // Today
-			}
+			};
 
-			const priority = calculatePersonCreationPriority(recentInterview)
-			expect(priority).toBe(5) // Recent bonus
-		})
-	})
+			const priority = calculatePersonCreationPriority(recentInterview);
+			expect(priority).toBe(5); // Recent bonus
+		});
+	});
 
 	describe("prioritizeInterviewsForPersonCreation", () => {
 		it("should sort interviews by priority", () => {
-			const sorted = prioritizeInterviewsForPersonCreation(mockInterviews)
+			const sorted = prioritizeInterviewsForPersonCreation(mockInterviews);
 
 			// First should be interview with pseudonym
-			expect(sorted[0].participant_pseudonym).toBe("Sarah Chen")
+			expect(sorted[0].participant_pseudonym).toBe("Sarah Chen");
 
 			// Should maintain original array
-			expect(mockInterviews[0].id).toBe("interview-1") // Original unchanged
-		})
-	})
+			expect(mockInterviews[0].id).toBe("interview-1"); // Original unchanged
+		});
+	});
 
 	describe("validateBackfillOperation", () => {
 		it("should validate normal backfill operation", () => {
-			const validation = validateBackfillOperation(mockInterviews, mockLinks)
+			const validation = validateBackfillOperation(mockInterviews, mockLinks);
 
-			expect(validation.isValid).toBe(true)
-			expect(validation.warnings).toHaveLength(0)
-		})
+			expect(validation.isValid).toBe(true);
+			expect(validation.warnings).toHaveLength(0);
+		});
 
 		it("should warn when no backfill needed", () => {
 			const allLinked: InterviewPeopleLink[] = [
@@ -226,13 +226,13 @@ describe("Backfill Statistics Logic", () => {
 				{ interview_id: "interview-2", person_id: "person-2" },
 				{ interview_id: "interview-3", person_id: "person-3" },
 				{ interview_id: "interview-4", person_id: "person-1" },
-			]
+			];
 
-			const validation = validateBackfillOperation(mockInterviews, allLinked)
+			const validation = validateBackfillOperation(mockInterviews, allLinked);
 
-			expect(validation.isValid).toBe(true)
-			expect(validation.warnings).toContain("No interviews need backfilling - all interviews already have people")
-		})
+			expect(validation.isValid).toBe(true);
+			expect(validation.warnings).toContain("No interviews need backfilling - all interviews already have people");
+		});
 
 		it("should warn about large operations", () => {
 			const manyInterviews = Array.from({ length: 150 }, (_, i) => ({
@@ -242,12 +242,12 @@ describe("Backfill Statistics Logic", () => {
 				segment: null,
 				interview_date: "2025-01-25",
 				created_at: "2025-01-25T10:00:00Z",
-			}))
+			}));
 
-			const validation = validateBackfillOperation(manyInterviews, [])
+			const validation = validateBackfillOperation(manyInterviews, []);
 
-			expect(validation.warnings).toContain("Large backfill operation: 150 interviews need people")
-		})
+			expect(validation.warnings).toContain("Large backfill operation: 150 interviews need people");
+		});
 
 		it("should warn about missing data", () => {
 			const problematicInterviews: Interview[] = [
@@ -267,24 +267,24 @@ describe("Backfill Statistics Logic", () => {
 					interview_date: "2025-01-25",
 					created_at: "2025-01-25T10:00:00Z",
 				},
-			]
+			];
 
-			const validation = validateBackfillOperation(problematicInterviews, [])
+			const validation = validateBackfillOperation(problematicInterviews, []);
 
-			expect(validation.warnings).toContain("1 interviews have no date information")
-			expect(validation.warnings).toContain("2 interviews have no identifying information")
-		})
-	})
+			expect(validation.warnings).toContain("1 interviews have no date information");
+			expect(validation.warnings).toContain("2 interviews have no identifying information");
+		});
+	});
 
 	describe("estimateBackfillImpact", () => {
 		it("should estimate backfill impact correctly", () => {
-			const impact = estimateBackfillImpact(mockInterviews, mockLinks)
+			const impact = estimateBackfillImpact(mockInterviews, mockLinks);
 
-			expect(impact.interviewsToProcess).toBe(3) // 3 interviews without people
-			expect(impact.estimatedLinksToCreate).toBe(3) // One link per interview
-			expect(impact.estimatedPeopleToCreate).toBe(3) // 3 groups: 'consumer', 'unknown', 'Sarah Chen'
-			expect(impact.potentialDuplicates).toBe(0) // Current implementation groups differently
-		})
+			expect(impact.interviewsToProcess).toBe(3); // 3 interviews without people
+			expect(impact.estimatedLinksToCreate).toBe(3); // One link per interview
+			expect(impact.estimatedPeopleToCreate).toBe(3); // 3 groups: 'consumer', 'unknown', 'Sarah Chen'
+			expect(impact.potentialDuplicates).toBe(0); // Current implementation groups differently
+		});
 
 		it("should handle no backfill needed", () => {
 			const allLinked: InterviewPeopleLink[] = [
@@ -292,15 +292,15 @@ describe("Backfill Statistics Logic", () => {
 				{ interview_id: "interview-2", person_id: "person-2" },
 				{ interview_id: "interview-3", person_id: "person-3" },
 				{ interview_id: "interview-4", person_id: "person-1" },
-			]
+			];
 
-			const impact = estimateBackfillImpact(mockInterviews, allLinked)
+			const impact = estimateBackfillImpact(mockInterviews, allLinked);
 
-			expect(impact.interviewsToProcess).toBe(0)
-			expect(impact.estimatedPeopleToCreate).toBe(0)
-			expect(impact.estimatedLinksToCreate).toBe(0)
-			expect(impact.potentialDuplicates).toBe(0)
-		})
+			expect(impact.interviewsToProcess).toBe(0);
+			expect(impact.estimatedPeopleToCreate).toBe(0);
+			expect(impact.estimatedLinksToCreate).toBe(0);
+			expect(impact.potentialDuplicates).toBe(0);
+		});
 
 		it("should estimate deduplication opportunities", () => {
 			const interviews: Interview[] = [
@@ -344,14 +344,14 @@ describe("Backfill Statistics Logic", () => {
 					interview_date: null,
 					created_at: "2025-01-24T10:00:00Z",
 				},
-			]
+			];
 
-			const impact = estimateBackfillImpact(interviews, [])
+			const impact = estimateBackfillImpact(interviews, []);
 
-			expect(impact.interviewsToProcess).toBe(5)
-			expect(impact.estimatedPeopleToCreate).toBe(3) // John Doe, Jane Smith, enterprise
-			expect(impact.estimatedLinksToCreate).toBe(5)
-			expect(impact.potentialDuplicates).toBe(2) // John Doe and Jane Smith groups
-		})
-	})
-})
+			expect(impact.interviewsToProcess).toBe(5);
+			expect(impact.estimatedPeopleToCreate).toBe(3); // John Doe, Jane Smith, enterprise
+			expect(impact.estimatedLinksToCreate).toBe(5);
+			expect(impact.potentialDuplicates).toBe(2); // John Doe and Jane Smith groups
+		});
+	});
+});

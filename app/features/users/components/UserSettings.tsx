@@ -1,70 +1,70 @@
-import type * as React from "react"
-import { useFetcher } from "react-router"
-import InlineEdit from "~/components/ui/inline-edit"
+import type * as React from "react";
+import { useFetcher } from "react-router";
+import InlineEdit from "~/components/ui/inline-edit";
 
-type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue }
+type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue };
 
 type UserSettings = {
 	// core
-	id: string
-	user_id?: string | null
-	first_name?: string | null
-	last_name?: string | null
-	company_name?: string | null
-	company_website?: string | null
-	company_description?: string | null
-	title?: string | null
-	role?: string | null
-	industry?: string | null
-	email?: string | null
-	mobile_phone?: string | null
-	image_url?: string | null
+	id: string;
+	user_id?: string | null;
+	first_name?: string | null;
+	last_name?: string | null;
+	company_name?: string | null;
+	company_website?: string | null;
+	company_description?: string | null;
+	title?: string | null;
+	role?: string | null;
+	industry?: string | null;
+	email?: string | null;
+	mobile_phone?: string | null;
+	image_url?: string | null;
 
 	// jsonb & prefs
-	signup_data?: JSONValue
-	setup_data?: JSONValue // tolerate alternate name
-	trial_goals?: JSONValue
-	referral_source?: string | null
-	metadata?: JSONValue
-	onboarding_completed?: boolean
-	onboarding_steps?: JSONValue
-	theme?: string | null
-	language?: string | null
-	notification_preferences?: JSONValue
-	ui_preferences?: JSONValue
-	last_used_account_id?: string | null
-	last_used_project_id?: string | null
+	signup_data?: JSONValue;
+	setup_data?: JSONValue; // tolerate alternate name
+	trial_goals?: JSONValue;
+	referral_source?: string | null;
+	metadata?: JSONValue;
+	onboarding_completed?: boolean;
+	onboarding_steps?: JSONValue;
+	theme?: string | null;
+	language?: string | null;
+	notification_preferences?: JSONValue;
+	ui_preferences?: JSONValue;
+	last_used_account_id?: string | null;
+	last_used_project_id?: string | null;
 
 	// timestamps
-	created_at?: string
-	updated_at?: string
+	created_at?: string;
+	updated_at?: string;
 
 	// alt fields (second schema variant)
-	account_id?: string | null
-	app_activity?: JSONValue
-	created_by?: string | null
-	updated_by?: string | null
-}
+	account_id?: string | null;
+	app_activity?: JSONValue;
+	created_by?: string | null;
+	updated_by?: string | null;
+};
 
 function cn(...s: Array<string | false | undefined | null>) {
-	return s.filter(Boolean).join(" ")
+	return s.filter(Boolean).join(" ");
 }
 
 function isEmptyJson(v: JSONValue | undefined): boolean {
-	if (v == null) return true
-	if (Array.isArray(v)) return v.length === 0
-	if (typeof v === "object") return Object.keys(v as Record<string, unknown>).length === 0
-	return false
+	if (v == null) return true;
+	if (Array.isArray(v)) return v.length === 0;
+	if (typeof v === "object") return Object.keys(v as Record<string, unknown>).length === 0;
+	return false;
 }
 
 function formatScalar(v: Exclude<JSONValue, object | JSONValue[]>): string {
-	if (v === null) return "null"
-	if (typeof v === "boolean") return v ? "true" : "false"
-	return String(v)
+	if (v === null) return "null";
+	if (typeof v === "boolean") return v ? "true" : "false";
+	return String(v);
 }
 
 function JsonKV({ data, level = 0 }: { data: JSONValue; level?: number }) {
-	if (data == null) return null
+	if (data == null) return null;
 
 	if (Array.isArray(data)) {
 		return (
@@ -75,7 +75,7 @@ function JsonKV({ data, level = 0 }: { data: JSONValue; level?: number }) {
 					</li>
 				))}
 			</ul>
-		)
+		);
 	}
 
 	if (typeof data === "object") {
@@ -96,11 +96,11 @@ function JsonKV({ data, level = 0 }: { data: JSONValue; level?: number }) {
 					</div>
 				))}
 			</dl>
-		)
+		);
 	}
 
 	// primitive
-	return <span className="font-mono">{formatScalar(data as any)}</span>
+	return <span className="font-mono">{formatScalar(data as any)}</span>;
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -109,7 +109,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 			<div className="col-span-1 font-medium text-gray-600 text-sm">{label}</div>
 			<div className="col-span-2 text-sm">{value}</div>
 		</div>
-	)
+	);
 }
 
 function EditableRow({
@@ -119,20 +119,20 @@ function EditableRow({
 	placeholder,
 	multiline = false,
 }: {
-	label: string
-	field: string
-	value?: string | null
-	placeholder?: string
-	multiline?: boolean
+	label: string;
+	field: string;
+	value?: string | null;
+	placeholder?: string;
+	multiline?: boolean;
 }) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	const handleSubmit = (newValue: string) => {
-		const formData = new FormData()
-		formData.append("field", field)
-		formData.append("value", newValue)
-		fetcher.submit(formData, { method: "post" })
-	}
+		const formData = new FormData();
+		formData.append("field", field);
+		formData.append("value", newValue);
+		fetcher.submit(formData, { method: "post" });
+	};
 
 	return (
 		<div className="grid grid-cols-3 gap-3 py-2">
@@ -149,11 +149,11 @@ function EditableRow({
 				/>
 			</div>
 		</div>
-	)
+	);
 }
 
 function _BoolPill({ value }: { value?: boolean }) {
-	if (value === undefined || value === null) return null
+	if (value === undefined || value === null) return null;
 	return (
 		<span
 			className={cn(
@@ -163,14 +163,14 @@ function _BoolPill({ value }: { value?: boolean }) {
 		>
 			{value ? "Yes" : "No"}
 		</span>
-	)
+	);
 }
 
 function _Time({ iso }: { iso?: string }) {
-	if (!iso) return null
-	const d = new Date(iso)
-	const ok = !Number.isNaN(d.getTime())
-	return <span className="font-mono">{ok ? d.toLocaleString() : iso}</span>
+	if (!iso) return null;
+	const d = new Date(iso);
+	const ok = !Number.isNaN(d.getTime());
+	return <span className="font-mono">{ok ? d.toLocaleString() : iso}</span>;
 }
 
 function UserSettings({
@@ -179,20 +179,20 @@ function UserSettings({
 	className,
 	title = "User Settings",
 }: {
-	settings: UserSettings
-	oauthAvatar?: string | null
-	className?: string
-	title?: string
+	settings: UserSettings;
+	oauthAvatar?: string | null;
+	className?: string;
+	title?: string;
 }) {
 	// Check if profile is incomplete
-	const missingFields = []
-	if (!settings.first_name) missingFields.push("first name")
-	if (!settings.last_name) missingFields.push("last name")
-	if (!settings.company_name) missingFields.push("company")
-	if (!settings.title) missingFields.push("title")
-	if (!settings.role) missingFields.push("role")
+	const missingFields = [];
+	if (!settings.first_name) missingFields.push("first name");
+	if (!settings.last_name) missingFields.push("last name");
+	if (!settings.company_name) missingFields.push("company");
+	if (!settings.title) missingFields.push("title");
+	if (!settings.role) missingFields.push("role");
 
-	const isIncomplete = missingFields.length > 0
+	const isIncomplete = missingFields.length > 0;
 
 	return (
 		<section className={cn("w-full", className)}>
@@ -233,18 +233,18 @@ function UserSettings({
 							<InlineEdit
 								value={settings.image_url || ""}
 								onSubmit={(newValue) => {
-									const formData = new FormData()
-									formData.append("field", "image_url")
-									formData.append("value", newValue)
+									const formData = new FormData();
+									formData.append("field", "image_url");
+									formData.append("value", newValue);
 									const fetcher = {
 										submit: (data: FormData) => {
 											fetch(window.location.pathname, {
 												method: "POST",
 												body: data,
-											}).then(() => window.location.reload())
+											}).then(() => window.location.reload());
 										},
-									}
-									fetcher.submit(formData)
+									};
+									fetcher.submit(formData);
 								}}
 								placeholder={oauthAvatar ? "Add a custom URL override" : "Paste a URL to your profile picture"}
 								textClassName="text-xs text-gray-500"
@@ -350,7 +350,7 @@ function UserSettings({
 				)}
 			</div>
 		</section>
-	)
+	);
 }
 
-export default UserSettings
+export default UserSettings;

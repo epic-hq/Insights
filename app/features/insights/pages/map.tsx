@@ -7,36 +7,36 @@
 //   4. Renders a Recharts scatter plot
 // -----------------------------------------------------------------------------
 
-import consola from "consola"
-import { type LoaderFunctionArgs, useLoaderData } from "react-router-dom"
-import { CartesianGrid, LabelList, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts"
-import { getServerClient, getSession } from "~/lib/supabase/client.server"
+import consola from "consola";
+import { type LoaderFunctionArgs, useLoaderData } from "react-router-dom";
+import { CartesianGrid, LabelList, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
+import { getServerClient, getSession } from "~/lib/supabase/client.server";
 
 /* -------------------------------------------------------------------------- */
 
 /** Tuple coming back from edge function */
 export interface ClusterPoint {
-	id: string
-	x: number
-	y: number
-	cluster: number // -1 = noise
-	text: string
+	id: string;
+	x: number;
+	y: number;
+	cluster: number; // -1 = noise
+	text: string;
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	// TODO: delegate this to db function
 	/* 1️⃣  get Supabase rows -------------------------------------------------- */
-	const { client: supabase } = getServerClient(request)
-	const { data: jwt } = await supabase.auth.getClaims()
+	const { client: supabase } = getServerClient(request);
+	const { data: jwt } = await supabase.auth.getClaims();
 	// consola.info("JWT object from getClaims:", jwt)
-	const accountId = jwt?.claims.sub
+	const accountId = jwt?.claims.sub;
 
 	// Get the user's session and access token
-	const session = await getSession(request)
-	const accessToken = session?.access_token
+	const session = await getSession(request);
+	const accessToken = session?.access_token;
 
 	if (!accountId) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
 	// Fetch insights with embeddings
@@ -45,46 +45,46 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		// .select("*")
 		.select("id, pain, embedding")
 		.eq("account_id", accountId)
-		.not("embedding", "is", null)
+		.not("embedding", "is", null);
 
 	if (error) {
-		consola.error("Error fetching insights:", error)
-		throw new Response("Error fetching insights", { status: 500 })
+		consola.error("Error fetching insights:", error);
+		throw new Response("Error fetching insights", { status: 500 });
 	}
 
 	if (!insights || insights.length === 0) {
-		return { clusterData: [] }
+		return { clusterData: [] };
 	}
 
 	/* 2️⃣  prepare data for edge function ------------------------------------ */
 	const insightRows = insights
 		.map((r) => {
-			let embedding: number[]
+			let embedding: number[];
 			try {
 				// Parse embedding from JSON string to array
-				embedding = typeof r.embedding === "string" ? JSON.parse(r.embedding) : r.embedding
+				embedding = typeof r.embedding === "string" ? JSON.parse(r.embedding) : r.embedding;
 			} catch (err) {
-				consola.error(`Failed to parse embedding for insight ${r.id}:`, err)
-				return null
+				consola.error(`Failed to parse embedding for insight ${r.id}:`, err);
+				return null;
 			}
 
 			return {
 				id: r.id,
 				text: r.pain || "NA",
 				embedding,
-			}
+			};
 		})
-		.filter(Boolean) // Remove null entries
+		.filter(Boolean); // Remove null entries
 
 	if (insightRows.length === 0) {
-		return { clusterData: [] }
+		return { clusterData: [] };
 	}
 
 	/* 3️⃣  call edge function ------------------------------------------------ */
-	const SUPABASE_URL = process.env.SUPABASE_URL
-	const SUPABASE_FUNCTIONS_URL = process.env.SUPABASE_FUNCTIONS_URL || `${SUPABASE_URL}/functions/v1/`
+	const SUPABASE_URL = process.env.SUPABASE_URL;
+	const SUPABASE_FUNCTIONS_URL = process.env.SUPABASE_FUNCTIONS_URL || `${SUPABASE_URL}/functions/v1/`;
 	if (!accessToken) {
-		throw new Response("Missing user access token", { status: 401 })
+		throw new Response("Missing user access token", { status: 401 });
 	}
 
 	try {
@@ -95,30 +95,30 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				Authorization: `Bearer ${accessToken}`,
 			},
 			body: JSON.stringify({ items: insightRows }),
-		})
+		});
 
 		if (!response.ok) {
-			const errorText = await response.text()
-			consola.error("Edge function error:", response.status, errorText)
-			throw new Response(`Edge function error: ${response.status}`, { status: 500 })
+			const errorText = await response.text();
+			consola.error("Edge function error:", response.status, errorText);
+			throw new Response(`Edge function error: ${response.status}`, { status: 500 });
 		}
 
-		const clusterData: ClusterPoint[] = await response.json()
-		consola.info(`Successfully clustered ${clusterData.length} insights`)
+		const clusterData: ClusterPoint[] = await response.json();
+		consola.info(`Successfully clustered ${clusterData.length} insights`);
 
-		return { clusterData }
+		return { clusterData };
 	} catch (err) {
-		consola.error("Error calling cluster_insights edge function:", err)
-		return { clusterData: [] }
+		consola.error("Error calling cluster_insights edge function:", err);
+		return { clusterData: [] };
 	}
 }
 
 export default function InsightsMapPage() {
-	const { clusterData } = useLoaderData<typeof loader>()
+	const { clusterData } = useLoaderData<typeof loader>();
 
 	// Debug: log the first few points to inspect available fields
 	if (clusterData && clusterData.length > 0) {
-		consola.info("Sample clusterData:", clusterData.slice(0, 3))
+		consola.info("Sample clusterData:", clusterData.slice(0, 3));
 	}
 
 	if (!clusterData || clusterData.length === 0) {
@@ -129,18 +129,18 @@ export default function InsightsMapPage() {
 					No insights with embeddings found. Upload some interviews to see the clustering visualization.
 				</p>
 			</div>
-		)
+		);
 	}
 
 	// Color mapping for clusters
 	const getClusterColor = (cluster: number) => {
-		const colors = ["#8884d8", "#82ca9d", "#ffc658", "#ff7c7c", "#8dd1e1", "#d084d0"]
-		return cluster === -1 ? "#999999" : colors[cluster % colors.length]
-	}
+		const colors = ["#8884d8", "#82ca9d", "#ffc658", "#ff7c7c", "#8dd1e1", "#d084d0"];
+		return cluster === -1 ? "#999999" : colors[cluster % colors.length];
+	};
 
 	// Custom label renderer for dots
 	const _renderDotLabel = (props: any) => {
-		const { x, y, value } = props
+		const { x, y, value } = props;
 		// value is the "text" field (pain) from ClusterPoint
 		return (
 			<text
@@ -157,8 +157,8 @@ export default function InsightsMapPage() {
 			>
 				{value.length > 24 ? `${value.slice(0, 24)}…` : value}
 			</text>
-		)
-	}
+		);
+	};
 
 	return (
 		<div className="p-8">
@@ -177,7 +177,7 @@ export default function InsightsMapPage() {
 							cursor={{ strokeDasharray: "3 3" }}
 							content={({ active, payload }) => {
 								if (active && payload && payload.length) {
-									const data = payload[0].payload as ClusterPoint
+									const data = payload[0].payload as ClusterPoint;
 									return (
 										<div className="max-w-xs rounded border bg-white p-3 shadow-lg">
 											<p className="mb-1 font-semibold">Cluster {data.cluster === -1 ? "Noise" : data.cluster}</p>
@@ -186,9 +186,9 @@ export default function InsightsMapPage() {
 											</p>
 											<p className="text-gray-600 text-xs">Insight ID: {data.id}</p>
 										</div>
-									)
+									);
 								}
-								return null
+								return null;
 							}}
 						/>
 						{clusterData.map((point, index) => (
@@ -202,7 +202,7 @@ export default function InsightsMapPage() {
 								<LabelList
 									dataKey="text"
 									content={(props: any) => {
-										const { x, y, value } = props
+										const { x, y, value } = props;
 										return (
 											<text
 												x={x}
@@ -218,7 +218,7 @@ export default function InsightsMapPage() {
 											>
 												{value && value.length > 48 ? `${value.slice(0, 48)}…` : value}
 											</text>
-										)
+										);
 									}}
 								/>
 							</Scatter>
@@ -232,5 +232,5 @@ export default function InsightsMapPage() {
 				<p>Hover over points to see the insight content.</p>
 			</div>
 		</div>
-	)
+	);
 }

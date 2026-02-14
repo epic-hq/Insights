@@ -1,4 +1,4 @@
-import type { LoaderFunctionArgs } from "react-router"
+import type { LoaderFunctionArgs } from "react-router";
 
 /**
  * GET /api/desktop/health
@@ -9,5 +9,5 @@ export async function loader(_args: LoaderFunctionArgs) {
 		status: "ok",
 		timestamp: new Date().toISOString(),
 		version: "1.0.0",
-	})
+	});
 }

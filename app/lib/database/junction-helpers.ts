@@ -3,34 +3,34 @@
  * Provides a clean API for working with normalized many-to-many data
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database } from "~/../../supabase/types"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "~/../../supabase/types";
 
-type DatabaseClient = SupabaseClient<Database>
+type DatabaseClient = SupabaseClient<Database>;
 
 // Type definitions for junction table operations
 export interface InsightTagsSync {
-	insightId: string
-	tags: string[]
-	accountId: string
+	insightId: string;
+	tags: string[];
+	accountId: string;
 }
 
 export interface OpportunityInsightsSync {
-	opportunityId: string
-	insightIds: string[]
-	weights?: Record<string, number> // Optional weights for each insight
+	opportunityId: string;
+	insightIds: string[];
+	weights?: Record<string, number>; // Optional weights for each insight
 }
 
 export interface PersonaInsightsLink {
-	personaId: string
-	insightId: string
-	relevanceScore?: number
+	personaId: string;
+	insightId: string;
+	relevanceScore?: number;
 }
 
 export interface ProjectPeopleStats {
-	projectId: string
-	personId: string
-	role?: string
+	projectId: string;
+	personId: string;
+	relationshipType?: string;
 }
 
 /**
@@ -43,36 +43,36 @@ export class InsightTagsHelper {
 	 * Sync tags for an insight - replaces all existing tags
 	 */
 	async syncTags({ insightId, tags, accountId }: InsightTagsSync) {
-		const { error: deleteError } = await this.db.from("insight_tags").delete().eq("insight_id", insightId)
+		const { error: deleteError } = await this.db.from("insight_tags").delete().eq("insight_id", insightId);
 
-		if (deleteError) throw deleteError
+		if (deleteError) throw deleteError;
 
-		if (tags.length === 0) return { data: [], error: null }
+		if (tags.length === 0) return { data: [], error: null };
 
 		const tagRecords = tags.map((tag) => ({
 			insight_id: insightId,
 			tag,
 			account_id: accountId,
 			created_at: new Date().toISOString(),
-		}))
+		}));
 
-		const { data, error } = await this.db.from("insight_tags").insert(tagRecords).select()
+		const { data, error } = await this.db.from("insight_tags").insert(tagRecords).select();
 
-		return { data, error }
+		return { data, error };
 	}
 
 	/**
 	 * Add tags to an insight (without removing existing ones)
 	 */
 	async addTags({ insightId, tags, accountId }: InsightTagsSync) {
-		if (tags.length === 0) return { data: [], error: null }
+		if (tags.length === 0) return { data: [], error: null };
 
 		const tagRecords = tags.map((tag) => ({
 			insight_id: insightId,
 			tag,
 			account_id: accountId,
 			created_at: new Date().toISOString(),
-		}))
+		}));
 
 		const { data, error } = await this.db
 			.from("insight_tags")
@@ -80,9 +80,9 @@ export class InsightTagsHelper {
 				onConflict: "insight_id,tag,account_id",
 				ignoreDuplicates: true,
 			})
-			.select()
+			.select();
 
-		return { data, error }
+		return { data, error };
 	}
 
 	/**
@@ -94,21 +94,21 @@ export class InsightTagsHelper {
 			.delete()
 			.eq("insight_id", insightId)
 			.in("tag", tags)
-			.select()
+			.select();
 
-		return { data, error }
+		return { data, error };
 	}
 
 	/**
 	 * Get all tags for an insight
 	 */
 	async getTagsForInsight(insightId: string) {
-		const { data, error } = await this.db.from("insight_tags").select("tag").eq("insight_id", insightId).order("tag")
+		const { data, error } = await this.db.from("insight_tags").select("tag").eq("insight_id", insightId).order("tag");
 
 		return {
 			data: data?.map((row) => row.tag) || [],
 			error,
-		}
+		};
 	}
 
 	/**
@@ -127,9 +127,9 @@ export class InsightTagsHelper {
         )
       `)
 			.eq("tag", tag)
-			.eq("account_id", accountId)
+			.eq("account_id", accountId);
 
-		return { data, error }
+		return { data, error };
 	}
 }
 
@@ -143,22 +143,22 @@ export class InterviewTagsHelper {
 	 * Sync tags for an interview
 	 */
 	async syncTags({ interviewId, tags, accountId }: { interviewId: string; tags: string[]; accountId: string }) {
-		const { error: deleteError } = await this.db.from("interview_tags").delete().eq("interview_id", interviewId)
+		const { error: deleteError } = await this.db.from("interview_tags").delete().eq("interview_id", interviewId);
 
-		if (deleteError) throw deleteError
+		if (deleteError) throw deleteError;
 
-		if (tags.length === 0) return { data: [], error: null }
+		if (tags.length === 0) return { data: [], error: null };
 
 		const tagRecords = tags.map((tag) => ({
 			interview_id: interviewId,
 			tag,
 			account_id: accountId,
 			created_at: new Date().toISOString(),
-		}))
+		}));
 
-		const { data, error } = await this.db.from("interview_tags").insert(tagRecords).select()
+		const { data, error } = await this.db.from("interview_tags").insert(tagRecords).select();
 
-		return { data, error }
+		return { data, error };
 	}
 
 	/**
@@ -169,12 +169,12 @@ export class InterviewTagsHelper {
 			.from("interview_tags")
 			.select("tag")
 			.eq("interview_id", interviewId)
-			.order("tag")
+			.order("tag");
 
 		return {
 			data: data?.map((row) => row.tag) || [],
 			error,
-		}
+		};
 	}
 }
 
@@ -191,36 +191,36 @@ export class OpportunityInsightsHelper {
 		const { error: deleteError } = await this.db
 			.from("opportunity_insights")
 			.delete()
-			.eq("opportunity_id", opportunityId)
+			.eq("opportunity_id", opportunityId);
 
-		if (deleteError) throw deleteError
+		if (deleteError) throw deleteError;
 
-		if (insightIds.length === 0) return { data: [], error: null }
+		if (insightIds.length === 0) return { data: [], error: null };
 
 		const insightRecords = insightIds.map((insightId) => ({
 			opportunity_id: opportunityId,
 			insight_id: insightId,
 			weight: weights[insightId] || 1.0,
 			created_at: new Date().toISOString(),
-		}))
+		}));
 
-		const { data, error } = await this.db.from("opportunity_insights").insert(insightRecords).select()
+		const { data, error } = await this.db.from("opportunity_insights").insert(insightRecords).select();
 
-		return { data, error }
+		return { data, error };
 	}
 
 	/**
 	 * Add insights to an opportunity (without removing existing ones)
 	 */
 	async addInsights({ opportunityId, insightIds, weights = {} }: OpportunityInsightsSync) {
-		if (insightIds.length === 0) return { data: [], error: null }
+		if (insightIds.length === 0) return { data: [], error: null };
 
 		const insightRecords = insightIds.map((insightId) => ({
 			opportunity_id: opportunityId,
 			insight_id: insightId,
 			weight: weights[insightId] || 1.0,
 			created_at: new Date().toISOString(),
-		}))
+		}));
 
 		const { data, error } = await this.db
 			.from("opportunity_insights")
@@ -228,9 +228,9 @@ export class OpportunityInsightsHelper {
 				onConflict: "opportunity_id,insight_id",
 				ignoreDuplicates: true,
 			})
-			.select()
+			.select();
 
-		return { data, error }
+		return { data, error };
 	}
 
 	/**
@@ -252,9 +252,9 @@ export class OpportunityInsightsHelper {
         )
       `)
 			.eq("opportunity_id", opportunityId)
-			.order("weight", { ascending: false })
+			.order("weight", { ascending: false });
 
-		return { data, error }
+		return { data, error };
 	}
 
 	/**
@@ -274,9 +274,9 @@ export class OpportunityInsightsHelper {
         )
       `)
 			.eq("insight_id", insightId)
-			.order("weight", { ascending: false })
+			.order("weight", { ascending: false });
 
-		return { data, error }
+		return { data, error };
 	}
 }
 
@@ -289,7 +289,7 @@ export class ProjectPeopleHelper {
 	/**
 	 * Update project-people stats (usually called automatically via triggers)
 	 */
-	async updateStats({ projectId, personId, role }: ProjectPeopleStats) {
+	async updateStats({ projectId, personId, relationshipType }: ProjectPeopleStats) {
 		// Get interview stats for this person in this project
 		const { data: interviewStats } = await this.db
 			.from("interviews")
@@ -299,12 +299,12 @@ export class ProjectPeopleHelper {
         interview_people!inner(person_id)
       `)
 			.eq("project_id", projectId)
-			.eq("interview_people.person_id", personId)
+			.eq("interview_people.person_id", personId);
 
-		const interviewCount = interviewStats?.length || 0
-		const dates = interviewStats?.map((i) => i.interview_date).filter(Boolean) || []
-		const firstSeen = dates.length > 0 ? Math.min(...dates.map((d) => new Date(d!).getTime())) : Date.now()
-		const lastSeen = dates.length > 0 ? Math.max(...dates.map((d) => new Date(d!).getTime())) : Date.now()
+		const interviewCount = interviewStats?.length || 0;
+		const dates = interviewStats?.map((i) => i.interview_date).filter(Boolean) || [];
+		const firstSeen = dates.length > 0 ? Math.min(...dates.map((d) => new Date(d!).getTime())) : Date.now();
+		const lastSeen = dates.length > 0 ? Math.max(...dates.map((d) => new Date(d!).getTime())) : Date.now();
 
 		const { data, error } = await this.db
 			.from("project_people")
@@ -312,7 +312,7 @@ export class ProjectPeopleHelper {
 				{
 					project_id: projectId,
 					person_id: personId,
-					role,
+					relationship_type: relationshipType,
 					interview_count: interviewCount,
 					first_seen_at: new Date(firstSeen).toISOString(),
 					last_seen_at: new Date(lastSeen).toISOString(),
@@ -322,9 +322,9 @@ export class ProjectPeopleHelper {
 					onConflict: "project_id,person_id",
 				}
 			)
-			.select()
+			.select();
 
-		return { data, error }
+		return { data, error };
 	}
 
 	/**
@@ -335,7 +335,7 @@ export class ProjectPeopleHelper {
 			.from("project_people")
 			.select(`
         person_id,
-        role,
+        relationship_type,
         interview_count,
         first_seen_at,
         last_seen_at,
@@ -348,9 +348,9 @@ export class ProjectPeopleHelper {
         )
       `)
 			.eq("project_id", projectId)
-			.order("interview_count", { ascending: false })
+			.order("interview_count", { ascending: false });
 
-		return { data, error }
+		return { data, error };
 	}
 
 	/**
@@ -361,7 +361,7 @@ export class ProjectPeopleHelper {
 			.from("project_people")
 			.select(`
         project_id,
-        role,
+        relationship_type,
         interview_count,
         first_seen_at,
         last_seen_at,
@@ -374,9 +374,9 @@ export class ProjectPeopleHelper {
         )
       `)
 			.eq("person_id", personId)
-			.order("last_seen_at", { ascending: false })
+			.order("last_seen_at", { ascending: false });
 
-		return { data, error }
+		return { data, error };
 	}
 }
 
@@ -403,9 +403,9 @@ export class PersonaInsightsHelper {
 					onConflict: "persona_id,insight_id",
 				}
 			)
-			.select()
+			.select();
 
-		return { data, error }
+		return { data, error };
 	}
 
 	/**
@@ -435,9 +435,9 @@ export class PersonaInsightsHelper {
         )
       `)
 			.eq("id", insightId)
-			.not("interviews.interview_people.people.persona", "is", null)
+			.not("interviews.interview_people.people.persona", "is", null);
 
-		if (!personaLinks?.length) return { data: [], error: null }
+		if (!personaLinks?.length) return { data: [], error: null };
 
 		const linkRecords = personaLinks.flatMap(
 			(insight) =>
@@ -449,9 +449,9 @@ export class PersonaInsightsHelper {
 						created_at: new Date().toISOString(),
 					}))
 					.filter((record) => record.persona_id) || []
-		)
+		);
 
-		if (linkRecords.length === 0) return { data: [], error: null }
+		if (linkRecords.length === 0) return { data: [], error: null };
 
 		const { data, error } = await this.db
 			.from("persona_insights")
@@ -459,9 +459,9 @@ export class PersonaInsightsHelper {
 				onConflict: "persona_id,insight_id",
 				ignoreDuplicates: true,
 			})
-			.select()
+			.select();
 
-		return { data, error }
+		return { data, error };
 	}
 
 	/**
@@ -483,9 +483,9 @@ export class PersonaInsightsHelper {
         )
       `)
 			.eq("persona_id", personaId)
-			.order("relevance_score", { ascending: false })
+			.order("relevance_score", { ascending: false });
 
-		return { data, error }
+		return { data, error };
 	}
 
 	/**
@@ -506,9 +506,9 @@ export class PersonaInsightsHelper {
         )
       `)
 			.eq("insight_id", insightId)
-			.order("relevance_score", { ascending: false })
+			.order("relevance_score", { ascending: false });
 
-		return { data, error }
+		return { data, error };
 	}
 }
 
@@ -517,18 +517,18 @@ export class PersonaInsightsHelper {
  * Provides a unified interface to all junction table helpers
  */
 export class JunctionTableManager {
-	public insightTags: InsightTagsHelper
-	public interviewTags: InterviewTagsHelper
-	public opportunityInsights: OpportunityInsightsHelper
-	public projectPeople: ProjectPeopleHelper
-	public personaInsights: PersonaInsightsHelper
+	public insightTags: InsightTagsHelper;
+	public interviewTags: InterviewTagsHelper;
+	public opportunityInsights: OpportunityInsightsHelper;
+	public projectPeople: ProjectPeopleHelper;
+	public personaInsights: PersonaInsightsHelper;
 
 	constructor(db: DatabaseClient) {
-		this.insightTags = new InsightTagsHelper(db)
-		this.interviewTags = new InterviewTagsHelper(db)
-		this.opportunityInsights = new OpportunityInsightsHelper(db)
-		this.projectPeople = new ProjectPeopleHelper(db)
-		this.personaInsights = new PersonaInsightsHelper(db)
+		this.insightTags = new InsightTagsHelper(db);
+		this.interviewTags = new InterviewTagsHelper(db);
+		this.opportunityInsights = new OpportunityInsightsHelper(db);
+		this.projectPeople = new ProjectPeopleHelper(db);
+		this.personaInsights = new PersonaInsightsHelper(db);
 	}
 
 	/**
@@ -540,7 +540,7 @@ export class JunctionTableManager {
 			.from("themes")
 			.select("id, related_tags")
 			.eq("account_id", accountId)
-			.not("related_tags", "is", null)
+			.not("related_tags", "is", null);
 
 		for (const insight of insights || []) {
 			if (insight.related_tags && Array.isArray(insight.related_tags)) {
@@ -548,7 +548,7 @@ export class JunctionTableManager {
 					insightId: insight.id,
 					tags: insight.related_tags,
 					accountId,
-				})
+				});
 			}
 		}
 
@@ -557,17 +557,17 @@ export class JunctionTableManager {
 			.from("opportunities")
 			.select("id, related_insight_ids")
 			.eq("account_id", accountId)
-			.not("related_insight_ids", "is", null)
+			.not("related_insight_ids", "is", null);
 
 		for (const opportunity of opportunities || []) {
 			if (opportunity.related_insight_ids && Array.isArray(opportunity.related_insight_ids)) {
 				await this.opportunityInsights.syncInsights({
 					opportunityId: opportunity.id,
 					insightIds: opportunity.related_insight_ids,
-				})
+				});
 			}
 		}
-		return { success: true }
+		return { success: true };
 	}
 }
 
@@ -575,5 +575,5 @@ export class JunctionTableManager {
  * Factory function to create a junction table manager
  */
 export function createJunctionTableManager(db: DatabaseClient): JunctionTableManager {
-	return new JunctionTableManager(db)
+	return new JunctionTableManager(db);
 }

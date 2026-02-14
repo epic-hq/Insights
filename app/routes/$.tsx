@@ -1,5 +1,5 @@
-import { useNavigate } from "react-router"
-import { Link } from "~/library/link"
+import { useNavigate } from "react-router";
+import { Link } from "~/library/link";
 
 // Cute low-fidelity SVG illustration
 const LostIllustration = () => (
@@ -58,10 +58,10 @@ const LostIllustration = () => (
 		<rect x="90" y="210" width="15" height="20" fill="#F59E0B" opacity="0.7" rx="2" />
 		<rect x="320" y="190" width="18" height="12" fill="#EF4444" opacity="0.7" rx="2" />
 	</svg>
-)
+);
 
 export default function Route404() {
-	const navigate = useNavigate()
+	const navigate = useNavigate();
 
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 dark:from-slate-900 dark:via-blue-900 dark:to-indigo-900">
@@ -120,5 +120,5 @@ export default function Route404() {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

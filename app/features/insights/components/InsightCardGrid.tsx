@@ -1,23 +1,23 @@
-import type { ReactNode } from "react"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { InsightView } from "~/types"
-import InsightCardV2 from "./InsightCardV2Clean"
+import type { ReactNode } from "react";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import type { InsightView } from "~/types";
+import InsightCardV2 from "./InsightCardV2Clean";
 
 interface InsightCardGridProps {
-	insights?: InsightView[]
-	comment_counts_by_id?: Record<string, number>
+	insights?: InsightView[];
+	comment_counts_by_id?: Record<string, number>;
 	flags_by_id?: Record<
 		string,
 		{
-			hidden: boolean
-			archived: boolean
-			starred: boolean
-			priority: boolean
+			hidden: boolean;
+			archived: boolean;
+			starred: boolean;
+			priority: boolean;
 		}
-	>
-	children?: ReactNode
-	className?: string
+	>;
+	children?: ReactNode;
+	className?: string;
 }
 
 export default function InsightCardGrid({
@@ -27,8 +27,8 @@ export default function InsightCardGrid({
 	children,
 	className,
 }: InsightCardGridProps) {
-	const { accountId, projectId } = useCurrentProject()
-	const routes = useProjectRoutes(`/a/${accountId}/${projectId}`)
+	const { accountId, projectId } = useCurrentProject();
+	const routes = useProjectRoutes(`/a/${accountId}/${projectId}`);
 
 	return (
 		<div className={`grid gap-6 md:grid-cols-2 ${className ?? ""}`}>
@@ -43,5 +43,5 @@ export default function InsightCardGrid({
 			))}
 			{children}
 		</div>
-	)
+	);
 }

@@ -3,40 +3,40 @@
  * Use proactively when user asks "what should I do next?" or seems stuck.
  */
 
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { getProjectResearchContext, type ProjectResearchContext } from "~/features/research-links/db"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { getProjectResearchContext, type ProjectResearchContext } from "../../features/research-links/db";
 import {
 	determineProjectStage,
 	generateRecommendations,
 	type ProjectStage,
 	type Recommendation,
-} from "~/features/research-links/utils/recommendation-rules"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
-import { createRouteDefinitions } from "~/utils/route-definitions"
+} from "../../features/research-links/utils/recommendation-rules";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
+import { createRouteDefinitions } from "../../utils/route-definitions";
 
 function buildProjectPath(accountId: string, projectId: string) {
-	return `/a/${accountId}/${projectId}`
+	return `/a/${accountId}/${projectId}`;
 }
 
 function resolveNavigateTo(projectPath: string, navigateTo?: string, focusThemeId?: string): string | undefined {
-	if (!navigateTo) return undefined
-	const routes = createRouteDefinitions(projectPath)
+	if (!navigateTo) return undefined;
+	const routes = createRouteDefinitions(projectPath);
 
-	if (navigateTo === "/setup") return routes.setup()
-	if (navigateTo === "/ask/new") return routes.ask.new()
-	if (navigateTo === "/themes") return routes.themes.index()
-	if (navigateTo === "/people") return routes.people.index()
+	if (navigateTo === "/setup") return routes.projects.setup();
+	if (navigateTo === "/ask/new") return routes.ask.new();
+	if (navigateTo === "/themes") return routes.themes.index();
+	if (navigateTo === "/people") return routes.people.index();
 
 	if (navigateTo.startsWith("/themes/")) {
-		const themeId = navigateTo.split("/")[2] || focusThemeId
-		if (themeId) return routes.themes.detail(themeId)
+		const themeId = navigateTo.split("/")[2] || focusThemeId;
+		if (themeId) return routes.themes.detail(themeId);
 	}
 
-	return navigateTo.startsWith(projectPath) ? navigateTo : undefined
+	return navigateTo.startsWith(projectPath) ? navigateTo : undefined;
 }
 
 const RecommendationSchema = z.object({
@@ -54,7 +54,7 @@ const RecommendationSchema = z.object({
 		})
 		.optional(),
 	metadata: z.record(z.unknown()).optional(),
-})
+});
 
 const ProjectStateSchema = z.object({
 	stage: z.enum(["setup", "discovery", "gathering", "validation", "synthesis"]),
@@ -69,7 +69,7 @@ const ProjectStateSchema = z.object({
 			peopleWithoutTitles: z.number(),
 		})
 		.optional(),
-})
+});
 
 export const recommendNextActionsTool = createTool({
 	id: "recommend-next-actions",
@@ -102,11 +102,11 @@ The recommendations are based on:
 		projectState: ProjectStateSchema,
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
 		// Prefer explicit input, fall back to runtime context
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
-		const projectId = input.projectId ?? runtimeProjectId
-		const accountId = context?.requestContext?.get?.("account_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const projectId = input.projectId ?? runtimeProjectId;
+		const accountId = context?.requestContext?.get?.("account_id");
 
 		consola.debug("recommend-next-actions: execute start", {
 			inputProjectId: input.projectId,
@@ -114,13 +114,13 @@ The recommendations are based on:
 			resolvedProjectId: projectId,
 			accountId,
 			reason: input.reason,
-		})
+		});
 
 		if (!projectId) {
 			consola.warn("recommend-next-actions: missing projectId", {
 				hasContext: !!context,
 				hasRequestContext: !!context?.requestContext,
-			})
+			});
 			return {
 				success: false,
 				message: "Missing projectId. Pass projectId parameter or ensure runtime context sets project_id.",
@@ -132,7 +132,7 @@ The recommendations are based on:
 					themeCount: 0,
 					hasGoals: false,
 				},
-			}
+			};
 		}
 
 		try {
@@ -140,25 +140,25 @@ The recommendations are based on:
 			const projectContext = await getProjectResearchContext({
 				supabase,
 				projectId,
-			})
+			});
 
 			// Generate recommendations using rule engine
-			const recommendations = generateRecommendations(projectContext)
-			const projectPath = accountId && projectId ? buildProjectPath(accountId, projectId) : null
+			const recommendations = generateRecommendations(projectContext);
+			const projectPath = accountId && projectId ? buildProjectPath(accountId, projectId) : null;
 			const resolvedRecommendations = projectPath
 				? recommendations.map((rec) => ({
 						...rec,
 						navigateTo: resolveNavigateTo(projectPath, rec.navigateTo, rec.focusTheme?.id),
 					}))
-				: recommendations
-			const stage = determineProjectStage(projectContext)
+				: recommendations;
+			const stage = determineProjectStage(projectContext);
 
 			consola.debug("recommend-next-actions: generated recommendations", {
 				projectId,
 				stage,
 				recommendationCount: recommendations.length,
 				recommendationIds: recommendations.map((r) => r.id),
-			})
+			});
 
 			return {
 				success: true,
@@ -172,9 +172,9 @@ The recommendations are based on:
 					hasGoals: projectContext.hasGoals,
 					dataQuality: projectContext.dataQuality,
 				},
-			}
+			};
 		} catch (error) {
-			consola.error("recommend-next-actions: unexpected error", error)
+			consola.error("recommend-next-actions: unexpected error", error);
 			return {
 				success: false,
 				message: "Unexpected error generating recommendations.",
@@ -186,7 +186,7 @@ The recommendations are based on:
 					themeCount: 0,
 					hasGoals: false,
 				},
-			}
+			};
 		}
 	},
-})
+});

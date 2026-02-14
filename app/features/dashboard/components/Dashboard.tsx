@@ -1,40 +1,40 @@
-import { Settings2 } from "lucide-react"
-import { useState } from "react"
-import { Link } from "react-router-dom"
-import type { TreeNode } from "~/components/charts/TreeMap"
+import { Settings2 } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import type { TreeNode } from "~/components/charts/TreeMap";
 // import type { TreeNode } from "~/components/charts/TreeMap"
 // import TreeMap from "~/components/charts/TreeMap"
-import TagCountSelector from "~/components/TagCountSelector"
-import TagDisplay from "~/components/TagDisplay"
-import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard"
-import AddInterviewButton from "~/features/upload/components/AddInterviewButton"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { OpportunityView, Project } from "~/types"
-import type { KPI } from "./KPIBar"
-import KPIBar from "./KPIBar"
-import RecentInterviewsTable from "./RecentInterviewsTable"
+import TagCountSelector from "~/components/TagCountSelector";
+import TagDisplay from "~/components/TagDisplay";
+import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard";
+import AddInterviewButton from "~/features/upload/components/AddInterviewButton";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import type { OpportunityView, Project } from "~/types";
+import type { KPI } from "./KPIBar";
+import KPIBar from "./KPIBar";
+import RecentInterviewsTable from "./RecentInterviewsTable";
 
 interface DashboardProps {
-	kpis: KPI[]
+	kpis: KPI[];
 	personas: {
-		name: string
-		percentage: number
-		count: number
-		color: string
-		href?: string
-	}[]
+		name: string;
+		percentage: number;
+		count: number;
+		color: string;
+		href?: string;
+	}[];
 	interviews: {
-		id: string
-		date: string
-		participant: string
-		status: "transcribed" | "processing" | "ready"
-	}[]
-	opportunities: OpportunityView[]
-	themeTree: TreeNode[] // hierarchical data for treemap
-	project: Project
-	tags: { name: string; frequency: number }[] // tags with frequency for TagDisplay
+		id: string;
+		date: string;
+		participant: string;
+		status: "transcribed" | "processing" | "ready";
+	}[];
+	opportunities: OpportunityView[];
+	themeTree: TreeNode[]; // hierarchical data for treemap
+	project: Project;
+	tags: { name: string; frequency: number }[]; // tags with frequency for TagDisplay
 }
 
 export default function Dashboard({
@@ -46,19 +46,19 @@ export default function Dashboard({
 	themeTree,
 	tags,
 }: DashboardProps) {
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
 	// State for controlling tag count
-	const [tagCount, setTagCount] = useState(10)
+	const [tagCount, setTagCount] = useState(10);
 
 	// Dynamically update the opportunities KPI
 	const dynamicKpis = kpis.map((kpi) => {
 		if (kpi.label === "Opportunities") {
-			return { ...kpi, value: opportunities.length.toString() }
+			return { ...kpi, value: opportunities.length.toString() };
 		}
-		return kpi
-	})
+		return kpi;
+	});
 
 	// Transform OpportunityView items to match OpportunityItem interface requirements
 	const transformToKanbanItem = (
@@ -69,7 +69,7 @@ export default function Dashboard({
 		owner: o.owner || "Unassigned",
 		// Add a default priority based on impact if available
 		...(o.impact ? { priority: o.impact > 7 ? "high" : o.impact > 4 ? "medium" : "low" } : {}),
-	})
+	});
 
 	const _kanbanCols = [
 		{
@@ -84,7 +84,7 @@ export default function Dashboard({
 			title: "Build",
 			items: opportunities.filter((o) => o.status === "Build" && !!o.id).map(transformToKanbanItem),
 		},
-	]
+	];
 
 	return (
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
@@ -187,5 +187,5 @@ export default function Dashboard({
 				</div>
 			)}
 		</div>
-	)
+	);
 }

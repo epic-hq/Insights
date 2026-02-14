@@ -1,6 +1,6 @@
-import { Card } from "~/components/ui/card"
-import { EmotionBadge } from "~/components/ui/emotion-badge"
-import type { Insight } from "~/types"
+import { Card } from "~/components/ui/card";
+import { EmotionBadge } from "~/components/ui/emotion-badge";
+import type { Insight } from "~/types";
 
 // Insight card (collapsed)
 export function InsightCard({ item }: { item: Insight }) {
@@ -16,5 +16,5 @@ export function InsightCard({ item }: { item: Insight }) {
 				</div>
 			</div>
 		</Card>
-	)
+	);
 }

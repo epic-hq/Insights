@@ -1,19 +1,19 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import type { LensStakeholder } from "~/features/lenses/types"
-import { LensEvidenceList } from "./EditableLensContent"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import type { LensStakeholder } from "~/features/lenses/types";
+import { LensEvidenceList } from "./EditableLensContent";
 
 const influenceBadgeClasses: Record<string, string> = {
 	low: "border-slate-200 bg-slate-50 text-slate-700",
 	medium: "border-amber-200 bg-amber-50 text-amber-700",
 	high: "border-emerald-200 bg-emerald-50 text-emerald-700",
-}
+};
 
 type StakeholderListProps = {
-	stakeholders: LensStakeholder[]
-	className?: string
-}
+	stakeholders: LensStakeholder[];
+	className?: string;
+};
 
 export function StakeholderList({ stakeholders, className }: StakeholderListProps) {
 	if (!stakeholders.length) {
@@ -26,7 +26,7 @@ export function StakeholderList({ stakeholders, className }: StakeholderListProp
 					<p className="text-muted-foreground text-sm">No stakeholders linked to this interview yet.</p>
 				</CardContent>
 			</Card>
-		)
+		);
 	}
 
 	return (
@@ -95,5 +95,5 @@ export function StakeholderList({ stakeholders, className }: StakeholderListProp
 				</Accordion>
 			</CardContent>
 		</Card>
-	)
+	);
 }

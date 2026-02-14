@@ -14,17 +14,19 @@ import {
 	flexRender,
 	getCoreRowModel,
 	getSortedRowModel,
+	type RowSelectionState,
 	type SortingState,
 	useReactTable,
 	type VisibilityState,
-} from "@tanstack/react-table"
-import { formatDistanceToNow } from "date-fns"
-import { Building2, Check, Columns3, ExternalLink, Loader2, Pencil, Plus } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Link, useFetcher, useRevalidator } from "react-router-dom"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "~/components/ui/command"
+} from "@tanstack/react-table";
+import { formatDistanceToNow } from "date-fns";
+import { Building2, Check, Columns3, ExternalLink, Loader2, Pencil, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useFetcher, useRevalidator } from "react-router-dom";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "~/components/ui/command";
 import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
@@ -32,47 +34,53 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
-import { Input } from "~/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { COMPANY_SIZE_RANGES } from "~/lib/constants/options"
-import { cn } from "~/lib/utils"
-import { EditableNameField } from "./EditableNameField"
+} from "~/components/ui/dropdown-menu";
+import { Input } from "~/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { BandBadge } from "~/features/lenses/components/ICPMatchSection";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { COMPANY_SIZE_RANGES } from "~/lib/constants/options";
+import { cn } from "~/lib/utils";
+import { EditableNameField } from "./EditableNameField";
 
 export interface PersonTableRow {
-	id: string
-	name: string
-	firstname?: string | null
-	lastname?: string | null
-	title?: string | null
+	id: string;
+	name: string;
+	firstname?: string | null;
+	lastname?: string | null;
+	title?: string | null;
 	organization?: {
-		id: string
-		name?: string | null
-		role?: string | null
-	} | null
-	conversationCount: number
-	evidenceCount: number
-	stakeholderStatus?: string | null
-	updatedAt?: string | null
+		id: string;
+		name?: string | null;
+		job_title?: string | null;
+	} | null;
+	conversationCount: number;
+	evidenceCount: number;
+	stakeholderStatus?: string | null;
+	updatedAt?: string | null;
 	// Segment data
-	jobFunction?: string | null
-	seniority?: string | null
-	segment?: string | null
-	companySize?: string | null
+	jobFunction?: string | null;
+	seniority?: string | null;
+	segment?: string | null;
+	companySize?: string | null;
+	// ICP score data
+	icpBand?: string | null;
+	icpScore?: number | null;
+	icpConfidence?: number | null;
 }
 
 interface Organization {
-	id: string
-	name: string | null
+	id: string;
+	name: string | null;
 }
 
 interface PeopleDataTableProps {
-	rows: PersonTableRow[]
-	organizations?: Organization[]
+	rows: PersonTableRow[];
+	organizations?: Organization[];
+	onSelectionChange?: (selectedRows: PersonTableRow[]) => void;
 }
 
 // Job function options
@@ -92,10 +100,10 @@ const JOB_FUNCTIONS = [
 	"IT",
 	"Research",
 	"Other",
-]
+];
 
 // Seniority options
-const SENIORITY_LEVELS = ["C-Level", "VP", "Director", "Manager", "Senior", "IC", "Intern"]
+const SENIORITY_LEVELS = ["C-Level", "VP", "Director", "Manager", "Senior", "IC", "Intern"];
 
 // Editable text cell component with optimistic updates
 function EditableTextCell({
@@ -105,56 +113,58 @@ function EditableTextCell({
 	placeholder,
 	endpoint,
 }: {
-	value: string | null | undefined
-	personId: string
-	field: string
-	placeholder?: string
-	endpoint: string
+	value: string | null | undefined;
+	personId: string;
+	field: string;
+	placeholder?: string;
+	endpoint: string;
 }) {
-	const fetcher = useFetcher()
-	const [isEditing, setIsEditing] = useState(false)
-	const [editValue, setEditValue] = useState(value ?? "")
-	const inputRef = useRef<HTMLInputElement>(null)
+	const fetcher = useFetcher();
+	const [isEditing, setIsEditing] = useState(false);
+	const [editValue, setEditValue] = useState(value ?? "");
+	const inputRef = useRef<HTMLInputElement>(null);
 
 	// Derive optimistic value from pending submission
-	const isPending = fetcher.state !== "idle"
+	const isPending = fetcher.state !== "idle";
 	const pendingValue =
-		isPending && fetcher.formData?.get("personId") === personId ? (fetcher.formData?.get("value") as string) : undefined
-	const displayValue = pendingValue ?? value
+		isPending && fetcher.formData?.get("personId") === personId
+			? (fetcher.formData?.get("value") as string)
+			: undefined;
+	const displayValue = pendingValue ?? value;
 
 	// Reset edit value when server value changes
 	useEffect(() => {
 		if (!isEditing && !isPending) {
-			setEditValue(value ?? "")
+			setEditValue(value ?? "");
 		}
-	}, [value, isEditing, isPending])
+	}, [value, isEditing, isPending]);
 
 	useEffect(() => {
 		if (isEditing && inputRef.current) {
-			inputRef.current.focus()
-			inputRef.current.select()
+			inputRef.current.focus();
+			inputRef.current.select();
 		}
-	}, [isEditing])
+	}, [isEditing]);
 
 	const handleSave = () => {
 		if (editValue === (value ?? "")) {
-			setIsEditing(false)
-			return
+			setIsEditing(false);
+			return;
 		}
 
 		// Submit via fetcher for optimistic update
-		fetcher.submit({ personId, field, value: editValue || "" }, { method: "POST", action: endpoint })
-		setIsEditing(false)
-	}
+		fetcher.submit({ personId, field, value: editValue || "" }, { method: "POST", action: endpoint });
+		setIsEditing(false);
+	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === "Enter") {
-			handleSave()
+			handleSave();
 		} else if (e.key === "Escape") {
-			setEditValue(value ?? "")
-			setIsEditing(false)
+			setEditValue(value ?? "");
+			setIsEditing(false);
 		}
-	}
+	};
 
 	if (isEditing) {
 		return (
@@ -168,7 +178,7 @@ function EditableTextCell({
 					className="h-7 text-sm"
 				/>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -188,7 +198,7 @@ function EditableTextCell({
 				<Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-50" />
 			)}
 		</button>
-	)
+	);
 }
 
 // Editable select cell component with optimistic updates
@@ -200,30 +210,32 @@ function EditableSelectCell({
 	placeholder,
 	endpoint,
 }: {
-	value: string | null | undefined
-	personId: string
-	field: string
-	options: string[]
-	placeholder?: string
-	endpoint: string
+	value: string | null | undefined;
+	personId: string;
+	field: string;
+	options: string[];
+	placeholder?: string;
+	endpoint: string;
 }) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	// Derive optimistic value from pending submission
-	const isPending = fetcher.state !== "idle"
+	const isPending = fetcher.state !== "idle";
 	const pendingValue =
-		isPending && fetcher.formData?.get("personId") === personId ? (fetcher.formData?.get("value") as string) : undefined
-	const displayValue = pendingValue ?? value
+		isPending && fetcher.formData?.get("personId") === personId
+			? (fetcher.formData?.get("value") as string)
+			: undefined;
+	const displayValue = pendingValue ?? value;
 
 	const handleChange = (newValue: string) => {
-		if (newValue === value) return
+		if (newValue === value) return;
 
 		// Submit via fetcher for optimistic update
 		fetcher.submit(
 			{ personId, field, value: newValue === "__clear__" ? "" : newValue },
 			{ method: "POST", action: endpoint }
-		)
-	}
+		);
+	};
 
 	return (
 		<Select value={displayValue ?? ""} onValueChange={handleChange} disabled={isPending}>
@@ -241,7 +253,7 @@ function EditableSelectCell({
 				))}
 			</SelectContent>
 		</Select>
-	)
+	);
 }
 
 // Organization picker with autocomplete and create-new
@@ -252,55 +264,60 @@ function OrganizationCell({
 	endpoint,
 	orgDetailUrl,
 }: {
-	value: { id: string; name?: string | null } | null | undefined
-	personId: string
-	organizations: Organization[]
-	endpoint: string
-	orgDetailUrl?: string
+	value: { id: string; name?: string | null } | null | undefined;
+	personId: string;
+	organizations: Organization[];
+	endpoint: string;
+	orgDetailUrl?: string;
 }) {
-	const fetcher = useFetcher()
-	const revalidator = useRevalidator()
-	const [open, setOpen] = useState(false)
-	const [search, setSearch] = useState("")
-	const [pendingOrgName, setPendingOrgName] = useState<string | null>(null)
+	const fetcher = useFetcher();
+	const revalidator = useRevalidator();
+	const [open, setOpen] = useState(false);
+	const [search, setSearch] = useState("");
+	const [pendingOrgName, setPendingOrgName] = useState<string | null>(null);
 
 	// Track pending state
-	const isPending = fetcher.state !== "idle"
+	const isPending = fetcher.state !== "idle";
 
 	// Show pending org name while saving
-	const displayName = pendingOrgName ?? value?.name
+	const displayName = pendingOrgName ?? value?.name;
 
-	// Reset pending state when fetcher completes
+	// Trigger revalidation when fetcher completes (don't clear pending name yet)
 	useEffect(() => {
 		if (fetcher.state === "idle" && fetcher.data?.success) {
-			setPendingOrgName(null)
-			// Revalidate to get the new organization in the list
-			revalidator.revalidate()
+			revalidator.revalidate();
 		}
-	}, [fetcher.state, fetcher.data, revalidator])
+	}, [fetcher.state, fetcher.data, revalidator]);
+
+	// Clear pending name once revalidated data catches up
+	useEffect(() => {
+		if (pendingOrgName && value?.name) {
+			setPendingOrgName(null);
+		}
+	}, [value?.name, pendingOrgName]);
 
 	const filteredOrgs = useMemo(() => {
-		if (!search) return organizations
-		const lower = search.toLowerCase()
-		return organizations.filter((org) => org.name?.toLowerCase().includes(lower))
-	}, [organizations, search])
+		if (!search) return organizations;
+		const lower = search.toLowerCase();
+		return organizations.filter((org) => org.name?.toLowerCase().includes(lower));
+	}, [organizations, search]);
 
 	const handleSelect = (orgId: string) => {
-		const org = organizations.find((o) => o.id === orgId)
+		const org = organizations.find((o) => o.id === orgId);
 		if (org) {
-			setPendingOrgName(org.name)
+			setPendingOrgName(org.name);
 		}
 		fetcher.submit(
 			{ personId, field: "organization", organizationId: orgId, value: "" },
 			{ method: "POST", action: endpoint }
-		)
-		setOpen(false)
-		setSearch("")
-	}
+		);
+		setOpen(false);
+		setSearch("");
+	};
 
 	const handleCreateNew = () => {
-		if (!search.trim()) return
-		setPendingOrgName(search.trim())
+		if (!search.trim()) return;
+		setPendingOrgName(search.trim());
 		fetcher.submit(
 			{
 				personId,
@@ -309,10 +326,10 @@ function OrganizationCell({
 				value: "",
 			},
 			{ method: "POST", action: endpoint }
-		)
-		setOpen(false)
-		setSearch("")
-	}
+		);
+		setOpen(false);
+		setSearch("");
+	};
 
 	return (
 		<div className="flex items-center gap-1">
@@ -397,7 +414,7 @@ function OrganizationCell({
 				</PopoverContent>
 			</Popover>
 		</div>
-	)
+	);
 }
 
 // Org role editable cell component with optimistic updates
@@ -407,68 +424,70 @@ function OrgRoleCell({
 	organizationId,
 	endpoint,
 }: {
-	value: string | null | undefined
-	personId: string
-	organizationId: string | undefined
-	endpoint: string
+	value: string | null | undefined;
+	personId: string;
+	organizationId: string | undefined;
+	endpoint: string;
 }) {
-	const fetcher = useFetcher()
-	const [isEditing, setIsEditing] = useState(false)
-	const [editValue, setEditValue] = useState(value ?? "")
-	const inputRef = useRef<HTMLInputElement>(null)
+	const fetcher = useFetcher();
+	const [isEditing, setIsEditing] = useState(false);
+	const [editValue, setEditValue] = useState(value ?? "");
+	const inputRef = useRef<HTMLInputElement>(null);
 
 	// Derive optimistic value from pending submission
-	const isPending = fetcher.state !== "idle"
+	const isPending = fetcher.state !== "idle";
 	const pendingValue =
-		isPending && fetcher.formData?.get("personId") === personId ? (fetcher.formData?.get("value") as string) : undefined
-	const displayValue = pendingValue ?? value
+		isPending && fetcher.formData?.get("personId") === personId
+			? (fetcher.formData?.get("value") as string)
+			: undefined;
+	const displayValue = pendingValue ?? value;
 
 	// Reset edit value when server value changes
 	useEffect(() => {
 		if (!isEditing && !isPending) {
-			setEditValue(value ?? "")
+			setEditValue(value ?? "");
 		}
-	}, [value, isEditing, isPending])
+	}, [value, isEditing, isPending]);
 
 	useEffect(() => {
 		if (isEditing && inputRef.current) {
-			inputRef.current.focus()
-			inputRef.current.select()
+			inputRef.current.focus();
+			inputRef.current.select();
 		}
-	}, [isEditing])
+	}, [isEditing]);
 
 	// Can't edit if no organization linked
 	if (!organizationId) {
-		return <span className="text-muted-foreground text-xs">—</span>
+		return <span className="text-muted-foreground text-xs">—</span>;
 	}
 
 	const handleSave = () => {
 		if (editValue === (value ?? "")) {
-			setIsEditing(false)
-			return
+			setIsEditing(false);
+			return;
 		}
 
 		fetcher.submit(
 			{
 				personId,
 				organizationId,
-				orgField: "role",
+				orgField: "job_title",
 				field: "orgRole",
 				value: editValue || "",
 			},
 			{ method: "POST", action: endpoint }
-		)
-		setIsEditing(false)
-	}
+		);
+		setIsEditing(false);
+	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === "Enter") {
-			handleSave()
+			handleSave();
 		} else if (e.key === "Escape") {
-			setEditValue(value ?? "")
-			setIsEditing(false)
+			setEditValue(value ?? "");
+			setIsEditing(false);
 		}
-	}
+	};
 
 	if (isEditing) {
 		return (
@@ -483,7 +502,7 @@ function OrgRoleCell({
 					placeholder="Role at org"
 				/>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -503,7 +522,7 @@ function OrgRoleCell({
 				<Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-50" />
 			)}
 		</button>
-	)
+	);
 }
 
 // Company size editable cell component with optimistic updates
@@ -513,26 +532,28 @@ function CompanySizeCell({
 	organizationId,
 	endpoint,
 }: {
-	value: string | null | undefined
-	personId: string
-	organizationId: string | undefined
-	endpoint: string
+	value: string | null | undefined;
+	personId: string;
+	organizationId: string | undefined;
+	endpoint: string;
 }) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	// Derive optimistic value from pending submission
-	const isPending = fetcher.state !== "idle"
+	const isPending = fetcher.state !== "idle";
 	const pendingValue =
-		isPending && fetcher.formData?.get("personId") === personId ? (fetcher.formData?.get("value") as string) : undefined
-	const displayValue = pendingValue ?? value
+		isPending && fetcher.formData?.get("personId") === personId
+			? (fetcher.formData?.get("value") as string)
+			: undefined;
+	const displayValue = pendingValue ?? value;
 
 	// Can't edit if no organization linked
 	if (!organizationId) {
-		return <span className="text-muted-foreground text-xs">—</span>
+		return <span className="text-muted-foreground text-xs">—</span>;
 	}
 
 	const handleChange = (newValue: string) => {
-		if (newValue === value) return
+		if (newValue === value) return;
 
 		fetcher.submit(
 			{
@@ -543,8 +564,8 @@ function CompanySizeCell({
 				value: newValue === "__clear__" ? "" : newValue,
 			},
 			{ method: "POST", action: endpoint }
-		)
-	}
+		);
+	};
 
 	return (
 		<Select value={displayValue ?? ""} onValueChange={handleChange} disabled={isPending}>
@@ -562,17 +583,28 @@ function CompanySizeCell({
 				))}
 			</SelectContent>
 		</Select>
-	)
+	);
 }
 
-export function PeopleDataTable({ rows, organizations = [] }: PeopleDataTableProps) {
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
-	const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }])
-	const storageKey = "people_table_columns_v2"
+export function PeopleDataTable({ rows, organizations = [], onSelectionChange }: PeopleDataTableProps) {
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
+	const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
+	const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+	const storageKey = "people_table_columns_v2";
+
+	// Notify parent of selection changes
+	useEffect(() => {
+		if (!onSelectionChange) return;
+		const selectedRows = Object.keys(rowSelection)
+			.filter((key) => rowSelection[key])
+			.map((key) => rows[Number(key)])
+			.filter(Boolean);
+		onSelectionChange(selectedRows);
+	}, [rowSelection, rows, onSelectionChange]);
 
 	// Endpoint for inline updates - used by all editable cells
-	const updateEndpoint = `${routes.people.index()}/api/update-inline`
+	const updateEndpoint = `${routes.people.index()}/api/update-inline`;
 
 	const defaultColumnVisibility = useMemo<VisibilityState>(
 		() => ({
@@ -587,52 +619,72 @@ export function PeopleDataTable({ rows, organizations = [] }: PeopleDataTablePro
 			seniority: true,
 			segment: false,
 			companySize: true,
+			icpBand: true,
 		}),
 		[]
-	)
+	);
 
 	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
-		if (typeof window === "undefined") return defaultColumnVisibility
+		if (typeof window === "undefined") return defaultColumnVisibility;
 		try {
-			const raw = window.localStorage.getItem(storageKey)
-			if (!raw) return defaultColumnVisibility
-			const parsed = JSON.parse(raw) as unknown
-			if (!parsed || typeof parsed !== "object") return defaultColumnVisibility
-			return { ...defaultColumnVisibility, ...(parsed as VisibilityState) }
+			const raw = window.localStorage.getItem(storageKey);
+			if (!raw) return defaultColumnVisibility;
+			const parsed = JSON.parse(raw) as unknown;
+			if (!parsed || typeof parsed !== "object") return defaultColumnVisibility;
+			return { ...defaultColumnVisibility, ...(parsed as VisibilityState) };
 		} catch {
-			return defaultColumnVisibility
+			return defaultColumnVisibility;
 		}
-	})
+	});
 
 	useEffect(() => {
-		if (typeof window === "undefined") return
-		window.localStorage.setItem(storageKey, JSON.stringify(columnVisibility))
-	}, [columnVisibility])
+		if (typeof window === "undefined") return;
+		window.localStorage.setItem(storageKey, JSON.stringify(columnVisibility));
+	}, [columnVisibility]);
 
 	const columnLabels = useMemo<Record<string, string>>(
 		() => ({
 			organization: "Organization",
-			orgRole: "Role at Org",
+			icpBand: "ICP Match",
+			orgRole: "Job Title at Org",
 			title: "Title",
+			jobFunction: "Job Function",
+			seniority: "Seniority",
 			conversationCount: "Conversations",
 			evidenceCount: "Evidence",
 			stakeholderStatus: "Status",
-			updatedAt: "Last updated",
-			jobFunction: "Job Function",
-			seniority: "Seniority",
-			segment: "Segment",
 			companySize: "Company Size",
+			updatedAt: "Last updated",
+			segment: "Segment",
 		}),
 		[]
-	)
+	);
 
 	const columns = useMemo<ColumnDef<PersonTableRow>[]>(
 		() => [
 			{
+				id: "select",
+				header: ({ table }) => (
+					<Checkbox
+						checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+						onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+						aria-label="Select all"
+					/>
+				),
+				cell: ({ row }) => (
+					<Checkbox
+						checked={row.getIsSelected()}
+						onCheckedChange={(value) => row.toggleSelected(!!value)}
+						aria-label="Select row"
+					/>
+				),
+				enableSorting: false,
+			},
+			{
 				accessorKey: "name",
 				header: "Name",
 				cell: ({ row }) => {
-					const person = row.original
+					const person = row.original;
 					return (
 						<div className="flex items-center gap-2">
 							<Link
@@ -650,7 +702,7 @@ export function PeopleDataTable({ rows, organizations = [] }: PeopleDataTablePro
 								placeholder="—"
 							/>
 						</div>
-					)
+					);
 				},
 				enableSorting: true,
 			},
@@ -685,12 +737,28 @@ export function PeopleDataTable({ rows, organizations = [] }: PeopleDataTablePro
 				enableSorting: false,
 			},
 			{
+				accessorKey: "icpBand",
+				header: "ICP Match",
+				cell: ({ row }) => <BandBadge band={row.original.icpBand ?? null} confidence={row.original.icpConfidence} />,
+				enableSorting: true,
+				sortingFn: (a, b) => {
+					const order: Record<string, number> = {
+						HIGH: 3,
+						MEDIUM: 2,
+						LOW: 1,
+					};
+					const aVal = order[a.original.icpBand ?? ""] ?? 0;
+					const bVal = order[b.original.icpBand ?? ""] ?? 0;
+					return aVal - bVal;
+				},
+			},
+			{
 				id: "orgRole",
-				accessorFn: (row) => row.organization?.role,
-				header: "Role at Org",
+				accessorFn: (row) => row.organization?.job_title,
+				header: "Job Title at Org",
 				cell: ({ row }) => (
 					<OrgRoleCell
-						value={row.original.organization?.role}
+						value={row.original.organization?.job_title}
 						personId={row.original.id}
 						organizationId={row.original.organization?.id}
 						endpoint={updateEndpoint}
@@ -744,9 +812,9 @@ export function PeopleDataTable({ rows, organizations = [] }: PeopleDataTablePro
 				accessorKey: "stakeholderStatus",
 				header: "Status",
 				cell: ({ getValue }) => {
-					const status = getValue<string | null | undefined>()
-					if (!status) return <span className="text-muted-foreground text-xs">—</span>
-					return <Badge variant="secondary">{status}</Badge>
+					const status = getValue<string | null | undefined>();
+					if (!status) return <span className="text-muted-foreground text-xs">—</span>;
+					return <Badge variant="secondary">{status}</Badge>;
 				},
 				enableSorting: false,
 			},
@@ -767,49 +835,50 @@ export function PeopleDataTable({ rows, organizations = [] }: PeopleDataTablePro
 				accessorKey: "updatedAt",
 				header: "Last Updated",
 				cell: ({ getValue }) => {
-					const updatedAt = getValue<string | null | undefined>()
-					if (!updatedAt) return <span className="text-muted-foreground text-xs">—</span>
+					const updatedAt = getValue<string | null | undefined>();
+					if (!updatedAt) return <span className="text-muted-foreground text-xs">—</span>;
 					return (
 						<span className="text-muted-foreground text-xs">
 							{formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
 						</span>
-					)
+					);
 				},
 				enableSorting: true,
 				sortDescFirst: true,
 				sortingFn: (a, b) => {
-					const aValue = a.original.updatedAt ? new Date(a.original.updatedAt).getTime() : 0
-					const bValue = b.original.updatedAt ? new Date(b.original.updatedAt).getTime() : 0
-					return aValue - bValue
+					const aValue = a.original.updatedAt ? new Date(a.original.updatedAt).getTime() : 0;
+					const bValue = b.original.updatedAt ? new Date(b.original.updatedAt).getTime() : 0;
+					return aValue - bValue;
 				},
 			},
 			{
 				accessorKey: "segment",
 				header: "Segment",
 				cell: ({ getValue }) => {
-					const value = getValue<string | null | undefined>()
-					if (!value) return <span className="text-muted-foreground text-xs">—</span>
+					const value = getValue<string | null | undefined>();
+					if (!value) return <span className="text-muted-foreground text-xs">—</span>;
 					return (
 						<Badge variant="secondary" className="text-xs">
 							{value}
 						</Badge>
-					)
+					);
 				},
 				enableSorting: true,
 			},
 		],
 		[routes.people, routes.organizations.detail, organizations, updateEndpoint]
-	)
+	);
 
 	const table = useReactTable({
 		data: rows,
 		columns,
-		state: { sorting, columnVisibility },
+		state: { sorting, columnVisibility, rowSelection },
 		onSortingChange: setSorting,
 		onColumnVisibilityChange: setColumnVisibility,
+		onRowSelectionChange: setRowSelection,
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
-	})
+	});
 
 	return (
 		<div className="space-y-3">
@@ -825,8 +894,8 @@ export function PeopleDataTable({ rows, organizations = [] }: PeopleDataTablePro
 						<DropdownMenuLabel>Visible columns</DropdownMenuLabel>
 						<DropdownMenuSeparator />
 						{Object.keys(columnLabels).map((columnId) => {
-							const column = table.getColumn(columnId)
-							if (!column) return null
+							const column = table.getColumn(columnId);
+							if (!column) return null;
 							return (
 								<DropdownMenuCheckboxItem
 									key={columnId}
@@ -835,7 +904,7 @@ export function PeopleDataTable({ rows, organizations = [] }: PeopleDataTablePro
 								>
 									{columnLabels[columnId]}
 								</DropdownMenuCheckboxItem>
-							)
+							);
 						})}
 					</DropdownMenuContent>
 				</DropdownMenu>
@@ -883,5 +952,5 @@ export function PeopleDataTable({ rows, organizations = [] }: PeopleDataTablePro
 				</Table>
 			</div>
 		</div>
-	)
+	);
 }

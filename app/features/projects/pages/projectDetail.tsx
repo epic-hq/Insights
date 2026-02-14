@@ -1,75 +1,75 @@
-import consola from "consola"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router-dom"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { FlowDiagram } from "~/features/projects/components/Flow"
-import { getProjectById } from "~/features/projects/db"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
+import consola from "consola";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Link, useLoaderData } from "react-router-dom";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { FlowDiagram } from "~/features/projects/components/Flow";
+import { getProjectById } from "~/features/projects/db";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: `${data?.project?.name || "Project"} | Insights` },
 		{ name: "description", content: "Project details" },
-	]
-}
+	];
+};
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// From URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const { projectId } = params
+	const accountId = params.accountId;
+	const { projectId } = params;
 
 	if (!accountId || !projectId) {
-		throw new Response("Account ID and Project ID are required", { status: 400 })
+		throw new Response("Account ID and Project ID are required", { status: 400 });
 	}
 
 	try {
 		const { data: project, error } = await getProjectById({
 			supabase,
 			id: projectId,
-		})
+		});
 
 		if (error || !project) {
-			throw new Response("Project not found", { status: 404 })
+			throw new Response("Project not found", { status: 404 });
 		}
 
-		return { project }
+		return { project };
 	} catch (error) {
-		consola.error("Error loading project:", error)
-		throw new Response("Failed to load project", { status: 500 })
+		consola.error("Error loading project:", error);
+		throw new Response("Failed to load project", { status: 500 });
 	}
 }
 
 export default function ProjectDetail() {
-	const { project } = useLoaderData<typeof loader>()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const { project } = useLoaderData<typeof loader>();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
 	const getStatusColor = (status: string) => {
 		switch (status) {
 			case "completed":
-				return "bg-green-100 text-green-800"
+				return "bg-green-100 text-green-800";
 			case "active":
-				return "bg-blue-100 text-blue-800"
+				return "bg-blue-100 text-blue-800";
 			case "planning":
-				return "bg-yellow-100 text-yellow-800"
+				return "bg-yellow-100 text-yellow-800";
 			case "on_hold":
-				return "bg-gray-100 text-gray-800"
+				return "bg-gray-100 text-gray-800";
 			case "cancelled":
-				return "bg-red-100 text-red-800"
+				return "bg-red-100 text-red-800";
 			default:
-				return "bg-gray-100 text-gray-800"
+				return "bg-gray-100 text-gray-800";
 		}
-	}
+	};
 
-	const people = project.project_people ?? []
-	const personas = project.project_personas ?? []
+	const people = project.project_people ?? [];
+	const personas = project.project_personas ?? [];
 
 	return (
 		<PageContainer size="lg" padded={false} className="max-w-4xl">
@@ -231,5 +231,5 @@ export default function ProjectDetail() {
 				</div>
 			</div>
 		</PageContainer>
-	)
+	);
 }

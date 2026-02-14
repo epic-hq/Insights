@@ -1,29 +1,34 @@
-import { index, layout, prefix, type RouteConfig, route } from "@react-router/dev/routes"
-import annotationsRoutes from "./features/annotations/routes"
-import askRoutes from "./features/ask/routes"
-import assetsRoutes from "./features/assets/routes"
-import dashboardRoutes from "./features/dashboard/routes"
-import docsRoutes from "./features/docs/routes"
-import evidenceRoutes from "./features/evidence/routes"
-import facetsRoutes from "./features/facets/routes"
-import homeRoutes from "./features/home/routes"
-import insightsRoutes from "./features/insights/routes"
-import interviewsRoutes from "./features/interviews/routes"
-import lensesRoutes from "./features/lenses/routes"
-import marketingRoutes from "./features/marketing/routes"
-import mobileRoutes from "./features/mobile/insights/routes"
-import opportunitiesRoutes from "./features/opportunities/routes"
-import organizationsRoutes from "./features/organizations/routes"
-import peopleRoutes from "./features/people/routes"
-import personasRoutes from "./features/personas/routes"
-import prioritiesRoutes from "./features/priorities/routes"
-import projectChatRoutes from "./features/project-chat/routes"
-import projectsRoutes from "./features/projects/routes"
-import questionsRoutes from "./features/questions/routes"
-import segmentsRoutes from "./features/segments/routes"
-import signupChatRoutes from "./features/signup-chat/routes"
-import teamsRoutes, { teamsAccountRoutes as teamRoutes } from "./features/teams/routes"
-import voiceRoutes from "./features/voice/routes"
+import { index, layout, prefix, type RouteConfig, route } from "@react-router/dev/routes";
+import annotationsRoutes from "./features/annotations/routes";
+import askRoutes from "./features/ask/routes";
+import assetsRoutes from "./features/assets/routes";
+import dashboardRoutes from "./features/dashboard/routes";
+import docsRoutes from "./features/docs/routes";
+import evidenceRoutes from "./features/evidence/routes";
+import facetsRoutes from "./features/facets/routes";
+import homeRoutes from "./features/home/routes";
+import insightsRoutes from "./features/insights/routes";
+import interviewsRoutes from "./features/interviews/routes";
+import journeyMapRoutes from "./features/journey-map/routes";
+import lensesRoutes from "./features/lenses/routes";
+import marketingRoutes from "./features/marketing/routes";
+import mobileRoutes from "./features/mobile/insights/routes";
+import opportunitiesRoutes from "./features/opportunities/routes";
+import organizationsRoutes from "./features/organizations/routes";
+import peopleRoutes from "./features/people/routes";
+import personasRoutes from "./features/personas/routes";
+import prioritiesRoutes from "./features/priorities/routes";
+import projectChatRoutes from "./features/project-chat/routes";
+import projectsRoutes from "./features/projects/routes";
+import questionsRoutes from "./features/questions/routes";
+import realtimeTranscriptionRoutes from "./features/realtime-transcription/routes";
+import responsesRoutes from "./features/responses/routes";
+import segmentsRoutes from "./features/segments/routes";
+import signupChatRoutes from "./features/signup-chat/routes";
+import sourcesRoutes from "./features/sources/routes";
+import teamsRoutes, { teamsAccountRoutes as teamRoutes } from "./features/teams/routes";
+import ttsRoutes from "./features/tts/routes";
+import voiceRoutes from "./features/voice/routes";
 
 const routes = [
 	// Public marketing landing page
@@ -54,17 +59,14 @@ const routes = [
 
 		// Admin routes (platform admin only)
 		route("admin/usage", "./features/admin/pages/usage.tsx"),
+		route("admin/stuck-interviews", "./features/admin/pages/stuck-interviews.tsx"),
 
 		// Protected API routes
 		route("api/tasks/deduplicate", "./routes/api.tasks.deduplicate.ts"),
-		route("api/similar-themes", "./routes/api.similar-themes.tsx"),
-		route("api/delete-empty-themes", "./routes/api.delete-empty-themes.tsx"),
-		route("api/generate-suggestions", "./routes/api.generate-suggestions.tsx"),
+		route("api/update-ui-preference", "./features/users/api/update-ui-preference.tsx"),
+		route("api/user-settings/onboarding", "./routes/api.user-settings.onboarding.tsx"),
 		route("api/share/enable", "./routes/api.share.enable.tsx"),
 		route("api/share/disable", "./routes/api.share.disable.tsx"),
-		route("api/project-setup/website", "./routes/api.project-setup.website.tsx"),
-		route("api/skip-setup", "./routes/api.skip-setup.tsx"),
-		route("api/update-ui-preference", "./features/users/api/update-ui-preference.tsx"),
 
 		// Account-scoped routes
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [
@@ -88,6 +90,8 @@ const routes = [
 				index("./features/dashboard-v3/pages/index.tsx"),
 				// Legacy project status screen
 				route("project-status", "./features/projects/pages/project-index.tsx"),
+				// Project setup (context & goals)
+				route("setup", "./features/projects/pages/setup.tsx"),
 				// Mobile routes
 				...dashboardRoutes,
 				route("sales-lenses", "./routes/_protected.projects.$projectId.sales-lenses.tsx"),
@@ -105,7 +109,10 @@ const routes = [
 				...facetsRoutes,
 				...lensesRoutes,
 				...prioritiesRoutes,
+				...journeyMapRoutes,
 				...assetsRoutes,
+				...sourcesRoutes,
+				...responsesRoutes,
 
 				// Ask routes (shareable prompts for collecting responses)
 				...prefix("ask", askRoutes),
@@ -113,10 +120,6 @@ const routes = [
 				// Project-scoped onboarding route
 				route("new", "./features/onboarding/pages/new.tsx"),
 
-				// Project setup route
-				route("setup", "./features/projects/pages/setup.tsx"),
-				// Preview redesigned setup route
-				route("setup-preview", "./routes/preview.setup.tsx"),
 				// Research workflow route
 				route("research-workflow", "./features/questions/pages/research-workflow.tsx"),
 
@@ -126,27 +129,44 @@ const routes = [
 				// Annotations API routes (need project context)
 				...annotationsRoutes,
 
+				// Campaign API routes (project-scoped)
+				route("api/campaigns/create", "./features/research-links/api/create-campaign.tsx"),
+				route("api/campaigns/add-people", "./features/research-links/api/add-to-campaign.tsx"),
+				route("api/campaigns/generate-questions", "./features/research-links/api/generate-campaign-questions.tsx"),
+				route("api/campaigns/recommendations", "./features/research-links/api/get-campaign-recommendations.tsx"),
+
 				// Contextual suggestions API (needs project context)
 				route("api/contextual-suggestions", "./routes/api.contextual-suggestions.tsx"),
 				// Mentionable users API for @mentions (needs project context)
 				route("api/mentionable-users", "./routes/api/mentionable-users.ts"),
+
+				// ICP scoring & enrichment API (project-scoped)
+				route("api/score-icp-matches", "./routes/api.score-icp-matches.tsx"),
+				route("api/icp-criteria", "./routes/api.icp-criteria.tsx"),
+				route("api/enrich-people", "./routes/api.enrich-people.tsx"),
 
 				// Realtime interviews APIs (project-scoped)
 				route("api/interviews/realtime-start", "./routes/api.interviews.realtime-start.tsx"),
 				route("api/interviews/realtime-upload", "./routes/api.interviews.realtime-upload.tsx"),
 				route("api/interviews/realtime-finalize", "./routes/api.interviews.realtime-finalize.tsx"),
 
-				// Project-setup agent chat API (project-scoped)
+				// Project setup chat API (project-scoped)
 				route("api/chat/project-setup", "./routes/api.chat.project-setup.tsx"),
 				route("api/chat/project-setup/history", "./routes/api.chat.project-setup.history.tsx"),
 				// Project status agent chat API (project-scoped)
 				route("api/chat/project-status", "./routes/api.chat.project-status.tsx"),
 				route("api/chat/project-status/history", "./routes/api.chat.project-status.history.tsx"),
+				route("api/chat/project-status/threads", "./routes/api.chat.project-status.threads.tsx"),
+				route("api/chat/project-status/history-by-thread", "./routes/api.chat.project-status.history-by-thread.tsx"),
 				// Interview insight agent chat API (project-scoped)
 				route("api/chat/interview/:interviewId", "./routes/api.chat.interview.$interviewId.tsx"),
 
 				// Interview transcript API (project-scoped)
 				route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
+
+				// Evidence semantic search API (project-scoped)
+				route("api/evidence/semantic-search", "./routes/api.evidence.semantic-search.tsx"),
+				route("api/merge-people", "./routes/api.merge-people.tsx"),
 			]),
 
 			// Account-scoped quick record API: creates project + interview
@@ -172,12 +192,18 @@ const routes = [
 	route("api/desktop/context", "./routes/api.desktop.context.ts"),
 	route("api/desktop/recall-token", "./routes/api.desktop.recall-token.ts"),
 	route("api/desktop/recordings/:recordingId/status", "./routes/api.desktop.recordings.$recordingId.status.ts"),
+	route("api/desktop/realtime-evidence", "./routes/api.desktop.realtime-evidence.ts"),
+	route("api/desktop/interviews", "./routes/api.desktop.interviews.ts"),
+	route("api/desktop/interviews/finalize", "./routes/api.desktop.interviews.finalize.ts"),
+	route("api/desktop/interviews/upload-media", "./routes/api.desktop.interviews.upload-media.ts"),
+	route("api/desktop/people/resolve", "./routes/api.desktop.people.resolve.ts"),
 	route("api/recall-webhook", "./routes/api.recall-webhook.ts"),
 
 	// API routes
 	route("api/upload-file", "./routes/api.upload-file.tsx"),
 	route("api/upload-from-url", "./routes/api.upload-from-url.tsx"),
 	route("api/upload-image", "./routes/api.upload-image.tsx"),
+	route("api/upload/presigned-url", "./routes/api.upload.presigned-url.tsx"),
 	route("api/notes/create", "./routes/api.notes.create.tsx"),
 	route("api/update-field", "./routes/api.update-field.tsx"),
 	route("api/update-person-facet-summary", "./routes/api.update-person-facet-summary.tsx"),
@@ -200,6 +226,7 @@ const routes = [
 	route("api/trigger-run-token", "./routes/api.trigger-run-token.tsx"),
 	route("api/daily-brief", "./routes/api.daily-brief.tsx"),
 	route("api/generate-questions", "./routes/api.generate-questions.tsx"),
+	route("api/generate-suggestions", "./routes/api.generate-suggestions.tsx"),
 	route("api/project-status", "./routes/api.project-status.tsx"),
 	route("api/analyze-project-status", "./routes/api.analyze-project-status.tsx"),
 	route("api/analyze-research-evidence", "./routes/api.analyze-research-evidence.tsx"),
@@ -230,6 +257,7 @@ const routes = [
 	route("api/research-links/:listId/responses/:responseId/delete", "./features/research-links/api/delete-response.tsx"),
 	route("api/assemblyai-token", "./routes/api.assemblyai-token.tsx"),
 	route("api.livekit-token", "./routes/api.livekit-token.tsx"),
+	route("api/realtime-evidence", "./routes/api.realtime-evidence.tsx"),
 	route("api/process", "./routes/api.process.tsx"),
 	route("api.research-answers", "./routes/api.research-answers.tsx"),
 	route("api/teams/create", "./routes/api.teams.create.tsx"),
@@ -243,12 +271,15 @@ const routes = [
 	route("api/similar-evidence-for-insight", "./routes/api.similar-evidence-for-insight.tsx"),
 	route("api/reprocess-interview", "./routes/api.reprocess-interview.tsx"),
 	route("api/fix-stuck-interview", "./routes/api.fix-stuck-interview.tsx"),
+	route("api/interview-restart", "./routes/api.interview-restart.tsx"),
 	route("api.generate-sales-lens", "./routes/api.generate-sales-lens.tsx"),
 	route("api/apply-lens", "./routes/api.apply-lens.tsx"),
 	route("api/lens-templates", "./routes/api.lens-templates.tsx"),
 	route("api/update-lens-analysis-field", "./routes/api.update-lens-analysis-field.tsx"),
 	route("api/update-lens-entity", "./routes/api.update-lens-entity.tsx"),
 	route("api/regenerate-ai-summary", "./routes/api.regenerate-ai-summary.tsx"),
+	route("api/regenerate-conversation-analysis", "./routes/api.regenerate-conversation-analysis.tsx"),
+	route("api/backfill-conversation-overview-lens", "./routes/api.backfill-conversation-overview-lens.tsx"),
 	route("api/link-interview-participant", "./routes/api.link-interview-participant.tsx"),
 	route("api/generate-thumbnails", "./routes/api.generate-thumbnails.tsx"),
 	route("api/index-note", "./routes/api.index-note.tsx"),
@@ -257,7 +288,9 @@ const routes = [
 	route("api/test-user-groups", "./routes/api.test-user-groups.tsx"),
 	route("api/test-pain-matrix", "./routes/api.test-pain-matrix.tsx"),
 
+	...ttsRoutes,
 	...voiceRoutes,
+	...realtimeTranscriptionRoutes,
 
 	// Billing routes (Polar.sh integration)
 	route("api/billing/checkout", "./routes/api.billing.checkout.tsx"),
@@ -285,6 +318,6 @@ const routes = [
 	route("ask/:slug/thumbnail", "./routes/ask.$slug.thumbnail.tsx"),
 	route("ask/:slug", "./routes/research.$slug.tsx"), // Public URL for collecting responses
 	route("embed/:slug", "./routes/embed.$slug.tsx"), // Embeddable widget version
-] satisfies RouteConfig
+] satisfies RouteConfig;
 
-export default routes
+export default routes;

@@ -4,85 +4,85 @@
  * Used in conversation lenses to show evidence clips inline
  */
 
-import { useCallback, useEffect, useState } from "react"
-import { useFetcher } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
-import { SimpleMediaPlayer } from "~/components/ui/SimpleMediaPlayer"
-import { cn } from "~/lib/utils"
-import { generateMediaUrl, getAnchorStartSeconds, type MediaAnchor } from "~/utils/media-url.client"
+import { useCallback, useEffect, useState } from "react";
+import { useFetcher } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { SimpleMediaPlayer } from "~/components/ui/SimpleMediaPlayer";
+import { cn } from "~/lib/utils";
+import { generateMediaUrl, getAnchorStartSeconds, type MediaAnchor } from "~/utils/media-url.client";
 
 type EvidenceModalProps = {
-	open: boolean
-	onOpenChange: (open: boolean) => void
-	evidenceId: string
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	evidenceId: string;
 	/** Optional timestamp in seconds to start playback */
-	startTime?: number
+	startTime?: number;
 	/** Project path for API calls */
-	projectPath: string
-}
+	projectPath: string;
+};
 
 type EvidenceData = {
-	id: string
-	verbatim: string | null
-	gist: string | null
-	chunk: string | null
-	topic: string | null
-	support: string | null
-	confidence: number | null
-	journey_stage: string | null
-	method: string | null
-	anchors: MediaAnchor[] | null
+	id: string;
+	verbatim: string | null;
+	gist: string | null;
+	chunk: string | null;
+	topic: string | null;
+	support: string | null;
+	confidence: number | null;
+	journey_stage: string | null;
+	method: string | null;
+	anchors: MediaAnchor[] | null;
 	interview: {
-		id: string
-		title: string | null
-		media_url: string | null
-		thumbnail_url: string | null
-	} | null
+		id: string;
+		title: string | null;
+		media_url: string | null;
+		thumbnail_url: string | null;
+	} | null;
 	people: Array<{
-		id: string
-		name: string | null
-		role: string | null
-	}>
+		id: string;
+		name: string | null;
+		role: string | null;
+	}>;
 	facets: Array<{
-		kind_slug: string
-		label: string
-	}>
-}
+		kind_slug: string;
+		label: string;
+	}>;
+};
 
 export function EvidenceModal({ open, onOpenChange, evidenceId, startTime, projectPath }: EvidenceModalProps) {
-	const fetcher = useFetcher<{ evidence: EvidenceData }>()
-	const [mediaUrl, setMediaUrl] = useState<string | null>(null)
-	const [isLoadingMedia, setIsLoadingMedia] = useState(false)
+	const fetcher = useFetcher<{ evidence: EvidenceData }>();
+	const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+	const [isLoadingMedia, setIsLoadingMedia] = useState(false);
 
 	// Memoize the load function to avoid dependency issues
 	const loadEvidence = useCallback(() => {
-		fetcher.load(`${projectPath}/api/evidence/${evidenceId}`)
-	}, [projectPath, evidenceId])
+		fetcher.load(`${projectPath}/api/evidence/${evidenceId}`);
+	}, [projectPath, evidenceId]);
 
 	// Fetch evidence data when modal opens
 	useEffect(() => {
 		if (open && evidenceId) {
-			loadEvidence()
+			loadEvidence();
 		}
-	}, [open, evidenceId, loadEvidence])
+	}, [open, evidenceId, loadEvidence]);
 
-	const evidence = fetcher.data?.evidence
-	const isLoading = fetcher.state === "loading"
+	const evidence = fetcher.data?.evidence;
+	const isLoading = fetcher.state === "loading";
 
 	// Load media URL when evidence is available
 	useEffect(() => {
 		if (!evidence?.interview?.media_url && !evidence?.anchors?.length) {
-			setMediaUrl(null)
-			return
+			setMediaUrl(null);
+			return;
 		}
 
-		let cancelled = false
-		setIsLoadingMedia(true)
+		let cancelled = false;
+		setIsLoadingMedia(true);
 
 		async function loadMediaUrl() {
-			const anchors = evidence?.anchors as MediaAnchor[] | null
-			const fallbackUrl = evidence?.interview?.media_url ?? null
+			const anchors = evidence?.anchors as MediaAnchor[] | null;
+			const fallbackUrl = evidence?.interview?.media_url ?? null;
 
 			// Create an anchor with the start time if provided
 			const anchor: MediaAnchor =
@@ -90,43 +90,43 @@ export function EvidenceModal({ open, onOpenChange, evidenceId, startTime, proje
 				({
 					start_ms: (startTime ?? 0) * 1000,
 					start_seconds: startTime ?? 0,
-				} as MediaAnchor)
+				} as MediaAnchor);
 
-			const url = await generateMediaUrl(anchor, fallbackUrl)
+			const url = await generateMediaUrl(anchor, fallbackUrl);
 			if (!cancelled) {
-				setMediaUrl(url)
-				setIsLoadingMedia(false)
+				setMediaUrl(url);
+				setIsLoadingMedia(false);
 			}
 		}
 
-		loadMediaUrl()
+		loadMediaUrl();
 
 		return () => {
-			cancelled = true
-		}
-	}, [evidence, startTime])
+			cancelled = true;
+		};
+	}, [evidence, startTime]);
 
 	const effectiveStartTime =
-		startTime ?? (evidence?.anchors?.[0] ? getAnchorStartSeconds(evidence.anchors[0] as MediaAnchor) : 0)
-	const isValidUrl = mediaUrl && mediaUrl !== "Unknown" && !mediaUrl.includes("undefined")
+		startTime ?? (evidence?.anchors?.[0] ? getAnchorStartSeconds(evidence.anchors[0] as MediaAnchor) : 0);
+	const isValidUrl = mediaUrl && mediaUrl !== "Unknown" && !mediaUrl.includes("undefined");
 
 	const getStageColor = (stage?: string | null) => {
-		if (!stage) return "#3b82f6"
+		if (!stage) return "#3b82f6";
 		switch (stage.toLowerCase()) {
 			case "awareness":
-				return "#f59e0b"
+				return "#f59e0b";
 			case "consideration":
-				return "#8b5cf6"
+				return "#8b5cf6";
 			case "decision":
-				return "#10b981"
+				return "#10b981";
 			case "onboarding":
-				return "#06b6d4"
+				return "#06b6d4";
 			case "retention":
-				return "#6366f1"
+				return "#6366f1";
 			default:
-				return "#3b82f6"
+				return "#3b82f6";
 		}
-	}
+	};
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -247,5 +247,5 @@ export function EvidenceModal({ open, onOpenChange, evidenceId, startTime, proje
 				)}
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }

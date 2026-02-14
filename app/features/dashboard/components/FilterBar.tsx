@@ -1,13 +1,13 @@
-import { useState } from "react"
+import { useState } from "react";
 
 interface FilterBarProps {
-	onSearch?(query: string): void
-	onSegmentChange?(segment: string): void
-	segments: string[]
+	onSearch?(query: string): void;
+	onSegmentChange?(segment: string): void;
+	segments: string[];
 }
 
 export default function FilterBar({ onSearch, onSegmentChange, segments }: FilterBarProps) {
-	const [query, setQuery] = useState("")
+	const [query, setQuery] = useState("");
 
 	return (
 		<div className="mb-4 flex flex-wrap items-center gap-2">
@@ -15,8 +15,8 @@ export default function FilterBar({ onSearch, onSegmentChange, segments }: Filte
 				type="text"
 				value={query}
 				onChange={(e) => {
-					setQuery(e.target.value)
-					onSearch?.(e.target.value)
+					setQuery(e.target.value);
+					onSearch?.(e.target.value);
 				}}
 				placeholder="Search insights…"
 				className="min-w-[200px] flex-1 rounded border px-2 py-1 text-sm"
@@ -30,5 +30,5 @@ export default function FilterBar({ onSearch, onSegmentChange, segments }: Filte
 				))}
 			</select>
 		</div>
-	)
+	);
 }

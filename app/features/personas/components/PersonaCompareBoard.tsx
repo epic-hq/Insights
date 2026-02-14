@@ -1,6 +1,6 @@
-import clsx from "clsx"
-import { BadgeInfo, Contrast, Dot, Users } from "lucide-react"
-import React, { useCallback, useState } from "react"
+import clsx from "clsx";
+import { BadgeInfo, Contrast, Dot, Users } from "lucide-react";
+import React, { useCallback, useState } from "react";
 
 /** ========== Types ==========
  * Spectrum values are normalized 0..1 (estimated or measured).
@@ -8,49 +8,49 @@ import React, { useCallback, useState } from "react"
  */
 
 type Persona = {
-	id: string
-	name: string
-	kind: "core" | "provisional" | "contrast"
-	avatarUrl?: string
-	color?: string // optional accent
-	tags?: string[]
+	id: string;
+	name: string;
+	kind: "core" | "provisional" | "contrast";
+	avatarUrl?: string;
+	color?: string; // optional accent
+	tags?: string[];
 	// Content buckets (displayed via field selector)
-	goals?: string[]
-	pains?: string[]
-	differentiators?: string[]
-	behaviors?: string[]
-	roles?: string[]
+	goals?: string[];
+	pains?: string[];
+	differentiators?: string[];
+	behaviors?: string[];
+	roles?: string[];
 	// 1D spectra (strip views): key is spectrum id, value is 0..1
-	spectra1d?: Record<string, number>
+	spectra1d?: Record<string, number>;
 	// 2D positions (scatter): value is { x:0..1, y:0..1 }
-	spectra2d?: Record<string, { x: number; y: number }>
-}
+	spectra2d?: Record<string, { x: number; y: number }>;
+};
 
 type Spectrum1D = {
-	id: string
-	labelLeft: string
-	labelRight: string
-	title?: string // e.g., "Autonomy ↔ Guidance"
-}
+	id: string;
+	labelLeft: string;
+	labelRight: string;
+	title?: string; // e.g., "Autonomy ↔ Guidance"
+};
 
 type Spectrum2D = {
-	id: string
-	xLabel: string
-	yLabel: string
-	title?: string // e.g., "Speed vs Depth"
-}
+	id: string;
+	xLabel: string;
+	yLabel: string;
+	title?: string; // e.g., "Speed vs Depth"
+};
 
-type FieldKey = "goals" | "pains" | "differentiators" | "behaviors" | "roles"
+type FieldKey = "goals" | "pains" | "differentiators" | "behaviors" | "roles";
 
 type PersonaCompareBoardProps = {
-	personas: Persona[]
-	visibleFields?: FieldKey[] // initial
-	onFieldChange?: (fields: FieldKey[]) => void
-	spectra1d?: Spectrum1D[] // which 1D axes to show
-	spectra2d?: Spectrum2D[] // which 2D plots to show
+	personas: Persona[];
+	visibleFields?: FieldKey[]; // initial
+	onFieldChange?: (fields: FieldKey[]) => void;
+	spectra1d?: Spectrum1D[]; // which 1D axes to show
+	spectra2d?: Spectrum2D[]; // which 2D plots to show
 	// optional: custom colors for persona kinds
-	kindColors?: Partial<Record<Persona["kind"], string>>
-}
+	kindColors?: Partial<Record<Persona["kind"], string>>;
+};
 
 /** ========== Utilities ========== */
 
@@ -58,7 +58,7 @@ const DEFAULT_KIND_COLORS: Record<Persona["kind"], string> = {
 	core: "bg-sky-500",
 	provisional: "bg-indigo-500",
 	contrast: "bg-emerald-500",
-}
+};
 
 const FIELD_LABEL: Record<FieldKey, string> = {
 	goals: "Goals",
@@ -66,20 +66,20 @@ const FIELD_LABEL: Record<FieldKey, string> = {
 	differentiators: "Differentiators",
 	behaviors: "Behaviors",
 	roles: "Roles",
-}
+};
 
-const ORDERED_FIELDS: FieldKey[] = ["goals", "pains", "differentiators", "behaviors", "roles"]
+const ORDERED_FIELDS: FieldKey[] = ["goals", "pains", "differentiators", "behaviors", "roles"];
 
 /** ========== Dynamic Field Selector ========== */
 
 function FieldSelector({ value, onChange }: { value: FieldKey[]; onChange: (next: FieldKey[]) => void }) {
 	const toggle = (k: FieldKey) => {
-		const has = value.includes(k)
-		onChange(has ? value.filter((f) => f !== k) : [...value, k])
-	}
-	const allOn = value.length === ORDERED_FIELDS.length
-	const noneOn = value.length === 0
-	const setAll = (on: boolean) => onChange(on ? [...ORDERED_FIELDS] : [])
+		const has = value.includes(k);
+		onChange(has ? value.filter((f) => f !== k) : [...value, k]);
+	};
+	const allOn = value.length === ORDERED_FIELDS.length;
+	const noneOn = value.length === 0;
+	const setAll = (on: boolean) => onChange(on ? [...ORDERED_FIELDS] : []);
 
 	return (
 		<div className="flex flex-wrap items-center gap-3">
@@ -115,13 +115,13 @@ function FieldSelector({ value, onChange }: { value: FieldKey[]; onChange: (next
 				</span>
 			)}
 		</div>
-	)
+	);
 }
 
 /** ========== Persona Header (kind-aware) ========== */
 
 function _PersonaHeader({ p, accent }: { p: Persona; accent: string }) {
-	const Icon = p.kind === "contrast" ? Contrast : p.kind === "provisional" ? Dot : Users
+	const Icon = p.kind === "contrast" ? Contrast : p.kind === "provisional" ? Dot : Users;
 	return (
 		<div className="flex items-center gap-2">
 			<div className={clsx("h-5 w-2 rounded", accent)} />
@@ -133,25 +133,25 @@ function _PersonaHeader({ p, accent }: { p: Persona; accent: string }) {
 				</span>
 			) : null}
 		</div>
-	)
+	);
 }
 
 /** ========== Matrix View w/ cross‑highlight ========== */
 
 type MatrixViewProps = {
-	personas: Persona[]
-	fields: FieldKey[]
-	kindColors: Record<Persona["kind"], string>
-}
+	personas: Persona[];
+	fields: FieldKey[];
+	kindColors: Record<Persona["kind"], string>;
+};
 
 function MatrixView({ personas, fields, kindColors }: MatrixViewProps) {
-	const [activeToken, setActiveToken] = useState<string | null>(null)
-	const handleEnter = (token: string) => setActiveToken(token)
-	const handleLeave = () => setActiveToken(null)
-	const handleClick = (token: string) => setActiveToken((t) => (t === token ? null : token))
+	const [activeToken, setActiveToken] = useState<string | null>(null);
+	const handleEnter = (token: string) => setActiveToken(token);
+	const handleLeave = () => setActiveToken(null);
+	const handleClick = (token: string) => setActiveToken((t) => (t === token ? null : token));
 
 	// Dynamic grid template based on number of personas
-	const gridCols = `grid-cols-1 sm:grid-cols-[180px_repeat(${personas.length},minmax(0,1fr))]`
+	const gridCols = `grid-cols-1 sm:grid-cols-[180px_repeat(${personas.length},minmax(0,1fr))]`;
 
 	return (
 		<div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
@@ -176,7 +176,7 @@ function MatrixView({ personas, fields, kindColors }: MatrixViewProps) {
 							{FIELD_LABEL[field]}
 						</div>
 						{personas.map((p, personaIndex) => {
-							const items = (p as any)[field] as any[] | undefined
+							const items = (p as any)[field] as any[] | undefined;
 							return (
 								<div
 									key={`${p.id || personaIndex}-${field}`}
@@ -186,11 +186,11 @@ function MatrixView({ personas, fields, kindColors }: MatrixViewProps) {
 										<div className="flex flex-wrap gap-2">
 											{items.slice(0, 8).map((item, i) => {
 												// Handle both string and object formats
-												const displayText = typeof item === "string" ? item : item?.label || String(item)
-												const token = `${field}:${String(displayText).toLowerCase()}`
-												const active = activeToken === token
-												const hasActiveToken = activeToken !== null
-												const isGreyedOut = hasActiveToken && !active
+												const displayText = typeof item === "string" ? item : item?.label || String(item);
+												const token = `${field}:${String(displayText).toLowerCase()}`;
+												const active = activeToken === token;
+												const hasActiveToken = activeToken !== null;
+												const isGreyedOut = hasActiveToken && !active;
 												return (
 													<button
 														key={`${p.id || personaIndex}-${field}-${i}`}
@@ -207,20 +207,20 @@ function MatrixView({ personas, fields, kindColors }: MatrixViewProps) {
 													>
 														{displayText}
 													</button>
-												)
+												);
 											})}
 										</div>
 									) : (
 										<div className="text-gray-400 text-xs dark:text-gray-500">—</div>
 									)}
 								</div>
-							)
+							);
 						})}
 					</React.Fragment>
 				))}
 			</div>
 		</div>
-	)
+	);
 }
 
 /** ========== 1D Strip Spectrum (dot plot) ========== */
@@ -250,14 +250,14 @@ function StripSpectrum({ personas, spectra }: { personas: Persona[]; spectra: Sp
 					))}
 					{/* dots */}
 					{personas.map((p) => {
-						const v = p.spectra1d?.[s.id]
-						if (v == null) return null
+						const v = p.spectra1d?.[s.id];
+						if (v == null) return null;
 						const color =
 							p.kind === "contrast"
 								? "bg-emerald-500 ring-emerald-200 dark:ring-emerald-700"
 								: p.kind === "provisional"
 									? "bg-indigo-500 ring-indigo-200 dark:ring-indigo-700"
-									: "bg-blue-500 ring-blue-200 dark:ring-blue-700"
+									: "bg-blue-500 ring-blue-200 dark:ring-blue-700";
 						return (
 							<div
 								key={p.id}
@@ -267,7 +267,7 @@ function StripSpectrum({ personas, spectra }: { personas: Persona[]; spectra: Sp
 							>
 								<div className={clsx("h-3 w-3 rounded-full ring-2", color)} />
 							</div>
-						)
+						);
 					})}
 				</div>
 				<div className="mt-3 flex items-center justify-between text-gray-500 text-xs dark:text-gray-400">
@@ -275,17 +275,17 @@ function StripSpectrum({ personas, spectra }: { personas: Persona[]; spectra: Sp
 					<span>{s.labelRight}</span>
 				</div>
 			</div>
-		)
-	}
+		);
+	};
 
-	return <div className="grid gap-4 md:grid-cols-2">{spectra.map(row)}</div>
+	return <div className="grid gap-4 md:grid-cols-2">{spectra.map(row)}</div>;
 }
 
 /** ========== 2D Cartesian “Radial” Scatter (with labels & tooltips) ========== */
 
 function ScatterSpectrum({ personas, spec }: { personas: Persona[]; spec: Spectrum2D }) {
 	// simple grid (no external chart lib)
-	const [hoverId, setHoverId] = useState<string | null>(null)
+	const [hoverId, setHoverId] = useState<string | null>(null);
 	return (
 		<div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
 			<div className="mb-3 font-medium text-gray-900 text-sm dark:text-white">
@@ -310,14 +310,14 @@ function ScatterSpectrum({ personas, spec }: { personas: Persona[]; spec: Spectr
 					))}
 					{/* points */}
 					{personas.map((p) => {
-						const pos = p.spectra2d?.[spec.id]
-						if (!pos) return null
-						const x = Math.min(1, Math.max(0, pos.x))
-						const y = Math.min(1, Math.max(0, pos.y))
-						const isHover = hoverId === p.id
+						const pos = p.spectra2d?.[spec.id];
+						if (!pos) return null;
+						const x = Math.min(1, Math.max(0, pos.x));
+						const y = Math.min(1, Math.max(0, pos.y));
+						const isHover = hoverId === p.id;
 						const color =
-							p.kind === "contrast" ? "bg-emerald-500" : p.kind === "provisional" ? "bg-indigo-500" : "bg-blue-500"
-						const glyph = p.kind === "contrast" ? "rounded-sm" : "rounded-full"
+							p.kind === "contrast" ? "bg-emerald-500" : p.kind === "provisional" ? "bg-indigo-500" : "bg-blue-500";
+						const glyph = p.kind === "contrast" ? "rounded-sm" : "rounded-full";
 						return (
 							<div
 								key={p.id}
@@ -340,7 +340,7 @@ function ScatterSpectrum({ personas, spec }: { personas: Persona[]; spec: Spectr
 									</div>
 								)}
 							</div>
-						)
+						);
 					})}
 				</div>
 				{/* axis labels */}
@@ -368,7 +368,7 @@ function ScatterSpectrum({ personas, spec }: { personas: Persona[]; spec: Spectr
 				</span>
 			</div>
 		</div>
-	)
+	);
 }
 
 /** ========== Top-level board component (render-only) ========== */
@@ -381,17 +381,17 @@ export default function PersonaCompareBoard({
 	spectra2d = [],
 	kindColors = DEFAULT_KIND_COLORS,
 }: PersonaCompareBoardProps) {
-	const [fields, setFields] = useState<FieldKey[]>(visibleFields)
+	const [fields, setFields] = useState<FieldKey[]>(visibleFields);
 
 	const handleFields = useCallback(
 		(next: FieldKey[]) => {
-			setFields(next)
-			onFieldChange?.(next)
+			setFields(next);
+			onFieldChange?.(next);
 		},
 		[onFieldChange]
-	)
+	);
 
-	const anyFields = fields.length > 0
+	const anyFields = fields.length > 0;
 
 	return (
 		<div className="space-y-6">
@@ -428,7 +428,7 @@ export default function PersonaCompareBoard({
 				</div>
 			)}
 		</div>
-	)
+	);
 }
 
 /** ========== Example usage (remove in prod) ==========

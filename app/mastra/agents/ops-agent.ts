@@ -1,14 +1,16 @@
 /**
  * OpsAgent: specialist for sales pipeline and organization ops.
  */
-import { Agent } from "@mastra/core/agent"
-import { TokenLimiterProcessor } from "@mastra/core/processors"
-import consola from "consola"
-import { openai } from "../../lib/billing/instrumented-openai.server"
-import { manageAnnotationsTool } from "../tools/manage-annotations"
-import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities"
-import { researchOrganizationTool } from "../tools/research-organization"
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
+import { Agent } from "@mastra/core/agent";
+import { TokenLimiterProcessor } from "@mastra/core/processors";
+import consola from "consola";
+import { openai } from "../../lib/billing/instrumented-openai.server";
+import { generateProjectRoutesTool } from "../tools/generate-project-routes";
+import { importOpportunitiesFromTableTool } from "../tools/import-opportunities-from-table";
+import { manageAnnotationsTool } from "../tools/manage-annotations";
+import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities";
+import { researchOrganizationTool } from "../tools/research-organization";
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 
 export const opsAgent = new Agent({
 	id: "ops-agent",
@@ -17,9 +19,9 @@ export const opsAgent = new Agent({
 		"Specialist for sales pipeline ops: opportunities, organization research/enrichment, and related annotations.",
 	instructions: async ({ requestContext }) => {
 		try {
-			const projectId = requestContext.get("project_id")
-			const accountId = requestContext.get("account_id")
-			const userId = requestContext.get("user_id")
+			const projectId = requestContext.get("project_id");
+			const accountId = requestContext.get("account_id");
+			const userId = requestContext.get("user_id");
 
 			return `
 You are a focused Ops specialist for project ${projectId}.
@@ -35,19 +37,25 @@ If the request is about interviews, surveys, people, tasks, or documents, return
 - When giving guidance, cite specific opportunities (stage, amount, close date) and include links.
 - Provide at most 2-3 specific suggestions.
 - Use createOpportunity/updateOpportunity for pipeline changes.
+- Use importOpportunitiesFromTable for CRM-style opportunity imports from parsed tables.
 
 # Organizations
 - Use researchOrganization when user requests company research or enrichment.
 - Prefer internal evidence first; use external research only when needed.
 
+# Linking & Navigation
+- When referencing opportunities or organizations, format as \`[Name](url)\` markdown link.
+- Tools may return \`url\` fields — use them directly.
+- For entities without tool URLs, call generateProjectRoutes with entityType (opportunity, organization) and the entityId.
+
 # Context
 - Account: ${accountId}
 - Project: ${projectId}
 - User: ${userId}
-`
+`;
 		} catch (error) {
-			consola.error("Error in ops agent instructions:", error)
-			return "You are an Ops specialist for opportunities and organizations."
+			consola.error("Error in ops agent instructions:", error);
+			return "You are an Ops specialist for opportunities and organizations.";
 		}
 	},
 	model: openai("gpt-4o-mini"),
@@ -55,8 +63,10 @@ If the request is about interviews, surveys, people, tasks, or documents, return
 		fetchOpportunities: fetchOpportunitiesTool,
 		createOpportunity: createOpportunityTool,
 		updateOpportunity: updateOpportunityTool,
+		importOpportunitiesFromTable: importOpportunitiesFromTableTool,
 		researchOrganization: researchOrganizationTool,
 		manageAnnotations: manageAnnotationsTool,
+		generateProjectRoutes: generateProjectRoutesTool,
 	}),
 	outputProcessors: [new TokenLimiterProcessor(20_000)],
-})
+});

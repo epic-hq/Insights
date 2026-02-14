@@ -83,7 +83,9 @@
 	},
 	"javascript": {
 		"formatter": {
-			"semicolons": "asNeeded",
+			"enabled": true,
+			"lineWidth": 120,
+			"indentStyle": "tab",
 			"trailingCommas": "es5"
 		}
 	}

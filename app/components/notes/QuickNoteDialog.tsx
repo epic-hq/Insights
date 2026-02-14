@@ -10,10 +10,10 @@ import {
 	UserPlus,
 	Users,
 	X,
-} from "lucide-react"
-import { useCallback, useEffect, useId, useState } from "react"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
+} from "lucide-react";
+import { useCallback, useEffect, useId, useState } from "react";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -21,46 +21,47 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "~/components/ui/dialog"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Textarea } from "~/components/ui/textarea"
-import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
-import { createClient } from "~/lib/supabase/client"
-import { cn } from "~/lib/utils"
+} from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
+import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
+import { createClient } from "~/lib/supabase/client";
+import { cn } from "~/lib/utils";
 
-export type NoteType = "note" | "task"
+export type NoteType = "note" | "task";
 
-type DialogStep = "content" | "associate"
+type DialogStep = "content" | "associate";
 
 interface NoteAssociations {
-	people?: string[]
-	organizations?: string[]
-	opportunities?: string[]
+	people?: string[];
+	organizations?: string[];
+	opportunities?: string[];
 }
 
 interface Person {
-	id: string
-	name: string | null
-	company?: string | null
+	id: string;
+	name: string | null;
+	company?: string | null;
+	default_organization?: { name: string | null } | null;
 }
 
 interface QuickNoteDialogProps {
-	open: boolean
-	onOpenChange: (open: boolean) => void
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
 	onSave: (data: {
-		title: string
-		content: string
-		noteType: NoteType
-		associations: NoteAssociations
-		tags: string[]
-	}) => Promise<void>
-	projectId?: string
-	defaultAssociations?: NoteAssociations
-	availablePeople?: Array<{ id: string; name: string }>
-	availableOrgs?: Array<{ id: string; name: string }>
-	availableOpportunities?: Array<{ id: string; name: string }>
-	defaultType?: NoteType
+		title: string;
+		content: string;
+		noteType: NoteType;
+		associations: NoteAssociations;
+		tags: string[];
+	}) => Promise<void>;
+	projectId?: string;
+	defaultAssociations?: NoteAssociations;
+	availablePeople?: Array<{ id: string; name: string }>;
+	availableOrgs?: Array<{ id: string; name: string }>;
+	availableOpportunities?: Array<{ id: string; name: string }>;
+	defaultType?: NoteType;
 }
 
 export function QuickNoteDialog({
@@ -74,66 +75,66 @@ export function QuickNoteDialog({
 	availableOpportunities = [],
 	defaultType = "note",
 }: QuickNoteDialogProps) {
-	const titleId = useId()
-	const contentId = useId()
-	const tagsId = useId()
+	const titleId = useId();
+	const contentId = useId();
+	const tagsId = useId();
 
-	const [step, setStep] = useState<DialogStep>("content")
-	const [title, setTitle] = useState("")
-	const [content, setContent] = useState("")
-	const [noteType, setNoteType] = useState<NoteType>(defaultType)
-	const [associations, setAssociations] = useState<NoteAssociations>(defaultAssociations)
-	const [tags, setTags] = useState<string[]>([])
-	const [tagInput, setTagInput] = useState("")
-	const [isSaving, setIsSaving] = useState(false)
+	const [step, setStep] = useState<DialogStep>("content");
+	const [title, setTitle] = useState("");
+	const [content, setContent] = useState("");
+	const [noteType, setNoteType] = useState<NoteType>(defaultType);
+	const [associations, setAssociations] = useState<NoteAssociations>(defaultAssociations);
+	const [tags, setTags] = useState<string[]>([]);
+	const [tagInput, setTagInput] = useState("");
+	const [isSaving, setIsSaving] = useState(false);
 
 	// People fetching for association step
-	const [people, setPeople] = useState<Person[]>([])
-	const [selectedPeople, setSelectedPeople] = useState<Person[]>([])
-	const [isLoadingPeople, setIsLoadingPeople] = useState(false)
-	const [searchQuery, setSearchQuery] = useState("")
-	const [showCreatePerson, setShowCreatePerson] = useState(false)
-	const [newPersonFirstName, setNewPersonFirstName] = useState("")
-	const [newPersonLastName, setNewPersonLastName] = useState("")
-	const [newPersonCompany, setNewPersonCompany] = useState("")
-	const supabase = createClient()
+	const [people, setPeople] = useState<Person[]>([]);
+	const [selectedPeople, setSelectedPeople] = useState<Person[]>([]);
+	const [isLoadingPeople, setIsLoadingPeople] = useState(false);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [showCreatePerson, setShowCreatePerson] = useState(false);
+	const [newPersonFirstName, setNewPersonFirstName] = useState("");
+	const [newPersonLastName, setNewPersonLastName] = useState("");
+	const [newPersonCompany, setNewPersonCompany] = useState("");
+	const supabase = createClient();
 
 	// Fetch people when entering association step
 	useEffect(() => {
 		if (step === "associate" && projectId && !isLoadingPeople && people.length === 0) {
-			setIsLoadingPeople(true)
+			setIsLoadingPeople(true);
 			supabase
 				.from("people")
-				.select("id, name, company")
+				.select("id, name, default_organization:organizations!default_organization_id(name)")
 				.eq("project_id", projectId)
 				.order("name")
 				.then(({ data }) => {
-					if (data) setPeople(data as Person[])
+					if (data) setPeople(data as Person[]);
 				})
-				.finally(() => setIsLoadingPeople(false))
+				.finally(() => setIsLoadingPeople(false));
 		}
-	}, [step, projectId, isLoadingPeople, people.length, supabase])
+	}, [step, projectId, isLoadingPeople, people.length, supabase]);
 
 	// Reset state when dialog closes
 	useEffect(() => {
 		if (!open) {
-			setStep("content")
-			setSelectedPeople([])
-			setSearchQuery("")
-			setShowCreatePerson(false)
-			setNewPersonFirstName("")
-			setNewPersonLastName("")
-			setNewPersonCompany("")
+			setStep("content");
+			setSelectedPeople([]);
+			setSearchQuery("");
+			setShowCreatePerson(false);
+			setNewPersonFirstName("");
+			setNewPersonLastName("");
+			setNewPersonCompany("");
 		}
-	}, [open])
+	}, [open]);
 
 	// Speech-to-text for voice input
 	const handleVoiceTranscription = useCallback((transcript: string) => {
-		const trimmed = transcript.trim()
+		const trimmed = transcript.trim();
 		if (trimmed) {
-			setContent((prev) => (prev ? `${prev}\n\n${trimmed}` : trimmed))
+			setContent((prev) => (prev ? `${prev}\n\n${trimmed}` : trimmed));
 		}
-	}, [])
+	}, []);
 
 	const {
 		startRecording,
@@ -142,30 +143,30 @@ export function QuickNoteDialog({
 		isTranscribing,
 		error: voiceError,
 		isSupported: isVoiceSupported,
-	} = useSpeechToText({ onTranscription: handleVoiceTranscription })
+	} = useSpeechToText({ onTranscription: handleVoiceTranscription });
 
 	// Proceed to association step
 	const handleNext = () => {
 		// For tasks, title is required; for notes, content is required
-		if (noteType === "task" && !title.trim()) return
-		if (noteType === "note" && !content.trim()) return
+		if (noteType === "task" && !title.trim()) return;
+		if (noteType === "note" && !content.trim()) return;
 
 		// If projectId provided, go to association step; otherwise save directly
 		if (projectId) {
-			setStep("associate")
+			setStep("associate");
 		} else {
-			handleSave()
+			handleSave();
 		}
-	}
+	};
 
 	const handleSave = async () => {
-		setIsSaving(true)
+		setIsSaving(true);
 		try {
 			const defaultTitle =
-				noteType === "task" ? `Task - ${new Date().toLocaleDateString()}` : `Note - ${new Date().toLocaleDateString()}`
+				noteType === "task" ? `Task - ${new Date().toLocaleDateString()}` : `Note - ${new Date().toLocaleDateString()}`;
 
 			// Create new person if needed
-			const personIds: string[] = selectedPeople.map((p) => p.id)
+			const personIds: string[] = selectedPeople.map((p) => p.id);
 			if (showCreatePerson && newPersonFirstName.trim() && projectId) {
 				const { data, error } = await supabase
 					.from("people")
@@ -175,10 +176,10 @@ export function QuickNoteDialog({
 						company: newPersonCompany.trim() || null,
 					})
 					.select()
-					.single()
+					.single();
 
 				if (!error && data) {
-					personIds.push(data.id)
+					personIds.push(data.id);
 				}
 			}
 
@@ -191,69 +192,70 @@ export function QuickNoteDialog({
 					people: personIds.length > 0 ? personIds : associations.people,
 				},
 				tags,
-			})
+			});
 
 			// Reset form
-			setTitle("")
-			setContent("")
-			setNoteType(defaultType)
-			setAssociations({})
-			setTags([])
-			setTagInput("")
-			setStep("content")
-			setSelectedPeople([])
-			onOpenChange(false)
+			setTitle("");
+			setContent("");
+			setNoteType(defaultType);
+			setAssociations({});
+			setTags([]);
+			setTagInput("");
+			setStep("content");
+			setSelectedPeople([]);
+			onOpenChange(false);
 		} catch (error) {
-			console.error("Failed to save note:", error)
+			console.error("Failed to save note:", error);
 		} finally {
-			setIsSaving(false)
+			setIsSaving(false);
 		}
-	}
+	};
 
 	// Filter people based on search
 	const filteredPeople = searchQuery.trim()
-		? people.filter(
-				(p) =>
+		? people.filter((p) => {
+				return (
 					p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-					p.company?.toLowerCase().includes(searchQuery.toLowerCase())
-			)
-		: people.slice(0, 8)
+					p.default_organization?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+				);
+			})
+		: people.slice(0, 8);
 
 	const addTag = () => {
-		const tag = tagInput.trim().toLowerCase()
+		const tag = tagInput.trim().toLowerCase();
 		if (tag && !tags.includes(tag)) {
-			setTags([...tags, tag])
-			setTagInput("")
+			setTags([...tags, tag]);
+			setTagInput("");
 		}
-	}
+	};
 
 	const removeTag = (tag: string) => {
-		setTags(tags.filter((t) => t !== tag))
-	}
+		setTags(tags.filter((t) => t !== tag));
+	};
 
 	const togglePerson = (personId: string) => {
-		const current = associations.people || []
+		const current = associations.people || [];
 		setAssociations({
 			...associations,
 			people: current.includes(personId) ? current.filter((id) => id !== personId) : [...current, personId],
-		})
-	}
+		});
+	};
 
 	const toggleOrg = (orgId: string) => {
-		const current = associations.organizations || []
+		const current = associations.organizations || [];
 		setAssociations({
 			...associations,
 			organizations: current.includes(orgId) ? current.filter((id) => id !== orgId) : [...current, orgId],
-		})
-	}
+		});
+	};
 
 	const toggleOpportunity = (oppId: string) => {
-		const current = associations.opportunities || []
+		const current = associations.opportunities || [];
 		setAssociations({
 			...associations,
 			opportunities: current.includes(oppId) ? current.filter((id) => id !== oppId) : [...current, oppId],
-		})
-	}
+		});
+	};
 
 	// Association step UI
 	if (step === "associate") {
@@ -298,7 +300,7 @@ export function QuickNoteDialog({
 										</p>
 									) : (
 										filteredPeople.map((person) => {
-											const isSelected = selectedPeople.some((p) => p.id === person.id)
+											const isSelected = selectedPeople.some((p) => p.id === person.id);
 											return (
 												<button
 													key={person.id}
@@ -320,13 +322,15 @@ export function QuickNoteDialog({
 													</div>
 													<div className="min-w-0 flex-1">
 														<p className="truncate font-medium text-sm">{person.name}</p>
-														{person.company && (
-															<p className="truncate text-muted-foreground text-xs">{person.company}</p>
+														{person.default_organization?.name && (
+															<p className="truncate text-muted-foreground text-xs">
+																{person.default_organization?.name}
+															</p>
 														)}
 													</div>
 													{isSelected && <CheckCircle className="h-5 w-5 flex-shrink-0 text-blue-500" />}
 												</button>
-											)
+											);
 										})
 									)}
 								</div>
@@ -351,10 +355,10 @@ export function QuickNoteDialog({
 									<button
 										type="button"
 										onClick={() => {
-											setShowCreatePerson(false)
-											setNewPersonFirstName("")
-											setNewPersonLastName("")
-											setNewPersonCompany("")
+											setShowCreatePerson(false);
+											setNewPersonFirstName("");
+											setNewPersonLastName("");
+											setNewPersonCompany("");
 										}}
 										className="text-muted-foreground text-xs hover:text-foreground"
 									>
@@ -387,9 +391,9 @@ export function QuickNoteDialog({
 						<Button
 							variant="outline"
 							onClick={() => {
-								setSelectedPeople([])
-								setShowCreatePerson(false)
-								handleSave()
+								setSelectedPeople([]);
+								setShowCreatePerson(false);
+								handleSave();
 							}}
 							disabled={isSaving}
 						>
@@ -407,7 +411,7 @@ export function QuickNoteDialog({
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
-		)
+		);
 	}
 
 	// Content step UI (default)
@@ -573,8 +577,8 @@ export function QuickNoteDialog({
 								onChange={(e) => setTagInput(e.target.value)}
 								onKeyDown={(e) => {
 									if (e.key === "Enter") {
-										e.preventDefault()
-										addTag()
+										e.preventDefault();
+										addTag();
 									}
 								}}
 							/>
@@ -607,5 +611,5 @@ export function QuickNoteDialog({
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }

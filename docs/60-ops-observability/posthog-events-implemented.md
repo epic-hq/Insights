@@ -154,6 +154,317 @@ posthog.identify(userId, {
 
 ---
 
+### 6. `interview_detail_viewed`
+**Location**: `/app/features/interviews/pages/detail.tsx`
+
+**Trigger**: When a user views an interview detail page
+
+**Properties Captured**:
+```typescript
+{
+  interview_id: string
+  project_id: string
+  account_id: string
+  has_transcript: boolean
+  has_analysis: boolean
+  evidence_count: number
+  insights_count: number
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 7. `survey_results_viewed`
+**Location**: `/app/features/research-links/pages/responses.$listId.tsx`
+
+**Trigger**: When a user views survey (Ask link) results
+
+**Properties Captured**:
+```typescript
+{
+  survey_id: string
+  project_id: string
+  account_id: string
+  response_count: number
+  question_count: number
+  has_ai_analysis: boolean
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 8. `survey_created`
+**Location**: `/app/features/research-links/pages/new.tsx`
+
+**Trigger**: When a user creates a new survey (Ask link)
+
+**Properties Captured**:
+```typescript
+{
+  survey_id: string
+  account_id: string
+  question_count: number
+  is_live: boolean
+  allow_chat: boolean
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 9. `insight_viewed`
+**Location**: `/app/features/insights/pages/insight-detail.tsx`
+
+**Trigger**: When a user views an insight detail page
+
+**Properties Captured**:
+```typescript
+{
+  insight_id: string
+  project_id: string
+  account_id: string
+  evidence_count: number
+  people_affected_count: number
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 10. `task_created`
+**Location**: `/app/routes/api.tasks.tsx`
+
+**Trigger**: When a user creates a new task
+
+**Properties Captured**:
+```typescript
+{
+  task_id: string
+  project_id: string
+  account_id: string
+  priority: number
+  source: "insight" | "manual"
+  source_insight_id: string | null
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 11. `task_completed`
+**Location**: `/app/routes/api.tasks.tsx`
+
+**Trigger**: When a task status is changed to "done"
+
+**Properties Captured**:
+```typescript
+{
+  task_id: string
+  project_id: string
+  account_id: string
+  priority: number
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 12. `billing_page_viewed`
+**Location**: `/app/features/billing/pages/index.tsx`
+
+**Trigger**: When a user views the billing/subscription page
+
+**Properties Captured**:
+```typescript
+{
+  account_id: string
+  current_plan: "free" | "starter" | "pro" | "team"
+  has_active_subscription: boolean
+  subscription_status: string | null
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 13. `checkout_started`
+**Location**: `/app/routes/api.billing.checkout.tsx`
+
+**Trigger**: When a user initiates a checkout session (clicks upgrade/subscribe)
+
+**Properties Captured**:
+```typescript
+{
+  account_id: string
+  plan: "starter" | "pro" | "team"
+  interval: "month" | "year"
+  checkout_id: string
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 14. `checkout_completed`
+**Location**: `/app/routes/api.webhooks.polar.tsx`
+
+**Trigger**: When a subscription becomes active (payment confirmed via webhook)
+
+**Properties Captured**:
+```typescript
+{
+  account_id: string
+  plan: string
+  subscription_id: string
+  product_id: string
+  seats: number
+  is_trial: boolean
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 15. `subscription_canceled`
+**Location**: `/app/routes/api.webhooks.polar.tsx`
+
+**Trigger**: When a subscription is canceled (via webhook)
+
+**Properties Captured**:
+```typescript
+{
+  account_id: string
+  subscription_id: string
+  cancel_at_period_end: boolean
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 16. `task_status_changed`
+**Location**: `/app/routes/api.tasks.tsx`
+
+**Trigger**: When a task status changes (any transition, not just completion)
+
+**Properties Captured**:
+```typescript
+{
+  task_id: string
+  project_id: string
+  account_id: string
+  previous_status: string | null
+  new_status: string
+  priority: number
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 17. `interview_shared`
+**Location**: `/app/routes/api.share.enable.tsx`
+
+**Trigger**: When a user enables public sharing for an interview
+
+**Properties Captured**:
+```typescript
+{
+  interview_id: string
+  project_id: string
+  account_id: string
+  share_type: "public_link"
+  expiration_days: "7" | "30" | "never"
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 18. `analyze_started`
+**Location**: `/app/routes/api.reprocess-interview.tsx`
+
+**Trigger**: When a user triggers interview analysis/reprocessing
+
+**Properties Captured**:
+```typescript
+{
+  interview_id: string
+  project_id: string
+  account_id: string
+  needs_transcription: boolean
+  has_media: boolean
+  trigger_run_id: string
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 19. `task_due_date_changed`
+**Location**: `/app/routes/api.tasks.tsx`
+
+**Trigger**: When a task's due date is set or changed
+
+**Properties Captured**:
+```typescript
+{
+  task_id: string
+  project_id: string
+  account_id: string
+  previous_due_date: string | null
+  new_due_date: string | null
+  days_until_due: number | null
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 20. `task_assigned`
+**Location**: `/app/routes/api.tasks.tsx`
+
+**Trigger**: When a task is assigned to someone
+
+**Properties Captured**:
+```typescript
+{
+  task_id: string
+  project_id: string
+  account_id: string
+  assignee_count: number
+  assigner_user_id: string
+  is_self_assign: boolean
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 21. `annotation_created`
+**Location**: `/app/features/annotations/api/annotations.tsx`
+
+**Trigger**: When a comment/annotation is posted on any entity
+
+**Properties Captured**:
+```typescript
+{
+  annotation_id: string
+  project_id: string
+  account_id: string
+  entity_type: "task" | "insight" | "evidence" | "interview" | "opportunity"
+  entity_id: string
+  annotation_type: "comment"
+  is_reply: boolean
+  has_mentions: boolean
+  $groups: { account: account_id }
+}
+```
+
+---
+
 ## Implementation Patterns
 
 ### Error Handling
@@ -204,6 +515,48 @@ All events are captured server-side for:
    - Enhanced person identification with role and company
    - Added group analytics for account-level tracking
 
+6. **`/app/features/interviews/pages/detail.tsx`**
+   - Added `interview_detail_viewed` event
+   - Tracks content engagement with transcript/analysis presence
+
+7. **`/app/features/research-links/pages/responses.$listId.tsx`**
+   - Added `survey_results_viewed` event
+   - Tracks survey engagement with response counts
+
+8. **`/app/features/research-links/pages/new.tsx`**
+   - Added `survey_created` event
+   - Tracks survey creation with question count
+
+9. **`/app/features/insights/pages/insight-detail.tsx`**
+   - Added `insight_viewed` event
+   - Tracks insight engagement with evidence counts
+
+10. **`/app/routes/api.tasks.tsx`**
+    - Added `task_created` event with source tracking
+    - Added `task_status_changed` event on ANY status transition
+    - Added `task_completed` event when status changes to done
+
+11. **`/app/features/billing/pages/index.tsx`**
+    - Added `billing_page_viewed` event
+    - Tracks current plan and subscription status
+
+12. **`/app/routes/api.billing.checkout.tsx`**
+    - Added `checkout_started` event
+    - Tracks plan, interval, and checkout session ID
+
+13. **`/app/routes/api.webhooks.polar.tsx`**
+    - Added `checkout_completed` event on subscription.active
+    - Added `subscription_canceled` event on subscription.canceled
+
+14. **`/app/routes/api.share.enable.tsx`**
+    - Added `interview_shared` event when public sharing is enabled
+
+15. **`/app/routes/api.reprocess-interview.tsx`**
+    - Added `analyze_started` event when interview analysis begins
+
+16. **`/app/features/annotations/api/annotations.tsx`**
+    - Added `annotation_created` event when comments are posted
+
 ---
 
 ## Testing Checklist
@@ -214,6 +567,22 @@ All events are captured server-side for:
 - [ ] Upload interview → verify `interview_added` with correct source
 - [ ] Send team invite → verify `invite_sent` with correct role
 - [ ] Accept team invite → verify `invite_accepted` with correct properties
+- [ ] View interview detail → verify `interview_detail_viewed` with properties
+- [ ] View survey results → verify `survey_results_viewed` with response count
+- [ ] Create survey → verify `survey_created` with question count
+- [ ] View insight detail → verify `insight_viewed` with evidence count
+- [ ] Create task → verify `task_created` with source ("insight" or "manual")
+- [ ] Complete task → verify `task_completed` when status changes to done
+- [ ] View billing page → verify `billing_page_viewed` with current plan
+- [ ] Start checkout → verify `checkout_started` with plan and interval
+- [ ] Complete checkout → verify `checkout_completed` (via webhook test)
+- [ ] Cancel subscription → verify `subscription_canceled` (via webhook test)
+- [ ] Change task status (any) → verify `task_status_changed` with previous/new status
+- [ ] Enable interview sharing → verify `interview_shared` with share_type
+- [ ] Click Analyze on interview → verify `analyze_started` with interview details
+- [ ] Set/change task due date → verify `task_due_date_changed` with dates
+- [ ] Assign task to user → verify `task_assigned` with assignee info
+- [ ] Post comment on any entity → verify `annotation_created` with entity_type
 
 ### PostHog Dashboard Verification
 - [ ] Check Activity tab for live events

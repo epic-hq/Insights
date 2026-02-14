@@ -1,6 +1,6 @@
-import { Link, useSearchParams } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
+import { Link, useSearchParams } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
 
 /**
  * User-friendly error messages for common auth error codes
@@ -15,7 +15,7 @@ function getErrorContent(code: string | null, description: string | null) {
 					label: "Request New Link",
 					href: "/forgot-password",
 				},
-			}
+			};
 
 		case "otp_disabled":
 		case "validation_failed":
@@ -26,7 +26,7 @@ function getErrorContent(code: string | null, description: string | null) {
 					label: "Request New Link",
 					href: "/forgot-password",
 				},
-			}
+			};
 
 		case "user_not_found":
 			return {
@@ -36,7 +36,7 @@ function getErrorContent(code: string | null, description: string | null) {
 					label: "Try Again",
 					href: "/forgot-password",
 				},
-			}
+			};
 
 		case "oauth_user":
 			return {
@@ -47,7 +47,7 @@ function getErrorContent(code: string | null, description: string | null) {
 					label: "Sign In",
 					href: "/sign-in",
 				},
-			}
+			};
 
 		default:
 			// Check description for OAuth-related errors
@@ -60,7 +60,7 @@ function getErrorContent(code: string | null, description: string | null) {
 						label: "Sign In",
 						href: "/sign-in",
 					},
-				}
+				};
 			}
 
 			return {
@@ -70,16 +70,16 @@ function getErrorContent(code: string | null, description: string | null) {
 					label: "Go to Sign In",
 					href: "/sign-in",
 				},
-			}
+			};
 	}
 }
 
 export default function AuthErrorPage() {
-	const [searchParams] = useSearchParams()
-	const code = searchParams.get("code")
-	const description = searchParams.get("description")
+	const [searchParams] = useSearchParams();
+	const code = searchParams.get("code");
+	const description = searchParams.get("description");
 
-	const content = getErrorContent(code, description)
+	const content = getErrorContent(code, description);
 
 	return (
 		<div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
@@ -101,5 +101,5 @@ export default function AuthErrorPage() {
 				</Card>
 			</div>
 		</div>
-	)
+	);
 }

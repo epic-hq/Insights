@@ -1,6 +1,6 @@
-import { MCPServer } from "@mastra/mcp"
-import consola from "consola"
-import { dailyBriefWorkflow } from "./workflows/daily-brief"
+import { MCPServer } from "@mastra/mcp";
+import consola from "consola";
+import { dailyBriefWorkflow } from "./workflows/daily-brief";
 
 /**
  * MCP Server that exposes Mastra workflows as tools
@@ -15,13 +15,13 @@ export async function startMCPServer() {
 		workflows: {
 			dailyBriefWorkflow,
 		},
-	})
+	});
 
-	await server.startStdio()
-	consola.log("MCP Server started on stdio")
+	await server.startStdio();
+	consola.log("MCP Server started on stdio");
 }
 
 // For direct execution
 if (require.main === module) {
-	startMCPServer().catch(consola.error)
+	startMCPServer().catch(consola.error);
 }

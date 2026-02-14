@@ -1,33 +1,33 @@
-import type React from "react"
-import { Link, useParams } from "react-router-dom"
-import PageHeader from "~/components/navigation/PageHeader"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import type React from "react";
+import { Link, useParams } from "react-router-dom";
+import PageHeader from "~/components/navigation/PageHeader";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 // Import centralized types
-import type { Interview, PersonaView } from "~/types"
+import type { Interview, PersonaView } from "~/types";
 
 interface PersonaDetailProps {
-	personas: PersonaView[]
-	interviews: Interview[]
+	personas: PersonaView[];
+	interviews: Interview[];
 }
 
 const PersonaDetail: React.FC<PersonaDetailProps> = ({ personas, interviews }) => {
-	const { personaId } = useParams<{ personaId: string }>()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const { personaId } = useParams<{ personaId: string }>();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
 	// Find the persona by ID (slug)
 	const persona = personas.find((p) => {
 		// Check if persona has an href that matches the current route
 		if (p.href) {
-			const hrefSlug = p.href.split("/").pop()
-			if (hrefSlug === personaId) return true
+			const hrefSlug = p.href.split("/").pop();
+			if (hrefSlug === personaId) return true;
 		}
 
 		// Fallback to generating slug from name
-		const slug = p.name.toLowerCase().replace(/\s+/g, "-")
-		return slug === personaId
-	})
+		const slug = p.name.toLowerCase().replace(/\s+/g, "-");
+		return slug === personaId;
+	});
 
 	if (!persona) {
 		return (
@@ -38,11 +38,11 @@ const PersonaDetail: React.FC<PersonaDetailProps> = ({ personas, interviews }) =
 					<p>The requested persona could not be found.</p>
 				</div>
 			</div>
-		)
+		);
 	}
 
 	// Calculate percentage distribution of slices
-	const totalSliceValue = persona.slices?.reduce((sum, slice) => sum + slice.value, 0) || 0
+	const totalSliceValue = persona.slices?.reduce((sum, slice) => sum + slice.value, 0) || 0;
 
 	return (
 		<div className="mx-auto max-w-7xl px-4">
@@ -181,7 +181,7 @@ const PersonaDetail: React.FC<PersonaDetailProps> = ({ personas, interviews }) =
 				</div>
 			</div>
 		</div>
-	)
-}
+	);
+};
 
-export default PersonaDetail
+export default PersonaDetail;

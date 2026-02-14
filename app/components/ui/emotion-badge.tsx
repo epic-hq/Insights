@@ -1,5 +1,5 @@
-import { Badge } from "~/components/ui/badge"
-import { cn } from "~/lib/utils"
+import { Badge } from "~/components/ui/badge";
+import { cn } from "~/lib/utils";
 
 export const EmotionsMap = {
 	Angry: {
@@ -106,59 +106,59 @@ export const EmotionsMap = {
 		Rejected: ["Excluded", "Persecuted"],
 		Threatened: ["Nervous", "Exposed"],
 	},
-} as const
+} as const;
 
-type TopKey = keyof typeof EmotionsMap
+type TopKey = keyof typeof EmotionsMap;
 
 // top-level (Angry, Disgusted, Sad, Happy, Surprised, Bad, Fearful)
-type TopEmotion = keyof typeof EmotionsMap
+type TopEmotion = keyof typeof EmotionsMap;
 
 // subcategory keys under each top (e.g., Frustrated, Vulnerable, Proud…)
-type SubKeys<T> = Exclude<keyof T, "emoji" | "color">
-type SubEmotion = { [K in TopEmotion]: SubKeys<(typeof EmotionsMap)[K]> }[TopEmotion]
+type SubKeys<T> = Exclude<keyof T, "emoji" | "color">;
+type SubEmotion = { [K in TopEmotion]: SubKeys<(typeof EmotionsMap)[K]> }[TopEmotion];
 
 // leaf terms (e.g., Annoyed, Powerless, Confident…)
 type LeafEmotion = {
 	[K in TopEmotion]: {
 		[S in SubKeys<(typeof EmotionsMap)[K]>]: (typeof EmotionsMap)[K][S] extends readonly string[]
 			? (typeof EmotionsMap)[K][S][number]
-			: never
-	}[SubKeys<(typeof EmotionsMap)[K]>]
-}[TopEmotion]
+			: never;
+	}[SubKeys<(typeof EmotionsMap)[K]>];
+}[TopEmotion];
 
 // final union = top | subcategory | leaf
-type Emotion = TopEmotion | SubEmotion | LeafEmotion
+type Emotion = TopEmotion | SubEmotion | LeafEmotion;
 
 // Flat, typed list for selects/autocomplete
 export const EMOTIONS_ALL = Object.freeze(
 	Object.entries(EmotionsMap).flatMap(([top, cfg]) => {
-		const out = [top]
+		const out = [top];
 		for (const [k, v] of Object.entries(cfg)) {
-			if (k === "emoji" || k === "color") continue
-			out.push(k)
-			if (Array.isArray(v)) out.push(...v)
+			if (k === "emoji" || k === "color") continue;
+			out.push(k);
+			if (Array.isArray(v)) out.push(...v);
 		}
-		return out
+		return out;
 	})
-) as Emotion[]
+) as Emotion[];
 
 // Quick validator
 export function isEmotion(x: string): x is Emotion {
-	return !!findTopConfig(x)
+	return !!findTopConfig(x);
 }
 
 export function getEmotionClasses(e: Emotion, opts?: { muted?: boolean }) {
-	const found = findTopConfig(e)
+	const found = findTopConfig(e);
 	const c = found?.cfg.color ?? {
 		bg: "bg-gray-200",
 		hoverBg: "hover:bg-gray-300",
 		text: "text-gray-900",
 		darkBg: "bg-gray-500",
-	}
-	return cn(c.bg, c.text, c.hoverBg, `dark:${c.darkBg}`, opts?.muted && "opacity-70 brightness-95 saturate-[.8]")
+	};
+	return cn(c.bg, c.text, c.hoverBg, `dark:${c.darkBg}`, opts?.muted && "opacity-70 brightness-95 saturate-[.8]");
 }
 
-const eq = (a: string | null, b: string | null) => a?.trim().toLowerCase() === b?.trim().toLowerCase()
+const eq = (a: string | null, b: string | null) => a?.trim().toLowerCase() === b?.trim().toLowerCase();
 
 /**
  * Returns the top-level emotion config that contains `emotion`
@@ -167,36 +167,36 @@ const eq = (a: string | null, b: string | null) => a?.trim().toLowerCase() === b
 function findTopConfig(emotion: string) {
 	for (const [topKey, cfg] of Object.entries(EmotionsMap) as [TopKey, (typeof EmotionsMap)[TopKey]][]) {
 		// direct top-level match
-		if (eq(topKey, emotion)) return { topKey, cfg }
+		if (eq(topKey, emotion)) return { topKey, cfg };
 
 		// scan subcategories & leaves
 		for (const [k, v] of Object.entries(cfg)) {
-			if (k === "emoji" || k === "color") continue
-			if (eq(k, emotion)) return { topKey, cfg } // subcategory match
+			if (k === "emoji" || k === "color") continue;
+			if (eq(k, emotion)) return { topKey, cfg }; // subcategory match
 			if (Array.isArray(v) && v.some((leaf) => eq(leaf, emotion))) {
-				return { topKey, cfg } // leaf match
+				return { topKey, cfg }; // leaf match
 			}
 		}
 	}
-	return null
+	return null;
 }
 
 const _FALLBACK = {
 	emoji: "💡",
 	color: { bg: "bg-gray-200", hoverBg: "hover:bg-gray-300", text: "text-gray-900", darkBg: "bg-gray-500" },
-}
+};
 
-const MUTED = "opacity-70 brightness-95 saturate-[.8]"
+const MUTED = "opacity-70 brightness-95 saturate-[.8]";
 
 export const EmotionBadge = ({ emotion_string, muted = false }: { emotion_string: string; muted?: boolean }) => {
-	const found = findTopConfig(emotion_string)
-	const emoji = found?.cfg.emoji ?? "💡"
+	const found = findTopConfig(emotion_string);
+	const emoji = found?.cfg.emoji ?? "💡";
 	const color = found?.cfg.color ?? {
 		bg: "bg-gray-200",
 		text: "text-gray-900",
 		hoverBg: "hover:bg-gray-300",
 		darkBg: "bg-gray-500",
-	}
+	};
 
 	return (
 		<span className="inline-flex items-center gap-1">
@@ -208,5 +208,5 @@ export const EmotionBadge = ({ emotion_string, muted = false }: { emotion_string
 				{emotion_string}
 			</Badge>
 		</span>
-	)
-}
+	);
+};

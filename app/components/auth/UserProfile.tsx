@@ -1,8 +1,18 @@
-import { BarChart3, ChevronsUpDown, ClipboardList, CreditCard, LogOut, Settings, User, Users } from "lucide-react"
-import { useState } from "react"
-import { Link } from "react-router-dom"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Button } from "~/components/ui/button"
+import {
+	BarChart3,
+	ChevronsUpDown,
+	ClipboardList,
+	CreditCard,
+	LogOut,
+	Palette,
+	Settings,
+	User,
+	Users,
+} from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Button } from "~/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -11,14 +21,15 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
-import { SidebarMenu, SidebarMenuItem, useSidebar } from "~/components/ui/sidebar"
-import { ThemeToggle } from "~/components/ui/theme-toggle"
-import { useAuth } from "~/contexts/AuthContext"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import { PATHS } from "~/paths"
+} from "~/components/ui/dropdown-menu";
+import { SidebarMenu, SidebarMenuItem, useSidebar } from "~/components/ui/sidebar";
+import { ThemeToggle } from "~/components/ui/theme-toggle";
+import { useAuth } from "~/contexts/AuthContext";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useTheme } from "~/contexts/ThemeContext";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import { PATHS } from "~/paths";
 
 function getInitials(source: string) {
 	return source
@@ -27,40 +38,45 @@ function getInitials(source: string) {
 		.map((segment) => segment[0] ?? "")
 		.join("")
 		.slice(0, 2)
-		.toUpperCase()
+		.toUpperCase();
 }
 
 interface UserProfileProps {
-	collapsed?: boolean
-	className?: string
+	collapsed?: boolean;
+	className?: string;
 }
 
 export function UserProfile({ collapsed: collapsedProp, className }: UserProfileProps) {
-	const [open, setOpen] = useState(false)
-	const { user, signOut, user_settings } = useAuth()
-	const { projectPath, accountId } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
-	const { state } = useSidebar()
+	const [open, setOpen] = useState(false);
+	const { user, signOut, user_settings } = useAuth();
+	const { projectPath, accountId } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
+	const { state } = useSidebar();
+	const { theme, setTheme } = useTheme();
 
 	// Use prop if provided, otherwise derive from sidebar state
-	const collapsed = collapsedProp ?? state === "collapsed"
+	const collapsed = collapsedProp ?? state === "collapsed";
 
-	if (!user) return null
+	if (!user) return null;
 
-	const displayName = user.user_metadata?.full_name?.trim() || user.email || "User"
-	const email = user.email ?? ""
-	const avatarUrl = user.user_metadata?.avatar_url ?? ""
-	const initials = getInitials(displayName || email || "U")
-	const accountSettingsPath = accountId ? `/a/${accountId}/settings` : null
-	const billingPath = accountId ? `/a/${accountId}/billing` : null
+	const displayName = user.user_metadata?.full_name?.trim() || user.email || "User";
+	const email = user.email ?? "";
+	const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || user_settings?.image_url || "";
+	const initials = getInitials(displayName || email || "U");
+	const accountSettingsPath = accountId ? `/a/${accountId}/settings` : null;
+	const billingPath = accountId ? `/a/${accountId}/billing` : null;
 
 	const handleSignOut = async () => {
 		try {
-			await signOut()
+			await signOut();
 		} catch {
 			// Auth context already surfaces errors
 		}
-	}
+	};
+
+	const handleThemeToggle = () => {
+		setTheme(theme === "light" ? "dark" : "light");
+	};
 
 	return (
 		<SidebarMenu>
@@ -78,7 +94,9 @@ export function UserProfile({ collapsed: collapsedProp, className }: UserProfile
 							{!collapsed && (
 								<div className="grid flex-1 text-left text-sm leading-tight">
 									<span className="truncate font-semibold">{displayName}</span>
-									{email && <span className="truncate text-muted-foreground text-xs">{email}</span>}
+									{email && email !== displayName && (
+										<span className="truncate text-muted-foreground text-xs">{email}</span>
+									)}
 								</div>
 							)}
 							{!collapsed && <ChevronsUpDown className="ml-auto size-4" />}
@@ -93,7 +111,9 @@ export function UserProfile({ collapsed: collapsedProp, className }: UserProfile
 								</Avatar>
 								<div className="grid flex-1 text-left text-sm leading-tight">
 									<span className="truncate font-semibold">{displayName}</span>
-									{email && <span className="truncate text-muted-foreground text-xs">{email}</span>}
+									{email && email !== displayName && (
+										<span className="truncate text-muted-foreground text-xs">{email}</span>
+									)}
 								</div>
 							</div>
 						</DropdownMenuLabel>
@@ -103,27 +123,20 @@ export function UserProfile({ collapsed: collapsedProp, className }: UserProfile
 						</DropdownMenuLabel>
 						<DropdownMenuGroup>
 							<DropdownMenuItem asChild>
-								<Link to={PATHS.PROFILE} className="flex items-center gap-2">
+								<Link to={PATHS.PROFILE} className="flex w-full items-center gap-2">
 									<User className="h-4 w-4" />
 									<span>Profile</span>
 								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
-								<Link to="/my-responses" className="flex items-center gap-2">
+								<Link to="/my-responses" className="flex w-full items-center gap-2">
 									<ClipboardList className="h-4 w-4" />
 									<span>My Responses</span>
 								</Link>
 							</DropdownMenuItem>
-							<DropdownMenuItem className="flex items-center justify-between">
-								<span>Theme</span>
+							<DropdownMenuItem onClick={handleThemeToggle} className="flex w-full items-center gap-2">
 								<ThemeToggle />
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={handleSignOut}
-								className="flex items-center gap-2 text-destructive focus:text-destructive"
-							>
-								<LogOut className="h-4 w-4" />
-								<span>Sign out</span>
+								<span>Theme</span>
 							</DropdownMenuItem>
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
@@ -131,23 +144,23 @@ export function UserProfile({ collapsed: collapsedProp, className }: UserProfile
 							Account
 						</DropdownMenuLabel>
 						<DropdownMenuGroup>
-							<DropdownMenuItem asChild>
-								<Link to={routes.team.members() || PATHS.TEAMS} className="flex items-center gap-2">
-									<Users className="h-4 w-4" />
-									<span>Manage access</span>
-								</Link>
-							</DropdownMenuItem>
 							{billingPath && (
 								<DropdownMenuItem asChild>
-									<Link to={billingPath} className="flex items-center gap-2">
+									<Link to={billingPath} className="flex w-full items-center gap-2">
 										<CreditCard className="h-4 w-4" />
 										<span>Billing</span>
 									</Link>
 								</DropdownMenuItem>
 							)}
+							<DropdownMenuItem asChild>
+								<Link to={routes.team.members() || PATHS.TEAMS} className="flex w-full items-center gap-2">
+									<Users className="h-4 w-4" />
+									<span>Manage access</span>
+								</Link>
+							</DropdownMenuItem>
 							{accountSettingsPath && (
 								<DropdownMenuItem asChild>
-									<Link to={accountSettingsPath} className="flex items-center gap-2">
+									<Link to={accountSettingsPath} className="flex w-full items-center gap-2">
 										<Settings className="h-4 w-4" />
 										<span>Account settings</span>
 									</Link>
@@ -162,7 +175,7 @@ export function UserProfile({ collapsed: collapsedProp, className }: UserProfile
 								</DropdownMenuLabel>
 								<DropdownMenuGroup>
 									<DropdownMenuItem asChild>
-										<Link to="/admin/usage" className="flex items-center gap-2">
+										<Link to="/admin/usage" className="flex w-full items-center gap-2">
 											<BarChart3 className="h-4 w-4" />
 											<span>Usage Dashboard</span>
 										</Link>
@@ -170,9 +183,19 @@ export function UserProfile({ collapsed: collapsedProp, className }: UserProfile
 								</DropdownMenuGroup>
 							</>
 						)}
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuItem
+								onClick={handleSignOut}
+								className="flex items-center gap-2 text-destructive focus:text-destructive"
+							>
+								<LogOut className="h-4 w-4" />
+								<span>Sign out</span>
+							</DropdownMenuItem>
+						</DropdownMenuGroup>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>
 		</SidebarMenu>
-	)
+	);
 }

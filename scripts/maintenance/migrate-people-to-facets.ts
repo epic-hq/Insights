@@ -1,17 +1,17 @@
-import { openai } from "@ai-sdk/openai"
-import { createClient } from "@supabase/supabase-js"
-import { generateObject } from "ai"
-import consola from "consola"
-import { z } from "zod"
+import { openai } from "@ai-sdk/openai";
+import { createClient } from "@supabase/supabase-js";
+import { generateObject } from "ai";
+import consola from "consola";
+import { z } from "zod";
 
-const supabaseUrl = process.env.SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-	throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
+	throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Schema for LLM classification output
 const PersonSegmentClassification = z.object({
@@ -32,23 +32,23 @@ const PersonSegmentClassification = z.object({
 	age_range: z.string().nullable().describe("Age range like '18-24', '25-34', '35-44', '45-54', '55+'"),
 	confidence: z.number().min(0).max(1).describe("Overall confidence in classification from 0 to 1"),
 	reasoning: z.string().describe("Brief explanation of classification decisions"),
-})
+});
 
 type PersonData = {
-	id: string
-	name: string | null
-	role: string | null
-	title: string | null
-	occupation: string | null
-	segment: string | null
-	industry: string | null
-	company: string | null
-	age: number | null
-	project_id: string
-	account_id: string
-}
+	id: string;
+	name: string | null;
+	role: string | null;
+	title: string | null;
+	occupation: string | null;
+	segment: string | null;
+	industry: string | null;
+	company: string | null;
+	age: number | null;
+	project_id: string;
+	account_id: string;
+};
 
-type Classification = z.infer<typeof PersonSegmentClassification>
+type Classification = z.infer<typeof PersonSegmentClassification>;
 
 async function classifyPerson(person: PersonData): Promise<Classification> {
 	const prompt = `Analyze this person's data and classify them into appropriate segments.
@@ -57,10 +57,7 @@ Person Data:
 - Name: ${person.name || "N/A"}
 - Role: ${person.role || "N/A"}
 - Title: ${person.title || "N/A"}
-- Occupation: ${person.occupation || "N/A"}
 - Current Segment: ${person.segment || "N/A"}
-- Industry: ${person.industry || "N/A"}
-- Company: ${person.company || "N/A"}
 - Age: ${person.age || "N/A"}
 
 Guidelines:
@@ -72,25 +69,25 @@ Guidelines:
 6. age_range: Age bracket (18-24, 25-34, 35-44, 45-54, 55+)
 
 If you can't determine a value confidently, return null for that field.
-Provide a confidence score (0-1) based on how much data is available.`
+Provide a confidence score (0-1) based on how much data is available.`;
 
 	const result = await generateObject({
 		model: openai("gpt-4o-mini"),
 		schema: PersonSegmentClassification,
 		prompt,
-	})
+	});
 
-	return result.object
+	return result.object;
 }
 
 async function getFacetKindId(slug: string): Promise<number | null> {
-	const { data } = await supabase.from("facet_kind_global").select("id").eq("slug", slug).single()
+	const { data } = await supabase.from("facet_kind_global").select("id").eq("slug", slug).single();
 
-	return data?.id ?? null
+	return data?.id ?? null;
 }
 
 async function getOrCreateFacet(kindId: number, label: string, accountId: string): Promise<string | null> {
-	if (!label) return null
+	if (!label) return null;
 
 	// Check if facet exists
 	const { data: existing } = await supabase
@@ -99,9 +96,9 @@ async function getOrCreateFacet(kindId: number, label: string, accountId: string
 		.eq("kind_id", kindId)
 		.eq("label", label)
 		.eq("account_id", accountId)
-		.single()
+		.single();
 
-	if (existing) return existing.id
+	if (existing) return existing.id;
 
 	// Create new facet
 	const { data: newFacet, error } = await supabase
@@ -113,14 +110,14 @@ async function getOrCreateFacet(kindId: number, label: string, accountId: string
 			slug: label.toLowerCase().replace(/\s+/g, "-"),
 		})
 		.select("id")
-		.single()
+		.single();
 
 	if (error) {
-		consola.error(`Error creating facet ${label}:`, error)
-		return null
+		consola.error(`Error creating facet ${label}:`, error);
+		return null;
 	}
 
-	return newFacet.id
+	return newFacet.id;
 }
 
 async function linkPersonToFacet(
@@ -136,9 +133,9 @@ async function linkPersonToFacet(
 		.select("person_id")
 		.eq("person_id", personId)
 		.eq("facet_account_id", facetAccountId)
-		.single()
+		.single();
 
-	if (existing) return
+	if (existing) return;
 
 	// Create link
 	const { error } = await supabase.from("person_facet").insert({
@@ -148,19 +145,19 @@ async function linkPersonToFacet(
 		project_id: projectId,
 		source: "inferred",
 		confidence,
-	})
+	});
 
 	if (error) {
-		consola.error(`Error linking person ${personId} to facet ${facetAccountId}:`, error)
+		consola.error(`Error linking person ${personId} to facet ${facetAccountId}:`, error);
 	}
 }
 
 async function migratePeopleToFacets(options: { projectId?: string; dryRun?: boolean; limit?: number } = {}) {
-	const { projectId, dryRun = false, limit } = options
+	const { projectId, dryRun = false, limit } = options;
 
-	consola.info("Starting people to facets migration...")
+	consola.info("Starting people to facets migration...");
 	if (dryRun) {
-		consola.warn("DRY RUN MODE - No database changes will be made")
+		consola.warn("DRY RUN MODE - No database changes will be made");
 	}
 
 	// Get facet kind IDs
@@ -171,45 +168,45 @@ async function migratePeopleToFacets(options: { projectId?: string; dryRun?: boo
 		industry: await getFacetKindId("industry"),
 		life_stage: await getFacetKindId("life_stage"),
 		age_range: await getFacetKindId("age_range"),
-	}
+	};
 
-	consola.info("Facet kind IDs:", kindIds)
+	consola.info("Facet kind IDs:", kindIds);
 
 	// Load people
 	const baseQuery = supabase
 		.from("people")
-		.select("id, name, role, title, occupation, segment, industry, company, age, project_id, account_id")
-		.order("created_at", { ascending: true })
+		.select("id, name, role, title, segment, age, project_id, account_id")
+		.order("created_at", { ascending: true });
 
-	let query = baseQuery
+	let query = baseQuery;
 
 	if (projectId) {
-		query = query.eq("project_id", projectId)
+		query = query.eq("project_id", projectId);
 	}
 
 	if (limit) {
-		query = query.limit(limit)
+		query = query.limit(limit);
 	}
 
-	const { data: people, error } = await query
+	const { data: people, error } = await query;
 
 	if (error) {
-		consola.error("Error loading people:", error)
-		return
+		consola.error("Error loading people:", error);
+		return;
 	}
 
-	consola.info(`Loaded ${people.length} people to process`)
+	consola.info(`Loaded ${people.length} people to process`);
 
-	let processed = 0
-	const skipped = 0
-	let errors = 0
+	let processed = 0;
+	const skipped = 0;
+	let errors = 0;
 
 	for (const person of people) {
 		try {
-			consola.start(`Processing ${person.name || person.id}...`)
+			consola.start(`Processing ${person.name || person.id}...`);
 
 			// Classify person
-			const classification = await classifyPerson(person as PersonData)
+			const classification = await classifyPerson(person as PersonData);
 
 			consola.info(`Classification (confidence: ${classification.confidence}):`, {
 				job_function: classification.job_function,
@@ -219,11 +216,11 @@ async function migratePeopleToFacets(options: { projectId?: string; dryRun?: boo
 				life_stage: classification.life_stage,
 				age_range: classification.age_range,
 				reasoning: classification.reasoning,
-			})
+			});
 
 			if (dryRun) {
-				processed++
-				continue
+				processed++;
+				continue;
 			}
 
 			// Create facets and links
@@ -234,11 +231,11 @@ async function migratePeopleToFacets(options: { projectId?: string; dryRun?: boo
 				{ kindId: kindIds.industry, label: classification.industry },
 				{ kindId: kindIds.life_stage, label: classification.life_stage },
 				{ kindId: kindIds.age_range, label: classification.age_range },
-			]
+			];
 
 			for (const { kindId, label } of facetMappings) {
 				if (kindId && label) {
-					const facetAccountId = await getOrCreateFacet(kindId, label, person.account_id)
+					const facetAccountId = await getOrCreateFacet(kindId, label, person.account_id);
 					if (facetAccountId) {
 						await linkPersonToFacet(
 							person.id,
@@ -246,16 +243,16 @@ async function migratePeopleToFacets(options: { projectId?: string; dryRun?: boo
 							person.account_id,
 							person.project_id,
 							classification.confidence
-						)
+						);
 					}
 				}
 			}
 
-			processed++
-			consola.success(`Processed ${person.name || person.id}`)
+			processed++;
+			consola.success(`Processed ${person.name || person.id}`);
 		} catch (err) {
-			consola.error(`Error processing ${person.name || person.id}:`, err)
-			errors++
+			consola.error(`Error processing ${person.name || person.id}:`, err);
+			errors++;
 		}
 	}
 
@@ -264,14 +261,14 @@ Migration complete:
 - Processed: ${processed}
 - Skipped: ${skipped}
 - Errors: ${errors}
-	`)
+	`);
 }
 
 // CLI
-const args = process.argv.slice(2)
-const projectId = args.find((arg) => arg.startsWith("--project="))?.split("=")[1]
-const dryRun = args.includes("--dry-run")
-const limitArg = args.find((arg) => arg.startsWith("--limit="))
-const limit = limitArg ? Number.parseInt(limitArg.split("=")[1], 10) : undefined
+const args = process.argv.slice(2);
+const projectId = args.find((arg) => arg.startsWith("--project="))?.split("=")[1];
+const dryRun = args.includes("--dry-run");
+const limitArg = args.find((arg) => arg.startsWith("--limit="));
+const limit = limitArg ? Number.parseInt(limitArg.split("=")[1], 10) : undefined;
 
-migratePeopleToFacets({ projectId, dryRun, limit })
+migratePeopleToFacets({ projectId, dryRun, limit });

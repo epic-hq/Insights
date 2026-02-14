@@ -6,6 +6,7 @@
 -- not as facets. See: organizations.company_type, organizations.size_range
 
 INSERT INTO facet_kind_global (slug, label, description) VALUES
+  ('job_title', 'Job Title', 'Raw job title text (e.g. VP of Engineering). Distinct from AI-inferred job_function.'),
   ('role', 'Role', 'Job function or role within organization'),
   ('industry', 'Industry', 'Industry or sector'),
   ('location', 'Location', 'Geographic location or region'),

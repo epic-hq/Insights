@@ -5,43 +5,43 @@
  * or View Task link if a task has been created from this insight.
  */
 
-import { CheckSquareIcon, Loader2, Plus } from "lucide-react"
-import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { createClient } from "~/lib/supabase/client"
-import { CreateTaskFromInsightModal } from "./CreateTaskFromInsightModal"
+import { CheckSquareIcon, Loader2, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { createClient } from "~/lib/supabase/client";
+import { CreateTaskFromInsightModal } from "./CreateTaskFromInsightModal";
 
-const ENABLE_LINKED_TASK_LOOKUP = false
+const ENABLE_LINKED_TASK_LOOKUP = false;
 
 export interface InsightForAction {
-	id: string
-	name: string | null
-	statement?: string | null
-	category?: string | null
-	jtbd?: string | null
-	pain?: string | null
-	desired_outcome?: string | null
-	priority?: number
-	persona_insights?: Array<{ personas: { id: string; name: string | null } }>
+	id: string;
+	name: string | null;
+	statement?: string | null;
+	category?: string | null;
+	jtbd?: string | null;
+	pain?: string | null;
+	desired_outcome?: string | null;
+	priority?: number;
+	persona_insights?: Array<{ personas: { id: string; name: string | null } }>;
 }
 
 interface InsightActionsProps {
-	insight: InsightForAction
-	projectPath: string
+	insight: InsightForAction;
+	projectPath: string;
 	/** Size variant */
-	size?: "sm" | "default"
+	size?: "sm" | "default";
 	/** Show label text or just icon */
-	showLabel?: boolean
+	showLabel?: boolean;
 	/** Initial linked task ID if known */
-	linkedTaskId?: string | null
+	linkedTaskId?: string | null;
 	/** Callback when a task is created */
-	onTaskCreated?: (taskId: string) => void
+	onTaskCreated?: (taskId: string) => void;
 	/** If true, will query tasks to detect an existing linked task. Defaults to false to avoid per-card request storms. */
-	enableLinkedTaskLookup?: boolean
+	enableLinkedTaskLookup?: boolean;
 }
 
 export function InsightActions({
@@ -53,63 +53,63 @@ export function InsightActions({
 	onTaskCreated,
 	enableLinkedTaskLookup = false,
 }: InsightActionsProps) {
-	const routes = useProjectRoutes(projectPath)
-	const [modalOpen, setModalOpen] = useState(false)
-	const [linkedTaskId, setLinkedTaskId] = useState<string | null>(initialLinkedTaskId ?? null)
-	const [isLoading, setIsLoading] = useState(false)
+	const routes = useProjectRoutes(projectPath);
+	const [modalOpen, setModalOpen] = useState(false);
+	const [linkedTaskId, setLinkedTaskId] = useState<string | null>(initialLinkedTaskId ?? null);
+	const [isLoading, setIsLoading] = useState(false);
 
 	// Fetch linked task if not provided
 	useEffect(() => {
 		if (!ENABLE_LINKED_TASK_LOOKUP || !enableLinkedTaskLookup) {
-			setIsLoading(false)
-			return
+			setIsLoading(false);
+			return;
 		}
 
 		if (initialLinkedTaskId !== undefined) {
-			setLinkedTaskId(initialLinkedTaskId)
-			setIsLoading(false)
-			return
+			setLinkedTaskId(initialLinkedTaskId);
+			setIsLoading(false);
+			return;
 		}
 
-		let cancelled = false
+		let cancelled = false;
 
 		async function checkLinkedTask() {
 			try {
-				const supabase = createClient()
-				const { data } = await supabase.from("tasks").select("id").eq("source_theme_id", insight.id).limit(1)
+				const supabase = createClient();
+				const { data } = await supabase.from("tasks").select("id").eq("source_theme_id", insight.id).limit(1);
 
-				const id = (data as Array<{ id: string }> | null)?.[0]?.id
+				const id = (data as Array<{ id: string }> | null)?.[0]?.id;
 				if (!cancelled && id) {
-					setLinkedTaskId(id)
+					setLinkedTaskId(id);
 				}
 			} catch {
 				// No linked task found - that's fine
 			} finally {
 				if (!cancelled) {
-					setIsLoading(false)
+					setIsLoading(false);
 				}
 			}
 		}
 
-		checkLinkedTask()
+		checkLinkedTask();
 
 		return () => {
-			cancelled = true
-		}
-	}, [enableLinkedTaskLookup, insight.id, initialLinkedTaskId])
+			cancelled = true;
+		};
+	}, [enableLinkedTaskLookup, insight.id, initialLinkedTaskId]);
 
 	// Handle task creation success
 	const handleTaskCreated = (taskId: string) => {
-		setLinkedTaskId(taskId)
-		onTaskCreated?.(taskId)
-	}
+		setLinkedTaskId(taskId);
+		onTaskCreated?.(taskId);
+	};
 
 	if (isLoading) {
 		return (
 			<Button variant="ghost" size={size === "sm" ? "sm" : "default"} disabled>
 				<Loader2 className="h-4 w-4 animate-spin" />
 			</Button>
-		)
+		);
 	}
 
 	// Task already exists - show blue badge with link
@@ -129,7 +129,7 @@ export function InsightActions({
 					<TooltipContent>View linked task</TooltipContent>
 				</Tooltip>
 			</TooltipProvider>
-		)
+		);
 	}
 
 	// No task - show create button
@@ -162,5 +162,5 @@ export function InsightActions({
 				onTaskCreated={handleTaskCreated}
 			/>
 		</>
-	)
+	);
 }

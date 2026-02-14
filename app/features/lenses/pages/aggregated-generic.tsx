@@ -6,8 +6,8 @@
  * Includes AI-synthesized cross-interview insights when available.
  */
 
-import { tasks } from "@trigger.dev/sdk"
-import consola from "consola"
+import { tasks } from "@trigger.dev/sdk";
+import consola from "consola";
 import {
 	AlertCircle,
 	ChevronRight,
@@ -19,8 +19,8 @@ import {
 	Pencil,
 	RefreshCw,
 	Sparkles,
-} from "lucide-react"
-import { useState } from "react"
+} from "lucide-react";
+import { useState } from "react";
 import {
 	type ActionFunctionArgs,
 	Link,
@@ -28,85 +28,90 @@ import {
 	useFetcher,
 	useLoaderData,
 	useRevalidator,
-} from "react-router"
-import type { synthesizeLensSummaryTask } from "~/../src/trigger/lens/synthesizeLensSummary"
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
-import { EditLensDialog } from "../components/EditLensDialog"
-import { GenericLensView } from "../components/GenericLensView"
-import type { LensTemplate } from "../lib/loadLensAnalyses.server"
+} from "react-router";
+import type { synthesizeLensSummaryTask } from "~/../src/trigger/lens/synthesizeLensSummary";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
+import { EditLensDialog } from "../components/EditLensDialog";
+import { GenericLensView } from "../components/GenericLensView";
+import type { LensTemplate } from "../lib/loadLensAnalyses.server";
 
 // ============================================================================
 // Types
 // ============================================================================
 
 type AggregatedAnalysis = {
-	interview_id: string
-	interview_title: string
-	participant_pseudonym: string | null
-	analysis_data: Record<string, unknown>
-	processed_at: string | null
-	confidence_score: number | null
-}
+	interview_id: string;
+	interview_title: string;
+	participant_pseudonym: string | null;
+	analysis_data: Record<string, unknown>;
+	processed_at: string | null;
+	confidence_score: number | null;
+};
 
 type KeyTakeaway = {
-	title: string
-	insight: string
-	supporting_interviews: string[]
-	confidence: number
-	category: "consensus" | "pattern" | "discrepancy" | "recommendation"
-}
+	title: string;
+	insight: string;
+	supporting_interviews: string[];
+	confidence: number;
+	category: "consensus" | "pattern" | "discrepancy" | "recommendation";
+};
 
 type LensSynthesis = {
-	id: string
-	status: "pending" | "processing" | "completed" | "failed" | "stale"
-	executive_summary: string | null
-	key_takeaways: KeyTakeaway[]
-	recommendations: string[]
-	conflicts_to_review: string[]
-	overall_confidence: number | null
-	interview_count: number
-	processed_at: string | null
-	error_message: string | null
-}
+	id: string;
+	status: "pending" | "processing" | "completed" | "failed" | "stale";
+	executive_summary: string | null;
+	key_takeaways: KeyTakeaway[];
+	recommendations: string[];
+	conflicts_to_review: string[];
+	overall_confidence: number | null;
+	interview_count: number;
+	processed_at: string | null;
+	error_message: string | null;
+};
 
 // ============================================================================
 // Loader
 // ============================================================================
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	if (!supabase) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const projectId = params.projectId as string
-	const accountId = params.accountId as string
-	const templateKey = params.templateKey as string
-	const projectPath = `/a/${accountId}/${projectId}`
+	const projectId = params.projectId as string;
+	const accountId = params.accountId as string;
+	const templateKey = params.templateKey as string;
+	const projectPath = `/a/${accountId}/${projectId}`;
 
 	if (!projectId || !templateKey) {
-		throw new Response("Project ID and Template Key required", { status: 400 })
+		throw new Response("Project ID and Template Key required", { status: 400 });
 	}
 
-	consola.info("[aggregated-generic] Loading template:", templateKey, "for project:", projectId)
+	consola.info("[aggregated-generic] Loading template:", templateKey, "for project:", projectId);
 
 	// Load the template
 	const { data: templateData, error: templateError } = await supabase
 		.from("conversation_lens_templates")
 		.select("*")
 		.eq("template_key", templateKey)
-		.single()
+		.single();
 
 	if (templateError || !templateData) {
-		throw new Response("Template not found", { status: 404 })
+		throw new Response("Template not found", { status: 404 });
 	}
 
 	// Load all completed analyses for this template in this project
@@ -117,35 +122,35 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.eq("project_id", projectId)
 		.eq("template_key", templateKey)
 		.eq("status", "completed")
-		.order("processed_at", { ascending: false })
+		.order("processed_at", { ascending: false });
 
 	if (analysesError) {
-		consola.error("[aggregated-generic] Error loading analyses:", analysesError)
+		consola.error("[aggregated-generic] Error loading analyses:", analysesError);
 	}
 
-	consola.info("[aggregated-generic] Found analyses:", analyses?.length || 0, "for template:", templateKey)
+	consola.info("[aggregated-generic] Found analyses:", analyses?.length || 0, "for template:", templateKey);
 
 	// Load interview details separately to avoid join issues
-	const interviewIds = (analyses || []).map((a) => a.interview_id)
-	const interviewMap = new Map<string, { title: string; participant_pseudonym: string | null }>()
+	const interviewIds = (analyses || []).map((a) => a.interview_id);
+	const interviewMap = new Map<string, { title: string; participant_pseudonym: string | null }>();
 
 	if (interviewIds.length > 0) {
 		const { data: interviews } = await supabase
 			.from("interviews")
 			.select("id, title, participant_pseudonym")
-			.in("id", interviewIds)
+			.in("id", interviewIds);
 
 		for (const interview of interviews || []) {
 			interviewMap.set(interview.id, {
 				title: interview.title || "Untitled",
 				participant_pseudonym: interview.participant_pseudonym,
-			})
+			});
 		}
 	}
 
 	// Transform to our aggregated format
 	const aggregatedAnalyses: AggregatedAnalysis[] = (analyses || []).map((a) => {
-		const interview = interviewMap.get(a.interview_id)
+		const interview = interviewMap.get(a.interview_id);
 		return {
 			interview_id: a.interview_id,
 			interview_title: interview?.title || "Untitled",
@@ -153,11 +158,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			analysis_data: a.analysis_data as Record<string, unknown>,
 			processed_at: a.processed_at,
 			confidence_score: a.confidence_score,
-		}
-	})
+		};
+	});
 
 	// Load existing synthesis (if any)
-	let synthesis: LensSynthesis | null = null
+	let synthesis: LensSynthesis | null = null;
 	const { data: summaryData } = await supabase
 		.from("conversation_lens_summaries")
 		.select(
@@ -165,7 +170,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		)
 		.eq("project_id", projectId)
 		.eq("template_key", templateKey)
-		.single()
+		.single();
 
 	if (summaryData) {
 		synthesis = {
@@ -179,11 +184,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			interview_count: summaryData.interview_count,
 			processed_at: summaryData.processed_at,
 			error_message: summaryData.error_message,
-		}
+		};
 
 		// Check if synthesis is stale (interview count changed)
 		if (synthesis.status === "completed" && synthesis.interview_count !== (analyses?.length || 0)) {
-			synthesis.status = "stale"
+			synthesis.status = "stale";
 		}
 	}
 
@@ -200,7 +205,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		is_system: templateData.is_system ?? true,
 		is_public: templateData.is_public ?? true,
 		nlp_source: templateData.nlp_source ?? null,
-	}
+	};
 
 	return {
 		template: lensTemplate,
@@ -210,7 +215,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		accountId,
 		projectId,
 		userId: ctx.claims?.sub,
-	}
+	};
 }
 
 // ============================================================================
@@ -218,25 +223,25 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 // ============================================================================
 
 export async function action({ context, params, request }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	if (!supabase || !ctx.claims?.sub) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const projectId = params.projectId as string
-	const accountId = params.accountId as string
-	const templateKey = params.templateKey as string
+	const projectId = params.projectId as string;
+	const accountId = params.accountId as string;
+	const templateKey = params.templateKey as string;
 
 	if (!projectId || !templateKey || !accountId) {
-		throw new Response("Missing required parameters", { status: 400 })
+		throw new Response("Missing required parameters", { status: 400 });
 	}
 
-	const formData = await request.formData()
-	const intent = formData.get("intent")
-	const customInstructions = formData.get("customInstructions") as string | null
-	const force = formData.get("force") === "true"
+	const formData = await request.formData();
+	const intent = formData.get("intent");
+	const customInstructions = formData.get("customInstructions") as string | null;
+	const force = formData.get("force") === "true";
 
 	if (intent === "synthesize") {
 		try {
@@ -246,18 +251,18 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 				accountId,
 				customInstructions: customInstructions || undefined,
 				force,
-			})
+			});
 
-			consola.info(`[aggregated-generic] Triggered synthesis for ${templateKey}, run ID: ${result.id}`)
+			consola.info(`[aggregated-generic] Triggered synthesis for ${templateKey}, run ID: ${result.id}`);
 
-			return { success: true, runId: result.id }
+			return { success: true, runId: result.id };
 		} catch (error) {
-			consola.error("[aggregated-generic] Failed to trigger synthesis:", error)
-			return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
+			consola.error("[aggregated-generic] Failed to trigger synthesis:", error);
+			return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
 		}
 	}
 
-	return { success: false, error: "Unknown intent" }
+	return { success: false, error: "Unknown intent" };
 }
 
 // ============================================================================
@@ -273,7 +278,7 @@ function EmptyState({ templateName }: { templateName: string }) {
 				Apply the "{templateName}" lens to your conversations to see aggregated insights here.
 			</p>
 		</div>
-	)
+	);
 }
 
 function SummaryStats({ analysisCount }: { analysisCount: number }) {
@@ -286,21 +291,21 @@ function SummaryStats({ analysisCount }: { analysisCount: number }) {
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }
 
 function getCategoryBadgeVariant(category: KeyTakeaway["category"]) {
 	switch (category) {
 		case "consensus":
-			return "default"
+			return "default";
 		case "pattern":
-			return "secondary"
+			return "secondary";
 		case "discrepancy":
-			return "destructive"
+			return "destructive";
 		case "recommendation":
-			return "outline"
+			return "outline";
 		default:
-			return "secondary"
+			return "secondary";
 	}
 }
 
@@ -310,10 +315,10 @@ function SynthesisHeroSection({
 	isSubmitting,
 	onRefresh,
 }: {
-	synthesis: LensSynthesis | null
-	analysisCount: number
-	isSubmitting: boolean
-	onRefresh: (force: boolean) => void
+	synthesis: LensSynthesis | null;
+	analysisCount: number;
+	isSubmitting: boolean;
+	onRefresh: (force: boolean) => void;
 }) {
 	// No synthesis yet - show prompt to generate
 	if (!synthesis) {
@@ -341,7 +346,7 @@ function SynthesisHeroSection({
 					</Button>
 				</CardContent>
 			</Card>
-		)
+		);
 	}
 
 	// Processing state
@@ -358,7 +363,7 @@ function SynthesisHeroSection({
 					</div>
 				</CardContent>
 			</Card>
-		)
+		);
 	}
 
 	// Failed state
@@ -374,11 +379,11 @@ function SynthesisHeroSection({
 					</Button>
 				</AlertDescription>
 			</Alert>
-		)
+		);
 	}
 
 	// Completed or stale synthesis
-	const isStale = synthesis.status === "stale"
+	const isStale = synthesis.status === "stale";
 
 	return (
 		<Card className={isStale ? "border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20" : ""}>
@@ -486,7 +491,7 @@ function SynthesisHeroSection({
 				)}
 			</CardContent>
 		</Card>
-	)
+	);
 }
 
 // ============================================================================
@@ -494,26 +499,26 @@ function SynthesisHeroSection({
 // ============================================================================
 
 export default function AggregatedGenericPage() {
-	const { template, analyses, synthesis, projectPath, accountId, userId } = useLoaderData<typeof loader>()
-	const routes = useProjectRoutes(projectPath)
-	const revalidator = useRevalidator()
-	const fetcher = useFetcher<typeof action>()
-	const [editDialogOpen, setEditDialogOpen] = useState(false)
+	const { template, analyses, synthesis, projectPath, accountId, userId } = useLoaderData<typeof loader>();
+	const routes = useProjectRoutes(projectPath);
+	const revalidator = useRevalidator();
+	const fetcher = useFetcher<typeof action>();
+	const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-	const isCustom = !template.is_system
-	const isOwner = template.created_by === userId
-	const isSubmitting = fetcher.state === "submitting"
+	const isCustom = !template.is_system;
+	const isOwner = template.created_by === userId;
+	const isSubmitting = fetcher.state === "submitting";
 
 	const handleLensUpdated = () => {
-		revalidator.revalidate()
-		setEditDialogOpen(false)
-	}
+		revalidator.revalidate();
+		setEditDialogOpen(false);
+	};
 
 	const handleRefreshSynthesis = (force: boolean) => {
-		fetcher.submit({ intent: "synthesize", force: force.toString() }, { method: "post" })
+		fetcher.submit({ intent: "synthesize", force: force.toString() }, { method: "post" });
 		// Revalidate after a delay to check for status updates
-		setTimeout(() => revalidator.revalidate(), 2000)
-	}
+		setTimeout(() => revalidator.revalidate(), 2000);
+	};
 
 	if (analyses.length === 0) {
 		return (
@@ -562,7 +567,7 @@ export default function AggregatedGenericPage() {
 				</div>
 				<EmptyState templateName={template.template_name} />
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -723,5 +728,5 @@ export default function AggregatedGenericPage() {
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }

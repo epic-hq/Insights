@@ -40,6 +40,7 @@ yarn.lock
 t?mp
 .t?mp
 *.t?mp
+desktop/.tmp/
 
 # Docusaurus cache and generated files
 .docusaurus
@@ -104,3 +105,21 @@ cadre-devkit-claude/
 
 # bv (beads viewer) local config and caches
 .bv/
+
+# AI tooling configs (user-specific)
+.mcp.json
+.agents/
+.codex/
+.opencode/
+.claude-design/
+.claude/skills/
+
+# Obsidian local workspace (user-specific)
+.obsidian/
+
+# Generated visualization files
+graph.html
+scripts/benchmarks/howto-smoke.latest.json
+
+# Playwright auth state (contains session tokens)
+tests/e2e/.auth/

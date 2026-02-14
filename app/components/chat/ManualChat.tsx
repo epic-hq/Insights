@@ -1,23 +1,23 @@
-import { ArrowLeft, Bot, Maximize2, Minimize2, Send, User } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { ScrollArea } from "~/components/ui/scroll-area"
-import { cn } from "~/lib/utils"
+import { ArrowLeft, Bot, Maximize2, Minimize2, Send, User } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { cn } from "~/lib/utils";
 
 interface Message {
-	id: string
-	role: "user" | "assistant"
-	content: string
-	timestamp: Date
+	id: string;
+	role: "user" | "assistant";
+	content: string;
+	timestamp: Date;
 }
 
 interface CopilotChatProps {
-	context?: string
-	contextData?: Record<string, unknown>
-	onClose: () => void
-	className?: string
+	context?: string;
+	contextData?: Record<string, unknown>;
+	onClose: () => void;
+	className?: string;
 }
 
 export default function CopilotChat({ context = "general", contextData, onClose, className }: CopilotChatProps) {
@@ -28,25 +28,25 @@ export default function CopilotChat({ context = "general", contextData, onClose,
 			content: `Hi! I'm your AI research assistant. I can help you analyze your ${context} data, find patterns, generate insights, and answer questions about your research. What would you like to explore?`,
 			timestamp: new Date(),
 		},
-	])
-	const [inputMessage, setInputMessage] = useState("")
-	const [isLoading, setIsLoading] = useState(false)
-	const [isMinimized, setIsMinimized] = useState(false)
-	const messagesEndRef = useRef<HTMLDivElement>(null)
-	const inputRef = useRef<HTMLInputElement>(null)
+	]);
+	const [inputMessage, setInputMessage] = useState("");
+	const [isLoading, setIsLoading] = useState(false);
+	const [isMinimized, setIsMinimized] = useState(false);
+	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const inputRef = useRef<HTMLInputElement>(null);
 
 	const scrollToBottom = useCallback(() => {
-		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-	}, [])
+		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+	}, []);
 
 	useEffect(() => {
-		scrollToBottom()
-	}, [scrollToBottom])
+		scrollToBottom();
+	}, [scrollToBottom]);
 
 	useEffect(() => {
 		// Focus input when component mounts
-		inputRef.current?.focus()
-	}, [])
+		inputRef.current?.focus();
+	}, []);
 
 	const getSectionColor = (section: string) => {
 		const colorMap: Record<string, string> = {
@@ -57,27 +57,27 @@ export default function CopilotChat({ context = "general", contextData, onClose,
 			projects: "bg-purple-600",
 			research: "bg-rose-600",
 			dashboard: "bg-violet-600",
-		}
-		return colorMap[section] || "bg-indigo-600"
-	}
+		};
+		return colorMap[section] || "bg-indigo-600";
+	};
 
 	const getBorderColor = (section: string) => {
-		return getSectionColor(section).replace("bg-", "border-")
-	}
+		return getSectionColor(section).replace("bg-", "border-");
+	};
 
 	const sendMessage = async () => {
-		if (!inputMessage.trim() || isLoading) return
+		if (!inputMessage.trim() || isLoading) return;
 
 		const userMessage: Message = {
 			id: Date.now().toString(),
 			role: "user",
 			content: inputMessage.trim(),
 			timestamp: new Date(),
-		}
+		};
 
-		setMessages((prev) => [...prev, userMessage])
-		setInputMessage("")
-		setIsLoading(true)
+		setMessages((prev) => [...prev, userMessage]);
+		setInputMessage("");
+		setIsLoading(true);
 
 		try {
 			// Simulate AI response - replace with actual API call
@@ -88,17 +88,17 @@ export default function CopilotChat({ context = "general", contextData, onClose,
 						role: "assistant",
 						content: generateContextualResponse(userMessage.content, context, contextData || {}),
 						timestamp: new Date(),
-					}
-					setMessages((prev) => [...prev, assistantMessage])
-					setIsLoading(false)
+					};
+					setMessages((prev) => [...prev, assistantMessage]);
+					setIsLoading(false);
 				},
 				1000 + Math.random() * 1000
-			)
+			);
 		} catch {
 			// Error handling for message sending
-			setIsLoading(false)
+			setIsLoading(false);
 		}
-	}
+	};
 
 	const generateContextualResponse = (_message: string, context: string, _data: Record<string, unknown>): string => {
 		// This is a mock response generator - replace with actual AI integration
@@ -118,18 +118,18 @@ export default function CopilotChat({ context = "general", contextData, onClose,
 				"Your insights reveal important user needs and pain points. I can help you connect these to actionable opportunities.",
 				"There are interesting correlations in your insight data. Let me help you uncover the most significant patterns.",
 			],
-		}
+		};
 
-		const contextResponses = responses[context as keyof typeof responses] || responses.general
-		return contextResponses[Math.floor(Math.random() * contextResponses.length)]
-	}
+		const contextResponses = responses[context as keyof typeof responses] || responses.general;
+		return contextResponses[Math.floor(Math.random() * contextResponses.length)];
+	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === "Enter" && !e.shiftKey) {
-			e.preventDefault()
-			sendMessage()
+			e.preventDefault();
+			sendMessage();
 		}
-	}
+	};
 
 	return (
 		<div className={cn("fixed inset-0 z-50", className)}>
@@ -290,5 +290,5 @@ export default function CopilotChat({ context = "general", contextData, onClose,
 				)}
 			</div>
 		</div>
-	)
+	);
 }

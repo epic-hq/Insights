@@ -1,4 +1,4 @@
-import { cva, type VariantProps } from "class-variance-authority"
+import { cva, type VariantProps } from "class-variance-authority";
 import {
 	AlertCircle,
 	Award,
@@ -12,10 +12,10 @@ import {
 	MessageSquare,
 	User,
 	X,
-} from "lucide-react"
-import type * as React from "react"
-import { ScrollArea } from "~/components/ui/scroll-area"
-import { cn } from "~/lib/utils"
+} from "lucide-react";
+import type * as React from "react";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { cn } from "~/lib/utils";
 
 const timelineVariants = cva("relative flex flex-col", {
 	variants: {
@@ -33,7 +33,7 @@ const timelineVariants = cva("relative flex flex-col", {
 		variant: "default",
 		orientation: "vertical",
 	},
-})
+});
 
 const timelineItemVariants = cva("relative flex gap-3 pb-2", {
 	variants: {
@@ -45,7 +45,7 @@ const timelineItemVariants = cva("relative flex gap-3 pb-2", {
 	defaultVariants: {
 		orientation: "vertical",
 	},
-})
+});
 
 const timelineConnectorVariants = cva("bg-border", {
 	variants: {
@@ -65,7 +65,7 @@ const timelineConnectorVariants = cva("bg-border", {
 		orientation: "vertical",
 		status: "default",
 	},
-})
+});
 
 const timelineIconVariants = cva(
 	"flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 bg-background font-medium text-xs",
@@ -83,52 +83,52 @@ const timelineIconVariants = cva(
 			status: "default",
 		},
 	}
-)
+);
 
 export interface TimelineItem {
-	id: string
-	title: React.ReactNode
-	description?: React.ReactNode
-	timestamp?: string | Date
-	status?: "default" | "completed" | "active" | "pending" | "error"
-	icon?: React.ReactNode
-	content?: React.ReactNode
-	metadata?: Record<string, unknown>
+	id: string;
+	title: React.ReactNode;
+	description?: React.ReactNode;
+	timestamp?: string | Date;
+	status?: "default" | "completed" | "active" | "pending" | "error";
+	icon?: React.ReactNode;
+	content?: React.ReactNode;
+	metadata?: Record<string, unknown>;
 }
 
 export interface TimelineProps extends VariantProps<typeof timelineVariants> {
-	items: TimelineItem[]
-	className?: string
-	showConnectors?: boolean
-	showTimestamps?: boolean
-	timestampPosition?: "top" | "bottom" | "inline"
+	items: TimelineItem[];
+	className?: string;
+	showConnectors?: boolean;
+	showTimestamps?: boolean;
+	timestampPosition?: "top" | "bottom" | "inline";
 }
 
 function getStatusIcon(status: TimelineItem["status"]) {
 	switch (status) {
 		case "completed":
-			return <Check className="h-3 w-3" />
+			return <Check className="h-3 w-3" />;
 		case "active":
-			return <Clock className="h-3 w-3" />
+			return <Clock className="h-3 w-3" />;
 		case "pending":
-			return <Clock className="h-3 w-3" />
+			return <Clock className="h-3 w-3" />;
 		case "error":
-			return <X className="h-3 w-3" />
+			return <X className="h-3 w-3" />;
 		default:
-			return <div className="h-2 w-2 rounded-full bg-current" />
+			return <div className="h-2 w-2 rounded-full bg-current" />;
 	}
 }
 
 function formatTimestamp(timestamp: string | Date): string {
-	if (!timestamp) return ""
-	const date = typeof timestamp === "string" ? new Date(timestamp) : timestamp
+	if (!timestamp) return "";
+	const date = typeof timestamp === "string" ? new Date(timestamp) : timestamp;
 	return date.toLocaleDateString("en-US", {
 		month: "short",
 		day: "numeric",
 		year: "numeric",
 		hour: "2-digit",
 		minute: "2-digit",
-	})
+	});
 }
 
 export function Timeline({
@@ -193,21 +193,21 @@ export function Timeline({
 				</div>
 			))}
 		</div>
-	)
+	);
 
 	if (orientation === "horizontal") {
 		return (
 			<ScrollArea orientation="horizontal" className={cn("w-full", className)} {...props}>
 				{timelineContent}
 			</ScrollArea>
-		)
+		);
 	}
 
 	return (
 		<div className={className} {...props}>
 			{timelineContent}
 		</div>
-	)
+	);
 }
 
 // Example Components for Documentation
@@ -241,9 +241,9 @@ export function BasicTimelineExample() {
 			timestamp: new Date("2024-03-01T16:00:00"),
 			status: "pending",
 		},
-	]
+	];
 
-	return <Timeline items={items} />
+	return <Timeline items={items} />;
 }
 
 export function TimelineVariantsExample() {
@@ -266,7 +266,7 @@ export function TimelineVariantsExample() {
 			description: "Scheduled for later",
 			status: "pending",
 		},
-	]
+	];
 
 	return (
 		<div className="space-y-8">
@@ -283,7 +283,7 @@ export function TimelineVariantsExample() {
 				<Timeline items={items} variant="spacious" />
 			</div>
 		</div>
-	)
+	);
 }
 
 export function HorizontalTimelineExample() {
@@ -318,9 +318,9 @@ export function HorizontalTimelineExample() {
 			description: "Production release",
 			status: "pending",
 		},
-	]
+	];
 
-	return <Timeline items={items} orientation="horizontal" />
+	return <Timeline items={items} orientation="horizontal" />;
 }
 
 export function TimelineWithCustomIconsExample() {
@@ -357,9 +357,9 @@ export function TimelineWithCustomIconsExample() {
 			status: "active",
 			icon: <MapPin className="h-3 w-3" />,
 		},
-	]
+	];
 
-	return <Timeline items={items} />
+	return <Timeline items={items} />;
 }
 
 export function TimelineWithContentExample() {
@@ -403,9 +403,9 @@ export function TimelineWithContentExample() {
 				</div>
 			),
 		},
-	]
+	];
 
-	return <Timeline items={items} />
+	return <Timeline items={items} />;
 }
 
 export function ProjectTimelineExample() {
@@ -468,9 +468,9 @@ export function ProjectTimelineExample() {
 			status: "pending",
 			icon: <AlertCircle className="h-3 w-3" />,
 		},
-	]
+	];
 
-	return <Timeline items={items} variant="spacious" />
+	return <Timeline items={items} variant="spacious" />;
 }
 
 export function OrderTrackingTimelineExample() {
@@ -513,9 +513,9 @@ export function OrderTrackingTimelineExample() {
 			status: "pending",
 			icon: <Heart className="h-3 w-3" />,
 		},
-	]
+	];
 
-	return <Timeline items={items} timestampPosition="inline" />
+	return <Timeline items={items} timestampPosition="inline" />;
 }
 
 export function CompactTimelineExample() {
@@ -543,9 +543,9 @@ export function CompactTimelineExample() {
 			title: "Processing complete",
 			status: "pending",
 		},
-	]
+	];
 
-	return <Timeline items={items} variant="compact" timestampPosition="inline" showTimestamps={true} />
+	return <Timeline items={items} variant="compact" timestampPosition="inline" showTimestamps={true} />;
 }
 
 export function ExtendedHorizontalTimelineExample() {
@@ -622,12 +622,12 @@ export function ExtendedHorizontalTimelineExample() {
 			status: "pending",
 			icon: <Heart className="h-3 w-3" />,
 		},
-	]
+	];
 
-	return <Timeline items={items} orientation="horizontal" variant="spacious" />
+	return <Timeline items={items} orientation="horizontal" variant="spacious" />;
 }
 
-export { timelineVariants, timelineItemVariants, timelineConnectorVariants, timelineIconVariants }
+export { timelineVariants, timelineItemVariants, timelineConnectorVariants, timelineIconVariants };
 export default function TimelineExamplesPage() {
 	return (
 		<div className="p-4">
@@ -649,5 +649,5 @@ export default function TimelineExamplesPage() {
 			<h2 className="font-semibold text-lg">Horizontal Timeline Example</h2>
 			<HorizontalTimelineExample />
 		</div>
-	)
+	);
 }

@@ -1,20 +1,20 @@
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { useEffect, useState } from "react"
-import { Card, CardContent } from "~/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Card, CardContent } from "~/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 
 function InterviewQuestionHelp({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-	const [index, setIndex] = useState(0)
+	const [index, setIndex] = useState(0);
 
 	useEffect(() => {
-		if (!open) return
+		if (!open) return;
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === "ArrowLeft") setIndex((i) => (i - 1 + 3) % 3)
-			if (e.key === "ArrowRight") setIndex((i) => (i + 1) % 3)
-		}
-		window.addEventListener("keydown", onKey)
-		return () => window.removeEventListener("keydown", onKey)
-	}, [open])
+			if (e.key === "ArrowLeft") setIndex((i) => (i - 1 + 3) % 3);
+			if (e.key === "ArrowRight") setIndex((i) => (i + 1) % 3);
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [open]);
 
 	const pages = [
 		{
@@ -37,7 +37,7 @@ function InterviewQuestionHelp({ open, onOpenChange }: { open: boolean; onOpenCh
 			title: "Things to avoid",
 			points: ["Leading or binary questions", "Multiple questions at once", "Jargon or product pitching"],
 		},
-	]
+	];
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -90,7 +90,7 @@ function InterviewQuestionHelp({ open, onOpenChange }: { open: boolean; onOpenCh
 				</div>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }
 
-export default InterviewQuestionHelp
+export default InterviewQuestionHelp;

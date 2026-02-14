@@ -20,40 +20,40 @@
  * ```
  */
 
-import consola from "consola"
-import type { BamlUsageSummary } from "~/lib/baml/collector.server"
-import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
-import type { BillingContext } from "./context"
-import { recordUsageAndSpendCredits, type UsageResult } from "./usage.server"
+import consola from "consola";
+import type { BamlUsageSummary } from "~/lib/baml/collector.server";
+import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server";
+import type { BillingContext } from "./context";
+import { recordUsageAndSpendCredits, type UsageResult } from "./usage.server";
 
 // Re-export for convenience
-export type { BillingContext } from "./context"
-export { systemBillingContext, userBillingContext } from "./context"
+export type { BillingContext } from "./context";
+export { systemBillingContext, userBillingContext } from "./context";
 
 /**
  * Options for BAML calls (matches runBamlWithTracing)
  */
 interface BamlCallOptions<TResult> {
-	functionName: string
-	traceName?: string
-	input?: Record<string, unknown> | string | null
-	metadata?: Record<string, unknown>
-	bamlCall: (client: any) => Promise<TResult>
-	costEnvPrefix?: string
-	logUsageLabel?: string
-	model?: string
+	functionName: string;
+	traceName?: string;
+	input?: Record<string, unknown> | string | null;
+	metadata?: Record<string, unknown>;
+	bamlCall: (client: any) => Promise<TResult>;
+	costEnvPrefix?: string;
+	logUsageLabel?: string;
+	model?: string;
 	/** Resource being processed (for tracking) */
-	resourceType?: string
-	resourceId?: string
+	resourceType?: string;
+	resourceId?: string;
 }
 
 /**
  * Result from instrumented BAML call
  */
 interface BamlWithBillingResult<TResult> {
-	result: TResult
-	usage?: BamlUsageSummary | null
-	billing: UsageResult
+	result: TResult;
+	usage?: BamlUsageSummary | null;
+	billing: UsageResult;
 }
 
 /**
@@ -84,7 +84,7 @@ export async function runBamlWithBilling<TResult>(
 			projectId: ctx.projectId,
 			featureSource: ctx.featureSource,
 		},
-	})
+	});
 
 	// Record usage and spend credits
 	let billing: UsageResult = {
@@ -92,7 +92,7 @@ export async function runBamlWithBilling<TResult>(
 		usageEventId: null,
 		creditsCharged: 0,
 		limitStatus: "ok",
-	}
+	};
 
 	if (usage?.totalCostUsd && usage.totalCostUsd > 0) {
 		billing = await recordUsageAndSpendCredits(
@@ -107,15 +107,15 @@ export async function runBamlWithBilling<TResult>(
 				resourceId: opts.resourceId,
 			},
 			idempotencyKey
-		)
+		);
 
 		// Log billing status for monitoring
 		if (billing.limitStatus !== "ok" && billing.limitStatus !== "duplicate_ignored") {
-			consola.warn(`[billing:baml] ${opts.functionName} - Account ${ctx.accountId}: ${billing.limitStatus}`)
+			consola.warn(`[billing:baml] ${opts.functionName} - Account ${ctx.accountId}: ${billing.limitStatus}`);
 		}
 	}
 
-	return { result, usage, billing }
+	return { result, usage, billing };
 }
 
 /**
@@ -127,16 +127,16 @@ export async function runBamlWithBillingOrThrow<TResult>(
 	opts: BamlCallOptions<TResult>,
 	idempotencyKey: string
 ): Promise<BamlWithBillingResult<TResult>> {
-	const result = await runBamlWithBilling(ctx, opts, idempotencyKey)
+	const result = await runBamlWithBilling(ctx, opts, idempotencyKey);
 
 	if (result.billing.limitStatus === "hard_limit_exceeded") {
 		throw new UsageLimitError(
 			`Account ${ctx.accountId} has exceeded usage limits for ${ctx.featureSource}`,
 			result.billing
-		)
+		);
 	}
 
-	return result
+	return result;
 }
 
 /**
@@ -147,8 +147,8 @@ export class UsageLimitError extends Error {
 		message: string,
 		public readonly billing: UsageResult
 	) {
-		super(message)
-		this.name = "UsageLimitError"
+		super(message);
+		this.name = "UsageLimitError";
 	}
 }
 
@@ -156,10 +156,10 @@ export class UsageLimitError extends Error {
  * Infer provider from model name
  */
 function inferProvider(model?: string): string {
-	if (!model) return "unknown"
-	const m = model.toLowerCase()
-	if (m.includes("gpt") || m.includes("o1") || m.includes("o3")) return "openai"
-	if (m.includes("claude") || m.includes("sonnet") || m.includes("opus") || m.includes("haiku")) return "anthropic"
-	if (m.includes("gemini")) return "google"
-	return "unknown"
+	if (!model) return "unknown";
+	const m = model.toLowerCase();
+	if (m.includes("gpt") || m.includes("o1") || m.includes("o3")) return "openai";
+	if (m.includes("claude") || m.includes("sonnet") || m.includes("opus") || m.includes("haiku")) return "anthropic";
+	if (m.includes("gemini")) return "google";
+	return "unknown";
 }

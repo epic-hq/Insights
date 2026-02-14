@@ -42,13 +42,96 @@ Our testing approach prioritizes **business logic validation** and **database in
 
 - **Target**: Database operations, loaders, actions, complex queries, schema changes, edge functions, job queues, AI/LLM/BAML services
 - **Location**: `app/test/integration/`
-- **Real Database**: Uses seeded Supabase test instance locally. Staging database is in Supabase Cloud and can be used for integration tests (needed for job queues PGMQ and Edge Functions used by upload interview).
-- **Examples**: Interview upload workflow, backfill operations, junction table queries
+- **Real Database**: Tests run against a dedicated non-production Supabase test/staging instance using `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, and (for admin flows) `TEST_SUPABASE_SERVICE_ROLE_KEY` via `dotenvx`
+- **Examples**: Survey response save workflow (`survey-response-save.integration.test.ts`), interview upload, backfill operations
 - **Runtime**: ~500ms per test, focuses on high-risk areas
+- **Pattern**: Each test creates unique test data (UUIDs, timestamped slugs), cleans up in `afterAll`
 
 ## Test Setup
 
-<!-- TODO: ... fill in -->
+## Staging Test DB Plan (To-Do)
+
+Goal: run integration tests against a dedicated non-production Supabase project.
+
+### Safety Guardrails (must-have)
+
+- Never run integration tests against production.
+- Use a dedicated test/staging project only (separate project ref, separate keys).
+- Keep credentials in CI secrets and local `.env` only (never commit keys).
+- Add a preflight check in integration setup that refuses to run if URL/project ref matches production.
+
+### Environment Variables
+
+- `TEST_SUPABASE_URL` - URL for dedicated test/staging Supabase project
+- `TEST_SUPABASE_ANON_KEY` - anon/publishable key for that project
+- `TEST_SUPABASE_SERVICE_ROLE_KEY` - service role key for that project
+- Optional: `TEST_SUPABASE_PROJECT_REF` for explicit safety checks/logging
+
+### Execution Strategy
+
+1. Unit tests (`test`, `test:agents`) stay hermetic and do not require Supabase env vars.
+2. Integration tests (`test:integration`) use only `TEST_SUPABASE_*` env vars.
+3. Browser/E2E tests run under Playwright only; do not mix into Node Vitest unit runs.
+4. CI deploy gate should continue to require `test:agents`; add a stable test subset gate as confidence grows.
+
+### Near-Term To-Do
+
+1. Split test commands into `test:unit`, `test:browser`, `test:integration`, `test:e2e`.
+2. Update Vitest include/exclude patterns so browser/e2e files are not run by `vitest run`.
+3. Add integration preflight assertions (non-production ref + required env vars).
+4. Add seeded fixtures/reset workflow for integration DB tests.
+5. Run integration tests in a dedicated CI workflow/job (separate from deploy) with runtime env checks inside `run` steps, not workflow-expression checks against secrets.
+
+### Supabase Branch Parity Checklist
+
+If a dev branch is `ACTIVE_HEALTHY` but appears to be missing newer tables/features, verify migration parity explicitly:
+
+1. Check applied migration count/version on branch:
+   - `psql "$TEST_SUPABASE_DB_URL" -Atc "select count(*), max(version) from supabase_migrations.schema_migrations;"`
+2. Compare against local valid migration files (`supabase/migrations/*.sql` with timestamped names).
+3. If branch is behind, push migrations directly to the branch DB URL.
+4. For pooler URLs, disable statement cache to avoid prepared-statement collisions:
+   - append `?statement_cache_capacity=0` (or `&statement_cache_capacity=0`).
+5. Re-check parity before running integration tests.
+
+### Current Status Snapshot (2026-02-09)
+
+- Deploy workflow currently gates on `test:agents` only.
+- Integration tests are intentionally not in the deploy job while environment and schema-drift stability work is in progress.
+- Current integration baseline is green on staging test DB: `11 passed suites`, `1 skipped suite` (`processInterview.server.integration.test.ts`), `85 passed tests`, `2 skipped`.
+- A workflow parser failure was fixed by removing direct `secrets.*` expression checks in job-step `if` conditions.
+- `vitest.workspace.ts` was adjusted for compatibility with current Vitest config usage.
+- Recent schema-drift fixes aligned onboarding and people/org normalization tests with the consolidated `interviews.conversation_analysis` pipeline.
+
+### Safe Migration Drift Recovery (When Remote Is Ahead)
+
+If remote has a few migration versions not present locally:
+
+1. Do **not** keep broad rewrite output from `supabase migration fetch` if it modifies historical migration files.
+2. Revert rewritten tracked files.
+3. Recover/keep only the missing migration files by exact version.
+4. Verify with `supabase migration list` before commit/push.
+
+### Integration Test Environment
+
+Integration tests should use a dedicated Supabase test/staging instance (not production, not local emulator unless explicitly intended). Environment variables are injected via `dotenvx`:
+
+```bash
+# Run a specific integration test
+dotenvx run -- vitest run app/test/integration/survey-response-save.integration.test.ts
+```
+
+Tests create an admin client directly from env vars and mock only the Supabase client factory so the action under test uses the same connection:
+
+```typescript
+const adminDb = createClient(process.env.TEST_SUPABASE_URL!, process.env.TEST_SUPABASE_SERVICE_ROLE_KEY!);
+
+vi.mock("~/lib/supabase/client.server", () => ({
+  createSupabaseAdminClient: () => adminDb,
+}));
+```
+
+**Note**: The `testDb` helper in `app/test/utils/testDb.ts` is TEST-only now (`TEST_SUPABASE_URL` + `TEST_SUPABASE_ANON_KEY`) and refuses runs when TEST and default project refs/URLs overlap.
 
 ## Running Tests
 
@@ -63,6 +146,12 @@ pnpm run test
 # Integration tests (real DB operations)
 npm run test:integration
 pnpm run test:integration
+
+# Integration tests with env vars (dedicated test/staging Supabase)
+dotenvx run -- vitest run app/test/integration/survey-response-save.integration.test.ts
+
+# Agent smoke prompts against a running app (captures JSON snapshot)
+pnpm run test:agents:smoke -- --account-id <accountId> --project-id <projectId> --base-url http://localhost:4280
 
 # All tests (unit + integration)
 npm run test:all
@@ -192,9 +281,133 @@ it('should clean filename for person name', () => {
 })
 ```
 
+## E2E Tests (Playwright)
+
+End-to-end tests validate complete user flows and PostHog tracking events.
+
+### Running E2E Tests
+
+```bash
+# Run all E2E tests (headless)
+pnpm test:e2e
+
+# Run with Playwright UI for debugging
+pnpm test:e2e:ui
+
+# Run with visible browser
+pnpm test:e2e:headed
+
+# Run specific test file
+pnpm test:e2e tests/e2e/tests/auth.spec.ts
+
+# Run tests matching pattern
+pnpm test:e2e --grep "login"
+```
+
+### E2E Test Structure
+
+```
+tests/e2e/
+├── fixtures/           # Test fixtures
+│   ├── base.ts         # PostHog event capture fixture
+│   ├── auth.ts         # Authentication fixture
+│   └── index.ts        # Combined exports
+├── tests/              # Test files
+│   ├── home.spec.ts    # Homepage tests
+│   ├── auth.spec.ts    # Login/signup tests
+│   ├── project.spec.ts # Project creation tests
+│   └── tracking.spec.ts # PostHog tracking tests
+└── README.md           # Detailed E2E docs
+```
+
+### Authenticated Tests
+
+Some tests require authentication. Set environment variables:
+
+```bash
+# For authenticated flow tests
+E2E_TEST_EMAIL=test@example.com E2E_TEST_PASSWORD=secret pnpm test:e2e
+```
+
+Tests skip gracefully when credentials aren't available.
+
+### PostHog Event Testing
+
+E2E tests can capture and validate PostHog events:
+
+```typescript
+import { test, expect } from '../fixtures';
+
+test('tracks signup event', async ({ page, posthog }) => {
+  await page.goto('/signup');
+  await page.fill('[name=email]', 'test@example.com');
+  await page.click('button[type=submit]');
+
+  // Wait for and validate PostHog event
+  const event = await posthog.waitForEvent('user_signed_up');
+  expect(event.properties.email).toBe('test@example.com');
+});
+```
+
+### CI Configuration
+
+See `tests/e2e/README.md` for GitHub Actions setup and CI considerations.
+
 ## Writing Integration Tests
 
-Test real database operations with seeded data to catch schema/query issues:
+Test real database operations with seeded data to catch schema/query issues.
+
+### Person Resolution Integration Tests (2026-02-07)
+
+The unified person resolution system has comprehensive integration tests covering all matching strategies and edge cases:
+
+**Location**: `app/test/integration/people-resolution.integration.test.ts` (537 lines, 37 tests)
+
+**Test Coverage**:
+- Email matching (case-insensitive, priority)
+- Platform ID matching (Zoom, Teams, Meet)
+- Name + company fuzzy matching
+- Person creation with full data
+- Idempotency (concurrent requests, retries)
+- Match priority order
+- Edge cases (null, whitespace, missing fields)
+
+**Status**: Tests require database connection to run. Code structure verified via successful builds.
+
+**Run Tests**:
+```bash
+# Requires database connection
+dotenvx run -- vitest run app/test/integration/people-resolution.integration.test.ts
+```
+
+**Example Test Pattern**:
+```typescript
+describe('Person Resolution - Email Matching', () => {
+  beforeAll(async () => {
+    await seedTestData()
+    // Seed person with email
+    await testDb.from('people').insert({
+      id: 'person-1',
+      account_id: TEST_ACCOUNT_ID,
+      name: 'Jane Doe',
+      primary_email: 'jane@example.com'
+    })
+  })
+
+  it('matches by email (highest priority)', async () => {
+    const result = await resolveOrCreatePerson(testDb, TEST_ACCOUNT_ID, null, {
+      name: 'Jane Doe',
+      primary_email: 'jane@example.com'
+    })
+
+    expect(result.person.id).toBe('person-1')
+    expect(result.matchedBy).toBe('email')
+    expect(result.person.created).toBe(false)
+  })
+})
+```
+
+### General Integration Test Pattern
 
    ```ts
    // backfill.integration.test.ts
@@ -227,3 +440,7 @@ Test real database operations with seeded data to catch schema/query issues:
      })
    })
    ```
+
+
+## Testing branch on supabase & MCP access
+setup 2/8 for codex to create testing environment and automate tests in CI/CD pipeline

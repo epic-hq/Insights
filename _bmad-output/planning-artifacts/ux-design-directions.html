@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UpSight Desktop - Design Directions</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: hsl(222, 47%, 11%);
+      --bg-subtle: hsl(222, 47%, 14%);
+      --bg-card: hsl(222, 47%, 17%);
+      --fg: hsl(210, 40%, 98%);
+      --fg-muted: hsl(215, 20%, 65%);
+      --primary: hsl(217, 91%, 60%);
+      --accent-green: hsl(142, 71%, 45%);
+      --accent-amber: hsl(38, 92%, 50%);
+      --destructive: hsl(0, 84%, 60%);
+      --tag-pain: #f87171;
+      --tag-goal: #4ade80;
+      --tag-workflow: #60a5fa;
+      --tag-tool: #a78bfa;
+      --tag-probe: #fbbf24;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0a0a;
+      color: var(--fg);
+      min-height: 100vh;
+      padding: 40px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--primary), var(--accent-green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: var(--fg-muted);
+      margin-bottom: 40px;
+      font-size: 16px;
+    }
+
+    .directions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 32px;
+      margin-bottom: 60px;
+    }
+
+    .direction-card {
+      background: var(--bg-subtle);
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid hsla(217, 91%, 60%, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .direction-card:hover {
+      border-color: hsla(217, 91%, 60%, 0.3);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    }
+
+    .direction-header {
+      padding: 20px;
+      border-bottom: 1px solid hsla(255,255,255,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .direction-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .direction-badge {
+      font-size: 11px;
+      padding: 4px 10px;
+      background: var(--primary);
+      border-radius: 100px;
+      font-weight: 500;
+    }
+
+    .direction-preview {
+      padding: 20px;
+      min-height: 400px;
+    }
+
+    .direction-description {
+      padding: 20px;
+      background: var(--bg-dark);
+      font-size: 14px;
+      color: var(--fg-muted);
+      line-height: 1.6;
+    }
+
+    /* Panel Mockups */
+    .panel {
+      background: var(--bg-dark);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    .panel-header {
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid hsla(255,255,255,0.05);
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .recording-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--destructive);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .timer {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--fg-muted);
+    }
+
+    .panel-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .panel-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: var(--bg-subtle);
+      border: none;
+      color: var(--fg-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    .panel-content {
+      padding: 12px;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    /* Evidence Card Styles */
+    .evidence-card {
+      padding: 10px 12px;
+      background: var(--bg-subtle);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border-left: 3px solid transparent;
+    }
+
+    .evidence-card.pain { border-left-color: var(--tag-pain); }
+    .evidence-card.goal { border-left-color: var(--tag-goal); }
+    .evidence-card.workflow { border-left-color: var(--tag-workflow); }
+    .evidence-card.tool { border-left-color: var(--tag-tool); }
+
+    .evidence-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .speaker {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    .timestamp {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--fg-muted);
+    }
+
+    .evidence-tag {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    .tag-pain { background: hsla(0, 84%, 60%, 0.2); color: var(--tag-pain); }
+    .tag-goal { background: hsla(142, 71%, 45%, 0.2); color: var(--tag-goal); }
+    .tag-workflow { background: hsla(217, 91%, 60%, 0.2); color: var(--tag-workflow); }
+    .tag-tool { background: hsla(271, 91%, 65%, 0.2); color: var(--tag-tool); }
+
+    .evidence-gist {
+      font-size: 13px;
+      line-height: 1.4;
+      color: var(--fg);
+    }
+
+    /* Direction 1: Classic Cards */
+    .d1 .evidence-card {
+      border-left-width: 3px;
+    }
+
+    /* Direction 2: Minimal Lines */
+    .d2 .evidence-card {
+      background: transparent;
+      border-left: none;
+      border-bottom: 1px solid hsla(255,255,255,0.05);
+      border-radius: 0;
+      padding: 12px 0;
+    }
+    .d2 .evidence-card:last-child {
+      border-bottom: none;
+    }
+
+    /* Direction 3: Bubble Style */
+    .d3 .evidence-card {
+      border-left: none;
+      border-radius: 12px 12px 12px 4px;
+      position: relative;
+    }
+    .d3 .evidence-card.pain { background: hsla(0, 84%, 60%, 0.1); }
+    .d3 .evidence-card.goal { background: hsla(142, 71%, 45%, 0.1); }
+    .d3 .evidence-card.workflow { background: hsla(217, 91%, 60%, 0.1); }
+
+    /* Direction 4: Timeline */
+    .d4 .panel-content {
+      padding-left: 24px;
+      position: relative;
+    }
+    .d4 .panel-content::before {
+      content: '';
+      position: absolute;
+      left: 16px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: hsla(255,255,255,0.1);
+    }
+    .d4 .evidence-card {
+      position: relative;
+      border-left: none;
+      margin-left: 8px;
+    }
+    .d4 .evidence-card::before {
+      content: '';
+      position: absolute;
+      left: -16px;
+      top: 14px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+    .d4 .evidence-card.pain::before { background: var(--tag-pain); }
+    .d4 .evidence-card.goal::before { background: var(--tag-goal); }
+
+    /* Direction 5: Compact Dense */
+    .d5 .evidence-card {
+      padding: 6px 10px;
+      margin-bottom: 4px;
+    }
+    .d5 .evidence-header {
+      margin-bottom: 2px;
+    }
+    .d5 .evidence-gist {
+      font-size: 12px;
+    }
+    .d5 .speaker {
+      font-size: 11px;
+    }
+
+    /* Direction 6: Large Tag Focus */
+    .d6 .evidence-card {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      border-left: none;
+    }
+    .d6 .evidence-tag-large {
+      min-width: 60px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    .d6 .tag-large-pain { background: var(--tag-pain); color: #000; }
+    .d6 .tag-large-goal { background: var(--tag-goal); color: #000; }
+    .d6 .tag-large-workflow { background: var(--tag-workflow); color: #000; }
+
+    /* Tabs for modes */
+    .mode-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .mode-tab {
+      padding: 6px 12px;
+      font-size: 12px;
+      background: var(--bg-card);
+      border: 1px solid hsla(255,255,255,0.1);
+      border-radius: 6px;
+      color: var(--fg-muted);
+      cursor: pointer;
+    }
+    .mode-tab.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    /* Comparison Section */
+    .comparison-section {
+      margin-top: 60px;
+      padding-top: 40px;
+      border-top: 1px solid hsla(255,255,255,0.1);
+    }
+
+    .comparison-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+
+    .pros-cons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .pros-cons-card {
+      background: var(--bg-subtle);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .pros-cons-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .pros-cons-list {
+      list-style: none;
+    }
+
+    .pros-cons-list li {
+      font-size: 14px;
+      color: var(--fg-muted);
+      padding: 6px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .pros-cons-list li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+  <h1>UpSight Desktop - Design Directions</h1>
+  <p class="subtitle">Explore different visual approaches for the floating evidence panel</p>
+
+  <div class="directions-grid">
+    <!-- Direction 1: Classic Cards -->
+    <div class="direction-card">
+      <div class="direction-header">
+        <span class="direction-title">1. Classic Cards</span>
+        <span class="direction-badge">Recommended</span>
+      </div>
+      <div class="direction-preview d1">
+        <div class="mode-tabs">
+          <div class="mode-tab active">Compact</div>
+          <div class="mode-tab">Expanded</div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="recording-dot"></span>
+              Recording
+            </div>
+            <span class="timer">12:34</span>
+          </div>
+          <div class="panel-content">
+            <div class="evidence-card pain">
+              <div class="evidence-header">
+                <span class="speaker">Sarah Chen</span>
+                <span class="timestamp">12:31</span>
+                <span class="evidence-tag tag-pain">Pain</span>
+              </div>
+              <div class="evidence-gist">Frustrated with current 5-step onboarding process</div>
+            </div>
+            <div class="evidence-card goal">
+              <div class="evidence-header">
+                <span class="speaker">You</span>
+                <span class="timestamp">12:33</span>
+                <span class="evidence-tag tag-goal">Goal</span>
+              </div>
+              <div class="evidence-gist">Wants single-page wizard approach</div>
+            </div>
+            <div class="evidence-card workflow">
+              <div class="evidence-header">
+                <span class="speaker">Sarah Chen</span>
+                <span class="timestamp">12:34</span>
+                <span class="evidence-tag tag-workflow">Workflow</span>
+              </div>
+              <div class="evidence-gist">Currently exports to spreadsheet for team review</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="direction-description">
+        <strong>Best for:</strong> Scannable at a glance, clear visual hierarchy. Left border color provides instant category recognition. Familiar card pattern from Dovetail/Grain.
+      </div>
+    </div>
+
+    <!-- Direction 2: Minimal Lines -->
+    <div class="direction-card">
+      <div class="direction-header">
+        <span class="direction-title">2. Minimal Lines</span>
+      </div>
+      <div class="direction-preview d2">
+        <div class="mode-tabs">
+          <div class="mode-tab active">Compact</div>
+          <div class="mode-tab">Expanded</div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="recording-dot"></span>
+              Recording
+            </div>
+            <span class="timer">12:34</span>
+          </div>
+          <div class="panel-content">
+            <div class="evidence-card pain">
+              <div class="evidence-header">
+                <span class="speaker">Sarah Chen</span>
+                <span class="timestamp">12:31</span>
+                <span class="evidence-tag tag-pain">Pain</span>
+              </div>
+              <div class="evidence-gist">Frustrated with current 5-step onboarding process</div>
+            </div>
+            <div class="evidence-card goal">
+              <div class="evidence-header">
+                <span class="speaker">You</span>
+                <span class="timestamp">12:33</span>
+                <span class="evidence-tag tag-goal">Goal</span>
+              </div>
+              <div class="evidence-gist">Wants single-page wizard approach</div>
+            </div>
+            <div class="evidence-card workflow">
+              <div class="evidence-header">
+                <span class="speaker">Sarah Chen</span>
+                <span class="timestamp">12:34</span>
+                <span class="evidence-tag tag-workflow">Workflow</span>
+              </div>
+              <div class="evidence-gist">Currently exports to spreadsheet for team review</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="direction-description">
+        <strong>Best for:</strong> Maximum content density, clean aesthetic. Works well for users who prefer less visual noise. Apple Notes / Linear inspired.
+      </div>
+    </div>
+
+    <!-- Direction 3: Bubble Style -->
+    <div class="direction-card">
+      <div class="direction-header">
+        <span class="direction-title">3. Bubble Style</span>
+      </div>
+      <div class="direction-preview d3">
+        <div class="mode-tabs">
+          <div class="mode-tab active">Compact</div>
+          <div class="mode-tab">Expanded</div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="recording-dot"></span>
+              Recording
+            </div>
+            <span class="timer">12:34</span>
+          </div>
+          <div class="panel-content">
+            <div class="evidence-card pain">
+              <div class="evidence-header">
+                <span class="speaker">Sarah Chen</span>
+                <span class="timestamp">12:31</span>
+                <span class="evidence-tag tag-pain">Pain</span>
+              </div>
+              <div class="evidence-gist">Frustrated with current 5-step onboarding process</div>
+            </div>
+            <div class="evidence-card goal">
+              <div class="evidence-header">
+                <span class="speaker">You</span>
+                <span class="timestamp">12:33</span>
+                <span class="evidence-tag tag-goal">Goal</span>
+              </div>
+              <div class="evidence-gist">Wants single-page wizard approach</div>
+            </div>
+            <div class="evidence-card workflow">
+              <div class="evidence-header">
+                <span class="speaker">Sarah Chen</span>
+                <span class="timestamp">12:34</span>
+                <span class="evidence-tag tag-workflow">Workflow</span>
+              </div>
+              <div class="evidence-gist">Currently exports to spreadsheet for team review</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="direction-description">
+        <strong>Best for:</strong> Conversational feel, chat-like familiarity. Color-tinted backgrounds make categories pop. More playful/modern aesthetic.
+      </div>
+    </div>
+
+    <!-- Direction 4: Timeline -->
+    <div class="direction-card">
+      <div class="direction-header">
+        <span class="direction-title">4. Timeline</span>
+      </div>
+      <div class="direction-preview d4">
+        <div class="mode-tabs">
+          <div class="mode-tab active">Compact</div>
+          <div class="mode-tab">Expanded</div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="recording-dot"></span>
+              Recording
+            </div>
+            <span class="timer">12:34</span>
+          </div>
+          <div class="panel-content">
+            <div class="evidence-card pain">
+              <div class="evidence-header">
+                <span class="speaker">Sarah Chen</span>
+                <span class="timestamp">12:31</span>
+                <span class="evidence-tag tag-pain">Pain</span>
+              </div>
+              <div class="evidence-gist">Frustrated with current 5-step onboarding process</div>
+            </div>
+            <div class="evidence-card goal">
+              <div class="evidence-header">
+                <span class="speaker">You</span>
+                <span class="timestamp">12:33</span>
+                <span class="evidence-tag tag-goal">Goal</span>
+              </div>
+              <div class="evidence-gist">Wants single-page wizard approach</div>
+            </div>
+            <div class="evidence-card pain">
+              <div class="evidence-header">
+                <span class="speaker">Sarah Chen</span>
+                <span class="timestamp">12:34</span>
+                <span class="evidence-tag tag-pain">Pain</span>
+              </div>
+              <div class="evidence-gist">Team lacks visibility into customer feedback</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="direction-description">
+        <strong>Best for:</strong> Emphasizes chronological flow, visual rhythm. Great for post-meeting review navigation. Reinforces "moments in time" concept.
+      </div>
+    </div>
+
+    <!-- Direction 5: Compact Dense -->
+    <div class="direction-card">
+      <div class="direction-header">
+        <span class="direction-title">5. Ultra Compact</span>
+      </div>
+      <div class="direction-preview d5">
+        <div class="mode-tabs">
+          <div class="mode-tab active">Compact</div>
+          <div class="mode-tab">Expanded</div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="recording-dot"></span>
+              Recording
+            </div>
+            <span class="timer">12:34</span>
+          </div>
+          <div class="panel-content">
+            <div class="evidence-card pain">
+              <div class="evidence-header">
+                <span class="speaker">Sarah Chen</span>
+                <span class="timestamp">12:31</span>
+                <span class="evidence-tag tag-pain">Pain</span>
+              </div>
+              <div class="evidence-gist">Frustrated with current 5-step onboarding process</div>
+            </div>
+            <div class="evidence-card goal">
+              <div class="evidence-header">
+                <span class="speaker">You</span>
+                <span class="timestamp">12:33</span>
+                <span class="evidence-tag tag-goal">Goal</span>
+              </div>
+              <div class="evidence-gist">Wants single-page wizard approach</div>
+            </div>
+            <div class="evidence-card workflow">
+              <div class="evidence-header">
+                <span class="speaker">Sarah Chen</span>
+                <span class="timestamp">12:34</span>
+                <span class="evidence-tag tag-workflow">Workflow</span>
+              </div>
+              <div class="evidence-gist">Currently exports to spreadsheet for team review</div>
+            </div>
+            <div class="evidence-card tool">
+              <div class="evidence-header">
+                <span class="speaker">Sarah Chen</span>
+                <span class="timestamp">12:35</span>
+                <span class="evidence-tag tag-tool">Tool</span>
+              </div>
+              <div class="evidence-gist">Uses Notion for documentation</div>
+            </div>
+            <div class="evidence-card pain">
+              <div class="evidence-header">
+                <span class="speaker">You</span>
+                <span class="timestamp">12:36</span>
+                <span class="evidence-tag tag-pain">Pain</span>
+              </div>
+              <div class="evidence-gist">Manual tagging takes too long</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="direction-description">
+        <strong>Best for:</strong> Maximum information in minimal space. Best for power users who want to see more evidence at once. Smallest footprint option.
+      </div>
+    </div>
+
+    <!-- Direction 6: Large Tag Focus -->
+    <div class="direction-card">
+      <div class="direction-header">
+        <span class="direction-title">6. Tag-First</span>
+      </div>
+      <div class="direction-preview d6">
+        <div class="mode-tabs">
+          <div class="mode-tab active">Compact</div>
+          <div class="mode-tab">Expanded</div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="recording-dot"></span>
+              Recording
+            </div>
+            <span class="timer">12:34</span>
+          </div>
+          <div class="panel-content">
+            <div class="evidence-card">
+              <div class="evidence-tag-large tag-large-pain">Pain</div>
+              <div>
+                <div class="evidence-header">
+                  <span class="speaker">Sarah Chen</span>
+                  <span class="timestamp">12:31</span>
+                </div>
+                <div class="evidence-gist">Frustrated with current 5-step onboarding process</div>
+              </div>
+            </div>
+            <div class="evidence-card">
+              <div class="evidence-tag-large tag-large-goal">Goal</div>
+              <div>
+                <div class="evidence-header">
+                  <span class="speaker">You</span>
+                  <span class="timestamp">12:33</span>
+                </div>
+                <div class="evidence-gist">Wants single-page wizard approach</div>
+              </div>
+            </div>
+            <div class="evidence-card">
+              <div class="evidence-tag-large tag-large-workflow">Workflow</div>
+              <div>
+                <div class="evidence-header">
+                  <span class="speaker">Sarah Chen</span>
+                  <span class="timestamp">12:34</span>
+                </div>
+                <div class="evidence-gist">Currently exports to spreadsheet for team review</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="direction-description">
+        <strong>Best for:</strong> Category-first scanning. When the type of evidence matters more than who said it. Bold, high-contrast approach.
+      </div>
+    </div>
+  </div>
+
+  <div class="comparison-section">
+    <h2 class="comparison-title">Design Direction Comparison</h2>
+    <div class="pros-cons">
+      <div class="pros-cons-card">
+        <div class="pros-cons-title">Best for Glanceability</div>
+        <ul class="pros-cons-list">
+          <li><strong>Classic Cards (1)</strong> - Color borders scan instantly</li>
+          <li><strong>Tag-First (6)</strong> - Categories dominate visually</li>
+          <li><strong>Timeline (4)</strong> - Dots create visual rhythm</li>
+        </ul>
+      </div>
+      <div class="pros-cons-card">
+        <div class="pros-cons-title">Best for Density</div>
+        <ul class="pros-cons-list">
+          <li><strong>Ultra Compact (5)</strong> - Maximum evidence visible</li>
+          <li><strong>Minimal Lines (2)</strong> - Clean, efficient spacing</li>
+        </ul>
+      </div>
+      <div class="pros-cons-card">
+        <div class="pros-cons-title">Best for Modern Feel</div>
+        <ul class="pros-cons-list">
+          <li><strong>Bubble Style (3)</strong> - Playful, conversational</li>
+          <li><strong>Timeline (4)</strong> - Elegant, editorial</li>
+        </ul>
+      </div>
+      <div class="pros-cons-card">
+        <div class="pros-cons-title">Recommendation</div>
+        <ul class="pros-cons-list">
+          <li><strong>Direction 1 (Classic Cards)</strong> as primary</li>
+          <li>Proven pattern, scannable, professional</li>
+          <li>Aligns with Dovetail/Grain expectations</li>
+          <li>Easy to implement with shadcn/ui</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

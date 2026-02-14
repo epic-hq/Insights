@@ -1,37 +1,37 @@
-import { AlertTriangle, CheckCircle, Edit, XCircle } from "lucide-react"
-import { useState } from "react"
-import { toast } from "sonner"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Textarea } from "~/components/ui/textarea"
+import { AlertTriangle, CheckCircle, Edit, XCircle } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Textarea } from "~/components/ui/textarea";
 
-type QualityIndicator = "green" | "yellow" | "red"
+type QualityIndicator = "green" | "yellow" | "red";
 
 interface QuestionEvaluation {
-	overall_quality: QualityIndicator
-	score: number
-	strengths: string[]
+	overall_quality: QualityIndicator;
+	score: number;
+	strengths: string[];
 	issues: {
-		type: string
-		description: string
-		severity: "high" | "medium" | "low"
-	}[]
+		type: string;
+		description: string;
+		severity: "high" | "medium" | "low";
+	}[];
 	improvement?: {
-		original_question: string
-		suggested_rewrite: string
-		explanation: string
-	}
-	recommendation: "proceed" | "revise"
-	quick_feedback: string
+		original_question: string;
+		suggested_rewrite: string;
+		explanation: string;
+	};
+	recommendation: "proceed" | "revise";
+	quick_feedback: string;
 }
 
 interface QuestionEvaluatorProps {
-	question: string
-	researchContext: string
-	onQuestionChange: (newQuestion: string) => void
-	onProceed: () => void
-	onCancel?: () => void
+	question: string;
+	researchContext: string;
+	onQuestionChange: (newQuestion: string) => void;
+	onProceed: () => void;
+	onCancel?: () => void;
 }
 
 export default function QuestionEvaluator({
@@ -41,13 +41,13 @@ export default function QuestionEvaluator({
 	onProceed,
 	onCancel,
 }: QuestionEvaluatorProps) {
-	const [evaluation, setEvaluation] = useState<QuestionEvaluation | null>(null)
-	const [isEvaluating, setIsEvaluating] = useState(false)
-	const [isEditing, setIsEditing] = useState(false)
-	const [editedQuestion, setEditedQuestion] = useState(question)
+	const [evaluation, setEvaluation] = useState<QuestionEvaluation | null>(null);
+	const [isEvaluating, setIsEvaluating] = useState(false);
+	const [isEditing, setIsEditing] = useState(false);
+	const [editedQuestion, setEditedQuestion] = useState(question);
 
 	const evaluateQuestion = async () => {
-		setIsEvaluating(true)
+		setIsEvaluating(true);
 		try {
 			const response = await fetch("/api/evaluate-question", {
 				method: "POST",
@@ -56,55 +56,55 @@ export default function QuestionEvaluator({
 					question: editedQuestion,
 					research_context: researchContext,
 				}),
-			})
+			});
 
-			if (!response.ok) throw new Error("Evaluation failed")
+			if (!response.ok) throw new Error("Evaluation failed");
 
-			const result = await response.json()
-			setEvaluation(result)
+			const result = await response.json();
+			setEvaluation(result);
 		} catch (error) {
-			toast.error("Failed to evaluate question")
-			console.error("Question evaluation error:", error)
+			toast.error("Failed to evaluate question");
+			console.error("Question evaluation error:", error);
 		} finally {
-			setIsEvaluating(false)
+			setIsEvaluating(false);
 		}
-	}
+	};
 
 	const handleAcceptSuggestion = () => {
 		if (evaluation?.improvement?.suggested_rewrite) {
-			setEditedQuestion(evaluation.improvement.suggested_rewrite)
-			setIsEditing(false)
+			setEditedQuestion(evaluation.improvement.suggested_rewrite);
+			setIsEditing(false);
 			// Re-evaluate the improved question
-			setTimeout(evaluateQuestion, 100)
+			setTimeout(evaluateQuestion, 100);
 		}
-	}
+	};
 
 	const handleProceed = () => {
-		onQuestionChange(editedQuestion)
-		onProceed()
-	}
+		onQuestionChange(editedQuestion);
+		onProceed();
+	};
 
 	const getQualityIcon = (quality: QualityIndicator) => {
 		switch (quality) {
 			case "green":
-				return <CheckCircle className="h-5 w-5 text-green-600" />
+				return <CheckCircle className="h-5 w-5 text-green-600" />;
 			case "yellow":
-				return <AlertTriangle className="h-5 w-5 text-yellow-600" />
+				return <AlertTriangle className="h-5 w-5 text-yellow-600" />;
 			case "red":
-				return <XCircle className="h-5 w-5 text-red-600" />
+				return <XCircle className="h-5 w-5 text-red-600" />;
 		}
-	}
+	};
 
 	const getQualityColor = (quality: QualityIndicator) => {
 		switch (quality) {
 			case "green":
-				return "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
+				return "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20";
 			case "yellow":
-				return "border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/20"
+				return "border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/20";
 			case "red":
-				return "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20"
+				return "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20";
 		}
-	}
+	};
 
 	return (
 		<div className="space-y-4">
@@ -135,8 +135,8 @@ export default function QuestionEvaluator({
 										size="sm"
 										variant="outline"
 										onClick={() => {
-											setEditedQuestion(question)
-											setIsEditing(false)
+											setEditedQuestion(question);
+											setIsEditing(false);
 										}}
 									>
 										Cancel
@@ -263,5 +263,5 @@ export default function QuestionEvaluator({
 				</Card>
 			)}
 		</div>
-	)
+	);
 }

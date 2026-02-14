@@ -1,17 +1,17 @@
 // Component for displaying a list of interviews
-import PageHeader from "../navigation/PageHeader"
+import PageHeader from "../navigation/PageHeader";
 
 // Extended interface for UI-specific interview display needs
 export interface InterviewListItem {
-	id: string
-	date: string
-	participant: string
-	status: "transcribed" | "processing" | "ready"
+	id: string;
+	date: string;
+	participant: string;
+	status: "transcribed" | "processing" | "ready";
 }
 
 interface InterviewsListProps {
-	interviews: InterviewListItem[]
-	title?: string
+	interviews: InterviewListItem[];
+	title?: string;
 }
 
 export default function InterviewsList({ interviews, title = "Interviews" }: InterviewsListProps) {
@@ -102,5 +102,5 @@ export default function InterviewsList({ interviews, title = "Interviews" }: Int
 				</table>
 			</div>
 		</div>
-	)
+	);
 }

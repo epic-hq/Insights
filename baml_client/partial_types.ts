@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  AskLinkInsightsResponse,  AuthorityInfo,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  BehaviorPattern,  BudgetInfo,  Category,  Chapter,  CompetitiveInsight,  ContextualSuggestions,  ConversationAnalysis,  ConversationEvidence,  ConversationLensResult,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  ConversationTakeaways,  DealAdvisorRecommendation,  DealQualificationSignals,  DecisionInsight,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  DocumentEvidence,  DocumentExtraction,  Emotions,  EntityAggregation,  EvidenceAnalysisResponse,  EvidenceItem,  EvidenceLinkResult,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetGroupInput,  FacetGroupSummary,  FacetMention,  FacetSignalInput,  FeaturePrioritization,  FeatureRequest,  FieldSynthesis,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  GeneratedLensField,  GeneratedLensSection,  GeneratedLensTemplate,  GoalAnswer,  GoalLensExtraction,  HistoryItem,  HypothesisValidation,  InferredPersonSegments,  InsightMatch,  InteractionContext,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  JobFunction,  JobToBeDone,  LensEntityResult,  LensEvidenceHighlight,  LensFieldValue,  LensHygieneItem,  LensNextStepItem,  LensObjectionItem,  LensRecommendation,  LensSectionResult,  LensStakeholderItem,  LensSynthesisResult,  MentalModel,  NeedInfo,  NextStepInfo,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  Participant,  ParticipantGoal,  Person,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetLensRequest,  PersonFacetLensResponse,  PersonLensMetadata,  PersonProfileInput,  PersonScaleInput,  PersonSegmentInput,  Persona,  Persona1,  PersonaAdvisorContext,  PersonaAdvisorFacetInput,  PersonaAdvisorPersonaInput,  PersonaAdvisorReport,  PersonaAdvisorScaleInput,  PersonaAdvisorThemeInput,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProductGap,  ProductLensExtraction,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  ProposedTheme,  QALensResult,  QAPair,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionInsight,  QuestionIssue,  QuestionPolicy,  QuestionSet,  QuickResponseSummary,  ResearchGoal,  ResearchInsightInput,  ResearchLearning,  ResearchLensExtraction,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionInsight,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  ResponseTheme,  SalesLensExtraction,  Scene,  Scores,  SectionSynthesis,  SegmentPattern,  SeniorityLevel,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  SpreadsheetAnalysis,  SpreadsheetColumnMapping,  StakeholderRole,  SuggestedFacet,  SuggestedQuestion,  SynthesisDiscrepancy,  SynthesizedInsight,  TargetFitAssessment,  TimelineInfo,  TopPainCell,  TurnAnchors,  UnknownResolution,  UsabilityFinding,  UserJourneyInsight } from "./types"
+import type {  ActionButton,  AskLinkInsightsResponse,  AuthorityInfo,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  BehaviorPattern,  BudgetInfo,  Category,  Chapter,  CompetitiveInsight,  ConditionOperator,  ContextualSuggestions,  ConversationAnalysis,  ConversationEvidence,  ConversationLensResult,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  ConversationTakeaways,  CrossLensFinding,  CrossLensRecommendedAction,  CrossLensSynthesisResult,  DealAdvisorRecommendation,  DealQualificationSignals,  DecisionInsight,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  DocumentEvidence,  DocumentExtraction,  Emotions,  EntityAggregation,  EvidenceAnalysisResponse,  EvidenceItem,  EvidenceLinkResult,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  ExecutiveInsight,  ExecutiveSummary,  ExtractedEvidence,  ExtractedInsight,  Extraction,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetGroupInput,  FacetGroupSummary,  FacetMention,  FacetSignalInput,  FeaturePrioritization,  FeatureRequest,  FieldSynthesis,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  GeneratedLensField,  GeneratedLensSection,  GeneratedLensTemplate,  GoalAnswer,  GoalLensExtraction,  GuidelineAction,  GuidelineParseResult,  HistoryItem,  HypothesisValidation,  InferredPersonSegments,  InsightMatch,  InteractionContext,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  JobFunction,  JobToBeDone,  LensEntityResult,  LensEvidenceHighlight,  LensFieldValue,  LensHygieneItem,  LensNextStepItem,  LensObjectionItem,  LensRecommendation,  LensSectionResult,  LensStakeholderItem,  LensSynthesisResult,  MentalModel,  NeedInfo,  NextStepInfo,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  ParsedCondition,  ParsedGuideline,  Participant,  ParticipantGoal,  Person,  PersonContext,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetLensRequest,  PersonFacetLensResponse,  PersonFacets,  PersonLensMetadata,  PersonNextStep,  PersonNextStepsInput,  PersonNextStepsOutput,  PersonProfileInput,  PersonScaleInput,  PersonSegmentInput,  PersonSnapshot,  Persona,  Persona1,  PersonaAdvisorContext,  PersonaAdvisorFacetInput,  PersonaAdvisorPersonaInput,  PersonaAdvisorReport,  PersonaAdvisorScaleInput,  PersonaAdvisorThemeInput,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  PersonalizedQuestion,  ProductGap,  ProductLensExtraction,  ProjectAnalysis,  ProjectContext,  ProjectNameDescription,  ProjectTemplateOut,  ProposedTheme,  QALensResult,  QAPair,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionInsight,  QuestionIssue,  QuestionPolicy,  QuestionSet,  QuickResponseSummary,  ResearchGoal,  ResearchInsightInput,  ResearchLearning,  ResearchLensExtraction,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionInsight,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  ResponseTheme,  RuleConfidence,  SalesLensExtraction,  Scene,  Scores,  SectionSynthesis,  SegmentPattern,  SeniorityLevel,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  SpreadsheetAnalysis,  SpreadsheetColumnMapping,  StakeholderRole,  SuggestedFacet,  SuggestedQuestion,  SurveyGoal,  SurveyQuestionInput,  SynthesisDiscrepancy,  SynthesizedInsight,  TargetFitAssessment,  ThemeValidation,  TimelineInfo,  TopPainCell,  TurnAnchors,  UnknownResolution,  UsabilityFinding,  UserJourneyInsight } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -175,6 +175,32 @@ export namespace partial_types {
       future_improvement?: string | null
       supporting_evidence_ids: string[]
     }
+    export interface CrossLensFinding {
+      title?: string | null
+      description?: string | null
+      severity?: "critical" | "important" | "notable" | null
+      people_count?: number | null
+      mention_count?: number | null
+      category?: string | null
+      supporting_lenses: string[]
+    }
+    export interface CrossLensRecommendedAction {
+      title?: string | null
+      description?: string | null
+      priority?: "high" | "medium" | "low" | null
+      category?: string | null
+    }
+    export interface CrossLensSynthesisResult {
+      executive_summary?: string | null
+      key_findings: CrossLensFinding[]
+      person_snapshots: PersonSnapshot[]
+      recommended_actions: CrossLensRecommendedAction[]
+      patterns: string[]
+      risks: string[]
+      overall_confidence?: number | null
+      analysis_count?: number | null
+      lens_count?: number | null
+    }
     export interface DealAdvisorRecommendation {
       status_assessment?: string | null
       recommendations: string[]
@@ -275,21 +301,17 @@ export namespace partial_types {
       quotes: string[]
     }
     export interface EvidenceTurn {
+      index?: number | null
       person_key?: string | null
       speaker_label?: string | null
       gist?: string | null
       chunk?: string | null
       verbatim?: string | null
       anchors?: TurnAnchors | null
+      confidence?: string | null
       why_it_matters?: string | null
       facet_mentions: FacetMention[]
       isQuestion?: boolean | null
-      says?: string[] | null
-      does?: string[] | null
-      thinks?: string[] | null
-      feels?: string[] | null
-      pains?: string[] | null
-      gains?: string[] | null
     }
     export interface ExecutiveInsight {
       title?: string | null
@@ -308,6 +330,19 @@ export namespace partial_types {
       completion_percentage?: number | null
       confidence?: number | null
       next_action?: string | null
+    }
+    export interface ExtractedEvidence {
+      gist?: string | null
+      verbatim?: string | null
+      context_summary?: string | null
+      category?: "pain" | "goal" | "workflow" | "tool" | "context" | null
+      confidence?: number | null
+      says: string[]
+      thinks: string[]
+      feels: string[]
+      pains: string[]
+      gains: string[]
+      theme_matches: string[]
     }
     export interface ExtractedInsight {
       name?: string | null
@@ -333,7 +368,6 @@ export namespace partial_types {
     export interface Extraction {
       people: Person[]
       evidence: EvidenceTurn[]
-      facet_mentions: FacetMention[]
       scenes: Scene[]
       interaction_context?: types.InteractionContext | null
       context_confidence?: number | null
@@ -365,10 +399,12 @@ export namespace partial_types {
       summary?: string | null
     }
     export interface FacetMention {
+      parent_index?: number | null
       person_key?: string | null
       kind_slug?: string | null
       value?: string | null
       quote?: string | null
+      confidence?: number | null
     }
     export interface FacetSignalInput {
       label?: string | null
@@ -478,6 +514,12 @@ export namespace partial_types {
       research_learnings: ResearchLearning[]
       goal_completion_score?: number | null
       recommended_follow_ups: string[]
+    }
+    export interface GuidelineParseResult {
+      guidelines: ParsedGuideline[]
+      unparseableSegments: string[]
+      suggestedClarifications: string[]
+      overallConfidence?: types.RuleConfidence | null
     }
     export interface HistoryItem {
       questionId?: string | null
@@ -676,6 +718,25 @@ export namespace partial_types {
       high_impact_cells?: number | null
       top_pains: TopPainCell[]
     }
+    export interface ParsedCondition {
+      questionId?: string | null
+      questionPrompt?: string | null
+      operator?: types.ConditionOperator | null
+      value?: string | null
+    }
+    export interface ParsedGuideline {
+      id?: string | null
+      naturalLanguage?: string | null
+      summary?: string | null
+      condition?: ParsedCondition | null
+      action?: types.GuidelineAction | null
+      targetQuestionId?: string | null
+      targetQuestionPrompt?: string | null
+      guidance?: string | null
+      reasoning?: string | null
+      confidence?: types.RuleConfidence | null
+      ambiguityNotes?: string | null
+    }
     export interface Participant {
       name?: string | null
       persona?: string | null
@@ -695,7 +756,22 @@ export namespace partial_types {
       speaker_label?: string | null
       person_name?: string | null
       inferred_name?: string | null
+      job_title?: string | null
+      job_function?: string | null
+    }
+    export interface PersonContext {
+      name?: string | null
+      title?: string | null
+      company?: string | null
       role?: string | null
+      seniority_level?: string | null
+      icp_band?: string | null
+      icp_score?: number | null
+      facets?: PersonFacets | null
+      missing_fields: string[]
+      conversation_themes: string[]
+      last_interaction_date?: string | null
+      sparse_mode?: boolean | null
     }
     export interface PersonDescriptionSummary {
       summary?: string | null
@@ -722,6 +798,12 @@ export namespace partial_types {
     export interface PersonFacetLensResponse {
       summaries: FacetGroupSummary[]
     }
+    export interface PersonFacets {
+      pains: string[]
+      goals: string[]
+      workflows: string[]
+      tools: string[]
+    }
     export interface PersonLensMetadata {
       person_id?: string | null
       name?: string | null
@@ -730,6 +812,28 @@ export namespace partial_types {
       segment?: string | null
       persona?: string | null
       quick_facts: string[]
+    }
+    export interface PersonNextStep {
+      action?: string | null
+      reasoning?: string | null
+      priority?: number | null
+    }
+    export interface PersonNextStepsInput {
+      name?: string | null
+      title?: string | null
+      company?: string | null
+      description?: string | null
+      icp_band?: string | null
+      icp_score?: number | null
+      days_since_last_contact?: number | null
+      conversation_count?: number | null
+      survey_count?: number | null
+      themes: string[]
+      recent_evidence: string[]
+      facets: string[]
+    }
+    export interface PersonNextStepsOutput {
+      steps: PersonNextStep[]
     }
     export interface PersonProfileInput {
       person_id?: string | null
@@ -755,6 +859,13 @@ export namespace partial_types {
       title?: string | null
       role?: string | null
       company?: string | null
+    }
+    export interface PersonSnapshot {
+      person_name?: string | null
+      role?: string | null
+      organization?: string | null
+      key_needs: string[]
+      engagement_signal?: string | null
     }
     export interface Persona {
       name?: string | null
@@ -923,6 +1034,13 @@ export namespace partial_types {
       change_log?: string | null
       contrast_persona?: Persona | null
     }
+    export interface PersonalizedQuestion {
+      text?: string | null
+      rationale?: string | null
+      uses_attributes: string[]
+      evidence_type?: string | null
+      order?: number | null
+    }
     export interface ProductGap {
       gap_description?: string | null
       impact?: string | null
@@ -946,6 +1064,11 @@ export namespace partial_types {
       key_discoveries: string[]
       confidence_score?: number | null
       next_steps: string[]
+    }
+    export interface ProjectContext {
+      research_goals: string[]
+      themes_needing_validation: ThemeValidation[]
+      decision_questions: string[]
     }
     export interface ProjectNameDescription {
       name?: string | null
@@ -1270,6 +1393,17 @@ export namespace partial_types {
       interview_type?: "user_interview" | "stakeholder_interview" | "expert_interview" | null
       priority?: number | null
     }
+    export interface SurveyGoal {
+      goal?: "validate" | "discover" | "deep_dive" | "pricing" | null
+      focus_theme?: string | null
+      target_segment?: string | null
+    }
+    export interface SurveyQuestionInput {
+      id?: string | null
+      prompt?: string | null
+      type?: string | null
+      options?: string[] | null
+    }
     export interface SynthesisDiscrepancy {
       interview_id?: string | null
       interview_title?: string | null
@@ -1290,6 +1424,12 @@ export namespace partial_types {
       reasoning?: string | null
       signals: string[]
       evidence_ids: string[]
+    }
+    export interface ThemeValidation {
+      theme_name?: string | null
+      evidence_count?: number | null
+      target_count?: number | null
+      confidence?: string | null
     }
     export interface TimelineInfo {
       urgency_level?: string | null

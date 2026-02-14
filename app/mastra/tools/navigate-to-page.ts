@@ -1,5 +1,5 @@
-import { createTool } from "@mastra/core/tools"
-import { z } from "zod"
+import { createTool } from "@mastra/core/tools";
+import { z } from "zod";
 
 // Test tool for client side tool calls with vanilla sdk
 // See this page of documentation for flow of client side tools: https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-tool-usage
@@ -17,4 +17,4 @@ export const navigateToPageTool = createTool({
 		path: z.string().optional(),
 		error: z.string().optional(),
 	}),
-})
+});

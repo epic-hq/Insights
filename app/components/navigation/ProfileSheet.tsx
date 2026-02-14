@@ -4,24 +4,29 @@
  * Shows account switcher and user profile options in a bottom sheet.
  */
 
-import { LogOut, Settings, User } from "lucide-react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet"
-import { useAuth } from "~/contexts/AuthContext"
-import { TeamSwitcher } from "./TeamSwitcher"
+import { LogOut, Settings, User } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet";
+import { useAuth } from "~/contexts/AuthContext";
+import { TeamSwitcher } from "./TeamSwitcher";
 
 export interface ProfileSheetProps {
-	open: boolean
-	onOpenChange: (open: boolean) => void
-	accountSettingsHref: string
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	accountSettingsHref: string;
 }
 
 export function ProfileSheet({ open, onOpenChange, accountSettingsHref }: ProfileSheetProps) {
-	const { user } = useAuth()
+	const { user, signOut } = useAuth();
 
-	const userEmail = user?.email || "Unknown"
-	const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail
+	function handleSignOut() {
+		onOpenChange(false);
+		signOut();
+	}
+
+	const userEmail = user?.email || "Unknown";
+	const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail;
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
@@ -69,19 +74,16 @@ export function ProfileSheet({ open, onOpenChange, accountSettingsHref }: Profil
 						<Button
 							variant="ghost"
 							className="h-12 w-full justify-start gap-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
-							asChild
-							onClick={() => onOpenChange(false)}
+							onClick={handleSignOut}
 						>
-							<Link to="/auth/signout">
-								<LogOut className="h-5 w-5" />
-								Sign Out
-							</Link>
+							<LogOut className="h-5 w-5" />
+							Sign Out
 						</Button>
 					</div>
 				</div>
 			</SheetContent>
 		</Sheet>
-	)
+	);
 }
 
-export default ProfileSheet
+export default ProfileSheet;

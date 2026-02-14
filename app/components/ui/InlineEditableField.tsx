@@ -1,17 +1,17 @@
-import { Edit2 } from "lucide-react"
-import { useState } from "react"
-import { useFetcher } from "react-router-dom"
-import { cn } from "~/lib/utils"
+import { Edit2 } from "lucide-react";
+import { useState } from "react";
+import { useFetcher } from "react-router-dom";
+import { cn } from "~/lib/utils";
 
 interface InlineEditableFieldProps {
-	value: string | null
-	table: string
-	id: string
-	field: string
-	placeholder?: string
-	className?: string
-	multiline?: boolean
-	rows?: number
+	value: string | null;
+	table: string;
+	id: string;
+	field: string;
+	placeholder?: string;
+	className?: string;
+	multiline?: boolean;
+	rows?: number;
 }
 
 export function InlineEditableField({
@@ -24,9 +24,9 @@ export function InlineEditableField({
 	multiline = false,
 	rows = 3,
 }: InlineEditableFieldProps) {
-	const [isEditing, setIsEditing] = useState(false)
-	const [currentValue, setCurrentValue] = useState(value || "")
-	const fetcher = useFetcher()
+	const [isEditing, setIsEditing] = useState(false);
+	const [currentValue, setCurrentValue] = useState(value || "");
+	const fetcher = useFetcher();
 
 	const handleSave = () => {
 		if (currentValue !== value) {
@@ -42,21 +42,21 @@ export function InlineEditableField({
 					action: "/api/update-field",
 					encType: "application/json",
 				}
-			)
+			);
 		}
-		setIsEditing(false)
-	}
+		setIsEditing(false);
+	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		if (!multiline && e.key === "Enter") {
-			e.preventDefault()
-			handleSave()
+			e.preventDefault();
+			handleSave();
 		}
 		if (e.key === "Escape") {
-			setCurrentValue(value || "")
-			setIsEditing(false)
+			setCurrentValue(value || "");
+			setIsEditing(false);
 		}
-	}
+	};
 
 	if (isEditing) {
 		return multiline ? (
@@ -85,7 +85,7 @@ export function InlineEditableField({
 					className
 				)}
 			/>
-		)
+		);
 	}
 
 	return (
@@ -100,5 +100,5 @@ export function InlineEditableField({
 			{currentValue || placeholder}
 			<Edit2 className="absolute top-2 right-2 h-3.5 w-3.5 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100" />
 		</div>
-	)
+	);
 }

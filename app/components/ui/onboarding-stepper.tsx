@@ -1,12 +1,12 @@
 interface OnboardingStepperProps {
-	currentStep: "goals" | "questions" | "upload"
+	currentStep: "goals" | "questions" | "upload";
 }
 
 const onboardingSteps = [
 	{ id: "goals", title: "Project Goals" },
 	{ id: "questions", title: "Questions" },
 	{ id: "upload", title: "Upload" },
-]
+];
 
 export function OnboardingStepper({ currentStep }: OnboardingStepperProps) {
 	return (
@@ -31,5 +31,5 @@ export function OnboardingStepper({ currentStep }: OnboardingStepperProps) {
 				))}
 			</div>
 		</div>
-	)
+	);
 }

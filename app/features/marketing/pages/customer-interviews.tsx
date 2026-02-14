@@ -1,5 +1,5 @@
-import type { MetaFunction } from "react-router"
-import { Link } from "react-router"
+import type { MetaFunction } from "react-router";
+import { Link } from "react-router";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -24,8 +24,8 @@ export const meta: MetaFunction = () => {
 		},
 		{ property: "og:type", content: "website" },
 		{ property: "og:url", content: "https://getupsight.com/customer-interviews" },
-	]
-}
+	];
+};
 
 export default function CustomerInterviews() {
 	return (
@@ -355,5 +355,5 @@ export default function CustomerInterviews() {
 				</div>
 			</section>
 		</div>
-	)
+	);
 }

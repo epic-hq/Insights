@@ -1,12 +1,12 @@
-import { Badge } from "~/components/ui/badge"
-import { Separator } from "~/components/ui/separator"
-import type { LensEvidencePointer } from "~/features/lenses/types"
+import { Badge } from "~/components/ui/badge";
+import { Separator } from "~/components/ui/separator";
+import type { LensEvidencePointer } from "~/features/lenses/types";
 
 type LensEvidenceListProps = {
-	title?: string
-	evidence: LensEvidencePointer[]
-	emptyLabel?: string
-}
+	title?: string;
+	evidence: LensEvidencePointer[];
+	emptyLabel?: string;
+};
 
 export function LensEvidenceList({ title = "Supporting evidence", evidence, emptyLabel }: LensEvidenceListProps) {
 	if (!evidence.length) {
@@ -14,7 +14,7 @@ export function LensEvidenceList({ title = "Supporting evidence", evidence, empt
 			<div className="rounded-md border border-dashed bg-muted/20 p-4 text-center text-muted-foreground text-sm">
 				{emptyLabel ?? "No evidence captured yet"}
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -42,5 +42,5 @@ export function LensEvidenceList({ title = "Supporting evidence", evidence, empt
 				))}
 			</ul>
 		</div>
-	)
+	);
 }

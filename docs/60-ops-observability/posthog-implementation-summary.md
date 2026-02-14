@@ -108,7 +108,7 @@ posthog.group("account", accountId, {
    - Added `posthog.group()` for account-level tracking
    - Updated useEffect dependencies
 
-3. **`/docs/posthog-tracking.md`** (NEW)
+3. **`/docs/60-ops-observability/posthog-tracking.md`** (NEW)
    - Comprehensive tracking guide
    - Event definitions and properties
    - Cohort definitions
@@ -134,7 +134,7 @@ posthog.group("account", accountId, {
 
 ## Next Steps
 
-1. **Add remaining events** (see `/docs/posthog-tracking.md`)
+1. **Add remaining events** (see `/docs/60-ops-observability/posthog-tracking.md`)
    - `project_created`
    - `interview_added`
    - `evidence_saved`

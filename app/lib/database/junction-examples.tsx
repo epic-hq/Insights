@@ -3,36 +3,36 @@
  * Demonstrates how to use the junction table helpers in various scenarios
  */
 
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { useInsightTags, useJunctionTables, useOpportunityInsights } from "../hooks/useJunctionTables"
-import { createServerJunctionManager, junctionRouteHelpers } from "./junction-server"
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { useInsightTags, useJunctionTables, useOpportunityInsights } from "../hooks/useJunctionTables";
+import { createServerJunctionManager, junctionRouteHelpers } from "./junction-server";
 
 /**
  * EXAMPLE 1: Server-side route loader using junction tables
  * Shows how to load insight data with normalized tags
  */
 export async function exampleInsightLoader({ request, params }: LoaderFunctionArgs) {
-	const { insightId } = params
-	if (!insightId) throw new Error("Insight ID required")
+	const { insightId } = params;
+	if (!insightId) throw new Error("Insight ID required");
 
-	const manager = await createServerJunctionManager(request)
+	const manager = await createServerJunctionManager(request);
 
 	// Load insight with tags from junction table
-	const { data: tags } = await manager.junctionManager.insightTags.getTagsForInsight(insightId)
+	const { data: tags } = await manager.junctionManager.insightTags.getTagsForInsight(insightId);
 
 	// Load personas linked to this insight
-	const { data: personas } = await manager.junctionManager.personaInsights.getPersonasForInsight(insightId)
+	const { data: personas } = await manager.junctionManager.personaInsights.getPersonasForInsight(insightId);
 
 	// Load opportunities that reference this insight
 	const { data: opportunities } =
-		await manager.junctionManager.opportunityInsights.getOpportunitiesForInsight(insightId)
+		await manager.junctionManager.opportunityInsights.getOpportunitiesForInsight(insightId);
 
 	return {
 		insightId,
 		tags: tags || [],
 		personas: personas || [],
 		opportunities: opportunities || [],
-	}
+	};
 }
 
 /**
@@ -40,21 +40,21 @@ export async function exampleInsightLoader({ request, params }: LoaderFunctionAr
  * Shows how to sync tags when an insight is updated
  */
 export async function exampleInsightAction({ request, params }: ActionFunctionArgs) {
-	const { insightId } = params
-	if (!insightId) throw new Error("Insight ID required")
+	const { insightId } = params;
+	if (!insightId) throw new Error("Insight ID required");
 
-	const formData = await request.formData()
+	const formData = await request.formData();
 	const tags =
 		formData
 			.get("tags")
 			?.toString()
 			.split(",")
-			.map((t) => t.trim()) || []
+			.map((t) => t.trim()) || [];
 
 	// Use the route helper for processing insight with tags
-	await junctionRouteHelpers.processInsightWithTags(request, insightId, tags)
+	await junctionRouteHelpers.processInsightWithTags(request, insightId, tags);
 
-	return { success: true, message: "Insight tags updated successfully" }
+	return { success: true, message: "Insight tags updated successfully" };
 }
 
 /**
@@ -62,19 +62,19 @@ export async function exampleInsightAction({ request, params }: ActionFunctionAr
  * Shows how to manage insight tags in the frontend
  */
 export function ExampleInsightTagsComponent({ insightId, accountId }: { insightId: string; accountId: string }) {
-	const { tags, loading, error, addTags, removeTags } = useInsightTags(insightId)
+	const { tags, loading, error, addTags, removeTags } = useInsightTags(insightId);
 
 	const handleAddTag = async (newTag: string) => {
-		await addTags([newTag], accountId)
+		await addTags([newTag], accountId);
 		// handle error via UI pattern if needed
-	}
+	};
 	const handleRemoveTag = async (tagToRemove: string) => {
-		await removeTags([tagToRemove])
+		await removeTags([tagToRemove]);
 		// handle error via UI pattern if needed
-	}
+	};
 
-	if (loading) return <div>Loading tags…</div>
-	if (error) return <div>Error: {String(error)}</div>
+	if (loading) return <div>Loading tags…</div>;
+	if (error) return <div>Error: {String(error)}</div>;
 
 	return (
 		<div>
@@ -97,7 +97,7 @@ export function ExampleInsightTagsComponent({ insightId, accountId }: { insightI
 				Add Tag
 			</button>
 		</div>
-	)
+	);
 }
 
 /**
@@ -105,22 +105,22 @@ export function ExampleInsightTagsComponent({ insightId, accountId }: { insightI
  * Shows how to link insights to opportunities with weights
  */
 export function ExampleOpportunityInsightsComponent({ opportunityId }: { opportunityId: string }) {
-	const { insights, loading, error, syncInsights } = useOpportunityInsights(opportunityId)
+	const { insights, loading, error, syncInsights } = useOpportunityInsights(opportunityId);
 
 	const handleLinkInsights = async (insightIds: string[]) => {
 		// Assign decreasing weights (1.0, 0.9, 0.8, ...)
 		const weights = insightIds.reduce(
 			(acc, id, index) => {
-				acc[id] = Math.max(0, 1 - index * 0.1)
-				return acc
+				acc[id] = Math.max(0, 1 - index * 0.1);
+				return acc;
 			},
 			{} as Record<string, number>
-		)
-		await syncInsights(insightIds, weights)
-	}
+		);
+		await syncInsights(insightIds, weights);
+	};
 
-	if (loading) return <div>Loading linked insights…</div>
-	if (error) return <div>Error: {String(error)}</div>
+	if (loading) return <div>Loading linked insights…</div>;
+	if (error) return <div>Error: {String(error)}</div>;
 
 	return (
 		<div>
@@ -141,7 +141,7 @@ export function ExampleOpportunityInsightsComponent({ opportunityId }: { opportu
 				Re-sync Weights
 			</button>
 		</div>
-	)
+	);
 }
 
 /**
@@ -149,27 +149,27 @@ export function ExampleOpportunityInsightsComponent({ opportunityId }: { opportu
  * Shows how to migrate existing array-based data
  */
 export async function exampleMigrationAction({ request }: ActionFunctionArgs) {
-	const manager = await createServerJunctionManager(request)
+	const manager = await createServerJunctionManager(request);
 
 	try {
 		// Migrate all array-based data for the current account
-		const result = await manager.migrateArrayData()
+		const result = await manager.migrateArrayData();
 
 		if (result.success) {
 			return {
 				success: true,
 				message: "Data migration completed successfully",
-			}
+			};
 		}
 		return {
 			success: false,
 			message: "Migration failed",
-		}
+		};
 	} catch (error) {
 		return {
 			success: false,
 			message: `Migration error: ${error instanceof Error ? error.message : "Unknown error"}`,
-		}
+		};
 	}
 }
 
@@ -178,13 +178,13 @@ export async function exampleMigrationAction({ request }: ActionFunctionArgs) {
  * Shows how to get comprehensive data across relationships
  */
 export async function exampleComplexQuery({ request, params }: LoaderFunctionArgs) {
-	const { projectId } = params
-	if (!projectId) throw new Error("Project ID required")
+	const { projectId } = params;
+	if (!projectId) throw new Error("Project ID required");
 
-	const manager = await createServerJunctionManager(request)
+	const manager = await createServerJunctionManager(request);
 
 	// Get project people with their interview stats
-	const { data: projectPeople } = await manager.junctionManager.projectPeople.getPeopleForProject(projectId)
+	const { data: projectPeople } = await manager.junctionManager.projectPeople.getPeopleForProject(projectId);
 
 	// For each person, get their associated personas and insights
 	const enrichedPeople = await Promise.all(
@@ -192,21 +192,21 @@ export async function exampleComplexQuery({ request, params }: LoaderFunctionArg
 			// Get insights for this person's persona
 			const personaInsights = person.people.persona
 				? await manager.junctionManager.personaInsights.getInsightsForPersona(person.people.persona)
-				: { data: [] }
+				: { data: [] };
 
 			return {
 				...person,
 				personaInsights: personaInsights.data || [],
-			}
+			};
 		})
-	)
+	);
 
 	return {
 		projectId,
 		people: enrichedPeople,
 		totalParticipants: projectPeople?.length || 0,
 		totalInsights: enrichedPeople.reduce((sum, person) => sum + person.personaInsights.length, 0),
-	}
+	};
 }
 
 /**
@@ -214,15 +214,15 @@ export async function exampleComplexQuery({ request, params }: LoaderFunctionArg
  * Shows how to handle real-time updates with optimistic UI
  */
 export function ExampleRealTimeComponent({ insightId, accountId }: { insightId: string; accountId: string }) {
-	const { tags, syncTags } = useInsightTags(insightId)
-	const junctionTables = useJunctionTables()
+	const { tags, syncTags } = useInsightTags(insightId);
+	const junctionTables = useJunctionTables();
 
 	const handleOptimisticTagUpdate = async (newTags: string[]) => {
-		await syncTags(newTags, accountId)
-	}
+		await syncTags(newTags, accountId);
+	};
 	const handleMigration = async () => {
-		await junctionTables.migrateArrayData(accountId)
-	}
+		await junctionTables.migrateArrayData(accountId);
+	};
 
 	return (
 		<div>
@@ -237,7 +237,7 @@ export function ExampleRealTimeComponent({ insightId, accountId }: { insightId: 
 				Migrate Array Data
 			</button>
 		</div>
-	)
+	);
 }
 
 /**
@@ -247,43 +247,43 @@ export function ExampleRealTimeComponent({ insightId, accountId }: { insightId: 
 type Operation =
 	| { type: "sync_insight_tags"; insightId: string; tags: string[] }
 	| { type: "sync_opportunity_insights"; opportunityId: string; insightIds: string[]; weights?: Record<string, number> }
-	| { type: "auto_link_personas"; insightId: string }
+	| { type: "auto_link_personas"; insightId: string };
 
 export async function exampleBatchOperations({ request }: ActionFunctionArgs) {
-	const manager = await createServerJunctionManager(request)
-	const formData = await request.formData()
+	const manager = await createServerJunctionManager(request);
+	const formData = await request.formData();
 
-	const operations: Operation[] = JSON.parse(formData.get("operations")?.toString() || "[]")
+	const operations: Operation[] = JSON.parse(formData.get("operations")?.toString() || "[]");
 
 	// Batch process multiple insights with tags
 	const results = await Promise.all(
 		operations.map(async (op) => {
 			switch (op.type) {
 				case "sync_insight_tags":
-					return manager.syncInsightTags(op.insightId, op.tags)
+					return manager.syncInsightTags(op.insightId, op.tags);
 
 				case "sync_opportunity_insights":
-					return manager.syncOpportunityInsights(op.opportunityId, op.insightIds, op.weights)
+					return manager.syncOpportunityInsights(op.opportunityId, op.insightIds, op.weights);
 
 				case "auto_link_personas":
-					return manager.autoLinkInsightToPersonas(op.insightId)
+					return manager.autoLinkInsightToPersonas(op.insightId);
 
 				default:
-					return { success: false, error: "Unknown operation" }
+					return { success: false, error: "Unknown operation" };
 			}
 		})
-	)
+	);
 
 	const successCount = results.filter(
 		(r: any) => r && (r.error === null || typeof r.error === "undefined") && r.success !== false
-	).length
-	const errorCount = results.length - successCount
+	).length;
+	const errorCount = results.length - successCount;
 
 	return {
 		success: errorCount === 0,
 		message: `Batch operation completed: ${successCount} succeeded, ${errorCount} failed`,
 		results,
-	}
+	};
 }
 
 /**

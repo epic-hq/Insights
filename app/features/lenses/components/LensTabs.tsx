@@ -5,49 +5,49 @@
  * Renders GenericLensView for the selected tab.
  */
 
-import { CheckCircle2, Clock, Loader2, Sparkles, XCircle } from "lucide-react"
-import { useState } from "react"
-import { Badge } from "~/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import { cn } from "~/lib/utils"
-import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server"
-import { GenericLensView } from "./GenericLensView"
+import { CheckCircle2, Clock, Loader2, Sparkles, XCircle } from "lucide-react";
+import { useState } from "react";
+import { Badge } from "~/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { cn } from "~/lib/utils";
+import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server";
+import { GenericLensView } from "./GenericLensView";
 
 type EvidenceRecord = {
-	id: string
-	anchors?: unknown
-	start_ms?: number | null
-	gist?: string | null
-}
+	id: string;
+	anchors?: unknown;
+	start_ms?: number | null;
+	gist?: string | null;
+};
 
 type Props = {
-	templates: LensTemplate[]
-	analyses: Record<string, LensAnalysisWithTemplate>
-	defaultTab?: string
-	className?: string
+	templates: LensTemplate[];
+	analyses: Record<string, LensAnalysisWithTemplate>;
+	defaultTab?: string;
+	className?: string;
 	/** Enable inline editing of lens fields */
-	editable?: boolean
+	editable?: boolean;
 	/** Map of evidence ID to evidence record for hydrating timestamps */
-	evidenceMap?: Map<string, EvidenceRecord>
-}
+	evidenceMap?: Map<string, EvidenceRecord>;
+};
 
 /**
  * Status icon for a lens
  */
 function LensStatusIcon({ analysis }: { analysis?: LensAnalysisWithTemplate }) {
 	if (!analysis) {
-		return <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+		return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
 	}
 
 	switch (analysis.status) {
 		case "completed":
-			return <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+			return <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />;
 		case "processing":
-			return <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
+			return <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />;
 		case "failed":
-			return <XCircle className="h-3.5 w-3.5 text-destructive" />
+			return <XCircle className="h-3.5 w-3.5 text-destructive" />;
 		default:
-			return <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+			return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
 	}
 }
 
@@ -55,13 +55,13 @@ function LensStatusIcon({ analysis }: { analysis?: LensAnalysisWithTemplate }) {
  * Category badge with color coding
  */
 function CategoryBadge({ category }: { category: string | null }) {
-	if (!category) return null
+	if (!category) return null;
 
 	const colors: Record<string, string> = {
 		research: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
 		sales: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
 		product: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
-	}
+	};
 
 	return (
 		<Badge
@@ -70,20 +70,20 @@ function CategoryBadge({ category }: { category: string | null }) {
 		>
 			{category}
 		</Badge>
-	)
+	);
 }
 
 export function LensTabs({ templates, analyses, defaultTab, className, editable, evidenceMap }: Props) {
 	// Sort templates by display_order
-	const sortedTemplates = [...templates].sort((a, b) => a.display_order - b.display_order)
+	const sortedTemplates = [...templates].sort((a, b) => a.display_order - b.display_order);
 
 	// Default to first template or project-research if available
 	const initialTab =
 		defaultTab ||
 		(analyses["project-research"] ? "project-research" : sortedTemplates[0]?.template_key) ||
-		"project-research"
+		"project-research";
 
-	const [activeTab, setActiveTab] = useState(initialTab)
+	const [activeTab, setActiveTab] = useState(initialTab);
 
 	if (templates.length === 0) {
 		return (
@@ -91,7 +91,7 @@ export function LensTabs({ templates, analyses, defaultTab, className, editable,
 				<Sparkles className="mx-auto mb-3 h-8 w-8 opacity-50" />
 				<p>No lens templates available</p>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -99,7 +99,7 @@ export function LensTabs({ templates, analyses, defaultTab, className, editable,
 			<Tabs value={activeTab} onValueChange={setActiveTab}>
 				<TabsList className="h-auto w-full flex-wrap gap-1 p-1">
 					{sortedTemplates.map((template) => {
-						const analysis = analyses[template.template_key]
+						const analysis = analyses[template.template_key];
 						return (
 							<TabsTrigger
 								key={template.template_key}
@@ -110,12 +110,12 @@ export function LensTabs({ templates, analyses, defaultTab, className, editable,
 								<span className="hidden sm:inline">{template.template_name}</span>
 								<span className="sm:hidden">{template.template_name.split(" ")[0]}</span>
 							</TabsTrigger>
-						)
+						);
 					})}
 				</TabsList>
 
 				{sortedTemplates.map((template) => {
-					const analysis = analyses[template.template_key]
+					const analysis = analyses[template.template_key];
 					return (
 						<TabsContent key={template.template_key} value={template.template_key} className="mt-4">
 							<div className="space-y-4">
@@ -137,11 +137,11 @@ export function LensTabs({ templates, analyses, defaultTab, className, editable,
 								/>
 							</div>
 						</TabsContent>
-					)
+					);
 				})}
 			</Tabs>
 		</div>
-	)
+	);
 }
 
 /**
@@ -151,15 +151,15 @@ export function LensStatusSummary({
 	analyses,
 	className,
 }: {
-	analyses: Record<string, LensAnalysisWithTemplate>
-	className?: string
+	analyses: Record<string, LensAnalysisWithTemplate>;
+	className?: string;
 }) {
-	const values = Object.values(analyses)
-	const completed = values.filter((a) => a.status === "completed").length
-	const processing = values.filter((a) => a.status === "processing").length
-	const failed = values.filter((a) => a.status === "failed").length
+	const values = Object.values(analyses);
+	const completed = values.filter((a) => a.status === "completed").length;
+	const processing = values.filter((a) => a.status === "processing").length;
+	const failed = values.filter((a) => a.status === "failed").length;
 
-	if (values.length === 0) return null
+	if (values.length === 0) return null;
 
 	return (
 		<div className={cn("flex items-center gap-1", className)}>
@@ -185,5 +185,5 @@ export function LensStatusSummary({
 				</Badge>
 			)}
 		</div>
-	)
+	);
 }

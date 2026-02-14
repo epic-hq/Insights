@@ -64,5 +64,7 @@ function AnalyzeStandaloneConversation(
       - Never hallucinate participants not present in the transcript.
       - If intent or speaker cannot be determined, leave the optional fields null.
       - Maintain a concise but actionable overview paragraph for executives.
+
+    {{ ctx.output_format }}
   "#
 }

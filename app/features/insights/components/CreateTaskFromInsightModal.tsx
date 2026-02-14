@@ -5,11 +5,11 @@
  * Pre-fills task data from the insight and lets user adjust before submission.
  */
 
-import { Lightbulb } from "lucide-react"
-import { type FormEvent, useCallback, useEffect, useId, useState } from "react"
-import { useFetcher } from "react-router"
-import { toast } from "sonner"
-import { Button } from "~/components/ui/button"
+import { Lightbulb } from "lucide-react";
+import { type FormEvent, useCallback, useEffect, useId, useState } from "react";
+import { useFetcher } from "react-router";
+import { toast } from "sonner";
+import { Button } from "~/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -17,33 +17,33 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "~/components/ui/dialog"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
-import { PriorityBars, priorityConfig } from "~/features/tasks/components/PriorityBars"
-import type { TaskPriority } from "~/features/tasks/types"
+} from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
+import { PriorityBars, priorityConfig } from "~/features/tasks/components/PriorityBars";
+import type { TaskPriority } from "~/features/tasks/types";
 
 interface Insight {
-	id: string
-	name: string | null
-	statement?: string | null
-	category?: string | null
-	jtbd?: string | null
-	pain?: string | null
-	desired_outcome?: string | null
-	priority?: number
-	persona_insights?: Array<{ personas: { id: string; name: string | null } }>
+	id: string;
+	name: string | null;
+	statement?: string | null;
+	category?: string | null;
+	jtbd?: string | null;
+	pain?: string | null;
+	desired_outcome?: string | null;
+	priority?: number;
+	persona_insights?: Array<{ personas: { id: string; name: string | null } }>;
 }
 
 interface CreateTaskFromInsightModalProps {
-	insight: Insight | null
-	open: boolean
-	onOpenChange: (open: boolean) => void
-	projectPath: string
+	insight: Insight | null;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	projectPath: string;
 	/** Called when task is successfully created, with the new task ID */
-	onTaskCreated?: (taskId: string) => void
+	onTaskCreated?: (taskId: string) => void;
 }
 
 const CLUSTERS = [
@@ -57,56 +57,56 @@ const CLUSTERS = [
 	"Trust & Risk",
 	"Ops & Scale",
 	"Other",
-] as const
+] as const;
 
 /** Convert insight into HMW (How Might We) format using desired outcome */
 function toHowMightWe(insight: Insight): string {
 	// Use desired_outcome as primary source, fallback to statement/name
-	const outcome = insight.desired_outcome || insight.name || insight.statement || ""
+	const outcome = insight.desired_outcome || insight.name || insight.statement || "";
 
 	if (outcome) {
 		// Remove trailing period, keep original capitalization
-		const cleanOutcome = outcome.replace(/\.$/, "")
-		return `HMW address: ${cleanOutcome}`
+		const cleanOutcome = outcome.replace(/\.$/, "");
+		return `HMW address: ${cleanOutcome}`;
 	}
 
-	return ""
+	return "";
 }
 
 /** Build description from insight fields */
 function buildDescription(insight: Insight): string {
-	const parts: string[] = []
+	const parts: string[] = [];
 
 	// Original insight
 	if (insight.statement) {
-		parts.push(`**Insight:** ${insight.statement}`)
+		parts.push(`**Insight:** ${insight.statement}`);
 	}
 
 	// Pain points
 	if (insight.pain) {
-		parts.push(`**Pain:** ${insight.pain}`)
+		parts.push(`**Pain:** ${insight.pain}`);
 	}
 
 	// JTBD
 	if (insight.jtbd) {
-		parts.push(`**JTBD:** ${insight.jtbd}`)
+		parts.push(`**JTBD:** ${insight.jtbd}`);
 	}
 
 	// Desired outcome as acceptance criteria
 	if (insight.desired_outcome) {
-		parts.push(`**Success looks like:** ${insight.desired_outcome}`)
+		parts.push(`**Success looks like:** ${insight.desired_outcome}`);
 	}
 
 	// Segments
 	const segments = insight.persona_insights
 		?.map((p) => p.personas?.name)
 		.filter(Boolean)
-		.join(", ")
+		.join(", ");
 	if (segments) {
-		parts.push(`**Who:** ${segments}`)
+		parts.push(`**Who:** ${segments}`);
 	}
 
-	return parts.join("\n\n")
+	return parts.join("\n\n");
 }
 
 export function CreateTaskFromInsightModal({
@@ -116,59 +116,59 @@ export function CreateTaskFromInsightModal({
 	projectPath,
 	onTaskCreated,
 }: CreateTaskFromInsightModalProps) {
-	const id = useId()
-	const fetcher = useFetcher()
+	const id = useId();
+	const fetcher = useFetcher();
 
 	// Form state - initialize from insight when modal opens
-	const [title, setTitle] = useState("")
-	const [description, setDescription] = useState("")
-	const [cluster, setCluster] = useState<string>("Product")
-	const [priority, setPriority] = useState<TaskPriority>(2) // Default: Medium
+	const [title, setTitle] = useState("");
+	const [description, setDescription] = useState("");
+	const [cluster, setCluster] = useState<string>("Product");
+	const [priority, setPriority] = useState<TaskPriority>(2); // Default: Medium
 
-	const isSubmitting = fetcher.state === "submitting"
+	const isSubmitting = fetcher.state === "submitting";
 
 	// Initialize form when insight changes or modal opens
 	useEffect(() => {
 		if (insight && open) {
-			setTitle(toHowMightWe(insight))
-			setDescription(buildDescription(insight))
-			setCluster(insight.category || "Product")
+			setTitle(toHowMightWe(insight));
+			setDescription(buildDescription(insight));
+			setCluster(insight.category || "Product");
 			// Keep default medium priority unless insight has high priority (1)
-			setPriority(insight.priority === 1 ? 1 : 2)
+			setPriority(insight.priority === 1 ? 1 : 2);
 		}
-	}, [insight, open])
+	}, [insight, open]);
 
 	// Handle successful submission
 	useEffect(() => {
 		if (fetcher.state === "idle" && fetcher.data) {
 			const data = fetcher.data as {
-				ok?: boolean
-				success?: boolean
-				error?: string
-				taskId?: string
-			}
+				ok?: boolean;
+				success?: boolean;
+				error?: string;
+				taskId?: string;
+			};
 			if (data.ok || data.success) {
-				toast.success("Task created successfully")
-				onOpenChange(false)
+				toast.success("Task created successfully");
+				onOpenChange(false);
 				// Notify parent of created task
 				if (data.taskId) {
-					onTaskCreated?.(data.taskId)
+					onTaskCreated?.(data.taskId);
 				}
 				// Reset form
-				setTitle("")
-				setDescription("")
-				setCluster("Product")
-				setPriority(2)
+				setTitle("");
+				setDescription("");
+				setCluster("Product");
+				setPriority(2);
 			} else if (data.error) {
-				toast.error(data.error)
+				toast.error(data.error);
 			}
 		}
-	}, [fetcher.state, fetcher.data, onOpenChange, onTaskCreated])
+	}, [fetcher.state, fetcher.data, onOpenChange, onTaskCreated]);
 
 	const handleSubmit = useCallback(
 		(e: FormEvent) => {
-			e.preventDefault()
-			if (!title.trim()) return
+			e.preventDefault();
+			if (!title.trim()) return;
 
 			fetcher.submit(
 				{
@@ -183,15 +183,15 @@ export function CreateTaskFromInsightModal({
 					method: "POST",
 					action: `${projectPath}/priorities`,
 				}
-			)
+			);
 		},
 		[title, description, cluster, priority, projectPath, fetcher]
-	)
+	);
 
-	const titleId = `${id}-title`
-	const descriptionId = `${id}-description`
-	const clusterId = `${id}-cluster`
-	const priorityId = `${id}-priority`
+	const titleId = `${id}-title`;
+	const descriptionId = `${id}-description`;
+	const clusterId = `${id}-cluster`;
+	const priorityId = `${id}-priority`;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -292,5 +292,5 @@ export function CreateTaskFromInsightModal({
 				</fetcher.Form>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }

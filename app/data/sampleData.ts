@@ -1,7 +1,7 @@
-import type { TreeNode } from "~/components/charts/TreeMap"
-import type { KPI } from "~/components/dashboard/KPIBar"
-import type { InsightCardProps } from "~/components/insights/InsightCard"
-import type { Opportunity } from "~/components/opportunities/OpportunitiesList"
+import type { TreeNode } from "~/components/charts/TreeMap";
+import type { KPI } from "~/components/dashboard/KPIBar";
+import type { InsightCardProps } from "~/components/insights/InsightCard";
+import type { Opportunity } from "~/components/opportunities/OpportunitiesList";
 
 // Sample hierarchical data for TreeMap - values adjusted to sum to 100%
 const themeTree: TreeNode[] = [
@@ -35,14 +35,14 @@ const themeTree: TreeNode[] = [
 			{ name: "Compatibility", value: 5, fill: "#fde68a" },
 		],
 	},
-]
+];
 
 // Sample KPIs with links to list views
 const kpis: KPI[] = [
 	{ label: "Interviews", value: "24", href: "/interviews", icon: "interviews" },
 	{ label: "Insights", value: "42", href: "/insights", icon: "insights" },
 	{ label: "Opportunities", value: "18", href: "/opportunities", icon: "opportunities" },
-]
+];
 
 // Sample personas with counts and links
 const personas = [
@@ -79,7 +79,7 @@ const personas = [
 			{ name: "Feedback", value: 70, color: "#fda4af" },
 		],
 	},
-]
+];
 
 // Sample interviews with detailed participant data
 const interviews = [
@@ -179,7 +179,7 @@ const interviews = [
 		sentimentScore: 72,
 		transcriptPreview: "The reliability is crucial for our operations team, and so far it's been working well...",
 	},
-]
+];
 
 // Sample insights
 const insights: InsightCardProps[] = [
@@ -234,7 +234,7 @@ const insights: InsightCardProps[] = [
 		createdAt: "2025-07-12",
 		relatedTags: ["Mobile", "Responsive", "On-the-go"],
 	},
-]
+];
 
 // Sample opportunities
 const opportunities: Opportunity[] = [
@@ -283,7 +283,7 @@ const opportunities: Opportunity[] = [
 		effort: 3,
 		description: "Allow users to customize their dashboard layout",
 	},
-]
+];
 
 // Sample themes for TagCloud
 const themes = [
@@ -295,7 +295,7 @@ const themes = [
 	{ tag: "Reporting", count: 12 },
 	{ tag: "Onboarding", count: 10 },
 	{ tag: "Documentation", count: 8 },
-]
+];
 
 // Export all sample data
 export const sampleData = {
@@ -306,4 +306,4 @@ export const sampleData = {
 	themeTree,
 	themes,
 	insights,
-}
+};

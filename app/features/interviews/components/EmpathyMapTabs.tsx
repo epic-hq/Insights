@@ -1,29 +1,29 @@
-import { HeartHandshake, Puzzle } from "lucide-react"
-import { Link } from "react-router-dom"
-import { Badge } from "~/components/ui/badge"
+import { HeartHandshake, Puzzle } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Badge } from "~/components/ui/badge";
 
 type EmpathyMapItem = {
-	text: string
-	evidenceId: string
-	anchors?: unknown
-	personId?: string
-	personName?: string
-}
+	text: string;
+	evidenceId: string;
+	anchors?: unknown;
+	personId?: string;
+	personName?: string;
+};
 
 type EmpathyMapData = {
-	pains: EmpathyMapItem[]
-	gains: EmpathyMapItem[]
-	says: EmpathyMapItem[]
-	does: EmpathyMapItem[]
-	thinks: EmpathyMapItem[]
-	feels: EmpathyMapItem[]
-}
+	pains: EmpathyMapItem[];
+	gains: EmpathyMapItem[];
+	says: EmpathyMapItem[];
+	does: EmpathyMapItem[];
+	thinks: EmpathyMapItem[];
+	feels: EmpathyMapItem[];
+};
 
 interface EmpathyMapTabsProps {
-	empathyMap: EmpathyMapData
-	activeTab: "pains-gains" | "user-actions"
-	setActiveTab: (tab: "pains-gains" | "user-actions") => void
-	createEvidenceLink: (item: { evidenceId: string; anchors?: unknown }) => string
+	empathyMap: EmpathyMapData;
+	activeTab: "pains-gains" | "user-actions";
+	setActiveTab: (tab: "pains-gains" | "user-actions") => void;
+	createEvidenceLink: (item: { evidenceId: string; anchors?: unknown }) => string;
 }
 
 function EmpathySection({
@@ -33,11 +33,11 @@ function EmpathySection({
 	createEvidenceLink,
 	emptyMessage,
 }: {
-	title: string
-	emoji: string
-	items: EmpathyMapItem[]
-	createEvidenceLink: (item: EmpathyMapItem) => string
-	emptyMessage: string
+	title: string;
+	emoji: string;
+	items: EmpathyMapItem[];
+	createEvidenceLink: (item: EmpathyMapItem) => string;
+	emptyMessage: string;
 }) {
 	return (
 		<div className="rounded-lg border border-gray-200/50 bg-white/50 p-4 dark:border-gray-700/30 dark:bg-black/10">
@@ -64,7 +64,7 @@ function EmpathySection({
 				</div>
 			)}
 		</div>
-	)
+	);
 }
 
 export function EmpathyMapTabs({ empathyMap, activeTab, setActiveTab, createEvidenceLink }: EmpathyMapTabsProps) {
@@ -159,5 +159,5 @@ export function EmpathyMapTabs({ empathyMap, activeTab, setActiveTab, createEvid
 				)}
 			</div>
 		</div>
-	)
+	);
 }

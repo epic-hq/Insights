@@ -1,47 +1,47 @@
-import consola from "consola"
-import { ChevronDown, ChevronUp, Eye, Filter, X } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Checkbox } from "~/components/ui/checkbox"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { createClient } from "~/lib/supabase/client"
-import type { Database } from "~/types"
+import consola from "consola";
+import { ChevronDown, ChevronUp, Eye, Filter, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { createClient } from "~/lib/supabase/client";
+import type { Database } from "~/types";
 
-type AnswerStatus = Database["public"]["Tables"]["project_answers"]["Row"]["status"]
+type AnswerStatus = Database["public"]["Tables"]["project_answers"]["Row"]["status"];
 
 type MinimalQuestion = {
-	projectAnswerId: string
-	questionId: string | null
-	text: string
-	status: AnswerStatus
-	orderIndex: number | null
-	isMustHave: boolean
-}
+	projectAnswerId: string;
+	questionId: string | null;
+	text: string;
+	status: AnswerStatus;
+	orderIndex: number | null;
+	isMustHave: boolean;
+};
 
 interface MinimalQuestionViewProps {
-	projectId: string
-	interviewId: string
+	projectId: string;
+	interviewId: string;
 }
 
 function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProps) {
-	const supabase = createClient()
-	const [allQuestions, setAllQuestions] = useState<MinimalQuestion[]>([])
-	const [loading, setLoading] = useState(true)
-	const [savingIds, setSavingIds] = useState<Set<string>>(new Set())
-	const [mustHavesOnly, setMustHavesOnly] = useState(false)
-	const [isCollapsed, setIsCollapsed] = useState(false)
+	const supabase = createClient();
+	const [allQuestions, setAllQuestions] = useState<MinimalQuestion[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+	const [mustHavesOnly, setMustHavesOnly] = useState(false);
+	const [isCollapsed, setIsCollapsed] = useState(false);
 
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
 	useEffect(() => {
 		const load = async () => {
 			try {
-				setLoading(true)
+				setLoading(true);
 				const { data, error } = await supabase
 					.from("project_answers")
 					.select(
@@ -58,9 +58,9 @@ function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProp
 					.eq("project_id", projectId)
 					.eq("interview_id", interviewId)
 					.order("order_index", { ascending: true, nullsFirst: true })
-					.order("created_at", { ascending: true })
+					.order("created_at", { ascending: true });
 
-				if (error) throw error
+				if (error) throw error;
 
 				const mapped: MinimalQuestion[] = (data || []).map((row, idx) => ({
 					projectAnswerId: row.id,
@@ -69,97 +69,97 @@ function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProp
 					status: (row.status as AnswerStatus) ?? "planned",
 					orderIndex: row.order_index ?? null,
 					isMustHave: row.interview_prompts?.is_must_have ?? false,
-				}))
+				}));
 
-				setAllQuestions(mapped)
+				setAllQuestions(mapped);
 			} catch (e) {
-				consola.error("MinimalQuestionView load error", e)
+				consola.error("MinimalQuestionView load error", e);
 			} finally {
-				setLoading(false)
+				setLoading(false);
 			}
-		}
+		};
 
-		void load()
-	}, [interviewId, projectId, supabase])
+		void load();
+	}, [interviewId, projectId, supabase]);
 
 	const updateStatus = useCallback(
 		async (projectAnswerId: string, nextStatus: AnswerStatus) => {
-			setSavingIds((prev) => new Set(prev).add(projectAnswerId))
-			const previous = allQuestions
+			setSavingIds((prev) => new Set(prev).add(projectAnswerId));
+			const previous = allQuestions;
 			setAllQuestions((prev) =>
 				prev.map((q) => (q.projectAnswerId === projectAnswerId ? { ...q, status: nextStatus } : q))
-			)
+			);
 
-			const payload: Database["public"]["Tables"]["project_answers"]["Update"] = { status: nextStatus }
+			const payload: Database["public"]["Tables"]["project_answers"]["Update"] = { status: nextStatus };
 			if (nextStatus === "answered") {
-				payload.answered_at = new Date().toISOString()
-				payload.skipped_at = null
+				payload.answered_at = new Date().toISOString();
+				payload.skipped_at = null;
 			} else if (nextStatus === "skipped") {
-				payload.skipped_at = new Date().toISOString()
-				payload.answered_at = null
+				payload.skipped_at = new Date().toISOString();
+				payload.answered_at = null;
 			} else {
-				payload.answered_at = null
-				payload.skipped_at = null
+				payload.answered_at = null;
+				payload.skipped_at = null;
 			}
 
-			const { error } = await supabase.from("project_answers").update(payload).eq("id", projectAnswerId)
+			const { error } = await supabase.from("project_answers").update(payload).eq("id", projectAnswerId);
 
 			if (error) {
-				consola.warn("Failed to update project answer status", error.message)
-				setAllQuestions(previous)
+				consola.warn("Failed to update project answer status", error.message);
+				setAllQuestions(previous);
 			}
 
 			setSavingIds((prev) => {
-				const next = new Set(prev)
-				next.delete(projectAnswerId)
-				return next
-			})
+				const next = new Set(prev);
+				next.delete(projectAnswerId);
+				return next;
+			});
 		},
 		[allQuestions, supabase]
-	)
+	);
 
 	const markDone = useCallback(
 		(projectAnswerId: string) => {
-			void updateStatus(projectAnswerId, "answered")
+			void updateStatus(projectAnswerId, "answered");
 		},
 		[updateStatus]
-	)
+	);
 
 	const unmarkDone = useCallback(
 		(projectAnswerId: string) => {
-			void updateStatus(projectAnswerId, "planned")
+			void updateStatus(projectAnswerId, "planned");
 		},
 		[updateStatus]
-	)
+	);
 
 	const skip = useCallback(
 		(projectAnswerId: string) => {
-			void updateStatus(projectAnswerId, "skipped")
+			void updateStatus(projectAnswerId, "skipped");
 		},
 		[updateStatus]
-	)
+	);
 
 	const unhide = useCallback(
 		(projectAnswerId: string) => {
-			void updateStatus(projectAnswerId, "planned")
+			void updateStatus(projectAnswerId, "planned");
 		},
 		[updateStatus]
-	)
+	);
 
 	const filteredQuestions = useMemo(() => {
 		if (mustHavesOnly) {
-			return allQuestions.filter((q) => q.isMustHave)
+			return allQuestions.filter((q) => q.isMustHave);
 		}
-		return allQuestions
-	}, [allQuestions, mustHavesOnly])
+		return allQuestions;
+	}, [allQuestions, mustHavesOnly]);
 
-	const answeredCount = filteredQuestions.filter((q) => q.status === "answered").length
-	const totalCount = filteredQuestions.length
-	const mustHaveCount = allQuestions.filter((q) => q.isMustHave).length
+	const answeredCount = filteredQuestions.filter((q) => q.status === "answered").length;
+	const totalCount = filteredQuestions.length;
+	const mustHaveCount = allQuestions.filter((q) => q.isMustHave).length;
 
 	const renderedQuestions = useMemo<JSX.Element[]>(() => {
 		return filteredQuestions.map((q, idx) => {
-			const isUpdating = savingIds.has(q.projectAnswerId)
+			const isUpdating = savingIds.has(q.projectAnswerId);
 			return (
 				<div
 					key={q.projectAnswerId}
@@ -177,9 +177,9 @@ function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProp
 									disabled={isUpdating}
 									onCheckedChange={(checked) => {
 										if (checked) {
-											markDone(q.projectAnswerId)
+											markDone(q.projectAnswerId);
 										} else {
-											unmarkDone(q.projectAnswerId)
+											unmarkDone(q.projectAnswerId);
 										}
 									}}
 									className="h-4 w-4 border-2 border-gray-600 data-[state=checked]:border-primary data-[state=checked]:bg-primary dark:border-gray-300"
@@ -227,9 +227,9 @@ function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProp
 						</div>
 					</div>
 				</div>
-			)
-		})
-	}, [filteredQuestions, markDone, savingIds, skip, unhide, unmarkDone])
+			);
+		});
+	}, [filteredQuestions, markDone, savingIds, skip, unhide, unmarkDone]);
 
 	return (
 		<Card className="flex h-full flex-col border-0 px-0 md:border md:px-4">
@@ -287,7 +287,7 @@ function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProp
 				</CardContent>
 			)}
 		</Card>
-	)
+	);
 }
 
-export default MinimalQuestionView
+export default MinimalQuestionView;

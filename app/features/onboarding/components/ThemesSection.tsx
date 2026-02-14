@@ -1,23 +1,23 @@
-import consola from "consola"
-import { Hash, Loader2 } from "lucide-react"
-import { useEffect, useState } from "react"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { createClient } from "~/lib/supabase/client"
+import consola from "consola";
+import { Hash, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { createClient } from "~/lib/supabase/client";
 
 interface ThemesSectionProps {
-	projectId?: string
-	accountId?: string
-	routes: any
+	projectId?: string;
+	accountId?: string;
+	routes: any;
 }
 
 export function ThemesSection({ projectId, routes }: ThemesSectionProps) {
-	const [themes, setThemes] = useState<any[]>([])
-	const [loading, setLoading] = useState(true)
-	const supabase = createClient()
+	const [themes, setThemes] = useState<any[]>([]);
+	const [loading, setLoading] = useState(true);
+	const supabase = createClient();
 
 	useEffect(() => {
-		if (!projectId) return
+		if (!projectId) return;
 
 		const fetchThemes = async () => {
 			try {
@@ -26,57 +26,57 @@ export function ThemesSection({ projectId, routes }: ThemesSectionProps) {
 					.from("themes")
 					.select("id, name, statement, created_at")
 					.eq("project_id", projectId)
-					.order("created_at", { ascending: false })
+					.order("created_at", { ascending: false });
 
-				if (themesError) throw themesError
+				if (themesError) throw themesError;
 
 				// Load theme evidence links to count frequency
 				const { data: themeEvidence, error: evidenceError } = await supabase
 					.from("theme_evidence")
 					.select("theme_id, evidence:evidence_id(id, interview_id)")
-					.eq("project_id", projectId)
+					.eq("project_id", projectId);
 
-				if (evidenceError) throw evidenceError
+				if (evidenceError) throw evidenceError;
 
 				// Load evidence_people to get people count per theme
-				const evidenceIds = themeEvidence?.map((te) => te.evidence?.id).filter(Boolean) || []
+				const evidenceIds = themeEvidence?.map((te) => te.evidence?.id).filter(Boolean) || [];
 				const { data: evidencePeople, error: peopleError } = await supabase
 					.from("evidence_people")
 					.select("evidence_id, person_id, person:person_id(id, name)")
 					.eq("project_id", projectId)
-					.in("evidence_id", evidenceIds)
+					.in("evidence_id", evidenceIds);
 
-				if (peopleError) throw peopleError
+				if (peopleError) throw peopleError;
 
 				// Load people_personas to get personas per person
-				const personIds = evidencePeople?.map((ep) => ep.person_id).filter(Boolean) || []
+				const personIds = evidencePeople?.map((ep) => ep.person_id).filter(Boolean) || [];
 				const { data: peoplePersonas, error: personasError } = await supabase
 					.from("people_personas")
 					.select("person_id, persona:persona_id(id, name)")
 					.eq("project_id", projectId)
-					.in("person_id", personIds)
+					.in("person_id", personIds);
 
-				if (personasError) throw personasError
+				if (personasError) throw personasError;
 
 				// Build theme data with counts
 				const enrichedThemes =
 					themesData?.map((theme) => {
-						const themeEvidenceLinks = themeEvidence?.filter((te) => te.theme_id === theme.id) || []
-						const evidenceCount = themeEvidenceLinks.length
+						const themeEvidenceLinks = themeEvidence?.filter((te) => te.theme_id === theme.id) || [];
+						const evidenceCount = themeEvidenceLinks.length;
 
 						// Get unique people for this theme
-						const themeEvidenceIds = themeEvidenceLinks.map((te) => te.evidence?.id).filter(Boolean)
-						const themePeople = evidencePeople?.filter((ep) => themeEvidenceIds.includes(ep.evidence_id)) || []
-						const uniquePeople = new Set(themePeople.map((tp) => tp.person_id))
-						const peopleCount = uniquePeople.size
+						const themeEvidenceIds = themeEvidenceLinks.map((te) => te.evidence?.id).filter(Boolean);
+						const themePeople = evidencePeople?.filter((ep) => themeEvidenceIds.includes(ep.evidence_id)) || [];
+						const uniquePeople = new Set(themePeople.map((tp) => tp.person_id));
+						const peopleCount = uniquePeople.size;
 
 						// Get personas for this theme's people
-						const themePersonas = new Set<string>()
+						const themePersonas = new Set<string>();
 						for (const personId of uniquePeople) {
-							const personPersonas = peoplePersonas?.filter((pp) => pp.person_id === personId) || []
+							const personPersonas = peoplePersonas?.filter((pp) => pp.person_id === personId) || [];
 							for (const pp of personPersonas) {
 								if (pp.persona?.name) {
-									themePersonas.add(pp.persona.name)
+									themePersonas.add(pp.persona.name);
 								}
 							}
 						}
@@ -86,22 +86,22 @@ export function ThemesSection({ projectId, routes }: ThemesSectionProps) {
 							evidenceCount,
 							peopleCount,
 							personas: Array.from(themePersonas),
-						}
-					}) || []
+						};
+					}) || [];
 
 				// Sort by evidence count (frequency) descending
-				enrichedThemes.sort((a, b) => b.evidenceCount - a.evidenceCount)
+				enrichedThemes.sort((a, b) => b.evidenceCount - a.evidenceCount);
 
-				setThemes(enrichedThemes)
+				setThemes(enrichedThemes);
 			} catch (error) {
-				consola.error("Failed to fetch themes:", error)
+				consola.error("Failed to fetch themes:", error);
 			} finally {
-				setLoading(false)
+				setLoading(false);
 			}
-		}
+		};
 
-		fetchThemes()
-	}, [projectId, supabase])
+		fetchThemes();
+	}, [projectId, supabase]);
 
 	if (loading) {
 		return (
@@ -118,7 +118,7 @@ export function ThemesSection({ projectId, routes }: ThemesSectionProps) {
 					</CardContent>
 				</Card>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -133,7 +133,7 @@ export function ThemesSection({ projectId, routes }: ThemesSectionProps) {
 					size="sm"
 					onClick={() => {
 						if (routes?.themes?.index) {
-							window.location.href = routes.themes.index()
+							window.location.href = routes.themes.index();
 						}
 					}}
 				>
@@ -180,5 +180,5 @@ export function ThemesSection({ projectId, routes }: ThemesSectionProps) {
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }

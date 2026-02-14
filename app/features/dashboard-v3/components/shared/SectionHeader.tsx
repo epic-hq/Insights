@@ -5,28 +5,28 @@
  * Establishes visual hierarchy for dashboard content.
  */
 
-import type { LucideIcon } from "lucide-react"
-import { ChevronRight } from "lucide-react"
-import { Link } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { cn } from "~/lib/utils"
+import type { LucideIcon } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { cn } from "~/lib/utils";
 
 export interface SectionHeaderProps {
 	/** Section title */
-	title: string
+	title: string;
 	/** Optional icon to display before title */
-	icon?: LucideIcon
+	icon?: LucideIcon;
 	/** Optional tooltip text to explain the section */
-	tooltip?: string
+	tooltip?: string;
 	/** Optional count to display in badge */
-	count?: number
+	count?: number;
 	/** Optional "View all" link href */
-	viewAllHref?: string
+	viewAllHref?: string;
 	/** Optional "View all" link text */
-	viewAllText?: string
+	viewAllText?: string;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 export function SectionHeader({
@@ -73,7 +73,7 @@ export function SectionHeader({
 				</Link>
 			)}
 		</div>
-	)
+	);
 }
 
-export default SectionHeader
+export default SectionHeader;

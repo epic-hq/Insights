@@ -21,14 +21,21 @@ create table if not exists public.research_links (
     walkthrough_video_url text,
     walkthrough_thumbnail_url text,
     default_response_mode text not null default 'form' check (default_response_mode in ('form', 'chat', 'voice')),
+    ai_autonomy text not null default 'strict' check (ai_autonomy in ('strict', 'moderate', 'adaptive')),
+    research_goals jsonb default null,
     is_live boolean not null default false,
     statistics jsonb default null,
     stats_updated_at timestamptz default null,
     ai_analysis jsonb default null,
     ai_analysis_updated_at timestamptz default null,
+    identity_mode text not null default 'identified' check (identity_mode in ('anonymous', 'identified')),
+    identity_field text not null default 'email' check (identity_field in ('email', 'phone')),
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
+
+comment on column public.research_links.identity_mode is 'anonymous = no identification required, identified = requires email or phone';
+comment on column public.research_links.identity_field is 'When identity_mode is identified, which field to collect: email or phone';
 
 comment on column public.research_links.statistics is 'Computed aggregate statistics from survey responses. Structure: { computedAt: timestamp, responseCount: number, completedCount: number, questions: [{ questionId, prompt, type, responseCount, stats: { average?, distribution?, percentages? }, topResponses?: [] }] }';
 
@@ -41,13 +48,15 @@ create table if not exists public.research_link_responses (
     id uuid primary key default gen_random_uuid(),
     research_link_id uuid not null references public.research_links (id) on delete cascade,
     person_id uuid references public.people (id) on delete set null,
-    email text not null,
+    email text, -- nullable for anonymous responses
+    phone text, -- for phone-identified responses
     first_name text,
     last_name text,
     responses jsonb not null default '{}'::jsonb,
     response_mode text not null default 'form' check (response_mode in ('form', 'chat', 'voice')),
     video_url text,
     completed boolean not null default false,
+    utm_params jsonb, -- campaign attribution (utm_source, utm_medium, utm_campaign, etc.)
     evidence_id uuid, -- FK to evidence (added later via ALTER to avoid circular deps)
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -57,8 +66,20 @@ create table if not exists public.research_link_responses (
 create index if not exists research_link_responses_person_id_idx
     on public.research_link_responses (person_id);
 
-create unique index if not exists research_link_responses_unique_email
-    on public.research_link_responses (research_link_id, lower(email));
+-- Unique constraint for email-identified responses (only when email is not null)
+create unique index if not exists research_link_responses_unique_email_v2
+    on public.research_link_responses (research_link_id, lower(email))
+    where email is not null;
+
+-- Unique constraint for phone-identified responses
+create unique index if not exists research_link_responses_unique_phone
+    on public.research_link_responses (research_link_id, phone)
+    where phone is not null;
+
+-- Index for phone lookups
+create index if not exists research_link_responses_phone_idx
+    on public.research_link_responses (research_link_id, phone)
+    where phone is not null;
 
 create index if not exists research_link_responses_list_id_idx
     on public.research_link_responses (research_link_id);
@@ -86,7 +107,10 @@ create policy "Users can read research links they responded to"
         id in (
             select research_link_id
             from public.research_link_responses
-            where lower(email) = lower(auth.jwt() ->> 'email')
+            where
+                (email is not null and lower(email) = lower(auth.jwt() ->> 'email'))
+                or
+                (phone is not null and phone = auth.jwt() ->> 'phone')
         )
     );
 
@@ -118,12 +142,14 @@ create policy "Members can read research link responses"
         )
     );
 
-create policy "Users can read own responses by email"
+create policy "Users can read own responses by email or phone"
     on public.research_link_responses
     for select
     to authenticated
     using (
-        lower(email) = lower(auth.jwt() ->> 'email')
+        (email is not null and lower(email) = lower(auth.jwt() ->> 'email'))
+        or
+        (phone is not null and phone = auth.jwt() ->> 'phone')
     );
 
 create policy "Members can delete research link responses"
@@ -147,6 +173,9 @@ create policy "Users can read accounts they responded to" on accounts.accounts
             select rl.account_id
             from public.research_links rl
             inner join public.research_link_responses rlr on rlr.research_link_id = rl.id
-            where lower(rlr.email) = lower(auth.jwt() ->> 'email')
+            where
+                (rlr.email is not null and lower(rlr.email) = lower(auth.jwt() ->> 'email'))
+                or
+                (rlr.phone is not null and rlr.phone = auth.jwt() ->> 'phone')
         )
     );

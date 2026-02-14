@@ -1,70 +1,70 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
-import { ResearchLinkResponseSaveSchema } from "~/features/research-links/schemas"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import type { ActionFunctionArgs } from "react-router";
+import { ResearchLinkResponseSaveSchema } from "~/features/research-links/schemas";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
 
-export const loader = () => Response.json({ message: "Method not allowed" }, { status: 405 })
+export const loader = () => Response.json({ message: "Method not allowed" }, { status: 405 });
 
 export async function action({ request, params }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ message: "Method not allowed" }, { status: 405 })
+		return Response.json({ message: "Method not allowed" }, { status: 405 });
 	}
 
-	const slug = params.slug
+	const slug = params.slug;
 	if (!slug) {
-		return Response.json({ message: "Missing slug" }, { status: 400 })
+		return Response.json({ message: "Missing slug" }, { status: 400 });
 	}
 
-	let payload: unknown
+	let payload: unknown;
 	try {
-		payload = await request.json()
+		payload = await request.json();
 	} catch {
-		return Response.json({ message: "Invalid JSON payload" }, { status: 400 })
+		return Response.json({ message: "Invalid JSON payload" }, { status: 400 });
 	}
 
-	const parsed = ResearchLinkResponseSaveSchema.safeParse(payload)
+	const parsed = ResearchLinkResponseSaveSchema.safeParse(payload);
 	if (!parsed.success) {
-		return Response.json({ message: "Invalid request" }, { status: 400 })
+		return Response.json({ message: "Invalid request" }, { status: 400 });
 	}
 
-	const supabase = createSupabaseAdminClient()
+	const supabase = createSupabaseAdminClient();
 	const { data: list, error: listError } = await supabase
 		.from("research_links")
 		.select("id, name, account_id, project_id, questions")
 		.eq("slug", slug)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (listError) {
-		return Response.json({ message: listError.message }, { status: 500 })
+		return Response.json({ message: listError.message }, { status: 500 });
 	}
 
 	if (!list) {
-		return Response.json({ message: "Research link not found" }, { status: 404 })
+		return Response.json({ message: "Research link not found" }, { status: 404 });
 	}
 
-	const { responseId, responses, completed, merge } = parsed.data
+	const { responseId, responses, completed, merge } = parsed.data;
 	const { data: existing, error: existingError } = await supabase
 		.from("research_link_responses")
 		.select("id, email, evidence_id, responses")
 		.eq("id", responseId)
 		.eq("research_link_id", list.id)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (existingError) {
-		return Response.json({ message: existingError.message }, { status: 500 })
+		return Response.json({ message: existingError.message }, { status: 500 });
 	}
 
 	if (!existing) {
-		return Response.json({ message: "Response not found" }, { status: 404 })
+		return Response.json({ message: "Response not found" }, { status: 404 });
 	}
 
 	// If merge is true, combine with existing responses instead of replacing
-	let nextResponses = responses ?? {}
+	let nextResponses = responses ?? {};
 	if (merge && existing.responses) {
-		const existingResponses = (existing.responses as Record<string, unknown>) ?? {}
-		nextResponses = { ...existingResponses, ...responses }
+		const existingResponses = (existing.responses as Record<string, unknown>) ?? {};
+		nextResponses = { ...existingResponses, ...responses };
 	}
 	const { error: updateError } = await supabase
 		.from("research_link_responses")
@@ -72,26 +72,29 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			responses: nextResponses,
 			completed: completed ?? false,
 		})
-		.eq("id", responseId)
+		.eq("id", responseId);
 
 	if (updateError) {
-		return Response.json({ message: updateError.message }, { status: 500 })
+		return Response.json({ message: updateError.message }, { status: 500 });
 	}
 
 	if (completed) {
-		// Find or create person record for this respondent
-		const personId = await findOrCreatePerson({
-			supabase,
-			accountId: list.account_id,
-			projectId: list.project_id,
-			email: existing.email,
-		})
+		// Find or create person record for this respondent (skip for anonymous responses)
+		let personId: string | null = null;
+		if (existing.email) {
+			personId = await findOrCreatePerson({
+				supabase,
+				accountId: list.account_id,
+				projectId: list.project_id,
+				email: existing.email,
+			});
 
-		if (personId) {
-			await supabase.from("research_link_responses").update({ person_id: personId }).eq("id", responseId)
+			if (personId) {
+				await supabase.from("research_link_responses").update({ person_id: personId }).eq("id", responseId);
+			}
 		}
 
-		const questions = Array.isArray(list.questions) ? list.questions : []
+		const questions = Array.isArray(list.questions) ? list.questions : [];
 
 		// Extract evidence per text question for theme clustering
 		await extractTextQuestionEvidence({
@@ -102,10 +105,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			personId,
 			questions,
 			responses: nextResponses,
-		})
+		});
 	}
 
-	return { ok: true }
+	return { ok: true };
 }
 
 /**
@@ -117,12 +120,12 @@ async function findOrCreatePerson({
 	projectId,
 	email,
 }: {
-	supabase: SupabaseClient<Database>
-	accountId: string
-	projectId: string | null
-	email: string
+	supabase: SupabaseClient<Database>;
+	accountId: string;
+	projectId: string | null;
+	email: string;
 }): Promise<string | null> {
-	const normalizedEmail = email.toLowerCase().trim()
+	const normalizedEmail = email.toLowerCase().trim();
 
 	// Try to find existing person by email
 	const { data: existingPerson } = await supabase
@@ -130,23 +133,23 @@ async function findOrCreatePerson({
 		.select("id")
 		.eq("account_id", accountId)
 		.eq("primary_email", normalizedEmail)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (existingPerson?.id) {
-		return existingPerson.id
+		return existingPerson.id;
 	}
 
 	// Parse name from email (use part before @)
-	const emailName = normalizedEmail.split("@")[0] || "Unknown"
-	const nameParts = emailName.replace(/[._-]/g, " ").split(/\s+/)
-	const firstname = nameParts[0]?.charAt(0).toUpperCase() + (nameParts[0]?.slice(1) || "")
+	const emailName = normalizedEmail.split("@")[0] || "Unknown";
+	const nameParts = emailName.replace(/[._-]/g, " ").split(/\s+/);
+	const firstname = nameParts[0]?.charAt(0).toUpperCase() + (nameParts[0]?.slice(1) || "");
 	const lastname =
 		nameParts.length > 1
 			? nameParts
 					.slice(1)
 					.map((p) => p.charAt(0).toUpperCase() + p.slice(1))
 					.join(" ")
-			: null
+			: null;
 
 	// Create new person
 	const { data: newPerson, error: createError } = await supabase
@@ -160,7 +163,7 @@ async function findOrCreatePerson({
 			person_type: "respondent",
 		})
 		.select("id")
-		.maybeSingle()
+		.maybeSingle();
 
 	if (createError) {
 		// Handle unique constraint violation - person may have been created concurrently
@@ -170,21 +173,21 @@ async function findOrCreatePerson({
 				.select("id")
 				.eq("account_id", accountId)
 				.eq("primary_email", normalizedEmail)
-				.maybeSingle()
-			return retryPerson?.id ?? null
+				.maybeSingle();
+			return retryPerson?.id ?? null;
 		}
-		consola.error("Failed to create person for response", createError)
-		return null
+		consola.error("Failed to create person for response", createError);
+		return null;
 	}
 
-	return newPerson?.id ?? null
+	return newPerson?.id ?? null;
 }
 
 /**
  * Question types that should NOT create evidence records
  * (stats computed directly from JSONB)
  */
-const STRUCTURAL_QUESTION_TYPES = ["likert", "single_select", "multi_select", "image_select"]
+const STRUCTURAL_QUESTION_TYPES = ["likert", "single_select", "multi_select", "image_select"];
 
 /**
  * Extract evidence records per text question for theme clustering.
@@ -199,43 +202,43 @@ async function extractTextQuestionEvidence({
 	questions,
 	responses,
 }: {
-	supabase: SupabaseClient<Database>
-	responseId: string
-	accountId: string
-	projectId: string | null
-	personId: string | null
-	questions: Array<{ id?: string; prompt?: string; type?: string }>
-	responses: Record<string, unknown>
+	supabase: SupabaseClient<Database>;
+	responseId: string;
+	accountId: string;
+	projectId: string | null;
+	personId: string | null;
+	questions: Array<{ id?: string; prompt?: string; type?: string }>;
+	responses: Record<string, unknown>;
 }): Promise<void> {
 	for (let i = 0; i < questions.length; i++) {
-		const question = questions[i]
-		if (!question.id || !question.prompt) continue
+		const question = questions[i];
+		if (!question.id || !question.prompt) continue;
 
-		const answer = responses[question.id]
-		if (answer === undefined || answer === null || answer === "") continue
+		const answer = responses[question.id];
+		if (answer === undefined || answer === null || answer === "") continue;
 
 		// Skip structural types - stats computed from JSONB
 		if (question.type && STRUCTURAL_QUESTION_TYPES.includes(question.type)) {
-			continue
+			continue;
 		}
 
 		// For "auto" type, check if answer is numeric (skip) or text (extract)
 		if (question.type === "auto") {
-			if (typeof answer === "number") continue
+			if (typeof answer === "number") continue;
 			if (
 				typeof answer === "string" &&
 				!Number.isNaN(Number.parseFloat(answer)) &&
 				Number.parseFloat(answer) >= 1 &&
 				Number.parseFloat(answer) <= 10
 			) {
-				continue // Numeric rating, skip
+				continue; // Numeric rating, skip
 			}
 		}
 
 		// Only extract evidence for text answers
-		if (typeof answer !== "string" || answer.trim().length === 0) continue
+		if (typeof answer !== "string" || answer.trim().length === 0) continue;
 
-		const verbatim = `${question.prompt}\n\n"${answer}"`
+		const verbatim = `${question.prompt}\n\n"${answer}"`;
 
 		// Create evidence record linked to response
 		const { data: evidence, error: evidenceError } = await supabase
@@ -257,14 +260,14 @@ async function extractTextQuestionEvidence({
 				],
 			})
 			.select("id")
-			.maybeSingle()
+			.maybeSingle();
 
 		if (evidenceError) {
 			consola.error("Failed to create evidence for question", {
 				questionId: question.id,
 				error: evidenceError,
-			})
-			continue
+			});
+			continue;
 		}
 
 		// Link evidence to person if we have one
@@ -275,14 +278,14 @@ async function extractTextQuestionEvidence({
 				account_id: accountId,
 				project_id: projectId,
 				role: "respondent",
-			})
+			});
 
 			if (linkError) {
 				consola.error("Failed to link evidence to person", {
 					evidenceId: evidence.id,
 					personId,
 					error: linkError,
-				})
+				});
 			}
 		}
 	}

@@ -1,52 +1,65 @@
 // @vitest-environment node
 
-import { RequestContext } from "@mastra/core/di"
-import { beforeEach, describe, expect, it, vi } from "vitest"
-import { fetchProjectStatusContextTool } from "../fetch-project-status-context"
+import { RequestContext } from "@mastra/core/di";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fetchProjectStatusContextTool } from "../fetch-project-status-context";
 
 // Type for expected tool result (excluding ValidationError)
 type ToolResult = {
-	success: boolean
-	message: string
-	scopes: string[]
-	projectId?: string | null
-	projectName?: string | null
-	data?: Record<string, unknown>
-}
+	success: boolean;
+	message: string;
+	scopes: string[];
+	projectId?: string | null;
+	projectName?: string | null;
+	data?: Record<string, unknown>;
+};
 
-const mockSupabase = {
-	from: vi.fn(),
-}
+const { mockSupabase, getProjectStatusDataMock } = vi.hoisted(() => ({
+	mockSupabase: {
+		from: vi.fn(),
+		schema: vi.fn(),
+	},
+	getProjectStatusDataMock: vi.fn(),
+}));
 
-const getProjectStatusDataMock = vi.fn()
-
-vi.mock("~/lib/supabase/client.server", () => ({
+vi.mock("../../../lib/supabase/client.server", () => ({
 	supabaseAdmin: mockSupabase,
-}))
+}));
 
-vi.mock("~/utils/project-status.server", () => ({
+vi.mock("../../../utils/project-status.server", () => ({
 	getProjectStatusData: getProjectStatusDataMock,
-}))
+}));
 
 describe("fetchProjectStatusContextTool", () => {
 	beforeEach(() => {
-		mockSupabase.from.mockReset()
-		getProjectStatusDataMock.mockReset()
-	})
+		mockSupabase.from.mockReset();
+		mockSupabase.schema.mockReset();
+		getProjectStatusDataMock.mockReset();
+
+		mockSupabase.schema.mockReturnValue({
+			from: vi.fn().mockReturnValue({
+				select: vi.fn().mockReturnValue({
+					eq: vi.fn().mockReturnValue({
+						maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+					}),
+				}),
+			}),
+		});
+	});
 
 	it("returns missing project message when no project context provided", async () => {
-		const requestContext = new RequestContext()
-		requestContext.set("account_id", "account-123")
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
 
-		const result = (await fetchProjectStatusContextTool.execute({}, { requestContext })) as ToolResult
+		const result = (await fetchProjectStatusContextTool.execute({}, { requestContext })) as ToolResult;
 
-		expect(result.success).toBe(false)
-		expect(result.message).toContain("Missing projectId")
-	})
+		expect(result.success).toBe(false);
+		expect(result.message).toContain("Missing projectId");
+	});
 
 	it("loads status even when runtime account differs from project account", async () => {
 		mockSupabase.from.mockImplementation((table: string) => {
-			if (table !== "projects") throw new Error(`Unexpected table ${table}`)
+			if (table !== "projects") throw new Error(`Unexpected table ${table}`);
 			return {
 				select: () => ({
 					eq: () => ({
@@ -64,27 +77,27 @@ describe("fetchProjectStatusContextTool", () => {
 							}),
 					}),
 				}),
-			}
-		})
+			};
+		});
 
-		getProjectStatusDataMock.mockResolvedValue(null)
+		getProjectStatusDataMock.mockResolvedValue(null);
 
-		const requestContext = new RequestContext()
-		requestContext.set("account_id", "account-123")
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
 
 		const result = (await fetchProjectStatusContextTool.execute(
 			{ projectId: "project-123", scopes: ["status"] },
 			{ requestContext }
-		)) as ToolResult
+		)) as ToolResult;
 
-		expect(result.success).toBe(true)
-		expect(result.message).toContain("Loaded project status context")
-		expect((result.data as any)?.status).toBeUndefined()
-	})
+		expect(result.success).toBe(true);
+		expect(result.message).toContain("Loaded project status context");
+		expect((result.data as any)?.status).toBeUndefined();
+	});
 
 	it("returns status data when project accessible and status scope requested", async () => {
 		mockSupabase.from.mockImplementation((table: string) => {
-			if (table !== "projects") throw new Error(`Unexpected table ${table}`)
+			if (table !== "projects") throw new Error(`Unexpected table ${table}`);
 			return {
 				select: () => ({
 					eq: () => ({
@@ -102,8 +115,8 @@ describe("fetchProjectStatusContextTool", () => {
 							}),
 					}),
 				}),
-			}
-		})
+			};
+		});
 
 		getProjectStatusDataMock.mockResolvedValue({
 			projectName: "Test Project",
@@ -131,23 +144,23 @@ describe("fetchProjectStatusContextTool", () => {
 			unanticipatedDiscoveries: ["Discovery B"],
 			criticalUnknowns: ["Unknown A"],
 			questionAnswers: [],
-		})
+		});
 
-		const requestContext = new RequestContext()
-		requestContext.set("account_id", "account-123")
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
 
 		const result = (await fetchProjectStatusContextTool.execute(
 			{ projectId: "project-123", scopes: ["status"] },
 			{ requestContext }
-		)) as ToolResult
+		)) as ToolResult;
 
-		expect(result.success).toBe(true)
-		expect((result.data as any)?.status?.projectName).toBe("Test Project")
-		expect(getProjectStatusDataMock).toHaveBeenCalledWith("project-123", mockSupabase)
-	})
+		expect(result.success).toBe(true);
+		expect((result.data as any)?.status?.projectName).toBe("Test Project");
+		expect(getProjectStatusDataMock).toHaveBeenCalledWith("project-123", mockSupabase);
+	});
 
 	it("returns people evidence when searching for a specific person", async () => {
-		const now = new Date().toISOString()
+		const now = new Date().toISOString();
 		const projectRow = {
 			id: "project-123",
 			account_id: "account-abc",
@@ -155,7 +168,7 @@ describe("fetchProjectStatusContextTool", () => {
 			description: null,
 			created_at: now,
 			updated_at: now,
-		}
+		};
 		const peopleRows = [
 			{
 				id: "pp-1",
@@ -172,7 +185,7 @@ describe("fetchProjectStatusContextTool", () => {
 					segment: "Freelancer",
 					role: "Founder",
 					title: null,
-					company: null,
+					default_organization: null,
 					description: null,
 					location: null,
 					image_url: null,
@@ -180,7 +193,7 @@ describe("fetchProjectStatusContextTool", () => {
 					people_personas: [],
 				},
 			},
-		]
+		];
 		const interviewPeopleRows = [
 			{
 				person_id: "person-1",
@@ -192,7 +205,7 @@ describe("fetchProjectStatusContextTool", () => {
 					status: "completed",
 				},
 			},
-		]
+		];
 		const evidenceRows = [
 			{
 				id: "evidence-1",
@@ -203,9 +216,9 @@ describe("fetchProjectStatusContextTool", () => {
 				created_at: now,
 				interview_id: "interview-1",
 			},
-		]
+		];
 
-		let recordedOrClause: string | undefined
+		let recordedOrClause: string | undefined;
 
 		mockSupabase.from.mockImplementation((table: string) => {
 			switch (table) {
@@ -216,57 +229,575 @@ describe("fetchProjectStatusContextTool", () => {
 								maybeSingle: () => Promise.resolve({ data: projectRow, error: null }),
 							}),
 						}),
-					}
+					};
 				case "project_people": {
-					const builder: any = {}
-					builder.select = () => builder
-					builder.eq = () => builder
+					const builder: any = {};
+					builder.select = () => builder;
+					builder.eq = () => builder;
 					builder.or = (clause: string) => {
-						recordedOrClause = clause
-						return builder
-					}
+						recordedOrClause = clause;
+						return builder;
+					};
 					builder.order = () => ({
 						limit: () => Promise.resolve({ data: peopleRows, error: null }),
-					})
-					return builder
+					});
+					return builder;
 				}
 				case "interview_people": {
-					const builder: any = {}
-					builder.select = () => builder
-					builder.eq = () => builder
-					builder.in = () => builder
-					builder.order = () => Promise.resolve({ data: interviewPeopleRows, error: null })
-					return builder
+					const builder: any = {};
+					builder.select = () => builder;
+					builder.eq = () => builder;
+					builder.in = () => builder;
+					builder.order = () => Promise.resolve({ data: interviewPeopleRows, error: null });
+					return builder;
 				}
 				case "evidence": {
-					const builder: any = {}
-					builder.select = () => builder
-					builder.eq = () => builder
-					builder.in = () => builder
+					const builder: any = {};
+					builder.select = () => builder;
+					builder.eq = () => builder;
+					builder.is = () => builder;
+					builder.in = () => builder;
 					builder.order = () => ({
 						limit: () => Promise.resolve({ data: evidenceRows, error: null }),
-					})
-					return builder
+					});
+					return builder;
+				}
+				case "person_scale": {
+					return {
+						select: () => ({
+							eq: () => ({
+								eq: () => Promise.resolve({ data: [], error: null }),
+							}),
+						}),
+					};
 				}
 				default:
-					throw new Error(`Unexpected table ${table}`)
+					throw new Error(`Unexpected table ${table}`);
 			}
-		})
+		});
 
-		const requestContext = new RequestContext()
-		requestContext.set("account_id", "account-123")
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
 
 		const result = (await fetchProjectStatusContextTool.execute(
-			{ projectId: "project-123", scopes: ["people"], peopleSearch: "Jane Doe" },
+			{
+				projectId: "project-123",
+				scopes: ["people"],
+				peopleSearch: "Jane Doe",
+			},
 			{ requestContext }
-		)) as ToolResult
+		)) as ToolResult;
 
-		expect(result.success).toBe(true)
-		expect(recordedOrClause).toContain("person.name.ilike.*Jane Doe*")
-		expect(getProjectStatusDataMock).not.toHaveBeenCalled()
-		const person = (result.data as any)?.people?.[0]
-		expect(person?.name).toBe("Jane Doe")
-		expect(person?.evidence?.[0]?.verbatim).toBe("The onboarding flow takes me 3 tries every time.")
-		expect(person?.interviews?.[0]?.title).toBe("Kickoff Interview")
-	})
-})
+		expect(result.success).toBe(true);
+		expect(recordedOrClause).toContain("person.name.ilike.*Jane Doe*");
+		expect(getProjectStatusDataMock).not.toHaveBeenCalled();
+		const person = (result.data as any)?.people?.[0];
+		expect(person?.name).toBe("Jane Doe");
+		expect(person?.evidence?.[0]?.verbatim).toBe("The onboarding flow takes me 3 tries every time.");
+		expect(person?.interviews?.[0]?.title).toBe("Kickoff Interview");
+	});
+
+	it("computes icpSummary using all project people, not only the limited people payload", async () => {
+		const now = new Date().toISOString();
+		const limitedPeopleRows = [
+			{
+				id: "pp-1",
+				person_id: "person-1",
+				role: "Buyer",
+				interview_count: 8,
+				first_seen_at: now,
+				last_seen_at: now,
+				created_at: now,
+				updated_at: now,
+				person: {
+					id: "person-1",
+					name: "Alice",
+					segment: null,
+					role: "Founder",
+					title: "Founder",
+					default_organization: { name: "Acme" },
+					description: null,
+					location: null,
+					image_url: null,
+					contact_info: null,
+					people_personas: [],
+				},
+			},
+			{
+				id: "pp-2",
+				person_id: "person-2",
+				role: "Buyer",
+				interview_count: 7,
+				first_seen_at: now,
+				last_seen_at: now,
+				created_at: now,
+				updated_at: now,
+				person: {
+					id: "person-2",
+					name: "Bob",
+					segment: null,
+					role: "Operator",
+					title: null,
+					default_organization: { name: "BetaCo" },
+					description: null,
+					location: null,
+					image_url: null,
+					contact_info: null,
+					people_personas: [],
+				},
+			},
+		];
+		const summaryPeopleRows = [
+			{
+				person_id: "person-1",
+				person: {
+					id: "person-1",
+					title: "Founder",
+					default_organization: { name: "Acme" },
+				},
+			},
+			{
+				person_id: "person-2",
+				person: {
+					id: "person-2",
+					title: null,
+					default_organization: { name: "BetaCo" },
+				},
+			},
+			{
+				person_id: "person-3",
+				person: {
+					id: "person-3",
+					title: "Consultant",
+					default_organization: null,
+				},
+			},
+			{
+				person_id: "person-4",
+				person: { id: "person-4", title: null, default_organization: null },
+			},
+		];
+		const icpScores = [
+			{ person_id: "person-1", score: 0.92, band: "HIGH", confidence: 0.9 },
+			{ person_id: "person-3", score: 0.44, band: "LOW", confidence: 0.8 },
+			{ person_id: "person-x", score: 0.8, band: "HIGH", confidence: 0.6 },
+		];
+
+		mockSupabase.from.mockImplementation((table: string) => {
+			switch (table) {
+				case "projects":
+					return {
+						select: () => ({
+							eq: () => ({
+								maybeSingle: () =>
+									Promise.resolve({
+										data: {
+											id: "project-123",
+											account_id: "account-123",
+											name: "Test Project",
+											description: null,
+											created_at: now,
+											updated_at: now,
+										},
+										error: null,
+									}),
+							}),
+						}),
+					};
+				case "project_people":
+					return {
+						select: (columns: string) => {
+							if (columns.includes("interview_count")) {
+								const builder: any = {};
+								builder.eq = () => builder;
+								builder.order = () => ({
+									limit: () => Promise.resolve({ data: limitedPeopleRows, error: null }),
+								});
+								return builder;
+							}
+							return {
+								eq: () => Promise.resolve({ data: summaryPeopleRows, error: null }),
+							};
+						},
+					};
+				case "interview_people": {
+					const builder: any = {};
+					builder.select = () => builder;
+					builder.eq = () => builder;
+					builder.in = () => builder;
+					builder.order = () => Promise.resolve({ data: [], error: null });
+					return builder;
+				}
+				case "person_scale":
+					return {
+						select: () => ({
+							eq: () => ({
+								eq: () => Promise.resolve({ data: icpScores, error: null }),
+							}),
+						}),
+					};
+				default:
+					throw new Error(`Unexpected table ${table}`);
+			}
+		});
+
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
+
+		const result = (await fetchProjectStatusContextTool.execute(
+			{ projectId: "project-123", scopes: ["people"], peopleLimit: 2 },
+			{ requestContext }
+		)) as ToolResult;
+
+		expect(result.success).toBe(true);
+		expect((result.data as any)?.people).toHaveLength(2);
+		expect((result.data as any)?.icpSummary).toEqual({
+			scored: 2,
+			total: 4,
+			distribution: {
+				HIGH: 1,
+				MEDIUM: 0,
+				LOW: 1,
+				unscored: 2,
+			},
+			missingDataCount: 3,
+		});
+	});
+
+	it("computes icpSummary missingDataCount per unique person when summary rows repeat", async () => {
+		const now = new Date().toISOString();
+		const limitedPeopleRows = [
+			{
+				id: "pp-1",
+				person_id: "person-1",
+				role: "Buyer",
+				interview_count: 8,
+				first_seen_at: now,
+				last_seen_at: now,
+				created_at: now,
+				updated_at: now,
+				person: {
+					id: "person-1",
+					name: "Alice",
+					segment: null,
+					role: "Founder",
+					title: "Founder",
+					default_organization: { name: "Acme" },
+					description: null,
+					location: null,
+					image_url: null,
+					contact_info: null,
+					people_personas: [],
+				},
+			},
+		];
+		const summaryPeopleRows = [
+			{
+				person_id: "person-1",
+				person: {
+					id: "person-1",
+					title: "Founder",
+					default_organization: { name: "Acme" },
+				},
+			},
+			{
+				person_id: "person-1",
+				person: {
+					id: "person-1",
+					title: null,
+					default_organization: { name: "Acme" },
+				},
+			},
+			{
+				person_id: "person-2",
+				person: {
+					id: "person-2",
+					title: "Operator",
+					default_organization: null,
+				},
+			},
+		];
+		const icpScores = [
+			{ person_id: "person-1", score: 0.92, band: "HIGH", confidence: 0.9 },
+			{ person_id: "person-2", score: 0.44, band: "LOW", confidence: 0.8 },
+		];
+
+		mockSupabase.from.mockImplementation((table: string) => {
+			switch (table) {
+				case "projects":
+					return {
+						select: () => ({
+							eq: () => ({
+								maybeSingle: () =>
+									Promise.resolve({
+										data: {
+											id: "project-123",
+											account_id: "account-123",
+											name: "Test Project",
+											description: null,
+											created_at: now,
+											updated_at: now,
+										},
+										error: null,
+									}),
+							}),
+						}),
+					};
+				case "project_people":
+					return {
+						select: (columns: string) => {
+							if (columns.includes("interview_count")) {
+								const builder: any = {};
+								builder.eq = () => builder;
+								builder.order = () => ({
+									limit: () => Promise.resolve({ data: limitedPeopleRows, error: null }),
+								});
+								return builder;
+							}
+							return {
+								eq: () => Promise.resolve({ data: summaryPeopleRows, error: null }),
+							};
+						},
+					};
+				case "interview_people": {
+					const builder: any = {};
+					builder.select = () => builder;
+					builder.eq = () => builder;
+					builder.in = () => builder;
+					builder.order = () => Promise.resolve({ data: [], error: null });
+					return builder;
+				}
+				case "person_scale":
+					return {
+						select: () => ({
+							eq: () => ({
+								eq: () => Promise.resolve({ data: icpScores, error: null }),
+							}),
+						}),
+					};
+				default:
+					throw new Error(`Unexpected table ${table}`);
+			}
+		});
+
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
+
+		const result = (await fetchProjectStatusContextTool.execute(
+			{ projectId: "project-123", scopes: ["people"], peopleLimit: 1 },
+			{ requestContext }
+		)) as ToolResult;
+
+		expect(result.success).toBe(true);
+		expect((result.data as any)?.icpSummary).toEqual({
+			scored: 2,
+			total: 2,
+			distribution: {
+				HIGH: 1,
+				MEDIUM: 0,
+				LOW: 1,
+				unscored: 0,
+			},
+			missingDataCount: 1,
+		});
+	});
+
+	it("defaults to lean scopes (status + sections) when scopes are omitted", async () => {
+		const now = new Date().toISOString();
+
+		mockSupabase.from.mockImplementation((table: string) => {
+			switch (table) {
+				case "projects":
+					return {
+						select: () => ({
+							eq: () => ({
+								maybeSingle: () =>
+									Promise.resolve({
+										data: {
+											id: "project-123",
+											account_id: "account-123",
+											name: "Test Project",
+											description: null,
+											created_at: now,
+											updated_at: now,
+										},
+										error: null,
+									}),
+							}),
+						}),
+					};
+				case "project_sections":
+					return {
+						select: () => ({
+							eq: () => ({
+								order: () => ({
+									order: () =>
+										Promise.resolve({
+											data: [
+												{
+													id: "section-1",
+													kind: "goal",
+													content_md: "Find the top buying signals",
+													meta: null,
+													position: 1,
+													created_at: now,
+													updated_at: now,
+												},
+											],
+											error: null,
+										}),
+								}),
+							}),
+						}),
+					};
+				default:
+					throw new Error(`Unexpected table ${table}`);
+			}
+		});
+
+		getProjectStatusDataMock.mockResolvedValue(null);
+
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
+
+		const result = (await fetchProjectStatusContextTool.execute(
+			{ projectId: "project-123" },
+			{ requestContext }
+		)) as ToolResult;
+
+		expect(result.success).toBe(true);
+		expect(result.scopes).toEqual(["status", "sections"]);
+		expect((result.data as any)?.sections).toHaveLength(1);
+		expect(getProjectStatusDataMock).toHaveBeenCalledWith("project-123", mockSupabase);
+	});
+
+	it("includes evidence details by default when evidence scope is requested", async () => {
+		const now = new Date().toISOString();
+
+		mockSupabase.from.mockImplementation((table: string) => {
+			switch (table) {
+				case "projects":
+					return {
+						select: () => ({
+							eq: () => ({
+								maybeSingle: () =>
+									Promise.resolve({
+										data: {
+											id: "project-123",
+											account_id: "account-123",
+											name: "Test Project",
+											description: null,
+											created_at: now,
+											updated_at: now,
+										},
+										error: null,
+									}),
+							}),
+						}),
+					};
+				case "evidence":
+					return {
+						select: () => {
+							const builder: any = {};
+							builder.eq = () => builder;
+							builder.is = () => builder;
+							builder.order = () => ({
+								limit: () =>
+									Promise.resolve({
+										data: [
+											{
+												id: "ev-1",
+												gist: "Pricing confusion blocks purchases",
+												verbatim: "I cannot tell which plan fits our team",
+												context_summary: null,
+												modality: "interview",
+												journey_stage: "evaluation",
+												topic: "pricing",
+												support: "high",
+												is_question: false,
+												interview_id: "int-1",
+												project_id: "project-123",
+												created_at: now,
+												updated_at: now,
+												says: null,
+												does: null,
+												thinks: null,
+												feels: null,
+												pains: null,
+												gains: null,
+												anchors: null,
+											},
+										],
+										error: null,
+									}),
+							});
+							return builder;
+						},
+					};
+				default:
+					throw new Error(`Unexpected table ${table}`);
+			}
+		});
+
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
+
+		const result = (await fetchProjectStatusContextTool.execute(
+			{ projectId: "project-123", scopes: ["evidence"] },
+			{ requestContext }
+		)) as ToolResult;
+
+		expect(result.success).toBe(true);
+		expect((result.data as any)?.evidence).toHaveLength(1);
+		expect((result.data as any)?.evidence?.[0]?.gist).toContain("Pricing confusion");
+	});
+
+	it("skips evidence query when includeEvidence is false", async () => {
+		const now = new Date().toISOString();
+
+		mockSupabase.from.mockImplementation((table: string) => {
+			if (table === "projects") {
+				return {
+					select: () => ({
+						eq: () => ({
+							maybeSingle: () =>
+								Promise.resolve({
+									data: {
+										id: "project-123",
+										account_id: "account-123",
+										name: "Test Project",
+										description: null,
+										created_at: now,
+										updated_at: now,
+									},
+									error: null,
+								}),
+						}),
+					}),
+				};
+			}
+
+			if (table === "evidence") {
+				throw new Error("Evidence table should not be queried when includeEvidence=false");
+			}
+
+			throw new Error(`Unexpected table ${table}`);
+		});
+
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
+
+		const result = (await fetchProjectStatusContextTool.execute(
+			{
+				projectId: "project-123",
+				scopes: ["evidence"],
+				includeEvidence: false,
+			},
+			{ requestContext }
+		)) as ToolResult;
+
+		expect(result.success).toBe(true);
+		expect((result.data as any)?.evidence).toEqual([]);
+		expect(result.message).toContain("Evidence details omitted by includeEvidence=false");
+	});
+});

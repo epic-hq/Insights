@@ -1,24 +1,24 @@
-import { Link, type LoaderFunctionArgs } from "react-router"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
-import { cn } from "~/lib/utils"
-import { getAccounts } from "../db"
-import type { Route } from "./+types/list"
+import { Link, type LoaderFunctionArgs } from "react-router";
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server";
+import { cn } from "~/lib/utils";
+import { getAccounts } from "../db";
+import type { Route } from "./+types/list";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-	const { client, headers } = getServerClient(request)
-	const { user } = await getAuthenticatedUser(request)
+	const { client, headers } = getServerClient(request);
+	const { user } = await getAuthenticatedUser(request);
 
 	if (!user) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const { data, error } = await getAccounts({ supabase: client })
+	const { data, error } = await getAccounts({ supabase: client });
 	if (error) {
-		throw error
+		throw error;
 	}
 	return {
 		teams: data?.teamAccounts,
-	}
+	};
 }
 
 export default function TeamsList({ loaderData }: Route.ComponentProps) {
@@ -87,5 +87,5 @@ export default function TeamsList({ loaderData }: Route.ComponentProps) {
 				))}
 			</div>
 		</div>
-	)
+	);
 }

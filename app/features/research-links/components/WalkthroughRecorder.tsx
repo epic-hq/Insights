@@ -2,7 +2,7 @@
  * Walkthrough video recorder for Ask link creators
  * Records the creator explaining questions while navigating through them
  */
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion";
 import {
 	AlertCircle,
 	Camera,
@@ -17,18 +17,18 @@ import {
 	Upload,
 	Video,
 	X,
-} from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { useFetcher } from "react-router"
-import { Button } from "~/components/ui/button"
-import { cn } from "~/lib/utils"
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useFetcher } from "react-router";
+import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
 type WalkthroughRecorderProps = {
-	listId: string
-	existingVideoUrl?: string | null
-	onUploadComplete?: (videoUrl: string) => void
-	onDelete?: () => void
-}
+	listId: string;
+	existingVideoUrl?: string | null;
+	onUploadComplete?: (videoUrl: string) => void;
+	onDelete?: () => void;
+};
 
 type RecordingState =
 	| "idle"
@@ -38,13 +38,13 @@ type RecordingState =
 	| "stopped"
 	| "uploading"
 	| "complete"
-	| "error"
+	| "error";
 
-const MAX_RECORDING_SECONDS = 300 // 5 minutes max
+const MAX_RECORDING_SECONDS = 300; // 5 minutes max
 
 function getSupportedVideoMimeType(): string {
-	const types = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"]
-	return types.find((type) => MediaRecorder.isTypeSupported(type)) || "video/webm"
+	const types = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"];
+	return types.find((type) => MediaRecorder.isTypeSupported(type)) || "video/webm";
 }
 
 export function WalkthroughRecorder({
@@ -53,65 +53,65 @@ export function WalkthroughRecorder({
 	onUploadComplete,
 	onDelete,
 }: WalkthroughRecorderProps) {
-	const [state, setState] = useState<RecordingState>(existingVideoUrl ? "complete" : "idle")
-	const [error, setError] = useState<string | null>(null)
-	const [recordingSeconds, setRecordingSeconds] = useState(0)
-	const [videoUrl, setVideoUrl] = useState<string | null>(null)
-	const [isExpanded, setIsExpanded] = useState(false)
-	const [position, setPosition] = useState({ x: 20, y: 20 })
+	const [state, setState] = useState<RecordingState>(existingVideoUrl ? "complete" : "idle");
+	const [error, setError] = useState<string | null>(null);
+	const [recordingSeconds, setRecordingSeconds] = useState(0);
+	const [videoUrl, setVideoUrl] = useState<string | null>(null);
+	const [isExpanded, setIsExpanded] = useState(false);
+	const [position, setPosition] = useState({ x: 20, y: 20 });
 
 	// Use fetcher for delete action
-	const deleteFetcher = useFetcher<{ success?: boolean; error?: string }>()
-	const isDeleting = deleteFetcher.state !== "idle"
+	const deleteFetcher = useFetcher<{ success?: boolean; error?: string }>();
+	const isDeleting = deleteFetcher.state !== "idle";
 
 	// Handle delete response
 	useEffect(() => {
 		if (deleteFetcher.state === "idle" && deleteFetcher.data) {
 			if (deleteFetcher.data.success) {
-				setState("idle")
-				onDelete?.()
+				setState("idle");
+				onDelete?.();
 			} else if (deleteFetcher.data.error) {
-				setError(deleteFetcher.data.error)
+				setError(deleteFetcher.data.error);
 			}
 		}
-	}, [deleteFetcher.state, deleteFetcher.data, onDelete])
+	}, [deleteFetcher.state, deleteFetcher.data, onDelete]);
 
-	const videoPreviewRef = useRef<HTMLVideoElement>(null)
-	const videoPlaybackRef = useRef<HTMLVideoElement>(null)
-	const mediaStreamRef = useRef<MediaStream | null>(null)
-	const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-	const chunksRef = useRef<Blob[]>([])
-	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-	const dragRef = useRef<HTMLDivElement>(null)
+	const videoPreviewRef = useRef<HTMLVideoElement>(null);
+	const videoPlaybackRef = useRef<HTMLVideoElement>(null);
+	const mediaStreamRef = useRef<MediaStream | null>(null);
+	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+	const chunksRef = useRef<Blob[]>([]);
+	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const dragRef = useRef<HTMLDivElement>(null);
 
 	// Cleanup on unmount
 	useEffect(() => {
 		return () => {
 			if (mediaStreamRef.current) {
-				mediaStreamRef.current.getTracks().forEach((track) => track.stop())
+				mediaStreamRef.current.getTracks().forEach((track) => track.stop());
 			}
 			if (timerRef.current) {
-				clearInterval(timerRef.current)
+				clearInterval(timerRef.current);
 			}
 			if (videoUrl) {
-				URL.revokeObjectURL(videoUrl)
+				URL.revokeObjectURL(videoUrl);
 			}
-		}
-	}, [videoUrl])
+		};
+	}, [videoUrl]);
 
 	// Attach stream to video element when preview/recording state
 	useEffect(() => {
 		if ((state === "preview" || state === "recording") && mediaStreamRef.current && videoPreviewRef.current) {
-			videoPreviewRef.current.srcObject = mediaStreamRef.current
+			videoPreviewRef.current.srcObject = mediaStreamRef.current;
 			videoPreviewRef.current.play().catch(() => {
 				// Autoplay may be blocked, user will need to interact
-			})
+			});
 		}
-	}, [state])
+	}, [state]);
 
 	const startPreview = useCallback(async () => {
-		setState("requesting_permission")
-		setError(null)
+		setState("requesting_permission");
+		setError(null);
 
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({
@@ -121,183 +121,183 @@ export function WalkthroughRecorder({
 					height: { ideal: 720 },
 				},
 				audio: true,
-			})
+			});
 
-			mediaStreamRef.current = stream
-			setState("preview")
+			mediaStreamRef.current = stream;
+			setState("preview");
 		} catch (err) {
 			const message =
 				err instanceof Error
 					? err.name === "NotAllowedError"
 						? "Camera access denied. Please allow camera and microphone access."
 						: err.message
-					: "Failed to access camera"
-			setError(message)
-			setState("error")
+					: "Failed to access camera";
+			setError(message);
+			setState("error");
 		}
-	}, [])
+	}, []);
 
 	const startRecording = useCallback(() => {
-		if (!mediaStreamRef.current) return
+		if (!mediaStreamRef.current) return;
 
-		chunksRef.current = []
-		const mimeType = getSupportedVideoMimeType()
+		chunksRef.current = [];
+		const mimeType = getSupportedVideoMimeType();
 
 		const recorder = new MediaRecorder(mediaStreamRef.current, {
 			mimeType,
 			videoBitsPerSecond: 2500000, // 2.5 Mbps
-		})
+		});
 
 		recorder.ondataavailable = (event) => {
 			if (event.data.size > 0) {
-				chunksRef.current.push(event.data)
+				chunksRef.current.push(event.data);
 			}
-		}
+		};
 
 		recorder.onstop = () => {
-			const blob = new Blob(chunksRef.current, { type: mimeType })
-			const url = URL.createObjectURL(blob)
-			setVideoUrl(url)
+			const blob = new Blob(chunksRef.current, { type: mimeType });
+			const url = URL.createObjectURL(blob);
+			setVideoUrl(url);
 
 			// Stop the preview stream
 			if (mediaStreamRef.current) {
-				mediaStreamRef.current.getTracks().forEach((track) => track.stop())
-				mediaStreamRef.current = null
+				mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+				mediaStreamRef.current = null;
 			}
 
-			setState("stopped")
-		}
+			setState("stopped");
+		};
 
-		mediaRecorderRef.current = recorder
-		recorder.start(1000) // Collect data every second
-		setState("recording")
-		setRecordingSeconds(0)
+		mediaRecorderRef.current = recorder;
+		recorder.start(1000); // Collect data every second
+		setState("recording");
+		setRecordingSeconds(0);
 
 		// Start timer
 		timerRef.current = setInterval(() => {
 			setRecordingSeconds((prev) => {
-				const next = prev + 1
+				const next = prev + 1;
 				if (next >= MAX_RECORDING_SECONDS) {
-					stopRecording()
+					stopRecording();
 				}
-				return next
-			})
-		}, 1000)
-	}, [])
+				return next;
+			});
+		}, 1000);
+	}, []);
 
 	const stopRecording = useCallback(() => {
 		if (timerRef.current) {
-			clearInterval(timerRef.current)
-			timerRef.current = null
+			clearInterval(timerRef.current);
+			timerRef.current = null;
 		}
 
 		if (mediaRecorderRef.current?.state === "recording") {
-			mediaRecorderRef.current.stop()
+			mediaRecorderRef.current.stop();
 		}
-	}, [])
+	}, []);
 
 	const resetRecording = useCallback(() => {
 		if (videoUrl) {
-			URL.revokeObjectURL(videoUrl)
-			setVideoUrl(null)
+			URL.revokeObjectURL(videoUrl);
+			setVideoUrl(null);
 		}
-		setRecordingSeconds(0)
-		chunksRef.current = []
-		startPreview()
-	}, [videoUrl, startPreview])
+		setRecordingSeconds(0);
+		chunksRef.current = [];
+		startPreview();
+	}, [videoUrl, startPreview]);
 
 	const cancelRecording = useCallback(() => {
 		if (mediaStreamRef.current) {
-			mediaStreamRef.current.getTracks().forEach((track) => track.stop())
-			mediaStreamRef.current = null
+			mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+			mediaStreamRef.current = null;
 		}
 		if (timerRef.current) {
-			clearInterval(timerRef.current)
-			timerRef.current = null
+			clearInterval(timerRef.current);
+			timerRef.current = null;
 		}
 		if (videoUrl) {
-			URL.revokeObjectURL(videoUrl)
-			setVideoUrl(null)
+			URL.revokeObjectURL(videoUrl);
+			setVideoUrl(null);
 		}
-		chunksRef.current = []
-		setRecordingSeconds(0)
-		setState("idle")
-	}, [videoUrl])
+		chunksRef.current = [];
+		setRecordingSeconds(0);
+		setState("idle");
+	}, [videoUrl]);
 
 	const uploadVideo = useCallback(async () => {
-		if (!videoUrl || chunksRef.current.length === 0) return
+		if (!videoUrl || chunksRef.current.length === 0) return;
 
-		setState("uploading")
-		setError(null)
+		setState("uploading");
+		setError(null);
 
 		try {
-			const mimeType = getSupportedVideoMimeType()
-			const blob = new Blob(chunksRef.current, { type: mimeType })
-			const ext = mimeType.includes("mp4") ? "mp4" : "webm"
-			const file = new File([blob], `walkthrough.${ext}`, { type: mimeType })
+			const mimeType = getSupportedVideoMimeType();
+			const blob = new Blob(chunksRef.current, { type: mimeType });
+			const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+			const file = new File([blob], `walkthrough.${ext}`, { type: mimeType });
 
-			const formData = new FormData()
-			formData.append("video", file)
+			const formData = new FormData();
+			formData.append("video", file);
 
 			const response = await fetch(`/api/research-links/${listId}/upload-walkthrough`, {
 				method: "POST",
 				body: formData,
-			})
+			});
 
 			if (!response.ok) {
-				const data = await response.json().catch(() => ({}))
-				throw new Error(data.error || "Upload failed")
+				const data = await response.json().catch(() => ({}));
+				throw new Error(data.error || "Upload failed");
 			}
 
-			const result = await response.json()
-			setState("complete")
-			onUploadComplete?.(result.videoUrl)
+			const result = await response.json();
+			setState("complete");
+			onUploadComplete?.(result.videoUrl);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Upload failed")
-			setState("error")
+			setError(err instanceof Error ? err.message : "Upload failed");
+			setState("error");
 		}
-	}, [videoUrl, listId, onUploadComplete])
+	}, [videoUrl, listId, onUploadComplete]);
 
 	const handleDelete = useCallback(() => {
-		setError(null)
+		setError(null);
 		deleteFetcher.submit(
 			{ intent: "delete" },
 			{
 				method: "POST",
 				action: `/api/research-links/${listId}/delete-walkthrough`,
 			}
-		)
-	}, [listId, deleteFetcher])
+		);
+	}, [listId, deleteFetcher]);
 
 	const formatTime = (seconds: number) => {
-		const mins = Math.floor(seconds / 60)
-		const secs = seconds % 60
-		return `${mins}:${secs.toString().padStart(2, "0")}`
-	}
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins}:${secs.toString().padStart(2, "0")}`;
+	};
 
 	// Simple drag handling
 	const handleDragStart = useCallback(
 		(e: React.MouseEvent) => {
-			const startX = e.clientX - position.x
-			const startY = e.clientY - position.y
+			const startX = e.clientX - position.x;
+			const startY = e.clientY - position.y;
 
 			const handleMouseMove = (moveEvent: MouseEvent) => {
 				setPosition({
 					x: moveEvent.clientX - startX,
 					y: moveEvent.clientY - startY,
-				})
-			}
+				});
+			};
 
 			const handleMouseUp = () => {
-				document.removeEventListener("mousemove", handleMouseMove)
-				document.removeEventListener("mouseup", handleMouseUp)
-			}
+				document.removeEventListener("mousemove", handleMouseMove);
+				document.removeEventListener("mouseup", handleMouseUp);
+			};
 
-			document.addEventListener("mousemove", handleMouseMove)
-			document.addEventListener("mouseup", handleMouseUp)
+			document.addEventListener("mousemove", handleMouseMove);
+			document.addEventListener("mouseup", handleMouseUp);
 		},
 		[position]
-	)
+	);
 
 	// Idle state - show button to start
 	if (state === "idle") {
@@ -315,7 +315,7 @@ export function WalkthroughRecorder({
 					Start Recording
 				</Button>
 			</div>
-		)
+		);
 	}
 
 	// Complete state with existing video
@@ -330,7 +330,7 @@ export function WalkthroughRecorder({
 					<div className="flex gap-2">
 						<Button
 							onClick={() => {
-								setState("idle")
+								setState("idle");
 							}}
 							variant="outline"
 							size="sm"
@@ -360,7 +360,7 @@ export function WalkthroughRecorder({
 				)}
 				<video src={existingVideoUrl} className="aspect-video w-full rounded-md bg-black" controls playsInline />
 			</div>
-		)
+		);
 	}
 
 	// Recording/Preview states - floating overlay
@@ -449,8 +449,8 @@ export function WalkthroughRecorder({
 							<p className="text-center text-red-300 text-sm">{error}</p>
 							<Button
 								onClick={() => {
-									setError(null)
-									setState("idle")
+									setError(null);
+									setState("idle");
 								}}
 								variant="outline"
 								size="sm"
@@ -503,5 +503,5 @@ export function WalkthroughRecorder({
 				</div>
 			</motion.div>
 		</AnimatePresence>
-	)
+	);
 }

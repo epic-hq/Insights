@@ -1,22 +1,23 @@
-import { motion } from "framer-motion"
+import { motion } from "framer-motion";
 import {
 	ArrowRight,
 	CheckCircle2,
 	Compass,
+	Inbox,
 	Lightbulb,
-	ListChecks,
 	MessageSquare,
+	Search,
 	Sparkles,
 	Target,
 	Users,
-} from "lucide-react"
-import type React from "react"
-import { Link } from "react-router-dom"
-import NavPageLayout from "~/components/layout/NavPageLayout"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { PATHS } from "~/paths"
+} from "lucide-react";
+import type React from "react";
+import { Link } from "react-router-dom";
+import NavPageLayout from "~/components/layout/NavPageLayout";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { PATHS } from "~/paths";
 
 // --- Animation helpers
 const container = {
@@ -25,74 +26,81 @@ const container = {
 		opacity: 1,
 		transition: { staggerChildren: 0.12, delayChildren: 0.1 },
 	},
-}
+};
 
 const item = {
 	hidden: { opacity: 0, y: 18 },
-	show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.25, 1, 0.5, 1] } },
-}
+	show: {
+		opacity: 1,
+		y: 0,
+		transition: { duration: 0.45, ease: [0.25, 1, 0.5, 1] },
+	},
+};
 
 // --- Types
 type Benefit = {
-	title: string
-	description: string
-	icon?: React.ElementType
-}
+	title: string;
+	description: string;
+	icon?: React.ElementType;
+};
 
 type Step = {
-	title: string
-	description: string
-	icon?: React.ElementType
-	ctaLabel?: string
-	onClick?: () => void
-}
+	title: string;
+	description: string;
+	icon?: React.ElementType;
+	ctaLabel?: string;
+	onClick?: () => void;
+};
 
 // --- Defaults (edit to fit getupsight.com)
 const defaultBenefits: Benefit[] = [
 	{
-		title: "Turn conversations into clarity",
-		description: "Structured prompts and tagging convert raw interviews into direction you can act on.",
-		icon: Lightbulb,
+		title: "Grounded, not generated",
+		description: "Click any insight to see exactly who said it. Trust that's verified, not hallucinated.",
+		icon: CheckCircle2,
 	},
 	{
-		title: "Find your ideal customers",
-		description: "Spot patterns, segments, and jobs-to-be-done to focus roadmap and messaging.",
+		title: "One place, not five tools",
+		description:
+			"Calls, surveys, notes, tickets—synthesized together. No more hunting across Slack, Notion, and someone's memory.",
 		icon: Users,
 	},
 	{
-		title: "Validate what to build next",
-		description: "Prioritize features based on pain, frequency, and willingness to pay — not vibes.",
+		title: "Decisions, not decks",
+		description: "Insights roll into tasks with owners. Evidence stays attached. Research that actually ships.",
 		icon: Target,
 	},
 	{
-		title: "Ship with proof, not assumptions",
-		description: "Export evidence, excerpts, and insights for stakeholders, investors, and your own sanity.",
-		icon: CheckCircle2,
+		title: "Human + AI, your way",
+		description:
+			"AI surveys, guided interviews, or just upload recordings. Choose your workflow. AI assists; you lead.",
+		icon: Lightbulb,
 	},
-]
+];
 
 const defaultSteps: Step[] = [
 	{
-		title: "Plan questions",
-		description: "Pick a goal, get tailored question sets, and avoid leading prompts.",
-		icon: ListChecks,
+		title: "Capture everything",
+		description:
+			"AI surveys, live interviews, meeting notes, uploaded docs—every customer input flows into one system.",
+		icon: Inbox,
 	},
 	{
-		title: "Run interviews with confidence",
-		description: "Lightweight guide, live notes, and smart cues keep you on track.",
-		icon: MessageSquare,
-	},
-	{
-		title: "Tag evidence & auto-extract insights",
-		description: "Map quotes to pains, behaviors, and segments; generate takeaways you can defend.",
+		title: "AI extracts evidence",
+		description: "Quotes, themes, personas, and key facts—automatically identified and linked to who said it.",
 		icon: Sparkles,
 	},
 	{
-		title: "Decide what's next",
-		description: "Rank opportunities by impact × effort and align your team.",
-		icon: Compass,
+		title: "Search & synthesize",
+		description: "Ask questions across all conversations. Get answers grounded in real customer words.",
+		icon: Search,
 	},
-]
+	{
+		title: "Decide with confidence",
+		description: "Evidence powers decisions, not opinions. Share stories and reels with stakeholders.",
+		icon: Target,
+	},
+];
 
 // --- Components
 export function KeyBenefits({
@@ -100,9 +108,9 @@ export function KeyBenefits({
 	eyebrow = "Why Upsight",
 	benefits = defaultBenefits,
 }: {
-	headline?: string
-	eyebrow?: string
-	benefits?: Benefit[]
+	headline?: string;
+	eyebrow?: string;
+	benefits?: Benefit[];
 }) {
 	return (
 		<section id="benefits" className="space-y-12">
@@ -124,7 +132,7 @@ export function KeyBenefits({
 					{headline}
 				</h2>
 				<p className="mx-auto mt-4 max-w-2xl text-pretty text-base text-muted-foreground leading-relaxed md:text-lg">
-					Build with proof at any stage — idea, MVP, or post-launch.
+					Customer truth that flows freely. Make work work.
 				</p>
 			</motion.div>
 
@@ -154,21 +162,21 @@ export function KeyBenefits({
 				))}
 			</motion.ul>
 		</section>
-	)
+	);
 }
 
 export function HowItWorks({
 	headline = "How It Works",
 	eyebrow = "Workflow",
 	steps = defaultSteps,
-	ctaLabel = "Start my first interview plan",
+	ctaLabel = "Start your first project",
 	onCtaClick,
 }: {
-	headline?: string
-	eyebrow?: string
-	steps?: Step[]
-	ctaLabel?: string
-	onCtaClick?: () => void
+	headline?: string;
+	eyebrow?: string;
+	steps?: Step[];
+	ctaLabel?: string;
+	onCtaClick?: () => void;
 }) {
 	return (
 		<section className="space-y-12">
@@ -190,7 +198,7 @@ export function HowItWorks({
 					{headline}
 				</h2>
 				<p className="mx-auto mt-4 max-w-2xl text-pretty text-base text-muted-foreground leading-relaxed md:text-lg">
-					From question planning to analysis — one simple, guided flow.
+					From customer input to defensible decision—one guided flow.
 				</p>
 			</motion.div>
 
@@ -213,16 +221,8 @@ export function HowItWorks({
 											<Compass className="h-7 w-7 text-white" aria-hidden="true" />
 										)}
 									</div>
-									<div className="min-w-0 flex-1 pt-1">
-										<div className="mb-2 flex items-center gap-2">
-											{/* <span className="font-mono text-muted-foreground text-xs uppercase tracking-wide">
-												Step {index + 1}
-											</span> */}
-										</div>
-										<CardTitle className="flex flex-row gap-2 text-balance text-left font-semibold text-slate-900 text-xl leading-tight md:text-2xl dark:text-white">
-											<span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 font-bold text-foreground text-xs shadow-sm">
-												{index + 1}
-											</span>
+									<div className="min-w-0 flex-1 pt-2">
+										<CardTitle className="text-balance text-left font-semibold text-slate-900 text-xl leading-tight md:text-2xl dark:text-white">
 											{step.title}
 										</CardTitle>
 									</div>
@@ -258,13 +258,13 @@ export function HowItWorks({
 					onClick={onCtaClick}
 				>
 					<span className="flex items-center gap-2">
-						{ctaLabel}
+						Start Free Trial
 						<ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
 					</span>
 				</Button>
 			</motion.div>
 		</section>
-	)
+	);
 }
 
 // --- Default export renders both blocks stacked inside NavPageLayout
@@ -290,5 +290,5 @@ function _UpsightBenefitsAndHowItWorks() {
 				<HowItWorks />
 			</div>
 		</NavPageLayout>
-	)
+	);
 }

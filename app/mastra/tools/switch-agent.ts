@@ -1,5 +1,5 @@
-import { createTool } from "@mastra/core/tools"
-import { z } from "zod"
+import { createTool } from "@mastra/core/tools";
+import { z } from "zod";
 
 /**
  * Tool for switching between agents in the UI.
@@ -19,4 +19,4 @@ export const switchAgentTool = createTool({
 		message: z.string().optional(),
 		error: z.string().optional(),
 	}),
-})
+});

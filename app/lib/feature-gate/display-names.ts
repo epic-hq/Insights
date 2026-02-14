@@ -5,7 +5,7 @@
  * Can be imported in both client and server code.
  */
 
-import type { FeatureKey } from "./types"
+import type { FeatureKey } from "./types";
 
 /**
  * Get a human-readable name for a feature.
@@ -18,6 +18,6 @@ export function getFeatureDisplayName(feature: FeatureKey): string {
 		interview_guide: "Interview Guide",
 		smart_personas: "Smart Personas",
 		ai_crm: "AI CRM",
-	}
-	return names[feature] ?? String(feature)
+	};
+	return names[feature] ?? String(feature);
 }

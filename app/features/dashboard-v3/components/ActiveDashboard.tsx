@@ -9,41 +9,41 @@
  * 5. Tasks [priority: text status]
  */
 
-import { ChevronRight, FileText, Glasses, Lightbulb, ListChecks, Settings } from "lucide-react"
-import { Link } from "react-router-dom"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
-import type { LensSummary } from "~/features/dashboard/components/LensResultsGrid"
-import { PriorityBars } from "~/features/tasks/components/PriorityBars"
-import type { Task, TaskStatus } from "~/features/tasks/types"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import type { Insight } from "~/types"
-import type { ProjectContext } from "./sections/ContextPanel"
+import { ChevronRight, FileText, Glasses, Lightbulb, ListChecks, Settings } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent } from "~/components/ui/card";
+import type { LensSummary } from "~/features/dashboard/components/LensResultsGrid";
+import { PriorityBars } from "~/features/tasks/components/PriorityBars";
+import type { Task, TaskStatus } from "~/features/tasks/types";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import type { Insight } from "~/types";
+import type { ProjectContext } from "./sections/ContextPanel";
 
 export interface ActiveDashboardProps {
 	/** Project name */
-	projectName: string
+	projectName: string;
 	/** Base path for project routes */
-	projectPath: string
+	projectPath: string;
 	/** Array of tasks */
-	tasks: Task[]
+	tasks: Task[];
 	/** Array of insights */
-	insights: Insight[]
+	insights: Insight[];
 	/** Array of lens summaries */
-	lenses: LensSummary[]
+	lenses: LensSummary[];
 	/** Project research goal */
-	researchGoal?: string
+	researchGoal?: string;
 	/** Full project context for setup progress */
-	projectContext?: ProjectContext
+	projectContext?: ProjectContext;
 	/** Total conversation count */
-	conversationCount: number
+	conversationCount: number;
 	/** Number of active lenses */
-	activeLensCount: number
+	activeLensCount: number;
 	/** Hide the header (when parent provides it) */
-	hideHeader?: boolean
+	hideHeader?: boolean;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 const statusLabels: Record<TaskStatus, string> = {
@@ -53,7 +53,7 @@ const statusLabels: Record<TaskStatus, string> = {
 	blocked: "Blocked",
 	done: "Done",
 	archived: "Archived",
-}
+};
 
 export function ActiveDashboard({
 	projectName,
@@ -66,24 +66,24 @@ export function ActiveDashboard({
 	hideHeader,
 	className,
 }: ActiveDashboardProps) {
-	const routes = useProjectRoutes(projectPath)
+	const routes = useProjectRoutes(projectPath);
 
 	// Extract accountId from projectPath (format: /a/{accountId}/{projectId})
-	const pathParts = projectPath.split("/")
-	const accountId = pathParts[2] // /a/{accountId}/...
+	const pathParts = projectPath.split("/");
+	const accountId = pathParts[2]; // /a/{accountId}/...
 
 	// Filter lenses with data
-	const lensesWithData = lenses.filter((l) => l.hasData)
+	const lensesWithData = lenses.filter((l) => l.hasData);
 
 	// Filter active tasks
 	const activeTasks = tasks
 		.filter((t) => t.status !== "done" && t.status !== "archived" && t.status !== "backlog")
-		.slice(0, 5)
+		.slice(0, 5);
 
 	// Top insights
 	const topInsights = [...insights]
 		.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
-		.slice(0, 3)
+		.slice(0, 3);
 
 	return (
 		<div className={cn("space-y-6", className)}>
@@ -261,7 +261,7 @@ export function ActiveDashboard({
 				</div>
 			)}
 		</div>
-	)
+	);
 }
 
-export default ActiveDashboard
+export default ActiveDashboard;

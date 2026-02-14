@@ -15,6 +15,7 @@
 **/build
 **/dist
 coverage
+.mastra
 *.log
 *.local
 .gitignore

@@ -1,0 +1,367 @@
+/**
+ * Landing page styles — custom CSS for the hero carousel,
+ * Polaroid cards, annotation lines, and scroll animations.
+ * Tailwind handles general layout; this covers the bespoke stuff.
+ */
+
+:root {
+	--lp-bg: #050508;
+	--lp-bg2: #0a0a10;
+	--lp-text: #eeeef2;
+	--lp-dim: rgba(238, 238, 242, 0.7);
+	--lp-dim2: rgba(238, 238, 242, 0.45);
+	--lp-amber: #f59e0b;
+	--lp-amber-glow: rgba(245, 158, 11, 0.3);
+	--lp-sky: #38bdf8;
+	--lp-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ===========================================
+   HERO
+   =========================================== */
+.lp-hero {
+	min-height: 100vh;
+	min-height: 100dvh;
+	display: flex;
+	flex-direction: column;
+	position: relative;
+	overflow: hidden;
+}
+.lp-hero-crowd {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+}
+.lp-hero-crowd img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	filter: brightness(0.38) saturate(0.6);
+}
+.lp-hero-crowd::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background:
+		linear-gradient(
+			180deg,
+			rgba(5, 5, 8, 0.4) 0%,
+			rgba(5, 5, 8, 0.05) 30%,
+			rgba(5, 5, 8, 0.15) 65%,
+			rgba(5, 5, 8, 0.85) 100%
+		), radial-gradient(ellipse at 50% 50%, rgba(245, 158, 11, 0.03), transparent 60%);
+}
+
+/* ===========================================
+   PORTRAIT CAROUSEL — Polaroid cards
+   =========================================== */
+.lp-portrait-stage {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	z-index: 2;
+	min-height: 0;
+	padding: clamp(0.25rem, 0.5vw, 0.5rem) 0;
+}
+
+.lp-portrait-scene {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: clamp(1rem, 2vw, 2rem);
+	opacity: 0;
+	transform: scale(0.88);
+	transition:
+		opacity 1s var(--lp-ease),
+		transform 1.2s var(--lp-ease);
+	pointer-events: none;
+}
+.lp-portrait-scene.active {
+	position: relative;
+	opacity: 1;
+	transform: scale(1);
+	pointer-events: auto;
+}
+
+/* Polaroid card */
+.lp-polaroid {
+	background: #f5f3ef;
+	padding: clamp(6px, 0.8vw, 10px) clamp(6px, 0.8vw, 10px) clamp(28px, 4vw, 48px);
+	border-radius: 2px;
+	box-shadow:
+		0 2px 8px rgba(0, 0, 0, 0.3),
+		0 16px 56px rgba(0, 0, 0, 0.5),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+	transition: transform 0.6s var(--lp-ease);
+}
+.lp-portrait-scene[data-person="0"] .lp-polaroid {
+	transform: rotate(-2.5deg);
+}
+.lp-portrait-scene[data-person="1"] .lp-polaroid {
+	transform: rotate(1.8deg);
+}
+.lp-portrait-scene[data-person="2"] .lp-polaroid {
+	transform: rotate(-1.2deg);
+}
+
+.lp-polaroid-img {
+	width: clamp(180px, 22vw, 280px);
+	aspect-ratio: 3 / 4;
+	overflow: hidden;
+	position: relative;
+}
+.lp-polaroid-img img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+/* ===========================================
+   SVG ANNOTATION OVERLAY
+   =========================================== */
+.lp-anno-svg {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	overflow: visible;
+	z-index: 5;
+}
+.lp-anno-svg line {
+	stroke: var(--lp-amber);
+	stroke-width: 4.5;
+	opacity: 0;
+	transition: opacity 0.5s var(--lp-ease);
+}
+.lp-portrait-scene.active .lp-anno-svg line {
+	opacity: 0.5;
+}
+.lp-portrait-scene.active .lp-anno-svg line.delay-1 {
+	transition-delay: 0.3s;
+}
+.lp-portrait-scene.active .lp-anno-svg line.delay-2 {
+	transition-delay: 0.5s;
+}
+.lp-portrait-scene.active .lp-anno-svg line.delay-3 {
+	transition-delay: 0.7s;
+}
+
+.lp-anno-svg circle {
+	fill: var(--lp-amber);
+	opacity: 0;
+	transition: opacity 0.5s var(--lp-ease);
+}
+.lp-portrait-scene.active .lp-anno-svg circle {
+	opacity: 0.7;
+}
+.lp-portrait-scene.active .lp-anno-svg circle.delay-1 {
+	transition-delay: 0.3s;
+}
+.lp-portrait-scene.active .lp-anno-svg circle.delay-2 {
+	transition-delay: 0.5s;
+}
+.lp-portrait-scene.active .lp-anno-svg circle.delay-3 {
+	transition-delay: 0.7s;
+}
+
+.lp-anno-svg .pulse {
+	fill: none;
+	stroke: var(--lp-amber);
+	stroke-width: 1;
+	opacity: 0;
+}
+.lp-portrait-scene.active .lp-anno-svg .pulse {
+	animation: lpPulseRing 2.5s ease-out infinite;
+}
+.lp-portrait-scene.active .lp-anno-svg .pulse.delay-1 {
+	animation-delay: 0.3s;
+}
+.lp-portrait-scene.active .lp-anno-svg .pulse.delay-2 {
+	animation-delay: 0.5s;
+}
+.lp-portrait-scene.active .lp-anno-svg .pulse.delay-3 {
+	animation-delay: 0.7s;
+}
+
+@keyframes lpPulseRing {
+	0% {
+		r: 6;
+		opacity: 0.5;
+	}
+	70% {
+		r: 16;
+		opacity: 0;
+	}
+	100% {
+		r: 16;
+		opacity: 0;
+	}
+}
+
+/* ===========================================
+   ANNOTATION LABELS
+   =========================================== */
+.lp-anno-label {
+	position: absolute;
+	pointer-events: auto;
+	opacity: 0;
+	transform: translateX(15px);
+	transition:
+		opacity 0.6s var(--lp-ease),
+		transform 0.6s var(--lp-ease);
+	z-index: 6;
+	white-space: nowrap;
+}
+.lp-anno-label.left-side {
+	text-align: right;
+	transform: translateX(-15px);
+}
+.lp-anno-label.right-side {
+	text-align: left;
+	transform: translateX(15px);
+}
+.lp-portrait-scene.active .lp-anno-label {
+	opacity: 1;
+	transform: translateX(0);
+}
+.lp-portrait-scene.active .lp-anno-label.d1 {
+	transition-delay: 0.3s;
+}
+.lp-portrait-scene.active .lp-anno-label.d2 {
+	transition-delay: 0.5s;
+}
+.lp-portrait-scene.active .lp-anno-label.d3 {
+	transition-delay: 0.7s;
+}
+
+/* ===========================================
+   CAROUSEL CONTROLS
+   =========================================== */
+.lp-carousel-pip {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	border: 1.5px solid rgba(255, 255, 255, 0.25);
+	background: transparent;
+	cursor: pointer;
+	transition:
+		background 0.3s,
+		border-color 0.3s,
+		transform 0.3s;
+}
+.lp-carousel-pip.active {
+	background: var(--lp-amber);
+	border-color: var(--lp-amber);
+	transform: scale(1.2);
+}
+.lp-carousel-pip:hover:not(.active) {
+	border-color: rgba(255, 255, 255, 0.5);
+}
+
+.lp-timer-fill {
+	height: 100%;
+	background: var(--lp-amber);
+	border-radius: 1px;
+	width: 0%;
+	transition: width 0.1s linear;
+}
+
+/* ===========================================
+   REVEAL ANIMATION
+   =========================================== */
+.lp-rv {
+	opacity: 0;
+	transform: translateY(20px);
+	transition:
+		opacity 0.7s var(--lp-ease),
+		transform 0.7s var(--lp-ease);
+}
+.lp-visible .lp-rv {
+	opacity: 1;
+	transform: translateY(0);
+}
+.lp-visible .lp-rv:nth-child(2) {
+	transition-delay: 0.12s;
+}
+.lp-visible .lp-rv:nth-child(3) {
+	transition-delay: 0.24s;
+}
+.lp-visible .lp-rv:nth-child(4) {
+	transition-delay: 0.36s;
+}
+
+/* ===========================================
+   RESPONSIVE
+   =========================================== */
+@media (max-width: 900px) {
+	.lp-anno-label {
+		white-space: normal;
+		max-width: 160px;
+	}
+}
+@media (max-width: 768px) {
+	.lp-portrait-scene {
+		flex-direction: column;
+		gap: clamp(0.75rem, 2vw, 1.2rem);
+	}
+	.lp-anno-label {
+		position: static !important;
+		transform: none !important;
+		text-align: center !important;
+		white-space: normal;
+	}
+	.lp-anno-label.left-side {
+		text-align: center !important;
+	}
+	.lp-anno-svg {
+		display: none;
+	}
+}
+/* ===========================================
+   NAV OVERRIDES — dark landing page context
+   =========================================== */
+.lp-page nav {
+	position: relative;
+	z-index: 10;
+}
+.lp-page nav a {
+	color: rgba(238, 238, 242, 0.85) !important;
+}
+.lp-page nav a:hover {
+	color: #fff !important;
+}
+.lp-page nav button {
+	color: rgba(238, 238, 242, 0.85) !important;
+}
+/* Keep Sign Up button with amber brand CTA */
+.lp-page nav a[href*="register"] {
+	background: var(--lp-amber) !important;
+	color: var(--lp-bg) !important;
+	border-color: var(--lp-amber) !important;
+}
+/* Logo stays brand blue */
+.lp-page nav .text-brand {
+	color: var(--lp-sky) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.lp-rv,
+	.lp-portrait-scene,
+	.lp-anno-label,
+	.lp-anno-svg line,
+	.lp-anno-svg circle {
+		transition-duration: 0.15s;
+		transition-delay: 0s !important;
+		opacity: 1;
+		transform: none;
+	}
+	.lp-anno-svg .pulse {
+		animation: none;
+	}
+}

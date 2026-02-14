@@ -1,6 +1,6 @@
-import { useMemo } from "react"
-import { type To, useSearchParams } from "react-router"
-import type { Language } from "~/localization/resource"
+import { useMemo } from "react";
+import { type To, useSearchParams } from "react-router";
+import type { Language } from "~/localization/resource";
 
 /**
  * Enhances the default to prop by adding the language to the search params and conditionally keeping the search params
@@ -32,18 +32,18 @@ export const useEnhancedTo = ({
 	to,
 	keepSearchParams,
 }: {
-	language?: Language
-	to: To
-	keepSearchParams?: boolean
+	language?: Language;
+	to: To;
+	keepSearchParams?: boolean;
 }) => {
-	const [params] = useSearchParams()
-	const { lng, ...searchParams } = Object.fromEntries(params.entries())
+	const [params] = useSearchParams();
+	const { lng, ...searchParams } = Object.fromEntries(params.entries());
 	// allow language override for language switcher or manually setting the language in specific cases
-	const lang = language ?? lng
-	const newSearchParams = new URLSearchParams(searchParams)
-	const searchString = newSearchParams.toString()
-	const hasSearchParams = searchString.length > 0
-	const appendSearchParams = lang || hasSearchParams
+	const lang = language ?? lng;
+	const newSearchParams = new URLSearchParams(searchParams);
+	const searchString = newSearchParams.toString();
+	const hasSearchParams = searchString.length > 0;
+	const appendSearchParams = lang || hasSearchParams;
 	const newPath = useMemo(
 		() =>
 			to +
@@ -51,6 +51,6 @@ export const useEnhancedTo = ({
 				? `?${keepSearchParams && hasSearchParams ? `${searchString}${lang ? "&" : ""}` : ""}${lang ? `lng=${lang}` : ""}`
 				: ""),
 		[to, appendSearchParams, keepSearchParams, hasSearchParams, searchString, lang]
-	)
-	return newPath
-}
+	);
+	return newPath;
+};

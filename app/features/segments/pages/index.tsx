@@ -1,36 +1,36 @@
-import { ChevronDown, Target, TrendingUp, Users } from "lucide-react"
-import type React from "react"
-import { useState } from "react"
-import { Link } from "react-router"
-import { BackButton } from "~/components/ui/BackButton"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
-import { userContext } from "~/server/user-context"
-import { getSegmentKindSummaries, getSegmentsSummary, type SegmentSummary } from "../services/segmentData.server"
-import type { Route } from "./+types/index"
+import { ChevronDown, Target, TrendingUp, Users } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
+import { Link } from "react-router";
+import { BackButton } from "~/components/ui/BackButton";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
+import { userContext } from "~/server/user-context";
+import { getSegmentKindSummaries, getSegmentsSummary, type SegmentSummary } from "../services/segmentData.server";
+import type { Route } from "./+types/index";
 
 export async function loader({ context, params }: Route.LoaderArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Get project ID from params (since we're nested under project route)
-	const projectId = params.projectId as string
+	const projectId = params.projectId as string;
 
 	if (!projectId) {
-		throw new Response("No project found", { status: 404 })
+		throw new Response("No project found", { status: 404 });
 	}
 
 	const [segments, segmentKinds] = await Promise.all([
 		getSegmentsSummary(supabase, projectId),
 		getSegmentKindSummaries(supabase, projectId),
-	])
+	]);
 
 	return {
 		segments,
 		segmentKinds,
-	}
+	};
 }
 
 const KIND_LABELS: Record<string, string> = {
@@ -41,13 +41,13 @@ const KIND_LABELS: Record<string, string> = {
 	industry: "Industries",
 	life_stage: "Life Stages",
 	age_range: "Age Ranges",
-}
+};
 
 function getBullseyeColor(score: number): string {
-	if (score >= 75) return "text-red-600 bg-red-50 border-red-200"
-	if (score >= 50) return "text-orange-600 bg-orange-50 border-orange-200"
-	if (score >= 25) return "text-yellow-600 bg-yellow-50 border-yellow-200"
-	return "text-gray-600 bg-gray-50 border-gray-200"
+	if (score >= 75) return "text-red-600 bg-red-50 border-red-200";
+	if (score >= 50) return "text-orange-600 bg-orange-50 border-orange-200";
+	if (score >= 25) return "text-yellow-600 bg-yellow-50 border-yellow-200";
+	return "text-gray-600 bg-gray-50 border-gray-200";
 }
 
 function _getBullseyeLabel(score: number): { label: string; icon: React.ComponentType<{ className?: string }> } {
@@ -55,40 +55,40 @@ function _getBullseyeLabel(score: number): { label: string; icon: React.Componen
 		return {
 			label: "Bullseye",
 			icon: Target,
-		}
+		};
 	if (score >= 50)
 		return {
 			label: "High Potential",
 			icon: TrendingUp,
-		}
+		};
 	if (score >= 25)
 		return {
 			label: "Promising",
 			icon: Users,
-		}
+		};
 	return {
 		label: "Explore",
 		icon: Users,
-	}
+	};
 }
 
 export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
-	const { segments, segmentKinds } = loaderData
-	const [kindFilter, setKindFilter] = useState<string>("all")
-	const [minScore, setMinScore] = useState(0)
-	const [isExplainerOpen, setIsExplainerOpen] = useState(false)
+	const { segments, segmentKinds } = loaderData;
+	const [kindFilter, setKindFilter] = useState<string>("all");
+	const [minScore, setMinScore] = useState(0);
+	const [isExplainerOpen, setIsExplainerOpen] = useState(false);
 
 	const segmentCounts = segments.reduce(
 		(acc, segment) => {
-			acc[segment.kind] = (acc[segment.kind] || 0) + 1
-			return acc
+			acc[segment.kind] = (acc[segment.kind] || 0) + 1;
+			return acc;
 		},
 		{} as Record<string, number>
-	)
+	);
 
-	const totalPeopleAcrossKinds = segmentKinds.reduce((sum, kind) => sum + kind.person_count, 0)
-	const bullseyeCount = segments.filter((s) => s.bullseye_score >= 75).length
-	const highPotentialCount = segments.filter((s) => s.bullseye_score >= 50).length
+	const totalPeopleAcrossKinds = segmentKinds.reduce((sum, kind) => sum + kind.person_count, 0);
+	const bullseyeCount = segments.filter((s) => s.bullseye_score >= 75).length;
+	const highPotentialCount = segments.filter((s) => s.bullseye_score >= 50).length;
 
 	const filterViews = [
 		{
@@ -105,24 +105,24 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 			segments: segmentCounts[kind.kind] || 0,
 			disabled: (segmentCounts[kind.kind] || 0) === 0 && kind.person_count === 0,
 		})),
-	]
+	];
 
 	// Filter segments
 	const filteredSegments = segments.filter((s) => {
-		if (kindFilter !== "all" && s.kind !== kindFilter) return false
-		if (s.bullseye_score < minScore) return false
-		return true
-	})
+		if (kindFilter !== "all" && s.kind !== kindFilter) return false;
+		if (s.bullseye_score < minScore) return false;
+		return true;
+	});
 
 	// Group by kind
 	const segmentsByKind = filteredSegments.reduce(
 		(acc, segment) => {
-			if (!acc[segment.kind]) acc[segment.kind] = []
-			acc[segment.kind].push(segment)
-			return acc
+			if (!acc[segment.kind]) acc[segment.kind] = [];
+			acc[segment.kind].push(segment);
+			return acc;
 		},
 		{} as Record<string, SegmentSummary[]>
-	)
+	);
 
 	return (
 		<div className="container mx-auto max-w-6xl px-4 py-8">
@@ -292,7 +292,7 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 									))}
 								</div>
 							</div>
-						)
+						);
 					})}
 				</div>
 			) : (
@@ -378,5 +378,5 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 				</Card>
 			</Collapsible>
 		</div>
-	)
+	);
 }

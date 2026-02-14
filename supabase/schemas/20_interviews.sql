@@ -56,6 +56,7 @@ create table if not exists interviews (
   context_confidence real, -- 0.0-1.0 confidence in classification
   context_reasoning text, -- brief explanation of why this context was chosen
   processing_metadata jsonb default '{}'::jsonb, -- processing state and progress tracking
+  speaker_review_needed boolean default false, -- true when placeholder speakers (Speaker A/B/C) detected
   -- Survey/Ask link support (unified conversation architecture)
   draft_responses jsonb default '{}'::jsonb, -- in-progress survey answers saved in real-time
   research_link_id uuid, -- FK to Ask link config (added later via ALTER to avoid circular deps)
@@ -91,6 +92,7 @@ CREATE INDEX idx_interviews_interaction_context ON public.interviews(interaction
 COMMENT ON COLUMN public.interviews.interaction_context IS 'LLM-determined content type: research, sales, support, internal, or personal. Used for automatic lens selection.';
 COMMENT ON COLUMN public.interviews.context_confidence IS 'LLM confidence (0.0-1.0) in the interaction_context classification';
 COMMENT ON COLUMN public.interviews.context_reasoning IS 'LLM explanation for why this interaction_context was chosen';
+COMMENT ON COLUMN public.interviews.speaker_review_needed IS 'True when placeholder speakers (Speaker A, Speaker B, etc.) are detected. Creates hygiene task for user review.';
 
 -- Survey/Ask link support comments
 COMMENT ON COLUMN public.interviews.draft_responses IS 'In-progress survey/chat answers saved in real-time. Cleared when finalized to transcript_formatted. Structure: { "question_id": "answer_text", ... }';

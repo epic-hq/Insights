@@ -1,13 +1,13 @@
-import type { MetaFunction } from "react-router"
-import { Link } from "react-router-dom"
-import UploadButton from "~/features/upload/components/UploadButton"
+import type { MetaFunction } from "react-router";
+import { Link } from "react-router-dom";
+import UploadButton from "~/features/upload/components/UploadButton";
 
 export const meta: MetaFunction = () => {
 	return [
 		{ title: "Upload | Insights" },
 		{ name: "description", content: "Upload interview recordings or transcripts" },
-	]
-}
+	];
+};
 
 export default function Upload() {
 	return (
@@ -118,5 +118,5 @@ export default function Upload() {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

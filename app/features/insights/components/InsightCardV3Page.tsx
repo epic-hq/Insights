@@ -1,48 +1,48 @@
-import { Flame, MessageSquare, Quote, Target, TrendingUp, Users } from "lucide-react"
-import type { CSSProperties } from "react"
-import { useCallback, useEffect, useState } from "react"
-import { Link, useFetcher } from "react-router-dom"
-import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
-import { StyledTag } from "~/components/TagDisplay"
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { EmotionBadge } from "~/components/ui/emotion-badge"
-import InlineEdit from "~/components/ui/inline-edit"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu"
-import { PriorityBars, priorityConfig } from "~/features/tasks/components/PriorityBars"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { Insight as BaseInsight } from "~/types"
-import type { InsightEvidence } from "../pages/insight-detail"
-import { EvidenceGroupedByInterview } from "./EvidenceGroup"
-import type { InsightForAction } from "./InsightActions"
-import { InsightActions } from "./InsightActions"
-import { SemanticEvidenceSection } from "./SemanticEvidenceSection"
+import { Flame, MessageSquare, Quote, Target, TrendingUp, Users } from "lucide-react";
+import type { CSSProperties } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useFetcher } from "react-router-dom";
+import { EntityInteractionPanel } from "~/components/EntityInteractionPanel";
+import { StyledTag } from "~/components/TagDisplay";
+import { Avatar, AvatarFallback } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { EmotionBadge } from "~/components/ui/emotion-badge";
+import InlineEdit from "~/components/ui/inline-edit";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu";
+import { PriorityBars, priorityConfig } from "~/features/tasks/components/PriorityBars";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import type { Insight as BaseInsight } from "~/types";
+import type { InsightEvidence } from "../pages/insight-detail";
+import { EvidenceGroupedByInterview } from "./EvidenceGroup";
+import type { InsightForAction } from "./InsightActions";
+import { InsightActions } from "./InsightActions";
+import { SemanticEvidenceSection } from "./SemanticEvidenceSection";
 
 /** Person affected by this insight */
 export interface PersonAffected {
-	person_id: string
-	person_name: string | null
-	email: string | null
-	facet_count: number
-	is_team_member?: boolean
+	person_id: string;
+	person_name: string | null;
+	email: string | null;
+	facet_count: number;
+	is_team_member?: boolean;
 }
 
 function InsightPrioritySelector({
 	priority,
 	onSelect,
 }: {
-	priority: 1 | 2 | 3
-	onSelect: (priority: 1 | 2 | 3) => void
+	priority: 1 | 2 | 3;
+	onSelect: (priority: 1 | 2 | 3) => void;
 }) {
-	const [open, setOpen] = useState(false)
+	const [open, setOpen] = useState(false);
 
 	const handleSelect = (p: 1 | 2 | 3) => {
-		onSelect(p)
-		setOpen(false)
-	}
+		onSelect(p);
+		setOpen(false);
+	};
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -72,28 +72,28 @@ function InsightPrioritySelector({
 				</div>
 			</PopoverContent>
 		</Popover>
-	)
+	);
 }
 
 type InsightDetail = BaseInsight & {
-	priority?: number | null
+	priority?: number | null;
 	persona_insights?: Array<{
-		personas?: { id: string; name: string | null } | null
-	}> | null
+		personas?: { id: string; name: string | null } | null;
+	}> | null;
 	insight_tags?: Array<{
-		tags?: { tag?: string | null } | null
-		tag?: string | null
-		style?: CSSProperties | null
-		frequency?: number | null
-	}> | null
-}
+		tags?: { tag?: string | null } | null;
+		tag?: string | null;
+		style?: CSSProperties | null;
+		frequency?: number | null;
+	}> | null;
+};
 
 interface InsightCardV3Props {
-	insight: InsightDetail
-	evidence?: InsightEvidence[]
-	projectPath?: string
-	accountId?: string
-	peopleAffected?: PersonAffected[]
+	insight: InsightDetail;
+	evidence?: InsightEvidence[];
+	projectPath?: string;
+	accountId?: string;
+	peopleAffected?: PersonAffected[];
 }
 
 export function InsightCardV3Page({
@@ -103,20 +103,20 @@ export function InsightCardV3Page({
 	accountId,
 	peopleAffected = [],
 }: InsightCardV3Props) {
-	const routes = useProjectRoutes(propProjectPath || "")
-	const shareableName = insight.name || insight.statement || "Insight"
-	const updateFetcher = useFetcher()
-	const [commentCount, setCommentCount] = useState(0)
-	const [priority, setPriority] = useState<1 | 2 | 3>((insight.priority ?? 3) as 1 | 2 | 3)
+	const routes = useProjectRoutes(propProjectPath || "");
+	const shareableName = insight.name || insight.statement || "Insight";
+	const updateFetcher = useFetcher();
+	const [commentCount, setCommentCount] = useState(0);
+	const [priority, setPriority] = useState<1 | 2 | 3>((insight.priority ?? 3) as 1 | 2 | 3);
 
 	useEffect(() => {
-		setPriority((insight.priority ?? 3) as 1 | 2 | 3)
-	}, [insight.priority])
+		setPriority((insight.priority ?? 3) as 1 | 2 | 3);
+	}, [insight.priority]);
 
 	// Handler to update insight fields via API
 	const handleFieldUpdate = useCallback(
 		(field: string, value: string) => {
-			if (!propProjectPath) return
+			if (!propProjectPath) return;
 			updateFetcher.submit(
 				{
 					table: "themes",
@@ -129,10 +129,10 @@ export function InsightCardV3Page({
 					action: `${propProjectPath}/insights/api/update-field`,
 					encType: "application/json",
 				}
-			)
+			);
 		},
 		[propProjectPath, insight.id, updateFetcher]
-	)
+	);
 
 	const insight_for_action: InsightForAction = {
 		id: insight.id,
@@ -147,7 +147,7 @@ export function InsightCardV3Page({
 			insight.persona_insights
 				?.map((pi) => (pi?.personas ? { personas: pi.personas } : null))
 				.filter((pi): pi is { personas: { id: string; name: string | null } } => Boolean(pi)) ?? undefined,
-	}
+	};
 
 	return (
 		<div className="mx-auto max-w-4xl px-4 py-8 sm:px-0">
@@ -177,8 +177,8 @@ export function InsightCardV3Page({
 									<InsightPrioritySelector
 										priority={priority}
 										onSelect={(nextPriority) => {
-											setPriority(nextPriority)
-											handleFieldUpdate("priority", String(nextPriority))
+											setPriority(nextPriority);
+											handleFieldUpdate("priority", String(nextPriority));
 										}}
 									/>
 								) : null}
@@ -286,13 +286,13 @@ export function InsightCardV3Page({
 											<h4 className="font-semibold text-foreground text-sm">Personas</h4>
 											<div className="flex flex-wrap gap-2">
 												{insight.persona_insights.map((pi) => {
-													const persona = pi?.personas
-													if (!persona?.id) return null
+													const persona = pi?.personas;
+													if (!persona?.id) return null;
 													return (
 														<Badge key={persona.id} variant="default" className="px-3 py-1">
 															{persona.name}
 														</Badge>
-													)
+													);
 												})}
 											</div>
 										</div>
@@ -318,11 +318,11 @@ export function InsightCardV3Page({
 											<h4 className="font-semibold text-foreground text-sm">Tags</h4>
 											<div className="flex flex-wrap gap-2">
 												{insight.insight_tags?.map((tag) => {
-													const tagName = tag?.tags?.tag || tag?.tag || null
-													if (!tagName) return null
-													const style = (tag.style as CSSProperties | undefined) ?? {}
-													const frequency = typeof tag.frequency === "number" ? tag.frequency : undefined
-													return <StyledTag key={tagName} name={tagName} style={style} frequency={frequency} />
+													const tagName = tag?.tags?.tag || tag?.tag || null;
+													if (!tagName) return null;
+													const style = (tag.style as CSSProperties | undefined) ?? {};
+													const frequency = typeof tag.frequency === "number" ? tag.frequency : undefined;
+													return <StyledTag key={tagName} name={tagName} style={style} frequency={frequency} />;
 												})}
 											</div>
 										</div>
@@ -351,7 +351,7 @@ export function InsightCardV3Page({
 											.map((w) => w[0])
 											.join("")
 											.toUpperCase()
-											.slice(0, 2) || "?"
+											.slice(0, 2) || "?";
 									return (
 										<Link
 											key={person.person_id}
@@ -377,7 +377,7 @@ export function InsightCardV3Page({
 												{person.facet_count !== 1 ? "s" : ""}
 											</span>
 										</Link>
-									)
+									);
 								})}
 							</div>
 						</CardContent>
@@ -419,5 +419,5 @@ export function InsightCardV3Page({
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }

@@ -1,64 +1,64 @@
-import consola from "consola"
-import { type LoaderFunctionArgs, redirect } from "react-router"
-import { getPostHogServerClient } from "~/lib/posthog.server"
-import { getServerClient } from "~/lib/supabase/client.server"
-import type { SupabaseClient } from "~/types"
-import { generateTwoWordSlug } from "~/utils/random-name"
-import { createProjectRoutes } from "~/utils/routes.server"
-import type { UtmParams } from "~/utils/utm"
-import { clearUtmCookie, collectPersistedUtmParams, extractUtmParamsFromRequest } from "~/utils/utm.server"
+import consola from "consola";
+import { type LoaderFunctionArgs, redirect } from "react-router";
+import { getPostHogServerClient } from "~/lib/posthog.server";
+import { getServerClient } from "~/lib/supabase/client.server";
+import type { SupabaseClient } from "~/types";
+import { generateTwoWordSlug } from "~/utils/random-name";
+import { createProjectRoutes } from "~/utils/routes.server";
+import type { UtmParams } from "~/utils/utm";
+import { clearUtmCookie, collectPersistedUtmParams, extractUtmParamsFromRequest } from "~/utils/utm.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-	const requestUrl = new URL(request.url)
-	const next = requestUrl.searchParams.get("next") || "/home"
-	const timestamp = new Date().toISOString()
+	const requestUrl = new URL(request.url);
+	const next = requestUrl.searchParams.get("next") || "/home";
+	const timestamp = new Date().toISOString();
 
-	consola.log("[LOGIN_SUCCESS] ===== LOGIN SUCCESS HANDLER =====")
-	consola.log("[LOGIN_SUCCESS] Timestamp:", timestamp)
-	consola.log("[LOGIN_SUCCESS] URL:", requestUrl.toString())
-	consola.log("[LOGIN_SUCCESS] Next redirect:", next)
+	consola.log("[LOGIN_SUCCESS] ===== LOGIN SUCCESS HANDLER =====");
+	consola.log("[LOGIN_SUCCESS] Timestamp:", timestamp);
+	consola.log("[LOGIN_SUCCESS] URL:", requestUrl.toString());
+	consola.log("[LOGIN_SUCCESS] Next redirect:", next);
 
 	// Log incoming cookies to verify session was preserved
-	const incomingCookies = request.headers.get("Cookie")
-	consola.log("[LOGIN_SUCCESS] Incoming cookies:", incomingCookies ? "present" : "MISSING")
+	const incomingCookies = request.headers.get("Cookie");
+	consola.log("[LOGIN_SUCCESS] Incoming cookies:", incomingCookies ? "present" : "MISSING");
 	if (incomingCookies) {
-		const cookieNames = incomingCookies.split(";").map((c) => c.trim().split("=")[0])
-		consola.log("[LOGIN_SUCCESS] Cookie names:", cookieNames)
+		const cookieNames = incomingCookies.split(";").map((c) => c.trim().split("=")[0]);
+		consola.log("[LOGIN_SUCCESS] Cookie names:", cookieNames);
 	} else {
-		consola.error("[LOGIN_SUCCESS] ⚠️  NO COOKIES RECEIVED - This is the bug!")
+		consola.error("[LOGIN_SUCCESS] ⚠️  NO COOKIES RECEIVED - This is the bug!");
 	}
 
-	const { client: supabase, headers } = getServerClient(request)
-	const utmParams = collectPersistedUtmParams(request, extractUtmParamsFromRequest(request))
-	headers.append("Set-Cookie", clearUtmCookie())
+	const { client: supabase, headers } = getServerClient(request);
+	const utmParams = collectPersistedUtmParams(request, extractUtmParamsFromRequest(request));
+	headers.append("Set-Cookie", clearUtmCookie());
 
-	const getUserStartTime = Date.now()
+	const getUserStartTime = Date.now();
 	const {
 		data: { user },
 		error: getUserError,
-	} = await supabase.auth.getUser()
-	const getUserDuration = Date.now() - getUserStartTime
+	} = await supabase.auth.getUser();
+	const getUserDuration = Date.now() - getUserStartTime;
 
-	consola.log("[LOGIN_SUCCESS] getUser took:", getUserDuration, "ms")
+	consola.log("[LOGIN_SUCCESS] getUser took:", getUserDuration, "ms");
 
 	if (getUserError) {
 		consola.error("[LOGIN_SUCCESS] getUser error:", {
 			message: getUserError.message,
 			name: getUserError.name,
 			status: getUserError.status,
-		})
+		});
 	}
 
 	if (!user) {
-		consola.warn("[LOGIN_SUCCESS] ⚠️  No authenticated user found - session lost between callback and login_success")
-		consola.warn("[LOGIN_SUCCESS] Redirecting back to login")
-		return redirect(`/login?next=${encodeURIComponent(next)}`)
+		consola.warn("[LOGIN_SUCCESS] ⚠️  No authenticated user found - session lost between callback and login_success");
+		consola.warn("[LOGIN_SUCCESS] Redirecting back to login");
+		return redirect(`/login?next=${encodeURIComponent(next)}`);
 	}
 
-	consola.log("[LOGIN_SUCCESS] ✅ User authenticated:", user.email, "ID:", user.id)
+	consola.log("[LOGIN_SUCCESS] ✅ User authenticated:", user.email, "ID:", user.id);
 
 	// Check if this is a new user signup (first time login)
-	const isNewUser = await checkIfNewUser(supabase, user.id)
+	const isNewUser = await checkIfNewUser(supabase, user.id);
 
 	if (isNewUser) {
 		// Capture account_signed_up event for new users
@@ -68,38 +68,38 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			email: user.email,
 			metadata: user.user_metadata,
 			utmParams,
-		})
+		});
 	}
 
 	const inviteRedirect = await resolveInviteRedirect({
 		supabase,
 		next,
 		origin: requestUrl.origin,
-	})
+	});
 
-	const shouldUseLastUsed = isDefaultHomeDestination(next, requestUrl.origin)
-	let destination = inviteRedirect ?? next
+	const shouldUseLastUsed = isDefaultHomeDestination(next, requestUrl.origin);
+	let destination = inviteRedirect ?? next;
 
 	if (isNewUser && !inviteRedirect && shouldUseLastUsed) {
 		const defaultProjectPath = await ensureDefaultAccountAndProject({
 			supabase,
 			userId: user.id,
-		})
+		});
 		if (defaultProjectPath) {
-			destination = defaultProjectPath
+			destination = defaultProjectPath;
 		}
 	} else if (!inviteRedirect && shouldUseLastUsed) {
 		const lastUsedPath = await resolveLastUsedProjectRedirect({
 			supabase,
 			userId: user.id,
-		})
+		});
 		if (lastUsedPath) {
-			destination = lastUsedPath
+			destination = lastUsedPath;
 		}
 	}
 
-	consola.log("[LOGIN_SUCCESS] redirecting to:", destination)
-	return redirect(destination, { headers })
+	consola.log("[LOGIN_SUCCESS] redirecting to:", destination);
+	return redirect(destination, { headers });
 }
 
 /**
@@ -111,64 +111,64 @@ async function checkIfNewUser(supabase: SupabaseClient, userId: string): Promise
 			.from("user_settings")
 			.select("created_at")
 			.eq("user_id", userId)
-			.single()
+			.single();
 
 		if (!userSettings) {
-			return true // No user_settings record = brand new user
+			return true; // No user_settings record = brand new user
 		}
 
 		// Check if created within last 10 seconds (indicates fresh signup)
-		const createdAt = new Date(userSettings.created_at)
-		const now = new Date()
-		const diffSeconds = (now.getTime() - createdAt.getTime()) / 1000
+		const createdAt = new Date(userSettings.created_at);
+		const now = new Date();
+		const diffSeconds = (now.getTime() - createdAt.getTime()) / 1000;
 
-		return diffSeconds < 10
+		return diffSeconds < 10;
 	} catch (error) {
-		consola.warn("[LOGIN_SUCCESS] Error checking if new user:", error)
-		return false // Default to not new user on error
+		consola.warn("[LOGIN_SUCCESS] Error checking if new user:", error);
+		return false; // Default to not new user on error
 	}
 }
 
 type AccountWithProjects = {
-	account_id: string
-	personal_account?: boolean | null
+	account_id: string;
+	personal_account?: boolean | null;
 	projects?: Array<{
-		id: string
-	}>
-}
+		id: string;
+	}>;
+};
 
 async function ensureDefaultAccountAndProject({
 	supabase,
 	userId,
 }: {
-	supabase: SupabaseClient
-	userId: string
+	supabase: SupabaseClient;
+	userId: string;
 }): Promise<string | null> {
 	try {
-		const { data: rawAccounts, error: accountsError } = await supabase.rpc("get_user_accounts")
+		const { data: rawAccounts, error: accountsError } = await supabase.rpc("get_user_accounts");
 		if (accountsError) {
-			consola.warn("[LOGIN_SUCCESS] Failed to load user accounts for default selection:", accountsError.message)
-			return null
+			consola.warn("[LOGIN_SUCCESS] Failed to load user accounts for default selection:", accountsError.message);
+			return null;
 		}
 
-		const accounts: AccountWithProjects[] = Array.isArray(rawAccounts) ? (rawAccounts as AccountWithProjects[]) : []
+		const accounts: AccountWithProjects[] = Array.isArray(rawAccounts) ? (rawAccounts as AccountWithProjects[]) : [];
 		if (accounts.length === 0) {
-			consola.warn("[LOGIN_SUCCESS] No accounts available for new user when ensuring default account/project")
-			return null
+			consola.warn("[LOGIN_SUCCESS] No accounts available for new user when ensuring default account/project");
+			return null;
 		}
 
 		// Prefer non-personal account when available, otherwise first account
-		const currentAccount = accounts.find((acc) => acc.personal_account === false) ?? accounts[0]
-		const accountId = currentAccount.account_id
-		const projects = Array.isArray(currentAccount.projects) ? currentAccount.projects : []
+		const currentAccount = accounts.find((acc) => acc.personal_account === false) ?? accounts[0];
+		const accountId = currentAccount.account_id;
+		const projects = Array.isArray(currentAccount.projects) ? currentAccount.projects : [];
 
-		let projectId: string | null = null
+		let projectId: string | null = null;
 
 		if (projects.length > 0) {
-			projectId = projects[0]?.id ?? null
+			projectId = projects[0]?.id ?? null;
 		} else {
 			// Auto-create a minimal default project for brand new users
-			const defaultName = generateTwoWordSlug()
+			const defaultName = generateTwoWordSlug();
 			const { data: createdProject, error: createError } = await supabase
 				.from("projects")
 				.insert({
@@ -177,18 +177,18 @@ async function ensureDefaultAccountAndProject({
 					status: "planning",
 				})
 				.select("id")
-				.single()
+				.single();
 
 			if (createError || !createdProject) {
-				consola.error("[LOGIN_SUCCESS] Failed to auto-create default project for new user:", createError)
-				return null
+				consola.error("[LOGIN_SUCCESS] Failed to auto-create default project for new user:", createError);
+				return null;
 			}
 
-			projectId = createdProject.id
+			projectId = createdProject.id;
 		}
 
 		if (!projectId) {
-			return null
+			return null;
 		}
 
 		// Persist last-used account/project for this user to align sidebar and future redirects
@@ -199,17 +199,20 @@ async function ensureDefaultAccountAndProject({
 				last_used_project_id: projectId,
 			},
 			{ onConflict: "user_id" }
-		)
+		);
 
 		if (settingsError) {
-			consola.warn("[LOGIN_SUCCESS] Failed to persist default account/project in user_settings:", settingsError.message)
+			consola.warn(
+				"[LOGIN_SUCCESS] Failed to persist default account/project in user_settings:",
+				settingsError.message
+			);
 		}
 
 		// New users go to project setup chat onboarding (Typeform-style flow)
-		return `/a/${accountId}/${projectId}/setup?onboarding=1`
+		return `/a/${accountId}/${projectId}/setup?onboarding=1`;
 	} catch (error) {
-		consola.warn("[LOGIN_SUCCESS] Error ensuring default account/project:", error)
-		return null
+		consola.warn("[LOGIN_SUCCESS] Error ensuring default account/project:", error);
+		return null;
 	}
 }
 
@@ -224,40 +227,40 @@ async function captureSignupEvent({
 	metadata,
 	utmParams,
 }: {
-	supabase: SupabaseClient
-	userId: string
-	email?: string
-	metadata?: Record<string, unknown>
-	utmParams: UtmParams
+	supabase: SupabaseClient;
+	userId: string;
+	email?: string;
+	metadata?: Record<string, unknown>;
+	utmParams: UtmParams;
 }) {
 	try {
-		const posthog = getPostHogServerClient()
+		const posthog = getPostHogServerClient();
 		if (!posthog) {
-			consola.warn("[LOGIN_SUCCESS] PostHog server client unavailable; skipping signup event")
-			return
+			consola.warn("[LOGIN_SUCCESS] PostHog server client unavailable; skipping signup event");
+			return;
 		}
 
 		const utmProperties = Object.fromEntries(
 			Object.entries(utmParams).filter(([, value]) => typeof value === "string" && value.length > 0)
-		) as Record<string, string>
+		) as Record<string, string>;
 		const personUtmProperties = Object.fromEntries(
 			Object.entries(utmProperties).map(([key, value]) => [`source_${key}`, value])
-		) as Record<string, string>
+		) as Record<string, string>;
 
 		// Get user's account info
-		const { data: rawAccounts } = await supabase.rpc("get_user_accounts")
-		const accounts: AccountWithProjects[] = Array.isArray(rawAccounts) ? (rawAccounts as AccountWithProjects[]) : []
-		const accountId = accounts.length > 0 ? accounts[0].account_id : undefined
+		const { data: rawAccounts } = await supabase.rpc("get_user_accounts");
+		const accounts: AccountWithProjects[] = Array.isArray(rawAccounts) ? (rawAccounts as AccountWithProjects[]) : [];
+		const accountId = accounts.length > 0 ? accounts[0].account_id : undefined;
 
 		// Get user settings for additional context
 		const { data: userSettings } = await supabase
 			.from("user_settings")
 			.select("role, company_name, referral_source, signup_data")
 			.eq("user_id", userId)
-			.single()
+			.single();
 
-		const rawProvider = metadata?.provider
-		const provider = typeof rawProvider === "string" ? rawProvider : undefined
+		const rawProvider = metadata?.provider;
+		const provider = typeof rawProvider === "string" ? rawProvider : undefined;
 
 		// Capture the signup event
 		await posthog.capture({
@@ -277,7 +280,7 @@ async function captureSignupEvent({
 					created_at: new Date().toISOString(),
 				},
 			},
-		})
+		});
 
 		// Identify user with person properties
 		await posthog.identify({
@@ -289,7 +292,7 @@ async function captureSignupEvent({
 				lifecycle_stage: "new_customer",
 				...personUtmProperties,
 			},
-		})
+		});
 
 		// Set group analytics for account-level tracking
 		if (accountId) {
@@ -300,13 +303,13 @@ async function captureSignupEvent({
 					plan: "free",
 					seats: 1,
 				},
-			})
+			});
 		}
 
-		await posthog.flush()
-		consola.log("[LOGIN_SUCCESS] Captured account_signed_up event for user:", userId)
+		await posthog.flush();
+		consola.log("[LOGIN_SUCCESS] Captured account_signed_up event for user:", userId);
 	} catch (error) {
-		consola.error("[LOGIN_SUCCESS] Error capturing signup event:", error)
+		consola.error("[LOGIN_SUCCESS] Error capturing signup event:", error);
 		// Don't throw - signup tracking failure shouldn't block user flow
 	}
 }
@@ -316,94 +319,94 @@ async function resolveInviteRedirect({
 	next,
 	origin,
 }: {
-	supabase: SupabaseClient
-	next: string
-	origin: string
+	supabase: SupabaseClient;
+	next: string;
+	origin: string;
 }): Promise<string | null> {
 	// If next is already /accept-invite, let it handle the flow
 	// The accept-invite page has a proper UI for accepting invitations
 	try {
-		const nextUrl = new URL(next, origin)
+		const nextUrl = new URL(next, origin);
 		if (nextUrl.pathname === "/accept-invite" || nextUrl.pathname.startsWith("/accept-invite")) {
-			consola.log("[LOGIN_SUCCESS] Preserving /accept-invite flow, not intercepting")
-			return next
+			consola.log("[LOGIN_SUCCESS] Preserving /accept-invite flow, not intercepting");
+			return next;
 		}
 	} catch {
 		// If parsing fails, continue with normal flow
 	}
 
-	const tokenFromNext = extractInviteToken(next, origin)
+	const tokenFromNext = extractInviteToken(next, origin);
 	if (tokenFromNext) {
 		const manageUrl = await computeManagePathFromToken({
 			supabase,
 			token: tokenFromNext,
-		})
-		if (manageUrl) return manageUrl
+		});
+		if (manageUrl) return manageUrl;
 	}
 
-	const { data: rawInvites, error } = await supabase.rpc("list_invitations_for_current_user")
+	const { data: rawInvites, error } = await supabase.rpc("list_invitations_for_current_user");
 	if (error) {
-		consola.warn("[LOGIN_SUCCESS] Unable to list invitations for current user:", error.message)
-		return null
+		consola.warn("[LOGIN_SUCCESS] Unable to list invitations for current user:", error.message);
+		return null;
 	}
 
-	let invites: Array<Record<string, unknown>> = []
+	let invites: Array<Record<string, unknown>> = [];
 	if (Array.isArray(rawInvites)) {
-		invites = rawInvites as Array<Record<string, unknown>>
+		invites = rawInvites as Array<Record<string, unknown>>;
 	} else if (rawInvites) {
 		try {
-			const parsed = JSON.parse(String(rawInvites))
-			if (Array.isArray(parsed)) invites = parsed as Array<Record<string, unknown>>
+			const parsed = JSON.parse(String(rawInvites));
+			if (Array.isArray(parsed)) invites = parsed as Array<Record<string, unknown>>;
 		} catch (parseError) {
-			consola.warn("[LOGIN_SUCCESS] Failed to parse invitations payload", parseError)
+			consola.warn("[LOGIN_SUCCESS] Failed to parse invitations payload", parseError);
 		}
 	}
 
-	const firstInviteWithToken = invites.find((inv) => typeof inv?.token === "string")
-	if (!firstInviteWithToken) return null
+	const firstInviteWithToken = invites.find((inv) => typeof inv?.token === "string");
+	if (!firstInviteWithToken) return null;
 
-	const token = String(firstInviteWithToken.token)
-	return computeManagePathFromToken({ supabase, token })
+	const token = String(firstInviteWithToken.token);
+	return computeManagePathFromToken({ supabase, token });
 }
 
 async function computeManagePathFromToken({
 	supabase,
 	token,
 }: {
-	supabase: SupabaseClient
-	token: string
+	supabase: SupabaseClient;
+	token: string;
 }): Promise<string | null> {
 	const { data: lookupData, error: lookupError } = await supabase.rpc("lookup_invitation", {
 		lookup_invitation_token: token,
-	})
+	});
 	if (lookupError) {
-		consola.warn("[LOGIN_SUCCESS] lookup_invitation failed for token", lookupError)
-		return null
+		consola.warn("[LOGIN_SUCCESS] lookup_invitation failed for token", lookupError);
+		return null;
 	}
 
-	const lookup = (lookupData as Record<string, unknown> | null) ?? null
-	const accountId = (lookup?.account_id as string | undefined) ?? null
-	if (!accountId) return null
+	const lookup = (lookupData as Record<string, unknown> | null) ?? null;
+	const accountId = (lookup?.account_id as string | undefined) ?? null;
+	if (!accountId) return null;
 
 	// Send to accept-invite page, not team/manage (user isn't a member yet)
-	return `/accept-invite?invite_token=${encodeURIComponent(token)}`
+	return `/accept-invite?invite_token=${encodeURIComponent(token)}`;
 }
 
 function extractInviteToken(next: string, origin: string): string | null {
 	try {
-		const parsed = new URL(next, origin)
-		return parsed.searchParams.get("invite_token")
+		const parsed = new URL(next, origin);
+		return parsed.searchParams.get("invite_token");
 	} catch {
-		return null
+		return null;
 	}
 }
 
 function isDefaultHomeDestination(next: string, origin: string): boolean {
 	try {
-		const parsed = new URL(next, origin)
-		return parsed.pathname === "/home"
+		const parsed = new URL(next, origin);
+		return parsed.pathname === "/home";
 	} catch {
-		return next === "/home"
+		return next === "/home";
 	}
 }
 
@@ -411,28 +414,28 @@ async function resolveLastUsedProjectRedirect({
 	supabase,
 	userId,
 }: {
-	supabase: SupabaseClient
-	userId: string
+	supabase: SupabaseClient;
+	userId: string;
 }): Promise<string | null> {
 	try {
 		const { data: settings, error } = await supabase
 			.from("user_settings")
 			.select("last_used_account_id, last_used_project_id")
 			.eq("user_id", userId)
-			.single()
+			.single();
 
 		if (error) {
-			consola.warn("[LOGIN_SUCCESS] Failed to resolve user_settings for redirect:", error.message)
-			return null
+			consola.warn("[LOGIN_SUCCESS] Failed to resolve user_settings for redirect:", error.message);
+			return null;
 		}
 
-		const accountId = settings?.last_used_account_id
-		const projectId = settings?.last_used_project_id
+		const accountId = settings?.last_used_account_id;
+		const projectId = settings?.last_used_project_id;
 
 		// If no last_used preferences, try to set defaults from available accounts/projects
 		if (!accountId || !projectId) {
-			consola.log("[LOGIN_SUCCESS] No last_used preferences, attempting to set defaults")
-			return await ensureDefaultAccountAndProject({ supabase, userId })
+			consola.log("[LOGIN_SUCCESS] No last_used preferences, attempting to set defaults");
+			return await ensureDefaultAccountAndProject({ supabase, userId });
 		}
 
 		const { data: project, error: projectError } = await supabase
@@ -440,22 +443,22 @@ async function resolveLastUsedProjectRedirect({
 			.select("id")
 			.eq("id", projectId)
 			.eq("account_id", accountId)
-			.single()
+			.single();
 
 		if (projectError || !project) {
 			consola.warn("[LOGIN_SUCCESS] Last used project unavailable, setting new defaults", {
 				accountId,
 				projectId,
 				error: projectError?.message,
-			})
-			return await ensureDefaultAccountAndProject({ supabase, userId })
+			});
+			return await ensureDefaultAccountAndProject({ supabase, userId });
 		}
 
-		const projectRoutes = createProjectRoutes(accountId, project.id)
-		return projectRoutes.dashboard()
+		const projectRoutes = createProjectRoutes(accountId, project.id);
+		return projectRoutes.dashboard();
 	} catch (error) {
-		consola.warn("[LOGIN_SUCCESS] Error resolving last used redirect:", error)
-		return null
+		consola.warn("[LOGIN_SUCCESS] Error resolving last used redirect:", error);
+		return null;
 	}
 }
 
@@ -468,5 +471,5 @@ export default function LoginSuccess() {
 				<p className="text-gray-600">You can now start using the app.</p>
 			</div>
 		</div>
-	)
+	);
 }

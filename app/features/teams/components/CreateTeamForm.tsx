@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react"
-import { useNavigate } from "react-router"
-import { useFetcher } from "react-router-dom"
-import { z } from "zod"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
+import { useFetcher } from "react-router-dom";
+import { z } from "zod";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
 
 const createTeamSchema = z.object({
 	name: z.string().min(1, "Team name is required").max(50, "Team name must be 50 characters or less"),
@@ -13,87 +13,87 @@ const createTeamSchema = z.object({
 		.min(1, "Slug is required")
 		.max(50, "Slug must be 50 characters or less")
 		.regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
-})
+});
 
 interface CreateTeamFormProps {
-	onSuccess?: (accountId: string) => void
-	onCancel?: () => void
+	onSuccess?: (accountId: string) => void;
+	onCancel?: () => void;
 }
 
 export function CreateTeamForm({ onSuccess, onCancel }: CreateTeamFormProps) {
-	const navigate = useNavigate()
+	const navigate = useNavigate();
 	const fetcher = useFetcher<{
-		ok: boolean
-		accountId?: string
-		error?: string
-		fieldErrors?: Record<string, string[]>
-	}>()
-	const [name, setName] = useState("")
-	const [slug, setSlug] = useState("")
-	const [clientErrors, setClientErrors] = useState<{ name?: string; slug?: string }>({})
+		ok: boolean;
+		accountId?: string;
+		error?: string;
+		fieldErrors?: Record<string, string[]>;
+	}>();
+	const [name, setName] = useState("");
+	const [slug, setSlug] = useState("");
+	const [clientErrors, setClientErrors] = useState<{ name?: string; slug?: string }>({});
 
-	const isSubmitting = fetcher.state === "submitting" || fetcher.state === "loading"
+	const isSubmitting = fetcher.state === "submitting" || fetcher.state === "loading";
 
 	// Auto-generate slug from name
 	const handleNameChange = (value: string) => {
-		setName(value)
+		setName(value);
 		// Only auto-generate if user hasn't manually edited slug
 		if (!slug || slug === slugify(name)) {
-			setSlug(slugify(value))
+			setSlug(slugify(value));
 		}
 		// Clear client-side errors when user types
 		if (clientErrors.name) {
-			setClientErrors((prev) => ({ ...prev, name: undefined }))
+			setClientErrors((prev) => ({ ...prev, name: undefined }));
 		}
-	}
+	};
 
 	const handleSlugChange = (value: string) => {
-		setSlug(slugify(value))
+		setSlug(slugify(value));
 		// Clear client-side errors when user types
 		if (clientErrors.slug) {
-			setClientErrors((prev) => ({ ...prev, slug: undefined }))
+			setClientErrors((prev) => ({ ...prev, slug: undefined }));
 		}
-	}
+	};
 
 	// Handle successful team creation
 	useEffect(() => {
 		if (fetcher.data?.ok && fetcher.data.accountId) {
 			if (onSuccess) {
-				onSuccess(fetcher.data.accountId)
+				onSuccess(fetcher.data.accountId);
 			} else {
-				navigate(`/a/${fetcher.data.accountId}/projects`)
+				navigate(`/a/${fetcher.data.accountId}/projects`);
 			}
 		}
-	}, [fetcher.data, navigate, onSuccess])
+	}, [fetcher.data, navigate, onSuccess]);
 
 	const handleSubmit = (e: React.FormEvent) => {
-		e.preventDefault()
-		setClientErrors({})
+		e.preventDefault();
+		setClientErrors({});
 
 		// Client-side validation
 		try {
-			createTeamSchema.parse({ name, slug })
+			createTeamSchema.parse({ name, slug });
 		} catch (err) {
 			if (err instanceof z.ZodError) {
-				const fieldErrors: { name?: string; slug?: string } = {}
+				const fieldErrors: { name?: string; slug?: string } = {};
 				for (const issue of err.issues) {
-					const field = issue.path[0] as "name" | "slug"
-					fieldErrors[field] = issue.message
+					const field = issue.path[0] as "name" | "slug";
+					fieldErrors[field] = issue.message;
 				}
-				setClientErrors(fieldErrors)
-				return
+				setClientErrors(fieldErrors);
+				return;
 			}
 		}
 
 		// Submit to server action
-		const formData = new FormData()
-		formData.append("name", name)
-		formData.append("slug", slug)
-		fetcher.submit(formData, { method: "post", action: "/api/teams/create" })
-	}
+		const formData = new FormData();
+		formData.append("name", name);
+		formData.append("slug", slug);
+		fetcher.submit(formData, { method: "post", action: "/api/teams/create" });
+	};
 
 	// Get error message to display
-	const serverError = fetcher.data?.error
+	const serverError = fetcher.data?.error;
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-4">
@@ -145,7 +145,7 @@ export function CreateTeamForm({ onSuccess, onCancel }: CreateTeamFormProps) {
 				</Button>
 			</div>
 		</form>
-	)
+	);
 }
 
 // Helper function to slugify text
@@ -155,5 +155,5 @@ function slugify(text: string): string {
 		.trim()
 		.replace(/[^\w\s-]/g, "") // Remove special characters
 		.replace(/[\s_-]+/g, "-") // Replace spaces, underscores with hyphens
-		.replace(/^-+|-+$/g, "") // Remove leading/trailing hyphens
+		.replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
 }

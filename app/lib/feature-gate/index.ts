@@ -9,9 +9,9 @@
  */
 
 // Client-safe utilities
-export { getFeatureDisplayName } from "./display-names"
+export { getFeatureDisplayName } from "./display-names";
 // Errors (client-safe)
-export { FeatureGateError } from "./errors"
+export { FeatureGateError } from "./errors";
 // Types (client-safe)
 export type {
 	FeatureCheckResult,
@@ -19,7 +19,7 @@ export type {
 	FeatureKey,
 	LimitCheckResult,
 	LimitKey,
-} from "./types"
+} from "./types";
 
 // NOTE: Server-only exports must be imported directly:
 // import { checkFeatureAccess, requireFeatureAccess } from "~/lib/feature-gate/check-feature.server"

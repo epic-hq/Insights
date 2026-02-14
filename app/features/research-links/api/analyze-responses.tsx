@@ -2,49 +2,49 @@
  * API endpoint for analyzing Ask link responses using BAML
  * Returns AI-generated insights and summaries
  */
-import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
-import { z } from "zod"
-import { b } from "~/../baml_client"
-import { getServerClient } from "~/lib/supabase/client.server"
-import { ResearchLinkQuestionSchema } from "../schemas"
-import { extractAnswer } from "../utils"
+import consola from "consola";
+import type { ActionFunctionArgs } from "react-router";
+import { z } from "zod";
+import { b } from "~/../baml_client";
+import { getServerClient } from "~/lib/supabase/client.server";
+import { ResearchLinkQuestionSchema } from "../schemas";
+import { extractAnswer } from "../utils";
 
 const RequestSchema = z.object({
 	listId: z.string().uuid(),
 	mode: z.enum(["quick", "detailed"]).default("quick"),
 	customInstructions: z.string().optional(),
-})
+});
 
 export async function action({ request, params }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ error: "Method not allowed" }, { status: 405 })
+		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
 	// accountId is not in params due to route nesting - extract from URL
 	// URL pattern: /a/:accountId/:projectId/ask/api/analyze-responses
-	const url = new URL(request.url)
-	const pathMatch = url.pathname.match(/\/a\/([^/]+)\//)
-	const accountId = pathMatch?.[1] || params.accountId
+	const url = new URL(request.url);
+	const pathMatch = url.pathname.match(/\/a\/([^/]+)\//);
+	const accountId = pathMatch?.[1] || params.accountId;
 	if (!accountId) {
-		return Response.json({ error: "Missing account id" }, { status: 400 })
+		return Response.json({ error: "Missing account id" }, { status: 400 });
 	}
 
 	try {
-		const formData = await request.formData()
+		const formData = await request.formData();
 		const rawPayload = {
 			listId: formData.get("listId") ?? "",
 			mode: formData.get("mode") ?? "quick",
 			customInstructions: formData.get("customInstructions") ?? undefined,
-		}
+		};
 
-		const parsed = RequestSchema.safeParse(rawPayload)
+		const parsed = RequestSchema.safeParse(rawPayload);
 		if (!parsed.success) {
-			return Response.json({ error: "Invalid request", details: parsed.error.issues }, { status: 400 })
+			return Response.json({ error: "Invalid request", details: parsed.error.issues }, { status: 400 });
 		}
 
-		const { listId, mode, customInstructions } = parsed.data
-		const { client: supabase } = getServerClient(request)
+		const { listId, mode, customInstructions } = parsed.data;
+		const { client: supabase } = getServerClient(request);
 
 		// Fetch list and responses
 		const [listResult, responsesResult] = await Promise.all([
@@ -59,62 +59,62 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				.select("*")
 				.eq("research_link_id", listId)
 				.order("created_at", { ascending: false }),
-		])
+		]);
 
 		if (listResult.error) {
-			return Response.json({ error: listResult.error.message }, { status: 500 })
+			return Response.json({ error: listResult.error.message }, { status: 500 });
 		}
 		if (!listResult.data) {
-			return Response.json({ error: "Ask link not found" }, { status: 404 })
+			return Response.json({ error: "Ask link not found" }, { status: 404 });
 		}
 		if (responsesResult.error) {
-			return Response.json({ error: responsesResult.error.message }, { status: 500 })
+			return Response.json({ error: responsesResult.error.message }, { status: 500 });
 		}
 
-		const list = listResult.data
-		const responses = responsesResult.data ?? []
+		const list = listResult.data;
+		const responses = responsesResult.data ?? [];
 
 		if (responses.length === 0) {
-			return Response.json({ error: "No responses to analyze" }, { status: 400 })
+			return Response.json({ error: "No responses to analyze" }, { status: 400 });
 		}
 
 		// Parse questions
-		const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions)
-		const questions = questionsResult.success ? questionsResult.data : []
+		const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions);
+		const questions = questionsResult.success ? questionsResult.data : [];
 
 		// Format questions for prompt
-		const questionsText = questions.map((q, i) => `${i + 1}. ${q.prompt}`).join("\n")
+		const questionsText = questions.map((q, i) => `${i + 1}. ${q.prompt}`).join("\n");
 
 		// Format responses for prompt
 		let responsesText = responses
 			.map((response, idx) => {
-				const status = response.completed ? "Completed" : "In Progress"
+				const status = response.completed ? "Completed" : "In Progress";
 				const answers = questions
 					.map((q) => {
-						const answer = extractAnswer(response, q)
-						return `Q${questions.indexOf(q) + 1}: ${answer || "—"}`
+						const answer = extractAnswer(response, q);
+						return `Q${questions.indexOf(q) + 1}: ${answer || "—"}`;
 					})
-					.join("\n")
-				return `## Response ${idx + 1} (${response.email}) - ${status}\n${answers}`
+					.join("\n");
+				return `## Response ${idx + 1} (${response.email}) - ${status}\n${answers}`;
 			})
-			.join("\n\n")
+			.join("\n\n");
 
 		// Append custom instructions if provided
 		if (customInstructions?.trim()) {
-			responsesText += `\n\n## Additional Analysis Instructions\n${customInstructions.trim()}`
+			responsesText += `\n\n## Additional Analysis Instructions\n${customInstructions.trim()}`;
 		}
 
 		// Call BAML function
-		let result: unknown
+		let result: unknown;
 		if (mode === "quick") {
-			result = await b.SummarizeAskLinkResponses(list.name, questionsText, responsesText)
+			result = await b.SummarizeAskLinkResponses(list.name, questionsText, responsesText);
 		} else {
 			result = await b.AnalyzeAskLinkResponses(
 				list.name,
 				questionsText,
 				responsesText,
 				list.description || "No additional context provided."
-			)
+			);
 		}
 
 		// Save analysis to database
@@ -123,23 +123,23 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			updatedAt: new Date().toISOString(),
 			customInstructions: customInstructions || null,
 			result,
-		}
+		};
 		const { error: updateError } = await supabase
 			.from("research_links")
 			.update({
 				ai_analysis: aiAnalysis,
 				ai_analysis_updated_at: new Date().toISOString(),
 			})
-			.eq("id", listId)
+			.eq("id", listId);
 
 		if (updateError) {
-			consola.warn("Failed to save AI analysis:", updateError)
+			consola.warn("Failed to save AI analysis:", updateError);
 			// Still return the result even if save fails
 		}
 
-		return Response.json({ mode, result })
+		return Response.json({ mode, result });
 	} catch (error) {
-		consola.error("Failed to analyze responses:", error)
-		return Response.json({ error: "Failed to analyze responses. Please try again." }, { status: 500 })
+		consola.error("Failed to analyze responses:", error);
+		return Response.json({ error: "Failed to analyze responses. Please try again." }, { status: 500 });
 	}
 }

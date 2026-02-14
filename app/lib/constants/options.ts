@@ -6,9 +6,9 @@
  */
 
 export interface SelectOption {
-	value: string
-	label: string
-	description?: string
+	value: string;
+	label: string;
+	description?: string;
 }
 
 // ========================================
@@ -24,22 +24,22 @@ export const COMPANY_SIZE_RANGES: SelectOption[] = [
 	{ value: "1001-5000", label: "1,001-5,000" },
 	{ value: "5001-10000", label: "5,001-10,000" },
 	{ value: "10000+", label: "10,000+" },
-]
+];
 
 /**
  * Target company size categories - semantic labels with mapped ranges
  * Use for account-level targeting preferences
  */
 export interface CompanySizeCategory {
-	value: string
-	label: string
-	description: string
+	value: string;
+	label: string;
+	description: string;
 	/** Numeric ranges this category maps to */
-	sizeRanges: string[]
+	sizeRanges: string[];
 	/** Min employee count for matching */
-	minEmployees: number
+	minEmployees: number;
 	/** Max employee count for matching (Infinity for unlimited) */
-	maxEmployees: number
+	maxEmployees: number;
 }
 
 export const TARGET_COMPANY_SIZE_CATEGORIES: CompanySizeCategory[] = [
@@ -75,7 +75,7 @@ export const TARGET_COMPANY_SIZE_CATEGORIES: CompanySizeCategory[] = [
 		minEmployees: 5001,
 		maxEmployees: Number.POSITIVE_INFINITY,
 	},
-]
+];
 
 /**
  * Check if an organization's size matches a target category
@@ -85,20 +85,20 @@ export function matchesSizeCategory(
 	sizeRange: string | null,
 	targetCategory: string
 ): boolean {
-	const category = TARGET_COMPANY_SIZE_CATEGORIES.find((c) => c.value === targetCategory)
-	if (!category) return false
+	const category = TARGET_COMPANY_SIZE_CATEGORIES.find((c) => c.value === targetCategory);
+	if (!category) return false;
 
 	// If we have employee count, use that for precise matching
 	if (employeeCount !== null) {
-		return employeeCount >= category.minEmployees && employeeCount <= category.maxEmployees
+		return employeeCount >= category.minEmployees && employeeCount <= category.maxEmployees;
 	}
 
 	// Fall back to size range matching
 	if (sizeRange) {
-		return category.sizeRanges.includes(sizeRange)
+		return category.sizeRanges.includes(sizeRange);
 	}
 
-	return false
+	return false;
 }
 
 export const FUNDING_STAGES: SelectOption[] = [
@@ -111,7 +111,7 @@ export const FUNDING_STAGES: SelectOption[] = [
 	{ value: "series-d+", label: "Series D+" },
 	{ value: "public", label: "Public" },
 	{ value: "acquired", label: "Acquired" },
-]
+];
 
 export const COMPANY_TYPES: SelectOption[] = [
 	{ value: "B2B", label: "B2B" },
@@ -122,7 +122,7 @@ export const COMPANY_TYPES: SelectOption[] = [
 	{ value: "Enterprise", label: "Enterprise" },
 	{ value: "SMB", label: "SMB" },
 	{ value: "Startup", label: "Startup" },
-]
+];
 
 // ========================================
 // PEOPLE / PERSON OPTIONS
@@ -138,7 +138,7 @@ export const SENIORITY_LEVELS: SelectOption[] = [
 	{ value: "director", label: "Director" },
 	{ value: "vp", label: "VP" },
 	{ value: "c-level", label: "C-Level" },
-]
+];
 
 export const JOB_FUNCTIONS: SelectOption[] = [
 	{ value: "engineering", label: "Engineering" },
@@ -154,7 +154,7 @@ export const JOB_FUNCTIONS: SelectOption[] = [
 	{ value: "data", label: "Data & Analytics" },
 	{ value: "research", label: "Research" },
 	{ value: "executive", label: "Executive" },
-]
+];
 
 export const PERSON_TYPES: SelectOption[] = [
 	{
@@ -163,7 +163,7 @@ export const PERSON_TYPES: SelectOption[] = [
 		description: "Customer, prospect, or partner",
 	},
 	{ value: "internal", label: "Internal", description: "Team member" },
-]
+];
 
 // ========================================
 // RELATIONSHIP OPTIONS
@@ -175,7 +175,7 @@ export const RELATIONSHIP_STATUSES: SelectOption[] = [
 	{ value: "prospect", label: "Prospect" },
 	{ value: "partner", label: "Partner" },
 	{ value: "former", label: "Former" },
-]
+];
 
 // ========================================
 // OPPORTUNITY / SALES OPTIONS
@@ -190,13 +190,13 @@ export const OPPORTUNITY_STAGES: SelectOption[] = [
 	{ value: "commit", label: "Commit" },
 	{ value: "closed-won", label: "Closed Won" },
 	{ value: "closed-lost", label: "Closed Lost" },
-]
+];
 
 export const CONFIDENCE_LEVELS: SelectOption[] = [
 	{ value: "low", label: "Low", description: "< 30%" },
 	{ value: "medium", label: "Medium", description: "30-70%" },
 	{ value: "high", label: "High", description: "> 70%" },
-]
+];
 
 // ========================================
 // INDUSTRIES
@@ -231,7 +231,7 @@ export const INDUSTRIES: SelectOption[] = [
 	{ value: "telecom", label: "Telecommunications" },
 	{ value: "consulting", label: "Consulting" },
 	{ value: "other", label: "Other" },
-]
+];
 
 // ========================================
 // HELPER FUNCTIONS
@@ -241,21 +241,21 @@ export const INDUSTRIES: SelectOption[] = [
  * Get the label for an option value
  */
 export function getOptionLabel(options: SelectOption[], value: string | null | undefined): string | null {
-	if (!value) return null
-	const option = options.find((o) => o.value === value)
-	return option?.label ?? value
+	if (!value) return null;
+	const option = options.find((o) => o.value === value);
+	return option?.label ?? value;
 }
 
 /**
  * Map an employee count to a size range
  */
 export function employeeCountToSizeRange(count: number): string {
-	if (count <= 10) return "1-10"
-	if (count <= 50) return "11-50"
-	if (count <= 200) return "51-200"
-	if (count <= 500) return "201-500"
-	if (count <= 1000) return "501-1000"
-	if (count <= 5000) return "1001-5000"
-	if (count <= 10000) return "5001-10000"
-	return "10000+"
+	if (count <= 10) return "1-10";
+	if (count <= 50) return "11-50";
+	if (count <= 200) return "51-200";
+	if (count <= 500) return "201-500";
+	if (count <= 1000) return "501-1000";
+	if (count <= 5000) return "1001-5000";
+	if (count <= 10000) return "5001-10000";
+	return "10000+";
 }

@@ -1,113 +1,113 @@
-import { Dialog, Transition } from "@headlessui/react"
-import { Fragment, useState } from "react"
-import { useDropzone } from "react-dropzone"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useNotification } from "~/contexts/NotificationContext"
-import type { ProcessingResult } from "~/utils/processInterview.server"
+import { Dialog, Transition } from "@headlessui/react";
+import { Fragment, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useNotification } from "~/contexts/NotificationContext";
+import type { ProcessingResult } from "~/features/upload/types";
 
 interface UploadModalProps {
-	open: boolean
-	onClose: () => void
-	onSuccess?: (result: ProcessingResult) => void
+	open: boolean;
+	onClose: () => void;
+	onSuccess?: (result: ProcessingResult) => void;
 }
 
 export default function UploadModal({ open, onClose, onSuccess }: UploadModalProps) {
-	const [isProcessing, setIsProcessing] = useState(false)
-	const [processingMessage, setProcessingMessage] = useState("")
-	const [error, setError] = useState<string | null>(null)
-	const [selectedFile, setSelectedFile] = useState<File | null>(null)
-	const { showNotification } = useNotification()
-	const { accountId, projectId } = useCurrentProject()
+	const [isProcessing, setIsProcessing] = useState(false);
+	const [processingMessage, setProcessingMessage] = useState("");
+	const [error, setError] = useState<string | null>(null);
+	const [selectedFile, setSelectedFile] = useState<File | null>(null);
+	const { showNotification } = useNotification();
+	const { accountId, projectId } = useCurrentProject();
 
 	const handleFileUpload = async (files: File[]) => {
-		if (!files.length) return
+		if (!files.length) return;
 
-		const file = files[0]
-		setSelectedFile(file)
-		setError(null)
-		setIsProcessing(true)
+		const file = files[0];
+		setSelectedFile(file);
+		setError(null);
+		setIsProcessing(true);
 
 		// Detect file type for optimized messaging
 		const isTextFile =
 			file.type.startsWith("text/") ||
 			file.name.endsWith(".txt") ||
 			file.name.endsWith(".md") ||
-			file.name.endsWith(".markdown")
+			file.name.endsWith(".markdown");
 
 		setProcessingMessage(
 			isTextFile ? "📝 Reading and analyzing your transcript..." : "🎙️ Transcribing your audio/video..."
-		)
+		);
 
 		try {
 			if (!accountId || !projectId) {
-				throw new Error("Missing account or project context")
+				throw new Error("Missing account or project context");
 			}
 
-			const formData = new FormData()
-			formData.append("file", file)
-			formData.append("accountId", accountId)
-			formData.append("projectId", projectId)
+			const formData = new FormData();
+			formData.append("file", file);
+			formData.append("accountId", accountId);
+			formData.append("projectId", projectId);
 
 			// Update progress message based on file type
 			if (isTextFile) {
-				setProcessingMessage("🔍 Extracting insights, pain points, and user motivations...")
+				setProcessingMessage("🔍 Extracting insights, pain points, and user motivations...");
 			} else {
-				setProcessingMessage("🧠 Analyzing conversation patterns and themes...")
+				setProcessingMessage("🧠 Analyzing conversation patterns and themes...");
 			}
 
 			const response = await fetch("/api/upload-file", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
 			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
-				throw new Error(errorData.error || `HTTP ${response.status}`)
+				const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+				throw new Error(errorData.error || `HTTP ${response.status}`);
 			}
 
-			const result = await response.json()
+			const result = await response.json();
 
 			setProcessingMessage(
 				isTextFile ? "✅ Insights extracted! Ready for analysis." : "✅ Analysis complete! Insights discovered."
-			)
+			);
 
 			// Show success notification with onboarding context
 			showNotification(
 				`${isTextFile ? "Text" : "Audio/Video"} processed successfully! Generated ${result.insights?.length || 0} insights. Your research foundation is growing!`,
 				"success",
 				4000
-			)
+			);
 
 			// Store results for debugging (accessible via window object in dev tools)
 			if (typeof window !== "undefined") {
-				;(window as unknown as Record<string, unknown>).lastProcessingResult = result
+				(window as unknown as Record<string, unknown>).lastProcessingResult = result;
 			}
 
 			// Call success callback if provided
-			onSuccess?.(result)
+			onSuccess?.(result);
 
 			// Close modal after brief delay
 			setTimeout(() => {
-				onClose()
-				setIsProcessing(false)
-				setSelectedFile(null)
-				setProcessingMessage("")
-			}, 1500)
+				onClose();
+				setIsProcessing(false);
+				setSelectedFile(null);
+				setProcessingMessage("");
+			}, 1500);
 		} catch (err) {
-			const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred"
-			setError(errorMessage)
-			setIsProcessing(false)
-			setProcessingMessage("")
+			const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
+			setError(errorMessage);
+			setIsProcessing(false);
+			setProcessingMessage("");
 
 			// Show error notification
-			showNotification(`Upload failed: ${errorMessage}`, "error", 6000)
+			showNotification(`Upload failed: ${errorMessage}`, "error", 6000);
 
 			// Store error for debugging (accessible via window object in dev tools)
 			if (typeof window !== "undefined") {
-				;(window as unknown as Record<string, unknown>).lastUploadError = err
+				(window as unknown as Record<string, unknown>).lastUploadError = err;
 			}
 		}
-	}
+	};
 
 	const { getRootProps, getInputProps, isDragActive } = useDropzone({
 		onDrop: handleFileUpload,
@@ -118,16 +118,16 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 		},
 		multiple: false,
 		disabled: isProcessing,
-	})
+	});
 
 	const handleClose = () => {
 		if (!isProcessing) {
-			onClose()
-			setError(null)
-			setSelectedFile(null)
-			setProcessingMessage("")
+			onClose();
+			setError(null);
+			setSelectedFile(null);
+			setProcessingMessage("");
 		}
-	}
+	};
 
 	return (
 		<Transition.Root show={open} as={Fragment}>
@@ -238,5 +238,5 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 				</div>
 			</Dialog>
 		</Transition.Root>
-	)
+	);
 }

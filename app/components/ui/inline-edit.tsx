@@ -1,35 +1,35 @@
 // src/components/ui/inline-edit.tsx
 
-"use client"
+"use client";
 
-import { Pencil } from "lucide-react"
-import type React from "react"
-import { useEffect, useRef, useState } from "react"
-import { Streamdown } from "streamdown"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Textarea } from "~/components/ui/textarea"
-import { cn } from "~/lib/utils"
+import { Pencil } from "lucide-react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
+import { Streamdown } from "streamdown";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Textarea } from "~/components/ui/textarea";
+import { cn } from "~/lib/utils";
 
 interface InlineEditProps {
-	value: string
-	displayValue?: string
-	onChange?: (value: string) => void
-	onSubmit?: (value: string) => void
-	multiline?: boolean
-	textClassName?: string
-	inputClassName?: string
-	placeholder?: string
-	markdown?: boolean
-	textComponent?: "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
-	autoSize?: boolean
-	autoFocus?: boolean
-	submitOnBlur?: boolean
-	initialIsEditing?: boolean
-	closeOnBlur?: boolean
-	showConfirmationButtons?: boolean
-	showEditButton?: boolean
-	type?: "text" | "number" | "date" | "email" | "url"
+	value: string;
+	displayValue?: string;
+	onChange?: (value: string) => void;
+	onSubmit?: (value: string) => void;
+	multiline?: boolean;
+	textClassName?: string;
+	inputClassName?: string;
+	placeholder?: string;
+	markdown?: boolean;
+	textComponent?: "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+	autoSize?: boolean;
+	autoFocus?: boolean;
+	submitOnBlur?: boolean;
+	initialIsEditing?: boolean;
+	closeOnBlur?: boolean;
+	showConfirmationButtons?: boolean;
+	showEditButton?: boolean;
+	type?: "text" | "number" | "date" | "email" | "url";
 }
 
 export default function InlineEdit({
@@ -52,75 +52,75 @@ export default function InlineEdit({
 	showEditButton = false,
 	type = "text",
 }: InlineEditProps) {
-	const [isEditing, setIsEditing] = useState(initialIsEditing)
-	const [value, setValue] = useState(initialValue)
-	const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
-	const containerRef = useRef<HTMLDivElement>(null)
-	const [preservedWidth, setPreservedWidth] = useState<number | null>(null)
+	const [isEditing, setIsEditing] = useState(initialIsEditing);
+	const [value, setValue] = useState(initialValue);
+	const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
+	const [preservedWidth, setPreservedWidth] = useState<number | null>(null);
 
 	useEffect(() => {
 		if (isEditing && inputRef.current) {
-			inputRef.current.focus()
+			inputRef.current.focus();
 		}
-	}, [isEditing])
+	}, [isEditing]);
 
 	// Dynamically set the height of the textarea to scroll height, this is a trick to
 	// get the textarea to show all of the content
 	useEffect(() => {
 		if (multiline && inputRef.current && autoSize) {
-			inputRef.current.style.height = "auto"
-			inputRef.current.style.height = `${inputRef.current.scrollHeight + 1}px`
+			inputRef.current.style.height = "auto";
+			inputRef.current.style.height = `${inputRef.current.scrollHeight + 1}px`;
 		}
-	}, [multiline, autoSize])
+	}, [multiline, autoSize]);
 
-	const minRows = 3
+	const minRows = 3;
 
 	const handleClick = () => {
 		// Preserve the width of the container before switching to edit mode
 		// Add 20px buffer to account for font size differences and ensure all text is visible
 		if (containerRef.current) {
-			const width = containerRef.current.getBoundingClientRect().width
-			setPreservedWidth(width + 20)
+			const width = containerRef.current.getBoundingClientRect().width;
+			setPreservedWidth(width + 20);
 		}
-		setIsEditing(true)
-	}
+		setIsEditing(true);
+	};
 
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-		setValue(e.target.value)
-		onChange?.(e.target.value)
-	}
+		setValue(e.target.value);
+		onChange?.(e.target.value);
+	};
 
 	const handleBlur = () => {
 		if (closeOnBlur) {
-			setIsEditing(false)
-			setPreservedWidth(null)
+			setIsEditing(false);
+			setPreservedWidth(null);
 		}
 		if (submitOnBlur) {
-			onSubmit?.(value)
+			onSubmit?.(value);
 		}
-	}
+	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		// For multiline, Enter should insert a newline (no submit)
 		if (e.key === "Enter") {
 			if (multiline) {
-				return
+				return;
 			}
-			setIsEditing(false)
-			setPreservedWidth(null)
-			onSubmit?.(value)
-			return
+			setIsEditing(false);
+			setPreservedWidth(null);
+			onSubmit?.(value);
+			return;
 		}
 		if (e.key === "Escape") {
-			handleCancel()
+			handleCancel();
 		}
-	}
+	};
 
 	const handleCancel = () => {
-		setIsEditing(false)
-		setPreservedWidth(null)
-		setValue(initialValue)
-	}
+		setIsEditing(false);
+		setPreservedWidth(null);
+		setValue(initialValue);
+	};
 
 	if (isEditing) {
 		if (multiline) {
@@ -146,7 +146,7 @@ export default function InlineEdit({
 						</div>
 					)}
 				</>
-			)
+			);
 		}
 		return (
 			<>
@@ -170,11 +170,11 @@ export default function InlineEdit({
 					</div>
 				)}
 			</>
-		)
+		);
 	}
 
-	const TextComponent = textComponent
-	const textToShow = displayValue ?? value
+	const TextComponent = textComponent;
+	const textToShow = displayValue ?? value;
 
 	return (
 		<div
@@ -213,5 +213,5 @@ export default function InlineEdit({
 				</Button>
 			)}
 		</div>
-	)
+	);
 }

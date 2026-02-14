@@ -1,18 +1,18 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { getSegmentKindSummaries, getSegmentsSummary } from "~/features/segments/services/segmentData.server"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { HOST } from "~/paths"
-import type { Database } from "~/types"
-import { createRouteDefinitions } from "~/utils/route-definitions"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { getSegmentKindSummaries, getSegmentsSummary } from "../../features/segments/services/segmentData.server";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import { HOST } from "../../paths";
+import type { Database } from "../../types";
+import { createRouteDefinitions } from "../../utils/route-definitions";
 
 const segmentKindSummarySchema = z.object({
 	kind: z.string(),
 	label: z.string(),
 	person_count: z.number(),
-})
+});
 
 const segmentSummarySchema = z.object({
 	id: z.string(),
@@ -22,7 +22,7 @@ const segmentSummarySchema = z.object({
 	evidence_count: z.number(),
 	bullseye_score: z.number(),
 	url: z.string().nullable(),
-})
+});
 
 export const fetchSegmentsTool = createTool({
 	id: "fetch-segments",
@@ -59,16 +59,16 @@ export const fetchSegmentsTool = createTool({
 		segments: z.array(segmentSummarySchema).optional(),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
-		const runtimeAccountId = context?.requestContext?.get?.("account_id")
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const runtimeAccountId = context?.requestContext?.get?.("account_id");
 
-		const projectId = input.projectId ?? runtimeProjectId ?? null
-		const summaryOnly = input.summaryOnly ?? false
-		const kind = input.kind
-		const minBullseyeScore = input.minBullseyeScore
+		const projectId = input.projectId ?? runtimeProjectId ?? null;
+		const summaryOnly = input.summaryOnly ?? false;
+		const kind = input.kind;
+		const minBullseyeScore = input.minBullseyeScore;
 
-		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : null
+		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : null;
 
 		consola.debug("[fetch-segments] execute start", {
 			projectId,
@@ -76,26 +76,26 @@ export const fetchSegmentsTool = createTool({
 			summaryOnly,
 			kind,
 			minBullseyeScore,
-		})
+		});
 
 		if (!projectId) {
-			consola.warn("[fetch-segments] missing projectId")
+			consola.warn("[fetch-segments] missing projectId");
 			return {
 				success: false,
 				message: "Missing projectId. Pass one explicitly or ensure the runtime context sets project_id.",
 				projectId: null,
 				accountId,
-			}
+			};
 		}
 
 		try {
 			// Generate route definitions for URL generation
-			const projectPath = accountId && projectId ? `/a/${accountId}/${projectId}` : ""
-			const routes = createRouteDefinitions(projectPath)
+			const projectPath = accountId && projectId ? `/a/${accountId}/${projectId}` : "";
+			const routes = createRouteDefinitions(projectPath);
 
 			if (summaryOnly) {
 				// Get only segment kind summaries
-				const kindSummaries = await getSegmentKindSummaries(supabase, projectId)
+				const kindSummaries = await getSegmentKindSummaries(supabase, projectId);
 
 				return {
 					success: true,
@@ -103,27 +103,27 @@ export const fetchSegmentsTool = createTool({
 					projectId,
 					accountId,
 					kindSummaries,
-				}
+				};
 			}
 
 			// Get detailed segment data
 			const segments = await getSegmentsSummary(supabase, projectId, {
 				kind,
 				minBullseyeScore,
-			})
+			});
 
 			// Add URLs to each segment
 			const segmentsWithUrls = segments.map((segment) => ({
 				...segment,
 				url: projectPath ? `${HOST}${routes.segments.detail(segment.id)}` : null,
-			}))
+			}));
 
-			let message = `Retrieved ${segmentsWithUrls.length} segments.`
+			let message = `Retrieved ${segmentsWithUrls.length} segments.`;
 			if (kind) {
-				message += ` Filtered by kind: ${kind}.`
+				message += ` Filtered by kind: ${kind}.`;
 			}
 			if (minBullseyeScore !== undefined) {
-				message += ` Minimum bullseye score: ${minBullseyeScore}.`
+				message += ` Minimum bullseye score: ${minBullseyeScore}.`;
 			}
 
 			return {
@@ -132,15 +132,15 @@ export const fetchSegmentsTool = createTool({
 				projectId,
 				accountId,
 				segments: segmentsWithUrls,
-			}
+			};
 		} catch (error) {
-			consola.error("[fetch-segments] unexpected error", error)
+			consola.error("[fetch-segments] unexpected error", error);
 			return {
 				success: false,
 				message: "Unexpected error fetching segments.",
 				projectId,
 				accountId,
-			}
+			};
 		}
 	},
-})
+});

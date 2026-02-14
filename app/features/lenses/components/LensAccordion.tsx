@@ -6,55 +6,55 @@
  * Includes action button to run additional analyses.
  */
 
-import { CheckCircle2, Clock, Loader2, Plus, RefreshCw, Sparkles, XCircle } from "lucide-react"
-import { useMemo, useState } from "react"
-import { useFetcher, useRevalidator } from "react-router"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { cn } from "~/lib/utils"
-import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server"
-import { GenericLensView } from "./GenericLensView"
-import { LensSelector } from "./LensSelector"
+import { CheckCircle2, Clock, Loader2, Plus, RefreshCw, Sparkles, XCircle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useFetcher, useRevalidator } from "react-router";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { cn } from "~/lib/utils";
+import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server";
+import { GenericLensView } from "./GenericLensView";
+import { LensSelector } from "./LensSelector";
 
 type EvidenceRecord = {
-	id: string
-	anchors?: unknown
-	start_ms?: number | null
-	gist?: string | null
-}
+	id: string;
+	anchors?: unknown;
+	start_ms?: number | null;
+	gist?: string | null;
+};
 
 type Props = {
-	interviewId: string
-	templates: LensTemplate[]
-	analyses: Record<string, LensAnalysisWithTemplate>
-	className?: string
+	interviewId: string;
+	templates: LensTemplate[];
+	analyses: Record<string, LensAnalysisWithTemplate>;
+	className?: string;
 	/** Enable inline editing of lens fields */
-	editable?: boolean
+	editable?: boolean;
 	/** Map of evidence ID to evidence record for hydrating timestamps */
-	evidenceMap?: Map<string, EvidenceRecord>
+	evidenceMap?: Map<string, EvidenceRecord>;
 	/** Callback when a lens is applied */
-	onLensApplied?: () => void
-}
+	onLensApplied?: () => void;
+};
 
 /**
  * Status icon for a lens
  */
 function LensStatusIcon({ analysis }: { analysis?: LensAnalysisWithTemplate }) {
 	if (!analysis) {
-		return <Clock className="h-4 w-4 text-muted-foreground" />
+		return <Clock className="h-4 w-4 text-muted-foreground" />;
 	}
 
 	switch (analysis.status) {
 		case "completed":
-			return <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+			return <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />;
 		case "processing":
-			return <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+			return <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />;
 		case "failed":
-			return <XCircle className="h-4 w-4 text-destructive" />
+			return <XCircle className="h-4 w-4 text-destructive" />;
 		default:
-			return <Clock className="h-4 w-4 text-muted-foreground" />
+			return <Clock className="h-4 w-4 text-muted-foreground" />;
 	}
 }
 
@@ -62,13 +62,13 @@ function LensStatusIcon({ analysis }: { analysis?: LensAnalysisWithTemplate }) {
  * Category badge with dark mode colors
  */
 function CategoryBadge({ category }: { category: string | null }) {
-	if (!category) return null
+	if (!category) return null;
 
 	const colors: Record<string, string> = {
 		research: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
 		sales: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
 		product: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
-	}
+	};
 
 	return (
 		<Badge
@@ -77,35 +77,35 @@ function CategoryBadge({ category }: { category: string | null }) {
 		>
 			{category}
 		</Badge>
-	)
+	);
 }
 
 /**
  * Check if an analysis has meaningful data
  */
 function analysisHasData(analysis: LensAnalysisWithTemplate | undefined): boolean {
-	if (!analysis) return false
-	if (analysis.status !== "completed") return false
+	if (!analysis) return false;
+	if (analysis.status !== "completed") return false;
 
-	const data = analysis.analysis_data
-	if (!data) return false
+	const data = analysis.analysis_data;
+	if (!data) return false;
 
 	// Check if there are any sections with data
-	const sections = data.sections || []
+	const sections = data.sections || [];
 	const hasFieldData = sections.some((section: any) => {
-		const fields = section.fields || []
-		return fields.some((field: any) => field.value !== null && field.value !== undefined && field.value !== "")
-	})
+		const fields = section.fields || [];
+		return fields.some((field: any) => field.value !== null && field.value !== undefined && field.value !== "");
+	});
 
 	// Check for entities
-	const hasEntities = (data.entities || []).length > 0
+	const hasEntities = (data.entities || []).length > 0;
 
 	// Check for other common data fields
-	const hasRecommendations = (data.recommendations || []).length > 0
-	const hasKeyInsights = (data.key_insights || []).length > 0
-	const hasHygiene = (data.hygiene || []).length > 0
+	const hasRecommendations = (data.recommendations || []).length > 0;
+	const hasKeyInsights = (data.key_insights || []).length > 0;
+	const hasHygiene = (data.hygiene || []).length > 0;
 
-	return hasFieldData || hasEntities || hasRecommendations || hasKeyInsights || hasHygiene
+	return hasFieldData || hasEntities || hasRecommendations || hasKeyInsights || hasHygiene;
 }
 
 /**
@@ -118,39 +118,59 @@ function RerunLensButton({
 	isProcessing,
 	onTriggered,
 }: {
-	interviewId: string
-	templateKey: string
-	templateName: string
-	isProcessing: boolean
-	onTriggered?: () => void
+	interviewId: string;
+	templateKey: string;
+	templateName: string;
+	isProcessing: boolean;
+	onTriggered?: () => void;
 }) {
-	const fetcher = useFetcher()
-	const isSubmitting = fetcher.state !== "idle"
-	const isRunning = isSubmitting || isProcessing
+	const fetcher = useFetcher();
+	const isSubmitting = fetcher.state !== "idle";
+	const isRunning = isSubmitting || isProcessing;
 
-	const handleRerun = (e: React.MouseEvent) => {
-		e.stopPropagation() // Don't toggle accordion
+	const triggerRerun = () => {
 		fetcher.submit(
 			{ interview_id: interviewId, template_key: templateKey },
 			{ method: "POST", action: "/api/apply-lens" }
-		)
-		onTriggered?.()
-	}
+		);
+		onTriggered?.();
+	};
 
 	return (
 		<TooltipProvider>
 			<Tooltip>
 				<TooltipTrigger asChild>
-					<Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRerun} disabled={isRunning}>
+					<span
+						role="button"
+						tabIndex={isRunning ? -1 : 0}
+						aria-disabled={isRunning}
+						className={cn(
+							"inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+							isRunning ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-muted"
+						)}
+						onClick={(e) => {
+							e.stopPropagation();
+							if (isRunning) return;
+							triggerRerun();
+						}}
+						onKeyDown={(e) => {
+							if (isRunning) return;
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault();
+								e.stopPropagation();
+								triggerRerun();
+							}
+						}}
+					>
 						<RefreshCw className={cn("h-3.5 w-3.5", isRunning && "animate-spin")} />
-					</Button>
+					</span>
 				</TooltipTrigger>
 				<TooltipContent>
 					<p>Re-analyze with {templateName}</p>
 				</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
-	)
+	);
 }
 
 export function LensAccordion({
@@ -162,34 +182,31 @@ export function LensAccordion({
 	evidenceMap,
 	onLensApplied,
 }: Props) {
-	const [showAddLens, setShowAddLens] = useState(false)
-	const revalidator = useRevalidator()
+	const [showAddLens, setShowAddLens] = useState(false);
+	const revalidator = useRevalidator();
 
 	// Sort templates by display_order
-	const sortedTemplates = useMemo(() => [...templates].sort((a, b) => a.display_order - b.display_order), [templates])
+	const sortedTemplates = useMemo(() => [...templates].sort((a, b) => a.display_order - b.display_order), [templates]);
 
 	// Filter to only templates with completed analyses that have data
 	const templatesWithData = useMemo(
 		() =>
 			sortedTemplates.filter((template) => {
-				const analysis = analyses[template.template_key]
-				return analysisHasData(analysis)
+				const analysis = analyses[template.template_key];
+				return analysisHasData(analysis);
 			}),
 		[sortedTemplates, analyses]
-	)
+	);
 
 	// Templates without data (for the "add more" section)
 	const templatesWithoutData = useMemo(
 		() =>
 			sortedTemplates.filter((template) => {
-				const analysis = analyses[template.template_key]
-				return !analysisHasData(analysis)
+				const analysis = analyses[template.template_key];
+				return !analysisHasData(analysis);
 			}),
 		[sortedTemplates, analyses]
-	)
-
-	// Default to first template with data expanded
-	const defaultValue = templatesWithData[0]?.template_key
+	);
 
 	if (templates.length === 0) {
 		return (
@@ -197,7 +214,7 @@ export function LensAccordion({
 				<Sparkles className="mx-auto mb-3 h-8 w-8 opacity-50" />
 				<p>No lens templates available</p>
 			</div>
-		)
+		);
 	}
 
 	if (templatesWithData.length === 0) {
@@ -215,14 +232,14 @@ export function LensAccordion({
 					/>
 				</div>
 			</div>
-		)
+		);
 	}
 
 	return (
 		<div className={cn("space-y-4", className)}>
-			<Accordion type="single" collapsible defaultValue={defaultValue} className="space-y-3">
+			<Accordion type="single" collapsible className="space-y-3">
 				{templatesWithData.map((template) => {
-					const analysis = analyses[template.template_key]
+					const analysis = analyses[template.template_key];
 					return (
 						<AccordionItem
 							key={template.template_key}
@@ -246,8 +263,8 @@ export function LensAccordion({
 											isProcessing={analysis?.status === "processing" || analysis?.status === "pending"}
 											onTriggered={() => {
 												// Revalidate after a delay to pick up status change
-												setTimeout(() => revalidator.revalidate(), 1000)
-												onLensApplied?.()
+												setTimeout(() => revalidator.revalidate(), 1000);
+												onLensApplied?.();
 											}}
 										/>
 										<CategoryBadge category={template.category} />
@@ -263,7 +280,7 @@ export function LensAccordion({
 								/>
 							</AccordionContent>
 						</AccordionItem>
-					)
+					);
 				})}
 			</Accordion>
 
@@ -283,8 +300,8 @@ export function LensAccordion({
 								templates={templatesWithoutData}
 								analyses={analyses}
 								onLensApplied={() => {
-									setShowAddLens(false)
-									onLensApplied?.()
+									setShowAddLens(false);
+									onLensApplied?.();
 								}}
 							/>
 						</div>
@@ -297,7 +314,7 @@ export function LensAccordion({
 				</div>
 			)}
 		</div>
-	)
+	);
 }
 
 /**
@@ -307,15 +324,15 @@ export function LensStatusSummary({
 	analyses,
 	className,
 }: {
-	analyses: Record<string, LensAnalysisWithTemplate>
-	className?: string
+	analyses: Record<string, LensAnalysisWithTemplate>;
+	className?: string;
 }) {
-	const values = Object.values(analyses)
-	const completed = values.filter((a) => a.status === "completed").length
-	const processing = values.filter((a) => a.status === "processing").length
-	const failed = values.filter((a) => a.status === "failed").length
+	const values = Object.values(analyses);
+	const completed = values.filter((a) => a.status === "completed").length;
+	const processing = values.filter((a) => a.status === "processing").length;
+	const failed = values.filter((a) => a.status === "failed").length;
 
-	if (values.length === 0) return null
+	if (values.length === 0) return null;
 
 	return (
 		<div className={cn("flex items-center gap-1", className)}>
@@ -341,5 +358,5 @@ export function LensStatusSummary({
 				</Badge>
 			)}
 		</div>
-	)
+	);
 }

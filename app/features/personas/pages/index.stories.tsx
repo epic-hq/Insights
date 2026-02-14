@@ -1,6 +1,6 @@
-import { withRouter } from ".storybook/with-router"
-import type { Meta, StoryObj } from "@storybook/react-vite"
-import PersonasIndex from "./index"
+import { withRouter } from ".storybook/with-router";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import PersonasIndex from "./index";
 
 const meta = {
 	title: "Features/Personas/Pages/Index",
@@ -10,10 +10,10 @@ const meta = {
 		layout: "fullscreen",
 	},
 	tags: ["autodocs"],
-} satisfies Meta<typeof PersonasIndex>
+} satisfies Meta<typeof PersonasIndex>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 // Mock personas data with all fields the component expects
 const mockPersonas = [
@@ -62,7 +62,7 @@ const mockPersonas = [
 		updated_at: "2025-01-10",
 		people_personas: [{ count: 24 }],
 	},
-]
+];
 
 export const Default: Story = {
 	parameters: {
@@ -70,7 +70,7 @@ export const Default: Story = {
 			personas: mockPersonas,
 		},
 	},
-}
+};
 
 export const Empty: Story = {
 	parameters: {
@@ -78,7 +78,7 @@ export const Empty: Story = {
 			personas: [],
 		},
 	},
-}
+};
 
 export const SinglePersona: Story = {
 	parameters: {
@@ -86,7 +86,7 @@ export const SinglePersona: Story = {
 			personas: [mockPersonas[0]],
 		},
 	},
-}
+};
 
 export const ManyPersonas: Story = {
 	parameters: {
@@ -116,4 +116,4 @@ export const ManyPersonas: Story = {
 			],
 		},
 	},
-}
+};

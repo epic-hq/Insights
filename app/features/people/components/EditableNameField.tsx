@@ -2,22 +2,22 @@
  * Advanced inline editable name field
  * Shows combined name in view mode, splits into firstname/lastname in edit mode
  */
-import { Check, Loader2, Pencil, X } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
-import { useRevalidator } from "react-router-dom"
-import { Input } from "~/components/ui/input"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
+import { Check, Loader2, Pencil, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useRevalidator } from "react-router-dom";
+import { Input } from "~/components/ui/input";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
 
 interface EditableNameFieldProps {
-	firstname: string | null | undefined
-	lastname: string | null | undefined
-	personId: string
-	placeholder?: string
-	className?: string
+	firstname: string | null | undefined;
+	lastname: string | null | undefined;
+	personId: string;
+	placeholder?: string;
+	className?: string;
 	/** Larger text styling for headers */
-	variant?: "default" | "header"
+	variant?: "default" | "header";
 }
 
 export function EditableNameField({
@@ -28,64 +28,64 @@ export function EditableNameField({
 	className,
 	variant = "default",
 }: EditableNameFieldProps) {
-	const [isEditing, setIsEditing] = useState(false)
-	const [editFirstname, setEditFirstname] = useState(firstname ?? "")
-	const [editLastname, setEditLastname] = useState(lastname ?? "")
-	const [isSaving, setIsSaving] = useState(false)
-	const firstnameRef = useRef<HTMLInputElement>(null)
-	const containerRef = useRef<HTMLDivElement>(null)
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
-	const revalidator = useRevalidator()
+	const [isEditing, setIsEditing] = useState(false);
+	const [editFirstname, setEditFirstname] = useState(firstname ?? "");
+	const [editLastname, setEditLastname] = useState(lastname ?? "");
+	const [isSaving, setIsSaving] = useState(false);
+	const firstnameRef = useRef<HTMLInputElement>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
+	const revalidator = useRevalidator();
 
 	// Combined display name
-	const displayName = [firstname, lastname].filter(Boolean).join(" ") || ""
+	const displayName = [firstname, lastname].filter(Boolean).join(" ") || "";
 
 	// Reset edit values when props change
 	useEffect(() => {
 		if (!isEditing) {
-			setEditFirstname(firstname ?? "")
-			setEditLastname(lastname ?? "")
+			setEditFirstname(firstname ?? "");
+			setEditLastname(lastname ?? "");
 		}
-	}, [firstname, lastname, isEditing])
+	}, [firstname, lastname, isEditing]);
 
 	// Focus first input when entering edit mode
 	useEffect(() => {
 		if (isEditing) {
 			// Small delay to ensure the input is rendered
 			setTimeout(() => {
-				firstnameRef.current?.focus()
-				firstnameRef.current?.select()
-			}, 0)
+				firstnameRef.current?.focus();
+				firstnameRef.current?.select();
+			}, 0);
 		}
-	}, [isEditing])
+	}, [isEditing]);
 
 	// Handle click outside to save
 	useEffect(() => {
-		if (!isEditing) return
+		if (!isEditing) return;
 
 		const handleClickOutside = (event: MouseEvent) => {
 			if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-				handleSave()
+				handleSave();
 			}
-		}
+		};
 
-		document.addEventListener("mousedown", handleClickOutside)
-		return () => document.removeEventListener("mousedown", handleClickOutside)
-	}, [isEditing, editFirstname, editLastname])
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => document.removeEventListener("mousedown", handleClickOutside);
+	}, [isEditing, editFirstname, editLastname]);
 
 	const handleSave = async () => {
-		const firstnameChanged = editFirstname !== (firstname ?? "")
-		const lastnameChanged = editLastname !== (lastname ?? "")
+		const firstnameChanged = editFirstname !== (firstname ?? "");
+		const lastnameChanged = editLastname !== (lastname ?? "");
 
 		if (!firstnameChanged && !lastnameChanged) {
-			setIsEditing(false)
-			return
+			setIsEditing(false);
+			return;
 		}
 
-		setIsSaving(true)
+		setIsSaving(true);
 		try {
-			const updates: Promise<Response>[] = []
+			const updates: Promise<Response>[] = [];
 
 			if (firstnameChanged) {
 				updates.push(
@@ -99,7 +99,7 @@ export function EditableNameField({
 							value: editFirstname || null,
 						}),
 					})
-				)
+				);
 			}
 
 			if (lastnameChanged) {
@@ -114,43 +114,43 @@ export function EditableNameField({
 							value: editLastname || null,
 						}),
 					})
-				)
+				);
 			}
 
-			const responses = await Promise.all(updates)
-			const allOk = responses.every((r) => r.ok)
+			const responses = await Promise.all(updates);
+			const allOk = responses.every((r) => r.ok);
 
 			if (!allOk) {
-				throw new Error("Failed to save")
+				throw new Error("Failed to save");
 			}
 
-			setIsEditing(false)
-			revalidator.revalidate()
+			setIsEditing(false);
+			revalidator.revalidate();
 		} catch (error) {
-			console.error("Failed to save name:", error)
+			console.error("Failed to save name:", error);
 			// Reset to original values on error
-			setEditFirstname(firstname ?? "")
-			setEditLastname(lastname ?? "")
+			setEditFirstname(firstname ?? "");
+			setEditLastname(lastname ?? "");
 		} finally {
-			setIsSaving(false)
+			setIsSaving(false);
 		}
-	}
+	};
 
 	const handleCancel = () => {
-		setEditFirstname(firstname ?? "")
-		setEditLastname(lastname ?? "")
-		setIsEditing(false)
-	}
+		setEditFirstname(firstname ?? "");
+		setEditLastname(lastname ?? "");
+		setIsEditing(false);
+	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === "Enter") {
-			e.preventDefault()
-			handleSave()
+			e.preventDefault();
+			handleSave();
 		}
 		if (e.key === "Escape") {
-			handleCancel()
+			handleCancel();
 		}
-	}
+	};
 
 	if (isEditing) {
 		return (
@@ -199,7 +199,7 @@ export function EditableNameField({
 					)}
 				</div>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -221,5 +221,5 @@ export function EditableNameField({
 				)}
 			/>
 		</button>
-	)
+	);
 }

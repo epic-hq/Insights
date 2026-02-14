@@ -5,19 +5,19 @@
  * Optionally shows "Skip Tour" for experienced users.
  */
 
-import { Pencil } from "lucide-react"
-import { Link } from "react-router-dom"
-import { cn } from "~/lib/utils"
+import { Pencil } from "lucide-react";
+import { Link } from "react-router-dom";
+import { cn } from "~/lib/utils";
 
 export interface WelcomeHeaderProps {
 	/** Project name to display */
-	projectName: string
+	projectName: string;
 	/** Base path for project routes */
-	projectPath: string
+	projectPath: string;
 	/** Optional subtitle text */
-	subtitle?: string
+	subtitle?: string;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 export function WelcomeHeader({ projectName, projectPath, subtitle = "", className }: WelcomeHeaderProps) {
@@ -35,7 +35,7 @@ export function WelcomeHeader({ projectName, projectPath, subtitle = "", classNa
 			</div>
 			<p className="text-muted-foreground">{subtitle}</p>
 		</header>
-	)
+	);
 }
 
-export default WelcomeHeader
+export default WelcomeHeader;

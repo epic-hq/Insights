@@ -2,101 +2,101 @@
  * Website research card component for project setup
  * Allows users to enter a company website and shows research results for confirmation
  */
-import { Check, Globe, Loader2, Sparkles, X } from "lucide-react"
-import { useEffect, useState } from "react"
-import { useFetcher } from "react-router-dom"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
+import { Check, Globe, Loader2, Sparkles, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useFetcher } from "react-router-dom";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 
 interface ResearchData {
-	customer_problem?: string
-	offerings?: string[]
-	competitors?: string[]
-	target_orgs?: string[]
-	target_customers?: string[]
-	description?: string
-	industry?: string
+	customer_problem?: string;
+	offerings?: string[];
+	competitors?: string[];
+	target_orgs?: string[];
+	target_customers?: string[];
+	description?: string;
+	industry?: string;
 }
 
 interface WebsiteResearchCardProps {
-	onResearchComplete?: (data: ResearchData) => void
+	onResearchComplete?: (data: ResearchData) => void;
 }
 
 /**
  * Normalizes a URL by adding https:// if no protocol is present
  */
 function normalizeUrl(input: string): string {
-	const trimmed = input.trim()
-	if (!trimmed) return ""
+	const trimmed = input.trim();
+	if (!trimmed) return "";
 
 	if (/^https?:\/\//i.test(trimmed)) {
-		return trimmed
+		return trimmed;
 	}
 
-	return `https://${trimmed}`
+	return `https://${trimmed}`;
 }
 
 export function WebsiteResearchCard({ onResearchComplete }: WebsiteResearchCardProps) {
-	const [websiteUrl, setWebsiteUrl] = useState("")
-	const [researchResults, setResearchResults] = useState<ResearchData | null>(null)
-	const [showResults, setShowResults] = useState(false)
-	const fetcher = useFetcher()
+	const [websiteUrl, setWebsiteUrl] = useState("");
+	const [researchResults, setResearchResults] = useState<ResearchData | null>(null);
+	const [showResults, setShowResults] = useState(false);
+	const fetcher = useFetcher();
 
-	const isResearching = fetcher.state !== "idle"
-	const hasUrl = websiteUrl.trim().length > 0
+	const isResearching = fetcher.state !== "idle";
+	const hasUrl = websiteUrl.trim().length > 0;
 
 	// Handle fetcher response - show results for confirmation
 	useEffect(() => {
 		if (fetcher.data?.success && fetcher.data?.data) {
-			setResearchResults(fetcher.data.data)
-			setShowResults(true)
+			setResearchResults(fetcher.data.data);
+			setShowResults(true);
 		}
-	}, [fetcher.data])
+	}, [fetcher.data]);
 
 	const handleResearch = () => {
-		if (!hasUrl) return
+		if (!hasUrl) return;
 
-		const normalizedUrl = normalizeUrl(websiteUrl)
-		setWebsiteUrl(normalizedUrl)
-		setShowResults(false)
-		setResearchResults(null)
+		const normalizedUrl = normalizeUrl(websiteUrl);
+		setWebsiteUrl(normalizedUrl);
+		setShowResults(false);
+		setResearchResults(null);
 
 		fetcher.submit(
 			{
 				website_url: normalizedUrl,
 			},
 			{ method: "post", action: "/api/project-setup/website" }
-		)
-	}
+		);
+	};
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
 		if (e.key === "Enter" && hasUrl && !isResearching) {
-			e.preventDefault()
-			handleResearch()
+			e.preventDefault();
+			handleResearch();
 		}
-	}
+	};
 
 	const handleAcceptResults = () => {
 		if (researchResults && onResearchComplete) {
-			onResearchComplete(researchResults)
+			onResearchComplete(researchResults);
 		}
-		setShowResults(false)
-		setResearchResults(null)
-	}
+		setShowResults(false);
+		setResearchResults(null);
+	};
 
 	const handleRejectResults = () => {
-		setShowResults(false)
-		setResearchResults(null)
-	}
+		setShowResults(false);
+		setResearchResults(null);
+	};
 
 	// Show results confirmation view
 	if (showResults && researchResults) {
-		const targetList = researchResults.target_customers || researchResults.target_orgs
+		const targetList = researchResults.target_customers || researchResults.target_orgs;
 		const hasAnyData =
 			researchResults.description ||
 			researchResults.customer_problem ||
 			(researchResults.offerings?.length ?? 0) > 0 ||
-			(targetList?.length ?? 0) > 0
+			(targetList?.length ?? 0) > 0;
 
 		return (
 			<div className="rounded-lg border bg-muted/30 p-4">
@@ -164,7 +164,7 @@ export function WebsiteResearchCard({ onResearchComplete }: WebsiteResearchCardP
 					</div>
 				)}
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -220,5 +220,5 @@ export function WebsiteResearchCard({ onResearchComplete }: WebsiteResearchCardP
 				{fetcher.data && !fetcher.data.success && <p className="mt-2 text-red-500 text-sm">{fetcher.data.error}</p>}
 			</div>
 		</div>
-	)
+	);
 }

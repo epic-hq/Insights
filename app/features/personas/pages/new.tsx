@@ -1,59 +1,59 @@
-import { motion } from "framer-motion"
-import { type ActionFunctionArgs, type MetaFunction, redirect, useActionData } from "react-router-dom"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Textarea } from "~/components/ui/textarea"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { getServerClient } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
-import { createProjectRoutes } from "~/utils/routes.server"
+import { motion } from "framer-motion";
+import { type ActionFunctionArgs, type MetaFunction, redirect, useActionData } from "react-router-dom";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { getServerClient } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
+import { createProjectRoutes } from "~/utils/routes.server";
 
-type PersonaInsert = Database["public"]["Tables"]["personas"]["Insert"]
+type PersonaInsert = Database["public"]["Tables"]["personas"]["Insert"];
 
 export const meta: MetaFunction = () => {
-	return [{ title: "New Persona | Insights" }, { name: "description", content: "Create a new user persona" }]
-}
+	return [{ title: "New Persona | Insights" }, { name: "description", content: "Create a new user persona" }];
+};
 
 export async function loader({
 	request,
 	params,
 }: {
-	request: Request
-	params: { accountId: string; projectId: string }
+	request: Request;
+	params: { accountId: string; projectId: string };
 }) {
-	const { client: supabase } = getServerClient(request)
-	const { data: jwt } = await supabase.auth.getClaims()
-	const accountId = params?.accountId
-	const projectId = params?.projectId
+	const { client: supabase } = getServerClient(request);
+	const { data: jwt } = await supabase.auth.getClaims();
+	const accountId = params?.accountId;
+	const projectId = params?.projectId;
 
-	const _routes = createProjectRoutes(accountId, projectId)
+	const _routes = createProjectRoutes(accountId, projectId);
 	if (!accountId) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	return {}
+	return {};
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
-	const formData = await request.formData()
-	const name = (formData.get("name") as string)?.trim()
-	if (!name) return { error: "Name is required" }
+	const formData = await request.formData();
+	const name = (formData.get("name") as string)?.trim();
+	if (!name) return { error: "Name is required" };
 
-	const description = (formData.get("description") as string) || null
-	const color_hex = (formData.get("color_hex") as string) || "#6b7280"
-	const image_url = (formData.get("image_url") as string) || null
+	const description = (formData.get("description") as string) || null;
+	const color_hex = (formData.get("color_hex") as string) || "#6b7280";
+	const image_url = (formData.get("image_url") as string) || null;
 
-	const { client: supabase } = getServerClient(request)
-	const { data: jwt } = await supabase.auth.getClaims()
+	const { client: supabase } = getServerClient(request);
+	const { data: jwt } = await supabase.auth.getClaims();
 
-	const accountId = params?.accountId
-	const projectId = params?.projectId
-	if (!accountId || !projectId) throw new Response("Unauthorized", { status: 401 })
+	const accountId = params?.accountId;
+	const projectId = params?.projectId;
+	if (!accountId || !projectId) throw new Response("Unauthorized", { status: 401 });
 
-	const routes = createProjectRoutes(accountId, projectId)
+	const routes = createProjectRoutes(accountId, projectId);
 	const personaData: PersonaInsert = {
 		name,
 		description,
@@ -61,21 +61,21 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		image_url,
 		account_id: accountId,
 		project_id: projectId,
-	}
+	};
 
-	const { data: persona, error } = await supabase.from("personas").insert(personaData).select().single()
+	const { data: persona, error } = await supabase.from("personas").insert(personaData).select().single();
 
 	if (error) {
-		return { error: `Failed to create persona: ${error.message}` }
+		return { error: `Failed to create persona: ${error.message}` };
 	}
 
-	return redirect(routes.personas.detail(persona.id))
+	return redirect(routes.personas.detail(persona.id));
 }
 
 export default function NewPersona() {
-	const actionData = useActionData<typeof action>()
-	const currentProjectContext = useCurrentProject()
-	const routes = useProjectRoutes(currentProjectContext?.projectPath || "")
+	const actionData = useActionData<typeof action>();
+	const currentProjectContext = useCurrentProject();
+	const routes = useProjectRoutes(currentProjectContext?.projectPath || "");
 
 	return (
 		<div className="mx-auto max-w-2xl px-3 py-6 sm:px-6">
@@ -150,5 +150,5 @@ export default function NewPersona() {
 				</Card>
 			</motion.div>
 		</div>
-	)
+	);
 }

@@ -1,8 +1,8 @@
-import consola from "consola"
-import { motion } from "framer-motion"
-import { Trash2 } from "lucide-react"
-import type { MetaFunction } from "react-router"
-import { Form, redirect, useActionData, useLoaderData } from "react-router"
+import consola from "consola";
+import { motion } from "framer-motion";
+import { Trash2 } from "lucide-react";
+import type { MetaFunction } from "react-router";
+import { Form, redirect, useActionData, useLoaderData } from "react-router";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -13,47 +13,47 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 	AlertDialogTrigger,
-} from "~/components/ui/alert-dialog"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Textarea } from "~/components/ui/textarea"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { getServerClient } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
-import { createProjectRoutes } from "~/utils/routes.server"
+} from "~/components/ui/alert-dialog";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { getServerClient } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
+import { createProjectRoutes } from "~/utils/routes.server";
 
-type PersonaUpdate = Database["public"]["Tables"]["personas"]["Update"]
+type PersonaUpdate = Database["public"]["Tables"]["personas"]["Update"];
 
 export const meta: MetaFunction = ({ params }) => {
 	return [
 		{ title: `Edit Persona ${params.personaId || ""} | Insights` },
 		{ name: "description", content: "Edit persona details" },
-	]
-}
+	];
+};
 
 export async function loader({
 	request,
 	params,
 }: {
-	request: Request
-	params: { accountId: string; personaId: string; projectId: string }
+	request: Request;
+	params: { accountId: string; personaId: string; projectId: string };
 }) {
-	consola.log("Initializing Supabase client")
-	const { client: supabase } = getServerClient(request)
-	const { data: jwt } = await supabase.auth.getClaims()
+	consola.log("Initializing Supabase client");
+	const { client: supabase } = getServerClient(request);
+	const { data: jwt } = await supabase.auth.getClaims();
 	// const accountId = jwt?.claims.sub
-	const accountId = params.accountId
-	const personaId = params.personaId
-	const projectId = params.projectId
-	consola.log("Parameters:", { accountId, personaId, projectId })
-	const _routes = createProjectRoutes(accountId, projectId)
-	consola.log("persona loader: ", { params })
+	const accountId = params.accountId;
+	const personaId = params.personaId;
+	const projectId = params.projectId;
+	consola.log("Parameters:", { accountId, personaId, projectId });
+	const _routes = createProjectRoutes(accountId, projectId);
+	consola.log("persona loader: ", { params });
 
 	if (!accountId) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
 	const { data: persona, error } = await supabase
@@ -62,120 +62,120 @@ export async function loader({
 		.eq("id", personaId)
 		// .eq("account_id", accountId)
 		// .eq("project_id", projectId)
-		.limit(1)
-	consola.log("Query result:", persona)
+		.limit(1);
+	consola.log("Query result:", persona);
 
 	if (error) {
-		consola.error("Error fetching persona:", error)
+		consola.error("Error fetching persona:", error);
 		if (error.code === "PGRST116") {
-			throw new Response("Persona not found", { status: 404 })
+			throw new Response("Persona not found", { status: 404 });
 		}
-		throw new Response(`Error fetching persona: ${error.message}`, { status: 500 })
+		throw new Response(`Error fetching persona: ${error.message}`, { status: 500 });
 	}
 
 	if (!persona) {
-		consola.warn("Persona not found for ID:", personaId)
-		throw new Response("Persona not found", { status: 404 })
+		consola.warn("Persona not found for ID:", personaId);
+		throw new Response("Persona not found", { status: 404 });
 	}
 
 	if (persona.length === 0) {
-		throw new Response("Persona not found", { status: 404 })
+		throw new Response("Persona not found", { status: 404 });
 	}
-	return { persona: persona[0] }
+	return { persona: persona[0] };
 }
 
 export async function action({
 	request,
 	params,
 }: {
-	request: Request
-	params: { accountId: string; personaId: string; projectId: string }
+	request: Request;
+	params: { accountId: string; personaId: string; projectId: string };
 }) {
-	const formData = await request.formData()
-	const intent = formData.get("intent")
-	const _personaId = params.personaId
+	const formData = await request.formData();
+	const intent = formData.get("intent");
+	const _personaId = params.personaId;
 
-	const { client: supabase } = getServerClient(request)
-	const { data: jwt } = await supabase.auth.getClaims()
+	const { client: supabase } = getServerClient(request);
+	const { data: jwt } = await supabase.auth.getClaims();
 	// const accountId = jwt?.claims.sub
 
-	const accountId = params.accountId
-	const personaId = params.personaId
-	const projectId = params.projectId
-	consola.log("persona edit: ", { accountId, personaId, projectId })
-	const routes = createProjectRoutes(accountId, projectId)
+	const accountId = params.accountId;
+	const personaId = params.personaId;
+	const projectId = params.projectId;
+	consola.log("persona edit: ", { accountId, personaId, projectId });
+	const routes = createProjectRoutes(accountId, projectId);
 
 	if (!accountId) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
 	if (intent === "delete") {
-		const { error } = await supabase.from("personas").delete().eq("id", personaId)
+		const { error } = await supabase.from("personas").delete().eq("id", personaId);
 		// .eq("account_id", accountId)
 		// .eq("project_id", projectId)
 
 		if (error) {
-			return { error: `Failed to delete persona: ${error.message}` }
+			return { error: `Failed to delete persona: ${error.message}` };
 		}
 
-		return redirect(routes.personas.index())
+		return redirect(routes.personas.index());
 	}
 
 	// Update persona
-	const name = (formData.get("name") as string)?.trim()
-	if (!name) return { error: "Name is required" }
+	const name = (formData.get("name") as string)?.trim();
+	if (!name) return { error: "Name is required" };
 
-	const description = (formData.get("description") as string) || null
-	const color_hex = (formData.get("color_hex") as string) || "#6b7280"
-	const image_url = (formData.get("image_url") as string) || null
+	const description = (formData.get("description") as string) || null;
+	const color_hex = (formData.get("color_hex") as string) || "#6b7280";
+	const image_url = (formData.get("image_url") as string) || null;
 
 	// New fields
-	const age = (formData.get("age") as string) || null
-	const gender = (formData.get("gender") as string) || null
-	const location = (formData.get("location") as string) || null
-	const education = (formData.get("education") as string) || null
-	const occupation = (formData.get("occupation") as string) || null
-	const income = (formData.get("income") as string) || null
-	const languages = (formData.get("languages") as string) || null
-	const segment = (formData.get("segment") as string) || null
-	const role = (formData.get("role") as string) || null
-	const learning_style = (formData.get("learning_style") as string) || null
-	const tech_comfort_level = (formData.get("tech_comfort_level") as string) || null
-	const frequency_of_purchase = (formData.get("frequency_of_purchase") as string) || null
-	const frequency_of_use = (formData.get("frequency_of_use") as string) || null
-	const percentageRaw = formData.get("percentage")
-	const percentage = percentageRaw !== null && percentageRaw !== "" ? Number.parseFloat(percentageRaw as string) : null
+	const age = (formData.get("age") as string) || null;
+	const gender = (formData.get("gender") as string) || null;
+	const location = (formData.get("location") as string) || null;
+	const education = (formData.get("education") as string) || null;
+	const occupation = (formData.get("occupation") as string) || null;
+	const income = (formData.get("income") as string) || null;
+	const languages = (formData.get("languages") as string) || null;
+	const segment = (formData.get("segment") as string) || null;
+	const role = (formData.get("role") as string) || null;
+	const learning_style = (formData.get("learning_style") as string) || null;
+	const tech_comfort_level = (formData.get("tech_comfort_level") as string) || null;
+	const frequency_of_purchase = (formData.get("frequency_of_purchase") as string) || null;
+	const frequency_of_use = (formData.get("frequency_of_use") as string) || null;
+	const percentageRaw = formData.get("percentage");
+	const percentage = percentageRaw !== null && percentageRaw !== "" ? Number.parseFloat(percentageRaw as string) : null;
 
 	// Array fields: comma-separated or newline for quotes
 	function parseArray(val: FormDataEntryValue | null | undefined) {
-		if (!val) return null
-		const str = String(val)
+		if (!val) return null;
+		const str = String(val);
 		const arr = str
 			.split(",")
 			.map((s) => s.trim())
-			.filter(Boolean)
-		return arr.length > 0 ? arr : null
+			.filter(Boolean);
+		return arr.length > 0 ? arr : null;
 	}
 	function parseArrayNewline(val: FormDataEntryValue | null | undefined) {
-		if (!val) return null
-		const str = String(val)
+		if (!val) return null;
+		const str = String(val);
 		const arr = str
 			.split("\n")
 			.map((s) => s.trim())
-			.filter(Boolean)
-		return arr.length > 0 ? arr : null
+			.filter(Boolean);
+		return arr.length > 0 ? arr : null;
 	}
 
-	const motivations = parseArray(formData.get("motivations"))
-	const values = parseArray(formData.get("values"))
-	const frustrations = parseArray(formData.get("frustrations"))
-	const key_tasks = parseArray(formData.get("key_tasks"))
-	const tools_used = parseArray(formData.get("tools_used"))
-	const secondary_goals = parseArray(formData.get("secondary_goals"))
-	const sources = parseArray(formData.get("sources"))
-	const quotes = parseArrayNewline(formData.get("quotes"))
-	const primary_goal = (formData.get("primary_goal") as string) || null
-	const preferences = (formData.get("preferences") as string) || null
+	const motivations = parseArray(formData.get("motivations"));
+	const values = parseArray(formData.get("values"));
+	const frustrations = parseArray(formData.get("frustrations"));
+	const key_tasks = parseArray(formData.get("key_tasks"));
+	const tools_used = parseArray(formData.get("tools_used"));
+	const secondary_goals = parseArray(formData.get("secondary_goals"));
+	const sources = parseArray(formData.get("sources"));
+	const quotes = parseArrayNewline(formData.get("quotes"));
+	const primary_goal = (formData.get("primary_goal") as string) || null;
+	const preferences = (formData.get("preferences") as string) || null;
 
 	const personaData: PersonaUpdate = {
 		name,
@@ -207,7 +207,7 @@ export async function action({
 		quotes,
 		preferences,
 		updated_at: new Date().toISOString(),
-	}
+	};
 
 	const { data: persona, error } = await supabase
 		.from("personas")
@@ -216,21 +216,21 @@ export async function action({
 		// .eq("account_id", accountId)
 		// .eq("project_id", projectId)
 		.select()
-		.single()
+		.single();
 
 	if (error) {
-		return { error: `Failed to update persona: ${error.message}` }
+		return { error: `Failed to update persona: ${error.message}` };
 	}
 
-	return redirect(routes.personas.detail(persona.id))
+	return redirect(routes.personas.detail(persona.id));
 }
 
 export default function EditPersona() {
-	consola.log("persona actionData: ")
-	const { persona } = useLoaderData<typeof loader>()
-	const actionData = useActionData<typeof action>()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	consola.log("persona actionData: ");
+	const { persona } = useLoaderData<typeof loader>();
+	const actionData = useActionData<typeof action>();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
 	return (
 		<div className="mx-auto max-w-2xl px-4 py-6">
@@ -594,5 +594,5 @@ export default function EditPersona() {
 				</Card>
 			</motion.div>
 		</div>
-	)
+	);
 }

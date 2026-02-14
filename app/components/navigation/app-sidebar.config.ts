@@ -1,20 +1,34 @@
-import type { LucideIcon } from "lucide-react"
-import { BookOpen, Briefcase, CheckSquare, File, Glasses, Home, Link2, Sparkles, Users } from "lucide-react"
-import type { RouteDefinitions } from "~/utils/route-definitions"
+import type { LucideIcon } from "lucide-react";
+import {
+	BookOpen,
+	Briefcase,
+	CheckSquare,
+	File,
+	FolderOpen,
+	Glasses,
+	Home,
+	Link2,
+	Map,
+	MessageSquareText,
+	Sparkles,
+	Tag,
+	Users,
+} from "lucide-react";
+import type { RouteDefinitions } from "~/utils/route-definitions";
 
 export interface AppSidebarNavItem {
-	key: string
-	title: string
-	description?: string
-	icon: LucideIcon
-	to: (routes: RouteDefinitions) => string
-	featureFlag?: string
+	key: string;
+	title: string;
+	description?: string;
+	icon: LucideIcon;
+	to: (routes: RouteDefinitions) => string;
+	featureFlag?: string;
 }
 
 export interface AppSidebarSection {
-	key: string
-	title: string
-	items: AppSidebarNavItem[]
+	key: string;
+	title: string;
+	items: AppSidebarNavItem[];
 }
 
 /**
@@ -34,6 +48,14 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => routes.dashboard(),
 			},
 			{
+				key: "journey",
+				title: "Journey",
+				description: "Your research journey progress map.",
+				icon: Map,
+				to: (routes) => routes.journey(),
+				featureFlag: "ffYourJourney",
+			},
+			{
 				key: "relationships",
 				title: "Contacts",
 				description: "Key people and organizations we serve.",
@@ -43,9 +65,23 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 			{
 				key: "content",
 				title: "Conversations",
-				description: "Add conversations, notes, docs, or recordings.",
+				description: "Interviews, meetings, and calls.",
 				icon: File,
 				to: (routes) => routes.interviews.index(),
+			},
+			{
+				key: "notes-files",
+				title: "Notes & Files",
+				description: "Quick notes, documents, and uploaded files.",
+				icon: FolderOpen,
+				to: (routes) => routes.sources.index(),
+			},
+			{
+				key: "responses",
+				title: "Responses",
+				description: "Survey and chat responses.",
+				icon: MessageSquareText,
+				to: (routes) => routes.responses.index(),
 			},
 			{
 				key: "ask",
@@ -56,8 +92,8 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 			},
 			{
 				key: "lenses",
-				title: "Lenses",
-				description: "Choose how to analyze your content.",
+				title: "Analysis",
+				description: "Cross-lens insights by person and topic.",
 				icon: Glasses,
 				to: (routes) => routes.lenses.library(),
 			},
@@ -69,11 +105,11 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => routes.insights.table(),
 			},
 			{
-				key: "tasks",
-				title: "Tasks",
-				description: "Top focus tasks for the next 7 days.",
-				icon: CheckSquare,
-				to: (routes) => routes.priorities(),
+				key: "vocabulary",
+				title: "Vocabulary",
+				description: "AI-discovered labels from your conversations.",
+				icon: Tag,
+				to: (routes) => routes.facetsExplorer(),
 			},
 			{
 				key: "opportunities",
@@ -82,9 +118,16 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				icon: Briefcase,
 				to: (routes) => routes.opportunities.index(),
 			},
+			{
+				key: "tasks",
+				title: "Tasks",
+				description: "Top focus tasks for the next 7 days.",
+				icon: CheckSquare,
+				to: (routes) => routes.priorities(),
+			},
 		],
 	},
-]
+];
 
 /** Footer / global utilities (Directory removed to avoid duplication) */
 export const APP_SIDEBAR_UTILITY_LINKS: AppSidebarNavItem[] = [
@@ -95,4 +138,4 @@ export const APP_SIDEBAR_UTILITY_LINKS: AppSidebarNavItem[] = [
 		icon: BookOpen,
 		to: (routes) => routes.docs(),
 	},
-]
+];

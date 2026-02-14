@@ -1,8 +1,8 @@
-import consola from "consola"
-import { Loader2, Mic, MicOff, Pause, Play, RotateCcw } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { useNavigate } from "react-router"
-import { PageContainer } from "~/components/layout/PageContainer"
+import consola from "consola";
+import { Loader2, Mic, MicOff, Pause, Play, RotateCcw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
+import { PageContainer } from "~/components/layout/PageContainer";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -12,9 +12,9 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-} from "~/components/ui/alert-dialog"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
+} from "~/components/ui/alert-dialog";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -22,31 +22,31 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "~/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { deleteInterview } from "~/features/interviews/db"
-import MinimalQuestionView from "~/features/realtime/components/MinimalQuestionView"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { createClient } from "~/lib/supabase/client"
-import { cn } from "~/lib/utils"
+} from "~/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { deleteInterview } from "~/features/interviews/db";
+import MinimalQuestionView from "~/features/realtime/components/MinimalQuestionView";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { createClient } from "~/lib/supabase/client";
+import { cn } from "~/lib/utils";
 
 interface InterviewCopilotProps {
-	projectId: string
-	interviewId?: string
-	autostart?: boolean
-	mode?: "notes" | "interview"
-	attachType?: string
-	personIds?: string[]
+	projectId: string;
+	interviewId?: string;
+	autostart?: boolean;
+	mode?: "notes" | "interview";
+	attachType?: string;
+	personIds?: string[];
 }
 
 interface AISuggestion {
-	id: string
-	type: "follow_up" | "probe_deeper" | "redirect" | "wrap_up"
-	text: string
-	confidence: number
-	timestamp: Date
+	id: string;
+	type: "follow_up" | "probe_deeper" | "redirect" | "wrap_up";
+	text: string;
+	confidence: number;
+	timestamp: Date;
 }
 
 export function InterviewCopilot({
@@ -57,180 +57,180 @@ export function InterviewCopilot({
 	attachType,
 	personIds = [],
 }: InterviewCopilotProps) {
-	const [_selectedQuestions, _setSelectedQuestions] = useState<{ id: string; text: string }[]>([])
-	const [isRecording, setIsRecording] = useState(false)
+	const [_selectedQuestions, _setSelectedQuestions] = useState<{ id: string; text: string }[]>([]);
+	const [isRecording, setIsRecording] = useState(false);
 	// Store finalized turns with timing to support 15s replay
-	const [turns, setTurns] = useState<{ transcript: string; start: number; end: number }[]>([])
-	const [_captions, setCaptions] = useState<string[]>([]) // kept for finalize consistency
-	const [currentCaption, setCurrentCaption] = useState("")
-	const [_aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([])
-	const [interviewNotes, setInterviewNotes] = useState("")
-	const [_notesExpanded, setNotesExpanded] = useState(false)
-	const supabase = createClient()
-	const navigate = useNavigate()
-	const { accountId, projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const [turns, setTurns] = useState<{ transcript: string; start: number; end: number }[]>([]);
+	const [_captions, setCaptions] = useState<string[]>([]); // kept for finalize consistency
+	const [currentCaption, setCurrentCaption] = useState("");
+	const [_aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
+	const [interviewNotes, setInterviewNotes] = useState("");
+	const [_notesExpanded, setNotesExpanded] = useState(false);
+	const supabase = createClient();
+	const navigate = useNavigate();
+	const { accountId, projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
 	// Realtime streaming state
 	const [streamStatus, setStreamStatus] = useState<
 		"idle" | "connecting" | "streaming" | "paused" | "stopped" | "error"
-	>("idle")
+	>("idle");
 	// Visible text for "Replay last 15s"
-	const [replayText, setReplayText] = useState<string>("")
-	const replayTimerRef = useRef<number | null>(null)
-	const [assignedInterviewId, setAssignedInterviewId] = useState<string | undefined>(interviewId)
-	const [isFinishing, setIsFinishing] = useState(false)
-	const [showCompletionDialog, setShowCompletionDialog] = useState(false)
-	const [completedInterviewId, setCompletedInterviewId] = useState<string | undefined>()
-	const [redirectCountdown, setRedirectCountdown] = useState(3)
-	const [showCancelDialog, setShowCancelDialog] = useState(false)
-	const [isCanceling, setIsCanceling] = useState(false)
-	const wsRef = useRef<WebSocket | null>(null)
-	const ctxRef = useRef<AudioContext | null>(null)
-	const nodeRef = useRef<AudioWorkletNode | null>(null)
-	const bufferRef = useRef<Float32Array[]>([])
-	const timerRef = useRef<number | null>(null)
-	const recRef = useRef<MediaRecorder | null>(null)
-	const recChunksRef = useRef<BlobPart[]>([])
-	const insufficientRef = useRef(false)
-	const firstSendRef = useRef(true)
+	const [replayText, setReplayText] = useState<string>("");
+	const replayTimerRef = useRef<number | null>(null);
+	const [assignedInterviewId, setAssignedInterviewId] = useState<string | undefined>(interviewId);
+	const [isFinishing, setIsFinishing] = useState(false);
+	const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+	const [completedInterviewId, setCompletedInterviewId] = useState<string | undefined>();
+	const [redirectCountdown, setRedirectCountdown] = useState(3);
+	const [showCancelDialog, setShowCancelDialog] = useState(false);
+	const [isCanceling, setIsCanceling] = useState(false);
+	const wsRef = useRef<WebSocket | null>(null);
+	const ctxRef = useRef<AudioContext | null>(null);
+	const nodeRef = useRef<AudioWorkletNode | null>(null);
+	const bufferRef = useRef<Float32Array[]>([]);
+	const timerRef = useRef<number | null>(null);
+	const recRef = useRef<MediaRecorder | null>(null);
+	const recChunksRef = useRef<BlobPart[]>([]);
+	const insufficientRef = useRef(false);
+	const firstSendRef = useRef(true);
 	// Approximate timeline in seconds when word timings are unavailable
-	const approxTimeRef = useRef(0)
+	const approxTimeRef = useRef(0);
 	// Track recording elapsed time for duration fallback and full transcript
-	const recordStartRef = useRef<number | null>(null)
-	const elapsedMsRef = useRef(0)
-	const allFinalTranscriptsRef = useRef<string[]>([])
+	const recordStartRef = useRef<number | null>(null);
+	const elapsedMsRef = useRef(0);
+	const allFinalTranscriptsRef = useRef<string[]>([]);
 
 	// Recording duration and timer
-	const [recordingDuration, setRecordingDuration] = useState(0)
-	const durationTimerRef = useRef<number | null>(null)
+	const [recordingDuration, setRecordingDuration] = useState(0);
+	const durationTimerRef = useRef<number | null>(null);
 
 	// Track all media streams for cleanup
-	const mediaStreamsRef = useRef<MediaStream[]>([])
+	const mediaStreamsRef = useRef<MediaStream[]>([]);
 
 	// Ref to store stopStreaming function to avoid circular dependencies
-	const stopStreamingRef = useRef<((finalize?: boolean) => Promise<void>) | null>(null)
+	const stopStreamingRef = useRef<((finalize?: boolean) => Promise<void>) | null>(null);
 
 	// Audio source selection
-	const [audioSource, setAudioSource] = useState<"microphone" | "system">("microphone")
-	const [micDeviceId, setMicDeviceId] = useState<string | "default">("default")
-	const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
+	const [audioSource, setAudioSource] = useState<"microphone" | "system">("microphone");
+	const [micDeviceId, setMicDeviceId] = useState<string | "default">("default");
+	const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
 
 	// Linked people names (fetched from personIds prop)
-	const [linkedPeopleNames, setLinkedPeopleNames] = useState<string[]>([])
+	const [linkedPeopleNames, setLinkedPeopleNames] = useState<string[]>([]);
 
-	const TARGET_SAMPLE_RATE = 16000
-	const CHUNK_MS = 100
-	const MIN_OUT_MS = 60
+	const TARGET_SAMPLE_RATE = 16000;
+	const CHUNK_MS = 100;
+	const MIN_OUT_MS = 60;
 
 	// Helper function to extract duration from audio blob
 	const getAudioDuration = async (blob: Blob): Promise<number> => {
 		return new Promise((resolve, reject) => {
-			const audio = new Audio()
-			const url = URL.createObjectURL(blob)
+			const audio = new Audio();
+			const url = URL.createObjectURL(blob);
 
 			audio.addEventListener("loadedmetadata", () => {
-				URL.revokeObjectURL(url)
-				resolve(Math.floor(audio.duration))
-			})
+				URL.revokeObjectURL(url);
+				resolve(Math.floor(audio.duration));
+			});
 
 			audio.addEventListener("error", (e) => {
-				URL.revokeObjectURL(url)
-				reject(new Error(`Failed to load audio: ${e}`))
-			})
+				URL.revokeObjectURL(url);
+				reject(new Error(`Failed to load audio: ${e}`));
+			});
 
-			audio.src = url
-		})
-	}
+			audio.src = url;
+		});
+	};
 
 	type TurnMsg = {
-		type: "Turn"
-		transcript: string
-		end_of_turn: boolean
-		turn_is_formatted: boolean
-		words: { text: string; start: number; end: number; confidence: number; word_is_final: boolean }[]
-	}
+		type: "Turn";
+		transcript: string;
+		end_of_turn: boolean;
+		turn_is_formatted: boolean;
+		words: { text: string; start: number; end: number; confidence: number; word_is_final: boolean }[];
+	};
 	// Track keys for final turns to avoid duplicates
-	const finalKeysRef = useRef<string[]>([])
+	const finalKeysRef = useRef<string[]>([]);
 
 	// Helper function to clean up all media streams
 	const cleanupMediaStreams = useCallback(() => {
 		mediaStreamsRef.current.forEach((stream) => {
 			stream.getTracks().forEach((track) => {
-				track.stop()
-				consola.log("Stopped media track:", track.kind)
-			})
-		})
-		mediaStreamsRef.current = []
-	}, [])
+				track.stop();
+				consola.log("Stopped media track:", track.kind);
+			});
+		});
+		mediaStreamsRef.current = [];
+	}, []);
 
 	// When route unmounts, ensure cleanup
 	useEffect(() => {
 		return () => {
 			if (durationTimerRef.current) {
-				clearInterval(durationTimerRef.current)
+				clearInterval(durationTimerRef.current);
 			}
-			cleanupMediaStreams()
+			cleanupMediaStreams();
 			// On unmount, ensure we don't accidentally finalize
 			if (stopStreamingRef.current) {
-				stopStreamingRef.current(false)
+				stopStreamingRef.current(false);
 			}
-		}
-	}, [cleanupMediaStreams])
+		};
+	}, [cleanupMediaStreams]);
 
 	// Start duration timer
 	const startDurationTimer = useCallback(() => {
 		if (durationTimerRef.current) {
-			clearInterval(durationTimerRef.current)
+			clearInterval(durationTimerRef.current);
 		}
 
-		const startTime = Date.now() - recordingDuration * 1000
+		const startTime = Date.now() - recordingDuration * 1000;
 
 		durationTimerRef.current = window.setInterval(() => {
-			const elapsed = Math.floor((Date.now() - startTime) / 1000)
-			setRecordingDuration(elapsed)
-		}, 1000)
-	}, [recordingDuration])
+			const elapsed = Math.floor((Date.now() - startTime) / 1000);
+			setRecordingDuration(elapsed);
+		}, 1000);
+	}, [recordingDuration]);
 
 	// Stop duration timer
 	const stopDurationTimer = useCallback(() => {
 		if (durationTimerRef.current) {
-			clearInterval(durationTimerRef.current)
-			durationTimerRef.current = null
+			clearInterval(durationTimerRef.current);
+			durationTimerRef.current = null;
 		}
-	}, [])
+	}, []);
 
 	// Format duration as MM:SS
 	const formatDuration = useCallback((seconds: number) => {
-		const mins = Math.floor(seconds / 60)
-		const secs = seconds % 60
-		return `${mins}:${secs.toString().padStart(2, "0")}`
-	}, [])
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins}:${secs.toString().padStart(2, "0")}`;
+	}, []);
 
 	// Save interview notes to database (debounced)
 	const saveInterviewNotes = useCallback(
 		async (notes: string) => {
-			if (!interviewId || !notes.trim()) return
+			if (!interviewId || !notes.trim()) return;
 			try {
 				const { error } = await supabase
 					.from("interviews")
 					.update({ observations_and_notes: notes })
-					.eq("id", interviewId)
+					.eq("id", interviewId);
 
 				if (error) {
-					consola.error("Error saving interview notes:", error)
+					consola.error("Error saving interview notes:", error);
 				}
 			} catch (error) {
-				consola.error("Error saving interview notes:", error)
+				consola.error("Error saving interview notes:", error);
 			}
 		},
 		[interviewId, supabase]
-	)
+	);
 
 	// Save AI suggestion as annotation
 	const saveAISuggestionAsAnnotation = useCallback(
 		async (suggestion: AISuggestion) => {
-			if (!interviewId) return
+			if (!interviewId) return;
 			try {
 				const { error } = await supabase.from("annotations").insert({
 					entity_type: "interview",
@@ -247,109 +247,109 @@ export function InterviewCopilot({
 					ai_model: "copilot",
 					status: "active",
 					visibility: "team",
-				})
+				});
 
 				if (error) {
-					consola.error("Error saving AI suggestion:", error)
+					consola.error("Error saving AI suggestion:", error);
 				}
 			} catch (error) {
-				consola.error("Error saving AI suggestion:", error)
+				consola.error("Error saving AI suggestion:", error);
 			}
 		},
 		[interviewId, projectId, supabase]
-	)
+	);
 
 	// Load existing interview notes
 	useEffect(() => {
 		const loadInterviewNotes = async () => {
-			if (!interviewId) return
+			if (!interviewId) return;
 			try {
 				const { data, error } = await supabase
 					.from("interviews")
 					.select("observations_and_notes")
 					.eq("id", interviewId)
-					.single()
+					.single();
 
 				if (error) {
-					consola.error("Error loading interview notes:", error)
-					return
+					consola.error("Error loading interview notes:", error);
+					return;
 				}
 
 				if (data?.observations_and_notes) {
-					setInterviewNotes(data.observations_and_notes)
+					setInterviewNotes(data.observations_and_notes);
 				}
 			} catch (error) {
-				consola.error("Error loading interview notes:", error)
+				consola.error("Error loading interview notes:", error);
 			}
-		}
+		};
 
-		loadInterviewNotes()
-	}, [interviewId, supabase])
+		loadInterviewNotes();
+	}, [interviewId, supabase]);
 
 	// Debounce notes saving
 	useEffect(() => {
 		const timeoutId = setTimeout(() => {
 			if (interviewNotes.trim()) {
-				saveInterviewNotes(interviewNotes)
+				saveInterviewNotes(interviewNotes);
 			}
-		}, 1000) // Save after 1 second of inactivity
+		}, 1000); // Save after 1 second of inactivity
 
-		return () => clearTimeout(timeoutId)
-	}, [interviewNotes, saveInterviewNotes])
+		return () => clearTimeout(timeoutId);
+	}, [interviewNotes, saveInterviewNotes]);
 
 	// Expand notes by default on md+ screens
 	useEffect(() => {
 		try {
-			const mq = window.matchMedia("(min-width: 768px)")
-			const setFromMatch = () => setNotesExpanded(mq.matches)
-			setFromMatch()
-			mq.addEventListener?.("change", setFromMatch)
-			return () => mq.removeEventListener?.("change", setFromMatch)
+			const mq = window.matchMedia("(min-width: 768px)");
+			const setFromMatch = () => setNotesExpanded(mq.matches);
+			setFromMatch();
+			mq.addEventListener?.("change", setFromMatch);
+			return () => mq.removeEventListener?.("change", setFromMatch);
 		} catch {
 			// no-op for SSR or older browsers
 		}
-	}, [])
+	}, []);
 
 	// Load audio devices (labels may be empty until mic permission granted)
 	useEffect(() => {
 		const loadDevices = async () => {
 			try {
-				const devs = await navigator.mediaDevices.enumerateDevices()
-				setAudioDevices(devs.filter((d) => d.kind === "audioinput"))
+				const devs = await navigator.mediaDevices.enumerateDevices();
+				setAudioDevices(devs.filter((d) => d.kind === "audioinput"));
 			} catch {
-				setAudioDevices([])
+				setAudioDevices([]);
 			}
-		}
-		loadDevices()
-		navigator.mediaDevices.addEventListener?.("devicechange", loadDevices)
-		return () => navigator.mediaDevices.removeEventListener?.("devicechange", loadDevices)
-	}, [])
+		};
+		loadDevices();
+		navigator.mediaDevices.addEventListener?.("devicechange", loadDevices);
+		return () => navigator.mediaDevices.removeEventListener?.("devicechange", loadDevices);
+	}, []);
 
 	// Fetch linked people names when personIds change
 	useEffect(() => {
 		if (!personIds.length) {
-			setLinkedPeopleNames([])
-			return
+			setLinkedPeopleNames([]);
+			return;
 		}
 
 		const fetchPeopleNames = async () => {
 			try {
-				const { data, error } = await supabase.from("people").select("id, name").in("id", personIds)
+				const { data, error } = await supabase.from("people").select("id, name").in("id", personIds);
 
 				if (error) {
-					consola.warn("Failed to fetch linked people:", error)
-					return
+					consola.warn("Failed to fetch linked people:", error);
+					return;
 				}
 
-				const names = (data || []).map((p) => p.name).filter((name): name is string => Boolean(name?.trim()))
-				setLinkedPeopleNames(names)
+				const names = (data || []).map((p) => p.name).filter((name): name is string => Boolean(name?.trim()));
+				setLinkedPeopleNames(names);
 			} catch (e) {
-				consola.warn("Error fetching linked people:", e)
+				consola.warn("Error fetching linked people:", e);
 			}
-		}
+		};
 
-		fetchPeopleNames()
-	}, [personIds, supabase])
+		fetchPeopleNames();
+	}, [personIds, supabase]);
 
 	// Helper to get capture stream based on selected source
 	const getCaptureStream = useCallback(async (): Promise<MediaStream> => {
@@ -359,8 +359,8 @@ export function InterviewCopilot({
 			const ds = (await navigator.mediaDevices.getDisplayMedia({
 				video: true,
 				audio: true,
-			})) as MediaStream
-			return ds
+			})) as MediaStream;
+			return ds;
 		}
 
 		// Microphone capture with optional deviceId
@@ -372,168 +372,168 @@ export function InterviewCopilot({
 				channelCount: 1,
 			},
 			video: false,
-		})
-		return mic
-	}, [audioSource, micDeviceId])
+		});
+		return mic;
+	}, [audioSource, micDeviceId]);
 
 	// ========= Realtime streaming logic =========
 	const startStreaming = useCallback(async () => {
 		try {
-			setStreamStatus("connecting")
+			setStreamStatus("connecting");
 
 			// Ensure interview ID exists; create if missing
-			let useInterviewId = assignedInterviewId
+			let useInterviewId = assignedInterviewId;
 			if (!useInterviewId) {
 				const startRes = await fetch(`${projectPath}/api/interviews/realtime-start`, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({}),
-				})
-				const startData = await startRes.json()
-				if (!startRes.ok) throw new Error(startData?.error || "Failed to start interview")
-				useInterviewId = startData.interviewId
-				setAssignedInterviewId(useInterviewId)
+				});
+				const startData = await startRes.json();
+				if (!startRes.ok) throw new Error(startData?.error || "Failed to start interview");
+				useInterviewId = startData.interviewId;
+				setAssignedInterviewId(useInterviewId);
 			}
 
 			// Connect to server WS proxy
-			const scheme = window.location.protocol === "https:" ? "wss" : "ws"
-			const url = `${scheme}://${window.location.host}/ws/realtime-transcribe`
-			const ws = new WebSocket(url, ["binary"]) // we send binary PCM frames
-			ws.binaryType = "arraybuffer"
-			wsRef.current = ws
+			const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+			const url = `${scheme}://${window.location.host}/ws/realtime-transcribe`;
+			const ws = new WebSocket(url, ["binary"]); // we send binary PCM frames
+			ws.binaryType = "arraybuffer";
+			wsRef.current = ws;
 
 			ws.onopen = async () => {
-				setStreamStatus("streaming")
+				setStreamStatus("streaming");
 				// Start wall-clock timer for duration fallback
-				recordStartRef.current = performance.now()
-				startDurationTimer()
+				recordStartRef.current = performance.now();
+				startDurationTimer();
 				// Audio capture via AudioWorklet
-				const ctx = new AudioContext({ sampleRate: 48000 })
-				ctxRef.current = ctx
-				await ctx.audioWorklet.addModule("/worklets/pcm-processor.js")
+				const ctx = new AudioContext({ sampleRate: 48000 });
+				ctxRef.current = ctx;
+				await ctx.audioWorklet.addModule("/worklets/pcm-processor.js");
 				// Choose stream based on selected source
-				const fullStream = await getCaptureStream()
+				const fullStream = await getCaptureStream();
 				// Track the full stream for cleanup (may include video if system capture)
-				mediaStreamsRef.current.push(fullStream)
+				mediaStreamsRef.current.push(fullStream);
 				// Use audio-only stream for processing/recording
-				const audioOnly = new MediaStream(fullStream.getAudioTracks())
-				const src = ctx.createMediaStreamSource(audioOnly)
-				const node = new AudioWorkletNode(ctx, "pcm-processor")
-				nodeRef.current = node
-				src.connect(node)
+				const audioOnly = new MediaStream(fullStream.getAudioTracks());
+				const src = ctx.createMediaStreamSource(audioOnly);
+				const node = new AudioWorkletNode(ctx, "pcm-processor");
+				nodeRef.current = node;
+				src.connect(node);
 
 				// Start in-browser recording for upload
 				try {
-					const rec = new MediaRecorder(audioOnly, { mimeType: "audio/webm;codecs=opus" })
-					recRef.current = rec
-					recChunksRef.current = []
+					const rec = new MediaRecorder(audioOnly, { mimeType: "audio/webm;codecs=opus" });
+					recRef.current = rec;
+					recChunksRef.current = [];
 					rec.ondataavailable = (e) => {
-						if (e.data && e.data.size > 0) recChunksRef.current.push(e.data)
-					}
-					rec.start(500)
+						if (e.data && e.data.size > 0) recChunksRef.current.push(e.data);
+					};
+					rec.start(500);
 				} catch {
-					consola.warn("MediaRecorder unsupported; audio won't be saved")
+					consola.warn("MediaRecorder unsupported; audio won't be saved");
 				}
 
 				node.port.onmessage = (e) => {
-					bufferRef.current.push(e.data as Float32Array)
-				}
+					bufferRef.current.push(e.data as Float32Array);
+				};
 
 				const sendChunk = () => {
-					const minOutSamples = Math.ceil((TARGET_SAMPLE_RATE * MIN_OUT_MS) / 1000)
-					const minInputSamples = Math.ceil((ctx.sampleRate * MIN_OUT_MS) / 1000)
-					const available = bufferRef.current.reduce((acc, c) => acc + c.length, 0)
+					const minOutSamples = Math.ceil((TARGET_SAMPLE_RATE * MIN_OUT_MS) / 1000);
+					const minInputSamples = Math.ceil((ctx.sampleRate * MIN_OUT_MS) / 1000);
+					const available = bufferRef.current.reduce((acc, c) => acc + c.length, 0);
 					if (available < minInputSamples) {
-						insufficientRef.current = true
-						return
+						insufficientRef.current = true;
+						return;
 					}
-					const inputAim = Math.ceil((ctx.sampleRate * (firstSendRef.current ? CHUNK_MS * 2 : CHUNK_MS)) / 1000)
-					const floats = drainForSamples(Math.max(minInputSamples, inputAim))
-					if (!floats || floats.length === 0) return
-					const pcm16 = downsampleTo16kPCM16(floats, ctx.sampleRate, TARGET_SAMPLE_RATE)
-					if (!pcm16) return
+					const inputAim = Math.ceil((ctx.sampleRate * (firstSendRef.current ? CHUNK_MS * 2 : CHUNK_MS)) / 1000);
+					const floats = drainForSamples(Math.max(minInputSamples, inputAim));
+					if (!floats || floats.length === 0) return;
+					const pcm16 = downsampleTo16kPCM16(floats, ctx.sampleRate, TARGET_SAMPLE_RATE);
+					if (!pcm16) return;
 					if (pcm16.length < minOutSamples) {
-						insufficientRef.current = true
-						return
+						insufficientRef.current = true;
+						return;
 					}
-					insufficientRef.current = false
+					insufficientRef.current = false;
 					if (ws.readyState === WebSocket.OPEN) {
-						ws.send(pcm16.buffer)
-						firstSendRef.current = false
+						ws.send(pcm16.buffer);
+						firstSendRef.current = false;
 					}
-				}
+				};
 
-				timerRef.current = window.setInterval(sendChunk, CHUNK_MS)
-			}
+				timerRef.current = window.setInterval(sendChunk, CHUNK_MS);
+			};
 
 			ws.onmessage = async (evt) => {
 				try {
-					let text: string | null = null
-					if (typeof evt.data === "string") text = evt.data
-					else if (evt.data instanceof Blob) text = await evt.data.text()
-					else if (evt.data instanceof ArrayBuffer) text = new TextDecoder().decode(evt.data)
-					if (!text) return
-					const msg = JSON.parse(text) as { type: string }
+					let text: string | null = null;
+					if (typeof evt.data === "string") text = evt.data;
+					else if (evt.data instanceof Blob) text = await evt.data.text();
+					else if (evt.data instanceof ArrayBuffer) text = new TextDecoder().decode(evt.data);
+					if (!text) return;
+					const msg = JSON.parse(text) as { type: string };
 					if ((msg as any).type === "Turn") {
-						const t = msg as any as TurnMsg
+						const t = msg as any as TurnMsg;
 						if (t.end_of_turn) {
 							// Only keep final captions; de-dupe by timing window
-							const key = computeTurnKey(t)
-							const isNew = !finalKeysRef.current.includes(key)
+							const key = computeTurnKey(t);
+							const isNew = !finalKeysRef.current.includes(key);
 
 							if (isNew) {
 								// Accumulate full transcript
-								allFinalTranscriptsRef.current.push(t.transcript)
+								allFinalTranscriptsRef.current.push(t.transcript);
 								// Update key tracking
-								finalKeysRef.current = [key, ...finalKeysRef.current.slice(0, 99)]
+								finalKeysRef.current = [key, ...finalKeysRef.current.slice(0, 99)];
 								// Update captions for UI
-								setCaptions((prev) => [t.transcript, ...prev.slice(0, 9)])
+								setCaptions((prev) => [t.transcript, ...prev.slice(0, 9)]);
 								// Track turns with timestamps for replay (fallback if no word timings)
 								if (t.words?.length) {
-									const start = t.words[0]?.start ?? approxTimeRef.current
-									const end = t.words[t.words.length - 1]?.end ?? start
-									approxTimeRef.current = end
-									setTurns((prev) => [{ transcript: t.transcript, start, end }, ...prev].slice(0, 100))
+									const start = t.words[0]?.start ?? approxTimeRef.current;
+									const end = t.words[t.words.length - 1]?.end ?? start;
+									approxTimeRef.current = end;
+									setTurns((prev) => [{ transcript: t.transcript, start, end }, ...prev].slice(0, 100));
 								} else {
-									const start = approxTimeRef.current
+									const start = approxTimeRef.current;
 									// Roughly estimate 4s per short turn when timings missing
-									const estimated = Math.max(2, Math.min(10, Math.ceil((t.transcript?.length || 20) / 40)))
-									const end = start + estimated
-									approxTimeRef.current = end
-									setTurns((prev) => [{ transcript: t.transcript, start, end }, ...prev].slice(0, 100))
+									const estimated = Math.max(2, Math.min(10, Math.ceil((t.transcript?.length || 20) / 40)));
+									const end = start + estimated;
+									approxTimeRef.current = end;
+									setTurns((prev) => [{ transcript: t.transcript, start, end }, ...prev].slice(0, 100));
 								}
 							}
-							setCurrentCaption("")
+							setCurrentCaption("");
 						} else {
 							// Keep draft transcript internally (not shown live) to support Replay
-							setCurrentCaption(t.transcript)
+							setCurrentCaption(t.transcript);
 						}
 					} else if ((msg as any).type === "Begin") {
-						setCaptions([])
-						setTurns([])
-						setCurrentCaption("")
-						allFinalTranscriptsRef.current = []
-						approxTimeRef.current = 0
+						setCaptions([]);
+						setTurns([]);
+						setCurrentCaption("");
+						allFinalTranscriptsRef.current = [];
+						approxTimeRef.current = 0;
 					}
 				} catch {
 					// ignore non-JSON
 				}
-			}
+			};
 
 			ws.onerror = () => {
-				setStreamStatus("error")
-				setIsRecording(false)
-			}
+				setStreamStatus("error");
+				setIsRecording(false);
+			};
 			ws.onclose = () => {
-				setStreamStatus("stopped")
-				setIsRecording(false)
-			}
+				setStreamStatus("stopped");
+				setIsRecording(false);
+			};
 		} catch (e) {
-			consola.error("startStreaming error", e)
-			setStreamStatus("error")
-			setIsRecording(false)
+			consola.error("startStreaming error", e);
+			setStreamStatus("error");
+			setIsRecording(false);
 			if (stopStreamingRef.current) {
-				stopStreamingRef.current()
+				stopStreamingRef.current();
 			}
 		}
 	}, [
@@ -544,147 +544,147 @@ export function InterviewCopilot({
 		drainForSamples,
 		projectPath,
 		startDurationTimer,
-	])
+	]);
 
 	// Auto-start recording if autostart param is true (must be after startStreaming is defined)
 	useEffect(() => {
 		if (autostart && !isRecording && streamStatus === "idle") {
 			// Small delay to ensure component is fully mounted and audio devices are loaded
 			const timer = setTimeout(() => {
-				startStreaming()
-				setIsRecording(true)
-			}, 500)
-			return () => clearTimeout(timer)
+				startStreaming();
+				setIsRecording(true);
+			}, 500);
+			return () => clearTimeout(timer);
 		}
-	}, [autostart, isRecording, streamStatus, startStreaming])
+	}, [autostart, isRecording, streamStatus, startStreaming]);
 
 	// Pause without finalizing; keeps WS alive if possible
 	const pauseStreaming = useCallback(() => {
 		if (timerRef.current) {
-			clearInterval(timerRef.current)
-			timerRef.current = null
+			clearInterval(timerRef.current);
+			timerRef.current = null;
 		}
-		stopDurationTimer()
+		stopDurationTimer();
 		try {
-			nodeRef.current?.disconnect()
-			ctxRef.current?.suspend?.()
-			const rec = recRef.current
+			nodeRef.current?.disconnect();
+			ctxRef.current?.suspend?.();
+			const rec = recRef.current;
 			if (rec && rec.state === "recording" && typeof rec.pause === "function") {
 				try {
-					rec.pause()
+					rec.pause();
 				} catch {}
 			}
 		} catch {}
 		// Accumulate elapsed time until now
 		try {
 			if (recordStartRef.current != null) {
-				elapsedMsRef.current += performance.now() - recordStartRef.current
-				recordStartRef.current = null
+				elapsedMsRef.current += performance.now() - recordStartRef.current;
+				recordStartRef.current = null;
 			}
 		} catch {}
-		setStreamStatus("paused")
-	}, [stopDurationTimer])
+		setStreamStatus("paused");
+	}, [stopDurationTimer]);
 
 	// Resume after pause; reuse existing WS if open
 	const resumeStreaming = useCallback(async () => {
 		try {
 			if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-				setStreamStatus("streaming")
+				setStreamStatus("streaming");
 				// Resume wall-clock timer
-				recordStartRef.current = performance.now()
-				startDurationTimer()
-				const ctx = new AudioContext({ sampleRate: 48000 })
-				ctxRef.current = ctx
-				await ctx.audioWorklet.addModule("/worklets/pcm-processor.js")
-				const fullStream = await getCaptureStream()
-				mediaStreamsRef.current.push(fullStream)
-				const audioOnly = new MediaStream(fullStream.getAudioTracks())
-				const src = ctx.createMediaStreamSource(audioOnly)
-				const node = new AudioWorkletNode(ctx, "pcm-processor")
-				nodeRef.current = node
-				src.connect(node)
+				recordStartRef.current = performance.now();
+				startDurationTimer();
+				const ctx = new AudioContext({ sampleRate: 48000 });
+				ctxRef.current = ctx;
+				await ctx.audioWorklet.addModule("/worklets/pcm-processor.js");
+				const fullStream = await getCaptureStream();
+				mediaStreamsRef.current.push(fullStream);
+				const audioOnly = new MediaStream(fullStream.getAudioTracks());
+				const src = ctx.createMediaStreamSource(audioOnly);
+				const node = new AudioWorkletNode(ctx, "pcm-processor");
+				nodeRef.current = node;
+				src.connect(node);
 
 				try {
-					const rec = recRef.current
+					const rec = recRef.current;
 					if (rec && rec.state === "paused" && typeof rec.resume === "function") {
-						rec.resume()
+						rec.resume();
 					}
 				} catch {}
 
 				node.port.onmessage = (e) => {
-					bufferRef.current.push(e.data as Float32Array)
-				}
+					bufferRef.current.push(e.data as Float32Array);
+				};
 
 				const sendChunk = () => {
-					const minOutSamples = Math.ceil((TARGET_SAMPLE_RATE * MIN_OUT_MS) / 1000)
-					const minInputSamples = Math.ceil((ctx.sampleRate * MIN_OUT_MS) / 1000)
-					const available = bufferRef.current.reduce((acc, c) => acc + c.length, 0)
+					const minOutSamples = Math.ceil((TARGET_SAMPLE_RATE * MIN_OUT_MS) / 1000);
+					const minInputSamples = Math.ceil((ctx.sampleRate * MIN_OUT_MS) / 1000);
+					const available = bufferRef.current.reduce((acc, c) => acc + c.length, 0);
 					if (available < minInputSamples) {
-						insufficientRef.current = true
-						return
+						insufficientRef.current = true;
+						return;
 					}
-					const inputAim = Math.ceil((ctx.sampleRate * (firstSendRef.current ? CHUNK_MS * 2 : CHUNK_MS)) / 1000)
-					const floats = drainForSamples(Math.max(minInputSamples, inputAim))
-					if (!floats || floats.length === 0) return
-					const pcm16 = downsampleTo16kPCM16(floats, ctx.sampleRate, TARGET_SAMPLE_RATE)
-					if (!pcm16) return
+					const inputAim = Math.ceil((ctx.sampleRate * (firstSendRef.current ? CHUNK_MS * 2 : CHUNK_MS)) / 1000);
+					const floats = drainForSamples(Math.max(minInputSamples, inputAim));
+					if (!floats || floats.length === 0) return;
+					const pcm16 = downsampleTo16kPCM16(floats, ctx.sampleRate, TARGET_SAMPLE_RATE);
+					if (!pcm16) return;
 					if (pcm16.length < minOutSamples) {
-						insufficientRef.current = true
-						return
+						insufficientRef.current = true;
+						return;
 					}
-					insufficientRef.current = false
+					insufficientRef.current = false;
 					if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-						wsRef.current.send(pcm16.buffer)
-						firstSendRef.current = false
+						wsRef.current.send(pcm16.buffer);
+						firstSendRef.current = false;
 					}
-				}
-				timerRef.current = window.setInterval(sendChunk, CHUNK_MS)
+				};
+				timerRef.current = window.setInterval(sendChunk, CHUNK_MS);
 			} else {
-				await startStreaming()
+				await startStreaming();
 			}
 		} catch (e) {
-			consola.warn("resumeStreaming error", e)
+			consola.warn("resumeStreaming error", e);
 		}
-	}, [startStreaming, startDurationTimer, getCaptureStream, downsampleTo16kPCM16, drainForSamples])
+	}, [startStreaming, startDurationTimer, getCaptureStream, downsampleTo16kPCM16, drainForSamples]);
 
 	// Process the recording
 	const stopStreaming = useCallback(
 		async (finalize = true) => {
 			if (timerRef.current) {
-				clearInterval(timerRef.current)
-				timerRef.current = null
+				clearInterval(timerRef.current);
+				timerRef.current = null;
 			}
-			stopDurationTimer()
+			stopDurationTimer();
 			if (wsRef.current) {
 				try {
 					if (wsRef.current.readyState === WebSocket.OPEN) {
 						if (finalize) {
 							// Signal end of stream to upstream to flush final results
 							try {
-								wsRef.current.send("__end__")
+								wsRef.current.send("__end__");
 							} catch {}
-							await new Promise((r) => setTimeout(r, 300))
+							await new Promise((r) => setTimeout(r, 300));
 						}
 					}
-					wsRef.current.close()
+					wsRef.current.close();
 				} catch {}
 			}
-			wsRef.current = null
+			wsRef.current = null;
 			try {
-				nodeRef.current?.disconnect()
-				ctxRef.current?.close()
+				nodeRef.current?.disconnect();
+				ctxRef.current?.close();
 			} catch {}
-			nodeRef.current = null
-			ctxRef.current = null
-			bufferRef.current = []
-			setCurrentCaption("")
-			setStreamStatus("stopped")
+			nodeRef.current = null;
+			ctxRef.current = null;
+			bufferRef.current = [];
+			setCurrentCaption("");
+			setStreamStatus("stopped");
 
 			// Stop wall-clock timer and accumulate
 			try {
 				if (recordStartRef.current != null) {
-					elapsedMsRef.current += performance.now() - recordStartRef.current
-					recordStartRef.current = null
+					elapsedMsRef.current += performance.now() - recordStartRef.current;
+					recordStartRef.current = null;
 				}
 			} catch {}
 
@@ -692,96 +692,96 @@ export function InterviewCopilot({
 			void (async () => {
 				try {
 					if (!finalize) {
-						cleanupMediaStreams()
-						return
+						cleanupMediaStreams();
+						return;
 					}
 
 					// Try to stop MediaRecorder and get a blob
-					let blob: Blob = new Blob()
-					const rec = recRef.current
+					let blob: Blob = new Blob();
+					const rec = recRef.current;
 					if (rec) {
 						try {
 							const stopped = new Promise<Blob>((resolve) => {
-								const handler = () => resolve(new Blob(recChunksRef.current, { type: "audio/webm" }))
+								const handler = () => resolve(new Blob(recChunksRef.current, { type: "audio/webm" }));
 								try {
-									rec.addEventListener?.("stop", handler as any)
+									rec.addEventListener?.("stop", handler as any);
 								} catch {
-									;(rec as any).onstop = handler
+									(rec as any).onstop = handler;
 								}
-							})
+							});
 							if (rec.state !== "inactive") {
 								try {
-									rec.stop()
+									rec.stop();
 								} catch {}
 							}
 							blob = await Promise.race<Blob>([
 								stopped,
 								new Promise<Blob>((resolve) => setTimeout(() => resolve(new Blob()), 2000)),
-							])
+							]);
 						} catch {
 							/* swallow */
 						}
 					}
 
 					// Now safe to stop media tracks
-					cleanupMediaStreams()
-					setShowCompletionDialog(true)
+					cleanupMediaStreams();
+					setShowCompletionDialog(true);
 
 					// Upload media to storage in Cloudflare R2 via server endpoint
-					let mediaUrl: string | undefined
-					const id = assignedInterviewId
+					let mediaUrl: string | undefined;
+					const id = assignedInterviewId;
 					if (blob.size > 0 && id) {
 						const uploadEndpoint = projectPath
 							? `${projectPath}/api/interviews/realtime-upload`
-							: "/api/interviews/realtime-upload"
-						const formData = new FormData()
-						formData.append("file", blob, `realtime-${id}-${Date.now()}.webm`)
-						formData.append("interviewId", id)
-						formData.append("projectId", projectId)
+							: "/api/interviews/realtime-upload";
+						const formData = new FormData();
+						formData.append("file", blob, `realtime-${id}-${Date.now()}.webm`);
+						formData.append("interviewId", id);
+						formData.append("projectId", projectId);
 
 						try {
 							const response = await fetch(uploadEndpoint, {
 								method: "POST",
 								body: formData,
-							})
+							});
 
 							if (response.ok) {
-								const payload = (await response.json()) as { mediaUrl?: string }
+								const payload = (await response.json()) as { mediaUrl?: string };
 								if (typeof payload?.mediaUrl === "string" && payload.mediaUrl) {
-									mediaUrl = payload.mediaUrl
+									mediaUrl = payload.mediaUrl;
 								} else {
-									consola.warn("Realtime upload succeeded but returned no mediaUrl")
+									consola.warn("Realtime upload succeeded but returned no mediaUrl");
 								}
 							} else {
-								const errorText = await response.text().catch(() => "")
+								const errorText = await response.text().catch(() => "");
 								consola.warn(
 									"Realtime audio upload failed",
 									response.status,
 									response.statusText,
 									errorText.slice(0, 200)
-								)
+								);
 							}
 						} catch (uploadError) {
-							consola.warn("Realtime audio upload error", uploadError)
+							consola.warn("Realtime audio upload error", uploadError);
 						}
 					}
 
 					if (id) {
-						const full = allFinalTranscriptsRef.current.join(" ")
-						const draft = (currentCaption || "").trim()
-						const transcript = [full, draft].filter(Boolean).join(" ").replace(/\s+/g, " ").trim()
+						const full = allFinalTranscriptsRef.current.join(" ");
+						const draft = (currentCaption || "").trim();
+						const transcript = [full, draft].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
 
 						// Determine duration
-						let audioDuration: number | undefined
+						let audioDuration: number | undefined;
 						try {
 							if (blob.size > 0) {
-								audioDuration = await getAudioDuration(blob)
+								audioDuration = await getAudioDuration(blob);
 							}
 						} catch (e) {
-							consola.warn("Failed to extract audio duration:", e)
+							consola.warn("Failed to extract audio duration:", e);
 						}
 						if (!audioDuration || !Number.isFinite(audioDuration) || audioDuration <= 0) {
-							audioDuration = Math.max(1, Math.round(elapsedMsRef.current / 1000))
+							audioDuration = Math.max(1, Math.round(elapsedMsRef.current / 1000));
 						}
 
 						try {
@@ -789,14 +789,14 @@ export function InterviewCopilot({
 							// Reverse turns array since it's stored newest-first, but we need chronological order
 							// Note: Realtime recording can't distinguish speakers from a single mic input,
 							// so we use a single speaker "A" for all turns to avoid false multi-speaker detection
-							const chronologicalTurns = [...turns].reverse()
+							const chronologicalTurns = [...turns].reverse();
 							const utterances = chronologicalTurns.map((turn) => ({
 								speaker: "A", // Single speaker - realtime can't distinguish multiple speakers
 								text: turn.transcript,
 								start: turn.start,
 								end: turn.end,
 								confidence: 0.8,
-							}))
+							}));
 
 							await fetch(`${projectPath}/api/interviews/realtime-finalize`, {
 								method: "POST",
@@ -817,19 +817,19 @@ export function InterviewCopilot({
 									attachType,
 									personIds, // Pass array of person IDs to link
 								}),
-							})
+							});
 						} catch (e) {
-							consola.warn("Realtime finalize error", e)
+							consola.warn("Realtime finalize error", e);
 						}
 
 						// Show completion dialog instead of immediately navigating
-						setCompletedInterviewId(id)
-						setIsFinishing(false)
+						setCompletedInterviewId(id);
+						setIsFinishing(false);
 					}
 				} catch (e) {
-					consola.warn("Finalize error", e)
+					consola.warn("Finalize error", e);
 				}
-			})()
+			})();
 		},
 		[
 			assignedInterviewId,
@@ -844,12 +844,12 @@ export function InterviewCopilot({
 			mode,
 			turns,
 		]
-	)
+	);
 
 	// Update ref whenever stopStreaming changes to avoid circular dependencies
 	useEffect(() => {
-		stopStreamingRef.current = stopStreaming
-	}, [stopStreaming])
+		stopStreamingRef.current = stopStreaming;
+	}, [stopStreaming]);
 
 	// In realtime flow, do not pre-seed questions/goals; manager will render empty unless user generates
 
@@ -863,206 +863,206 @@ export function InterviewCopilot({
 					text: "Great answer! Consider asking: 'Can you give me a specific example of when this happened?'",
 					confidence: 0.85,
 					timestamp: new Date(),
-				}
-				setAiSuggestions((prev) => [suggestion, ...prev.slice(0, 4)]) // Keep last 5
+				};
+				setAiSuggestions((prev) => [suggestion, ...prev.slice(0, 4)]); // Keep last 5
 
 				// Save AI suggestion as annotation
-				await saveAISuggestionAsAnnotation(suggestion)
+				await saveAISuggestionAsAnnotation(suggestion);
 			}
 		},
 		[saveAISuggestionAsAnnotation]
-	)
+	);
 
 	// Toggle recording using realtime streaming
 	const toggleRecording = useCallback(() => {
-		setIsRecording((prev) => !prev)
+		setIsRecording((prev) => !prev);
 		if (!isRecording) {
 			if (streamStatus === "paused") {
-				void resumeStreaming()
+				void resumeStreaming();
 			} else {
-				startStreaming()
+				startStreaming();
 			}
 		} else {
-			pauseStreaming()
+			pauseStreaming();
 		}
-	}, [isRecording, pauseStreaming, resumeStreaming, startStreaming, streamStatus])
+	}, [isRecording, pauseStreaming, resumeStreaming, startStreaming, streamStatus]);
 
 	// Replay: show last 15 seconds of transcript for 15s
 	const replayLast30s = useCallback(() => {
-		if (!turns.length) return
-		const lastEnd = turns[0]?.end ?? 0
+		if (!turns.length) return;
+		const lastEnd = turns[0]?.end ?? 0;
 		// Treat current time as lastEnd; append currentCaption to reach "present"
-		const cutoff = Math.max(0, lastEnd - 30)
+		const cutoff = Math.max(0, lastEnd - 30);
 		const historical = turns
 			.filter((t) => t.end >= cutoff)
 			.sort((a, b) => a.start - b.start)
-			.map((t) => t.transcript)
-		const historicalStr = historical.join(" ").replace(/\s+/g, " ").trim()
-		const lastTurnText = historical.length ? historical[historical.length - 1] : ""
-		const draft = (currentCaption || "").replace(/\s+/g, " ").trim()
-		const shouldAppendDraft = !!draft && draft !== lastTurnText && !historicalStr.endsWith(draft)
-		const combined = (shouldAppendDraft ? `${historicalStr} ${draft}` : historicalStr).replace(/\s+/g, " ").trim()
-		if (!combined) return
-		setReplayText(combined)
-		if (replayTimerRef.current) window.clearTimeout(replayTimerRef.current)
+			.map((t) => t.transcript);
+		const historicalStr = historical.join(" ").replace(/\s+/g, " ").trim();
+		const lastTurnText = historical.length ? historical[historical.length - 1] : "";
+		const draft = (currentCaption || "").replace(/\s+/g, " ").trim();
+		const shouldAppendDraft = !!draft && draft !== lastTurnText && !historicalStr.endsWith(draft);
+		const combined = (shouldAppendDraft ? `${historicalStr} ${draft}` : historicalStr).replace(/\s+/g, " ").trim();
+		if (!combined) return;
+		setReplayText(combined);
+		if (replayTimerRef.current) window.clearTimeout(replayTimerRef.current);
 		replayTimerRef.current = window.setTimeout(() => {
-			setReplayText("")
-		}, 15000)
-	}, [currentCaption, turns])
+			setReplayText("");
+		}, 15000);
+	}, [currentCaption, turns]);
 
 	// Helpers for audio processing
 	function drainForSamples(samplesNeeded: number): Float32Array | null {
-		let have = 0
-		const chunks: Float32Array[] = []
+		let have = 0;
+		const chunks: Float32Array[] = [];
 		while (bufferRef.current.length && have < samplesNeeded) {
-			const c = bufferRef.current.shift()!
-			chunks.push(c)
-			have += c.length
+			const c = bufferRef.current.shift()!;
+			chunks.push(c);
+			have += c.length;
 		}
-		if (!chunks.length) return null
-		const out = new Float32Array(have)
-		let offset = 0
+		if (!chunks.length) return null;
+		const out = new Float32Array(have);
+		let offset = 0;
 		for (const c of chunks) {
-			out.set(c, offset)
-			offset += c.length
+			out.set(c, offset);
+			offset += c.length;
 		}
-		return out
+		return out;
 	}
 
 	function downsampleTo16kPCM16(input: Float32Array, inputRate: number, targetRate: number): Int16Array | null {
-		if (inputRate === targetRate) return floatTo16(input)
-		const ratio = inputRate / targetRate
-		const outLen = Math.floor(input.length / ratio)
-		const out = new Int16Array(outLen)
-		let idx = 0
-		let i = 0
+		if (inputRate === targetRate) return floatTo16(input);
+		const ratio = inputRate / targetRate;
+		const outLen = Math.floor(input.length / ratio);
+		const out = new Int16Array(outLen);
+		let idx = 0;
+		let i = 0;
 		while (idx < outLen) {
-			const next = Math.floor((idx + 1) * ratio)
-			let sum = 0
-			let count = 0
+			const next = Math.floor((idx + 1) * ratio);
+			let sum = 0;
+			let count = 0;
 			for (; i < next && i < input.length; i++) {
-				sum += input[i]
-				count++
+				sum += input[i];
+				count++;
 			}
-			const sample = sum / (count || 1)
-			out[idx++] = Math.max(-1, Math.min(1, sample)) * 0x7fff
+			const sample = sum / (count || 1);
+			out[idx++] = Math.max(-1, Math.min(1, sample)) * 0x7fff;
 		}
-		return out
+		return out;
 	}
 
 	function floatTo16(f32: Float32Array): Int16Array {
-		const out = new Int16Array(f32.length)
+		const out = new Int16Array(f32.length);
 		for (let i = 0; i < f32.length; i++) {
-			out[i] = Math.max(-1, Math.min(1, f32[i])) * 0x7fff
+			out[i] = Math.max(-1, Math.min(1, f32[i])) * 0x7fff;
 		}
-		return out
+		return out;
 	}
 
 	// Compute a stable key for a turn from its word timing window
 	function computeTurnKey(t: TurnMsg): string {
 		if (t.words && t.words.length > 0) {
-			const start = t.words[0]?.start ?? 0
-			const end = t.words[t.words.length - 1]?.end ?? 0
-			return `${start}-${end}`
+			const start = t.words[0]?.start ?? 0;
+			const end = t.words[t.words.length - 1]?.end ?? 0;
+			return `${start}-${end}`;
 		}
-		return `tx-${t.transcript.length}:${t.transcript.slice(0, 32)}`
+		return `tx-${t.transcript.length}:${t.transcript.slice(0, 32)}`;
 	}
 
 	const handleCancel = useCallback(() => {
-		setShowCancelDialog(true)
-	}, [])
+		setShowCancelDialog(true);
+	}, []);
 
 	const handleFinish = useCallback(() => {
-		setIsFinishing(true)
+		setIsFinishing(true);
 		// Explicit stop finalizes and navigates, cleanup happens in stopStreaming
-		stopStreaming()
-	}, [stopStreaming])
+		stopStreaming();
+	}, [stopStreaming]);
 
 	const handleConfirmCancel = useCallback(async () => {
-		if (isCanceling) return
-		setIsCanceling(true)
-		let redirectPath: string | null = null
+		if (isCanceling) return;
+		setIsCanceling(true);
+		let redirectPath: string | null = null;
 		try {
-			await stopStreaming(false)
-			setIsRecording(false)
-			setRecordingDuration(0)
-			const id = assignedInterviewId
+			await stopStreaming(false);
+			setIsRecording(false);
+			setRecordingDuration(0);
+			const id = assignedInterviewId;
 			if (id) {
 				const { error } = await deleteInterview({
 					supabase,
 					id,
 					accountId,
 					projectId,
-				})
+				});
 				if (error) {
-					throw new Error(error.message)
+					throw new Error(error.message);
 				}
-				setAssignedInterviewId(undefined)
+				setAssignedInterviewId(undefined);
 			}
-			redirectPath = routes.interviews.index()
-			setShowCancelDialog(false)
+			redirectPath = routes.interviews.index();
+			setShowCancelDialog(false);
 		} catch (error) {
-			consola.error("Cancel interview error:", error)
+			consola.error("Cancel interview error:", error);
 		} finally {
-			setIsCanceling(false)
+			setIsCanceling(false);
 			if (redirectPath) {
-				navigate(redirectPath)
+				navigate(redirectPath);
 			}
 		}
-	}, [isCanceling, stopStreaming, assignedInterviewId, supabase, accountId, projectId, navigate, routes])
+	}, [isCanceling, stopStreaming, assignedInterviewId, supabase, accountId, projectId, navigate, routes]);
 
 	// Dialog handlers
 	const _handleRecordAnother = useCallback(() => {
-		setShowCompletionDialog(false)
-		setCompletedInterviewId(undefined)
+		setShowCompletionDialog(false);
+		setCompletedInterviewId(undefined);
 		// Reset recording state and REDIRECT to new interview
-		navigate(routes.interviews.index())
-	}, [navigate, routes])
+		navigate(routes.interviews.index());
+	}, [navigate, routes]);
 
 	const handleViewInterview = useCallback(() => {
 		if (completedInterviewId) {
-			setShowCompletionDialog(false)
-			navigate(routes.interviews.detail(completedInterviewId))
+			setShowCompletionDialog(false);
+			navigate(routes.interviews.detail(completedInterviewId));
 		}
-	}, [completedInterviewId, navigate, routes])
+	}, [completedInterviewId, navigate, routes]);
 
 	// Auto-redirect to interview detail after 3 seconds when analysis completes
 	useEffect(() => {
 		if (completedInterviewId && !isFinishing) {
 			// Reset countdown to 3
-			setRedirectCountdown(3)
+			setRedirectCountdown(3);
 
 			// Countdown timer (updates every second)
 			const countdownInterval = setInterval(() => {
 				setRedirectCountdown((prev) => {
 					if (prev <= 1) {
-						clearInterval(countdownInterval)
-						return 0
+						clearInterval(countdownInterval);
+						return 0;
 					}
-					return prev - 1
-				})
-			}, 1000)
+					return prev - 1;
+				});
+			}, 1000);
 
 			// Redirect after 3 seconds
 			const redirectTimer = setTimeout(() => {
-				handleViewInterview()
-			}, 3000)
+				handleViewInterview();
+			}, 3000);
 
 			return () => {
-				clearInterval(countdownInterval)
-				clearTimeout(redirectTimer)
-			}
+				clearInterval(countdownInterval);
+				clearTimeout(redirectTimer);
+			};
 		}
-	}, [completedInterviewId, isFinishing, handleViewInterview])
+	}, [completedInterviewId, isFinishing, handleViewInterview]);
 
 	// Simple waveform component with dynamic animation
 	const WaveformAnimation = ({ isRecording }: { isRecording: boolean }) => {
-		const [bars, setBars] = useState([8, 12, 6, 15, 9])
+		const [bars, setBars] = useState([8, 12, 6, 15, 9]);
 
 		useEffect(() => {
 			if (!isRecording) {
-				setBars([8, 8, 8, 8, 8])
-				return
+				setBars([8, 8, 8, 8, 8]);
+				return;
 			}
 
 			const interval = setInterval(() => {
@@ -1072,11 +1072,11 @@ export function InterviewCopilot({
 					Math.random() * 10 + 4,
 					Math.random() * 18 + 8,
 					Math.random() * 14 + 5,
-				])
-			}, 150)
+				]);
+			}, 150);
 
-			return () => clearInterval(interval)
-		}, [isRecording])
+			return () => clearInterval(interval);
+		}, [isRecording]);
 
 		return (
 			<div className="flex items-center gap-1">
@@ -1091,8 +1091,8 @@ export function InterviewCopilot({
 					/>
 				))}
 			</div>
-		)
-	}
+		);
+	};
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -1256,8 +1256,8 @@ export function InterviewCopilot({
 			<AlertDialog
 				open={showCancelDialog}
 				onOpenChange={(open) => {
-					if (isCanceling) return
-					setShowCancelDialog(open)
+					if (isCanceling) return;
+					setShowCancelDialog(open);
 				}}
 			>
 				<AlertDialogContent>
@@ -1336,5 +1336,5 @@ export function InterviewCopilot({
 				</DialogContent>
 			</Dialog>
 		</div>
-	)
+	);
 }

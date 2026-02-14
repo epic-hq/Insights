@@ -1,34 +1,34 @@
-import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
-import { createTask } from "~/features/tasks/db"
-import { getServerClient } from "~/lib/supabase/client.server"
+import consola from "consola";
+import type { ActionFunctionArgs } from "react-router";
+import { createTask } from "~/features/tasks/db";
+import { getServerClient } from "~/lib/supabase/client.server";
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ error: "Method not allowed" }, { status: 405 })
+		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
 	try {
-		const { client: supabase, user } = getServerClient(request)
-		const body = await request.json()
+		const { client: supabase, user } = getServerClient(request);
+		const body = await request.json();
 
-		const { projectId, title, content, noteType, associations, tags } = body
+		const { projectId, title, content, noteType, associations, tags } = body;
 
 		if (!projectId) {
-			return Response.json({ error: "projectId is required" }, { status: 400 })
+			return Response.json({ error: "projectId is required" }, { status: 400 });
 		}
 
 		// Get account_id from project
-		const { data: project } = await supabase.from("projects").select("account_id").eq("id", projectId).single()
+		const { data: project } = await supabase.from("projects").select("account_id").eq("id", projectId).single();
 
 		if (!project) {
-			return Response.json({ error: "Project not found" }, { status: 404 })
+			return Response.json({ error: "Project not found" }, { status: 404 });
 		}
 
 		// Handle task creation
 		if (noteType === "task") {
 			if (!title) {
-				return Response.json({ error: "Title is required for tasks" }, { status: 400 })
+				return Response.json({ error: "Title is required for tasks" }, { status: 400 });
 			}
 
 			const task = await createTask({
@@ -43,25 +43,25 @@ export async function action({ request }: ActionFunctionArgs) {
 					status: "backlog",
 					cluster: "Product", // Default cluster for quick-created tasks
 				},
-			})
+			});
 
 			consola.info("Task created successfully", {
 				projectId,
 				taskId: task.id,
 				title,
-			})
+			});
 
 			return Response.json({
 				success: true,
 				id: task.id,
 				type: "task",
 				message: "Task created successfully",
-			})
+			});
 		}
 
 		// Handle note creation (default behavior)
 		if (!content) {
-			return Response.json({ error: "Content is required for notes" }, { status: 400 })
+			return Response.json({ error: "Content is required for notes" }, { status: 400 });
 		}
 
 		// Build metadata for conversation_analysis field
@@ -69,7 +69,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			note_type: noteType,
 			associations: associations || {},
 			tags: tags || [],
-		}
+		};
 
 		// Insert into interviews table
 		const { data: interview, error } = await supabase
@@ -86,32 +86,47 @@ export async function action({ request }: ActionFunctionArgs) {
 				created_by: user?.id,
 			})
 			.select("id")
-			.single()
+			.single();
 
 		if (error) {
-			throw new Error(error.message || "Failed to save note")
+			throw new Error(error.message || "Failed to save note");
+		}
+
+		// Link people via interview_people junction table
+		const peopleIds = associations?.people as string[] | undefined;
+		if (interview?.id && peopleIds?.length) {
+			const rows = peopleIds.map((personId: string) => ({
+				interview_id: interview.id,
+				person_id: personId,
+				project_id: projectId,
+				role: "subject",
+			}));
+			const { error: linkError } = await supabase.from("interview_people").insert(rows);
+			if (linkError) {
+				consola.warn("Failed to link people to note:", linkError);
+			}
 		}
 
 		consola.info("Note created successfully", {
 			projectId,
 			noteId: interview?.id,
-			hasAssociations: Object.keys(associations || {}).length > 0,
-		})
+			linkedPeople: peopleIds?.length ?? 0,
+		});
 
 		return Response.json({
 			success: true,
 			id: interview?.id,
 			type: "note",
 			message: "Note saved successfully",
-		})
+		});
 	} catch (error) {
-		consola.error("Failed to create note/task:", error)
+		consola.error("Failed to create note/task:", error);
 		return Response.json(
 			{
 				error: "Failed to create note/task",
 				details: error instanceof Error ? error.message : String(error),
 			},
 			{ status: 500 }
-		)
+		);
 	}
 }

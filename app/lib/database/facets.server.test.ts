@@ -1,21 +1,21 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import { beforeEach, describe, expect, it, vi } from "vitest"
-import type { Database } from "~/../supabase/types"
-import { getFacetCatalog, persistFacetObservations } from "./facets.server"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Database } from "~/../supabase/types";
+import { getFacetCatalog, persistFacetObservations } from "./facets.server";
 
-type MockDb = SupabaseClient<Database>
+type MockDb = SupabaseClient<Database>;
 
 describe("facets.server", () => {
 	describe("getFacetCatalog", () => {
 		beforeEach(() => {
-			vi.restoreAllMocks()
-		})
+			vi.restoreAllMocks();
+		});
 
 		it("returns global and account facets with IDs", async () => {
 			const kindRows = [
 				{ id: 1, slug: "goal", label: "Goal", updated_at: "2025-01-01T00:00:00.000Z" },
 				{ id: 2, slug: "pain", label: "Pain", updated_at: "2025-01-02T00:00:00.000Z" },
-			]
+			];
 			const globalRows = [
 				{
 					id: 11,
@@ -26,7 +26,7 @@ describe("facets.server", () => {
 					updated_at: "2025-01-03T00:00:00.000Z",
 					is_active: true,
 				},
-			]
+			];
 			const accountRows = [
 				{
 					id: 21,
@@ -48,9 +48,9 @@ describe("facets.server", () => {
 					updated_at: "2025-01-05T00:00:00.000Z",
 					is_active: false, // Inactive, should be filtered out
 				},
-			]
+			];
 
-			const eqCalls: { facetAccount?: string } = {}
+			const eqCalls: { facetAccount?: string } = {};
 
 			const mockDb = {
 				from: vi.fn((table: string) => {
@@ -60,34 +60,34 @@ describe("facets.server", () => {
 								select: vi.fn(() => ({
 									order: vi.fn().mockResolvedValue({ data: kindRows, error: null }),
 								})),
-							}
+							};
 						case "facet_global":
 							return {
 								select: vi.fn().mockResolvedValue({ data: globalRows, error: null }),
-							}
+							};
 						case "facet_account":
 							return {
 								select: vi.fn(() => ({
 									eq: vi.fn().mockImplementation((column: string, value: string) => {
-										expect(column).toBe("account_id")
-										eqCalls.facetAccount = value
-										return Promise.resolve({ data: accountRows, error: null })
+										expect(column).toBe("account_id");
+										eqCalls.facetAccount = value;
+										return Promise.resolve({ data: accountRows, error: null });
 									}),
 								})),
-							}
+							};
 						default:
-							throw new Error(`Unexpected table: ${table}`)
+							throw new Error(`Unexpected table: ${table}`);
 					}
 				}),
-			} as unknown as MockDb
+			} as unknown as MockDb;
 
-			const catalog = await getFacetCatalog({ db: mockDb, accountId: "account-1", projectId: null })
+			const catalog = await getFacetCatalog({ db: mockDb, accountId: "account-1", projectId: null });
 
-			expect(eqCalls).toEqual({ facetAccount: "account-1" })
+			expect(eqCalls).toEqual({ facetAccount: "account-1" });
 			expect(catalog.kinds).toEqual([
 				{ slug: "goal", label: "Goal" },
 				{ slug: "pain", label: "Pain" },
-			])
+			]);
 			expect(catalog.facets).toEqual([
 				{
 					facet_account_id: 11,
@@ -101,22 +101,22 @@ describe("facets.server", () => {
 					label: "Manual Work",
 					synonyms: ["tedious"],
 				},
-			])
-			expect(catalog.version).toMatch(/^acct:account-1:v\d+$/)
-		})
-	})
+			]);
+			expect(catalog.version).toMatch(/^acct:account-1:v\d+$/);
+		});
+	});
 
 	describe("persistFacetObservations", () => {
 		beforeEach(() => {
-			vi.restoreAllMocks()
-		})
+			vi.restoreAllMocks();
+		});
 
 		it("stores facet observations with IDs and scales with normalized values", async () => {
-			vi.useFakeTimers()
-			vi.setSystemTime(new Date("2025-02-01T12:34:56.000Z"))
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2025-02-01T12:34:56.000Z"));
 
-			const facetUpserts: any[] = []
-			const scaleUpserts: any[] = []
+			const facetUpserts: any[] = [];
+			const scaleUpserts: any[] = [];
 
 			const mockDb = {
 				from: vi.fn((table: string) => {
@@ -124,22 +124,22 @@ describe("facets.server", () => {
 						case "person_facet":
 							return {
 								upsert: vi.fn((payload: any[]) => {
-									facetUpserts.push(payload)
-									return Promise.resolve({ error: null })
+									facetUpserts.push(payload);
+									return Promise.resolve({ error: null });
 								}),
-							}
+							};
 						case "person_scale":
 							return {
 								upsert: vi.fn((payload: any[]) => {
-									scaleUpserts.push(payload)
-									return Promise.resolve({ error: null })
+									scaleUpserts.push(payload);
+									return Promise.resolve({ error: null });
 								}),
-							}
+							};
 						default:
-							throw new Error(`Unexpected table: ${table}`)
+							throw new Error(`Unexpected table: ${table}`);
 					}
 				}),
-			} as unknown as MockDb
+			} as unknown as MockDb;
 
 			await persistFacetObservations({
 				db: mockDb,
@@ -187,9 +187,9 @@ describe("facets.server", () => {
 					},
 				],
 				evidenceIds: ["ev-1", "ev-2"],
-			})
+			});
 
-			expect(facetUpserts).toHaveLength(1)
+			expect(facetUpserts).toHaveLength(1);
 			expect(facetUpserts[0]).toEqual([
 				{
 					account_id: "acct-1",
@@ -201,9 +201,9 @@ describe("facets.server", () => {
 					confidence: 0.92,
 					noted_at: "2025-02-01T12:34:56.000Z",
 				},
-			])
+			]);
 
-			expect(scaleUpserts).toHaveLength(1)
+			expect(scaleUpserts).toHaveLength(1);
 			expect(scaleUpserts[0]).toEqual([
 				{
 					account_id: "acct-1",
@@ -217,9 +217,9 @@ describe("facets.server", () => {
 					confidence: 1,
 					noted_at: "2025-02-01T12:34:56.000Z",
 				},
-			])
+			]);
 
-			vi.useRealTimers()
-		})
-	})
-})
+			vi.useRealTimers();
+		});
+	});
+});

@@ -1,11 +1,11 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { HOST } from "~/paths"
-import type { Database } from "~/types"
-import { createRouteDefinitions } from "~/utils/route-definitions"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import { HOST } from "../../paths";
+import type { Database } from "../../types";
+import { createRouteDefinitions } from "../../utils/route-definitions";
 
 /**
  * Conversation Lens Tool - Search and retrieve conversation lens templates and analyses
@@ -44,7 +44,7 @@ const lensTemplateSchema = z.object({
 	),
 	requiresProjectContext: z.boolean().optional(),
 	recommendationsEnabled: z.boolean().optional(),
-})
+});
 
 const lensAnalysisSchema = z.object({
 	id: z.string(),
@@ -58,7 +58,7 @@ const lensAnalysisSchema = z.object({
 	processedAt: z.string().nullable(),
 	createdAt: z.string(),
 	interviewUrl: z.string().nullable(),
-})
+});
 
 export const fetchConversationLensesTool = createTool({
 	id: "fetch-conversation-lenses",
@@ -103,17 +103,17 @@ export const fetchConversationLensesTool = createTool({
 		totalAnalyses: z.number().optional(),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
-		const runtimeAccountId = context?.requestContext?.get?.("account_id")
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const runtimeAccountId = context?.requestContext?.get?.("account_id");
 
-		const mode = input.mode ?? "both"
-		const projectId = input.projectId ?? runtimeProjectId ?? null
-		const interviewId = input.interviewId ?? null
-		const templateKey = input.templateKey ?? null
-		const category = input.category ?? null
-		const status = input.status ?? null
-		const limit = input.limit ?? 50
+		const mode = input.mode ?? "both";
+		const projectId = input.projectId ?? runtimeProjectId ?? null;
+		const interviewId = input.interviewId ?? null;
+		const templateKey = input.templateKey ?? null;
+		const category = input.category ?? null;
+		const status = input.status ?? null;
+		const limit = input.limit ?? 50;
 
 		consola.debug("fetch-conversation-lenses: execute start", {
 			mode,
@@ -123,20 +123,20 @@ export const fetchConversationLensesTool = createTool({
 			category,
 			status,
 			limit,
-		})
+		});
 
 		try {
 			const result: {
-				success: boolean
-				message: string
-				templates?: any[]
-				analyses?: any[]
-				totalTemplates?: number
-				totalAnalyses?: number
+				success: boolean;
+				message: string;
+				templates?: any[];
+				analyses?: any[];
+				totalTemplates?: number;
+				totalAnalyses?: number;
 			} = {
 				success: true,
 				message: "",
-			}
+			};
 
 			// Fetch templates if requested
 			if (mode === "templates" || mode === "both") {
@@ -144,25 +144,25 @@ export const fetchConversationLensesTool = createTool({
 					.from("conversation_lens_templates")
 					.select("*")
 					.eq("is_active", true)
-					.order("display_order", { ascending: true })
+					.order("display_order", { ascending: true });
 
 				if (templateKey) {
-					templatesQuery = templatesQuery.eq("template_key", templateKey)
+					templatesQuery = templatesQuery.eq("template_key", templateKey);
 				}
 
 				if (category) {
-					templatesQuery = templatesQuery.eq("category", category)
+					templatesQuery = templatesQuery.eq("category", category);
 				}
 
-				const { data: templatesData, error: templatesError } = await templatesQuery
+				const { data: templatesData, error: templatesError } = await templatesQuery;
 
 				if (templatesError) {
-					consola.error("fetch-conversation-lenses: error fetching templates", templatesError)
-					throw templatesError
+					consola.error("fetch-conversation-lenses: error fetching templates", templatesError);
+					throw templatesError;
 				}
 
 				result.templates = (templatesData || []).map((t) => {
-					const definition = t.template_definition as any
+					const definition = t.template_definition as any;
 					return {
 						templateKey: t.template_key,
 						templateName: t.template_name,
@@ -173,66 +173,66 @@ export const fetchConversationLensesTool = createTool({
 						sections: definition?.sections || [],
 						requiresProjectContext: definition?.requires_project_context ?? false,
 						recommendationsEnabled: definition?.recommendations_enabled ?? false,
-					}
-				})
+					};
+				});
 
-				result.totalTemplates = result.templates.length
+				result.totalTemplates = result.templates.length;
 			}
 
 			// Fetch analyses if requested
 			if (mode === "analyses" || mode === "both") {
 				if (!projectId && !interviewId) {
-					consola.warn("fetch-conversation-lenses: missing projectId or interviewId for analyses")
+					consola.warn("fetch-conversation-lenses: missing projectId or interviewId for analyses");
 					return {
 						success: false,
 						message:
 							"Project ID or Interview ID is required when fetching analyses. Provide projectId or interviewId parameter.",
 						templates: result.templates,
 						totalTemplates: result.totalTemplates,
-					}
+					};
 				}
 
 				let analysesQuery = supabase
 					.from("conversation_lens_analyses")
 					.select("*")
 					.order("created_at", { ascending: false })
-					.limit(limit)
+					.limit(limit);
 
 				if (projectId) {
-					analysesQuery = analysesQuery.eq("project_id", projectId)
+					analysesQuery = analysesQuery.eq("project_id", projectId);
 				}
 
 				if (interviewId) {
-					analysesQuery = analysesQuery.eq("interview_id", interviewId)
+					analysesQuery = analysesQuery.eq("interview_id", interviewId);
 				}
 
 				if (templateKey) {
-					analysesQuery = analysesQuery.eq("template_key", templateKey)
+					analysesQuery = analysesQuery.eq("template_key", templateKey);
 				}
 
 				if (status) {
-					analysesQuery = analysesQuery.eq("status", status)
+					analysesQuery = analysesQuery.eq("status", status);
 				}
 
-				const { data: analysesData, error: analysesError } = await analysesQuery
+				const { data: analysesData, error: analysesError } = await analysesQuery;
 
 				if (analysesError) {
-					consola.error("fetch-conversation-lenses: error fetching analyses", analysesError)
-					throw analysesError
+					consola.error("fetch-conversation-lenses: error fetching analyses", analysesError);
+					throw analysesError;
 				}
 
 				// Fetch template names for analyses
-				const uniqueTemplateKeys = [...new Set((analysesData || []).map((a) => a.template_key))]
+				const uniqueTemplateKeys = [...new Set((analysesData || []).map((a) => a.template_key))];
 				const { data: templatesForAnalyses } = await supabase
 					.from("conversation_lens_templates")
 					.select("template_key, template_name")
-					.in("template_key", uniqueTemplateKeys)
+					.in("template_key", uniqueTemplateKeys);
 
-				const templateNameMap = new Map((templatesForAnalyses || []).map((t) => [t.template_key, t.template_name]))
+				const templateNameMap = new Map((templatesForAnalyses || []).map((t) => [t.template_key, t.template_name]));
 
 				// Generate route definitions for URL generation
-				const projectPath = runtimeAccountId && projectId ? `/a/${runtimeAccountId}/${projectId}` : ""
-				const routes = projectPath ? createRouteDefinitions(projectPath) : null
+				const projectPath = runtimeAccountId && projectId ? `/a/${runtimeAccountId}/${projectId}` : "";
+				const routes = projectPath ? createRouteDefinitions(projectPath) : null;
 
 				result.analyses = (analysesData || []).map((a) => ({
 					id: a.id,
@@ -246,29 +246,29 @@ export const fetchConversationLensesTool = createTool({
 					processedAt: a.processed_at,
 					createdAt: a.created_at,
 					interviewUrl: routes ? `${HOST}${routes.interviews.detail(a.interview_id)}` : null,
-				}))
+				}));
 
-				result.totalAnalyses = result.analyses.length
+				result.totalAnalyses = result.analyses.length;
 			}
 
 			// Build success message
-			const messageParts: string[] = []
+			const messageParts: string[] = [];
 			if (result.templates) {
-				messageParts.push(`${result.totalTemplates} lens template(s)`)
+				messageParts.push(`${result.totalTemplates} lens template(s)`);
 			}
 			if (result.analyses) {
-				messageParts.push(`${result.totalAnalyses} lens analysis/analyses`)
+				messageParts.push(`${result.totalAnalyses} lens analysis/analyses`);
 			}
-			result.message = `Retrieved ${messageParts.join(" and ")}.`
+			result.message = `Retrieved ${messageParts.join(" and ")}.`;
 
-			return result
+			return result;
 		} catch (error) {
-			consola.error("fetch-conversation-lenses: unexpected error", error)
-			const errorMessage = error instanceof Error ? error.message : "Unexpected error fetching conversation lenses."
+			consola.error("fetch-conversation-lenses: unexpected error", error);
+			const errorMessage = error instanceof Error ? error.message : "Unexpected error fetching conversation lenses.";
 			return {
 				success: false,
 				message: errorMessage,
-			}
+			};
 		}
 	},
-})
+});

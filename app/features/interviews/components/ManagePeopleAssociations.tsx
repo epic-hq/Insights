@@ -1,7 +1,7 @@
-import { Check, ChevronDown, Plus, UserPlus, X } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
-import { useFetcher } from "react-router-dom"
-import { Button } from "~/components/ui/button"
+import { Check, ChevronDown, Plus, UserPlus, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useFetcher } from "react-router-dom";
+import { Button } from "~/components/ui/button";
 import {
 	Command,
 	CommandEmpty,
@@ -10,46 +10,46 @@ import {
 	CommandItem,
 	CommandList,
 	CommandSeparator,
-} from "~/components/ui/command"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { cn } from "~/lib/utils"
+} from "~/components/ui/command";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { cn } from "~/lib/utils";
 
 export interface InterviewPerson {
-	id: string
-	role: string | null
-	transcript_key: string | null
-	display_name: string | null
+	id: string;
+	role: string | null;
+	transcript_key: string | null;
+	display_name: string | null;
 	people: {
-		id: string
-		name: string | null
-		person_type?: string | null
-	} | null
+		id: string;
+		name: string | null;
+		person_type?: string | null;
+	} | null;
 }
 
 export interface Person {
-	id: string
-	name: string | null
-	person_type?: string | null
+	id: string;
+	name: string | null;
+	person_type?: string | null;
 }
 
 /** A speaker detected in the transcript */
 export interface TranscriptSpeaker {
 	/** The transcript key (e.g., "participant-1", "A") */
-	key: string
+	key: string;
 	/** Display label (e.g., "Speaker B") */
-	label: string
+	label: string;
 }
 
 interface ManagePeopleAssociationsProps {
-	interviewId: string
-	participants: InterviewPerson[]
-	availablePeople: Person[]
+	interviewId: string;
+	participants: InterviewPerson[];
+	availablePeople: Person[];
 	/** Speakers detected in the transcript (from speaker_transcripts) */
-	transcriptSpeakers?: TranscriptSpeaker[]
-	onUpdate?: () => void
+	transcriptSpeakers?: TranscriptSpeaker[];
+	onUpdate?: () => void;
 }
 
 export function ManagePeopleAssociations({
@@ -59,60 +59,98 @@ export function ManagePeopleAssociations({
 	transcriptSpeakers = [],
 	onUpdate,
 }: ManagePeopleAssociationsProps) {
-	const fetcher = useFetcher()
-	const [openPopoverId, setOpenPopoverId] = useState<string | null>(null)
-	const [showAddPersonDialog, setShowAddPersonDialog] = useState(false)
-	const [newPersonName, setNewPersonName] = useState("")
-	const [selectedSpeakerKey, setSelectedSpeakerKey] = useState<string | null>(null)
-	const [newPersonFirst, setNewPersonFirst] = useState("")
-	const [newPersonLast, setNewPersonLast] = useState("")
-	const [newPersonOrg, setNewPersonOrg] = useState("")
-	const [newPersonTitle, setNewPersonTitle] = useState("")
-	const [voiceStatus, setVoiceStatus] = useState<"idle" | "listening" | "unsupported">("idle")
-	const recognitionRef = useRef<SpeechRecognition | null>(null)
-	const [searchInput, setSearchInput] = useState("")
-	const [addDialogMode, setAddDialogMode] = useState<"search" | "create">("search")
-	const [addSearchInput, setAddSearchInput] = useState("")
-	const isSubmitting = fetcher.state !== "idle"
-	const voiceStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const fetcher = useFetcher();
+	const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
+	const [showAddPersonDialog, setShowAddPersonDialog] = useState(false);
+	const [newPersonName, setNewPersonName] = useState("");
+	const [selectedSpeakerKey, setSelectedSpeakerKey] = useState<string | null>(null);
+	const [newPersonFirst, setNewPersonFirst] = useState("");
+	const [newPersonLast, setNewPersonLast] = useState("");
+	const [newPersonOrg, setNewPersonOrg] = useState("");
+	const [newPersonTitle, setNewPersonTitle] = useState("");
+	const [voiceStatus, setVoiceStatus] = useState<"idle" | "listening" | "unsupported">("idle");
+	const recognitionRef = useRef<SpeechRecognition | null>(null);
+	const [searchInput, setSearchInput] = useState("");
+	const [addDialogMode, setAddDialogMode] = useState<"search" | "create">("search");
+	const [addSearchInput, setAddSearchInput] = useState("");
+	const [submitError, setSubmitError] = useState<string | null>(null);
+	const isSubmitting = fetcher.state !== "idle";
+	const voiceStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const shouldNotifyOnIdleRef = useRef(false);
+	const onUpdateRef = useRef(onUpdate);
+	const pendingAddDialogCloseRef = useRef(false);
 
 	// Calculate which transcript speakers are not yet assigned to a participant
 	const unassignedSpeakers = useMemo(() => {
-		const assignedKeys = new Set(participants.map((p) => p.transcript_key).filter((k): k is string => k !== null))
-		return transcriptSpeakers.filter((s) => !assignedKeys.has(s.key))
-	}, [participants, transcriptSpeakers])
+		const assignedKeys = new Set(participants.map((p) => p.transcript_key).filter((k): k is string => k !== null));
+		return transcriptSpeakers.filter((s) => !assignedKeys.has(s.key));
+	}, [participants, transcriptSpeakers]);
 
 	useEffect(() => {
-		if (fetcher.state === "idle" && fetcher.data && onUpdate) {
-			onUpdate()
+		onUpdateRef.current = onUpdate;
+	}, [onUpdate]);
+
+	useEffect(() => {
+		if (fetcher.state !== "idle") {
+			shouldNotifyOnIdleRef.current = true;
+			return;
 		}
-	}, [fetcher.state, fetcher.data, onUpdate])
+		if (shouldNotifyOnIdleRef.current && fetcher.data) {
+			shouldNotifyOnIdleRef.current = false;
+			const result = fetcher.data as { ok?: boolean; error?: string } | undefined;
+			if (result?.ok === false) {
+				setSubmitError(result.error || "Failed to update participant");
+				pendingAddDialogCloseRef.current = false;
+				return;
+			}
+			setSubmitError(null);
+			onUpdateRef.current?.();
+			if (pendingAddDialogCloseRef.current) {
+				pendingAddDialogCloseRef.current = false;
+				setShowAddPersonDialog(false);
+				setAddDialogMode("search");
+				setAddSearchInput("");
+				setSelectedSpeakerKey(null);
+				setNewPersonName("");
+				setNewPersonFirst("");
+				setNewPersonLast("");
+				setNewPersonOrg("");
+				setNewPersonTitle("");
+			}
+		}
+	}, [fetcher.state, fetcher.data]);
 
 	const linkPerson = (participantId: string, personId: string) => {
+		setSubmitError(null);
+		pendingAddDialogCloseRef.current = false;
 		fetcher.submit(
 			{
 				participant_id: participantId,
 				person_id: personId,
 			},
 			{ method: "post", action: "/api/link-interview-participant" }
-		)
-		setOpenPopoverId(null)
-	}
+		);
+		setOpenPopoverId(null);
+	};
 
 	const unlinkPerson = (participantId: string) => {
 		// Remove the participant-person link by deleting the participant row.
 		// We use the page action so RLS/account scoping stays consistent.
+		setSubmitError(null);
+		pendingAddDialogCloseRef.current = false;
 		fetcher.submit(
 			{
 				intent: "remove-participant",
 				interviewPersonId: participantId,
 			},
 			{ method: "post" }
-		)
-		setOpenPopoverId(null)
-	}
+		);
+		setOpenPopoverId(null);
+	};
 
 	const createAndLinkPerson = (participantId: string, name: string) => {
+		setSubmitError(null);
+		pendingAddDialogCloseRef.current = false;
 		fetcher.submit(
 			{
 				participant_id: participantId,
@@ -121,13 +159,15 @@ export function ManagePeopleAssociations({
 				interview_id: interviewId,
 			},
 			{ method: "post", action: "/api/link-interview-participant" }
-		)
-		setOpenPopoverId(null)
-		setSearchInput("")
-	}
+		);
+		setOpenPopoverId(null);
+		setSearchInput("");
+	};
 
 	// Add an existing person as a new participant
 	const addExistingParticipant = (personId: string) => {
+		setSubmitError(null);
+		pendingAddDialogCloseRef.current = true;
 		fetcher.submit(
 			{
 				intent: "add-participant",
@@ -135,22 +175,20 @@ export function ManagePeopleAssociations({
 				...(selectedSpeakerKey && { transcript_key: selectedSpeakerKey }),
 			},
 			{ method: "post" }
-		)
-		setShowAddPersonDialog(false)
-		setAddDialogMode("search")
-		setAddSearchInput("")
-		setSelectedSpeakerKey(null)
-	}
+		);
+	};
 
 	// Add a brand new participant to the interview (not linking an existing speaker)
 	const addNewParticipant = (name: string) => {
-		const first = newPersonFirst.trim()
-		const last = newPersonLast.trim()
-		const org = newPersonOrg.trim()
-		const title = newPersonTitle.trim()
-		const fallbackName = name.trim()
-		if (!first && !fallbackName) return
-		const submitName = first && last ? `${first} ${last}` : first || fallbackName
+		const first = newPersonFirst.trim();
+		const last = newPersonLast.trim();
+		const org = newPersonOrg.trim();
+		const title = newPersonTitle.trim();
+		const fallbackName = name.trim();
+		if (!first && !fallbackName) return;
+		const submitName = first && last ? `${first} ${last}` : first || fallbackName;
+		setSubmitError(null);
+		pendingAddDialogCloseRef.current = true;
 		fetcher.submit(
 			{
 				intent: "add-participant",
@@ -164,161 +202,157 @@ export function ManagePeopleAssociations({
 				...(selectedSpeakerKey && { transcript_key: selectedSpeakerKey }),
 			},
 			{ method: "post" }
-		)
-		setShowAddPersonDialog(false)
-		setAddDialogMode("search")
-		setAddSearchInput("")
-		setNewPersonName("")
-		setNewPersonFirst("")
-		setNewPersonLast("")
-		setNewPersonOrg("")
-		setNewPersonTitle("")
-		setSelectedSpeakerKey(null)
-		setVoiceStatus("idle")
-		stopVoiceFill()
-	}
+		);
+		setVoiceStatus("idle");
+		stopVoiceFill();
+	};
 
 	// Format transcript key to a clean speaker label
 	// Handles both AssemblyAI format ("A", "SPEAKER A") and BAML format ("participant-1", "interviewer-1")
 	const numberToLetter = (num: number, zeroBased = false) => {
-		const adjusted = zeroBased ? num + 1 : num // 0-based: 0->A, 1->B; 1-based: 1->A, 2->B
-		if (Number.isNaN(adjusted) || adjusted < 1) return null
-		if (adjusted <= 26) return String.fromCharCode(64 + adjusted)
-		return null
-	}
+		const adjusted = zeroBased ? num + 1 : num; // 0-based: 0->A, 1->B; 1-based: 1->A, 2->B
+		if (Number.isNaN(adjusted) || adjusted < 1) return null;
+		if (adjusted <= 26) return String.fromCharCode(64 + adjusted);
+		return null;
+	};
 	const nextAvailableLetter = (used: Set<string>) => {
 		for (let code = 65; code <= 90; code++) {
-			const letter = String.fromCharCode(code)
-			if (!used.has(letter)) return letter
+			const letter = String.fromCharCode(code);
+			if (!used.has(letter)) return letter;
 		}
-		return null
-	}
+		return null;
+	};
 	const formatSpeakerLabel = (transcriptKey: string | null, _idx: number): string => {
 		if (!transcriptKey) {
 			// No transcript_key means this person is linked to the interview
 			// but NOT to a specific speaker in the transcript
-			return "Unlinked"
+			return "Unlinked";
 		}
 
 		// Single letter like "A", "B" -> "Speaker A", "Speaker B"
 		if (/^[A-Z]$/i.test(transcriptKey)) {
-			return `Speaker ${transcriptKey.toUpperCase()}`
+			return `Speaker ${transcriptKey.toUpperCase()}`;
 		}
 		// Already formatted like "SPEAKER A", "Speaker B" -> "Speaker A"
 		if (/^SPEAKER\s+[A-Z]$/i.test(transcriptKey)) {
-			return `Speaker ${transcriptKey.split(/\s+/)[1].toUpperCase()}`
+			return `Speaker ${transcriptKey.split(/\s+/)[1].toUpperCase()}`;
 		}
 		// "Speaker 1" / "speaker-2" -> "Speaker A/B"
-		const speakerNumberMatch = transcriptKey.match(/^speaker[\s_-]?(\d+)$/i)
+		const speakerNumberMatch = transcriptKey.match(/^speaker[\s_-]?(\d+)$/i);
 		if (speakerNumberMatch) {
-			const num = Number.parseInt(speakerNumberMatch[1], 10)
-			const letter = numberToLetter(num)
-			return letter ? `Speaker ${letter}` : `Speaker ${num}`
+			const num = Number.parseInt(speakerNumberMatch[1], 10);
+			const letter = numberToLetter(num);
+			return letter ? `Speaker ${letter}` : `Speaker ${num}`;
 		}
 		// BAML/fallback format: "participant-0" / "participant-1" -> Speaker A/B (0-based)
 		if (/^(participant|interviewer|observer|moderator)-\d+$/i.test(transcriptKey)) {
-			const [, numStr] = transcriptKey.split("-")
-			const num = Number.parseInt(numStr, 10)
-			const letter = numberToLetter(num, true) // 0-based numbering
-			return letter ? `Speaker ${letter}` : `Speaker ${num + 1}`
+			const [, numStr] = transcriptKey.split("-");
+			const num = Number.parseInt(numStr, 10);
+			const letter = numberToLetter(num, true); // 0-based numbering
+			return letter ? `Speaker ${letter}` : `Speaker ${num + 1}`;
 		}
 		// Fallback - just use the key
-		return transcriptKey
-	}
+		return transcriptKey;
+	};
 
 	const stopVoiceFill = () => {
 		if (voiceStopTimer.current) {
-			clearTimeout(voiceStopTimer.current)
-			voiceStopTimer.current = null
+			clearTimeout(voiceStopTimer.current);
+			voiceStopTimer.current = null;
 		}
 		if (recognitionRef.current) {
-			recognitionRef.current.stop()
-			recognitionRef.current.onresult = null as any
-			recognitionRef.current.onerror = null as any
-			recognitionRef.current.onend = null as any
-			recognitionRef.current = null
+			recognitionRef.current.stop();
+			recognitionRef.current.onresult = null as any;
+			recognitionRef.current.onerror = null as any;
+			recognitionRef.current.onend = null as any;
+			recognitionRef.current = null;
 		}
-		setVoiceStatus("idle")
-	}
+		setVoiceStatus("idle");
+	};
 
 	const startVoiceFill = () => {
 		if (typeof window === "undefined") {
-			setVoiceStatus("unsupported")
-			return
+			setVoiceStatus("unsupported");
+			return;
 		}
-		const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+		const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 		if (!SpeechRec) {
-			setVoiceStatus("unsupported")
-			return
+			setVoiceStatus("unsupported");
+			return;
 		}
 
-		const rec: SpeechRecognition = new SpeechRec()
-		recognitionRef.current = rec
-		rec.lang = "en-US"
-		rec.interimResults = false
-		rec.maxAlternatives = 1
-		rec.continuous = true
+		const rec: SpeechRecognition = new SpeechRec();
+		recognitionRef.current = rec;
+		rec.lang = "en-US";
+		rec.interimResults = false;
+		rec.maxAlternatives = 1;
+		rec.continuous = true;
 
-		rec.onstart = () => setVoiceStatus("listening")
-		rec.onerror = () => setVoiceStatus("idle")
-		rec.onend = () => setVoiceStatus("idle")
+		rec.onstart = () => setVoiceStatus("listening");
+		rec.onerror = () => setVoiceStatus("idle");
+		rec.onend = () => setVoiceStatus("idle");
 		rec.onresult = (event) => {
-			const transcript = event.results[0][0].transcript || ""
+			const transcript = event.results[0][0].transcript || "";
 			// Heuristic parsing: "<first> <last> at <org> title <title>"
-			const parts = transcript.trim()
-			const atSplit = parts.split(/\bat\b/i)
-			const nameAndTitle = atSplit[0]?.trim() || ""
-			const org = atSplit[1]?.trim() || ""
+			const parts = transcript.trim();
+			const atSplit = parts.split(/\bat\b/i);
+			const nameAndTitle = atSplit[0]?.trim() || "";
+			const org = atSplit[1]?.trim() || "";
 
-			const nameTokens = nameAndTitle.split(/\s+/).filter(Boolean)
-			const first = nameTokens[0] ?? ""
-			const last = nameTokens[1] ?? ""
-			const maybeTitle = nameTokens.slice(2).join(" ")
+			const nameTokens = nameAndTitle.split(/\s+/).filter(Boolean);
+			const first = nameTokens[0] ?? "";
+			const last = nameTokens[1] ?? "";
+			const maybeTitle = nameTokens.slice(2).join(" ");
 
-			setNewPersonFirst(first)
-			setNewPersonLast(last)
-			if (maybeTitle) setNewPersonTitle(maybeTitle)
-			if (org) setNewPersonOrg(org)
-			setNewPersonName(parts)
-		}
+			setNewPersonFirst(first);
+			setNewPersonLast(last);
+			if (maybeTitle) setNewPersonTitle(maybeTitle);
+			if (org) setNewPersonOrg(org);
+			setNewPersonName(parts);
+		};
 
-		rec.start()
+		rec.start();
 		voiceStopTimer.current = setTimeout(() => {
-			stopVoiceFill()
-		}, 6000)
-	}
+			stopVoiceFill();
+		}, 6000);
+	};
 
 	useEffect(() => {
 		return () => {
-			stopVoiceFill()
-		}
-	}, [])
+			stopVoiceFill();
+		};
+	}, []);
 
 	// Avoid duplicate speaker labels by shifting to the next unused letter
-	const usedSpeakerLetters = new Set<string>()
+	const usedSpeakerLetters = new Set<string>();
 
 	return (
 		<>
 			<div className="space-y-3">
+				{submitError && (
+					<div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
+						{submitError}
+					</div>
+				)}
 				<div className="space-y-2">
 					{participants.map((participant, idx) => {
-						let speakerLabel = formatSpeakerLabel(participant.transcript_key, idx)
-						const letterMatch = speakerLabel.match(/^Speaker\s+([A-Z])$/i)
+						let speakerLabel = formatSpeakerLabel(participant.transcript_key, idx);
+						const letterMatch = speakerLabel.match(/^Speaker\s+([A-Z])$/i);
 						if (letterMatch) {
-							const letter = letterMatch[1].toUpperCase()
+							const letter = letterMatch[1].toUpperCase();
 							if (usedSpeakerLetters.has(letter)) {
-								const alt = nextAvailableLetter(usedSpeakerLetters)
+								const alt = nextAvailableLetter(usedSpeakerLetters);
 								if (alt) {
-									speakerLabel = `Speaker ${alt}`
-									usedSpeakerLetters.add(alt)
+									speakerLabel = `Speaker ${alt}`;
+									usedSpeakerLetters.add(alt);
 								}
 							} else {
-								usedSpeakerLetters.add(letter)
+								usedSpeakerLetters.add(letter);
 							}
 						}
-						const linkedPerson = participant.people
+						const linkedPerson = participant.people;
 
-						const isUnlinked = speakerLabel === "Unlinked"
+						const isUnlinked = speakerLabel === "Unlinked";
 
 						return (
 							<div
@@ -339,8 +373,8 @@ export function ManagePeopleAssociations({
 								<Popover
 									open={openPopoverId === participant.id}
 									onOpenChange={(open) => {
-										setOpenPopoverId(open ? participant.id : null)
-										if (!open) setSearchInput("")
+										setOpenPopoverId(open ? participant.id : null);
+										if (!open) setSearchInput("");
 									}}
 								>
 									<PopoverTrigger asChild>
@@ -412,15 +446,15 @@ export function ManagePeopleAssociations({
 														value={`create-new-${searchInput}`}
 														onSelect={() => {
 															if (searchInput.trim()) {
-																const tokens = searchInput.trim().split(/\s+/)
-																const firstGuess = tokens[0] ?? ""
-																const lastGuess = tokens.length > 1 ? tokens.slice(1).join(" ") : ""
-																setNewPersonFirst(firstGuess)
-																setNewPersonLast(lastGuess)
-																setNewPersonName(searchInput.trim())
-																setShowAddPersonDialog(true)
+																const tokens = searchInput.trim().split(/\s+/);
+																const firstGuess = tokens[0] ?? "";
+																const lastGuess = tokens.length > 1 ? tokens.slice(1).join(" ") : "";
+																setNewPersonFirst(firstGuess);
+																setNewPersonLast(lastGuess);
+																setNewPersonName(searchInput.trim());
+																setShowAddPersonDialog(true);
 															}
-															setOpenPopoverId(null)
+															setOpenPopoverId(null);
 														}}
 														className="text-primary"
 													>
@@ -446,7 +480,7 @@ export function ManagePeopleAssociations({
 									</Button>
 								) : null}
 							</div>
-						)
+						);
 					})}
 				</div>
 
@@ -467,11 +501,13 @@ export function ManagePeopleAssociations({
 			<Dialog
 				open={showAddPersonDialog}
 				onOpenChange={(open) => {
-					setShowAddPersonDialog(open)
+					setShowAddPersonDialog(open);
 					if (!open) {
-						setAddDialogMode("search")
-						setAddSearchInput("")
-						setSelectedSpeakerKey(null)
+						setSubmitError(null);
+						setAddDialogMode("search");
+						setAddSearchInput("");
+						setSelectedSpeakerKey(null);
+						pendingAddDialogCloseRef.current = false;
 					}
 				}}
 			>
@@ -527,8 +563,8 @@ export function ManagePeopleAssociations({
 									<CommandGroup>
 										{availablePeople
 											.filter((p) => {
-												if (!addSearchInput.trim()) return true
-												return p.name?.toLowerCase().includes(addSearchInput.toLowerCase())
+												if (!addSearchInput.trim()) return true;
+												return p.name?.toLowerCase().includes(addSearchInput.toLowerCase());
 											})
 											.map((person) => (
 												<CommandItem
@@ -553,12 +589,12 @@ export function ManagePeopleAssociations({
 											value={`create-new-${addSearchInput}`}
 											onSelect={() => {
 												if (addSearchInput.trim()) {
-													const tokens = addSearchInput.trim().split(/\s+/)
-													setNewPersonFirst(tokens[0] ?? "")
-													setNewPersonLast(tokens.length > 1 ? tokens.slice(1).join(" ") : "")
-													setNewPersonName(addSearchInput.trim())
+													const tokens = addSearchInput.trim().split(/\s+/);
+													setNewPersonFirst(tokens[0] ?? "");
+													setNewPersonLast(tokens.length > 1 ? tokens.slice(1).join(" ") : "");
+													setNewPersonName(addSearchInput.trim());
 												}
-												setAddDialogMode("create")
+												setAddDialogMode("create");
 											}}
 											className="text-primary"
 										>
@@ -645,5 +681,5 @@ export function ManagePeopleAssociations({
 				</DialogContent>
 			</Dialog>
 		</>
-	)
+	);
 }

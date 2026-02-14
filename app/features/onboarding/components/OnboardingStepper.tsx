@@ -1,42 +1,42 @@
-import { Check } from "lucide-react"
-import { Link } from "react-router"
-import { cn } from "~/lib/utils"
+import { Check } from "lucide-react";
+import { Link } from "react-router";
+import { cn } from "~/lib/utils";
 
 interface OnboardingStep {
-	id: string
-	title: string
-	description?: string
-	href?: string
+	id: string;
+	title: string;
+	description?: string;
+	href?: string;
 }
 
 interface OnboardingStepperProps {
-	steps: OnboardingStep[]
-	currentStepId: string
-	className?: string
-	onStepClick?: (stepId: string) => void
+	steps: OnboardingStep[];
+	currentStepId: string;
+	className?: string;
+	onStepClick?: (stepId: string) => void;
 }
 
 export function OnboardingStepper({ steps, currentStepId, className, onStepClick }: OnboardingStepperProps) {
-	const currentIndex = steps.findIndex((step) => step.id === currentStepId)
-	const showDescription = false
+	const currentIndex = steps.findIndex((step) => step.id === currentStepId);
+	const showDescription = false;
 
 	return (
 		<div className={cn("w-full", className)}>
 			<nav aria-label="Progress">
 				<ol className="flex items-center justify-center space-x-4 md:space-x-8">
 					{steps.map((step, index) => {
-						const isCompleted = index < currentIndex
-						const isCurrent = index === currentIndex
-						const isUpcoming = index > currentIndex
+						const isCompleted = index < currentIndex;
+						const isCurrent = index === currentIndex;
+						const isUpcoming = index > currentIndex;
 
 						const handleStepClick = () => {
 							if (step.href) {
-								return // Link will handle navigation
+								return; // Link will handle navigation
 							}
 							if (onStepClick) {
-								onStepClick(step.id)
+								onStepClick(step.id);
 							}
-						}
+						};
 
 						const stepContent = (
 							<>
@@ -67,7 +67,7 @@ export function OnboardingStepper({ steps, currentStepId, className, onStepClick
 									)}
 								</div>
 							</>
-						)
+						);
 
 						return (
 							<li key={step.id} className="flex items-center">
@@ -95,10 +95,10 @@ export function OnboardingStepper({ steps, currentStepId, className, onStepClick
 									/>
 								)}
 							</li>
-						)
+						);
 					})}
 				</ol>
 			</nav>
 		</div>
-	)
+	);
 }

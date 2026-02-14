@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { ArrowLeft, Building2, Calendar, Check, CheckCircle2 } from "lucide-react"
-import { Link } from "react-router"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { PageContainer } from "~/components/layout/PageContainer"
+import { ArrowLeft, Building2, Calendar, Check, CheckCircle2 } from "lucide-react";
+import { Link } from "react-router";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { PageContainer } from "~/components/layout/PageContainer";
 
 // Mock data - in real app this would come from params and database
 const prospectData = {
@@ -95,13 +95,13 @@ const prospectData = {
 			],
 		},
 	],
-}
+};
 
 export default function ProspectDetailPage() {
 	const initials = prospectData.name
 		.split(" ")
 		.map((n) => n[0])
-		.join("")
+		.join("");
 
 	return (
 		<div className="min-h-screen bg-gray-50">
@@ -215,14 +215,14 @@ export default function ProspectDetailPage() {
 								},
 								Value: { purpose: "Do they care enough?", question: "What would it mean if this were fixed?" },
 								Pay: { purpose: "Will they trade money for relief?", question: "Have you paid / would you pay?" },
-							}[item.phase]
+							}[item.phase];
 
 							const evidenceItems = item.evidence.map((evidence) => (
 								<li key={evidence} className="flex items-start gap-2 text-gray-600 text-sm">
 									<span className="mt-0.5 text-emerald-600">•</span>
 									<span>{evidence}</span>
 								</li>
-							))
+							));
 
 							return (
 								<Card key={item.phase} className="overflow-hidden border-2">
@@ -251,11 +251,11 @@ export default function ProspectDetailPage() {
 										)}
 									</div>
 								</Card>
-							)
+							);
 						})}
 					</div>
 				</div>
 			</PageContainer>
 		</div>
-	)
+	);
 }

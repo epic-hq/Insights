@@ -1,8 +1,8 @@
-import { AlertCircle, ArrowLeft, BarChart3, CheckCircle2, Zap } from "lucide-react"
-import { Link } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { AlertCircle, ArrowLeft, BarChart3, CheckCircle2, Zap } from "lucide-react";
+import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 
 export default function CRMQuickReference() {
 	return (
@@ -518,5 +518,5 @@ export default function CRMQuickReference() {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

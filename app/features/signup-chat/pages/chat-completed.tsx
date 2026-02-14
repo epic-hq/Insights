@@ -1,5 +1,5 @@
-import { ArrowLeft, CheckCircle } from "lucide-react"
-import { Link } from "react-router"
+import { ArrowLeft, CheckCircle } from "lucide-react";
+import { Link } from "react-router";
 
 export default function ChatCompleted() {
 	return (
@@ -48,5 +48,5 @@ export default function ChatCompleted() {
 				</div>
 			</main>
 		</div>
-	)
+	);
 }

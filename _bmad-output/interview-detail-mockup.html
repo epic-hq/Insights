@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bryan Rill • Feb 7, 2026 — UpSight</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-page: #0f1117;
+      --bg-card: #1a1d27;
+      --bg-sidebar: #111827;
+      --border: #2a2d37;
+      --text-primary: #e5e7eb;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --accent-primary: #3b82f6;
+      --accent-ai: #f59e0b;
+      --accent-success: #22c55e;
+      --accent-error: #ef4444;
+      --accent-medium: #f59e0b;
+      --accent-low: #3b82f6;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ===== AI SIDEBAR ===== */
+    .ai-sidebar {
+      width: 280px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      transition: margin-left 0.3s ease;
+    }
+
+    .ai-sidebar.collapsed {
+      margin-left: -280px;
+    }
+
+    .ai-sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .ai-sidebar-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .ai-sidebar-title i {
+      color: var(--accent-ai);
+    }
+
+    .collapse-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .collapse-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+
+    .next-steps-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .next-steps-header {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .next-step-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      margin-bottom: 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .next-step-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .next-step-item i {
+      flex-shrink: 0;
+      color: var(--accent-ai);
+    }
+
+    .next-step-text {
+      flex: 1;
+      font-size: 13px;
+    }
+
+    .chat-section {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .chat-message {
+      display: flex;
+      gap: 12px;
+    }
+
+    .chat-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent-ai);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .chat-avatar.user {
+      background: var(--accent-primary);
+    }
+
+    .chat-content {
+      flex: 1;
+    }
+
+    .chat-name {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .chat-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .chat-input-container {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .chat-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+    }
+
+    .chat-input {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
+    }
+
+    .chat-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .chat-input-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .chat-input-btn:hover {
+      color: var(--accent-primary);
+    }
+
+    /* ===== MAIN CONTENT AREA ===== */
+    .main-content {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .expand-sidebar-btn {
+      position: fixed;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border);
+      border-left: none;
+      border-radius: 0 6px 6px 0;
+      padding: 12px 6px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+      z-index: 100;
+      display: none;
+    }
+
+    .expand-sidebar-btn.visible {
+      display: block;
+    }
+
+    .expand-sidebar-btn:hover {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+
+    /* ===== INSIGHTS COLUMN ===== */
+    .insights-column {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      min-width: 0;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .back-link {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .back-link:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .header-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 28px;
+      font-weight: 600;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-badge.ready {
+      background: rgba(34, 197, 94, 0.1);
+      color: var(--accent-success);
+    }
+
+    .status-badge.failed {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--accent-error);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      text-decoration: none;
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-icon {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 8px;
+    }
+
+    .btn-icon:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .people-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .person-link {
+      color: var(--accent-primary);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .person-link:hover {
+      color: #60a5fa;
+    }
+
+    .meta-separator {
+      color: var(--text-muted);
+    }
+
+    .meta-link {
+      color: var(--accent-primary);
+      text-decoration: none;
+    }
+
+    .meta-link:hover {
+      text-decoration: underline;
+    }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .card-header i {
+      color: var(--accent-ai);
+    }
+
+    .insight-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-left: 3px solid;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 0 6px 6px 0;
+    }
+
+    .insight-item.high {
+      border-left-color: var(--accent-error);
+    }
+
+    .insight-item.medium {
+      border-left-color: var(--accent-medium);
+    }
+
+    .insight-item.low {
+      border-left-color: var(--accent-low);
+    }
+
+    .insight-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .priority-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }
+
+    .priority-badge.high {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--accent-error);
+    }
+
+    .priority-badge.medium {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--accent-medium);
+    }
+
+    .priority-badge.low {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--accent-low);
+    }
+
+    .insight-content {
+      flex: 1;
+    }
+
+    .insight-text {
+      margin-bottom: 6px;
+      line-height: 1.6;
+    }
+
+    .source-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--accent-primary);
+      text-decoration: none;
+      font-size: 12px;
+      transition: color 0.2s;
+    }
+
+    .source-link:hover {
+      color: #60a5fa;
+    }
+
+    .recommendation-item {
+      padding: 14px;
+      margin-bottom: 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .recommendation-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .rec-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .focus-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--accent-primary);
+    }
+
+    .rec-action {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .rec-rationale {
+      color: var(--text-muted);
+      font-size: 13px;
+      font-style: italic;
+    }
+
+    .open-questions {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .open-questions-header {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .question-item {
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 6px;
+      color: var(--text-secondary);
+    }
+
+    /* ===== LENSES ===== */
+    .lens-accordion {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    .lens-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .lens-header:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .lens-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+
+    .lens-count {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .lens-chevron {
+      transition: transform 0.3s;
+      color: var(--text-secondary);
+    }
+
+    .lens-accordion.expanded .lens-chevron {
+      transform: rotate(180deg);
+    }
+
+    .lens-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .lens-accordion.expanded .lens-content {
+      max-height: 2000px;
+    }
+
+    .evidence-item {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .evidence-summary {
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .evidence-quote {
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border-left: 3px solid var(--accent-primary);
+      border-radius: 0 4px 4px 0;
+      margin-bottom: 8px;
+      font-style: italic;
+      color: var(--text-secondary);
+    }
+
+    .evidence-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+    }
+
+    .timestamp-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-family: monospace;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .timestamp-link:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+
+    .view-evidence-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--accent-primary);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.2s;
+    }
+
+    .view-evidence-link:hover {
+      color: #60a5fa;
+    }
+
+    /* ===== NOTES ===== */
+    .notes-textarea {
+      width: 100%;
+      min-height: 120px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      line-height: 1.6;
+      resize: vertical;
+    }
+
+    .notes-textarea:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+    }
+
+    /* ===== SOURCE COLUMN ===== */
+    .source-column {
+      width: 42%;
+      min-width: 400px;
+      max-width: 550px;
+      background: var(--bg-card);
+      border-left: 1px solid var(--border);
+      overflow-y: auto;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .video-section {
+      position: relative;
+      background: #000;
+      aspect-ratio: 16/9;
+    }
+
+    .video-thumbnail {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .video-thumbnail::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px;
+      height: 150px;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+    }
+
+    .play-button {
+      width: 72px;
+      height: 72px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+      z-index: 10;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .play-button:hover {
+      transform: scale(1.1);
+      background: #fff;
+    }
+
+    .play-button i {
+      color: #000;
+      margin-left: 4px;
+    }
+
+    .playback-controls {
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .play-pause-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .scrubber {
+      flex: 1;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 2px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .scrubber-progress {
+      height: 100%;
+      width: 23%;
+      background: var(--accent-primary);
+      border-radius: 2px;
+    }
+
+    .time-display {
+      color: #fff;
+      font-size: 12px;
+      font-family: monospace;
+    }
+
+    .speed-control {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .speed-control:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .chapters-section {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    .chapter-item {
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+    }
+
+    .chapter-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .chapter-item.active {
+      background: rgba(59, 130, 246, 0.1);
+      border-left-color: var(--accent-primary);
+    }
+
+    .chapter-time {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .chapter-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+
+    .chapter-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .transcript-section {
+      padding: 20px;
+    }
+
+    .transcript-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .search-transcript-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+
+    .search-transcript-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+
+    .transcript-paragraph {
+      margin-bottom: 20px;
+      position: relative;
+      padding-left: 60px;
+      transition: background 0.3s;
+    }
+
+    .transcript-paragraph.highlighted {
+      background: rgba(59, 130, 246, 0.1);
+      margin-left: -8px;
+      margin-right: -8px;
+      padding-left: 68px;
+      padding-top: 8px;
+      padding-bottom: 8px;
+      border-radius: 6px;
+      animation: pulse 0.6s ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { background: rgba(59, 130, 246, 0.1); }
+      50% { background: rgba(59, 130, 246, 0.2); }
+    }
+
+    .transcript-timestamp {
+      position: absolute;
+      left: 0;
+      top: 0;
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      width: 50px;
+    }
+
+    .transcript-speaker {
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+
+    .transcript-speaker.speaker-a {
+      color: #60a5fa;
+    }
+
+    .transcript-speaker.speaker-b {
+      color: #a78bfa;
+    }
+
+    .transcript-text {
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    .evidence-highlight {
+      border-left: 3px solid;
+      padding-left: 8px;
+      margin-left: -8px;
+      position: relative;
+    }
+
+    .evidence-highlight.lens-research {
+      border-left-color: var(--accent-primary);
+    }
+
+    .evidence-highlight.lens-product {
+      border-left-color: var(--accent-medium);
+    }
+
+    .evidence-highlight.lens-partnership {
+      border-left-color: var(--accent-success);
+    }
+
+    .evidence-tooltip {
+      position: absolute;
+      left: 100%;
+      top: 0;
+      margin-left: 12px;
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 100;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .evidence-highlight:hover .evidence-tooltip {
+      opacity: 1;
+    }
+
+    /* ===== SCROLLBAR STYLING ===== */
+    .insights-column::-webkit-scrollbar,
+    .source-column::-webkit-scrollbar,
+    .chat-section::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .insights-column::-webkit-scrollbar-track,
+    .source-column::-webkit-scrollbar-track,
+    .chat-section::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .insights-column::-webkit-scrollbar-thumb,
+    .source-column::-webkit-scrollbar-thumb,
+    .chat-section::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    .insights-column::-webkit-scrollbar-thumb:hover,
+    .source-column::-webkit-scrollbar-thumb:hover,
+    .chat-section::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* ===== RESPONSIVE ADJUSTMENTS ===== */
+    @media (max-width: 1440px) {
+      .source-column {
+        width: 38%;
+      }
+    }
+
+    @media (min-width: 1920px) {
+      .container {
+        max-width: 2000px;
+        margin: 0 auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- AI SIDEBAR -->
+    <aside class="ai-sidebar" id="aiSidebar">
+      <div class="ai-sidebar-header">
+        <div class="ai-sidebar-title">
+          <i data-lucide="sparkles"></i>
+          Uppy Assistant
+        </div>
+        <button class="collapse-btn" id="collapseSidebarBtn">
+          <i data-lucide="panel-left-close" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+
+      <div class="next-steps-section">
+        <div class="next-steps-header">Next Steps</div>
+        <a href="#" class="next-step-item">
+          <i data-lucide="clipboard-list" style="width: 16px; height: 16px;"></i>
+          <span class="next-step-text">Review 15 new survey responses</span>
+        </a>
+        <a href="#" class="next-step-item">
+          <i data-lucide="check-circle-2" style="width: 16px; height: 16px;"></i>
+          <span class="next-step-text">3 priority tasks this week</span>
+        </a>
+        <a href="#" class="next-step-item">
+          <i data-lucide="layers" style="width: 16px; height: 16px;"></i>
+          <span class="next-step-text">8 themes across 63 conversations</span>
+        </a>
+      </div>
+
+      <div class="chat-section">
+        <div class="chat-message">
+          <div class="chat-avatar">
+            <i data-lucide="sparkles" style="width: 16px; height: 16px; color: #fff;"></i>
+          </div>
+          <div class="chat-content">
+            <div class="chat-name">Uppy</div>
+            <div class="chat-text">I've analyzed this conversation and identified 77 evidence points across 3 key lenses. Would you like me to highlight the most critical findings?</div>
+          </div>
+        </div>
+
+        <div class="chat-message">
+          <div class="chat-avatar user">
+            <i data-lucide="user" style="width: 16px; height: 16px; color: #fff;"></i>
+          </div>
+          <div class="chat-content">
+            <div class="chat-name">You</div>
+            <div class="chat-text">Yes, show me the top 3 insights about product feedback</div>
+          </div>
+        </div>
+
+        <div class="chat-message">
+          <div class="chat-avatar">
+            <i data-lucide="sparkles" style="width: 16px; height: 16px; color: #fff;"></i>
+          </div>
+          <div class="chat-content">
+            <div class="chat-name">Uppy</div>
+            <div class="chat-text">Based on Bryan's feedback, the three most critical product insights are:<br><br>1. Evidence grooming controls are essential for researcher trust<br>2. Side-by-side transcript verification is the #1 requested feature<br>3. Global taxonomy management needs admin-level configurability</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-input-container">
+        <div class="chat-input-wrapper">
+          <button class="chat-input-btn">
+            <i data-lucide="mic" style="width: 16px; height: 16px;"></i>
+          </button>
+          <input type="text" class="chat-input" placeholder="Ask Uppy anything...">
+          <button class="chat-input-btn">
+            <i data-lucide="send" style="width: 16px; height: 16px;"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- EXPAND SIDEBAR BUTTON (hidden initially) -->
+    <button class="expand-sidebar-btn" id="expandSidebarBtn">
+      <i data-lucide="panel-left-open" style="width: 20px; height: 20px;"></i>
+    </button>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+      <!-- INSIGHTS COLUMN -->
+      <main class="insights-column">
+        <div class="page-header">
+          <div class="header-nav">
+            <a href="#" class="back-link">
+              <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+              Back
+            </a>
+          </div>
+
+          <div class="header-title-row">
+            <div class="header-title">
+              <span>Bryan Rill • Feb 7, 2026</span>
+              <span class="status-badge ready">
+                <i data-lucide="check-circle" style="width: 12px; height: 12px;"></i>
+                Ready
+              </span>
+            </div>
+            <div class="header-actions">
+              <button class="btn btn-icon">
+                <i data-lucide="share-2" style="width: 16px; height: 16px;"></i>
+              </button>
+              <button class="btn btn-secondary">
+                Actions
+                <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+              </button>
+              <a href="#" class="btn btn-secondary">Edit</a>
+            </div>
+          </div>
+
+          <div class="people-row">
+            <a href="#" class="person-link">Bryan Rill</a>
+            <span class="meta-separator">•</span>
+            <a href="#" class="person-link">Ricky Moy (UpSight)</a>
+            <button class="btn-icon" style="padding: 2px 4px;">
+              <i data-lucide="pencil" style="width: 12px; height: 12px;"></i>
+            </button>
+          </div>
+
+          <div class="header-meta">
+            <span>Feb-07 03:34 pm</span>
+            <span class="meta-separator">•</span>
+            <span>By Ricky Moy</span>
+            <span class="meta-separator">•</span>
+            <span>59m 34s</span>
+            <span class="meta-separator">•</span>
+            <a href="#" class="meta-link">77 evidence points ↗</a>
+          </div>
+        </div>
+
+        <!-- KEY INSIGHTS -->
+        <div class="card">
+          <div class="card-header">
+            <i data-lucide="sparkles"></i>
+            Key Insights
+          </div>
+
+          <div class="insight-item high">
+            <span class="priority-badge high">High</span>
+            <div class="insight-content">
+              <div class="insight-text">UX researchers overwhelmingly distrust AI qualitative coding — no platform has earned trust yet</div>
+              <a href="#" class="source-link" data-transcript-id="p3">
+                See source <i data-lucide="arrow-right" style="width: 12px; height: 12px;"></i>
+              </a>
+            </div>
+          </div>
+
+          <div class="insight-item medium">
+            <span class="priority-badge medium">Medium</span>
+            <div class="insight-content">
+              <div class="insight-text">Side-by-side transcript verification is the #1 requested feature across all expert researchers</div>
+              <a href="#" class="source-link" data-transcript-id="p5">
+                See source <i data-lucide="arrow-right" style="width: 12px; height: 12px;"></i>
+              </a>
+            </div>
+          </div>
+
+          <div class="insight-item low">
+            <span class="priority-badge low">Low</span>
+            <div class="insight-content">
+              <div class="insight-text">Lens/taxonomy architecture needs admin-level configurability with inclusion/exclusion criteria</div>
+              <a href="#" class="source-link" data-transcript-id="p8">
+                See source <i data-lucide="arrow-right" style="width: 12px; height: 12px;"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- RECOMMENDATIONS -->
+        <div class="card">
+          <div class="card-header">
+            <i data-lucide="lightbulb"></i>
+            Recommendations
+          </div>
+
+          <div class="recommendation-item">
+            <div class="rec-header">
+              <span class="focus-tag">Product</span>
+              <span class="rec-action">Add evidence grooming controls — verify, edit, reclassify — to evidence detail page</span>
+            </div>
+            <div class="rec-rationale">Bryan: "every researcher on the planet is going to insist on that"</div>
+          </div>
+
+          <div class="recommendation-item">
+            <div class="rec-header">
+              <span class="focus-tag">Product</span>
+              <span class="rec-action">Build side-by-side transcript verification view with ability to jump to source timestamp</span>
+            </div>
+            <div class="rec-rationale">Bryan: "I need to see the quote in context, not just trust what the AI says it found"</div>
+          </div>
+
+          <div class="recommendation-item">
+            <div class="rec-header">
+              <span class="focus-tag">Partnership</span>
+              <span class="rec-action">Explore consulting partnership for methodology framework development</span>
+            </div>
+            <div class="rec-rationale">Bryan has deep expertise in qualitative research and is actively teaching methodologies</div>
+          </div>
+
+          <div class="open-questions">
+            <div class="open-questions-header">
+              <i data-lucide="help-circle" style="width: 14px; height: 14px;"></i>
+              Open Questions
+            </div>
+            <div class="question-item">How does UpSight's deterministic pipeline compare in Bryan's benchmark test?</div>
+            <div class="question-item">What would a consulting partnership engagement model look like?</div>
+            <div class="question-item">Can we get access to his AARP workshop materials to inform our onboarding?</div>
+          </div>
+        </div>
+
+        <!-- CONVERSATION LENSES -->
+        <div class="card">
+          <div class="card-header">
+            <i data-lucide="filter"></i>
+            Conversation Lenses
+          </div>
+
+          <div class="lens-accordion expanded">
+            <div class="lens-header">
+              <div>
+                <span class="lens-title">Research Methodology</span>
+                <span class="lens-count">4 evidence items</span>
+              </div>
+              <i data-lucide="chevron-down" class="lens-chevron" style="width: 18px; height: 18px;"></i>
+            </div>
+            <div class="lens-content">
+              <div class="evidence-item">
+                <div class="evidence-summary">Bryan emphasizes that research design must precede question formulation</div>
+                <div class="evidence-quote">"You have to know what kind of research you're doing before you can write good questions. Are you doing generative discovery? Validation? Usability? Each needs a different approach."</div>
+                <div class="evidence-footer">
+                  <a href="#" class="timestamp-link" data-time="108">
+                    <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+                    1:48
+                  </a>
+                  <a href="#" class="view-evidence-link">
+                    View evidence <i data-lucide="arrow-right" style="width: 12px; height: 12px;"></i>
+                  </a>
+                </div>
+              </div>
+
+              <div class="evidence-item">
+                <div class="evidence-summary">Trust in AI qualitative coding is the biggest barrier to adoption among expert researchers</div>
+                <div class="evidence-quote">"No one has cracked this yet. Every tool says 'we use AI to analyze your interviews' but none of them show you HOW to verify it's right. That's why researchers don't trust it."</div>
+                <div class="evidence-footer">
+                  <a href="#" class="timestamp-link" data-time="802">
+                    <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+                    13:22
+                  </a>
+                  <a href="#" class="view-evidence-link">
+                    View evidence <i data-lucide="arrow-right" style="width: 12px; height: 12px;"></i>
+                  </a>
+                </div>
+              </div>
+
+              <div class="evidence-item">
+                <div class="evidence-summary">Side-by-side transcript verification is universally requested by professional researchers</div>
+                <div class="evidence-quote">"I need to see the quote in context. Show me exactly where in the transcript this came from, with a few lines before and after. That's table stakes."</div>
+                <div class="evidence-footer">
+                  <a href="#" class="timestamp-link" data-time="815">
+                    <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+                    13:35
+                  </a>
+                  <a href="#" class="view-evidence-link">
+                    View evidence <i data-lucide="arrow-right" style="width: 12px; height: 12px;"></i>
+                  </a>
+                </div>
+              </div>
+
+              <div class="evidence-item">
+                <div class="evidence-summary">Researchers need manual control to edit, reclassify, and validate AI-generated findings</div>
+                <div class="evidence-quote">"Every researcher on the planet is going to insist on being able to edit what the AI found. Sometimes it's wrong, sometimes it's close but not quite right. Give me a way to fix it."</div>
+                <div class="evidence-footer">
+                  <a href="#" class="timestamp-link" data-time="1282">
+                    <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+                    21:22
+                  </a>
+                  <a href="#" class="view-evidence-link">
+                    View evidence <i data-lucide="arrow-right" style="width: 12px; height: 12px;"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="lens-accordion">
+            <div class="lens-header">
+              <div>
+                <span class="lens-title">Product Feedback</span>
+                <span class="lens-count">3 evidence items</span>
+              </div>
+              <i data-lucide="chevron-down" class="lens-chevron" style="width: 18px; height: 18px;"></i>
+            </div>
+            <div class="lens-content">
+              <!-- Collapsed by default -->
+            </div>
+          </div>
+
+          <div class="lens-accordion">
+            <div class="lens-header">
+              <div>
+                <span class="lens-title">Partnership Potential</span>
+                <span class="lens-count">2 evidence items</span>
+              </div>
+              <i data-lucide="chevron-down" class="lens-chevron" style="width: 18px; height: 18px;"></i>
+            </div>
+            <div class="lens-content">
+              <!-- Collapsed by default -->
+            </div>
+          </div>
+        </div>
+
+        <!-- USER NOTES -->
+        <div class="card">
+          <div class="card-header">
+            <i data-lucide="pencil"></i>
+            Notes
+          </div>
+          <textarea class="notes-textarea" placeholder="Add your notes here...">Bryan has PhD in qualitative research methods from UCSD. Wife Lisa also does benchmarking. Writing article on AI reliability for academic journal. Giving AARP workshop on research methodology next week. Very interested in partnership model — follow up after he tests the platform.</textarea>
+        </div>
+      </main>
+
+      <!-- SOURCE COLUMN -->
+      <aside class="source-column">
+        <div class="video-section">
+          <div class="video-thumbnail">
+            <button class="play-button" id="playBtn">
+              <i data-lucide="play" style="width: 32px; height: 32px;"></i>
+            </button>
+          </div>
+          <div class="playback-controls">
+            <button class="play-pause-btn">
+              <i data-lucide="play" style="width: 18px; height: 18px;"></i>
+            </button>
+            <div class="scrubber">
+              <div class="scrubber-progress"></div>
+            </div>
+            <span class="time-display">13:42 / 59:34</span>
+            <button class="speed-control">1.0x</button>
+          </div>
+        </div>
+
+        <div class="chapters-section">
+          <div class="section-header">
+            <i data-lucide="list"></i>
+            Chapters
+          </div>
+
+          <div class="chapter-item active">
+            <div class="chapter-time">0:00</div>
+            <div class="chapter-title">Intro & Context</div>
+            <div class="chapter-desc">Research design and project context in AI tools</div>
+          </div>
+
+          <div class="chapter-item">
+            <div class="chapter-time">1:48</div>
+            <div class="chapter-title">Best Practices</div>
+            <div class="chapter-desc">Building research methodology into question design</div>
+          </div>
+
+          <div class="chapter-item">
+            <div class="chapter-time">6:03</div>
+            <div class="chapter-title">Decision Questions</div>
+            <div class="chapter-desc">Hierarchy between business objectives and interview prompts</div>
+          </div>
+
+          <div class="chapter-item">
+            <div class="chapter-time">8:09</div>
+            <div class="chapter-title">Education Challenge</div>
+            <div class="chapter-desc">Coaching users who don't understand research methodology</div>
+          </div>
+
+          <div class="chapter-item">
+            <div class="chapter-time">10:11</div>
+            <div class="chapter-title">Conversation Lenses</div>
+            <div class="chapter-desc">Tag taxonomy, BANT framework, structured output</div>
+          </div>
+
+          <div class="chapter-item">
+            <div class="chapter-time">13:22</div>
+            <div class="chapter-title">Auditability</div>
+            <div class="chapter-desc">Side-by-side transcript verification, trust building</div>
+          </div>
+
+          <div class="chapter-item">
+            <div class="chapter-time">21:22</div>
+            <div class="chapter-title">Evidence Grooming</div>
+            <div class="chapter-desc">Editing, reclassifying, and manually tagging findings</div>
+          </div>
+
+          <div class="chapter-item">
+            <div class="chapter-time">30:13</div>
+            <div class="chapter-title">Quality vs Speed</div>
+            <div class="chapter-desc">Time-to-wow metric vs research quality</div>
+          </div>
+
+          <div class="chapter-item">
+            <div class="chapter-time">41:31</div>
+            <div class="chapter-title">Taxonomy Design</div>
+            <div class="chapter-desc">Global vs project tags, admin controls</div>
+          </div>
+
+          <div class="chapter-item">
+            <div class="chapter-time">49:49</div>
+            <div class="chapter-title">Next Steps</div>
+            <div class="chapter-desc">Partnership discussion, benchmark testing, platform access</div>
+          </div>
+        </div>
+
+        <div class="transcript-section">
+          <div class="transcript-header">
+            <div class="section-header">
+              <i data-lucide="file-text"></i>
+              Transcript
+            </div>
+            <button class="search-transcript-btn">
+              <i data-lucide="search" style="width: 14px; height: 14px;"></i>
+              Search
+            </button>
+          </div>
+
+          <div class="transcript-paragraph" id="p1">
+            <div class="transcript-timestamp">0:00</div>
+            <div class="transcript-speaker speaker-b">Rick:</div>
+            <div class="transcript-text">Thanks so much for taking the time today, Bryan. I know you're working on that AARP workshop, so I really appreciate you fitting this in.</div>
+          </div>
+
+          <div class="transcript-paragraph" id="p2">
+            <div class="transcript-timestamp">0:09</div>
+            <div class="transcript-speaker speaker-a">Bryan:</div>
+            <div class="transcript-text">Of course! I'm excited to see what you're building. There's so much noise in the AI research space right now, and honestly most of it doesn't understand qualitative methodology at all.</div>
+          </div>
+
+          <div class="transcript-paragraph evidence-highlight lens-research" id="p3">
+            <div class="transcript-timestamp">1:48</div>
+            <div class="transcript-speaker speaker-a">Bryan:</div>
+            <div class="transcript-text">You have to know what kind of research you're doing before you can write good questions. Are you doing generative discovery? Validation? Usability? Each needs a different approach. Most people just throw questions at users without thinking about the underlying research design.</div>
+            <div class="evidence-tooltip">Evidence: Research design precedes questions — View →</div>
+          </div>
+
+          <div class="transcript-paragraph" id="p4">
+            <div class="transcript-timestamp">2:15</div>
+            <div class="transcript-speaker speaker-b">Rick:</div>
+            <div class="transcript-text">That's exactly what we're trying to solve with conversation lenses. The idea is that you define the structure of what you're looking for upfront, and then the AI extracts those specific insights from the conversation.</div>
+          </div>
+
+          <div class="transcript-paragraph evidence-highlight lens-research" id="p5">
+            <div class="transcript-timestamp">13:22</div>
+            <div class="transcript-speaker speaker-a">Bryan:</div>
+            <div class="transcript-text">No one has cracked this yet. Every tool says "we use AI to analyze your interviews" but none of them show you HOW to verify it's right. That's why researchers don't trust it. I need to see the quote in context. Show me exactly where in the transcript this came from, with a few lines before and after. That's table stakes.</div>
+            <div class="evidence-tooltip">Evidence: Side-by-side verification needed — View →</div>
+          </div>
+
+          <div class="transcript-paragraph" id="p6">
+            <div class="transcript-timestamp">14:08</div>
+            <div class="transcript-speaker speaker-b">Rick:</div>
+            <div class="transcript-text">So you're saying that every piece of evidence we extract should link directly back to the source transcript with context?</div>
+          </div>
+
+          <div class="transcript-paragraph" id="p7">
+            <div class="transcript-timestamp">14:15</div>
+            <div class="transcript-speaker speaker-a">Bryan:</div>
+            <div class="transcript-text">Absolutely. And not just link to it — make it dead simple to see both side-by-side. Gong does this reasonably well for sales calls, but they're not focused on research methodology. There's an opportunity here.</div>
+          </div>
+
+          <div class="transcript-paragraph evidence-highlight lens-product" id="p8">
+            <div class="transcript-timestamp">21:22</div>
+            <div class="transcript-speaker speaker-a">Bryan:</div>
+            <div class="transcript-text">Every researcher on the planet is going to insist on being able to edit what the AI found. Sometimes it's wrong, sometimes it's close but not quite right. Give me a way to fix it. Let me reclassify evidence, mark things as verified, add my own tags. That's evidence grooming, and it's essential.</div>
+            <div class="evidence-tooltip">Evidence: Evidence grooming controls — View →</div>
+          </div>
+
+          <div class="transcript-paragraph" id="p9">
+            <div class="transcript-timestamp">22:03</div>
+            <div class="transcript-speaker speaker-b">Rick:</div>
+            <div class="transcript-text">That makes total sense. So you'd want an evidence detail page where you can see the full context, edit the classification, maybe even add notes or change the categorization?</div>
+          </div>
+
+          <div class="transcript-paragraph evidence-highlight lens-partnership" id="p10">
+            <div class="transcript-timestamp">49:49</div>
+            <div class="transcript-speaker speaker-a">Bryan:</div>
+            <div class="transcript-text">I'd love to run a benchmark test with my standard interview dataset. If UpSight's deterministic pipeline holds up against human coding, that would be publishable. And honestly, I think there's a consulting partnership opportunity here — helping you build the methodology framework into the product.</div>
+            <div class="evidence-tooltip">Evidence: Partnership interest — View →</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Sidebar collapse/expand
+    const aiSidebar = document.getElementById('aiSidebar');
+    const collapseSidebarBtn = document.getElementById('collapseSidebarBtn');
+    const expandSidebarBtn = document.getElementById('expandSidebarBtn');
+
+    collapseSidebarBtn.addEventListener('click', () => {
+      aiSidebar.classList.add('collapsed');
+      expandSidebarBtn.classList.add('visible');
+    });
+
+    expandSidebarBtn.addEventListener('click', () => {
+      aiSidebar.classList.remove('collapsed');
+      expandSidebarBtn.classList.remove('visible');
+    });
+
+    // Lens accordion toggle
+    document.querySelectorAll('.lens-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const accordion = header.parentElement;
+        accordion.classList.toggle('expanded');
+      });
+    });
+
+    // Chapter navigation
+    document.querySelectorAll('.chapter-item').forEach((chapter, index) => {
+      chapter.addEventListener('click', () => {
+        // Update active state
+        document.querySelectorAll('.chapter-item').forEach(c => c.classList.remove('active'));
+        chapter.classList.add('active');
+
+        // In a real implementation, this would jump the video to the timestamp
+        console.log('Jump to chapter:', index);
+      });
+    });
+
+    // "See source" links - scroll to transcript and highlight
+    document.querySelectorAll('.source-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const transcriptId = link.getAttribute('data-transcript-id');
+        const targetParagraph = document.getElementById(transcriptId);
+
+        if (targetParagraph) {
+          // Remove previous highlights
+          document.querySelectorAll('.transcript-paragraph.highlighted').forEach(p => {
+            p.classList.remove('highlighted');
+          });
+
+          // Scroll to and highlight the target
+          targetParagraph.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targetParagraph.classList.add('highlighted');
+
+          // Remove highlight after animation
+          setTimeout(() => {
+            targetParagraph.classList.remove('highlighted');
+          }, 2000);
+        }
+      });
+    });
+
+    // Timestamp links in evidence - same scroll behavior
+    document.querySelectorAll('.timestamp-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const time = link.getAttribute('data-time');
+        console.log('Jump to time:', time);
+
+        // In a real implementation, this would seek the video
+        // For now, just demonstrate the scroll behavior
+      });
+    });
+
+    // Video play button
+    const playBtn = document.getElementById('playBtn');
+    playBtn.addEventListener('click', () => {
+      alert('Video would play here (this is a mockup)');
+    });
+
+    // Smooth scroll behavior
+    document.documentElement.style.scrollBehavior = 'smooth';
+  </script>
+</body>
+</html>

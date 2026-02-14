@@ -1,8 +1,8 @@
-import { ArrowRight, Award, Building2, Clock, Sparkles, TrendingUp } from "lucide-react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router"
-import { getServerEnv } from "~/env.server"
-import { formatDate, getReadingTime } from "~/lib/cms/utils"
+import { ArrowRight, Award, Building2, Clock, Sparkles, TrendingUp } from "lucide-react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Link, useLoaderData } from "react-router";
+import { getServerEnv } from "~/env.server";
+import { formatDate, getReadingTime } from "~/lib/cms/utils";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -24,14 +24,14 @@ export const meta: MetaFunction = () => {
 		},
 		{ property: "og:type", content: "website" },
 		{ property: "og:url", content: "https://getupsight.com/case-studies" },
-	]
-}
+	];
+};
 
 // Format case study data on the server
 function formatCaseStudyForClient(post: any) {
 	// Use heroImage field from CMS
-	const image = post.heroImage
-	const imageUrl = image?.url ? `https://upsight-cms.vercel.app${image.url}` : null
+	const image = post.heroImage;
+	const imageUrl = image?.url ? `https://upsight-cms.vercel.app${image.url}` : null;
 
 	return {
 		id: post.id,
@@ -53,31 +53,31 @@ function formatCaseStudyForClient(post: any) {
 					avatarUrl: null,
 				}
 			: null,
-	}
+	};
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
-	const url = new URL(request.url)
-	const page = Number.parseInt(url.searchParams.get("page") || "1", 10)
-	const limit = 12 // Case studies per page
+	const url = new URL(request.url);
+	const page = Number.parseInt(url.searchParams.get("page") || "1", 10);
+	const limit = 12; // Case studies per page
 
 	try {
 		// Fetch from case-studies endpoint (separate from blog posts)
-		const env = getServerEnv()
+		const env = getServerEnv();
 		const params = new URLSearchParams({
 			limit: limit.toString(),
 			page: page.toString(),
 			where: JSON.stringify({ status: { equals: "published" } }),
 			sort: "-publishedAt",
-		})
+		});
 
 		const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/case-studies?${params}`, {
 			headers: { "Content-Type": "application/json" },
-		})
+		});
 
 		// If endpoint doesn't exist yet, return empty state
 		if (!response.ok) {
-			console.log("Case studies endpoint not ready yet, returning empty state")
+			console.log("Case studies endpoint not ready yet, returning empty state");
 			return {
 				caseStudies: [],
 				pagination: {
@@ -87,13 +87,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 					hasNextPage: false,
 					hasPrevPage: false,
 				},
-			}
+			};
 		}
 
-		const postsData = await response.json()
+		const postsData = await response.json();
 
 		// Format all case studies on the server
-		const formattedCaseStudies = postsData.docs.map(formatCaseStudyForClient)
+		const formattedCaseStudies = postsData.docs.map(formatCaseStudyForClient);
 
 		return {
 			caseStudies: formattedCaseStudies,
@@ -104,9 +104,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				hasNextPage: postsData.hasNextPage,
 				hasPrevPage: postsData.hasPrevPage,
 			},
-		}
+		};
 	} catch (error) {
-		console.error("Failed to fetch case studies:", error)
+		console.error("Failed to fetch case studies:", error);
 		// Return empty state on error
 		return {
 			caseStudies: [],
@@ -118,12 +118,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				hasPrevPage: false,
 			},
 			error: "Failed to load case studies. Please try again later.",
-		}
+		};
 	}
 }
 
 export default function CaseStudiesIndex() {
-	const { caseStudies, pagination, error } = useLoaderData<typeof loader>()
+	const { caseStudies, pagination, error } = useLoaderData<typeof loader>();
 
 	return (
 		<>
@@ -227,10 +227,10 @@ export default function CaseStudiesIndex() {
 				</div>
 			</section>
 		</>
-	)
+	);
 }
 
-type FormattedCaseStudy = ReturnType<typeof formatCaseStudyForClient>
+type FormattedCaseStudy = ReturnType<typeof formatCaseStudyForClient>;
 
 // Featured Case Study Card (Large, prominent)
 function FeaturedCaseStudyCard({ caseStudy }: { caseStudy: FormattedCaseStudy }) {
@@ -311,7 +311,7 @@ function FeaturedCaseStudyCard({ caseStudy }: { caseStudy: FormattedCaseStudy })
 				</div>
 			</article>
 		</Link>
-	)
+	);
 }
 
 // Regular Case Study Card
@@ -378,5 +378,5 @@ function CaseStudyCard({ caseStudy }: { caseStudy: FormattedCaseStudy }) {
 				</div>
 			</article>
 		</Link>
-	)
+	);
 }

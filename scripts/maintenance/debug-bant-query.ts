@@ -1,37 +1,37 @@
-import { createClient } from "@supabase/supabase-js"
-import consola from "consola"
-import type { Database } from "~/types"
+import { createClient } from "@supabase/supabase-js";
+import consola from "consola";
+import type { Database } from "~/types";
 
-const supabaseUrl = process.env.SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-	throw new Error("Missing Supabase environment variables")
+	throw new Error("Missing Supabase environment variables");
 }
 
-const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
+const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
 async function debugBantQuery() {
-	consola.info("Checking BANT data...")
+	consola.info("Checking BANT data...");
 
 	// Get all opportunities
-	const { data: allOpps } = await supabase.from("opportunities").select("id, title, project_id").limit(10)
-	consola.info(`Total opportunities: ${allOpps?.length || 0}`)
+	const { data: allOpps } = await supabase.from("opportunities").select("id, title, project_id").limit(10);
+	consola.info(`Total opportunities: ${allOpps?.length || 0}`);
 
 	// Get all sales_lens_summaries
 	const { data: allSummaries } = await supabase
 		.from("sales_lens_summaries")
 		.select("id, opportunity_id, framework")
-		.limit(10)
-	consola.info(`Total sales_lens_summaries: ${allSummaries?.length || 0}`)
+		.limit(10);
+	consola.info(`Total sales_lens_summaries: ${allSummaries?.length || 0}`);
 	consola.info(
 		"Framework values:",
 		allSummaries?.map((s) => s.framework)
-	)
+	);
 
 	// Try the same query as generateBantMatrix
 	if (allOpps && allOpps.length > 0) {
-		const projectId = allOpps[0].project_id
+		const projectId = allOpps[0].project_id;
 		const { data: opportunities, error } = await supabase
 			.from("opportunities")
 			.select(
@@ -50,14 +50,14 @@ async function debugBantQuery() {
       `
 			)
 			.eq("project_id", projectId)
-			.eq("sales_lens_summaries.framework", "BANT_GPCT")
+			.eq("sales_lens_summaries.framework", "BANT_GPCT");
 
 		if (error) {
-			consola.error("Query error:", error)
+			consola.error("Query error:", error);
 		} else {
-			consola.info(`Opportunities with BANT_GPCT framework: ${opportunities?.length || 0}`)
+			consola.info(`Opportunities with BANT_GPCT framework: ${opportunities?.length || 0}`);
 			if (opportunities && opportunities.length > 0) {
-				consola.info("Sample:", JSON.stringify(opportunities[0], null, 2))
+				consola.info("Sample:", JSON.stringify(opportunities[0], null, 2));
 			}
 		}
 
@@ -74,25 +74,25 @@ async function debugBantQuery() {
         )
       `
 			)
-			.eq("project_id", projectId)
+			.eq("project_id", projectId);
 
 		if (errorNoFilter) {
-			consola.error("Query error (no filter):", errorNoFilter)
+			consola.error("Query error (no filter):", errorNoFilter);
 		} else {
-			consola.info(`Opportunities (no filter): ${opportunitiesNoFilter?.length || 0}`)
+			consola.info(`Opportunities (no filter): ${opportunitiesNoFilter?.length || 0}`);
 			opportunitiesNoFilter?.forEach((opp) => {
-				consola.info(`- ${opp.title}: summaries=${opp.sales_lens_summaries?.length || 0}`)
-			})
+				consola.info(`- ${opp.title}: summaries=${opp.sales_lens_summaries?.length || 0}`);
+			});
 		}
 	}
 }
 
 debugBantQuery()
 	.then(() => {
-		consola.success("Done")
-		process.exit(0)
+		consola.success("Done");
+		process.exit(0);
 	})
 	.catch((error) => {
-		consola.error("Error:", error)
-		process.exit(1)
-	})
+		consola.error("Error:", error);
+		process.exit(1);
+	});

@@ -53,6 +53,14 @@ client<llm> CustomGPT5 {
 
 
 
+// Evidence extraction: fast model with fallback to heavier model on failure
+client<llm> EvidenceExtractionFast {
+  provider fallback
+  options {
+    strategy [CustomGPT5Mini, CustomGPT4o]
+  }
+}
+
 // https://docs.boundaryml.com/docs/snippets/clients/round-robin
 client<llm> CustomFast {
   provider round-robin

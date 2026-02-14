@@ -1,6 +1,6 @@
 // need to add acheck for if env NODE_ENV=development then set HOST to localhost, else "getupsight.com"
-export const PRODUCTION_HOST = "https://getupsight.com"
-export const HOST = process.env.NODE_ENV === "development" ? "http://localhost:4280" : PRODUCTION_HOST
+export const PRODUCTION_HOST = "https://getupsight.com";
+export const HOST = process.env.NODE_ENV === "development" ? "http://localhost:4280" : PRODUCTION_HOST;
 
 const AUTH = {
 	LOGIN: "/login",
@@ -8,7 +8,7 @@ const AUTH = {
 	LOGOUT: "/logout",
 	CALLBACK: "/auth/callback",
 	HOST,
-} as const
+} as const;
 
 export const PATHS = {
 	DASHBOARD: "/dashboard",
@@ -28,4 +28,4 @@ export const PATHS = {
 	TEAMS: "/teams",
 	HELP: "/help",
 	DOCS: "/docs",
-} as const
+} as const;

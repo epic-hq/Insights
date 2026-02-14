@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>UpSight Mobile - 3-Tab Design Mock</title>
+<style>
+  /* UpSight Design Tokens (Dark Mode) */
+  :root {
+    --background: oklch(0.08 0.004 285.82);
+    --foreground: oklch(0.95 0.013 106.42);
+    --card: oklch(0.12 0.006 285.82);
+    --card-foreground: oklch(0.95 0.013 106.42);
+    --primary: oklch(0.6969 0.196 252.37);
+    --primary-foreground: oklch(0.08 0.004 285.82);
+    --secondary: oklch(0.18 0.008 285.82);
+    --secondary-foreground: oklch(0.95 0.013 106.42);
+    --muted: oklch(0.18 0.008 285.82);
+    --muted-foreground: oklch(0.65 0.013 106.42);
+    --border: oklch(0.25 0.008 285.82);
+    --destructive: oklch(0.704 0.191 22.216);
+    --accent: oklch(0.25 0.04 180);
+    --radius: 0.625rem;
+    --user-bubble: oklch(0.22 0.01 285.82);
+    --green-badge: oklch(0.45 0.12 155);
+    --amber-badge: oklch(0.55 0.14 75);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #111;
+    color: var(--foreground);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 24px 16px;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  /* Phone frame */
+  .phone {
+    width: 390px;
+    height: 844px;
+    background: var(--background);
+    border-radius: 44px;
+    overflow: hidden;
+    position: relative;
+    border: 3px solid oklch(0.25 0.008 285.82);
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
+    flex-shrink: 0;
+  }
+
+  /* Status bar */
+  .status-bar {
+    height: 54px;
+    padding: 14px 24px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .status-bar .time { font-size: 15px; font-weight: 700; }
+  .status-bar .icons { display: flex; gap: 5px; align-items: center; }
+  .status-bar .icons svg { width: 16px; height: 16px; fill: var(--foreground); }
+
+  /* Top header bar */
+  .top-bar {
+    height: 52px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .top-bar .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .top-bar .logo-icon {
+    width: 28px;
+    height: 28px;
+    background: var(--primary);
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .top-bar .logo-icon svg { width: 16px; height: 16px; }
+  .top-bar .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), oklch(0.6 0.15 300));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+  }
+
+  /* Page title label */
+  .page-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted-foreground);
+    padding: 12px 20px 4px;
+  }
+
+  /* Content area */
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 90px; /* space for bottom nav */
+  }
+
+  /* ===== AI CHAT VIEW ===== */
+  .chat-content {
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 54px - 52px - 90px);
+    overflow: hidden;
+  }
+
+  .suggestion-chips {
+    padding: 12px 16px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+  .suggestion-chips::-webkit-scrollbar { display: none; }
+  .chip {
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    background: var(--secondary);
+    color: var(--secondary-foreground);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip:hover { background: oklch(0.22 0.01 285.82); }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .msg {
+    max-width: 85%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .msg.user { align-self: flex-end; }
+  .msg.assistant { align-self: flex-start; }
+
+  .msg-bubble {
+    padding: 12px 16px;
+    border-radius: 18px;
+    font-size: 14.5px;
+    line-height: 1.45;
+  }
+  .msg.user .msg-bubble {
+    background: var(--user-bubble);
+    color: var(--foreground);
+    border-bottom-right-radius: 6px;
+  }
+  .msg.assistant .msg-bubble {
+    background: var(--card);
+    color: var(--card-foreground);
+    border-bottom-left-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  .msg-label {
+    font-size: 11px;
+    color: var(--muted-foreground);
+    padding: 0 4px;
+  }
+  .msg.user .msg-label { text-align: right; }
+
+  /* Rich response cards */
+  .response-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .insight-card {
+    background: var(--secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .insight-card:hover { border-color: var(--primary); }
+
+  .insight-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .insight-card .card-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+  .insight-card .card-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: oklch(0.25 0.06 252.37);
+    color: var(--primary);
+  }
+  .insight-card .card-body {
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--muted-foreground);
+  }
+  .insight-card .card-quote {
+    font-size: 12.5px;
+    font-style: italic;
+    color: var(--muted-foreground);
+    border-left: 2px solid var(--primary);
+    padding-left: 10px;
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+  .insight-card .card-meta {
+    font-size: 11px;
+    color: var(--muted-foreground);
+    margin-top: 6px;
+    display: flex;
+    gap: 12px;
+  }
+
+  /* Chat input bar */
+  .chat-input-bar {
+    padding: 8px 12px 8px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+    background: var(--background);
+  }
+  .chat-input-wrap {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+  }
+  .chat-input-wrap input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--foreground);
+    font-size: 15px;
+    font-family: inherit;
+  }
+  .chat-input-wrap input::placeholder { color: var(--muted-foreground); }
+
+  .mic-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    color: var(--muted-foreground);
+  }
+  .mic-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .mic-btn.recording {
+    background: oklch(0.35 0.1 22);
+    border-color: var(--destructive);
+    color: var(--destructive);
+    animation: pulse-mic 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse-mic {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 60, 60, 0.3); }
+    50% { box-shadow: 0 0 0 8px rgba(220, 60, 60, 0); }
+  }
+
+  .send-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .send-btn:hover { opacity: 0.9; }
+  .send-btn svg { color: var(--primary-foreground); }
+
+  /* ===== PEOPLE VIEW ===== */
+  .search-bar {
+    padding: 12px 16px;
+    flex-shrink: 0;
+  }
+  .search-bar .search-input {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 11px 14px 11px 40px;
+    color: var(--foreground);
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 12px center;
+  }
+  .search-bar .search-input::placeholder { color: var(--muted-foreground); }
+
+  .people-list {
+    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+  }
+  .person-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .person-row:last-child { border-bottom: none; }
+
+  .person-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .pa-blue { background: oklch(0.25 0.06 252.37); color: var(--primary); }
+  .pa-green { background: oklch(0.25 0.06 155); color: oklch(0.7 0.15 155); }
+  .pa-purple { background: oklch(0.25 0.06 300); color: oklch(0.7 0.15 300); }
+  .pa-amber { background: oklch(0.25 0.06 75); color: oklch(0.7 0.15 75); }
+  .pa-teal { background: oklch(0.25 0.06 190); color: oklch(0.7 0.15 190); }
+
+  .person-info { flex: 1; min-width: 0; }
+  .person-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .person-role {
+    font-size: 13px;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+  .person-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .icp-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 7px;
+    border-radius: 6px;
+  }
+  .icp-high { background: oklch(0.25 0.06 155); color: oklch(0.7 0.14 155); }
+  .icp-medium { background: oklch(0.25 0.06 75); color: oklch(0.7 0.14 75); }
+  .evidence-count {
+    font-size: 11px;
+    color: var(--muted-foreground);
+  }
+  .person-org {
+    font-size: 12px;
+    color: var(--muted-foreground);
+  }
+
+  /* Person "ask AI" shortcut */
+  .ask-ai-hint {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .ask-ai-hint svg { width: 12px; height: 12px; }
+
+  /* ===== BOTTOM NAV (3-tab) ===== */
+  .bottom-nav {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: oklch(0.10 0.005 285.82 / 95%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+    z-index: 50;
+  }
+  .bottom-nav .nav-items {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+    padding: 6px 24px 8px;
+  }
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    transition: color 0.15s;
+    min-width: 64px;
+    padding: 4px 0;
+  }
+  .nav-item .nav-icon {
+    width: 24px;
+    height: 24px;
+    color: var(--muted-foreground);
+    transition: color 0.15s;
+  }
+  .nav-item .nav-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    transition: color 0.15s;
+  }
+  .nav-item.active .nav-icon { color: var(--primary); }
+  .nav-item.active .nav-label { color: var(--primary); }
+
+  /* Center upload FAB in nav */
+  .nav-fab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    min-width: 64px;
+  }
+  .nav-fab .fab-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: -22px;
+    box-shadow: 0 4px 16px rgba(100, 140, 255, 0.35);
+    transition: all 0.15s;
+  }
+  .nav-fab .fab-circle:hover { transform: scale(1.05); }
+  .nav-fab .fab-circle svg { width: 24px; height: 24px; color: var(--primary-foreground); }
+  .nav-fab .nav-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    margin-top: 2px;
+  }
+
+  /* ===== FRAME LABELS ===== */
+  .frame-label {
+    text-align: center;
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    color: oklch(0.7 0.01 285.82);
+    letter-spacing: 0.5px;
+  }
+  .frame-sublabel {
+    text-align: center;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: oklch(0.5 0.01 285.82);
+    max-width: 390px;
+  }
+
+  /* ===== PERSON DETAIL VIEW ===== */
+  .person-detail-header {
+    padding: 20px 20px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .person-detail-header .big-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .person-detail-header .detail-name {
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .person-detail-header .detail-title {
+    font-size: 14px;
+    color: var(--muted-foreground);
+  }
+  .person-detail-header .detail-badges {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-around;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .stat-value { font-size: 18px; font-weight: 700; color: var(--foreground); }
+  .stat-label { font-size: 11px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted-foreground);
+    padding: 16px 20px 8px;
+  }
+
+  .evidence-list {
+    padding: 0 16px;
+  }
+  .evidence-item {
+    padding: 12px 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 8px;
+  }
+  .evidence-item .ev-quote {
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--foreground);
+    font-style: italic;
+    border-left: 2px solid var(--primary);
+    padding-left: 10px;
+  }
+  .evidence-item .ev-meta {
+    font-size: 11px;
+    color: var(--muted-foreground);
+    margin-top: 6px;
+    display: flex;
+    gap: 10px;
+  }
+
+  .detail-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 16px 20px 0;
+    padding: 11px;
+    border-radius: 12px;
+    background: oklch(0.2 0.04 252.37);
+    color: var(--primary);
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid oklch(0.3 0.06 252.37);
+    cursor: pointer;
+  }
+
+  /* Back arrow */
+  .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--primary);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0 4px;
+  }
+  .back-btn svg { width: 20px; height: 20px; }
+  .top-bar-detail {
+    height: 52px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Voice recording overlay state */
+  .recording-overlay {
+    position: absolute;
+    bottom: 90px;
+    left: 0;
+    right: 0;
+    background: oklch(0.12 0.006 285.82 / 98%);
+    border-top: 1px solid var(--border);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    backdrop-filter: blur(12px);
+  }
+  .recording-orb {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), oklch(0.6 0.15 300));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: breathe 2s ease-in-out infinite;
+    box-shadow: 0 0 30px rgba(100, 140, 255, 0.3);
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); opacity: 0.9; }
+    50% { transform: scale(1.08); opacity: 1; }
+  }
+  .recording-orb svg { width: 32px; height: 32px; color: white; }
+  .recording-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+  .recording-timer {
+    font-size: 24px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--primary);
+  }
+  .recording-hint {
+    font-size: 12px;
+    color: var(--muted-foreground);
+  }
+
+  /* Responsive for actual viewing */
+  @media (max-width: 900px) {
+    body { flex-direction: column; align-items: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ SCREEN 1: AI CHAT (Home) ============ -->
+<div>
+  <div class="frame-label">AI Chat (Home Tab)</div>
+  <div class="frame-sublabel">Primary mobile screen. Ask questions, dictate notes, get rich insight cards.</div>
+  <div class="phone">
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span class="time">9:41</span>
+      <div class="icons">
+        <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+      </div>
+    </div>
+
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m-7.07-2.93 2.83-2.83m8.48-8.48 2.83-2.83M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83"/></svg>
+        </div>
+        UpSight
+      </div>
+      <div class="avatar">RM</div>
+    </div>
+
+    <!-- Chat Content -->
+    <div class="chat-content">
+      <!-- Suggestion Chips -->
+      <div class="suggestion-chips">
+        <div class="chip">Top themes</div>
+        <div class="chip">Recent calls</div>
+        <div class="chip">Key people</div>
+        <div class="chip">Pricing feedback</div>
+      </div>
+
+      <!-- Messages -->
+      <div class="messages">
+        <div class="msg user">
+          <div class="msg-bubble">What are the top themes from our recent interviews?</div>
+        </div>
+
+        <div class="msg assistant">
+          <div class="msg-label">Uppy</div>
+          <div class="msg-bubble">
+            Here are your top 3 themes from the last 2 weeks, across 12 conversations:
+
+            <div class="response-cards">
+              <div class="insight-card">
+                <div class="card-header">
+                  <span class="card-title">Pricing Complexity</span>
+                  <span class="card-badge">8 mentions</span>
+                </div>
+                <div class="card-quote">"The tiered pricing is confusing. I just want one number I can take to my CFO."</div>
+                <div class="card-meta">
+                  <span>Sarah Chen, Acme Corp</span>
+                  <span>Feb 6</span>
+                </div>
+              </div>
+
+              <div class="insight-card">
+                <div class="card-header">
+                  <span class="card-title">Onboarding Friction</span>
+                  <span class="card-badge">6 mentions</span>
+                </div>
+                <div class="card-quote">"It took us 3 weeks to get our team using it. That's too long for a tool like this."</div>
+                <div class="card-meta">
+                  <span>James Woo, NovaTech</span>
+                  <span>Feb 4</span>
+                </div>
+              </div>
+
+              <div class="insight-card">
+                <div class="card-header">
+                  <span class="card-title">Mobile Access Demand</span>
+                  <span class="card-badge">5 mentions</span>
+                </div>
+                <div class="card-quote">"I need to check insights between meetings. Can't always be at my laptop."</div>
+                <div class="card-meta">
+                  <span>Lisa Park, Meridian</span>
+                  <span>Feb 3</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Bar -->
+      <div class="chat-input-bar">
+        <div class="chat-input-wrap">
+          <input type="text" placeholder="Ask anything..." />
+          <button class="mic-btn" title="Voice input">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+          </button>
+        </div>
+        <button class="send-btn" title="Send">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 14-7-4.5 7L19 19Z"/><path d="M5 12h9.5"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+      <div class="nav-items">
+        <!-- AI Tab (active) -->
+        <div class="nav-item active">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+          <span class="nav-label">AI</span>
+        </div>
+        <!-- Upload FAB (center) -->
+        <div class="nav-fab">
+          <div class="fab-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </div>
+          <span class="nav-label">Upload</span>
+        </div>
+        <!-- People Tab -->
+        <div class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="nav-label">People</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SCREEN 2: VOICE RECORDING STATE ============ -->
+<div>
+  <div class="frame-label">AI Chat (Voice Active)</div>
+  <div class="frame-sublabel">Tap mic to dictate a note. AI processes it as evidence automatically.</div>
+  <div class="phone">
+    <div class="status-bar">
+      <span class="time">9:41</span>
+      <div class="icons">
+        <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+      </div>
+    </div>
+    <div class="top-bar">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m-7.07-2.93 2.83-2.83m8.48-8.48 2.83-2.83M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83"/></svg>
+        </div>
+        UpSight
+      </div>
+      <div class="avatar">RM</div>
+    </div>
+
+    <div class="chat-content">
+      <div class="suggestion-chips">
+        <div class="chip">Top themes</div>
+        <div class="chip">Recent calls</div>
+        <div class="chip">Key people</div>
+      </div>
+
+      <div class="messages">
+        <div class="msg user">
+          <div class="msg-bubble">What are the top themes from our recent interviews?</div>
+        </div>
+        <div class="msg assistant">
+          <div class="msg-label">Uppy</div>
+          <div class="msg-bubble">
+            Here are your top 3 themes from the last 2 weeks...
+            <div class="response-cards">
+              <div class="insight-card">
+                <div class="card-header">
+                  <span class="card-title">Pricing Complexity</span>
+                  <span class="card-badge">8 mentions</span>
+                </div>
+                <div class="card-body">Customers find tiered pricing confusing</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recording overlay -->
+      <div class="recording-overlay">
+        <div class="recording-orb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+        </div>
+        <div class="recording-text">Listening...</div>
+        <div class="recording-timer">0:04</div>
+        <div class="recording-hint">Tap anywhere to stop</div>
+      </div>
+
+      <div class="chat-input-bar">
+        <div class="chat-input-wrap" style="border-color: var(--destructive);">
+          <input type="text" placeholder="Listening..." style="color: var(--destructive);" />
+          <button class="mic-btn recording">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+          </button>
+        </div>
+        <button class="send-btn" style="background: var(--destructive);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-items">
+        <div class="nav-item active">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+          <span class="nav-label">AI</span>
+        </div>
+        <div class="nav-fab">
+          <div class="fab-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </div>
+          <span class="nav-label">Upload</span>
+        </div>
+        <div class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="nav-label">People</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SCREEN 3: PEOPLE LIST ============ -->
+<div>
+  <div class="frame-label">People Tab</div>
+  <div class="frame-sublabel">Searchable contact list. Tap for detail. "Ask AI" shortcut on each row.</div>
+  <div class="phone">
+    <div class="status-bar">
+      <span class="time">9:42</span>
+      <div class="icons">
+        <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+      </div>
+    </div>
+    <div class="top-bar">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m-7.07-2.93 2.83-2.83m8.48-8.48 2.83-2.83M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83"/></svg>
+        </div>
+        UpSight
+      </div>
+      <div class="avatar">RM</div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; height:calc(100% - 54px - 52px);">
+      <div class="page-label">People</div>
+      <div class="search-bar">
+        <input class="search-input" type="text" placeholder="Search people..." />
+      </div>
+
+      <div class="content">
+        <div class="people-list">
+          <div class="person-row">
+            <div class="person-avatar pa-blue">SC</div>
+            <div class="person-info">
+              <div class="person-name">Sarah Chen</div>
+              <div class="person-role">VP Product, Acme Corp</div>
+            </div>
+            <div class="person-meta">
+              <span class="icp-badge icp-high">HIGH</span>
+              <span class="evidence-count">14 receipts</span>
+            </div>
+          </div>
+
+          <div class="person-row">
+            <div class="person-avatar pa-green">JW</div>
+            <div class="person-info">
+              <div class="person-name">James Woo</div>
+              <div class="person-role">CTO, NovaTech</div>
+            </div>
+            <div class="person-meta">
+              <span class="icp-badge icp-high">HIGH</span>
+              <span class="evidence-count">11 receipts</span>
+            </div>
+          </div>
+
+          <div class="person-row">
+            <div class="person-avatar pa-purple">LP</div>
+            <div class="person-info">
+              <div class="person-name">Lisa Park</div>
+              <div class="person-role">Head of Sales, Meridian</div>
+            </div>
+            <div class="person-meta">
+              <span class="icp-badge icp-medium">MED</span>
+              <span class="evidence-count">8 receipts</span>
+            </div>
+          </div>
+
+          <div class="person-row">
+            <div class="person-avatar pa-amber">MR</div>
+            <div class="person-info">
+              <div class="person-name">Marcus Rivera</div>
+              <div class="person-role">Product Lead, Zenith AI</div>
+            </div>
+            <div class="person-meta">
+              <span class="icp-badge icp-high">HIGH</span>
+              <span class="evidence-count">9 receipts</span>
+            </div>
+          </div>
+
+          <div class="person-row">
+            <div class="person-avatar pa-teal">AT</div>
+            <div class="person-info">
+              <div class="person-name">Aisha Thompson</div>
+              <div class="person-role">Director UX, CloudBridge</div>
+            </div>
+            <div class="person-meta">
+              <span class="icp-badge icp-medium">MED</span>
+              <span class="evidence-count">6 receipts</span>
+            </div>
+          </div>
+
+          <div class="person-row">
+            <div class="person-avatar pa-blue">DK</div>
+            <div class="person-info">
+              <div class="person-name">David Kim</div>
+              <div class="person-role">CEO, Pinnacle SaaS</div>
+            </div>
+            <div class="person-meta">
+              <span class="icp-badge icp-high">HIGH</span>
+              <span class="evidence-count">12 receipts</span>
+            </div>
+          </div>
+
+          <div class="person-row">
+            <div class="person-avatar pa-green">EN</div>
+            <div class="person-info">
+              <div class="person-name">Elena Novak</div>
+              <div class="person-role">VP Engineering, DataForge</div>
+            </div>
+            <div class="person-meta">
+              <span class="evidence-count">4 receipts</span>
+            </div>
+          </div>
+
+          <div class="person-row">
+            <div class="person-avatar pa-purple">TH</div>
+            <div class="person-info">
+              <div class="person-name">Tom Harrison</div>
+              <div class="person-role">Buyer, Retail Dynamics</div>
+            </div>
+            <div class="person-meta">
+              <span class="evidence-count">3 receipts</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-items">
+        <div class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+          <span class="nav-label">AI</span>
+        </div>
+        <div class="nav-fab">
+          <div class="fab-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </div>
+          <span class="nav-label">Upload</span>
+        </div>
+        <div class="nav-item active">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="nav-label">People</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SCREEN 4: PERSON DETAIL ============ -->
+<div>
+  <div class="frame-label">Person Detail</div>
+  <div class="frame-sublabel">Tap a person to see stats + evidence. "Ask AI" button deep-links to chat.</div>
+  <div class="phone">
+    <div class="status-bar">
+      <span class="time">9:42</span>
+      <div class="icons">
+        <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+      </div>
+    </div>
+
+    <div class="top-bar-detail">
+      <div class="back-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        People
+      </div>
+      <div style="width:32px"></div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; height:calc(100% - 54px - 52px); overflow-y:auto; padding-bottom:90px;">
+      <div class="person-detail-header">
+        <div class="big-avatar pa-blue" style="width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;">SC</div>
+        <div class="detail-name" style="font-size:20px;font-weight:700;">Sarah Chen</div>
+        <div class="detail-title" style="font-size:14px;color:var(--muted-foreground);">VP Product, Acme Corp</div>
+        <div class="detail-badges" style="display:flex;gap:8px;margin-top:4px;">
+          <span class="icp-badge icp-high">ICP: HIGH</span>
+          <span class="icp-badge" style="background:oklch(0.25 0.06 252.37);color:var(--primary);">87%</span>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-item">
+          <div class="stat-value">14</div>
+          <div class="stat-label">Receipts</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">5</div>
+          <div class="stat-label">Calls</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">3</div>
+          <div class="stat-label">Themes</div>
+        </div>
+      </div>
+
+      <div class="detail-action-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+        Ask AI about Sarah
+      </div>
+
+      <div class="section-title">Recent Evidence</div>
+      <div class="evidence-list">
+        <div class="evidence-item">
+          <div class="ev-quote">"The tiered pricing is confusing. I just want one number I can take to my CFO."</div>
+          <div class="ev-meta">
+            <span>Pricing Complexity</span>
+            <span>Feb 6, 2026</span>
+          </div>
+        </div>
+        <div class="evidence-item">
+          <div class="ev-quote">"We need SSO before we can roll this out to the whole team. That's a hard requirement."</div>
+          <div class="ev-meta">
+            <span>Enterprise Readiness</span>
+            <span>Feb 4, 2026</span>
+          </div>
+        </div>
+        <div class="evidence-item">
+          <div class="ev-quote">"I love the evidence view. It's like having receipts for every claim my team makes."</div>
+          <div class="ev-meta">
+            <span>Product Praise</span>
+            <span>Jan 30, 2026</span>
+          </div>
+        </div>
+        <div class="evidence-item">
+          <div class="ev-quote">"Can I share a single insight with my VP without giving them full access?"</div>
+          <div class="ev-meta">
+            <span>Sharing & Permissions</span>
+            <span>Jan 28, 2026</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-items">
+        <div class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+          <span class="nav-label">AI</span>
+        </div>
+        <div class="nav-fab">
+          <div class="fab-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </div>
+          <span class="nav-label">Upload</span>
+        </div>
+        <div class="nav-item active">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="nav-label">People</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,19 +1,19 @@
-import { ArrowLeft, BookOpen, Calendar, Code, Edit, Settings, Share, Trash2, Users } from "lucide-react"
-import { useState } from "react"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Separator } from "~/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import { ArrowLeft, BookOpen, Calendar, Code, Edit, Settings, Share, Trash2, Users } from "lucide-react";
+import { useState } from "react";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Separator } from "~/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 interface ResearchProject {
-	id: string
-	org_id: string
-	code: string | null
-	title: string
-	description: string | null
-	created_at: string
+	id: string;
+	org_id: string;
+	code: string | null;
+	title: string;
+	description: string | null;
+	created_at: string;
 }
 
 const mockProject: ResearchProject = {
@@ -24,10 +24,10 @@ const mockProject: ResearchProject = {
 	description:
 		"This comprehensive research project explores the revolutionary potential of deep learning algorithms in medical image analysis and diagnostic assistance within radiology departments. Our team is investigating how artificial intelligence can enhance the accuracy and speed of medical diagnoses, particularly in the detection of anomalies in X-rays, MRIs, and CT scans. The project aims to develop a robust framework that can assist healthcare professionals in making more informed decisions while maintaining the highest standards of patient care and data privacy.",
 	created_at: "2024-01-15T10:30:00Z",
-}
+};
 
 export default function ProjectDetail() {
-	const [project] = useState<ResearchProject>(mockProject)
+	const [project] = useState<ResearchProject>(mockProject);
 
 	const formatDate = (dateString: string) => {
 		return new Date(dateString).toLocaleDateString("en-US", {
@@ -36,8 +36,8 @@ export default function ProjectDetail() {
 			day: "numeric",
 			hour: "2-digit",
 			minute: "2-digit",
-		})
-	}
+		});
+	};
 
 	return (
 		<div className="min-h-screen bg-gray-50/50">
@@ -207,5 +207,5 @@ export default function ProjectDetail() {
 				</Tabs>
 			</PageContainer>
 		</div>
-	)
+	);
 }

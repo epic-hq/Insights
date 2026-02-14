@@ -34,25 +34,25 @@ export {
 	type SetupMode,
 	SetupModeToggle,
 	SetupModeToggleCompact,
-} from "../components/SetupModeToggle"
+} from "../components/SetupModeToggle";
 // UI Components
 export {
 	SetupStepIndicatorCompact,
 	SetupStepRail,
-} from "../components/SetupStepRail"
+} from "../components/SetupStepRail";
 export {
 	SyncStatusDot,
 	SyncStatusIndicator,
 	SyncStatusWithTime,
-} from "../components/SyncStatusIndicator"
+} from "../components/SyncStatusIndicator";
 // Context and hooks
 export {
 	ProjectSetupProvider,
 	useProjectSections,
 	useProjectSetup,
-} from "../contexts/project-setup-context"
+} from "../contexts/project-setup-context";
 // Sync hook
-export { useProjectSetupSync } from "../hooks/useProjectSetupSync"
+export { useProjectSetupSync } from "../hooks/useProjectSetupSync";
 // Store
 export {
 	type ProjectSectionData,
@@ -62,7 +62,7 @@ export {
 	selectStepState,
 	selectSyncState,
 	useProjectSetupStore,
-} from "../stores/project-setup-store"
+} from "../stores/project-setup-store";
 
 // Utilities
 export {
@@ -72,4 +72,4 @@ export {
 	getStepCompletion,
 	getStepFieldStatus,
 	isStepReady,
-} from "../utils/step-completion"
+} from "../utils/step-completion";

@@ -6,59 +6,59 @@
  * Includes a reset button for stuck processing states.
  */
 
-import { CheckCircle2, Loader2, RotateCcw } from "lucide-react"
-import { useEffect, useState } from "react"
-import { useFetcher, useRevalidator } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { Progress } from "~/components/ui/progress"
-import { cn } from "~/lib/utils"
+import { CheckCircle2, Loader2, RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useFetcher, useRevalidator } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { Progress } from "~/components/ui/progress";
+import { cn } from "~/lib/utils";
 
 export interface ProcessingItem {
-	id: string
-	name: string
-	status: "queued" | "processing" | "completed" | "failed"
+	id: string;
+	name: string;
+	status: "queued" | "processing" | "completed" | "failed";
 }
 
 export interface ProcessingStateProps {
 	/** Number of items currently processing */
-	processingCount: number
+	processingCount: number;
 	/** Total items in queue */
-	totalCount: number
+	totalCount: number;
 	/** Optional list of processing items with status */
-	items?: ProcessingItem[]
+	items?: ProcessingItem[];
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 	/** Callback when reset is successful */
-	onReset?: () => void
+	onReset?: () => void;
 }
 
 export function ProcessingState({ processingCount, totalCount, items, className, onReset }: ProcessingStateProps) {
-	const completedCount = totalCount - processingCount
-	const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
-	const [showResetConfirm, setShowResetConfirm] = useState(false)
-	const [isResetting, setIsResetting] = useState(false)
-	const fetcher = useFetcher()
-	const revalidator = useRevalidator()
+	const completedCount = totalCount - processingCount;
+	const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+	const [showResetConfirm, setShowResetConfirm] = useState(false);
+	const [isResetting, setIsResetting] = useState(false);
+	const fetcher = useFetcher();
+	const revalidator = useRevalidator();
 
 	// Revalidate page data when reset completes successfully
 	useEffect(() => {
 		if (fetcher.state === "idle" && fetcher.data?.success && isResetting) {
-			revalidator.revalidate()
-			onReset?.()
+			revalidator.revalidate();
+			onReset?.();
 		}
-	}, [fetcher.state, fetcher.data, revalidator, onReset, isResetting])
+	}, [fetcher.state, fetcher.data, revalidator, onReset, isResetting]);
 
 	// Track when revalidation completes
 	useEffect(() => {
 		if (revalidator.state === "idle" && isResetting && fetcher.data?.success) {
-			setIsResetting(false)
-			setShowResetConfirm(false)
+			setIsResetting(false);
+			setShowResetConfirm(false);
 		}
-	}, [revalidator.state, isResetting, fetcher.data])
+	}, [revalidator.state, isResetting, fetcher.data]);
 
 	const handleReset = () => {
-		setIsResetting(true)
+		setIsResetting(true);
 		fetcher.submit(
 			{ fixAll: true },
 			{
@@ -66,11 +66,11 @@ export function ProcessingState({ processingCount, totalCount, items, className,
 				action: "/api/fix-stuck-interview",
 				encType: "application/json",
 			}
-		)
-	}
+		);
+	};
 
 	if (processingCount === 0) {
-		return null
+		return null;
 	}
 
 	return (
@@ -160,7 +160,7 @@ export function ProcessingState({ processingCount, totalCount, items, className,
 				</div>
 			</CardContent>
 		</Card>
-	)
+	);
 }
 
-export default ProcessingState
+export default ProcessingState;

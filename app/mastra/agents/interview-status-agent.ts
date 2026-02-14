@@ -1,26 +1,26 @@
-import { openai } from "@ai-sdk/openai"
-import { Agent } from "@mastra/core/agent"
-import { TokenLimiterProcessor } from "@mastra/core/processors"
-import { Memory } from "@mastra/memory"
-import { z } from "zod"
+import { Agent } from "@mastra/core/agent";
+import { TokenLimiterProcessor } from "@mastra/core/processors";
+import { Memory } from "@mastra/memory";
+import { z } from "zod";
+import { openai } from "../../lib/billing/instrumented-openai.server";
 // ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
 // import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
-import { getSharedPostgresStore } from "../storage/postgres-singleton"
-import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
-import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
+import { getSharedPostgresStore } from "../storage/postgres-singleton";
+import { fetchInterviewContextTool } from "../tools/fetch-interview-context";
+import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence";
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 
 const InterviewMemoryState = z.object({
 	lastInterviewId: z.string().optional(),
 	lastSummary: z.string().optional(),
-})
+});
 
 export const interviewStatusAgent = new Agent({
 	id: "interview-status-agent",
 	name: "interviewStatusAgent",
 	instructions: async ({ requestContext }) => {
-		const interviewId = requestContext.get("interview_id")
-		const projectId = requestContext.get("project_id")
+		const interviewId = requestContext.get("interview_id");
+		const projectId = requestContext.get("project_id");
 		return `
 You are an interview insight copilot that helps product teams digest a single conversation.
 
@@ -40,7 +40,7 @@ Tone:
 - Direct, empathetic, and focused on research momentum and prioritize goals and decisions.
 - Favor bullet lists for multi-part answers.
 
-`
+`;
 	},
 	model: openai("gpt-5-mini"),
 	tools: wrapToolsWithStatusEvents({
@@ -56,4 +56,4 @@ Tone:
 	}),
 	// Note: Using number format for Zod v4 compatibility
 	outputProcessors: [new TokenLimiterProcessor(100_000)],
-})
+});

@@ -5,54 +5,54 @@
  * and deep-link to interview timestamp via anchors.
  */
 
-import { ChevronDown, ChevronUp, ExternalLink, PlayCircle } from "lucide-react"
-import { useState } from "react"
-import { Link } from "react-router-dom"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import type { InsightEvidence } from "../pages/insight-detail"
+import { ChevronDown, ChevronUp, ExternalLink, PlayCircle } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import type { InsightEvidence } from "../pages/insight-detail";
 
 interface FullEvidenceCardProps {
-	evidence: InsightEvidence
-	projectPath: string
+	evidence: InsightEvidence;
+	projectPath: string;
 	/** Show expanded by default */
-	defaultExpanded?: boolean
+	defaultExpanded?: boolean;
 }
 
 /** Format milliseconds to MM:SS or HH:MM:SS */
 function formatTimestamp(ms: number): string {
-	const totalSeconds = Math.floor(ms / 1000)
-	const hours = Math.floor(totalSeconds / 3600)
-	const minutes = Math.floor((totalSeconds % 3600) / 60)
-	const seconds = totalSeconds % 60
+	const totalSeconds = Math.floor(ms / 1000);
+	const hours = Math.floor(totalSeconds / 3600);
+	const minutes = Math.floor((totalSeconds % 3600) / 60);
+	const seconds = totalSeconds % 60;
 
 	if (hours > 0) {
-		return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+		return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 	}
-	return `${minutes}:${seconds.toString().padStart(2, "0")}`
+	return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
 export function FullEvidenceCard({ evidence, projectPath, defaultExpanded = false }: FullEvidenceCardProps) {
-	const [isExpanded, setIsExpanded] = useState(defaultExpanded)
-	const routes = useProjectRoutes(projectPath)
+	const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+	const routes = useProjectRoutes(projectPath);
 
-	const hasVerbatim = evidence.verbatim && evidence.verbatim !== evidence.gist
-	const hasFacets = (evidence.pains && evidence.pains.length > 0) || (evidence.gains && evidence.gains.length > 0)
+	const hasVerbatim = evidence.verbatim && evidence.verbatim !== evidence.gist;
+	const hasFacets = (evidence.pains && evidence.pains.length > 0) || (evidence.gains && evidence.gains.length > 0);
 
 	// Get first anchor for deep-link
-	const anchor = evidence.anchors?.[0]
-	const hasTimestamp = anchor?.start != null
+	const anchor = evidence.anchors?.[0];
+	const hasTimestamp = anchor?.start != null;
 
 	// Build interview link with timestamp
 	const interviewLink = evidence.interview_id
 		? hasTimestamp
 			? `${routes.interviews.detail(evidence.interview_id)}?t=${anchor.start}`
 			: routes.interviews.detail(evidence.interview_id)
-		: null
+		: null;
 
 	return (
 		<Card className="transition-shadow hover:shadow-sm">
@@ -169,5 +169,5 @@ export function FullEvidenceCard({ evidence, projectPath, defaultExpanded = fals
 				</div>
 			</CardContent>
 		</Card>
-	)
+	);
 }

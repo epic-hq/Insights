@@ -1,16 +1,16 @@
-import { PassThrough } from "node:stream"
-import { createReadableStreamFromReadable } from "@react-router/node"
-import { createInstance } from "i18next"
-import { isbot } from "isbot"
-import { renderToPipeableStream } from "react-dom/server"
-import { I18nextProvider, initReactI18next } from "react-i18next"
-import { type AppLoadContext, type EntryContext, type HandleDataRequestFunction, ServerRouter } from "react-router"
-import i18n from "./localization/i18n" // your i18n configuration file
-import i18nextOpts from "./localization/i18n.server"
-import { resources } from "./localization/resource"
+import { PassThrough } from "node:stream";
+import { createReadableStreamFromReadable } from "@react-router/node";
+import { createInstance } from "i18next";
+import { isbot } from "isbot";
+import { renderToPipeableStream } from "react-dom/server";
+import { I18nextProvider, initReactI18next } from "react-i18next";
+import { type AppLoadContext, type EntryContext, type HandleDataRequestFunction, ServerRouter } from "react-router";
+import i18n from "./localization/i18n"; // your i18n configuration file
+import i18nextOpts from "./localization/i18n.server";
+import { resources } from "./localization/resource";
 
 // Reject all pending promises from handler functions after 10 seconds
-export const streamTimeout = 10000
+export const streamTimeout = 10000;
 
 export default async function handleRequest(
 	request: Request,
@@ -20,15 +20,15 @@ export default async function handleRequest(
 	appContext: AppLoadContext
 ) {
 	// Handle /.well-known/* requests with a 404 response to match dev server behavior
-	const url = new URL(request.url)
+	const url = new URL(request.url);
 	if (url.pathname.startsWith("/.well-known/")) {
-		return new Response("Not found", { status: 404 })
+		return new Response("Not found", { status: 404 });
 	}
 
-	const callbackName = isbot(request.headers.get("user-agent")) ? "onAllReady" : "onShellReady"
-	const instance = createInstance()
-	const lng = appContext.lang
-	const ns = i18nextOpts.getRouteNamespaces(context)
+	const callbackName = isbot(request.headers.get("user-agent")) ? "onAllReady" : "onShellReady";
+	const instance = createInstance();
+	const lng = appContext.lang;
+	const ns = i18nextOpts.getRouteNamespaces(context);
 
 	await instance
 		.use(initReactI18next) // Tell our instance to use react-i18next
@@ -37,10 +37,10 @@ export default async function handleRequest(
 			lng, // The locale we detected above
 			ns, // The namespaces the routes about to render wants to use
 			resources,
-		})
+		});
 
 	return new Promise((resolve, reject) => {
-		let didError = false
+		let didError = false;
 
 		const { pipe, abort } = renderToPipeableStream(
 			<I18nextProvider i18n={instance}>
@@ -48,32 +48,32 @@ export default async function handleRequest(
 			</I18nextProvider>,
 			{
 				[callbackName]: () => {
-					const body = new PassThrough()
-					const stream = createReadableStreamFromReadable(body)
-					responseHeaders.set("Content-Type", "text/html")
+					const body = new PassThrough();
+					const stream = createReadableStreamFromReadable(body);
+					responseHeaders.set("Content-Type", "text/html");
 
 					resolve(
 						new Response(stream, {
 							headers: responseHeaders,
 							status: didError ? 500 : responseStatusCode,
 						})
-					)
+					);
 
-					pipe(body)
+					pipe(body);
 				},
 				onShellError(error: unknown) {
-					reject(error)
+					reject(error);
 				},
 				onError(error: unknown) {
-					didError = true
-					console.error(error)
+					didError = true;
+					console.error(error);
 				},
 			}
-		)
+		);
 		// Abort the streaming render pass after 11 seconds so to allow the rejected
 		// boundaries to be flushed
-		setTimeout(abort, streamTimeout + 1000)
-	})
+		setTimeout(abort, streamTimeout + 1000);
+	});
 }
 
 /**
@@ -82,20 +82,20 @@ export default async function handleRequest(
  * https://sergiodxa.com/tutorials/fix-double-data-request-when-prefetching-in-remix
  */
 export const handleDataRequest: HandleDataRequestFunction = async (response: Response, { request }) => {
-	const isGet = request.method.toLowerCase() === "get"
+	const isGet = request.method.toLowerCase() === "get";
 	const purpose =
 		request.headers.get("Purpose") ||
 		request.headers.get("X-Purpose") ||
 		request.headers.get("Sec-Purpose") ||
 		request.headers.get("Sec-Fetch-Purpose") ||
-		request.headers.get("Moz-Purpose")
-	const isPrefetch = purpose === "prefetch"
+		request.headers.get("Moz-Purpose");
+	const isPrefetch = purpose === "prefetch";
 
 	// If it's a GET request and it's a prefetch request and it doesn't have a Cache-Control header
 	if (isGet && isPrefetch && !response.headers.has("Cache-Control")) {
 		// we will cache for 10 seconds only on the browser
-		response.headers.set("Cache-Control", "private, max-age=10")
+		response.headers.set("Cache-Control", "private, max-age=10");
 	}
 
-	return response
-}
+	return response;
+};

@@ -1,12 +1,12 @@
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Separator } from "~/components/ui/separator"
-import type { LensSlotValue } from "~/features/lenses/types"
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Separator } from "~/components/ui/separator";
+import type { LensSlotValue } from "~/features/lenses/types";
 
 type LensContentRendererProps = {
-	slot: LensSlotValue
-	title?: string
-}
+	slot: LensSlotValue;
+	title?: string;
+};
 
 export function LensContentRenderer({ slot, title }: LensContentRendererProps) {
 	return (
@@ -57,5 +57,5 @@ export function LensContentRenderer({ slot, title }: LensContentRendererProps) {
 				) : null}
 			</CardContent>
 		</Card>
-	)
+	);
 }

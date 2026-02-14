@@ -1,7 +1,7 @@
-import { ArrowLeft, CheckCircle2, Flame, Quote, Sparkles, Target, TrendingUp } from "lucide-react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { ArrowLeft, CheckCircle2, Flame, Quote, Sparkles, Target, TrendingUp } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 
 export default function AnalyzingInsights() {
 	return (
@@ -519,5 +519,5 @@ export default function AnalyzingInsights() {
 				</Card>
 			</div>
 		</div>
-	)
+	);
 }

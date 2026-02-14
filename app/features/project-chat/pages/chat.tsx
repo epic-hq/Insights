@@ -1,21 +1,21 @@
-import { useChat } from "@ai-sdk/react"
-import { convertMessages } from "@mastra/core/agent"
-import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
-import consola from "consola"
-import { Mic, MicOff } from "lucide-react"
-import { useCallback, useState } from "react"
-import type { LoaderFunctionArgs } from "react-router"
-import { data, Link, useLoaderData, useParams } from "react-router"
-import { Conversation, ConversationContent, ConversationScrollButton } from "~/components/ai-elements/conversation"
-import { Message, MessageContent } from "~/components/ai-elements/message"
-import { PromptInput, PromptInputSubmit, PromptInputTextarea } from "~/components/ai-elements/prompt-input"
-import { Response as AiResponse } from "~/components/ai-elements/response"
-import { Button } from "~/components/ui/button"
-import { TextShimmer } from "~/components/ui/text-shimmer"
-import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
-import { cn } from "~/lib/utils"
-import type { UpsightMessage } from "~/mastra/message-types"
-import { userContext } from "~/server/user-context"
+import { useChat } from "@ai-sdk/react";
+import { convertMessages } from "@mastra/core/agent";
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import consola from "consola";
+import { Mic, MicOff } from "lucide-react";
+import { useCallback, useState } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { data, Link, useLoaderData, useParams } from "react-router";
+import { Conversation, ConversationContent, ConversationScrollButton } from "~/components/ai-elements/conversation";
+import { Message, MessageContent } from "~/components/ai-elements/message";
+import { PromptInput, PromptInputSubmit, PromptInputTextarea } from "~/components/ai-elements/prompt-input";
+import { Response as AiResponse } from "~/components/ai-elements/response";
+import { Button } from "~/components/ui/button";
+import { TextShimmer } from "~/components/ui/text-shimmer";
+import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
+import { cn } from "~/lib/utils";
+import type { UpsightMessage } from "~/mastra/message-types";
+import { userContext } from "~/server/user-context";
 
 const PROJECT_SETUP_KEYS = [
 	"research_goal",
@@ -24,108 +24,112 @@ const PROJECT_SETUP_KEYS = [
 	"unknowns",
 	"target_orgs",
 	"target_roles",
-] as const
+] as const;
 
-type ProjectSetupKind = (typeof PROJECT_SETUP_KEYS)[number]
+type ProjectSetupKind = (typeof PROJECT_SETUP_KEYS)[number];
 
 type ProjectSectionRow = {
-	kind: string
-	meta: Record<string, unknown> | null
-	content_md: string | null
-}
+	kind: string;
+	meta: Record<string, unknown> | null;
+	content_md: string | null;
+};
 
 type ProjectSetupProgress = {
-	completedCount: number
-	totalCount: number
-}
+	completedCount: number;
+	totalCount: number;
+};
 
-export const handle = { hideProjectStatusAgent: true } as const
+export const handle = { hideProjectStatusAgent: true } as const;
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const { memory } = await import("~/mastra/memory")
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const { memory } = await import("~/mastra/memory");
 
-	const projectId = params.projectId as string | undefined
-	const accountId = params.accountId as string | undefined
+	const projectId = params.projectId as string | undefined;
+	const accountId = params.accountId as string | undefined;
 	if (!projectId || !accountId) {
-		throw new Response("Missing accountId or projectId", { status: 400 })
+		throw new Response("Missing accountId or projectId", { status: 400 });
 	}
 	if (!supabase) {
-		throw new Response("Supabase client unavailable", { status: 500 })
+		throw new Response("Supabase client unavailable", { status: 500 });
 	}
 
 	const { data: sections } = await supabase
 		.from("project_sections")
 		.select("kind, meta, content_md")
-		.eq("project_id", projectId)
+		.eq("project_id", projectId);
 
-	const rows: ProjectSectionRow[] = sections ?? []
-	const byKind = new Map<string, ProjectSectionRow>(rows.map((section) => [section.kind, section]))
+	const rows: ProjectSectionRow[] = sections ?? [];
+	const byKind = new Map<string, ProjectSectionRow>(rows.map((section) => [section.kind, section]));
 	const isFilled = (kind: ProjectSetupKind) => {
-		const section = byKind.get(kind)
-		if (!section) return false
-		const meta = (section.meta || {}) as Record<string, unknown>
+		const section = byKind.get(kind);
+		if (!section) return false;
+		const meta = (section.meta || {}) as Record<string, unknown>;
 		switch (kind) {
 			case "research_goal":
-				return Boolean((meta.research_goal as string | undefined) || section.content_md?.trim())
+				return Boolean((meta.research_goal as string | undefined) || section.content_md?.trim());
 			case "decision_questions":
 			case "assumptions":
 			case "unknowns":
 			case "target_orgs":
 			case "target_roles":
-				return Array.isArray(meta[kind]) ? meta[kind].length > 0 : false
+				return Array.isArray(meta[kind]) ? meta[kind].length > 0 : false;
 			default:
-				return false
+				return false;
 		}
-	}
-	const completedCount = PROJECT_SETUP_KEYS.reduce((acc, key) => acc + (isFilled(key) ? 1 : 0), 0)
-	const totalCount = PROJECT_SETUP_KEYS.length
+	};
+	const completedCount = PROJECT_SETUP_KEYS.reduce((acc, key) => acc + (isFilled(key) ? 1 : 0), 0);
+	const totalCount = PROJECT_SETUP_KEYS.length;
 
-	const userId = ctx.claims?.sub
+	const userId = ctx.claims?.sub;
 	if (!userId) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
-	const resourceId = `projectSetupAgent-${userId}-${projectId}`
-	const threads = await memory.listThreadsByResourceId({
-		resourceId,
+	const resourceId = `projectSetupAgent-${userId}-${projectId}`;
+	const threads = await memory.listThreads({
+		filter: { resourceId },
 		orderBy: { field: "createdAt", direction: "DESC" },
 		page: 0,
 		perPage: 100,
-	})
+	});
 
-	let threadId = ""
+	let threadId = "";
 	if (!(threads?.total > 0)) {
 		const newThread = await memory.createThread({
 			resourceId,
 			title: `Project Setup ${projectId}`,
-			metadata: { user_id: userId, project_id: projectId, account_id: accountId },
-		})
-		consola.log("New project-setup thread created", newThread)
-		threadId = newThread.id
+			metadata: {
+				user_id: userId,
+				project_id: projectId,
+				account_id: accountId,
+			},
+		});
+		consola.log("New project-setup thread created", newThread);
+		threadId = newThread.id;
 	} else {
-		threadId = threads.threads[0].id
+		threadId = threads.threads[0].id;
 	}
 
 	const { messages: memoryMessages } = await memory.recall({
 		threadId,
-		selectBy: { last: 50 },
-	})
-	const aiv5Messages = convertMessages(memoryMessages).to("AIV5.UI") as UpsightMessage[]
+		perPage: 50,
+	});
+	const aiv5Messages = convertMessages(memoryMessages).to("AIV5.UI") as UpsightMessage[];
 
-	const progress: ProjectSetupProgress = { completedCount, totalCount }
+	const progress: ProjectSetupProgress = { completedCount, totalCount };
 
 	return data({
 		messages: aiv5Messages,
 		progress,
 		threadId,
-	})
+	});
 }
 
 export default function ProjectChatPage() {
-	const { messages: initialMessages, progress } = useLoaderData<typeof loader>()
-	const { accountId, projectId } = useParams()
-	const [input, setInput] = useState("")
+	const { messages: initialMessages, progress } = useLoaderData<typeof loader>();
+	const { accountId, projectId } = useParams();
+	const [input, setInput] = useState("");
 
 	const {
 		messages: chatMessages,
@@ -137,17 +141,17 @@ export default function ProjectChatPage() {
 		}),
 		messages: initialMessages,
 		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-	})
+	});
 
 	const handleVoiceTranscription = useCallback(
 		(transcript: string) => {
-			const trimmed = transcript.trim()
-			if (!trimmed) return
-			sendMessage({ text: trimmed })
-			setInput("")
+			const trimmed = transcript.trim();
+			if (!trimmed) return;
+			sendMessage({ text: trimmed });
+			setInput("");
 		},
 		[sendMessage]
-	)
+	);
 
 	const {
 		startRecording: startVoiceRecording,
@@ -157,15 +161,15 @@ export default function ProjectChatPage() {
 		error: voiceError,
 		isSupported: isVoiceSupported,
 		intensity: voiceIntensity,
-	} = useSpeechToText({ onTranscription: handleVoiceTranscription })
+	} = useSpeechToText({ onTranscription: handleVoiceTranscription });
 
 	const handleSubmit = (e: React.FormEvent) => {
-		e.preventDefault()
+		e.preventDefault();
 		if (input.trim()) {
-			sendMessage({ text: input })
-			setInput("")
+			sendMessage({ text: input });
+			setInput("");
 		}
-	}
+	};
 
 	const statusMessage =
 		voiceError ||
@@ -177,7 +181,7 @@ export default function ProjectChatPage() {
 					? "Recording..."
 					: status === "streaming" || status === "submitted"
 						? "Thinking..."
-						: null)
+						: null);
 
 	return (
 		<div className="grid h-dvh grid-cols-1 gap-x-2 px-2 pt-2 pb-4 md:px-4 md:pt-4">
@@ -211,9 +215,9 @@ export default function ProjectChatPage() {
 									{message?.parts?.map((part, i) => {
 										switch (part.type) {
 											case "text":
-												return <AiResponse key={`${message.id}-${i}`}>{part.text}</AiResponse>
+												return <AiResponse key={`${message.id}-${i}`}>{part.text}</AiResponse>;
 											default:
-												return null
+												return null;
 										}
 									})}
 								</MessageContent>
@@ -257,9 +261,9 @@ export default function ProjectChatPage() {
 								type="button"
 								onClick={() => {
 									if (isVoiceRecording) {
-										stopVoiceRecording()
+										stopVoiceRecording();
 									} else {
-										startVoiceRecording()
+										startVoiceRecording();
 									}
 								}}
 								disabled={isTranscribing}
@@ -277,7 +281,9 @@ export default function ProjectChatPage() {
 									<span className="ml-2 h-2 w-8 overflow-hidden rounded-full bg-red-100" aria-hidden>
 										<span
 											className="block h-full bg-red-500 transition-[width]"
-											style={{ width: `${Math.min(100, Math.max(10, voiceIntensity * 100))}%` }}
+											style={{
+												width: `${Math.min(100, Math.max(10, voiceIntensity * 100))}%`,
+											}}
 										/>
 									</span>
 								)}
@@ -292,11 +298,11 @@ export default function ProjectChatPage() {
 				</PromptInput>
 			</div>
 		</div>
-	)
+	);
 }
 
 function MiniDotsProgress({ completed, total }: ProjectSetupProgress) {
-	const dots = Array.from({ length: total }, (_, index) => `progress-dot-${total}-${index}`)
+	const dots = Array.from({ length: total }, (_, index) => `progress-dot-${total}-${index}`);
 	return (
 		<div className="flex items-center gap-1.5" aria-label={`Progress ${completed} of ${total}`}>
 			{dots.map((dotKey, idx) => (
@@ -306,5 +312,5 @@ function MiniDotsProgress({ completed, total }: ProjectSetupProgress) {
 				/>
 			))}
 		</div>
-	)
+	);
 }

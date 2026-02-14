@@ -1,12 +1,12 @@
 // FilterChips.tsx
-import type { Filters } from "~/features/signup-chat/lib/filters"
+import type { Filters } from "~/features/signup-chat/lib/filters";
 
 export function FilterChips({
 	filters,
 	update,
 }: {
-	filters: Filters
-	update: (p: Record<string, string | null>) => void
+	filters: Filters;
+	update: (p: Record<string, string | null>) => void;
 }) {
 	return (
 		<div className="flex flex-wrap gap-2">
@@ -35,7 +35,7 @@ export function FilterChips({
 				onBlur={(e) => update({ category: e.target.value || null })}
 			/>
 		</div>
-	)
+	);
 }
 function Chip({ active, children, onClick }: any) {
 	return (
@@ -45,25 +45,25 @@ function Chip({ active, children, onClick }: any) {
 		>
 			{children}
 		</button>
-	)
+	);
 }
 
 // --- shadcn version ---
-import { useMemo, useState } from "react"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "~/components/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
+import { useMemo, useState } from "react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "~/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
 
 export function CategoryFilterChip({
 	categories,
 	value,
 	onChange,
 }: {
-	categories: string[]
-	value?: string
-	onChange: (v?: string) => void
+	categories: string[];
+	value?: string;
+	onChange: (v?: string) => void;
 }) {
-	const [open, setOpen] = useState(false)
-	const items = useMemo(() => ["All", ...categories], [categories])
+	const [open, setOpen] = useState(false);
+	const items = useMemo(() => ["All", ...categories], [categories]);
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -85,8 +85,8 @@ export function CategoryFilterChip({
 							<CommandItem
 								key={c}
 								onSelect={() => {
-									onChange(c === "All" ? undefined : c)
-									setOpen(false)
+									onChange(c === "All" ? undefined : c);
+									setOpen(false);
 								}}
 							>
 								{c}
@@ -96,7 +96,7 @@ export function CategoryFilterChip({
 				</Command>
 			</PopoverContent>
 		</Popover>
-	)
+	);
 }
 
 export function CategoryFilterChipBasic({
@@ -104,9 +104,9 @@ export function CategoryFilterChipBasic({
 	value,
 	onChange,
 }: {
-	categories: string[]
-	value?: string
-	onChange: (v?: string) => void
+	categories: string[];
+	value?: string;
+	onChange: (v?: string) => void;
 }) {
 	return (
 		<select
@@ -119,5 +119,5 @@ export function CategoryFilterChipBasic({
 				<option key={c}>{c}</option>
 			))}
 		</select>
-	)
+	);
 }

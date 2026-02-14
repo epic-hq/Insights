@@ -1,7 +1,7 @@
-import { ArrowLeft, CheckCircle2 } from "lucide-react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 
 export default function GettingStarted() {
 	return (
@@ -234,5 +234,5 @@ export default function GettingStarted() {
 				</Card>
 			</div>
 		</div>
-	)
+	);
 }

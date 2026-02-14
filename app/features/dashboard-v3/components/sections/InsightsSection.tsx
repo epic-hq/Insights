@@ -5,37 +5,37 @@
  * Links directly to individual insight detail pages.
  */
 
-import { Lightbulb, Quote, Users } from "lucide-react"
-import { Link } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
-import { PriorityBars } from "~/features/tasks/components/PriorityBars"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import type { Insight } from "~/types"
-import { EmptyStateBox } from "../shared/EmptyStateBox"
-import { SectionHeader } from "../shared/SectionHeader"
+import { Lightbulb, Quote, Users } from "lucide-react";
+import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent } from "~/components/ui/card";
+import { PriorityBars } from "~/features/tasks/components/PriorityBars";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import type { Insight } from "~/types";
+import { EmptyStateBox } from "../shared/EmptyStateBox";
+import { SectionHeader } from "../shared/SectionHeader";
 
 export interface InsightsSectionProps {
 	/** Array of insights to display */
-	insights: Insight[]
+	insights: Insight[];
 	/** Base path for project routes */
-	projectPath: string
+	projectPath: string;
 	/** Maximum number of insights to show */
-	maxVisible?: number
+	maxVisible?: number;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 interface InsightPreviewCardProps {
-	insight: Insight
-	detailHref: string
+	insight: Insight;
+	detailHref: string;
 }
 
 function InsightPreviewCard({ insight, detailHref }: InsightPreviewCardProps) {
-	const evidenceCount = (insight as any).evidence_count || 0
-	const personCount = (insight as any).person_count || 0
-	const priority = ((insight as any).priority ?? 3) as 1 | 2 | 3
+	const evidenceCount = (insight as any).evidence_count || 0;
+	const personCount = (insight as any).person_count || 0;
+	const priority = ((insight as any).priority ?? 3) as 1 | 2 | 3;
 
 	return (
 		<Link to={detailHref}>
@@ -76,17 +76,17 @@ function InsightPreviewCard({ insight, detailHref }: InsightPreviewCardProps) {
 				</CardContent>
 			</Card>
 		</Link>
-	)
+	);
 }
 
 export function InsightsSection({ insights, projectPath, maxVisible = 3, className }: InsightsSectionProps) {
-	const routes = useProjectRoutes(projectPath)
+	const routes = useProjectRoutes(projectPath);
 
 	// Sort by creation date (newest first)
 	const sortedInsights = [...insights].sort(
 		(a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-	)
-	const topInsights = sortedInsights.slice(0, maxVisible)
+	);
+	const topInsights = sortedInsights.slice(0, maxVisible);
 
 	// Show empty state if no insights
 	if (insights.length === 0) {
@@ -100,7 +100,7 @@ export function InsightsSection({ insights, projectPath, maxVisible = 3, classNa
 					ctaHref={routes.interviews.upload()}
 				/>
 			</section>
-		)
+		);
 	}
 
 	return (
@@ -119,7 +119,7 @@ export function InsightsSection({ insights, projectPath, maxVisible = 3, classNa
 				))}
 			</div>
 		</section>
-	)
+	);
 }
 
-export default InsightsSection
+export default InsightsSection;

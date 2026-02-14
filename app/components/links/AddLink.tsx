@@ -1,8 +1,8 @@
-import { Briefcase, Building2, Check, Loader2, Plus, Users, X } from "lucide-react"
-import { useMemo, useState } from "react"
-import { Link } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
+import { Briefcase, Building2, Check, Loader2, Plus, Users, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import {
 	Command,
 	CommandEmpty,
@@ -11,46 +11,46 @@ import {
 	CommandItem,
 	CommandList,
 	CommandSeparator,
-} from "~/components/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { cn } from "~/lib/utils"
+} from "~/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { cn } from "~/lib/utils";
 
-export type Link_kind = "person" | "organization" | "opportunity"
+export type Link_kind = "person" | "organization" | "opportunity";
 
 export type Add_link_item = {
-	id: string
-	label: string
-	link_id: string
-	href?: string
-	company?: string | null
-	segment?: string | null
-}
+	id: string;
+	label: string;
+	link_id: string;
+	href?: string;
+	company?: string | null;
+	segment?: string | null;
+};
 
 export type Add_link_option = {
-	id: string
-	label: string
-}
+	id: string;
+	label: string;
+};
 
 export type Add_link_kind_config = {
-	kind: Link_kind
-	label_singular: string
-	label_plural: string
-	linked_items: Add_link_item[]
-	available_items: Add_link_option[]
-	on_link: (id: string) => void
-	on_unlink: (link_id: string) => void
-	on_create_and_link?: (label: string) => void
-}
+	kind: Link_kind;
+	label_singular: string;
+	label_plural: string;
+	linked_items: Add_link_item[];
+	available_items: Add_link_option[];
+	on_link: (id: string) => void;
+	on_unlink: (link_id: string) => void;
+	on_create_and_link?: (label: string) => void;
+};
 
 function get_kind_icon(kind: Link_kind) {
 	switch (kind) {
 		case "person":
-			return Users
+			return Users;
 		case "organization":
-			return Building2
+			return Building2;
 		case "opportunity":
-			return Briefcase
+			return Briefcase;
 	}
 }
 
@@ -61,35 +61,35 @@ export function AddLink({
 	is_loading,
 	className,
 }: {
-	kinds: Add_link_kind_config[]
-	default_kind?: Link_kind
-	disabled?: boolean
-	is_loading?: boolean
-	className?: string
+	kinds: Add_link_kind_config[];
+	default_kind?: Link_kind;
+	disabled?: boolean;
+	is_loading?: boolean;
+	className?: string;
 }) {
 	const kind_map = useMemo(() => {
-		const map = new Map<Link_kind, Add_link_kind_config>()
-		for (const k of kinds) map.set(k.kind, k)
-		return map
-	}, [kinds])
+		const map = new Map<Link_kind, Add_link_kind_config>();
+		for (const k of kinds) map.set(k.kind, k);
+		return map;
+	}, [kinds]);
 
-	const [active_kind, set_active_kind] = useState<Link_kind>(default_kind)
-	const [show_popover, set_show_popover] = useState(false)
-	const [search_input, set_search_input] = useState("")
+	const [active_kind, set_active_kind] = useState<Link_kind>(default_kind);
+	const [show_popover, set_show_popover] = useState(false);
+	const [search_input, set_search_input] = useState("");
 
-	const active = kind_map.get(active_kind)
+	const active = kind_map.get(active_kind);
 	const linked_ids = useMemo(() => {
-		const ids = new Set<string>()
-		for (const item of active?.linked_items ?? []) ids.add(item.id)
-		return ids
-	}, [active?.linked_items])
+		const ids = new Set<string>();
+		for (const item of active?.linked_items ?? []) ids.add(item.id);
+		return ids;
+	}, [active?.linked_items]);
 
 	const unlinked_options = useMemo(() => {
-		const options = (active?.available_items ?? []).filter((opt) => !linked_ids.has(opt.id))
-		if (!search_input.trim()) return options
-		const needle = search_input.toLowerCase()
-		return options.filter((opt) => opt.label.toLowerCase().includes(needle))
-	}, [active?.available_items, linked_ids, search_input])
+		const options = (active?.available_items ?? []).filter((opt) => !linked_ids.has(opt.id));
+		if (!search_input.trim()) return options;
+		const needle = search_input.toLowerCase();
+		return options.filter((opt) => opt.label.toLowerCase().includes(needle));
+	}, [active?.available_items, linked_ids, search_input]);
 
 	return (
 		<div className={cn("flex flex-wrap items-center gap-2", className)}>
@@ -97,8 +97,8 @@ export function AddLink({
 				<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
 			) : (
 				kinds.map((k) => {
-					if (k.linked_items.length === 0) return null
-					const Icon = get_kind_icon(k.kind)
+					if (k.linked_items.length === 0) return null;
+					const Icon = get_kind_icon(k.kind);
 					return (
 						<div
 							key={k.kind}
@@ -120,7 +120,7 @@ export function AddLink({
 													to={item.href}
 													className="font-medium text-foreground hover:underline"
 													onClick={(e) => {
-														e.stopPropagation()
+														e.stopPropagation();
 													}}
 												>
 													{item.label}
@@ -158,7 +158,7 @@ export function AddLink({
 										</Badge>
 									))}
 						</div>
-					)
+					);
 				})
 			)}
 
@@ -180,8 +180,8 @@ export function AddLink({
 						<Select
 							value={active_kind}
 							onValueChange={(value) => {
-								set_active_kind(value as Link_kind)
-								set_search_input("")
+								set_active_kind(value as Link_kind);
+								set_search_input("");
 							}}
 						>
 							<SelectTrigger className="h-8">
@@ -215,9 +215,9 @@ export function AddLink({
 										key={opt.id}
 										value={opt.label}
 										onSelect={() => {
-											active?.on_link(opt.id)
-											set_show_popover(false)
-											set_search_input("")
+											active?.on_link(opt.id);
+											set_show_popover(false);
+											set_search_input("");
 										}}
 									>
 										<Check className={cn("mr-2 h-4 w-4 opacity-0")} />
@@ -233,9 +233,9 @@ export function AddLink({
 											value={`create-new-${search_input}`}
 											onSelect={() => {
 												if (search_input.trim()) {
-													active.on_create_and_link?.(search_input.trim())
-													set_show_popover(false)
-													set_search_input("")
+													active.on_create_and_link?.(search_input.trim());
+													set_show_popover(false);
+													set_search_input("");
 												}
 											}}
 											className="text-primary"
@@ -253,5 +253,5 @@ export function AddLink({
 				</PopoverContent>
 			</Popover>
 		</div>
-	)
+	);
 }

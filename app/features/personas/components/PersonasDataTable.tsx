@@ -5,35 +5,35 @@ import {
 	getSortedRowModel,
 	type SortingState,
 	useReactTable,
-} from "@tanstack/react-table"
-import { formatDistanceToNow } from "date-fns"
-import { useMemo, useState } from "react"
-import { Link } from "react-router-dom"
-import { Badge } from "~/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+} from "@tanstack/react-table";
+import { formatDistanceToNow } from "date-fns";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Badge } from "~/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 
 export interface PersonaTableRow {
-	id: string
-	name: string
-	kind?: string | null
-	tags: string[]
-	goals: string[]
-	pains: string[]
-	linkedPeople: number
-	updatedAt?: string | null
-	colorHex?: string | null
+	id: string;
+	name: string;
+	kind?: string | null;
+	tags: string[];
+	goals: string[];
+	pains: string[];
+	linkedPeople: number;
+	updatedAt?: string | null;
+	colorHex?: string | null;
 }
 
 interface PersonasDataTableProps {
-	rows: PersonaTableRow[]
+	rows: PersonaTableRow[];
 }
 
 export function PersonasDataTable({ rows }: PersonasDataTableProps) {
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
-	const [sorting, setSorting] = useState<SortingState>([{ id: "linkedPeople", desc: true }])
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
+	const [sorting, setSorting] = useState<SortingState>([{ id: "linkedPeople", desc: true }]);
 
 	const columns = useMemo<ColumnDef<PersonaTableRow>[]>(
 		() => [
@@ -41,7 +41,7 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 				accessorKey: "name",
 				header: "Persona",
 				cell: ({ row }) => {
-					const persona = row.original
+					const persona = row.original;
 					return (
 						<div className="flex flex-col gap-1">
 							<Link
@@ -85,7 +85,7 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 								) : null}
 							</div>
 						</div>
-					)
+					);
 				},
 				enableSorting: true,
 			},
@@ -93,9 +93,9 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 				accessorKey: "goals",
 				header: "Primary Goals",
 				cell: ({ row }) => {
-					const goals = row.original.goals.slice(0, 3)
+					const goals = row.original.goals.slice(0, 3);
 					if (goals.length === 0) {
-						return <span className="text-muted-foreground text-xs">—</span>
+						return <span className="text-muted-foreground text-xs">—</span>;
 					}
 					return (
 						<ul className="list-inside list-disc space-y-1 text-sm">
@@ -105,7 +105,7 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 								</li>
 							))}
 						</ul>
-					)
+					);
 				},
 				enableSorting: false,
 			},
@@ -113,9 +113,9 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 				accessorKey: "pains",
 				header: "Pain Points",
 				cell: ({ row }) => {
-					const pains = row.original.pains.slice(0, 3)
+					const pains = row.original.pains.slice(0, 3);
 					if (pains.length === 0) {
-						return <span className="text-muted-foreground text-xs">—</span>
+						return <span className="text-muted-foreground text-xs">—</span>;
 					}
 					return (
 						<ul className="list-inside list-disc space-y-1 text-sm">
@@ -125,7 +125,7 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 								</li>
 							))}
 						</ul>
-					)
+					);
 				},
 				enableSorting: false,
 			},
@@ -139,25 +139,25 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 				accessorKey: "updatedAt",
 				header: "Last Updated",
 				cell: ({ getValue }) => {
-					const updatedAt = getValue<string | null | undefined>()
-					if (!updatedAt) return <span className="text-muted-foreground text-xs">—</span>
+					const updatedAt = getValue<string | null | undefined>();
+					if (!updatedAt) return <span className="text-muted-foreground text-xs">—</span>;
 					return (
 						<span className="text-muted-foreground text-xs">
 							{formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
 						</span>
-					)
+					);
 				},
 				enableSorting: true,
 				sortDescFirst: true,
 				sortingFn: (a, b) => {
-					const aValue = a.original.updatedAt ? new Date(a.original.updatedAt).getTime() : 0
-					const bValue = b.original.updatedAt ? new Date(b.original.updatedAt).getTime() : 0
-					return aValue - bValue
+					const aValue = a.original.updatedAt ? new Date(a.original.updatedAt).getTime() : 0;
+					const bValue = b.original.updatedAt ? new Date(b.original.updatedAt).getTime() : 0;
+					return aValue - bValue;
 				},
 			},
 		],
 		[routes.personas]
-	)
+	);
 
 	const table = useReactTable({
 		data: rows,
@@ -166,7 +166,7 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 		onSortingChange: setSorting,
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
-	})
+	});
 
 	return (
 		<div className="overflow-hidden rounded-lg border bg-background">
@@ -206,5 +206,5 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 				</TableBody>
 			</Table>
 		</div>
-	)
+	);
 }

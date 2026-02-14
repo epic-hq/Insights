@@ -1,104 +1,104 @@
-import { formatDistanceToNow } from "date-fns"
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { redirect, useFetcher, useLoaderData, useParams } from "react-router"
-import { z } from "zod"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
-import type { Tables } from "~/types"
+import { formatDistanceToNow } from "date-fns";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { redirect, useFetcher, useLoaderData, useParams } from "react-router";
+import { z } from "zod";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
+import type { Tables } from "~/types";
 
 const severityBadge: Record<string, { variant?: "default" | "secondary" | "destructive" | "outline"; color?: string }> =
 	{
 		info: { variant: "outline", color: "blue" },
 		warning: { variant: "outline", color: "yellow" },
 		critical: { variant: "destructive" },
-	}
+	};
 
 type LoaderFramework = {
-	summaryId: string
-	name: string
-	computedAt: string
-	interviewId: string | null
-	attendeeNames: string[]
-	attendeePersonKeys: string[]
-	unlinkedAttendees: Array<{ displayName: string; role: string | null; personKey: string | null }>
-	hygieneSummary: Array<{ code: string; severity: string; message?: string | null; slot?: string | null }>
+	summaryId: string;
+	name: string;
+	computedAt: string;
+	interviewId: string | null;
+	attendeeNames: string[];
+	attendeePersonKeys: string[];
+	unlinkedAttendees: Array<{ displayName: string; role: string | null; personKey: string | null }>;
+	hygieneSummary: Array<{ code: string; severity: string; message?: string | null; slot?: string | null }>;
 	hygieneEvents: Array<{
-		id: string
-		code: string
-		severity: string
-		message?: string | null
-		slotLabel?: string | null
-	}>
+		id: string;
+		code: string;
+		severity: string;
+		message?: string | null;
+		slotLabel?: string | null;
+	}>;
 	slots: Array<{
-		id: string
-		slot: string
-		label: string | null
-		summary: string | null
-		textValue: string | null
-		numericValue: number | null
-		dateValue: string | null
-		status: string | null
-		confidence: number | null
-		ownerName: string | null
-		relatedNames: string[]
-		evidenceCount: number
+		id: string;
+		slot: string;
+		label: string | null;
+		summary: string | null;
+		textValue: string | null;
+		numericValue: number | null;
+		dateValue: string | null;
+		status: string | null;
+		confidence: number | null;
+		ownerName: string | null;
+		relatedNames: string[];
+		evidenceCount: number;
 		evidenceRefs: Array<{
-			evidenceId: string
-			startMs: number | null
-			endMs: number | null
-			transcriptSnippet: string | null
-		}>
-	}>
+			evidenceId: string;
+			startMs: number | null;
+			endMs: number | null;
+			transcriptSnippet: string | null;
+		}>;
+	}>;
 	stakeholders: Array<{
-		id: string
-		displayName: string
-		role: string | null
-		influence: string | null
-		labels: string[]
-		confidence: number | null
-		personName: string | null
-		personKey: string | null
-		email: string | null
-		organizationName: string | null
+		id: string;
+		displayName: string;
+		role: string | null;
+		influence: string | null;
+		labels: string[];
+		confidence: number | null;
+		personName: string | null;
+		personKey: string | null;
+		email: string | null;
+		organizationName: string | null;
 		evidenceRefs: Array<{
-			evidenceId: string
-			startMs: number | null
-			endMs: number | null
-			transcriptSnippet: string | null
-		}>
-	}>
-}
+			evidenceId: string;
+			startMs: number | null;
+			endMs: number | null;
+			transcriptSnippet: string | null;
+		}>;
+	}>;
+};
 
 type LoaderData = {
-	projectId: string
-	frameworks: LoaderFramework[]
-}
+	projectId: string;
+	frameworks: LoaderFramework[];
+};
 
 type SalesLensSlotRow = Tables<"sales_lens_slots"> & {
 	evidence_refs: Array<{
-		evidence_id: string
-		start_ms: number | null
-		end_ms: number | null
-		transcript_snippet: string | null
-	}> | null
+		evidence_id: string;
+		start_ms: number | null;
+		end_ms: number | null;
+		transcript_snippet: string | null;
+	}> | null;
 	hygiene: Array<{
-		code: string
-		severity: string
-		message?: string | null
-		slot?: string | null
-	}> | null
-}
+		code: string;
+		severity: string;
+		message?: string | null;
+		slot?: string | null;
+	}> | null;
+};
 
 type SalesLensSummaryRow = Tables<"sales_lens_summaries"> & {
-	sales_lens_slots: SalesLensSlotRow[] | null
-	sales_lens_stakeholders: SalesLensStakeholderRow[] | null
-}
+	sales_lens_slots: SalesLensSlotRow[] | null;
+	sales_lens_stakeholders: SalesLensStakeholderRow[] | null;
+};
 
-type SalesLensHygieneEventRow = Tables<"sales_lens_hygiene_events">
-type SalesLensStakeholderRow = Tables<"sales_lens_stakeholders">
+type SalesLensHygieneEventRow = Tables<"sales_lens_hygiene_events">;
+type SalesLensStakeholderRow = Tables<"sales_lens_stakeholders">;
 
 const salesLensActionSchema = z
 	.object({
@@ -108,26 +108,26 @@ const salesLensActionSchema = z
 	})
 	.superRefine((value, ctx) => {
 		if (value.intent === "refresh" && !value.interviewId) {
-			ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Missing interviewId", path: ["interviewId"] })
+			ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Missing interviewId", path: ["interviewId"] });
 		}
 		if (value.intent === "commit" && !value.summaryId) {
-			ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Missing summaryId", path: ["summaryId"] })
+			ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Missing summaryId", path: ["summaryId"] });
 		}
-	})
+	});
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
+	const ctx = context.get(userContext);
 	if (!ctx?.claims) {
-		return redirect("/login")
+		return redirect("/login");
 	}
 
-	const projectId = params.projectId
+	const projectId = params.projectId;
 	if (!projectId) {
-		throw new Response("Project id missing", { status: 400 })
+		throw new Response("Project id missing", { status: 400 });
 	}
 
 	if (!ctx.supabase) {
-		throw new Response("Supabase client missing", { status: 500 })
+		throw new Response("Supabase client missing", { status: 500 });
 	}
 
 	const { data: summaries, error } = await ctx.supabase
@@ -138,19 +138,19 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
                         sales_lens_stakeholders (id, display_name, role, influence, labels, confidence, person_id, person_key, candidate_person_key, email, evidence_refs)`
 		)
 		.eq("project_id", projectId)
-		.order("computed_at", { ascending: false })
+		.order("computed_at", { ascending: false });
 
 	if (error) {
-		throw new Response(`Failed to load sales lenses: ${error.message}`, { status: 500 })
+		throw new Response(`Failed to load sales lenses: ${error.message}`, { status: 500 });
 	}
 
-	const summariesList = summaries ?? []
-	const latestByFramework = new Map<string, SalesLensSummaryRow>()
-	const summaryIds: string[] = []
+	const summariesList = summaries ?? [];
+	const latestByFramework = new Map<string, SalesLensSummaryRow>();
+	const summaryIds: string[] = [];
 	for (const summary of summariesList) {
 		if (!latestByFramework.has(summary.framework)) {
-			latestByFramework.set(summary.framework, summary)
-			summaryIds.push(summary.id)
+			latestByFramework.set(summary.framework, summary);
+			summaryIds.push(summary.id);
 		}
 	}
 
@@ -165,29 +165,29 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				data: [] as Array<
 					Pick<SalesLensHygieneEventRow, "id" | "summary_id" | "slot_id" | "code" | "severity" | "message">
 				>,
-			}
+			};
 
-	const peopleIds = new Set<string>()
-	const organizationIds = new Set<string>()
+	const peopleIds = new Set<string>();
+	const organizationIds = new Set<string>();
 	for (const summary of latestByFramework.values()) {
 		for (const personId of summary.attendee_person_ids ?? []) {
-			if (personId) peopleIds.add(personId)
+			if (personId) peopleIds.add(personId);
 		}
 		for (const slot of summary.sales_lens_slots ?? []) {
-			if (slot.owner_person_id) peopleIds.add(slot.owner_person_id)
+			if (slot.owner_person_id) peopleIds.add(slot.owner_person_id);
 			for (const related of slot.related_person_ids ?? []) {
-				if (related) peopleIds.add(related)
+				if (related) peopleIds.add(related);
 			}
 			for (const relatedOrg of slot.related_organization_ids ?? []) {
-				if (relatedOrg) organizationIds.add(relatedOrg)
+				if (relatedOrg) organizationIds.add(relatedOrg);
 			}
 		}
 		for (const stakeholder of summary.sales_lens_stakeholders ?? []) {
 			if (stakeholder.person_id) {
-				peopleIds.add(stakeholder.person_id)
+				peopleIds.add(stakeholder.person_id);
 			}
 			if (stakeholder.organization_id) {
-				organizationIds.add(stakeholder.organization_id)
+				organizationIds.add(stakeholder.organization_id);
 			}
 		}
 	}
@@ -197,15 +197,15 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				.from("people")
 				.select<Pick<Tables<"people">, "id" | "name" | "role" | "title">>("id, name, role, title")
 				.in("id", Array.from(peopleIds))
-		: { data: [] as Array<Pick<Tables<"people">, "id" | "name" | "role" | "title">> }
+		: { data: [] as Array<Pick<Tables<"people">, "id" | "name" | "role" | "title">> };
 
-	const peopleById = new Map<string, { name: string | null; role: string | null; title: string | null }>()
+	const peopleById = new Map<string, { name: string | null; role: string | null; title: string | null }>();
 	for (const person of peopleRows ?? []) {
 		peopleById.set(person.id, {
 			name: person.name ?? null,
 			role: person.role ?? null,
 			title: person.title ?? null,
-		})
+		});
 	}
 
 	// Pull organization display names so stakeholder rows can surface company context.
@@ -214,36 +214,36 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				.from("organizations")
 				.select<Pick<Tables<"organizations">, "id" | "name">>("id, name")
 				.in("id", Array.from(organizationIds))
-		: { data: [] as Array<Pick<Tables<"organizations">, "id" | "name">> }
+		: { data: [] as Array<Pick<Tables<"organizations">, "id" | "name">> };
 
-	const organizationsById = new Map<string, { name: string | null }>()
+	const organizationsById = new Map<string, { name: string | null }>();
 	for (const organization of organizationRows ?? []) {
-		organizationsById.set(organization.id, { name: organization.name ?? null })
+		organizationsById.set(organization.id, { name: organization.name ?? null });
 	}
 
 	const hygieneEventsBySummary = new Map<
 		string,
 		Array<Pick<SalesLensHygieneEventRow, "id" | "summary_id" | "slot_id" | "code" | "severity" | "message">>
-	>()
+	>();
 	for (const event of hygieneEventsData ?? []) {
-		const list = hygieneEventsBySummary.get(event.summary_id) ?? []
-		list.push(event)
-		hygieneEventsBySummary.set(event.summary_id, list)
+		const list = hygieneEventsBySummary.get(event.summary_id) ?? [];
+		list.push(event);
+		hygieneEventsBySummary.set(event.summary_id, list);
 	}
 
-	const frameworks: LoaderFramework[] = []
+	const frameworks: LoaderFramework[] = [];
 	for (const [name, summary] of latestByFramework.entries()) {
-		const slots = Array.isArray(summary.sales_lens_slots) ? summary.sales_lens_slots : []
-		const orderedSlots = [...slots].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+		const slots = Array.isArray(summary.sales_lens_slots) ? summary.sales_lens_slots : [];
+		const orderedSlots = [...slots].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
 		const slotViews = orderedSlots.map((slot) => {
-			const owner = slot.owner_person_id ? peopleById.get(slot.owner_person_id) : undefined
-			const ownerName = owner?.name ?? (slot.owner_person_key ? `Unlinked (${slot.owner_person_key})` : null)
+			const owner = slot.owner_person_id ? peopleById.get(slot.owner_person_id) : undefined;
+			const ownerName = owner?.name ?? (slot.owner_person_key ? `Unlinked (${slot.owner_person_key})` : null);
 			const relatedNames = (slot.related_person_ids ?? [])
 				.map((id) => peopleById.get(id)?.name ?? null)
-				.filter((value): value is string => Boolean(value))
+				.filter((value): value is string => Boolean(value));
 
-			const evidenceRefs = Array.isArray(slot.evidence_refs) ? slot.evidence_refs : []
+			const evidenceRefs = Array.isArray(slot.evidence_refs) ? slot.evidence_refs : [];
 			return {
 				id: slot.id,
 				slot: slot.slot,
@@ -263,14 +263,14 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					endMs: ref.end_ms ?? null,
 					transcriptSnippet: ref.transcript_snippet ?? null,
 				})),
-			}
-		})
+			};
+		});
 
-		const stakeholderRows = Array.isArray(summary.sales_lens_stakeholders) ? summary.sales_lens_stakeholders : []
+		const stakeholderRows = Array.isArray(summary.sales_lens_stakeholders) ? summary.sales_lens_stakeholders : [];
 		const stakeholderViews = stakeholderRows.map((stakeholder) => {
-			const linkedPerson = stakeholder.person_id ? peopleById.get(stakeholder.person_id) : undefined
-			const organization = stakeholder.organization_id ? organizationsById.get(stakeholder.organization_id) : undefined
-			const stakeholderEvidenceRefs = Array.isArray(stakeholder.evidence_refs) ? stakeholder.evidence_refs : []
+			const linkedPerson = stakeholder.person_id ? peopleById.get(stakeholder.person_id) : undefined;
+			const organization = stakeholder.organization_id ? organizationsById.get(stakeholder.organization_id) : undefined;
+			const stakeholderEvidenceRefs = Array.isArray(stakeholder.evidence_refs) ? stakeholder.evidence_refs : [];
 			return {
 				id: stakeholder.id,
 				displayName: stakeholder.display_name,
@@ -288,24 +288,24 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					endMs: ref.end_ms ?? null,
 					transcriptSnippet: ref.transcript_snippet ?? null,
 				})),
-			}
-		})
+			};
+		});
 
 		const attendeeNames = (summary.attendee_person_ids ?? [])
 			.map((id) => peopleById.get(id)?.name ?? null)
-			.filter((value): value is string => Boolean(value))
+			.filter((value): value is string => Boolean(value));
 
-		const hygieneEvents = hygieneEventsBySummary.get(summary.id) ?? []
+		const hygieneEvents = hygieneEventsBySummary.get(summary.id) ?? [];
 		const hygieneViews = hygieneEvents.map((event) => {
-			const slot = orderedSlots.find((candidate) => candidate.id === event.slot_id)
+			const slot = orderedSlots.find((candidate) => candidate.id === event.slot_id);
 			return {
 				id: event.id,
 				code: event.code,
 				severity: event.severity,
 				message: event.message ?? null,
 				slotLabel: slot?.slot ?? null,
-			}
-		})
+			};
+		});
 
 		const unlinkedAttendees = Array.isArray(summary.attendee_unlinked)
 			? summary.attendee_unlinked
@@ -321,7 +321,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					.filter((candidate): candidate is { displayName: string; role: string | null; personKey: string | null } =>
 						Boolean(candidate)
 					)
-			: []
+			: [];
 
 		frameworks.push({
 			summaryId: summary.id,
@@ -335,32 +335,32 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			hygieneEvents: hygieneViews,
 			slots: slotViews,
 			stakeholders: stakeholderViews,
-		})
+		});
 	}
 
-	const result: LoaderData = { projectId, frameworks }
-	return result
+	const result: LoaderData = { projectId, frameworks };
+	return result;
 }
 
 export async function action({ context, params, request }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
+	const ctx = context.get(userContext);
 	if (!ctx?.claims) {
-		return redirect("/login")
+		return redirect("/login");
 	}
 
-	const projectId = params.projectId
+	const projectId = params.projectId;
 	if (!projectId) {
-		throw new Response("Project id missing", { status: 400 })
+		throw new Response("Project id missing", { status: 400 });
 	}
 
-	const formData = await request.formData()
+	const formData = await request.formData();
 	const payload = {
 		intent: formData.get("intent"),
 		interviewId: formData.get("interviewId"),
 		summaryId: formData.get("summaryId"),
-	}
+	};
 
-	const parsed = salesLensActionSchema.safeParse(payload)
+	const parsed = salesLensActionSchema.safeParse(payload);
 	if (!parsed.success) {
 		return Response.json(
 			{
@@ -368,16 +368,16 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 				errors: parsed.error.flatten(),
 			},
 			{ status: 400 }
-		)
+		);
 	}
 
 	if (parsed.data.intent === "refresh") {
-		const { generateSalesLensTask } = await import("~/../src/trigger/sales/generateSalesLens")
-		await generateSalesLensTask.trigger({
+		const { tasks } = await import("@trigger.dev/sdk");
+		await tasks.trigger("sales.generate-sales-lens", {
 			interviewId: parsed.data.interviewId!,
 			computedBy: ctx.claims.sub ?? null,
-		})
-		return Response.json({ success: true as const, intent: parsed.data.intent })
+		});
+		return Response.json({ success: true as const, intent: parsed.data.intent });
 	}
 
 	if (parsed.data.intent === "commit") {
@@ -385,14 +385,14 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 			success: true as const,
 			intent: parsed.data.intent,
 			message: "CRM write-back coming soon.",
-		})
+		});
 	}
 
-	return Response.json({ success: false as const }, { status: 400 })
+	return Response.json({ success: false as const }, { status: 400 });
 }
 
 export default function ProjectSalesLensesPage() {
-	const data = useLoaderData<typeof loader>()
+	const data = useLoaderData<typeof loader>();
 
 	return (
 		<div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-10">
@@ -408,23 +408,23 @@ export default function ProjectSalesLensesPage() {
 				))}
 			</div>
 		</div>
-	)
+	);
 }
 
 type LensCardProps = {
-	framework: LoaderFramework
-}
+	framework: LoaderFramework;
+};
 
 function LensCard({ framework }: LensCardProps) {
-	const params = useParams()
-	const { accountId, projectId } = params
-	const routes = useProjectRoutesFromIds(accountId!, projectId!)
-	const commitFetcher = useFetcher<{ success: boolean; intent: string; message?: string }>()
-	const refreshFetcher = useFetcher<{ success: boolean; intent: string }>()
-	const isCommitting = commitFetcher.state !== "idle"
-	const isRefreshing = refreshFetcher.state !== "idle"
-	const commitMessage = commitFetcher.data?.intent === "commit" ? (commitFetcher.data?.message ?? null) : null
-	const lastUpdatedLabel = formatDistanceToNow(new Date(framework.computedAt), { addSuffix: true })
+	const params = useParams();
+	const { accountId, projectId } = params;
+	const routes = useProjectRoutesFromIds(accountId!, projectId!);
+	const commitFetcher = useFetcher<{ success: boolean; intent: string; message?: string }>();
+	const refreshFetcher = useFetcher<{ success: boolean; intent: string }>();
+	const isCommitting = commitFetcher.state !== "idle";
+	const isRefreshing = refreshFetcher.state !== "idle";
+	const commitMessage = commitFetcher.data?.intent === "commit" ? (commitFetcher.data?.message ?? null) : null;
+	const lastUpdatedLabel = formatDistanceToNow(new Date(framework.computedAt), { addSuffix: true });
 	return (
 		<Card className="flex h-full flex-col">
 			<CardHeader className="flex flex-row items-start justify-between gap-4">
@@ -572,43 +572,43 @@ function LensCard({ framework }: LensCardProps) {
 				) : null}
 			</CardContent>
 		</Card>
-	)
+	);
 }
 
 type HygieneListProps = {
-	hygiene: LoaderFramework["hygieneEvents"]
-	summary: LoaderFramework["hygieneSummary"]
-}
+	hygiene: LoaderFramework["hygieneEvents"];
+	summary: LoaderFramework["hygieneSummary"];
+};
 
 function HygieneList({ hygiene, summary }: HygieneListProps) {
-	const combined = [...summary.map((item) => ({ ...item, slotLabel: item.slot ?? null })), ...hygiene]
+	const combined = [...summary.map((item) => ({ ...item, slotLabel: item.slot ?? null })), ...hygiene];
 	if (!combined.length) {
-		return null
+		return null;
 	}
 	return (
 		<div className="flex flex-wrap gap-2">
 			{combined.map((item) => {
-				const badgeVariant = severityBadge[item.severity] ?? { variant: "outline" as const }
+				const badgeVariant = severityBadge[item.severity] ?? { variant: "outline" as const };
 				return (
 					<Badge key={`${item.code}-${item.slotLabel ?? "summary"}`} {...badgeVariant}>
 						<span className="font-medium">{item.code}</span>
 						{item.slotLabel ? <span className="ml-1 text-muted-foreground text-xs">({item.slotLabel})</span> : null}
 						{item.message ? <span className="ml-1 text-muted-foreground text-xs">{item.message}</span> : null}
 					</Badge>
-				)
+				);
 			})}
 		</div>
-	)
+	);
 }
 
 type StakeholderListProps = {
-	stakeholders: LoaderFramework["stakeholders"]
-	unlinked: LoaderFramework["unlinkedAttendees"]
-}
+	stakeholders: LoaderFramework["stakeholders"];
+	unlinked: LoaderFramework["unlinkedAttendees"];
+};
 
 function StakeholderList({ stakeholders, unlinked }: StakeholderListProps) {
 	if (!stakeholders.length && !unlinked.length) {
-		return null
+		return null;
 	}
 
 	return (
@@ -684,20 +684,20 @@ function StakeholderList({ stakeholders, unlinked }: StakeholderListProps) {
 				) : null}
 			</div>
 		</div>
-	)
+	);
 }
 
 function friendlyFrameworkName(name: string) {
 	switch (name) {
 		case "BANT_GPCT":
-			return "Sales (BANT)"
+			return "Sales (BANT)";
 		case "SPICED":
-			return "SPICED"
+			return "SPICED";
 		case "MEDDIC":
-			return "MEDDIC"
+			return "MEDDIC";
 		case "MAP":
-			return "Mutual Action Plan"
+			return "Mutual Action Plan";
 		default:
-			return name
+			return name;
 	}
 }

@@ -5,16 +5,16 @@
  * Uses subtle styling to avoid distraction while providing feedback.
  */
 
-import { Check, Cloud, CloudOff, Loader2 } from "lucide-react"
-import { cn } from "~/lib/utils"
-import { useProjectSetup } from "../contexts/project-setup-context"
-import type { SyncStatus } from "../stores/project-setup-store"
+import { Check, Cloud, CloudOff, Loader2 } from "lucide-react";
+import { cn } from "~/lib/utils";
+import { useProjectSetup } from "../contexts/project-setup-context";
+import type { SyncStatus } from "../stores/project-setup-store";
 
 interface StatusConfig {
-	icon: React.ComponentType<{ className?: string }>
-	label: string
-	className: string
-	iconClassName?: string
+	icon: React.ComponentType<{ className?: string }>;
+	label: string;
+	className: string;
+	iconClassName?: string;
 }
 
 const STATUS_CONFIG: Record<SyncStatus, StatusConfig> = {
@@ -39,11 +39,11 @@ const STATUS_CONFIG: Record<SyncStatus, StatusConfig> = {
 		label: "Save failed",
 		className: "text-destructive",
 	},
-}
+};
 
 interface SyncStatusIndicatorProps {
-	className?: string
-	showLabel?: boolean
+	className?: string;
+	showLabel?: boolean;
 }
 
 /**
@@ -56,10 +56,10 @@ interface SyncStatusIndicatorProps {
  * - Error icon when save failed
  */
 export function SyncStatusIndicator({ className, showLabel = true }: SyncStatusIndicatorProps) {
-	const { syncStatus } = useProjectSetup()
+	const { syncStatus } = useProjectSetup();
 
-	const config = STATUS_CONFIG[syncStatus]
-	const Icon = config.icon
+	const config = STATUS_CONFIG[syncStatus];
+	const Icon = config.icon;
 
 	return (
 		<div
@@ -70,7 +70,7 @@ export function SyncStatusIndicator({ className, showLabel = true }: SyncStatusI
 			<Icon className={cn("h-3.5 w-3.5", config.iconClassName)} aria-hidden="true" />
 			{showLabel && <span>{config.label}</span>}
 		</div>
-	)
+	);
 }
 
 /**
@@ -78,7 +78,7 @@ export function SyncStatusIndicator({ className, showLabel = true }: SyncStatusI
  * Shows only a colored dot that pulses when saving
  */
 export function SyncStatusDot({ className }: { className?: string }) {
-	const { syncStatus } = useProjectSetup()
+	const { syncStatus } = useProjectSetup();
 
 	return (
 		<div
@@ -93,30 +93,30 @@ export function SyncStatusDot({ className }: { className?: string }) {
 			role="status"
 			aria-label={STATUS_CONFIG[syncStatus].label}
 		/>
-	)
+	);
 }
 
 /**
  * Extended indicator with last saved time
  */
 export function SyncStatusWithTime({ className }: { className?: string }) {
-	const { syncStatus, lastSyncedAt } = useProjectSetup()
+	const { syncStatus, lastSyncedAt } = useProjectSetup();
 
-	const config = STATUS_CONFIG[syncStatus]
-	const Icon = config.icon
+	const config = STATUS_CONFIG[syncStatus];
+	const Icon = config.icon;
 
 	const formatTime = (date: Date | null) => {
-		if (!date) return ""
+		if (!date) return "";
 
-		const now = new Date()
-		const diffMs = now.getTime() - date.getTime()
-		const diffSec = Math.floor(diffMs / 1000)
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+		const diffSec = Math.floor(diffMs / 1000);
 
-		if (diffSec < 5) return "just now"
-		if (diffSec < 60) return `${diffSec}s ago`
-		if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
-		return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-	}
+		if (diffSec < 5) return "just now";
+		if (diffSec < 60) return `${diffSec}s ago`;
+		if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+		return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+	};
 
 	return (
 		<div
@@ -130,5 +130,5 @@ export function SyncStatusWithTime({ className }: { className?: string }) {
 				<span className="text-muted-foreground/70">{formatTime(lastSyncedAt)}</span>
 			)}
 		</div>
-	)
+	);
 }

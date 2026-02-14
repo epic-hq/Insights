@@ -2,55 +2,55 @@
  * Server-side loaders for conversation lens analyses
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database } from "~/types/supabase.types"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "~/types/supabase.types";
 
 export type LensTemplate = {
-	template_key: string
-	template_name: string
-	summary: string | null
-	category: string | null
-	display_order: number
+	template_key: string;
+	template_name: string;
+	summary: string | null;
+	category: string | null;
+	display_order: number;
 	template_definition: {
 		sections: Array<{
-			section_key: string
-			section_name: string
-			description?: string
+			section_key: string;
+			section_name: string;
+			description?: string;
 			fields: Array<{
-				field_key: string
-				field_name: string
-				field_type: "text" | "text_array" | "numeric" | "date" | "boolean"
-				description?: string
-			}>
-		}>
-		entities?: string[]
-		recommendations_enabled?: boolean
-		requires_project_context?: boolean
-	}
+				field_key: string;
+				field_name: string;
+				field_type: "text" | "text_array" | "numeric" | "date" | "boolean";
+				description?: string;
+			}>;
+		}>;
+		entities?: string[];
+		recommendations_enabled?: boolean;
+		requires_project_context?: boolean;
+	};
 	// Custom lens fields
-	account_id?: string | null
-	created_by?: string | null
-	created_by_name?: string | null // Username portion of email (before @)
-	is_system: boolean
-	is_public: boolean
-	nlp_source?: string | null
-}
+	account_id?: string | null;
+	created_by?: string | null;
+	created_by_name?: string | null; // Username portion of email (before @)
+	is_system: boolean;
+	is_public: boolean;
+	nlp_source?: string | null;
+};
 
 export type LensAnalysis = {
-	id: string
-	interview_id: string
-	template_key: string
-	analysis_data: any
-	confidence_score: number | null
-	status: "pending" | "processing" | "completed" | "failed"
-	error_message: string | null
-	processed_at: string | null
-	created_at: string
-}
+	id: string;
+	interview_id: string;
+	template_key: string;
+	analysis_data: any;
+	confidence_score: number | null;
+	status: "pending" | "processing" | "completed" | "failed";
+	error_message: string | null;
+	processed_at: string | null;
+	created_at: string;
+};
 
 export type LensAnalysisWithTemplate = LensAnalysis & {
-	template: LensTemplate
-}
+	template: LensTemplate;
+};
 
 /**
  * Load all available lens templates
@@ -61,11 +61,11 @@ export async function loadLensTemplates(db: SupabaseClient<Database>): Promise<L
 		.from("conversation_lens_templates")
 		.select("*")
 		.eq("is_active", true)
-		.order("display_order", { ascending: true })
+		.order("display_order", { ascending: true });
 
 	if (error) {
-		console.error("[loadLensTemplates] Error:", error)
-		return []
+		console.error("[loadLensTemplates] Error:", error);
+		return [];
 	}
 
 	return (data || []).map((t) => ({
@@ -82,7 +82,7 @@ export async function loadLensTemplates(db: SupabaseClient<Database>): Promise<L
 		is_system: t.is_system ?? true, // Default to true for backwards compat
 		is_public: t.is_public ?? true,
 		nlp_source: t.nlp_source,
-	}))
+	}));
 }
 
 /**
@@ -97,31 +97,31 @@ export async function loadLensAnalyses(
 ): Promise<Record<string, LensAnalysisWithTemplate>> {
 	// Build analyses query - RLS handles access control via account membership
 	// Don't filter by accountId since the interview is already access-controlled
-	const analysesQuery = db.from("conversation_lens_analyses").select("*").eq("interview_id", interviewId)
+	const analysesQuery = db.from("conversation_lens_analyses").select("*").eq("interview_id", interviewId);
 
 	// Load analyses and templates separately (avoids PostgREST FK detection issues)
 	const [analysesResult, templatesResult] = await Promise.all([
 		analysesQuery.then((result) => {
 			if (result.error) {
-				console.error("[loadLensAnalyses] Error loading analyses:", result.error)
+				console.error("[loadLensAnalyses] Error loading analyses:", result.error);
 			} else {
-				console.log("[loadLensAnalyses] Loaded", result.data?.length || 0, "analyses for interview", interviewId)
+				console.log("[loadLensAnalyses] Loaded", result.data?.length || 0, "analyses for interview", interviewId);
 			}
-			return result
+			return result;
 		}),
 		db.from("conversation_lens_templates").select("*").eq("is_active", true),
-	])
+	]);
 
 	if (analysesResult.error) {
-		return {}
+		return {};
 	}
 
 	if (templatesResult.error) {
-		return {}
+		return {};
 	}
 
 	// Build template map for lookup
-	const templateMap = new Map<string, LensTemplate>()
+	const templateMap = new Map<string, LensTemplate>();
 	for (const t of templatesResult.data || []) {
 		templateMap.set(t.template_key, {
 			template_key: t.template_key,
@@ -135,15 +135,15 @@ export async function loadLensAnalyses(
 			is_system: t.is_system ?? true,
 			is_public: t.is_public ?? true,
 			nlp_source: t.nlp_source,
-		})
+		});
 	}
 
 	// Convert to map keyed by template_key
-	const result: Record<string, LensAnalysisWithTemplate> = {}
+	const result: Record<string, LensAnalysisWithTemplate> = {};
 
 	for (const analysis of analysesResult.data || []) {
-		const template = templateMap.get(analysis.template_key)
-		if (!template) continue
+		const template = templateMap.get(analysis.template_key);
+		if (!template) continue;
 
 		result[analysis.template_key] = {
 			id: analysis.id,
@@ -156,10 +156,10 @@ export async function loadLensAnalyses(
 			processed_at: analysis.processed_at,
 			created_at: analysis.created_at,
 			template,
-		}
+		};
 	}
 
-	return result
+	return result;
 }
 
 /**
@@ -179,18 +179,18 @@ export async function loadLensAnalysis(
 			.eq("template_key", templateKey)
 			.single(),
 		db.from("conversation_lens_templates").select("*").eq("template_key", templateKey).single(),
-	])
+	]);
 
 	if (analysisResult.error || !analysisResult.data) {
-		return null
+		return null;
 	}
 
 	if (templateResult.error || !templateResult.data) {
-		return null
+		return null;
 	}
 
-	const analysis = analysisResult.data
-	const t = templateResult.data
+	const analysis = analysisResult.data;
+	const t = templateResult.data;
 
 	return {
 		id: analysis.id,
@@ -215,7 +215,7 @@ export async function loadLensAnalysis(
 			is_public: t.is_public ?? true,
 			nlp_source: t.nlp_source,
 		},
-	}
+	};
 }
 
 /**
@@ -228,10 +228,10 @@ export async function getLensAnalysisCount(
 	const [analysesResult, templatesResult] = await Promise.all([
 		db.from("conversation_lens_analyses").select("template_key, status").eq("interview_id", interviewId),
 		db.from("conversation_lens_templates").select("template_key").eq("is_active", true),
-	])
+	]);
 
-	const completed = (analysesResult.data || []).filter((a) => a.status === "completed").length
-	const total = templatesResult.data?.length || 0
+	const completed = (analysesResult.data || []).filter((a) => a.status === "completed").length;
+	const total = templatesResult.data?.length || 0;
 
-	return { completed, total }
+	return { completed, total };
 }

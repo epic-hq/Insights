@@ -1,13 +1,13 @@
-import { File, FileAudio, FileText, FileVideo, Mic, Phone, TestTube, Users } from "lucide-react"
-import { cn } from "~/lib/utils"
+import { File, FileAudio, FileText, FileVideo, Mic, Phone, TestTube, Users } from "lucide-react";
+import { cn } from "~/lib/utils";
 
 interface MediaTypeIconProps {
-	mediaType?: string | null
-	sourceType?: string | null
-	showLabel?: boolean
-	className?: string
-	iconClassName?: string
-	labelClassName?: string
+	mediaType?: string | null;
+	sourceType?: string | null;
+	showLabel?: boolean;
+	className?: string;
+	iconClassName?: string;
+	labelClassName?: string;
 }
 
 const sourceTypeConfig = {
@@ -44,7 +44,7 @@ const sourceTypeConfig = {
 		label: "Note",
 		color: "text-amber-600",
 	},
-}
+};
 
 const mediaTypeConfig = {
 	interview: {
@@ -97,7 +97,7 @@ const mediaTypeConfig = {
 		label: "Voice Memo",
 		color: "text-red-600",
 	},
-}
+};
 
 export function MediaTypeIcon({
 	mediaType,
@@ -108,7 +108,7 @@ export function MediaTypeIcon({
 	labelClassName = "text-sm font-medium",
 }: MediaTypeIconProps) {
 	// Handle special case: voice_memo with realtime recording (solo) vs interview with realtime recording (conversation)
-	let config: { icon: any; label: string; color: string } | null = null
+	let config: { icon: any; label: string; color: string } | null = null;
 
 	if (mediaType === "voice_memo" && sourceType === "realtime_recording") {
 		// Solo voice memo
@@ -116,25 +116,25 @@ export function MediaTypeIcon({
 			icon: Mic,
 			label: "Voice Memo",
 			color: "text-red-600",
-		}
+		};
 	} else if (mediaType === "interview" && sourceType === "realtime_recording") {
 		// Live conversation recording
 		config = {
 			icon: Users,
 			label: "Live Conversation",
 			color: "text-blue-600",
-		}
+		};
 	} else {
 		// Prioritize source type over media type for other cases
-		const sourceConfig = sourceType ? sourceTypeConfig[sourceType as keyof typeof sourceTypeConfig] : null
-		const mediaConfig = mediaType ? mediaTypeConfig[mediaType as keyof typeof mediaTypeConfig] : null
-		config = sourceConfig || mediaConfig || mediaTypeConfig.interview
+		const sourceConfig = sourceType ? sourceTypeConfig[sourceType as keyof typeof sourceTypeConfig] : null;
+		const mediaConfig = mediaType ? mediaTypeConfig[mediaType as keyof typeof mediaTypeConfig] : null;
+		config = sourceConfig || mediaConfig || mediaTypeConfig.interview;
 	}
 
-	const { icon: Icon, label, color } = config
+	const { icon: Icon, label, color } = config;
 
 	if (!showLabel) {
-		return <Icon className={cn(color, iconClassName)} />
+		return <Icon className={cn(color, iconClassName)} />;
 	}
 
 	return (
@@ -142,7 +142,7 @@ export function MediaTypeIcon({
 			<Icon className={cn(color, iconClassName)} />
 			<span className={cn(color, labelClassName)}>{label}</span>
 		</div>
-	)
+	);
 }
 
-export default MediaTypeIcon
+export default MediaTypeIcon;

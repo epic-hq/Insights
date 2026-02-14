@@ -2,29 +2,29 @@
  * MentionInput Component
  * A textarea that supports @mentions with a searchable popover
  */
-import { User, Users } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { Popover, PopoverAnchor, PopoverContent } from "~/components/ui/popover"
-import { Textarea } from "~/components/ui/textarea"
-import { cn } from "~/lib/utils"
-import type { MentionableUser } from "~/routes/api/mentionable-users"
+import { User, Users } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Popover, PopoverAnchor, PopoverContent } from "~/components/ui/popover";
+import { Textarea } from "~/components/ui/textarea";
+import { cn } from "~/lib/utils";
+import type { MentionableUser } from "~/routes/api/mentionable-users";
 
 export interface Mention {
-	id: string
-	name: string
-	type: "user" | "person"
-	startIndex: number
-	endIndex: number
+	id: string;
+	name: string;
+	type: "user" | "person";
+	startIndex: number;
+	endIndex: number;
 }
 
 interface MentionInputProps {
-	value: string
-	onChange: (value: string) => void
-	onMentionsChange?: (mentions: Mention[]) => void
-	mentionableUsers: MentionableUser[]
-	placeholder?: string
-	className?: string
-	disabled?: boolean
+	value: string;
+	onChange: (value: string) => void;
+	onMentionsChange?: (mentions: Mention[]) => void;
+	mentionableUsers: MentionableUser[];
+	placeholder?: string;
+	className?: string;
+	disabled?: boolean;
 }
 
 export function MentionInput({
@@ -36,84 +36,84 @@ export function MentionInput({
 	className,
 	disabled,
 }: MentionInputProps) {
-	const textareaRef = useRef<HTMLTextAreaElement>(null)
-	const [showMentions, setShowMentions] = useState(false)
-	const [mentionSearch, setMentionSearch] = useState("")
-	const [mentionStartIndex, setMentionStartIndex] = useState<number | null>(null)
-	const [selectedIndex, setSelectedIndex] = useState(0)
-	const [mentions, setMentions] = useState<Mention[]>([])
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const [showMentions, setShowMentions] = useState(false);
+	const [mentionSearch, setMentionSearch] = useState("");
+	const [mentionStartIndex, setMentionStartIndex] = useState<number | null>(null);
+	const [selectedIndex, setSelectedIndex] = useState(0);
+	const [mentions, setMentions] = useState<Mention[]>([]);
 
 	// Filter mentionable users based on search
 	const filteredUsers = mentionableUsers
 		.filter((user) => {
-			if (!mentionSearch) return true
-			const searchLower = mentionSearch.toLowerCase()
-			return user.name.toLowerCase().includes(searchLower) || user.subtitle?.toLowerCase().includes(searchLower)
+			if (!mentionSearch) return true;
+			const searchLower = mentionSearch.toLowerCase();
+			return user.name.toLowerCase().includes(searchLower) || user.subtitle?.toLowerCase().includes(searchLower);
 		})
-		.slice(0, 8) // Limit to 8 results
+		.slice(0, 8); // Limit to 8 results
 
 	// Handle text change and detect @ mentions
 	const handleChange = useCallback(
 		(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-			const newValue = e.target.value
-			const cursorPos = e.target.selectionStart
+			const newValue = e.target.value;
+			const cursorPos = e.target.selectionStart;
 
-			onChange(newValue)
+			onChange(newValue);
 
 			// Check if we should show mention popup
-			const textBeforeCursor = newValue.slice(0, cursorPos)
-			const lastAtIndex = textBeforeCursor.lastIndexOf("@")
+			const textBeforeCursor = newValue.slice(0, cursorPos);
+			const lastAtIndex = textBeforeCursor.lastIndexOf("@");
 
 			if (lastAtIndex !== -1) {
-				const textAfterAt = textBeforeCursor.slice(lastAtIndex + 1)
+				const textAfterAt = textBeforeCursor.slice(lastAtIndex + 1);
 				// Show popup if @ is at start or preceded by whitespace, and no space after @
-				const charBeforeAt = lastAtIndex > 0 ? newValue[lastAtIndex - 1] : " "
+				const charBeforeAt = lastAtIndex > 0 ? newValue[lastAtIndex - 1] : " ";
 				if ((charBeforeAt === " " || charBeforeAt === "\n" || lastAtIndex === 0) && !textAfterAt.includes(" ")) {
-					setShowMentions(true)
-					setMentionSearch(textAfterAt)
-					setMentionStartIndex(lastAtIndex)
-					setSelectedIndex(0)
-					return
+					setShowMentions(true);
+					setMentionSearch(textAfterAt);
+					setMentionStartIndex(lastAtIndex);
+					setSelectedIndex(0);
+					return;
 				}
 			}
 
-			setShowMentions(false)
-			setMentionSearch("")
-			setMentionStartIndex(null)
+			setShowMentions(false);
+			setMentionSearch("");
+			setMentionStartIndex(null);
 		},
 		[onChange]
-	)
+	);
 
 	// Handle keyboard navigation in mention popup
 	const handleKeyDown = useCallback(
 		(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-			if (!showMentions || filteredUsers.length === 0) return
+			if (!showMentions || filteredUsers.length === 0) return;
 
 			if (e.key === "ArrowDown") {
-				e.preventDefault()
-				setSelectedIndex((prev) => (prev + 1) % filteredUsers.length)
+				e.preventDefault();
+				setSelectedIndex((prev) => (prev + 1) % filteredUsers.length);
 			} else if (e.key === "ArrowUp") {
-				e.preventDefault()
-				setSelectedIndex((prev) => (prev - 1 + filteredUsers.length) % filteredUsers.length)
+				e.preventDefault();
+				setSelectedIndex((prev) => (prev - 1 + filteredUsers.length) % filteredUsers.length);
 			} else if (e.key === "Enter" || e.key === "Tab") {
-				e.preventDefault()
-				selectMention(filteredUsers[selectedIndex])
+				e.preventDefault();
+				selectMention(filteredUsers[selectedIndex]);
 			} else if (e.key === "Escape") {
-				setShowMentions(false)
+				setShowMentions(false);
 			}
 		},
 		[showMentions, filteredUsers, selectedIndex]
-	)
+	);
 
 	// Select a mention and insert it into the text
 	const selectMention = useCallback(
 		(user: MentionableUser) => {
-			if (mentionStartIndex === null) return
+			if (mentionStartIndex === null) return;
 
-			const beforeMention = value.slice(0, mentionStartIndex)
-			const afterMention = value.slice(mentionStartIndex + mentionSearch.length + 1) // +1 for @
-			const mentionText = `@${user.name}`
-			const newValue = beforeMention + mentionText + " " + afterMention
+			const beforeMention = value.slice(0, mentionStartIndex);
+			const afterMention = value.slice(mentionStartIndex + mentionSearch.length + 1); // +1 for @
+			const mentionText = `@${user.name}`;
+			const newValue = beforeMention + mentionText + " " + afterMention;
 
 			// Track the mention
 			const newMention: Mention = {
@@ -122,39 +122,39 @@ export function MentionInput({
 				type: user.type,
 				startIndex: mentionStartIndex,
 				endIndex: mentionStartIndex + mentionText.length,
-			}
+			};
 
-			const updatedMentions = [...mentions, newMention]
-			setMentions(updatedMentions)
-			onMentionsChange?.(updatedMentions)
+			const updatedMentions = [...mentions, newMention];
+			setMentions(updatedMentions);
+			onMentionsChange?.(updatedMentions);
 
-			onChange(newValue)
-			setShowMentions(false)
-			setMentionSearch("")
-			setMentionStartIndex(null)
+			onChange(newValue);
+			setShowMentions(false);
+			setMentionSearch("");
+			setMentionStartIndex(null);
 
 			// Focus and set cursor position after mention
 			setTimeout(() => {
 				if (textareaRef.current) {
-					const newCursorPos = mentionStartIndex + mentionText.length + 1
-					textareaRef.current.focus()
-					textareaRef.current.setSelectionRange(newCursorPos, newCursorPos)
+					const newCursorPos = mentionStartIndex + mentionText.length + 1;
+					textareaRef.current.focus();
+					textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
 				}
-			}, 0)
+			}, 0);
 		},
 		[value, mentionStartIndex, mentionSearch, mentions, onChange, onMentionsChange]
-	)
+	);
 
 	// Reset mentions when value is cleared
 	useEffect(() => {
 		if (!value) {
-			setMentions([])
-			onMentionsChange?.([])
+			setMentions([]);
+			onMentionsChange?.([]);
 		}
-	}, [value, onMentionsChange])
+	}, [value, onMentionsChange]);
 
 	// Show popover if we're in mention mode (even if no results yet)
-	const shouldShowPopover = showMentions && mentionableUsers.length > 0
+	const shouldShowPopover = showMentions && mentionableUsers.length > 0;
 
 	return (
 		<div className="relative w-full">
@@ -217,7 +217,7 @@ export function MentionInput({
 				</PopoverContent>
 			</Popover>
 		</div>
-	)
+	);
 }
 
 /**
@@ -225,19 +225,19 @@ export function MentionInput({
  */
 export function renderTextWithMentions(text: string, mentions?: Mention[]): React.ReactNode {
 	if (!mentions || mentions.length === 0) {
-		return text
+		return text;
 	}
 
-	const parts: React.ReactNode[] = []
-	let lastIndex = 0
+	const parts: React.ReactNode[] = [];
+	let lastIndex = 0;
 
 	// Sort mentions by start index
-	const sortedMentions = [...mentions].sort((a, b) => a.startIndex - b.startIndex)
+	const sortedMentions = [...mentions].sort((a, b) => a.startIndex - b.startIndex);
 
 	for (const mention of sortedMentions) {
 		// Add text before mention
 		if (mention.startIndex > lastIndex) {
-			parts.push(text.slice(lastIndex, mention.startIndex))
+			parts.push(text.slice(lastIndex, mention.startIndex));
 		}
 
 		// Add mention badge
@@ -248,15 +248,15 @@ export function renderTextWithMentions(text: string, mentions?: Mention[]): Reac
 			>
 				@{mention.name}
 			</span>
-		)
+		);
 
-		lastIndex = mention.endIndex
+		lastIndex = mention.endIndex;
 	}
 
 	// Add remaining text
 	if (lastIndex < text.length) {
-		parts.push(text.slice(lastIndex))
+		parts.push(text.slice(lastIndex));
 	}
 
-	return parts
+	return parts;
 }

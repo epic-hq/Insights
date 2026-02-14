@@ -1,12 +1,12 @@
-import type { MetaFunction } from "react-router"
-import QuestionQualityDemo from "~/components/questions/QuestionQualityDemo"
+import type { MetaFunction } from "react-router";
+import QuestionQualityDemo from "~/components/questions/QuestionQualityDemo";
 
 export const meta: MetaFunction = () => {
 	return [
 		{ title: "Question Quality Evaluator - Test" },
 		{ name: "description", content: "Test the question quality evaluation functionality" },
-	]
-}
+	];
+};
 
 export default function TestQuestionQuality() {
 	return (
@@ -21,5 +21,5 @@ export default function TestQuestionQuality() {
 				<QuestionQualityDemo />
 			</div>
 		</div>
-	)
+	);
 }

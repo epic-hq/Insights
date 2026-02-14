@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs } from "react-router"
-import { getAllPostSlugs } from "~/lib/cms/payload.server"
+import type { LoaderFunctionArgs } from "react-router";
+import { getAllPostSlugs } from "~/lib/cms/payload.server";
 
 /**
  * Dynamic Sitemap Generator
@@ -12,7 +12,7 @@ import { getAllPostSlugs } from "~/lib/cms/payload.server"
  */
 
 export async function loader({ request }: LoaderFunctionArgs) {
-	const baseUrl = new URL(request.url).origin
+	const baseUrl = new URL(request.url).origin;
 
 	// Define your public pages here
 	const staticPages = [
@@ -32,24 +32,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		{ path: "/login", priority: 0.7, changefreq: "monthly" },
 
 		// Add more public pages as needed
-	]
+	];
 
 	// Fetch blog posts from CMS
-	let blogPages: Array<{ path: string; priority: number; changefreq: string }> = []
+	let blogPages: Array<{ path: string; priority: number; changefreq: string }> = [];
 	try {
-		const postSlugs = await getAllPostSlugs()
+		const postSlugs = await getAllPostSlugs();
 		blogPages = postSlugs.map((slug) => ({
 			path: `/blog/${slug}`,
 			priority: 0.7,
 			changefreq: "monthly",
-		}))
+		}));
 	} catch (error) {
-		console.error("Failed to fetch blog posts for sitemap:", error)
+		console.error("Failed to fetch blog posts for sitemap:", error);
 		// Continue without blog posts if CMS is unavailable
 	}
 
-	const pages = [...staticPages, ...blogPages]
-	const lastmod = new Date().toISOString().split("T")[0]
+	const pages = [...staticPages, ...blogPages];
+	const lastmod = new Date().toISOString().split("T")[0];
 
 	const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -63,7 +63,7 @@ ${pages
   </url>`
 	)
 	.join("\n")}
-</urlset>`
+</urlset>`;
 
 	return new Response(sitemap, {
 		status: 200,
@@ -71,5 +71,5 @@ ${pages
 			"Content-Type": "application/xml",
 			"Cache-Control": "public, max-age=3600", // Cache for 1 hour
 		},
-	})
+	});
 }

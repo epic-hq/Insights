@@ -1,76 +1,76 @@
-import { AlertCircle, DollarSign, Target, TrendingUp, Users } from "lucide-react"
-import { Link } from "react-router"
-import { BackButton } from "~/components/ui/BackButton"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
-import { getSegmentDetail } from "../services/segmentData.server"
-import type { Route } from "./+types/detail"
+import { AlertCircle, DollarSign, Target, TrendingUp, Users } from "lucide-react";
+import { Link } from "react-router";
+import { BackButton } from "~/components/ui/BackButton";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
+import { getSegmentDetail } from "../services/segmentData.server";
+import type { Route } from "./+types/detail";
 
 export async function loader({ context, params }: Route.LoaderArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const { segmentId } = params
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const { segmentId } = params;
 
 	if (!segmentId) {
-		throw new Response("Segment ID required", { status: 400 })
+		throw new Response("Segment ID required", { status: 400 });
 	}
 
-	const segment = await getSegmentDetail(supabase, segmentId)
+	const segment = await getSegmentDetail(supabase, segmentId);
 
 	if (!segment) {
-		throw new Response("Segment not found", { status: 404 })
+		throw new Response("Segment not found", { status: 404 });
 	}
 
-	return { segment }
+	return { segment };
 }
 
 function calculateBullseyeScore(segment: {
-	person_count: number
-	evidence_count: number
-	high_willingness_to_pay_count: number
-	avg_pain_intensity: number
+	person_count: number;
+	evidence_count: number;
+	high_willingness_to_pay_count: number;
+	avg_pain_intensity: number;
 }): number {
-	const sampleSizeScore = Math.min(((segment.person_count / 3) * 30 + (segment.evidence_count / 10) * 20) / 2, 25)
+	const sampleSizeScore = Math.min(((segment.person_count / 3) * 30 + (segment.evidence_count / 10) * 20) / 2, 25);
 	const wtpScore =
-		segment.evidence_count > 0 ? (segment.high_willingness_to_pay_count / segment.evidence_count) * 40 : 0
-	const painScore = segment.avg_pain_intensity * 35
-	return Math.round(sampleSizeScore + wtpScore + painScore)
+		segment.evidence_count > 0 ? (segment.high_willingness_to_pay_count / segment.evidence_count) * 40 : 0;
+	const painScore = segment.avg_pain_intensity * 35;
+	return Math.round(sampleSizeScore + wtpScore + painScore);
 }
 
 function getBullseyeColor(score: number): string {
-	if (score >= 75) return "bg-red-600"
-	if (score >= 50) return "bg-orange-500"
-	if (score >= 25) return "bg-yellow-500"
-	return "bg-gray-400"
+	if (score >= 75) return "bg-red-600";
+	if (score >= 50) return "bg-orange-500";
+	if (score >= 25) return "bg-yellow-500";
+	return "bg-gray-400";
 }
 
 function getBullseyeLabel(score: number): string {
-	if (score >= 75) return "🎯 Bullseye Customer"
-	if (score >= 50) return "🔥 High Potential"
-	if (score >= 25) return "⚡ Promising Segment"
-	return "🔍 Need More Data"
+	if (score >= 75) return "🎯 Bullseye Customer";
+	if (score >= 50) return "🔥 High Potential";
+	if (score >= 25) return "⚡ Promising Segment";
+	return "🔍 Need More Data";
 }
 
 function getImpactColor(score: number): string {
-	if (score >= 2.0) return "rgba(239, 68, 68, 0.3)"
-	if (score >= 1.5) return "rgba(249, 115, 22, 0.3)"
-	if (score >= 1.0) return "rgba(234, 179, 8, 0.3)"
-	if (score >= 0.5) return "rgba(34, 197, 94, 0.3)"
-	return "rgba(148, 163, 184, 0.1)"
+	if (score >= 2.0) return "rgba(239, 68, 68, 0.3)";
+	if (score >= 1.5) return "rgba(249, 115, 22, 0.3)";
+	if (score >= 1.0) return "rgba(234, 179, 8, 0.3)";
+	if (score >= 0.5) return "rgba(34, 197, 94, 0.3)";
+	return "rgba(148, 163, 184, 0.1)";
 }
 
 export default function SegmentDetail({ loaderData }: Route.ComponentProps) {
-	const { segment } = loaderData
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const { segment } = loaderData;
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
-	const bullseyeScore = calculateBullseyeScore(segment)
+	const bullseyeScore = calculateBullseyeScore(segment);
 	const wtpPercentage =
-		segment.evidence_count > 0 ? Math.round((segment.high_willingness_to_pay_count / segment.evidence_count) * 100) : 0
+		segment.evidence_count > 0 ? Math.round((segment.high_willingness_to_pay_count / segment.evidence_count) * 100) : 0;
 
 	return (
 		<div className="container mx-auto max-w-6xl px-4 py-8">
@@ -246,7 +246,7 @@ export default function SegmentDetail({ loaderData }: Route.ComponentProps) {
 								// Link to first evidence ID, or to pain matrix if no evidence IDs
 								const linkTo = pain.evidence_ids?.[0]
 									? routes.evidence.detail(pain.evidence_ids[0])
-									: routes.productLens()
+									: routes.productLens();
 								return (
 									<Link key={pain.pain_theme} to={linkTo}>
 										<div
@@ -271,7 +271,7 @@ export default function SegmentDetail({ loaderData }: Route.ComponentProps) {
 											</div>
 										</div>
 									</Link>
-								)
+								);
 							})}
 						</div>
 					)}
@@ -295,5 +295,5 @@ export default function SegmentDetail({ loaderData }: Route.ComponentProps) {
 				</Card>
 			)}
 		</div>
-	)
+	);
 }

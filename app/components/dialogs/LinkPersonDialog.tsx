@@ -1,8 +1,8 @@
-import { Plus, Search, UserPlus } from "lucide-react"
-import { useState } from "react"
-import { Form, useFetcher } from "react-router-dom"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Button } from "~/components/ui/button"
+import { Plus, Search, UserPlus } from "lucide-react";
+import { useState } from "react";
+import { Form, useFetcher } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Button } from "~/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -10,29 +10,29 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "~/components/ui/dialog"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { ScrollArea } from "~/components/ui/scroll-area"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import { Textarea } from "~/components/ui/textarea"
+} from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { Textarea } from "~/components/ui/textarea";
 
 interface Person {
-	id: string
-	name: string | null
-	title?: string | null
-	image_url?: string | null
-	primary_email?: string | null
+	id: string;
+	name: string | null;
+	title?: string | null;
+	image_url?: string | null;
+	primary_email?: string | null;
 }
 
 interface LinkPersonDialogProps {
 	/** The ID of the entity (organization, interview, etc.) to link the person to */
-	entityId: string
+	entityId: string;
 	/** The type of entity for the action name */
-	entityType?: "organization" | "interview"
-	availablePeople: Person[]
-	triggerButton?: React.ReactNode
-	onSuccess?: () => void
+	entityType?: "organization" | "interview";
+	availablePeople: Person[];
+	triggerButton?: React.ReactNode;
+	onSuccess?: () => void;
 }
 
 export function LinkPersonDialog({
@@ -42,21 +42,21 @@ export function LinkPersonDialog({
 	triggerButton,
 	onSuccess,
 }: LinkPersonDialogProps) {
-	const [open, setOpen] = useState(false)
-	const [searchTerm, setSearchTerm] = useState("")
-	const [selectedPersonId, setSelectedPersonId] = useState<string>("")
-	const [role, setRole] = useState("")
-	const [relationshipStatus, setRelationshipStatus] = useState("")
-	const fetcher = useFetcher()
+	const [open, setOpen] = useState(false);
+	const [searchTerm, setSearchTerm] = useState("");
+	const [selectedPersonId, setSelectedPersonId] = useState<string>("");
+	const [role, setRole] = useState("");
+	const [relationshipStatus, setRelationshipStatus] = useState("");
+	const fetcher = useFetcher();
 
 	const filteredPeople = availablePeople.filter(
 		(person) =>
 			person.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
 			person.primary_email?.toLowerCase().includes(searchTerm.toLowerCase())
-	)
+	);
 
 	const handleLink = () => {
-		if (!selectedPersonId) return
+		if (!selectedPersonId) return;
 
 		fetcher.submit(
 			{
@@ -66,26 +66,26 @@ export function LinkPersonDialog({
 				relationship_status: relationshipStatus || "",
 			},
 			{ method: "post" }
-		)
+		);
 
 		// Close dialog and reset on success
-		setOpen(false)
-		setSearchTerm("")
-		setSelectedPersonId("")
-		setRole("")
-		setRelationshipStatus("")
-		onSuccess?.()
-	}
+		setOpen(false);
+		setSearchTerm("");
+		setSelectedPersonId("");
+		setRole("");
+		setRelationshipStatus("");
+		onSuccess?.();
+	};
 
 	const getInitials = (name: string | null) => {
-		if (!name) return "?"
+		if (!name) return "?";
 		return name
 			.split(" ")
 			.map((part) => part[0])
 			.join("")
 			.slice(0, 2)
-			.toUpperCase()
-	}
+			.toUpperCase();
+	};
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
@@ -199,11 +199,11 @@ export function LinkPersonDialog({
 						<Form
 							method="post"
 							onSubmit={(e) => {
-								e.preventDefault()
-								const formData = new FormData(e.currentTarget)
-								fetcher.submit(formData, { method: "post" })
-								setOpen(false)
-								onSuccess?.()
+								e.preventDefault();
+								const formData = new FormData(e.currentTarget);
+								fetcher.submit(formData, { method: "post" });
+								setOpen(false);
+								onSuccess?.();
 							}}
 						>
 							<input type="hidden" name="_action" value="create-and-link-person" />
@@ -257,5 +257,5 @@ export function LinkPersonDialog({
 				</Tabs>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }

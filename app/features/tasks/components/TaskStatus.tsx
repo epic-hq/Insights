@@ -4,11 +4,16 @@
  * Provides consistent status icons and colors across all task views.
  */
 
-import { Archive, Check, ChevronDown, Circle, CircleDashed, Clock, Pause, Play } from "lucide-react"
-import { Button } from "~/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import { cn } from "~/lib/utils"
-import type { TaskStatus } from "../types"
+import { Archive, Check, ChevronDown, Circle, CircleDashed, Clock, Pause, Play } from "lucide-react";
+import { Button } from "~/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { cn } from "~/lib/utils";
+import type { TaskStatus } from "../types";
 
 /** Status configuration with icons and colors */
 export const statusConfig: Record<TaskStatus, { label: string; icon: typeof Circle; color: string }> = {
@@ -19,18 +24,18 @@ export const statusConfig: Record<TaskStatus, { label: string; icon: typeof Circ
 	review: { label: "In Review", icon: Clock, color: "text-amber-500" },
 	done: { label: "Done", icon: Check, color: "text-green-500" },
 	archived: { label: "Archived", icon: Archive, color: "text-gray-400" },
-}
+};
 
 interface StatusIconProps {
-	status: TaskStatus
-	className?: string
-	showLabel?: boolean
+	status: TaskStatus;
+	className?: string;
+	showLabel?: boolean;
 }
 
 /** Renders a status icon with optional label */
 export function StatusIcon({ status, className, showLabel = false }: StatusIconProps) {
-	const config = statusConfig[status] || statusConfig.backlog
-	const Icon = config.icon
+	const config = statusConfig[status] || statusConfig.backlog;
+	const Icon = config.icon;
 
 	if (showLabel) {
 		return (
@@ -38,39 +43,39 @@ export function StatusIcon({ status, className, showLabel = false }: StatusIconP
 				<Icon className={cn("h-3.5 w-3.5", config.color)} />
 				<span className={cn("text-xs", config.color)}>{config.label}</span>
 			</span>
-		)
+		);
 	}
 
-	return <Icon className={cn("h-3.5 w-3.5", config.color, className)} />
+	return <Icon className={cn("h-3.5 w-3.5", config.color, className)} />;
 }
 
 interface StatusBadgeProps {
-	status: TaskStatus
-	className?: string
+	status: TaskStatus;
+	className?: string;
 }
 
 /** Renders a status badge with icon and label */
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-	const config = statusConfig[status] || statusConfig.backlog
-	const Icon = config.icon
+	const config = statusConfig[status] || statusConfig.backlog;
+	const Icon = config.icon;
 
 	return (
 		<span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium text-xs", className)}>
 			<Icon className={cn("h-3.5 w-3.5", config.color)} />
 			<span className={config.color}>{config.label}</span>
 		</span>
-	)
+	);
 }
 
 interface StatusDropdownProps {
-	currentStatus: TaskStatus
-	taskId: string
-	onStatusChange?: (taskId: string, newStatus: TaskStatus) => void
+	currentStatus: TaskStatus;
+	taskId: string;
+	onStatusChange?: (taskId: string, newStatus: TaskStatus) => void;
 	/** Size variant */
-	size?: "sm" | "default"
+	size?: "sm" | "default";
 	/** Show only icon on trigger (dropdown still shows icon + text) */
-	iconOnly?: boolean
-	className?: string
+	iconOnly?: boolean;
+	className?: string;
 }
 
 /** Dropdown to change task status */
@@ -82,8 +87,8 @@ export function StatusDropdown({
 	iconOnly = false,
 	className,
 }: StatusDropdownProps) {
-	const config = statusConfig[currentStatus] || statusConfig.backlog
-	const StatusIconComponent = config.icon
+	const config = statusConfig[currentStatus] || statusConfig.backlog;
+	const StatusIconComponent = config.icon;
 
 	return (
 		<DropdownMenu>
@@ -109,7 +114,7 @@ export function StatusDropdown({
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
 				{Object.entries(statusConfig).map(([status, cfg]) => {
-					const Icon = cfg.icon
+					const Icon = cfg.icon;
 					return (
 						<DropdownMenuItem
 							key={status}
@@ -119,9 +124,9 @@ export function StatusDropdown({
 							<Icon className={cn("mr-2 h-3.5 w-3.5", cfg.color)} />
 							{cfg.label}
 						</DropdownMenuItem>
-					)
+					);
 				})}
 			</DropdownMenuContent>
 		</DropdownMenu>
-	)
+	);
 }

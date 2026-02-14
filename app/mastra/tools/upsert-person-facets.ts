@@ -1,26 +1,26 @@
-import { openai } from "@ai-sdk/openai"
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import { generateObject } from "ai"
-import consola from "consola"
-import { z } from "zod"
-import { FacetResolver } from "~/lib/database/facets.server"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+import { openai } from "@ai-sdk/openai";
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { generateObject } from "ai";
+import consola from "consola";
+import { z } from "zod";
+import { FacetResolver } from "../../lib/database/facets.server";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
 
-const DEFAULT_CONFIDENCE = 0.78
-const ALLOWED_SOURCES = ["interview", "survey", "telemetry", "inferred", "manual", "document"] as const
-type PersonFacetSource = (typeof ALLOWED_SOURCES)[number]
+const DEFAULT_CONFIDENCE = 0.78;
+const ALLOWED_SOURCES = ["interview", "survey", "telemetry", "inferred", "manual", "document"] as const;
+type PersonFacetSource = (typeof ALLOWED_SOURCES)[number];
 
 const manualFacetSchema = z.object({
-	label: z.string().optional(),
-	kindSlug: z.string().optional(),
-	facetAccountId: z.number().optional(),
-	synonyms: z.array(z.string()).optional(),
-	confidence: z.number().min(0).max(1).optional(),
-	action: z.enum(["add", "remove"]).optional(),
-	reason: z.string().optional(),
-})
+	label: z.string().nullish(),
+	kindSlug: z.string().nullish(),
+	facetAccountId: z.number().nullish(),
+	synonyms: z.array(z.string()).nullish(),
+	confidence: z.number().min(0).max(1).nullish(),
+	action: z.enum(["add", "remove"]).nullish(),
+	reason: z.string().nullish(),
+});
 
 const extractionSchema = z.object({
 	summary: z.string().describe("One or two sentence recap of the participant facts."),
@@ -36,7 +36,7 @@ const extractionSchema = z.object({
 			})
 		)
 		.default([]),
-})
+});
 
 const outputFacetSchema = z.object({
 	facetAccountId: z.number(),
@@ -45,7 +45,7 @@ const outputFacetSchema = z.object({
 	status: z.enum(["inserted", "updated", "skipped"]).optional(),
 	confidence: z.number().optional(),
 	source: z.string().optional(),
-})
+});
 
 const toolInputSchema = z
 	.object({
@@ -70,15 +70,15 @@ const toolInputSchema = z
 	})
 	.refine(
 		(value) => {
-			const hasTranscript = Boolean(value.transcript && value.transcript.trim().length > 0)
-			const hasFacts = Array.isArray(value.facts) && value.facts.length > 0
-			return hasTranscript || hasFacts
+			const hasTranscript = Boolean(value.transcript && value.transcript.trim().length > 0);
+			const hasFacts = Array.isArray(value.facts) && value.facts.length > 0;
+			return hasTranscript || hasFacts;
 		},
 		{
 			message: "Provide either a transcript or at least one structured facet fact.",
 			path: ["transcript"],
 		}
-	)
+	);
 
 const toolOutputSchema = z.object({
 	success: z.boolean(),
@@ -100,41 +100,44 @@ const toolOutputSchema = z.object({
 		.optional(),
 	dryRun: z.boolean().optional(),
 	warnings: z.array(z.string()).optional(),
-})
+});
 
-type ToolInput = z.infer<typeof toolInputSchema>
-type ManualFacet = z.infer<typeof manualFacetSchema>
-type ExtractedFacet = z.infer<typeof extractionSchema>["facets"][number]
+type ToolInput = z.infer<typeof toolInputSchema>;
+type ManualFacet = z.infer<typeof manualFacetSchema>;
+type ExtractedFacet = z.infer<typeof extractionSchema>["facets"][number];
 
 function normalizeLabel(value: string | null | undefined): string {
-	return (value ?? "").replace(/\s+/g, " ").trim()
+	return (value ?? "").replace(/\s+/g, " ").trim();
 }
 
 function labelKey(kindSlug: string, label: string): string {
-	return `${kindSlug.toLowerCase()}|${normalizeLabel(label).toLowerCase()}`
+	return `${kindSlug.toLowerCase()}|${normalizeLabel(label).toLowerCase()}`;
 }
 
 function dedupStrings(values?: string[] | null): string[] {
-	const seen = new Set<string>()
+	const seen = new Set<string>();
 	for (const value of values ?? []) {
-		const trimmed = normalizeLabel(value)
-		if (trimmed) seen.add(trimmed)
+		const trimmed = normalizeLabel(value);
+		if (trimmed) seen.add(trimmed);
 	}
-	return Array.from(seen)
+	return Array.from(seen);
 }
 
-function resolveSourceLabel(rawSource?: string | null): { source: PersonFacetSource; normalizedFrom?: string | null } {
-	const candidate = normalizeLabel(rawSource)?.toLowerCase().replace(/\s+/g, "_")
+function resolveSourceLabel(rawSource?: string | null): {
+	source: PersonFacetSource;
+	normalizedFrom?: string | null;
+} {
+	const candidate = normalizeLabel(rawSource)?.toLowerCase().replace(/\s+/g, "_");
 	if (candidate && (ALLOWED_SOURCES as readonly string[]).includes(candidate)) {
-		return { source: candidate as PersonFacetSource }
+		return { source: candidate as PersonFacetSource };
 	}
-	return { source: "manual", normalizedFrom: rawSource ?? null }
+	return { source: "manual", normalizedFrom: rawSource ?? null };
 }
 
 async function loadFacetKinds(db: SupabaseClient<Database>) {
-	const { data, error } = await db.from("facet_kind_global").select("slug,label,description").order("id")
-	if (error) throw new Error(`Failed to load facet kinds: ${error.message}`)
-	return data ?? []
+	const { data, error } = await db.from("facet_kind_global").select("slug,label,description").order("id");
+	if (error) throw new Error(`Failed to load facet kinds: ${error.message}`);
+	return data ?? [];
 }
 
 async function fetchExistingFacets(
@@ -150,9 +153,9 @@ async function fetchExistingFacets(
 		)
 		.eq("person_id", personId)
 		.eq("account_id", accountId)
-		.eq("project_id", projectId)
-	if (error) throw new Error(`Failed to load existing person facets: ${error.message}`)
-	return data ?? []
+		.eq("project_id", projectId);
+	if (error) throw new Error(`Failed to load existing person facets: ${error.message}`);
+	return data ?? [];
 }
 
 function buildPrompt({
@@ -160,9 +163,9 @@ function buildPrompt({
 	transcript,
 	kindSummaries,
 }: {
-	personName: string
-	transcript: string
-	kindSummaries: string
+	personName: string;
+	transcript: string;
+	kindSummaries: string;
 }) {
 	return `
 You extract durable person facets (stable attributes, demographics, roles, goals, affiliations) for a research CRM.
@@ -183,7 +186,7 @@ Transcript:
 """
 ${transcript}
 """
-`
+`;
 }
 
 async function runExtraction({
@@ -192,23 +195,23 @@ async function runExtraction({
 	kindSummaries,
 	allowedKindSlugs,
 }: {
-	personName: string
-	transcript: string
-	kindSummaries: string
-	allowedKindSlugs: Set<string>
+	personName: string;
+	transcript: string;
+	kindSummaries: string;
+	allowedKindSlugs: Set<string>;
 }) {
-	const prompt = buildPrompt({ personName, transcript, kindSummaries })
+	const prompt = buildPrompt({ personName, transcript, kindSummaries });
 	const { object } = await generateObject({
 		model: openai("gpt-4o-mini"),
 		mode: "json",
 		schema: extractionSchema,
 		prompt,
-	})
-	const filtered = (object.facets ?? []).filter((facet) => allowedKindSlugs.has(facet.kindSlug))
+	});
+	const filtered = (object.facets ?? []).filter((facet) => allowedKindSlugs.has(facet.kindSlug));
 	return {
 		summary: object.summary,
 		facets: filtered,
-	}
+	};
 }
 
 function normalizeManualFacets(facts: ManualFacet[] = []): ManualFacet[] {
@@ -219,7 +222,7 @@ function normalizeManualFacets(facts: ManualFacet[] = []): ManualFacet[] {
 			kindSlug: fact.kindSlug?.trim(),
 			synonyms: dedupStrings(fact.synonyms),
 		}))
-		.filter((fact) => fact.action === "remove" || Boolean(fact.label && fact.kindSlug))
+		.filter((fact) => fact.action === "remove" || Boolean(fact.label && fact.kindSlug));
 }
 
 export const upsertPersonFacetsTool = createTool({
@@ -229,10 +232,10 @@ export const upsertPersonFacetsTool = createTool({
 	inputSchema: toolInputSchema,
 	outputSchema: toolOutputSchema,
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
 
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
-		const runtimeAccountId = context?.requestContext?.get?.("account_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const runtimeAccountId = context?.requestContext?.get?.("account_id");
 
 		const {
 			personId,
@@ -244,12 +247,12 @@ export const upsertPersonFacetsTool = createTool({
 			projectId: projectIdInput,
 			accountId: accountIdInput,
 			dryRun = false,
-		} = input as ToolInput
+		} = input as ToolInput;
 
-		const sourceResolution = resolveSourceLabel(sourceInput)
-		const source = sourceResolution.source
+		const sourceResolution = resolveSourceLabel(sourceInput);
+		const source = sourceResolution.source;
 
-		const personIdTrimmed = personId?.trim()
+		const personIdTrimmed = personId?.trim();
 		if (!personIdTrimmed) {
 			return {
 				success: false,
@@ -257,7 +260,7 @@ export const upsertPersonFacetsTool = createTool({
 				personId: null,
 				projectId: null,
 				accountId: null,
-			}
+			};
 		}
 
 		try {
@@ -265,8 +268,8 @@ export const upsertPersonFacetsTool = createTool({
 				.from("people")
 				.select("id, name, account_id, project_id")
 				.eq("id", personIdTrimmed)
-				.maybeSingle()
-			if (personError) throw new Error(`Failed to load person: ${personError.message}`)
+				.maybeSingle();
+			if (personError) throw new Error(`Failed to load person: ${personError.message}`);
 			if (!person) {
 				return {
 					success: false,
@@ -274,11 +277,11 @@ export const upsertPersonFacetsTool = createTool({
 					personId: personIdTrimmed,
 					projectId: null,
 					accountId: null,
-				}
+				};
 			}
 
-			const resolvedAccountId = accountIdInput || runtimeAccountId || person.account_id
-			const resolvedProjectId = projectIdInput || runtimeProjectId || person.project_id
+			const resolvedAccountId = accountIdInput || runtimeAccountId || person.account_id;
+			const resolvedProjectId = projectIdInput || runtimeProjectId || person.project_id;
 
 			if (!resolvedAccountId || !resolvedProjectId) {
 				return {
@@ -287,18 +290,18 @@ export const upsertPersonFacetsTool = createTool({
 					personId: personIdTrimmed,
 					projectId: resolvedProjectId ?? null,
 					accountId: resolvedAccountId ?? null,
-				}
+				};
 			}
 
-			const kindRows = await loadFacetKinds(supabase)
-			const allowedKindSlugs = new Set(kindRows.map((row) => row.slug).filter(Boolean) as string[])
+			const kindRows = await loadFacetKinds(supabase);
+			const allowedKindSlugs = new Set(kindRows.map((row) => row.slug).filter(Boolean) as string[]);
 			const kindSummaries = kindRows
 				.map((row) => `- ${row.slug}: ${row.label}${row.description ? ` — ${row.description}` : ""}`)
-				.join("\n")
+				.join("\n");
 
-			const normalizedFacts = normalizeManualFacets(facts)
-			let generatedSummary: string | null = null
-			let generatedFacets: ExtractedFacet[] = []
+			const normalizedFacts = normalizeManualFacets(facts);
+			let generatedSummary: string | null = null;
+			let generatedFacets: ExtractedFacet[] = [];
 
 			if (!normalizedFacts.length && transcript?.trim()) {
 				try {
@@ -307,11 +310,11 @@ export const upsertPersonFacetsTool = createTool({
 						transcript: transcript.trim(),
 						kindSummaries,
 						allowedKindSlugs,
-					})
-					generatedSummary = extraction.summary
-					generatedFacets = extraction.facets
+					});
+					generatedSummary = extraction.summary;
+					generatedFacets = extraction.facets;
 				} catch (error) {
-					consola.warn("upsert-person-facets: extraction failed", error)
+					consola.warn("upsert-person-facets: extraction failed", error);
 					return {
 						success: false,
 						message: "Failed to extract facets from transcript.",
@@ -319,7 +322,7 @@ export const upsertPersonFacetsTool = createTool({
 						projectId: resolvedProjectId,
 						accountId: resolvedAccountId,
 						warnings: ["LLM extraction failed. Provide structured facts or retry."],
-					}
+					};
 				}
 			}
 
@@ -333,29 +336,29 @@ export const upsertPersonFacetsTool = createTool({
 					reason: facet.rationale,
 				})),
 				...normalizedFacts,
-			]
+			];
 
-			const filteredSpecs: ManualFacet[] = []
-			const seenKeys = new Set<string>()
+			const filteredSpecs: ManualFacet[] = [];
+			const seenKeys = new Set<string>();
 			for (const spec of allFacetSpecs) {
-				const action = spec.action ?? "add"
-				const kindSlug = spec.kindSlug?.trim()
-				const label = spec.label ?? ""
+				const action = spec.action ?? "add";
+				const kindSlug = spec.kindSlug?.trim();
+				const label = spec.label ?? "";
 				if (action === "remove") {
-					filteredSpecs.push({ ...spec, action })
-					continue
+					filteredSpecs.push({ ...spec, action });
+					continue;
 				}
-				if (!kindSlug || !label) continue
-				if (!allowedKindSlugs.has(kindSlug)) continue
-				const key = labelKey(kindSlug, label)
-				if (seenKeys.has(key)) continue
-				seenKeys.add(key)
+				if (!kindSlug || !label) continue;
+				if (!allowedKindSlugs.has(kindSlug)) continue;
+				const key = labelKey(kindSlug, label);
+				if (seenKeys.has(key)) continue;
+				seenKeys.add(key);
 				filteredSpecs.push({
 					...spec,
 					label,
 					kindSlug,
 					action: "add",
-				})
+				});
 			}
 
 			if (!filteredSpecs.length) {
@@ -366,7 +369,7 @@ export const upsertPersonFacetsTool = createTool({
 					projectId: resolvedProjectId,
 					accountId: resolvedAccountId,
 					generatedSummary,
-				}
+				};
 			}
 
 			const existingFacetRows = await fetchExistingFacets(
@@ -374,44 +377,49 @@ export const upsertPersonFacetsTool = createTool({
 				personIdTrimmed,
 				resolvedAccountId,
 				resolvedProjectId
-			)
+			);
 			const existingFacetIdSet = new Set(
 				existingFacetRows
 					.map((row) => row.facet_account_id)
 					.filter((value): value is number => typeof value === "number")
-			)
-			const existingFacetLookup = new Map<string, number>()
+			);
+			const existingFacetLookup = new Map<string, number>();
 			for (const row of existingFacetRows) {
 				const facet = row.facet as {
-					label?: string | null
-					facet_kind_global?: { slug?: string | null } | null
-				} | null
-				const slug = facet?.facet_kind_global?.slug
-				const label = facet?.label
+					label?: string | null;
+					facet_kind_global?: { slug?: string | null } | null;
+				} | null;
+				const slug = facet?.facet_kind_global?.slug;
+				const label = facet?.label;
 				if (slug && label) {
-					existingFacetLookup.set(labelKey(slug, label), row.facet_account_id)
+					existingFacetLookup.set(labelKey(slug, label), row.facet_account_id);
 				}
 			}
 
-			const resolver = new FacetResolver(supabase, resolvedAccountId)
+			const resolver = new FacetResolver(supabase, resolvedAccountId);
 			const additions: Array<{
-				facetAccountId: number
-				label: string
-				kindSlug: string
-				confidence: number
-				status: "inserted" | "updated"
-			}> = []
-			const desiredFacetAccountIds = new Set<number>()
-			const removalRecords: Array<{ facetAccountId: number; label?: string; kindSlug?: string; reason?: string }> = []
-			const warnings: string[] = []
+				facetAccountId: number;
+				label: string;
+				kindSlug: string;
+				confidence: number;
+				status: "inserted" | "updated";
+			}> = [];
+			const desiredFacetAccountIds = new Set<number>();
+			const removalRecords: Array<{
+				facetAccountId: number;
+				label?: string;
+				kindSlug?: string;
+				reason?: string;
+			}> = [];
+			const warnings: string[] = [];
 			if (sourceResolution.normalizedFrom) {
 				warnings.push(
 					`Source "${sourceResolution.normalizedFrom}" is not allowed; using "${source}" to satisfy database constraint.`
-				)
+				);
 			}
 
 			for (const spec of filteredSpecs) {
-				const action = spec.action ?? "add"
+				const action = spec.action ?? "add";
 				if (action === "remove") {
 					if (spec.facetAccountId) {
 						removalRecords.push({
@@ -419,81 +427,89 @@ export const upsertPersonFacetsTool = createTool({
 							label: spec.label,
 							kindSlug: spec.kindSlug,
 							reason: spec.reason || "Marked for removal via tool input.",
-						})
-						continue
+						});
+						continue;
 					}
-					const key = spec.kindSlug && spec.label ? labelKey(spec.kindSlug, spec.label) : null
+					const key = spec.kindSlug && spec.label ? labelKey(spec.kindSlug, spec.label) : null;
 					if (key) {
-						const existingId = existingFacetLookup.get(key)
+						const existingId = existingFacetLookup.get(key);
 						if (existingId) {
 							removalRecords.push({
 								facetAccountId: existingId,
 								label: spec.label,
 								kindSlug: spec.kindSlug,
 								reason: spec.reason || "Matched existing facet for removal.",
-							})
-							continue
+							});
+							continue;
 						}
 					}
 					warnings.push(
 						`Removal request for "${spec.label ?? "unknown"}" (${spec.kindSlug ?? "unknown kind"}) did not match an existing facet.`
-					)
-					continue
+					);
+					continue;
 				}
 
-				const label = spec.label ?? ""
-				const kindSlug = spec.kindSlug ?? ""
-				const synonyms = dedupStrings(spec.synonyms)
+				const label = spec.label ?? "";
+				const kindSlug = spec.kindSlug ?? "";
+				const synonyms = dedupStrings(spec.synonyms);
 				const confidenceValue =
-					typeof spec.confidence === "number" ? spec.confidence : (confidence ?? DEFAULT_CONFIDENCE)
+					typeof spec.confidence === "number" ? spec.confidence : (confidence ?? DEFAULT_CONFIDENCE);
 
 				const facetAccountId = await resolver.ensureFacet({
 					kindSlug,
 					label,
 					synonyms,
-				})
+				});
 
 				if (!facetAccountId) {
-					warnings.push(`Failed to ensure facet for "${label}" (${kindSlug}).`)
-					continue
+					warnings.push(`Failed to ensure facet for "${label}" (${kindSlug}).`);
+					continue;
 				}
 
-				desiredFacetAccountIds.add(facetAccountId)
+				desiredFacetAccountIds.add(facetAccountId);
 				additions.push({
 					facetAccountId,
 					label,
 					kindSlug,
 					confidence: confidenceValue,
 					status: existingFacetIdSet.has(facetAccountId) ? "updated" : "inserted",
-				})
+				});
 			}
 
-			let replaceRemovals: number[] = []
+			let replaceRemovals: number[] = [];
 			if (mode === "replace") {
-				const keepIds = new Set(desiredFacetAccountIds)
-				replaceRemovals = Array.from(existingFacetIdSet).filter((id) => !keepIds.has(id))
+				const keepIds = new Set(desiredFacetAccountIds);
+				replaceRemovals = Array.from(existingFacetIdSet).filter((id) => !keepIds.has(id));
 				if (replaceRemovals.length) {
 					removalRecords.push(
-						...replaceRemovals.map((facetAccountId) => ({ facetAccountId, reason: "Replace mode cleanup" }))
-					)
+						...replaceRemovals.map((facetAccountId) => ({
+							facetAccountId,
+							reason: "Replace mode cleanup",
+						}))
+					);
 				}
 			}
 
 			const removalById = new Map<
 				number,
-				{ facetAccountId: number; label?: string; kindSlug?: string; reason?: string }
-			>()
+				{
+					facetAccountId: number;
+					label?: string;
+					kindSlug?: string;
+					reason?: string;
+				}
+			>();
 			for (const record of removalRecords) {
 				removalById.set(record.facetAccountId, {
 					facetAccountId: record.facetAccountId,
 					label: record.label ?? removalById.get(record.facetAccountId)?.label,
 					kindSlug: record.kindSlug ?? removalById.get(record.facetAccountId)?.kindSlug,
 					reason: record.reason ?? removalById.get(record.facetAccountId)?.reason,
-				})
+				});
 			}
-			const finalRemovals = Array.from(removalById.values())
+			const finalRemovals = Array.from(removalById.values());
 
-			const now = new Date().toISOString()
+			const now = new Date().toISOString();
 			const rowsToUpsert = additions.map((entry) => ({
 				account_id: resolvedAccountId,
 				project_id: resolvedProjectId,
@@ -503,17 +519,17 @@ export const upsertPersonFacetsTool = createTool({
 				confidence: entry.confidence,
 				evidence_id: null,
 				noted_at: now,
-			}))
+			}));
 
 			if (!dryRun) {
 				if (rowsToUpsert.length) {
 					const { error: upsertError } = await supabase
 						.from("person_facet")
-						.upsert(rowsToUpsert, { onConflict: "person_id,facet_account_id" })
-					if (upsertError) throw new Error(`Failed to upsert person facets: ${upsertError.message}`)
+						.upsert(rowsToUpsert, { onConflict: "person_id,facet_account_id" });
+					if (upsertError) throw new Error(`Failed to upsert person facets: ${upsertError.message}`);
 				}
 
-				const removalIds = finalRemovals.map((item) => item.facetAccountId)
+				const removalIds = finalRemovals.map((item) => item.facetAccountId);
 				if (removalIds.length) {
 					const { error: deleteError } = await supabase
 						.from("person_facet")
@@ -521,8 +537,8 @@ export const upsertPersonFacetsTool = createTool({
 						.eq("person_id", personIdTrimmed)
 						.eq("account_id", resolvedAccountId)
 						.eq("project_id", resolvedProjectId)
-						.in("facet_account_id", removalIds)
-					if (deleteError) throw new Error(`Failed to remove person facets: ${deleteError.message}`)
+						.in("facet_account_id", removalIds);
+					if (deleteError) throw new Error(`Failed to remove person facets: ${deleteError.message}`);
 				}
 			}
 
@@ -546,16 +562,16 @@ export const upsertPersonFacetsTool = createTool({
 				removedFacets: finalRemovals,
 				dryRun,
 				warnings,
-			}
+			};
 		} catch (error) {
-			consola.error("upsert-person-facets: unexpected failure", error)
+			consola.error("upsert-person-facets: unexpected failure", error);
 			return {
 				success: false,
 				message: error instanceof Error ? error.message : "Failed to upsert person facets.",
 				personId: personIdTrimmed ?? null,
 				projectId: projectIdInput ?? runtimeProjectId ?? null,
 				accountId: accountIdInput ?? runtimeAccountId ?? null,
-			}
+			};
 		}
 	},
-})
+});

@@ -1,9 +1,10 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
+import { validateUUID } from "./context-utils";
 
 const toolInputSchema = z.object({
 	action: z.enum(["get", "list", "delete"]),
@@ -18,14 +19,14 @@ const toolInputSchema = z.object({
 		.string()
 		.nullish()
 		.describe("For delete (non-dryRun): must match the interview's current title exactly (case-insensitive)"),
-})
+});
 
-type ToolInput = z.infer<typeof toolInputSchema>
+type ToolInput = z.infer<typeof toolInputSchema>;
 
 type InterviewListRow = Pick<
 	Database["public"]["Tables"]["interviews"]["Row"],
 	"id" | "title" | "created_at" | "status"
->
+>;
 
 const toolOutputSchema = z.object({
 	success: z.boolean(),
@@ -55,7 +56,7 @@ const toolOutputSchema = z.object({
 		})
 		.optional(),
 	dryRun: z.boolean().optional(),
-})
+});
 
 async function countLinks(db: SupabaseClient<Database>, interview_id: string, project_id: string) {
 	const [evidence_res, interview_people_res] = await Promise.all([
@@ -69,12 +70,12 @@ async function countLinks(db: SupabaseClient<Database>, interview_id: string, pr
 			.select("id", { count: "exact", head: true })
 			.eq("interview_id", interview_id)
 			.eq("project_id", project_id),
-	])
+	]);
 
 	return {
 		evidence: evidence_res.count ?? 0,
 		interview_people: interview_people_res.count ?? 0,
-	}
+	};
 }
 
 export const manageInterviewsTool = createTool({
@@ -84,7 +85,7 @@ export const manageInterviewsTool = createTool({
 	inputSchema: toolInputSchema,
 	outputSchema: toolOutputSchema,
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
 		const {
 			action,
 			interviewId,
@@ -94,46 +95,47 @@ export const manageInterviewsTool = createTool({
 			limit,
 			dryRun,
 			force,
-		} = input as ToolInput
+		} = input as ToolInput;
 
-		const runtime_account_id = context?.requestContext?.get?.("account_id") as string | undefined
-		const runtime_project_id = context?.requestContext?.get?.("project_id") as string | undefined
+		const runtime_account_id = context?.requestContext?.get?.("account_id") as string | undefined;
+		const runtime_project_id = context?.requestContext?.get?.("project_id") as string | undefined;
 
-		const resolved_account_id = account_override || runtime_account_id
-		const resolved_project_id = project_override || runtime_project_id
+		const resolved_account_id = validateUUID(account_override || runtime_account_id, "accountId", "manage-interviews");
+		const resolved_project_id = validateUUID(project_override || runtime_project_id, "projectId", "manage-interviews");
+		const validated_interview_id = interviewId ? validateUUID(interviewId, "interviewId", "manage-interviews") : null;
 
 		if (!resolved_account_id || !resolved_project_id) {
 			return {
 				success: false,
 				message: "Account ID and Project ID are required.",
 				interview: null,
-			}
+			};
 		}
 
 		try {
 			if (action === "get") {
-				if (!interviewId) {
+				if (!validated_interview_id) {
 					return {
 						success: false,
-						message: "interviewId is required for get.",
+						message: "interviewId is required for get and must be a valid UUID.",
 						interview: null,
-					}
+					};
 				}
 
 				const { data: interview_row, error } = await supabase
 					.from("interviews")
 					.select("id, title, status, account_id, project_id")
-					.eq("id", interviewId)
+					.eq("id", validated_interview_id)
 					.eq("account_id", resolved_account_id)
 					.eq("project_id", resolved_project_id)
-					.single()
+					.single();
 
 				if (error || !interview_row) {
 					return {
 						success: false,
 						message: "Interview not found.",
 						interview: null,
-					}
+					};
 				}
 
 				return {
@@ -144,32 +146,32 @@ export const manageInterviewsTool = createTool({
 						title: interview_row.title,
 						status: interview_row.status,
 					},
-				}
+				};
 			}
 
 			if (action === "list") {
-				const resolved_limit = limit ?? 50
+				const resolved_limit = limit ?? 50;
 				let query = supabase
 					.from("interviews")
 					.select("id, title, status, created_at")
 					.eq("account_id", resolved_account_id)
 					.eq("project_id", resolved_project_id)
 					.order("updated_at", { ascending: false })
-					.limit(resolved_limit)
+					.limit(resolved_limit);
 
-				const trimmed_search = (titleSearch ?? "").trim()
+				const trimmed_search = (titleSearch ?? "").trim();
 				if (trimmed_search) {
-					query = query.ilike("title", `%${trimmed_search.replace(/[%_]/g, "")}%`)
+					query = query.ilike("title", `%${trimmed_search.replace(/[%_]/g, "")}%`);
 				}
 
-				const { data: interview_rows, error } = await query
+				const { data: interview_rows, error } = await query;
 
 				if (error) {
 					return {
 						success: false,
 						message: `Failed to list interviews: ${error.message}`,
 						interview: null,
-					}
+					};
 				}
 
 				return {
@@ -182,36 +184,36 @@ export const manageInterviewsTool = createTool({
 							status: row.status,
 							created_at: row.created_at,
 						})) ?? [],
-				}
+				};
 			}
 
 			if (action === "delete") {
-				if (!interviewId) {
+				if (!validated_interview_id) {
 					return {
 						success: false,
-						message: "interviewId is required for delete.",
+						message: "interviewId is required for delete and must be a valid UUID.",
 						interview: null,
-					}
+					};
 				}
 
 				const { data: interview_row, error: fetch_error } = await supabase
 					.from("interviews")
 					.select("id, title, account_id, project_id")
-					.eq("id", interviewId)
+					.eq("id", validated_interview_id)
 					.eq("account_id", resolved_account_id)
 					.eq("project_id", resolved_project_id)
-					.maybeSingle()
+					.maybeSingle();
 
 				if (fetch_error || !interview_row) {
 					return {
 						success: false,
 						message: "Interview not found.",
 						interview: null,
-					}
+					};
 				}
 
-				const linked_counts = await countLinks(supabase, interview_row.id, resolved_project_id)
-				const total_links = linked_counts.evidence + linked_counts.interview_people
+				const linked_counts = await countLinks(supabase, interview_row.id, resolved_project_id);
+				const total_links = linked_counts.evidence + linked_counts.interview_people;
 
 				if (dryRun) {
 					return {
@@ -223,11 +225,11 @@ export const manageInterviewsTool = createTool({
 						},
 						linkedCounts: linked_counts,
 						dryRun: true,
-					}
+					};
 				}
 
-				const expected_title = (interview_row.title ?? "").trim()
-				const provided_title = (input as ToolInput).confirmTitle?.trim() ?? ""
+				const expected_title = (interview_row.title ?? "").trim();
+				const provided_title = (input as ToolInput).confirmTitle?.trim() ?? "";
 
 				if (!expected_title || !provided_title || expected_title.toLowerCase() !== provided_title.toLowerCase()) {
 					return {
@@ -238,7 +240,7 @@ export const manageInterviewsTool = createTool({
 							title: interview_row.title,
 						},
 						linkedCounts: linked_counts,
-					}
+					};
 				}
 
 				if (total_links > 0 && !force) {
@@ -251,7 +253,7 @@ export const manageInterviewsTool = createTool({
 							title: interview_row.title,
 						},
 						linkedCounts: linked_counts,
-					}
+					};
 				}
 
 				const { error: delete_error } = await supabase
@@ -259,7 +261,7 @@ export const manageInterviewsTool = createTool({
 					.delete()
 					.eq("id", interview_row.id)
 					.eq("account_id", resolved_account_id)
-					.eq("project_id", resolved_project_id)
+					.eq("project_id", resolved_project_id);
 
 				if (delete_error) {
 					return {
@@ -270,7 +272,7 @@ export const manageInterviewsTool = createTool({
 							title: interview_row.title,
 						},
 						linkedCounts: linked_counts,
-					}
+					};
 				}
 
 				return {
@@ -281,21 +283,21 @@ export const manageInterviewsTool = createTool({
 						title: interview_row.title,
 					},
 					linkedCounts: linked_counts,
-				}
+				};
 			}
 
 			return {
 				success: false,
 				message: `Unknown action: ${action}`,
 				interview: null,
-			}
+			};
 		} catch (error) {
-			consola.error("manage-interviews: unexpected failure", error)
+			consola.error("manage-interviews: unexpected failure", error);
 			return {
 				success: false,
 				message: error instanceof Error ? error.message : "Failed to manage interviews.",
 				interview: null,
-			}
+			};
 		}
 	},
-})
+});

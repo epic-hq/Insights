@@ -1,8 +1,10 @@
-import { route } from "@react-router/dev/routes"
+import { route } from "@react-router/dev/routes";
 
 export default [
-	// Lens Library - Browse all available lenses and configure settings
-	route("lenses", "./features/lenses/pages/library.tsx"),
+	// Analysis Page - Redesigned entry point (replaces Lens Library)
+	route("lenses", "./features/lenses/pages/analysis.tsx"),
+	// Legacy Library route (redirects handled by Analysis page)
+	// route("lenses/library", "./features/lenses/pages/library.tsx"),
 	// Aggregated Lens Views - Project-wide lens analysis (specific lenses)
 	route("lenses/sales-bant", "./features/lenses/pages/aggregated-sales-bant.tsx"),
 	route("lenses/customer-discovery", "./features/lenses/pages/aggregated-customer-discovery.tsx"),
@@ -13,4 +15,4 @@ export default [
 	route("product-lens", "./features/lenses/pages/product-lens.tsx"),
 	// BANT Lens - Budget × Authority Matrix (legacy, uses opportunities)
 	route("bant-lens", "./features/lenses/pages/bant-lens.tsx"),
-]
+];

@@ -2,11 +2,11 @@
  * Tool for saving research link responses during chat
  * Uses shared db functions from research-links feature
  */
-import { createTool } from "@mastra/core/tools"
-import consola from "consola"
-import { z } from "zod"
-import { markResearchLinkComplete, saveResearchLinkAnswer } from "~/features/research-links/db"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
+import { createTool } from "@mastra/core/tools";
+import consola from "consola";
+import { z } from "zod";
+import { markResearchLinkComplete, saveResearchLinkAnswer } from "../../features/research-links/db";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
 
 export const saveResearchResponseTool = createTool({
 	id: "save-research-response",
@@ -25,29 +25,29 @@ export const saveResearchResponseTool = createTool({
 		questionId: z.string().optional(),
 	}),
 	execute: async (input) => {
-		const { questionId, answer, responseId } = input
+		const { questionId, answer, responseId } = input;
 		consola.info("save-research-response: TOOL CALLED", {
 			questionId,
 			answer,
 			responseId,
-		})
+		});
 
 		const result = await saveResearchLinkAnswer({
 			supabase: supabaseAdmin,
 			responseId,
 			questionId,
 			answer,
-		})
+		});
 
 		if (!result.success) {
-			consola.error("save-research-response: FAILED", { error: result.error })
-			return { success: false, message: result.error ?? "Unknown error" }
+			consola.error("save-research-response: FAILED", { error: result.error });
+			return { success: false, message: result.error ?? "Unknown error" };
 		}
 
-		consola.info("save-research-response: SUCCESS", { questionId })
-		return { success: true, message: "Saved", questionId }
+		consola.info("save-research-response: SUCCESS", { questionId });
+		return { success: true, message: "Saved", questionId };
 	},
-})
+});
 
 export const markSurveyCompleteTool = createTool({
 	id: "mark-survey-complete",
@@ -61,20 +61,20 @@ export const markSurveyCompleteTool = createTool({
 		message: z.string(),
 	}),
 	execute: async (input) => {
-		const { responseId } = input
-		consola.info("mark-survey-complete: TOOL CALLED", { responseId })
+		const { responseId } = input;
+		consola.info("mark-survey-complete: TOOL CALLED", { responseId });
 
 		const result = await markResearchLinkComplete({
 			supabase: supabaseAdmin,
 			responseId,
-		})
+		});
 
 		if (!result.success) {
-			consola.error("mark-survey-complete: FAILED", { error: result.error })
-			return { success: false, message: result.error ?? "Unknown error" }
+			consola.error("mark-survey-complete: FAILED", { error: result.error });
+			return { success: false, message: result.error ?? "Unknown error" };
 		}
 
-		consola.info("mark-survey-complete: SUCCESS")
-		return { success: true, message: "Survey marked complete" }
+		consola.info("mark-survey-complete: SUCCESS");
+		return { success: true, message: "Survey marked complete" };
 	},
-})
+});

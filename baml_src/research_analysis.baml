@@ -432,12 +432,12 @@ class QuestionPolicy {
 }
 
 class QuestionSet {
-  sessionId string @description("Stable session identifier provided by the caller; reuse across rounds for the same user/research flow.")
-  policy QuestionPolicy @description("Selection policy used by the app when choosing the next round.")
+  sessionId string? @description("Stable session identifier. Injected by caller from inputs.session_id; LLM should NOT generate.")
+  policy QuestionPolicy? @description("Selection policy. Injected by caller from inputs; LLM should NOT generate.")
   categories Category[] @description("The complete list of categories available for this session. Keep to < 8.")
   questions Question[] @description("Pool of proposed questions. Start all as 'proposed'. Do not include duplicates.")
   history HistoryItem[] @description("Past events for this session. If the caller provides prior history, do not alter it; only append in the app.")
-  round int @description("Current round number (1-based). Echo back the caller-provided value.")
+  round int? @description("Current round number. Injected by caller from inputs.round; LLM should NOT generate.")
 }
 
 // ---------- Research Structure Classes ----------
@@ -677,28 +677,12 @@ function GenerateQuestionSet(
   - Never stitch together multiple audiences (e.g., "Special Education Teacher, CIO, Clinical Psychologist..."). Pick a single perspective implicitly via "you".
 
   OUTPUT SHAPE
-  Return only valid JSON matching QuestionSet:
-  {
-    "sessionId": string,
-    "policy": {
-      "totalPerRound": number,
-      "perCategoryMin": number,
-      "perCategoryMax": number,
-      "dedupeWindowRounds": number,
-      "balanceBy": ["category","novelty"]
-    },
-    "categories": Category[],
-    "questions": Question[],
-    "history": [],
-    "round": number
-  }
+  Return only valid JSON with these fields:
+  - categories: Category[] (required - you generate this)
+  - questions: Question[] (required - you generate this)
+  - history: [] (always empty array)
 
-  DEFAULTS
-  - policy.totalPerRound = {{ inputs.total_per_round }} or twice as many as interview_time_limit permits.
-  - policy.perCategoryMin = {{ inputs.per_category_min }}
-  - policy.perCategoryMax = {{ inputs.per_category_max }}
-  - policy.dedupeWindowRounds = 2
-  - policy.balanceBy = ["category","novelty"]
+  DO NOT include sessionId, policy, or round - these will be injected by the system.
 
   HARD CONSTRAINTS
   - No placeholders or bracketed variables in any question text.

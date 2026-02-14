@@ -1,20 +1,20 @@
-export type ResearchMode = "exploratory" | "validation" | "user_testing"
+export type ResearchMode = "exploratory" | "validation" | "user_testing";
 
 export function fromManagerResearchMode(mode: ResearchMode | "followup"): ResearchMode {
-	return mode === "followup" ? "user_testing" : mode
+	return mode === "followup" ? "user_testing" : mode;
 }
 
 export function toManagerResearchMode(mode?: string | null): (ResearchMode | "followup") | undefined {
-	if (!mode) return undefined
+	if (!mode) return undefined;
 	switch (mode) {
 		case "exploratory":
 		case "validation":
 		case "user_testing":
-			return mode
+			return mode;
 		case "followup":
 			// Legacy value stored before renaming
-			return "followup"
+			return "followup";
 		default:
-			return undefined
+			return undefined;
 	}
 }

@@ -31,7 +31,7 @@ enum SeniorityLevel {
 
 class PersonSegmentInput {
   title string | null @description("Job title like 'VP of Engineering' or 'Senior Product Manager'")
-  role string | null @description("Functional role if different from title")
+  role string | null @description("DEPRECATED: No longer populated. Will always be null. Kept for schema compatibility.")
   company string | null @description("Company name for additional context")
 }
 

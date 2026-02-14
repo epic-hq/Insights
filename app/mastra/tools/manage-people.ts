@@ -1,15 +1,16 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
+import { validateUUID } from "./context-utils";
 
 const toolInputSchema = z.object({
 	action: z.enum(["get", "list", "delete"]),
 	personId: z.string().nullish().describe("Required for get and delete actions"),
-	accountId: z.string().optional(),
-	projectId: z.string().optional(),
+	accountId: z.string().nullish(),
+	projectId: z.string().nullish(),
 	nameSearch: z.string().nullish().describe("Optional case-insensitive name search for list"),
 	limit: z.number().int().min(1).max(200).nullish().describe("Max rows for list (default 50)"),
 	dryRun: z.boolean().nullish().describe("For delete: return what would be deleted without mutating"),
@@ -18,14 +19,14 @@ const toolInputSchema = z.object({
 		.string()
 		.nullish()
 		.describe("For delete (non-dryRun): must match the person's current name exactly (case-insensitive)"),
-})
+});
 
-type ToolInput = z.infer<typeof toolInputSchema>
+type ToolInput = z.infer<typeof toolInputSchema>;
 
 type PersonListRow = Pick<
 	Database["public"]["Tables"]["people"]["Row"],
-	"id" | "name" | "title" | "company" | "primary_email" | "segment" | "project_id" | "account_id"
->
+	"id" | "name" | "title" | "primary_email" | "segment" | "project_id" | "account_id"
+>;
 
 const toolOutputSchema = z.object({
 	success: z.boolean(),
@@ -70,7 +71,7 @@ const toolOutputSchema = z.object({
 		})
 		.optional(),
 	dryRun: z.boolean().optional(),
-})
+});
 
 async function countLinks(db: SupabaseClient<Database>, person_id: string) {
 	const [interview_people_res, project_people_res, people_organizations_res, people_personas_res] = await Promise.all([
@@ -78,14 +79,14 @@ async function countLinks(db: SupabaseClient<Database>, person_id: string) {
 		db.from("project_people").select("id", { count: "exact", head: true }).eq("person_id", person_id),
 		db.from("people_organizations").select("id", { count: "exact", head: true }).eq("person_id", person_id),
 		db.from("people_personas").select("person_id", { count: "exact", head: true }).eq("person_id", person_id),
-	])
+	]);
 
 	return {
 		interview_people: interview_people_res.count ?? 0,
 		project_people: project_people_res.count ?? 0,
 		people_organizations: people_organizations_res.count ?? 0,
 		people_personas: people_personas_res.count ?? 0,
-	}
+	};
 }
 
 export const managePeopleTool = createTool({
@@ -95,7 +96,7 @@ export const managePeopleTool = createTool({
 	inputSchema: toolInputSchema,
 	outputSchema: toolOutputSchema,
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
 		const {
 			action,
 			personId,
@@ -105,38 +106,45 @@ export const managePeopleTool = createTool({
 			limit,
 			dryRun,
 			force,
-		} = input as ToolInput
+		} = input as ToolInput;
 
-		const runtime_account_id = context?.requestContext?.get?.("account_id") as string | undefined
-		const runtime_project_id = context?.requestContext?.get?.("project_id") as string | undefined
+		const runtime_account_id = context?.requestContext?.get?.("account_id") as string | undefined;
+		const runtime_project_id = context?.requestContext?.get?.("project_id") as string | undefined;
 
-		const resolved_account_id = account_override || runtime_account_id
-		const resolved_project_id = project_override || runtime_project_id
+		const resolved_account_id = validateUUID(account_override || runtime_account_id, "accountId", "manage-people");
+		const resolved_project_id = validateUUID(project_override || runtime_project_id, "projectId", "manage-people");
+		const validated_person_id = personId ? validateUUID(personId, "personId", "manage-people") : null;
 
 		if (!resolved_account_id || !resolved_project_id) {
 			return {
 				success: false,
 				message: "Account ID and Project ID are required.",
 				person: null,
-			}
+			};
 		}
 
 		try {
 			if (action === "get") {
-				if (!personId) {
-					return { success: false, message: "personId is required for get.", person: null }
+				if (!validated_person_id) {
+					return {
+						success: false,
+						message: "personId is required for get and must be a valid UUID.",
+						person: null,
+					};
 				}
 
 				const { data: person_row, error } = await supabase
 					.from("people")
-					.select("id, name, title, company, primary_email, segment, account_id, project_id")
-					.eq("id", personId)
+					.select(
+						"id, name, title, primary_email, segment, account_id, project_id, default_organization:organizations!default_organization_id(name)"
+					)
+					.eq("id", validated_person_id)
 					.eq("account_id", resolved_account_id)
 					.eq("project_id", resolved_project_id)
-					.single()
+					.single();
 
 				if (error || !person_row) {
-					return { success: false, message: "Person not found.", person: null }
+					return { success: false, message: "Person not found.", person: null };
 				}
 
 				return {
@@ -146,80 +154,97 @@ export const managePeopleTool = createTool({
 						id: person_row.id,
 						name: person_row.name,
 						title: person_row.title,
-						company: person_row.company,
+						company:
+							(
+								person_row.default_organization as {
+									name: string | null;
+								} | null
+							)?.name ?? null,
 						primary_email: person_row.primary_email,
 						segment: person_row.segment,
 					},
-				}
+				};
 			}
 
 			if (action === "list") {
-				const resolved_limit = limit ?? 50
+				const resolved_limit = limit ?? 50;
 				let query = supabase
 					.from("people")
-					.select("id, name, title, company, primary_email, segment")
+					.select(
+						"id, name, title, primary_email, segment, default_organization:organizations!default_organization_id(name)"
+					)
 					.eq("account_id", resolved_account_id)
 					.eq("project_id", resolved_project_id)
 					.order("updated_at", { ascending: false })
-					.limit(resolved_limit)
+					.limit(resolved_limit);
 
-				const trimmed_search = (nameSearch ?? "").trim()
+				const trimmed_search = (nameSearch ?? "").trim();
 				if (trimmed_search) {
-					query = query.ilike("name", `%${trimmed_search.replace(/[%_]/g, "")}%`)
+					query = query.ilike("name", `%${trimmed_search.replace(/[%_]/g, "")}%`);
 				}
 
-				const { data: people_rows, error } = await query
+				const { data: people_rows, error } = await query;
 
 				if (error) {
 					return {
 						success: false,
 						message: `Failed to list people: ${error.message}`,
 						person: null,
-					}
+					};
 				}
 
 				return {
 					success: true,
 					message: `Found ${people_rows?.length || 0} people.`,
 					people:
-						(people_rows as PersonListRow[] | null)?.map((row) => ({
+						(
+							people_rows as Array<
+								PersonListRow & {
+									default_organization?: { name: string | null } | null;
+								}
+							> | null
+						)?.map((row) => ({
 							id: row.id,
 							name: row.name,
 							title: row.title,
-							company: row.company,
+							company: row.default_organization?.name ?? null,
 							primary_email: row.primary_email,
 							segment: row.segment,
 						})) ?? [],
-				}
+				};
 			}
 
 			if (action === "delete") {
-				if (!personId) {
-					return { success: false, message: "personId is required for delete.", person: null }
+				if (!validated_person_id) {
+					return {
+						success: false,
+						message: "personId is required for delete and must be a valid UUID.",
+						person: null,
+					};
 				}
 
 				const { data: person_row, error: fetch_error } = await supabase
 					.from("people")
 					.select("id, name, account_id, project_id")
-					.eq("id", personId)
+					.eq("id", validated_person_id)
 					.eq("account_id", resolved_account_id)
 					.eq("project_id", resolved_project_id)
-					.maybeSingle()
+					.maybeSingle();
 
 				if (fetch_error || !person_row) {
-					return { success: false, message: "Person not found.", person: null }
+					return { success: false, message: "Person not found.", person: null };
 				}
 
-				const linked_counts = await countLinks(supabase, person_row.id)
+				const linked_counts = await countLinks(supabase, person_row.id);
 				const { data: interview_links } = await supabase
 					.from("interview_people")
 					.select("interview_id")
 					.eq("person_id", person_row.id)
-					.eq("project_id", resolved_project_id)
+					.eq("project_id", resolved_project_id);
 
 				const linked_interview_ids = Array.from(
 					new Set((interview_links ?? []).map((row) => row.interview_id).filter(Boolean))
-				) as string[]
+				) as string[];
 
 				const { data: interview_rows } = linked_interview_ids.length
 					? await supabase
@@ -228,14 +253,17 @@ export const managePeopleTool = createTool({
 							.in("id", linked_interview_ids)
 							.eq("account_id", resolved_account_id)
 							.eq("project_id", resolved_project_id)
-					: { data: [] as { id: string; title: string | null }[] }
+					: { data: [] as { id: string; title: string | null }[] };
 
-				const linked_interviews = (interview_rows ?? []).map((row) => ({ id: row.id, title: row.title }))
+				const linked_interviews = (interview_rows ?? []).map((row) => ({
+					id: row.id,
+					title: row.title,
+				}));
 				const total_links =
 					linked_counts.interview_people +
 					linked_counts.project_people +
 					linked_counts.people_organizations +
-					linked_counts.people_personas
+					linked_counts.people_personas;
 
 				if (dryRun) {
 					return {
@@ -252,11 +280,11 @@ export const managePeopleTool = createTool({
 						linkedInterviews: linked_interviews,
 						linkedCounts: linked_counts,
 						dryRun: true,
-					}
+					};
 				}
 
-				const expected_name = (person_row.name ?? "").trim()
-				const provided_name = (input as ToolInput).confirmName?.trim() ?? ""
+				const expected_name = (person_row.name ?? "").trim();
+				const provided_name = (input as ToolInput).confirmName?.trim() ?? "";
 
 				if (!expected_name || !provided_name || expected_name.toLowerCase() !== provided_name.toLowerCase()) {
 					return {
@@ -271,7 +299,7 @@ export const managePeopleTool = createTool({
 							segment: null,
 						},
 						linkedCounts: linked_counts,
-					}
+					};
 				}
 
 				if (total_links > 0 && !force) {
@@ -288,7 +316,7 @@ export const managePeopleTool = createTool({
 							segment: null,
 						},
 						linkedCounts: linked_counts,
-					}
+					};
 				}
 
 				const { error: delete_error } = await supabase
@@ -296,7 +324,7 @@ export const managePeopleTool = createTool({
 					.delete()
 					.eq("id", person_row.id)
 					.eq("account_id", resolved_account_id)
-					.eq("project_id", resolved_project_id)
+					.eq("project_id", resolved_project_id);
 
 				if (delete_error) {
 					return {
@@ -312,7 +340,7 @@ export const managePeopleTool = createTool({
 						},
 						linkedInterviews: linked_interviews,
 						linkedCounts: linked_counts,
-					}
+					};
 				}
 
 				return {
@@ -328,17 +356,21 @@ export const managePeopleTool = createTool({
 					},
 					linkedInterviews: linked_interviews,
 					linkedCounts: linked_counts,
-				}
+				};
 			}
 
-			return { success: false, message: `Unknown action: ${action}`, person: null }
+			return {
+				success: false,
+				message: `Unknown action: ${action}`,
+				person: null,
+			};
 		} catch (error) {
-			consola.error("manage-people: unexpected failure", error)
+			consola.error("manage-people: unexpected failure", error);
 			return {
 				success: false,
 				message: error instanceof Error ? error.message : "Failed to manage people.",
 				person: null,
-			}
+			};
 		}
 	},
-})
+});

@@ -9,52 +9,52 @@ import {
 	Settings,
 	Target,
 	TrendingUp,
-} from "lucide-react"
-import { useState } from "react"
-import type { LoaderFunctionArgs } from "react-router"
-import { Link, useLoaderData } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { Progress } from "~/components/ui/progress"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
+} from "lucide-react";
+import { useState } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { Link, useLoaderData } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { Progress } from "~/components/ui/progress";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
 
-type ValidationGateSlug = "pain_exists" | "awareness" | "quantified" | "acting"
-type ValidationStage = "None" | "Pain Exists" | "Awareness" | "Quantified Impact" | "Taking Action"
-type ValidationDetailKey = "painExists" | "awareness" | "quantified" | "acting"
+type ValidationGateSlug = "pain_exists" | "awareness" | "quantified" | "acting";
+type ValidationStage = "None" | "Pain Exists" | "Awareness" | "Quantified Impact" | "Taking Action";
+type ValidationDetailKey = "painExists" | "awareness" | "quantified" | "acting";
 
-const VALIDATION_GATE_ORDER: ValidationGateSlug[] = ["pain_exists", "awareness", "quantified", "acting"]
+const VALIDATION_GATE_ORDER: ValidationGateSlug[] = ["pain_exists", "awareness", "quantified", "acting"];
 
 const slugToDetailKey: Record<ValidationGateSlug, ValidationDetailKey> = {
 	pain_exists: "painExists",
 	awareness: "awareness",
 	quantified: "quantified",
 	acting: "acting",
-}
+};
 
 const validationGateLabels: Record<ValidationGateSlug, ValidationStage> = {
 	pain_exists: "Pain Exists",
 	awareness: "Awareness",
 	quantified: "Quantified Impact",
 	acting: "Taking Action",
-}
+};
 
 interface ValidationGateDetail {
-	summary: string
-	confidence: number | null
-	updatedAt: string | null
+	summary: string;
+	confidence: number | null;
+	updatedAt: string | null;
 }
 
 interface ValidationParticipant {
-	id: string
-	name: string
-	company: string
-	outcome: 1 | 2 | 3 | 4 | 5
-	stage: ValidationStage
-	keyInsight: string
-	validationDetails: Partial<Record<ValidationDetailKey, ValidationGateDetail>>
+	id: string;
+	name: string;
+	company: string;
+	outcome: 1 | 2 | 3 | 4 | 5;
+	stage: ValidationStage;
+	keyInsight: string;
+	validationDetails: Partial<Record<ValidationDetailKey, ValidationGateDetail>>;
 }
 
 const outcomeConfig = {
@@ -88,7 +88,7 @@ const outcomeConfig = {
 		color: "bg-emerald-50 text-emerald-700 border-emerald-200",
 		icon: Rocket,
 	},
-} as const
+} as const;
 
 const stageDescriptions: Record<ValidationStage, string> = {
 	None: "No validation interviews processed yet.",
@@ -96,27 +96,27 @@ const stageDescriptions: Record<ValidationStage, string> = {
 	Awareness: "Participants recognise the pain without prompting.",
 	"Quantified Impact": "Participants can describe the size of the pain in time or money.",
 	"Taking Action": "Participants are spending time or money to address it right now.",
-}
+};
 
 const gateIconMap: Record<ValidationDetailKey, typeof Flame> = {
 	painExists: Flame,
 	awareness: Eye,
 	quantified: LineChart,
 	acting: Rocket,
-}
+};
 
 /**
  * Loader: Fetch people with their interview answers and compute validation outcomes
  * Uses project_answers table to derive validation status from actual interview data
  */
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const accountId = params.accountId
-	const projectId = params.projectId
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const accountId = params.accountId;
+	const projectId = params.projectId;
 
 	if (!accountId || !projectId) {
-		throw new Response("Account ID and Project ID are required", { status: 400 })
+		throw new Response("Account ID and Project ID are required", { status: 400 });
 	}
 
 	const [
@@ -139,6 +139,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					name,
 					company,
 					contact_info,
+					default_organization:organizations!default_organization_id(name),
 					interview_people (
 						interviews (
 							id,
@@ -162,32 +163,32 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			.select("question_id, question_type, summary, confidence, next_steps, goal_achievement_summary, created_at")
 			.eq("project_id", projectId)
 			.order("created_at", { ascending: false }),
-	])
+	]);
 
-	if (peopleError) console.error("Error loading people:", peopleError)
-	if (answersError) console.error("Error loading project answers:", answersError)
-	if (interviewPeopleError) console.error("Error loading interview_people:", interviewPeopleError)
-	if (questionAnalysisError) console.error("Error loading project_question_analysis:", questionAnalysisError)
+	if (peopleError) console.error("Error loading people:", peopleError);
+	if (answersError) console.error("Error loading project answers:", answersError);
+	if (interviewPeopleError) console.error("Error loading interview_people:", interviewPeopleError);
+	if (questionAnalysisError) console.error("Error loading project_question_analysis:", questionAnalysisError);
 
-	const questionSection = projectSections?.find((section) => section.kind === "questions")
-	const questionSectionMeta = (questionSection?.meta as Record<string, any> | null) ?? null
-	const researchMode = (questionSectionMeta?.settings?.research_mode as string | undefined) ?? "exploratory"
+	const questionSection = projectSections?.find((section) => section.kind === "questions");
+	const questionSectionMeta = (questionSection?.meta as Record<string, any> | null) ?? null;
+	const researchMode = (questionSectionMeta?.settings?.research_mode as string | undefined) ?? "exploratory";
 	const validationGateMeta = questionSectionMeta?.validation_gate_map as
 		| Record<
 				string,
 				{
-					research_question_id?: string
-					research_question_text?: string
+					research_question_id?: string;
+					research_question_text?: string;
 				}
 		  >
-		| undefined
+		| undefined;
 
 	const gateOutcomeMap: Record<ValidationGateSlug, 2 | 3 | 4 | 5> = {
 		pain_exists: 2,
 		awareness: 3,
 		quantified: 4,
 		acting: 5,
-	}
+	};
 
 	const stageByOutcome: Record<number, ValidationStage> = {
 		1: "None",
@@ -195,55 +196,55 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		3: "Awareness",
 		4: "Quantified Impact",
 		5: "Taking Action",
-	}
+	};
 
 	const peopleMap = new Map(
 		(people ?? []).map((person) => [
 			person.id,
 			{
 				name: person.name || "Unknown",
-				company: person.company || "",
+				company: (person as any).default_organization?.name || "",
 				contactInfo: person.contact_info as Record<string, unknown> | null,
 			},
 		])
-	)
+	);
 
 	const participantsAccumulator = new Map<
 		string,
 		{
-			id: string
-			name: string
-			company: string
-			validationDetails: Partial<Record<ValidationDetailKey, ValidationGateDetail>>
+			id: string;
+			name: string;
+			company: string;
+			validationDetails: Partial<Record<ValidationDetailKey, ValidationGateDetail>>;
 		}
-	>()
+	>();
 
 	const ensureParticipant = (
 		personId: string
 	): {
-		id: string
-		name: string
-		company: string
-		validationDetails: Partial<Record<ValidationDetailKey, ValidationGateDetail>>
+		id: string;
+		name: string;
+		company: string;
+		validationDetails: Partial<Record<ValidationDetailKey, ValidationGateDetail>>;
 	} => {
 		if (!participantsAccumulator.has(personId)) {
-			const personRecord = peopleMap.get(personId)
+			const personRecord = peopleMap.get(personId);
 			participantsAccumulator.set(personId, {
 				id: personId,
 				name: personRecord?.name || "Unknown Participant",
 				company: personRecord?.company || "",
 				validationDetails: {},
-			})
+			});
 		}
-		return participantsAccumulator.get(personId)!
-	}
+		return participantsAccumulator.get(personId)!;
+	};
 
 	for (const person of people ?? []) {
-		ensureParticipant(person.id)
+		ensureParticipant(person.id);
 	}
 
 	const gateDefinitions = VALIDATION_GATE_ORDER.map((slug) => {
-		const meta = validationGateMeta?.[slug]
+		const meta = validationGateMeta?.[slug];
 		return meta?.research_question_id
 			? {
 					slug,
@@ -251,119 +252,119 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					label: validationGateLabels[slug],
 					text: meta.research_question_text ?? "",
 				}
-			: null
+			: null;
 	}).filter(Boolean) as Array<{
-		slug: ValidationGateSlug
-		research_question_id: string
-		label: ValidationStage
-		text: string
-	}>
+		slug: ValidationGateSlug;
+		research_question_id: string;
+		label: ValidationStage;
+		text: string;
+	}>;
 
-	const gateByQuestionId = new Map<string, ValidationGateSlug>()
+	const gateByQuestionId = new Map<string, ValidationGateSlug>();
 	for (const gate of gateDefinitions) {
-		gateByQuestionId.set(gate.research_question_id, gate.slug)
+		gateByQuestionId.set(gate.research_question_id, gate.slug);
 	}
 
-	const interviewPersonMap = new Map<string, string>()
+	const interviewPersonMap = new Map<string, string>();
 	for (const row of interviewPeopleRows ?? []) {
 		if (!interviewPersonMap.has(row.interview_id)) {
-			interviewPersonMap.set(row.interview_id, row.person_id)
+			interviewPersonMap.set(row.interview_id, row.person_id);
 		}
 	}
 
 	if (researchMode === "validation" && gateByQuestionId.size > 0) {
 		for (const answer of projectAnswers ?? []) {
-			const slug = gateByQuestionId.get(answer.research_question_id ?? "")
-			if (!slug) continue
-			const detailKey = slugToDetailKey[slug]
+			const slug = gateByQuestionId.get(answer.research_question_id ?? "");
+			if (!slug) continue;
+			const detailKey = slugToDetailKey[slug];
 			const personId =
 				answer.respondent_person_id ||
-				(answer.interview_id ? (interviewPersonMap.get(answer.interview_id) ?? null) : null)
-			if (!personId) continue
-			const participant = ensureParticipant(personId)
+				(answer.interview_id ? (interviewPersonMap.get(answer.interview_id) ?? null) : null);
+			if (!personId) continue;
+			const participant = ensureParticipant(personId);
 			const summaryCandidate =
 				[answer.analysis_summary, answer.answer_text, answer.analysis_rationale, answer.analysis_next_steps]
 					.map((value) => (typeof value === "string" ? value.trim() : ""))
-					.find((value) => value.length > 0) || ""
-			if (!summaryCandidate) continue
+					.find((value) => value.length > 0) || "";
+			if (!summaryCandidate) continue;
 			participant.validationDetails[detailKey] = {
 				summary: summaryCandidate,
 				confidence: typeof answer.confidence === "number" ? answer.confidence : null,
 				updatedAt: answer.updated_at ?? null,
-			}
+			};
 		}
 	}
 
 	const legacyParticipants = () => {
-		const participants: ValidationParticipant[] = []
+		const participants: ValidationParticipant[] = [];
 		for (const person of people ?? []) {
-			const contactInfo = person.contact_info as Record<string, unknown> | null
-			const personAnswers = (projectAnswers || []).filter((a) => a.respondent_person_id === person.id)
+			const contactInfo = person.contact_info as Record<string, unknown> | null;
+			const personAnswers = (projectAnswers || []).filter((a) => a.respondent_person_id === person.id);
 
 			if (contactInfo?.validation_outcome) {
-				const manualOutcome = Number(contactInfo.validation_outcome) as 1 | 2 | 3 | 4 | 5
-				const manualDetailsRaw = (contactInfo.validation_details as Record<string, string> | undefined) ?? {}
-				const manualDetails: Partial<Record<ValidationDetailKey, ValidationGateDetail>> = {}
+				const manualOutcome = Number(contactInfo.validation_outcome) as 1 | 2 | 3 | 4 | 5;
+				const manualDetailsRaw = (contactInfo.validation_details as Record<string, string> | undefined) ?? {};
+				const manualDetails: Partial<Record<ValidationDetailKey, ValidationGateDetail>> = {};
 				for (const key of Object.keys(manualDetailsRaw)) {
 					if (key in slugToDetailKey) {
-						const detailKey = key as ValidationDetailKey
+						const detailKey = key as ValidationDetailKey;
 						manualDetails[detailKey] = {
 							summary: manualDetailsRaw[key] ?? "",
 							confidence: null,
 							updatedAt: null,
-						}
+						};
 					}
 				}
 				participants.push({
 					id: person.id,
 					name: person.name || "Unknown",
-					company: person.company || "",
+					company: peopleMap.get(person.id)?.company || "",
 					outcome: manualOutcome,
 					stage: stageByOutcome[manualOutcome],
 					keyInsight: (contactInfo.key_insight as string) || "",
 					validationDetails: manualDetails,
-				})
-				continue
+				});
+				continue;
 			}
 
 			if (personAnswers.length === 0) {
 				participants.push({
 					id: person.id,
 					name: person.name || "Unknown",
-					company: person.company || "",
+					company: peopleMap.get(person.id)?.company || "",
 					outcome: 1,
 					stage: stageByOutcome[1],
 					keyInsight: "No interview data available",
 					validationDetails: {},
-				})
-				continue
+				});
+				continue;
 			}
 
-			const answerTexts = personAnswers.map((a) => (a.answer_text || "").toLowerCase()).join(" ")
-			const summaries = personAnswers.map((a) => (a.analysis_summary || "").toLowerCase()).join(" ")
-			const allText = `${answerTexts} ${summaries}`
-			const avgConfidence = personAnswers.reduce((sum, a) => sum + (a.confidence || 0), 0) / personAnswers.length
+			const answerTexts = personAnswers.map((a) => (a.answer_text || "").toLowerCase()).join(" ");
+			const summaries = personAnswers.map((a) => (a.analysis_summary || "").toLowerCase()).join(" ");
+			const allText = `${answerTexts} ${summaries}`;
+			const avgConfidence = personAnswers.reduce((sum, a) => sum + (a.confidence || 0), 0) / personAnswers.length;
 
-			const hasPainMention = /pain|problem|frustrat|challeng|difficult|struggle/i.test(allText)
-			const hasAwareness = /aware|know|understand|talk about|complain/i.test(allText)
-			const hasQuantification = /\$|cost|hour|time|save|spend|budget|price|percent|%|mins|minutes|hours/i.test(allText)
-			const hasAction = /pay|bought|purchas|subscri|tool|solution|using|current|hired|built/i.test(allText)
+			const hasPainMention = /pain|problem|frustrat|challeng|difficult|struggle/i.test(allText);
+			const hasAwareness = /aware|know|understand|talk about|complain/i.test(allText);
+			const hasQuantification = /\$|cost|hour|time|save|spend|budget|price|percent|%|mins|minutes|hours/i.test(allText);
+			const hasAction = /pay|bought|purchas|subscri|tool|solution|using|current|hired|built/i.test(allText);
 
 			const extractText = (regex: RegExp): string => {
-				const match = personAnswers.find((a) => regex.test(a.answer_text || ""))
-				if (match?.answer_text) return match.answer_text
-				const summaryMatch = personAnswers.find((a) => regex.test(a.analysis_summary || ""))
-				if (summaryMatch?.analysis_summary) return summaryMatch.analysis_summary
-				return ""
-			}
+				const match = personAnswers.find((a) => regex.test(a.answer_text || ""));
+				if (match?.answer_text) return match.answer_text;
+				const summaryMatch = personAnswers.find((a) => regex.test(a.analysis_summary || ""));
+				if (summaryMatch?.analysis_summary) return summaryMatch.analysis_summary;
+				return "";
+			};
 
-			const validationDetails: Partial<Record<ValidationDetailKey, ValidationGateDetail>> = {}
+			const validationDetails: Partial<Record<ValidationDetailKey, ValidationGateDetail>> = {};
 			if (hasPainMention) {
 				validationDetails.painExists = {
 					summary: extractText(/pain|problem|frustrat|challeng|difficult|struggle/i) || "Pain mentioned in interviews.",
 					confidence: avgConfidence || null,
 					updatedAt: null,
-				}
+				};
 			}
 			if (hasAwareness) {
 				validationDetails.awareness = {
@@ -371,7 +372,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 						extractText(/aware|know|understand|talk/i) || "Participant described the problem in their own words.",
 					confidence: avgConfidence || null,
 					updatedAt: null,
-				}
+				};
 			}
 			if (hasQuantification) {
 				validationDetails.quantified = {
@@ -380,7 +381,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 						"Participant put numbers behind the pain.",
 					confidence: avgConfidence || null,
 					updatedAt: null,
-				}
+				};
 			}
 			if (hasAction) {
 				validationDetails.acting = {
@@ -389,56 +390,56 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 						"Participant is actively trying to solve this today.",
 					confidence: avgConfidence || null,
 					updatedAt: null,
-				}
+				};
 			}
 
-			let outcome: 1 | 2 | 3 | 4 | 5 = 1
-			if (hasAction && hasQuantification && hasPainMention && avgConfidence > 0.7) outcome = 5
-			else if (hasQuantification && hasPainMention && avgConfidence > 0.6) outcome = 4
-			else if (hasPainMention && avgConfidence > 0.5) outcome = 3
-			else if (avgConfidence > 0.3) outcome = 2
+			let outcome: 1 | 2 | 3 | 4 | 5 = 1;
+			if (hasAction && hasQuantification && hasPainMention && avgConfidence > 0.7) outcome = 5;
+			else if (hasQuantification && hasPainMention && avgConfidence > 0.6) outcome = 4;
+			else if (hasPainMention && avgConfidence > 0.5) outcome = 3;
+			else if (avgConfidence > 0.3) outcome = 2;
 
 			const highestDetail = VALIDATION_GATE_ORDER.reduce<ValidationGateSlug | null>((acc, slug) => {
-				const detail = validationDetails[slugToDetailKey[slug]]
-				return detail?.summary ? slug : acc
-			}, null)
+				const detail = validationDetails[slugToDetailKey[slug]];
+				return detail?.summary ? slug : acc;
+			}, null);
 
 			const keyInsight = highestDetail
 				? (validationDetails[slugToDetailKey[highestDetail]]?.summary ?? "")
 				: outcome > 1
 					? "Interview hints at pain but lacks clear quotes."
-					: "No interview data available"
+					: "No interview data available";
 
 			participants.push({
 				id: person.id,
 				name: person.name || "Unknown",
-				company: person.company || "",
+				company: peopleMap.get(person.id)?.company || "",
 				outcome,
 				stage: stageByOutcome[outcome],
 				keyInsight,
 				validationDetails,
-			})
+			});
 		}
-		return participants
-	}
+		return participants;
+	};
 
-	let participants: ValidationParticipant[] = []
+	let participants: ValidationParticipant[] = [];
 
 	if (researchMode === "validation" && gateByQuestionId.size > 0) {
 		participants = Array.from(participantsAccumulator.values()).map((participant) => {
-			let highestGate: ValidationGateSlug | null = null
+			let highestGate: ValidationGateSlug | null = null;
 			for (const slug of VALIDATION_GATE_ORDER) {
-				const detail = participant.validationDetails[slugToDetailKey[slug]]
+				const detail = participant.validationDetails[slugToDetailKey[slug]];
 				if (detail?.summary) {
-					highestGate = slug
+					highestGate = slug;
 				}
 			}
 
-			const outcome = highestGate ? gateOutcomeMap[highestGate] : 1
-			const stage = stageByOutcome[outcome]
+			const outcome = highestGate ? gateOutcomeMap[highestGate] : 1;
+			const stage = stageByOutcome[outcome];
 			const keyInsight = highestGate
 				? participant.validationDetails[slugToDetailKey[highestGate]]?.summary || ""
-				: "No validation evidence captured yet."
+				: "No validation evidence captured yet.";
 
 			return {
 				id: participant.id,
@@ -448,56 +449,56 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				stage,
 				keyInsight,
 				validationDetails: participant.validationDetails,
-			}
-		})
+			};
+		});
 	} else {
-		participants = legacyParticipants()
+		participants = legacyParticipants();
 	}
 
-	const participantsById = new Map(participants.map((p) => [p.id, p]))
+	const participantsById = new Map(participants.map((p) => [p.id, p]));
 
 	const gateSummaries = new Map<
 		ValidationGateSlug,
 		{
-			summary: string
-			nextSteps: string | null
-			confidence: number | null
-			goalSummary: string | null
-			updatedAt: string | null
+			summary: string;
+			nextSteps: string | null;
+			confidence: number | null;
+			goalSummary: string | null;
+			updatedAt: string | null;
 		}
-	>()
+	>();
 
 	if (questionAnalysisRows && questionAnalysisRows.length > 0 && gateDefinitions.length > 0) {
-		const latestByQuestion = new Map<string, (typeof questionAnalysisRows)[number]>()
+		const latestByQuestion = new Map<string, (typeof questionAnalysisRows)[number]>();
 		for (const row of questionAnalysisRows) {
-			if (row.question_type !== "research") continue
-			if (latestByQuestion.has(row.question_id)) continue
-			latestByQuestion.set(row.question_id, row)
+			if (row.question_type !== "research") continue;
+			if (latestByQuestion.has(row.question_id)) continue;
+			latestByQuestion.set(row.question_id, row);
 		}
 
 		for (const { slug, research_question_id } of gateDefinitions) {
-			const match = latestByQuestion.get(research_question_id)
-			if (!match) continue
+			const match = latestByQuestion.get(research_question_id);
+			if (!match) continue;
 			gateSummaries.set(slug, {
 				summary: match.summary ?? "",
 				nextSteps: match.next_steps ?? null,
 				confidence: typeof match.confidence === "number" ? match.confidence : null,
 				goalSummary: match.goal_achievement_summary ?? null,
 				updatedAt: match.created_at ?? null,
-			})
+			});
 		}
 	}
 
 	for (const [personId, personRecord] of peopleMap.entries()) {
-		const contactInfo = personRecord.contactInfo
+		const contactInfo = personRecord.contactInfo;
 		if (contactInfo?.validation_outcome) {
-			const outcome = Number(contactInfo.validation_outcome) as 1 | 2 | 3 | 4 | 5
-			const detailsRaw = (contactInfo.validation_details as Record<string, string> | undefined) ?? {}
-			const overrides: Partial<Record<ValidationDetailKey, ValidationGateDetail>> = {}
+			const outcome = Number(contactInfo.validation_outcome) as 1 | 2 | 3 | 4 | 5;
+			const detailsRaw = (contactInfo.validation_details as Record<string, string> | undefined) ?? {};
+			const overrides: Partial<Record<ValidationDetailKey, ValidationGateDetail>> = {};
 			for (const [key, value] of Object.entries(detailsRaw)) {
 				if (key in slugToDetailKey) {
-					const detailKey = key as ValidationDetailKey
-					overrides[detailKey] = { summary: value ?? "", confidence: null, updatedAt: null }
+					const detailKey = key as ValidationDetailKey;
+					overrides[detailKey] = { summary: value ?? "", confidence: null, updatedAt: null };
 				}
 			}
 			participantsById.set(personId, {
@@ -508,29 +509,29 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				stage: stageByOutcome[outcome],
 				keyInsight: (contactInfo.key_insight as string) || participantsById.get(personId)?.keyInsight || "",
 				validationDetails: overrides,
-			})
+			});
 		}
 	}
 
 	participants = Array.from(participantsById.values()).sort((a, b) => {
-		if (b.outcome !== a.outcome) return b.outcome - a.outcome
-		return a.name.localeCompare(b.name)
-	})
+		if (b.outcome !== a.outcome) return b.outcome - a.outcome;
+		return a.name.localeCompare(b.name);
+	});
 
 	const gateTotals = VALIDATION_GATE_ORDER.reduce(
 		(acc, slug) => {
 			acc[slug] = participants.filter((participant) => {
-				const detailKey = slugToDetailKey[slug]
-				return Boolean(participant.validationDetails[detailKey]?.summary)
-			}).length
-			return acc
+				const detailKey = slugToDetailKey[slug];
+				return Boolean(participant.validationDetails[detailKey]?.summary);
+			}).length;
+			return acc;
 		},
 		Object.create(null) as Record<ValidationGateSlug, number>
-	)
+	);
 
-	const participantsWithEvidence = participants.filter((p) => p.outcome > 1).length
-	const totalInterviews = people?.length ?? participants.length
-	const progressPercentage = totalInterviews > 0 ? Math.round((participantsWithEvidence / totalInterviews) * 100) : 0
+	const participantsWithEvidence = participants.filter((p) => p.outcome > 1).length;
+	const totalInterviews = people?.length ?? participants.length;
+	const progressPercentage = totalInterviews > 0 ? Math.round((participantsWithEvidence / totalInterviews) * 100) : 0;
 
 	return {
 		participants,
@@ -551,11 +552,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			total: totalInterviews,
 			percentage: progressPercentage,
 		},
-	}
+	};
 }
 
 export function AnalyzeStageValidation() {
-	const loaderData = useLoaderData<typeof loader>()
+	const loaderData = useLoaderData<typeof loader>();
 	const {
 		participants = [],
 		projectSections = [],
@@ -563,81 +564,81 @@ export function AnalyzeStageValidation() {
 		progress,
 		researchMode,
 		gateSummaries = [],
-	} = loaderData || {}
-	const currentProjectContext = useCurrentProject()
-	const routes = useProjectRoutes(currentProjectContext?.projectPath)
-	const [selectedOutcome, setSelectedOutcome] = useState<number>(5)
+	} = loaderData || {};
+	const currentProjectContext = useCurrentProject();
+	const routes = useProjectRoutes(currentProjectContext?.projectPath);
+	const [selectedOutcome, setSelectedOutcome] = useState<number>(5);
 
 	const getGoalSections = () =>
-		projectSections?.filter((section) => section.kind === "goal" || section.kind === "research_goal")
+		projectSections?.filter((section) => section.kind === "goal" || section.kind === "research_goal");
 
 	const researchGoalText = (() => {
-		const gs = getGoalSections()
-		if (!gs || gs.length === 0) return ""
-		const section = gs[0]
-		const meta = (section.meta || {}) as Record<string, unknown>
-		return (meta.research_goal as string) || (meta.customGoal as string) || section.content_md || ""
-	})()
+		const gs = getGoalSections();
+		if (!gs || gs.length === 0) return "";
+		const section = gs[0];
+		const meta = (section.meta || {}) as Record<string, unknown>;
+		return (meta.research_goal as string) || (meta.customGoal as string) || section.content_md || "";
+	})();
 
-	const totalInterviews = progress?.total || participants?.length || 0
-	const completedInterviews = progress?.completed || 0
-	const progressPercentage = progress?.percentage || 0
+	const totalInterviews = progress?.total || participants?.length || 0;
+	const completedInterviews = progress?.completed || 0;
+	const progressPercentage = progress?.percentage || 0;
 
 	const outcomeCounts = (participants || []).reduce(
 		(acc, participant) => {
-			acc[participant.outcome] = (acc[participant.outcome] || 0) + 1
-			return acc
+			acc[participant.outcome] = (acc[participant.outcome] || 0) + 1;
+			return acc;
 		},
 		{} as Record<number, number>
-	)
+	);
 
-	const getParticipantsByOutcome = (outcome: number) => (participants || []).filter((p) => p.outcome === outcome)
+	const getParticipantsByOutcome = (outcome: number) => (participants || []).filter((p) => p.outcome === outcome);
 
-	const qualifiedProspects = getParticipantsByOutcome(5)
-	const takingActionCount = gateTotals?.acting ?? 0
-	const quantifiedCount = gateTotals?.quantified ?? 0
-	const awarenessCount = gateTotals?.awareness ?? 0
-	const painCount = gateTotals?.pain_exists ?? 0
+	const qualifiedProspects = getParticipantsByOutcome(5);
+	const takingActionCount = gateTotals?.acting ?? 0;
+	const quantifiedCount = gateTotals?.quantified ?? 0;
+	const awarenessCount = gateTotals?.awareness ?? 0;
+	const painCount = gateTotals?.pain_exists ?? 0;
 
-	const gateSummaryBySlug = new Map(gateSummaries.map((item) => [item.slug, item]))
+	const gateSummaryBySlug = new Map(gateSummaries.map((item) => [item.slug, item]));
 	const gateHighlights = VALIDATION_GATE_ORDER.map((slug) => {
-		const data = gateSummaryBySlug.get(slug)
-		if (!data || !data.summary?.trim()) return null
-		return `${validationGateLabels[slug]}: ${data.summary.trim()}`
-	}).filter((value): value is string => Boolean(value))
+		const data = gateSummaryBySlug.get(slug);
+		if (!data || !data.summary?.trim()) return null;
+		return `${validationGateLabels[slug]}: ${data.summary.trim()}`;
+	}).filter((value): value is string => Boolean(value));
 
 	const opportunitySummary = (() => {
 		if (gateHighlights.length > 0) {
-			return gateHighlights.join("\n\n")
+			return gateHighlights.join("\n\n");
 		}
 		if (takingActionCount > 0) {
-			return `${takingActionCount} participant${takingActionCount === 1 ? "" : "s"} are already taking action. ${quantifiedCount} have quantified the cost and ${awarenessCount} can articulate the pain in their own words.`
+			return `${takingActionCount} participant${takingActionCount === 1 ? "" : "s"} are already taking action. ${quantifiedCount} have quantified the cost and ${awarenessCount} can articulate the pain in their own words.`;
 		}
 		if (quantifiedCount > 0) {
-			return `${quantifiedCount} participant${quantifiedCount === 1 ? "" : "s"} have quantified the impact. Encourage follow-ups to uncover whether they are ready to act.`
+			return `${quantifiedCount} participant${quantifiedCount === 1 ? "" : "s"} have quantified the impact. Encourage follow-ups to uncover whether they are ready to act.`;
 		}
 		if (awarenessCount > 0 || painCount > 0) {
-			return `${awarenessCount || painCount} participant${(awarenessCount || painCount) === 1 ? "" : "s"} recognise the problem. Collect more evidence to size the cost and uncover buying behaviour.`
+			return `${awarenessCount || painCount} participant${(awarenessCount || painCount) === 1 ? "" : "s"} recognise the problem. Collect more evidence to size the cost and uncover buying behaviour.`;
 		}
-		return "No validation interviews have been processed yet. Once evidence comes in, this summary will highlight where prospects sit in the funnel."
-	})()
+		return "No validation interviews have been processed yet. Once evidence comes in, this summary will highlight where prospects sit in the funnel.";
+	})();
 
-	const hasGateSummaries = gateSummaries.some((item) => item.summary?.trim())
+	const hasGateSummaries = gateSummaries.some((item) => item.summary?.trim());
 
 	const renderParticipantCard = (participant: ValidationParticipant) => {
-		const stageInfo = outcomeConfig[participant.outcome]
+		const stageInfo = outcomeConfig[participant.outcome];
 		const detailEntries =
 			researchMode === "validation"
 				? VALIDATION_GATE_ORDER.map((slug) => {
-						const detailKey = slugToDetailKey[slug]
+						const detailKey = slugToDetailKey[slug];
 						return {
 							slug,
 							detailKey,
 							label: validationGateLabels[slug],
 							data: participant.validationDetails[detailKey],
-						}
+						};
 					})
-				: []
+				: [];
 
 		return (
 			<Link to={routes.people.detail(participant.id)} key={participant.id}>
@@ -675,7 +676,7 @@ export function AnalyzeStageValidation() {
 							<div className="space-y-3 border-gray-200 border-t pt-4 dark:border-gray-700">
 								<div className="grid gap-3">
 									{detailEntries.map(({ slug, detailKey, label, data }) => {
-										const Icon = gateIconMap[detailKey]
+										const Icon = gateIconMap[detailKey];
 										return (
 											<div
 												key={`${participant.id}-${slug}`}
@@ -700,7 +701,7 @@ export function AnalyzeStageValidation() {
 													)}
 												</div>
 											</div>
-										)
+										);
 									})}
 								</div>
 							</div>
@@ -714,8 +715,8 @@ export function AnalyzeStageValidation() {
 					</CardContent>
 				</Card>
 			</Link>
-		)
-	}
+		);
+	};
 
 	return (
 		<div className="space-y-6">
@@ -767,10 +768,10 @@ export function AnalyzeStageValidation() {
 				{hasGateSummaries && (
 					<div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 						{VALIDATION_GATE_ORDER.map((slug) => {
-							const detailKey = slugToDetailKey[slug]
-							const gateData = gateSummaryBySlug.get(slug)
-							if (!gateData || !gateData.summary?.trim()) return null
-							const Icon = gateIconMap[detailKey]
+							const detailKey = slugToDetailKey[slug];
+							const gateData = gateSummaryBySlug.get(slug);
+							if (!gateData || !gateData.summary?.trim()) return null;
+							const Icon = gateIconMap[detailKey];
 
 							return (
 								<Card
@@ -821,16 +822,16 @@ export function AnalyzeStageValidation() {
 										)}
 									</CardContent>
 								</Card>
-							)
+							);
 						})}
 					</div>
 				)}
 
 				<div className="mb-6 flex flex-wrap gap-2">
 					{[5, 4, 3, 2, 1].map((outcome) => {
-						const config = outcomeConfig[outcome as keyof typeof outcomeConfig]
-						const count = outcomeCounts?.[outcome] || 0
-						const isSelected = selectedOutcome === outcome
+						const config = outcomeConfig[outcome as keyof typeof outcomeConfig];
+						const count = outcomeCounts?.[outcome] || 0;
+						const isSelected = selectedOutcome === outcome;
 
 						return (
 							<button
@@ -847,7 +848,7 @@ export function AnalyzeStageValidation() {
 									{count}
 								</Badge>
 							</button>
-						)
+						);
 					})}
 				</div>
 
@@ -884,5 +885,5 @@ export function AnalyzeStageValidation() {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

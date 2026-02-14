@@ -1,22 +1,22 @@
-import { useChat } from "@ai-sdk/react"
-import { useState } from "react"
-import { Conversation, ConversationContent, ConversationScrollButton } from "~/components/ai-elements/conversation"
-import { Message, MessageContent } from "~/components/ai-elements/message"
-import { PromptInputSubmit, PromptInputTextarea } from "~/components/ai-elements/prompt-input"
-import { Response } from "~/components/ai-elements/response"
-import { Input } from "~/components/ui/input"
+import { useChat } from "@ai-sdk/react";
+import { useState } from "react";
+import { Conversation, ConversationContent, ConversationScrollButton } from "~/components/ai-elements/conversation";
+import { Message, MessageContent } from "~/components/ai-elements/message";
+import { PromptInputSubmit, PromptInputTextarea } from "~/components/ai-elements/prompt-input";
+import { Response } from "~/components/ai-elements/response";
+import { Input } from "~/components/ui/input";
 
 const ConversationDemo = () => {
-	const [input, setInput] = useState("")
-	const { messages, sendMessage, status } = useChat()
+	const [input, setInput] = useState("");
+	const { messages, sendMessage, status } = useChat();
 
 	const handleSubmit = (e: React.FormEvent) => {
-		e.preventDefault()
+		e.preventDefault();
 		if (input.trim()) {
-			sendMessage({ text: input })
-			setInput("")
+			sendMessage({ text: input });
+			setInput("");
 		}
-	}
+	};
 
 	return (
 		<div className="relative mx-auto size-full h-[600px] max-w-4xl rounded-lg border p-6">
@@ -29,9 +29,9 @@ const ConversationDemo = () => {
 									{message.parts.map((part, i) => {
 										switch (part.type) {
 											case "text": // we don't use any reasoning or tool calls in this example
-												return <Response key={`${message.id}-${i}`}>{part.text}</Response>
+												return <Response key={`${message.id}-${i}`}>{part.text}</Response>;
 											default:
-												return null
+												return null;
 										}
 									})}
 								</MessageContent>
@@ -56,7 +56,7 @@ const ConversationDemo = () => {
 				</Input>
 			</div>
 		</div>
-	)
-}
+	);
+};
 
-export default ConversationDemo
+export default ConversationDemo;

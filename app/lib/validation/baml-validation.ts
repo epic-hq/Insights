@@ -1,25 +1,25 @@
-import { z } from "zod"
-import type { EvidenceTurn as BamlEvidenceTurn, TurnAnchors } from "~/../baml_client/types"
+import { z } from "zod";
+import type { EvidenceTurn as BamlEvidenceTurn, TurnAnchors } from "~/../baml_client/types";
 
 const nullableString = z
 	.union([z.string(), z.number(), z.null()])
 	.optional()
 	.transform((value) => {
-		if (value === null || value === undefined) return undefined
-		return String(value)
-	})
+		if (value === null || value === undefined) return undefined;
+		return String(value);
+	});
 
 const primitiveStringArray = z
 	.array(nullableString)
 	.nullable()
 	.optional()
 	.transform((value) => {
-		if (!Array.isArray(value)) return undefined
+		if (!Array.isArray(value)) return undefined;
 		const cleaned = value
 			.map((item) => (typeof item === "string" ? item.trim() : typeof item === "number" ? String(item) : undefined))
-			.filter((item): item is string => Boolean(item && item.length > 0))
-		return cleaned.length ? cleaned : undefined
-	})
+			.filter((item): item is string => Boolean(item && item.length > 0));
+		return cleaned.length ? cleaned : undefined;
+	});
 
 // TurnAnchors schema - single object with integer milliseconds
 export const turnAnchorsSchema = z
@@ -29,17 +29,17 @@ export const turnAnchorsSchema = z
 		chapter_title: z.string().nullable().optional(),
 		char_span: z.union([z.array(z.number()), z.tuple([z.number(), z.number()]), z.null()]).optional(),
 	})
-	.passthrough()
+	.passthrough();
 
 // For backwards compatibility, accept both single object and array
 const anchorsSchema = z.preprocess((value) => {
 	// If it's already a TurnAnchors object, use it
-	if (value && typeof value === "object" && !Array.isArray(value)) return value
+	if (value && typeof value === "object" && !Array.isArray(value)) return value;
 	// If it's an array, take the first element
-	if (Array.isArray(value) && value.length > 0) return value[0]
+	if (Array.isArray(value) && value.length > 0) return value[0];
 	// Otherwise return null
-	return null
-}, turnAnchorsSchema.nullable())
+	return null;
+}, turnAnchorsSchema.nullable());
 
 // FacetMention schema for evidence facet mentions
 const facetMentionSchema = z
@@ -49,7 +49,7 @@ const facetMentionSchema = z
 		value: z.string(),
 		quote: nullableString,
 	})
-	.passthrough()
+	.passthrough();
 
 export const evidenceTurnSchema = z
 	.object({
@@ -69,55 +69,55 @@ export const evidenceTurnSchema = z
 		pains: primitiveStringArray,
 		gains: primitiveStringArray,
 	})
-	.passthrough()
+	.passthrough();
 
-export const evidenceTurnsSchema = z.array(evidenceTurnSchema)
+export const evidenceTurnsSchema = z.array(evidenceTurnSchema);
 
-export type EvidenceTurnInput = z.infer<typeof evidenceTurnSchema>
-type TurnAnchorsInput = z.infer<typeof turnAnchorsSchema>
+export type EvidenceTurnInput = z.infer<typeof evidenceTurnSchema>;
+type TurnAnchorsInput = z.infer<typeof turnAnchorsSchema>;
 
-type NormalizeEvidenceOptions = {}
+type NormalizeEvidenceOptions = {};
 
 const trimOrUndefined = (value: unknown): string | undefined => {
 	if (typeof value === "string") {
-		const trimmed = value.trim()
-		return trimmed.length ? trimmed : undefined
+		const trimmed = value.trim();
+		return trimmed.length ? trimmed : undefined;
 	}
-	return undefined
-}
+	return undefined;
+};
 
 const _chooseString = (...values: Array<string | undefined>): string | undefined => {
 	for (const value of values) {
-		const trimmed = trimOrUndefined(value)
-		if (trimmed) return trimmed
+		const trimmed = trimOrUndefined(value);
+		if (trimmed) return trimmed;
 	}
-	return undefined
-}
+	return undefined;
+};
 
 const _toSecondsString = (value: unknown): { secondsString?: string; milliseconds?: number } => {
 	if (typeof value === "number" && Number.isFinite(value)) {
-		const seconds = value >= 1000 ? value / 1000 : value
-		return { secondsString: seconds.toString(), milliseconds: Math.round(seconds * 1000) }
+		const seconds = value >= 1000 ? value / 1000 : value;
+		return { secondsString: seconds.toString(), milliseconds: Math.round(seconds * 1000) };
 	}
 	if (typeof value === "string") {
-		const parsed = Number.parseFloat(value)
+		const parsed = Number.parseFloat(value);
 		if (Number.isFinite(parsed)) {
 			return {
 				secondsString: value.trim(),
 				milliseconds: Math.round(parsed * 1000),
-			}
+			};
 		}
 	}
-	return {}
-}
+	return {};
+};
 
 // Normalized TurnAnchors with computed fields
 type NormalizedTurnAnchors = TurnAnchors & {
-	start_ms: number | null
-	end_ms: number | null
-	chapter_title: string | null
-	char_span: number[] | null
-}
+	start_ms: number | null;
+	end_ms: number | null;
+	chapter_title: string | null;
+	char_span: number[] | null;
+};
 
 const normalizeTurnAnchors = (anchors: TurnAnchorsInput | null): NormalizedTurnAnchors => {
 	if (!anchors) {
@@ -126,7 +126,7 @@ const normalizeTurnAnchors = (anchors: TurnAnchorsInput | null): NormalizedTurnA
 			end_ms: null,
 			chapter_title: null,
 			char_span: null,
-		}
+		};
 	}
 
 	return {
@@ -134,8 +134,8 @@ const normalizeTurnAnchors = (anchors: TurnAnchorsInput | null): NormalizedTurnA
 		end_ms: typeof anchors.end_ms === "number" ? anchors.end_ms : null,
 		chapter_title: trimOrUndefined(anchors.chapter_title) ?? null,
 		char_span: Array.isArray(anchors.char_span) ? anchors.char_span : null,
-	}
-}
+	};
+};
 
 const normalizeEvidenceTurn = (
 	turn: EvidenceTurnInput,
@@ -160,18 +160,18 @@ const normalizeEvidenceTurn = (
 		feels: turn.feels ?? null,
 		pains: turn.pains ?? null,
 		gains: turn.gains ?? null,
-	}
+	};
 
-	return normalized
-}
+	return normalized;
+};
 
 export const normalizeEvidenceTurns = (turns: unknown, options: NormalizeEvidenceOptions = {}) => {
-	const parsed = evidenceTurnsSchema.parse(Array.isArray(turns) ? turns : [])
-	return parsed.map((turn) => normalizeEvidenceTurn(turn, options))
-}
+	const parsed = evidenceTurnsSchema.parse(Array.isArray(turns) ? turns : []);
+	return parsed.map((turn) => normalizeEvidenceTurn(turn, options));
+};
 
 // Legacy aliases for backwards compatibility
-export const normalizeEvidenceUnits = normalizeEvidenceTurns
-export const evidenceUnitsSchema = evidenceTurnsSchema
-export const evidenceUnitSchema = evidenceTurnSchema
-export type EvidenceUnitInput = EvidenceTurnInput
+export const normalizeEvidenceUnits = normalizeEvidenceTurns;
+export const evidenceUnitsSchema = evidenceTurnsSchema;
+export const evidenceUnitSchema = evidenceTurnSchema;
+export type EvidenceUnitInput = EvidenceTurnInput;

@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { format } from "date-fns"
-import { CalendarIcon, Plus, X } from "lucide-react"
-import type { FormEvent, ReactNode } from "react"
-import { useCallback, useEffect, useId, useRef, useState } from "react"
-import { useFetcher } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Calendar } from "~/components/ui/calendar"
+import { format } from "date-fns";
+import { CalendarIcon, Plus, X } from "lucide-react";
+import type { FormEvent, ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useFetcher } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Calendar } from "~/components/ui/calendar";
 import {
 	Dialog,
 	DialogContent,
@@ -15,21 +15,21 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "~/components/ui/dialog"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
-import { cn } from "~/lib/utils"
-import type { Cluster, TaskPriority } from "../types"
-import { PriorityBars, priorityConfig } from "./PriorityBars"
+} from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
+import { cn } from "~/lib/utils";
+import type { Cluster, TaskPriority } from "../types";
+import { PriorityBars, priorityConfig } from "./PriorityBars";
 
 interface TaskCreateModalProps {
-	open?: boolean
-	onOpenChange?: (open: boolean) => void
-	trigger?: ReactNode
-	defaultCluster?: string
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	trigger?: ReactNode;
+	defaultCluster?: string;
 }
 
 const CLUSTERS: Cluster[] = [
@@ -43,44 +43,44 @@ const CLUSTERS: Cluster[] = [
 	"Trust & Risk",
 	"Ops & Scale",
 	"Other",
-]
+];
 
 export function TaskCreateModal({ open: controlledOpen, onOpenChange, trigger, defaultCluster }: TaskCreateModalProps) {
-	const id = useId()
-	const [internalOpen, setInternalOpen] = useState(false)
-	const fetcher = useFetcher()
+	const id = useId();
+	const [internalOpen, setInternalOpen] = useState(false);
+	const fetcher = useFetcher();
 
 	// Support both controlled and uncontrolled modes
-	const isControlled = controlledOpen !== undefined
-	const open = isControlled ? controlledOpen : internalOpen
+	const isControlled = controlledOpen !== undefined;
+	const open = isControlled ? controlledOpen : internalOpen;
 	const handleOpenChange = useCallback(
 		(value: boolean) => {
 			if (isControlled && onOpenChange) {
-				onOpenChange(value)
+				onOpenChange(value);
 			} else {
-				setInternalOpen(value)
+				setInternalOpen(value);
 			}
 		},
 		[isControlled, onOpenChange]
-	)
+	);
 
 	// Form state
-	const [title, setTitle] = useState("")
-	const [description, setDescription] = useState("")
-	const [cluster, setCluster] = useState<string>(defaultCluster || CLUSTERS[0])
-	const [priority, setPriority] = useState<TaskPriority>(3)
-	const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
-	const [datePickerOpen, setDatePickerOpen] = useState(false)
+	const [title, setTitle] = useState("");
+	const [description, setDescription] = useState("");
+	const [cluster, setCluster] = useState<string>(defaultCluster || CLUSTERS[0]);
+	const [priority, setPriority] = useState<TaskPriority>(3);
+	const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+	const [datePickerOpen, setDatePickerOpen] = useState(false);
 
-	const isSubmitting = fetcher.state === "submitting"
-	const wasSubmitting = useRef(false)
+	const isSubmitting = fetcher.state === "submitting";
+	const wasSubmitting = useRef(false);
 
 	// Track submission state
 	useEffect(() => {
 		if (fetcher.state === "submitting") {
-			wasSubmitting.current = true
+			wasSubmitting.current = true;
 		}
-	}, [fetcher.state])
+	}, [fetcher.state]);
 
 	// Close modal when submission completes successfully
 	useEffect(() => {
@@ -88,21 +88,21 @@ export function TaskCreateModal({ open: controlledOpen, onOpenChange, trigger, d
 		if (wasSubmitting.current && fetcher.state === "idle" && fetcher.data) {
 			// Only close if success (not on error)
 			if (fetcher.data.success) {
-				handleOpenChange(false)
+				handleOpenChange(false);
 				// Reset form
-				setTitle("")
-				setDescription("")
-				setCluster(defaultCluster || CLUSTERS[0])
-				setPriority(3)
-				setDueDate(undefined)
+				setTitle("");
+				setDescription("");
+				setCluster(defaultCluster || CLUSTERS[0]);
+				setPriority(3);
+				setDueDate(undefined);
 			}
-			wasSubmitting.current = false
+			wasSubmitting.current = false;
 		}
-	}, [fetcher.state, fetcher.data, defaultCluster, handleOpenChange])
+	}, [fetcher.state, fetcher.data, defaultCluster, handleOpenChange]);
 
 	const handleSubmit = (e: FormEvent) => {
-		e.preventDefault()
-		if (!title.trim()) return
+		e.preventDefault();
+		if (!title.trim()) return;
 
 		const formData: Record<string, string> = {
 			intent: "create",
@@ -110,18 +110,18 @@ export function TaskCreateModal({ open: controlledOpen, onOpenChange, trigger, d
 			description: description.trim(),
 			cluster,
 			priority: String(priority),
-		}
+		};
 		if (dueDate) {
-			formData.due_date = dueDate.toISOString().split("T")[0]
+			formData.due_date = dueDate.toISOString().split("T")[0];
 		}
 		// Submit to current page - which should have the create action
-		fetcher.submit(formData, { method: "POST", action: "." })
-	}
+		fetcher.submit(formData, { method: "POST", action: "." });
+	};
 
-	const titleId = `${id}-title`
-	const descriptionId = `${id}-description`
-	const clusterId = `${id}-cluster`
-	const priorityId = `${id}-priority`
+	const titleId = `${id}-title`;
+	const descriptionId = `${id}-description`;
+	const clusterId = `${id}-cluster`;
+	const priorityId = `${id}-priority`;
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
@@ -213,8 +213,8 @@ export function TaskCreateModal({ open: controlledOpen, onOpenChange, trigger, d
 											mode="single"
 											selected={dueDate}
 											onSelect={(date) => {
-												setDueDate(date)
-												setDatePickerOpen(false)
+												setDueDate(date);
+												setDatePickerOpen(false);
 											}}
 											initialFocus
 										/>
@@ -224,8 +224,8 @@ export function TaskCreateModal({ open: controlledOpen, onOpenChange, trigger, d
 													variant="ghost"
 													size="sm"
 													onClick={() => {
-														setDueDate(undefined)
-														setDatePickerOpen(false)
+														setDueDate(undefined);
+														setDatePickerOpen(false);
 													}}
 													className="w-full"
 												>
@@ -251,7 +251,7 @@ export function TaskCreateModal({ open: controlledOpen, onOpenChange, trigger, d
 				</fetcher.Form>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }
 
 export function TaskCreateButton({ defaultCluster }: { defaultCluster?: string }) {
@@ -265,5 +265,5 @@ export function TaskCreateButton({ defaultCluster }: { defaultCluster?: string }
 				</Button>
 			}
 		/>
-	)
+	);
 }

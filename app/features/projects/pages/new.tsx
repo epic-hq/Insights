@@ -1,31 +1,31 @@
-import consola from "consola"
-import { type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction, redirect } from "react-router"
-import { Form, useActionData } from "react-router-dom"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
-import { createProject } from "~/features/projects/db"
-import { userContext } from "~/server/user-context"
+import consola from "consola";
+import { type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction, redirect } from "react-router";
+import { Form, useActionData } from "react-router-dom";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
+import { createProject } from "~/features/projects/db";
+import { userContext } from "~/server/user-context";
 // Note: Previously used generateTwoWordSlug for random names like "gentle-bacon"
 // Simplified to use "New Project" as default - users can rename in setup
-import { createProjectRoutes } from "~/utils/routes.server"
+import { createProjectRoutes } from "~/utils/routes.server";
 
 export const meta: MetaFunction = () => {
-	return [{ title: "New Project | Insights" }, { name: "description", content: "Create a new project" }]
-}
+	return [{ title: "New Project | Insights" }, { name: "description", content: "Create a new project" }];
+};
 
 // Auto-create on GET when coming from home with no projects
 export async function loader({ context, params, request }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const user = ctx.claims
-	const accountId = params.accountId
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const user = ctx.claims;
+	const accountId = params.accountId;
 
 	if (!accountId) {
-		throw new Response("Account ID is required", { status: 400 })
+		throw new Response("Account ID is required", { status: 400 });
 	}
 
 	// Check if account already has projects; if yes, show manual create form
@@ -33,18 +33,18 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		.from("projects")
 		.select("id")
 		.eq("account_id", accountId)
-		.limit(1)
+		.limit(1);
 
 	if (checkError) {
-		consola.error("Error checking existing projects:", checkError)
+		consola.error("Error checking existing projects:", checkError);
 	}
 
 	if (existingProjects && existingProjects.length > 0) {
-		return {}
+		return {};
 	}
 
 	// Use simple default name - users will rename during setup
-	const defaultName = "New Project"
+	const defaultName = "New Project";
 
 	const { data: created, error } = await createProject({
 		supabase,
@@ -54,12 +54,12 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			description: null,
 			status: "planning",
 		},
-	})
+	});
 
 	if (error || !created) {
-		consola.error("Auto-create project failed:", error)
+		consola.error("Auto-create project failed:", error);
 		// Fall back to manual form if auto-create fails
-		return {}
+		return {};
 	}
 
 	// Persist last-used pointers for better resume UX
@@ -69,34 +69,34 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			last_used_account_id: accountId,
 			last_used_project_id: created.id,
 		})
-		.eq("user_id", user.sub)
+		.eq("user_id", user.sub);
 
-	const projectRoutes = createProjectRoutes(accountId, created.id)
-	const from = new URL(request.url).searchParams.get("from")
+	const projectRoutes = createProjectRoutes(accountId, created.id);
+	const from = new URL(request.url).searchParams.get("from");
 	// If coming from quick record CTA, go straight to recorder
 	if (from === "record") {
-		throw redirect(projectRoutes.interviews.quick())
+		throw redirect(projectRoutes.interviews.quick());
 	}
-	throw redirect(projectRoutes.projects.setup())
+	throw redirect(projectRoutes.projects.setup());
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 	// From URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
+	const accountId = params.accountId;
 
 	if (!accountId) {
-		throw new Response("Account ID is required", { status: 400 })
+		throw new Response("Account ID is required", { status: 400 });
 	}
 
-	const formData = await request.formData()
-	const name = formData.get("name") as string
-	const description = formData.get("description") as string
-	const status = formData.get("status") as string
+	const formData = await request.formData();
+	const name = formData.get("name") as string;
+	const description = formData.get("description") as string;
+	const status = formData.get("status") as string;
 
 	if (!name?.trim()) {
-		return { error: "Name is required" }
+		return { error: "Name is required" };
 	}
 
 	try {
@@ -108,24 +108,24 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				status: status || "planning",
 				account_id: accountId,
 			},
-		})
+		});
 
 		if (error) {
-			return { error: "Failed to create project" }
+			return { error: "Failed to create project" };
 		}
 
 		// get the new projectId and create project routes server side definition
-		const projectRoutes = createProjectRoutes(accountId, data.id)
+		const projectRoutes = createProjectRoutes(accountId, data.id);
 
-		return redirect(projectRoutes.projects.setup())
+		return redirect(projectRoutes.projects.setup());
 	} catch (error) {
-		consola.error("Error creating project:", error)
-		return { error: "Failed to create project" }
+		consola.error("Error creating project:", error);
+		return { error: "Failed to create project" };
 	}
 }
 
 export default function NewProject() {
-	const actionData = useActionData<typeof action>()
+	const actionData = useActionData<typeof action>();
 
 	return (
 		<PageContainer size="md">
@@ -185,5 +185,5 @@ export default function NewProject() {
 				</div>
 			</div>
 		</PageContainer>
-	)
+	);
 }

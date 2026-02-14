@@ -1,16 +1,16 @@
-import { AnimatePresence, motion } from "framer-motion"
-import { Mic } from "lucide-react"
-import React from "react"
+import { AnimatePresence, motion } from "framer-motion";
+import { Mic } from "lucide-react";
+import React from "react";
 
-import { cn } from "~/lib/utils"
+import { cn } from "~/lib/utils";
 
-const FREQUENCY_BAR_IDS = Array.from({ length: 12 }, (_, idx) => `frequency-bar-${idx}`)
+const FREQUENCY_BAR_IDS = Array.from({ length: 12 }, (_, idx) => `frequency-bar-${idx}`);
 
 interface VoiceInputProps {
-	onStart?: () => void
-	onStop?: () => void
-	audioIntensity?: number
-	status?: "listening" | "transcribing" | "idle"
+	onStart?: () => void;
+	onStop?: () => void;
+	audioIntensity?: number;
+	status?: "listening" | "transcribing" | "idle";
 }
 
 export function VoiceInput({
@@ -20,41 +20,41 @@ export function VoiceInput({
 	onStart,
 	onStop,
 }: React.ComponentProps<"div"> & VoiceInputProps) {
-	const [_listening, _setListening] = React.useState<boolean>(false)
-	const [_time, _setTime] = React.useState<number>(0)
+	const [_listening, _setListening] = React.useState<boolean>(false);
+	const [_time, _setTime] = React.useState<number>(0);
 
 	React.useEffect(() => {
-		let intervalId: NodeJS.Timeout
+		let intervalId: NodeJS.Timeout;
 
 		if (_listening) {
-			onStart?.()
+			onStart?.();
 			intervalId = setInterval(() => {
-				_setTime((t) => t + 1)
-			}, 1000)
+				_setTime((t) => t + 1);
+			}, 1000);
 		} else {
-			onStop?.()
-			_setTime(0)
+			onStop?.();
+			_setTime(0);
 		}
 
-		return () => clearInterval(intervalId)
-	}, [_listening, onStart, onStop])
+		return () => clearInterval(intervalId);
+	}, [_listening, onStart, onStop]);
 
 	const formatTime = (seconds: number) => {
-		const mins = Math.floor(seconds / 60)
-		const secs = seconds % 60
-		return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-	}
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+	};
 
 	const onClickHandler = () => {
-		_setListening(!_listening)
-	}
+		_setListening(!_listening);
+	};
 
 	const normalizedIntensity = React.useMemo(() => {
-		if (typeof audioIntensity !== "number" || Number.isNaN(audioIntensity)) return 0
-		return Math.min(Math.max(audioIntensity, 0), 1)
-	}, [audioIntensity])
+		if (typeof audioIntensity !== "number" || Number.isNaN(audioIntensity)) return 0;
+		return Math.min(Math.max(audioIntensity, 0), 1);
+	}, [audioIntensity]);
 
-	const peakHeight = React.useMemo(() => 2 + normalizedIntensity * 12, [normalizedIntensity])
+	const peakHeight = React.useMemo(() => 2 + normalizedIntensity * 12, [normalizedIntensity]);
 
 	return (
 		<div className={cn("flex flex-col items-center justify-center", className)}>
@@ -125,5 +125,5 @@ export function VoiceInput({
 				</AnimatePresence>
 			</motion.div>
 		</div>
-	)
+	);
 }

@@ -1,20 +1,20 @@
-import { ArrowLeft, Bot, Send } from "lucide-react"
-import { useState } from "react"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
+import { ArrowLeft, Bot, Send } from "lucide-react";
+import { useState } from "react";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 
 interface AIChatButtonProps {
-	context?: string
+	context?: string;
 }
 
 export default function AIChatButton({ context = "general" }: AIChatButtonProps) {
-	const [showChat, setShowChat] = useState(false)
-	const [chatMessage, setChatMessage] = useState("")
+	const [showChat, setShowChat] = useState(false);
+	const [chatMessage, setChatMessage] = useState("");
 
 	const sendMessage = () => {
-		if (!chatMessage.trim()) return
-		setChatMessage("")
-	}
+		if (!chatMessage.trim()) return;
+		setChatMessage("");
+	};
 
 	const getSectionColor = (section: string) => {
 		const colorMap: Record<string, string> = {
@@ -24,10 +24,10 @@ export default function AIChatButton({ context = "general" }: AIChatButtonProps)
 			encounters: "bg-amber-600",
 			projects: "bg-purple-600",
 			research: "bg-rose-600",
-		}
+		};
 
-		return colorMap[section] || "bg-indigo-600"
-	}
+		return colorMap[section] || "bg-indigo-600";
+	};
 
 	return (
 		<>
@@ -89,5 +89,5 @@ export default function AIChatButton({ context = "general" }: AIChatButtonProps)
 				</div>
 			)}
 		</>
-	)
+	);
 }

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react"
-import { useFetcher } from "react-router"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { Annotation, AnnotationMetadata, AnnotationType, EntityType, FlagType, UserFlags, VoteCounts } from "./db"
+import { useEffect, useMemo, useState } from "react";
+import { useFetcher } from "react-router";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import type { Annotation, AnnotationMetadata, AnnotationType, EntityType, FlagType, UserFlags, VoteCounts } from "./db";
 
 // -----------------------------------------------------------------------------
 // How these hooks work & where to optimize DB calls
@@ -42,60 +42,60 @@ function useAnnotations({
 	annotationType,
 	includeThreads = true,
 }: {
-	entityType: EntityType
-	entityId: string
-	annotationType?: AnnotationType
-	includeThreads?: boolean
+	entityType: EntityType;
+	entityId: string;
+	annotationType?: AnnotationType;
+	includeThreads?: boolean;
 }) {
-	const fetcher = useFetcher()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath)
+	const fetcher = useFetcher();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath);
 
-	const [annotations, setAnnotations] = useState<Annotation[]>([])
-	const [isLoading, setIsLoading] = useState(true)
-	const [error, setError] = useState<string | null>(null)
+	const [annotations, setAnnotations] = useState<Annotation[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 	// Fix: Remove routes from deps to prevent infinite loop - routes is a new object every render
 	const annotationsEndpoint = useMemo(
 		() => (projectPath ? routes.api.annotations() : null),
 		[projectPath, routes.api.annotations]
-	)
+	);
 
 	// Fetch annotations on mount and when parameters change
 	useEffect(() => {
-		if (!entityId || !annotationsEndpoint) return
+		if (!entityId || !annotationsEndpoint) return;
 
-		setIsLoading(true)
-		setError(null)
+		setIsLoading(true);
+		setError(null);
 
 		const searchParams = new URLSearchParams({
 			entityType,
 			entityId,
 			...(annotationType && { annotationType }),
 			includeThreads: includeThreads.toString(),
-		})
+		});
 
-		fetcher.load(`${annotationsEndpoint}?${searchParams}`)
+		fetcher.load(`${annotationsEndpoint}?${searchParams}`);
 		// Only depend on stable inputs; avoid fetcher/routes object identity churn
-	}, [entityType, entityId, annotationType, includeThreads, annotationsEndpoint, fetcher.load])
+	}, [entityType, entityId, annotationType, includeThreads, annotationsEndpoint, fetcher.load]);
 
 	// Handle fetcher state changes
 	useEffect(() => {
 		if (fetcher.state === "idle" && fetcher.data) {
 			if (fetcher.data.error) {
-				setError(fetcher.data.error.message || "Failed to fetch annotations")
-				setAnnotations([])
+				setError(fetcher.data.error.message || "Failed to fetch annotations");
+				setAnnotations([]);
 			} else {
-				setAnnotations(fetcher.data.annotations || [])
-				setError(null)
+				setAnnotations(fetcher.data.annotations || []);
+				setError(null);
 			}
-			setIsLoading(false)
+			setIsLoading(false);
 		} else if (fetcher.state === "loading") {
-			setIsLoading(true)
+			setIsLoading(true);
 		}
-	}, [fetcher.state, fetcher.data])
+	}, [fetcher.state, fetcher.data]);
 
 	const addComment = (content: string, contentJsonb?: Record<string, unknown>, parentId?: string) => {
-		if (!content.trim()) return
+		if (!content.trim()) return;
 
 		// Submit to server without optimistic update
 		fetcher.submit(
@@ -108,11 +108,11 @@ function useAnnotations({
 				...(parentId && { parentId }),
 			},
 			{ method: "POST", action: routes.api.annotations() }
-		)
-	}
+		);
+	};
 
 	const addAISuggestion = (suggestion: string, context?: AnnotationMetadata) => {
-		if (!suggestion.trim()) return
+		if (!suggestion.trim()) return;
 
 		fetcher.submit(
 			{
@@ -123,8 +123,8 @@ function useAnnotations({
 				metadata: JSON.stringify(context || {}),
 			},
 			{ method: "POST", action: routes.api.annotations() }
-		)
-	}
+		);
+	};
 
 	const updateAnnotation = (annotationId: string, updates: Partial<Annotation>) => {
 		// Submit to server without optimistic update
@@ -135,8 +135,8 @@ function useAnnotations({
 				updates: JSON.stringify(updates),
 			},
 			{ method: "POST", action: routes.api.annotations() }
-		)
-	}
+		);
+	};
 
 	const deleteAnnotation = (annotationId: string) => {
 		// Submit to server without optimistic update
@@ -146,8 +146,8 @@ function useAnnotations({
 				annotationId,
 			},
 			{ method: "POST", action: routes.api.annotations() }
-		)
-	}
+		);
+	};
 
 	return {
 		annotations,
@@ -158,117 +158,124 @@ function useAnnotations({
 		updateAnnotation,
 		deleteAnnotation,
 		refetch: () => {
-			if (!annotationsEndpoint) return
+			if (!annotationsEndpoint) return;
 			const searchParams = new URLSearchParams({
 				entityType,
 				entityId,
 				...(annotationType && { annotationType }),
 				includeThreads: includeThreads.toString(),
-			})
-			fetcher.load(`${annotationsEndpoint}?${searchParams}`)
+			});
+			fetcher.load(`${annotationsEndpoint}?${searchParams}`);
 		},
-	}
+	};
 }
 
 // =============================================================================
 // VOTING HOOKS
 // =============================================================================
 
-function useVoting({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
-	const fetcher = useFetcher()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath)
+export function useVoting({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
+	const loadFetcher = useFetcher();
+	const voteFetcher = useFetcher();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath);
 
-	const [voteCounts, setVoteCounts] = useState<VoteCounts>({
+	// Server-confirmed vote counts (updated after each successful load or mutation)
+	const [serverCounts, setServerCounts] = useState<VoteCounts>({
 		upvotes: 0,
 		downvotes: 0,
 		total_votes: 0,
 		user_vote: 0,
-	})
-	const [isLoading, setIsLoading] = useState(true)
-	const [error, setError] = useState<string | null>(null)
-	// Fix: Remove routes from deps to prevent infinite loop - routes is a new object every render
-	const votesEndpoint = useMemo(() => (projectPath ? routes.api.votes() : null), [projectPath, routes.api.votes])
+	});
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 
-	// Fetch vote counts on mount and when parameters change
+	const votesEndpoint = useMemo(() => (projectPath ? routes.api.votes() : null), [projectPath, routes.api.votes]);
+
+	// Fetch vote counts on mount and when entity changes
 	useEffect(() => {
-		if (!entityId || !votesEndpoint) return
+		if (!entityId || !votesEndpoint) return;
+		setIsLoading(true);
+		setError(null);
+		const searchParams = new URLSearchParams({ entityType, entityId });
+		loadFetcher.load(`${votesEndpoint}?${searchParams}`);
+	}, [entityType, entityId, votesEndpoint, loadFetcher.load]);
 
-		setIsLoading(true)
-		setError(null)
-
-		const searchParams = new URLSearchParams({
-			entityType,
-			entityId,
-		})
-		fetcher.load(`${votesEndpoint}?${searchParams}`)
-		// Depend only on stable inputs to avoid loops
-	}, [entityType, entityId, votesEndpoint, fetcher.load])
-
-	// Handle fetcher state changes
+	// Sync server state from initial load
 	useEffect(() => {
-		if (fetcher.state === "idle" && fetcher.data) {
-			if (fetcher.data.error) {
-				setError(fetcher.data.error.message || "Failed to fetch votes")
-			} else {
-				setVoteCounts(
-					fetcher.data.voteCounts || {
-						upvotes: 0,
-						downvotes: 0,
-						total_votes: 0,
-						user_vote: 0,
-					}
-				)
-				setError(null)
-			}
-			setIsLoading(false)
-		} else if (fetcher.state === "loading") {
-			setIsLoading(true)
+		if (loadFetcher.state !== "idle" || !loadFetcher.data) return;
+		if (loadFetcher.data.error) {
+			setError(loadFetcher.data.error.message || "Failed to fetch votes");
+		} else {
+			const counts = loadFetcher.data.voteCounts || {
+				upvotes: 0,
+				downvotes: 0,
+				total_votes: 0,
+				user_vote: 0,
+			};
+			setServerCounts(counts);
+			setError(null);
 		}
-	}, [fetcher.state, fetcher.data])
+		setIsLoading(false);
+	}, [loadFetcher.state, loadFetcher.data]);
 
-	const vote = useMemo(() => {
-		let timeoutId: NodeJS.Timeout | null = null
-
-		return (voteValue: 1 | -1) => {
-			// Prevent rapid duplicate calls
-			if (fetcher.state === "submitting") return
-
-			// Clear any pending vote submission
-			if (timeoutId) {
-				clearTimeout(timeoutId)
-			}
-
-			// Debounce server submission to prevent race conditions
-			timeoutId = setTimeout(() => {
-				fetcher.submit(
-					{
-						action: "upsert-vote",
-						entityType,
-						entityId,
-						voteValue: voteValue.toString(),
-					},
-					{ method: "POST", action: routes.api.votes() }
-				)
-			}, 200) // Increased debounce to 200ms
+	// Sync server state from mutation responses
+	useEffect(() => {
+		if (voteFetcher.state !== "idle" || !voteFetcher.data) return;
+		if (voteFetcher.data.error) {
+			setError(voteFetcher.data.error.message || "Vote failed");
+		} else if (voteFetcher.data.voteCounts) {
+			setServerCounts(voteFetcher.data.voteCounts);
+			setError(null);
 		}
-	}, [fetcher, entityType, entityId, routes])
+	}, [voteFetcher.state, voteFetcher.data]);
 
-	const removeVote = () => {
-		if (fetcher.state === "submitting") return
+	// Derive optimistic vote counts from in-flight formData (React Router 7 pattern)
+	const voteCounts = useMemo(() => {
+		const formData = voteFetcher.formData;
+		if (!formData) return serverCounts;
 
-		fetcher.submit(
+		const action = formData.get("action") as string;
+		if (action === "upsert-vote") {
+			const voteValue = Number.parseInt(formData.get("voteValue") as string, 10) as 1 | -1;
+			// If user already has this vote, no change
+			if (serverCounts.user_vote === voteValue) return serverCounts;
+			return {
+				upvotes: serverCounts.upvotes + (voteValue === 1 ? 1 : 0) + (serverCounts.user_vote === 1 ? -1 : 0),
+				downvotes: serverCounts.downvotes + (voteValue === -1 ? 1 : 0) + (serverCounts.user_vote === -1 ? -1 : 0),
+				total_votes: serverCounts.total_votes + (serverCounts.user_vote === 0 ? 1 : 0),
+				user_vote: voteValue,
+			};
+		}
+		if (action === "remove-vote") {
+			return {
+				upvotes: serverCounts.user_vote === 1 ? serverCounts.upvotes - 1 : serverCounts.upvotes,
+				downvotes: serverCounts.user_vote === -1 ? serverCounts.downvotes - 1 : serverCounts.downvotes,
+				total_votes: serverCounts.user_vote !== 0 ? serverCounts.total_votes - 1 : serverCounts.total_votes,
+				user_vote: 0,
+			};
+		}
+		return serverCounts;
+	}, [voteFetcher.formData, serverCounts]);
+
+	const vote = (voteValue: 1 | -1) => {
+		voteFetcher.submit(
 			{
-				action: "remove-vote",
+				action: "upsert-vote",
 				entityType,
 				entityId,
+				voteValue: voteValue.toString(),
 			},
 			{ method: "POST", action: routes.api.votes() }
-		)
-	}
+		);
+	};
 
-	const upvote = () => vote(1)
-	const downvote = () => vote(-1)
+	const removeVote = () => {
+		voteFetcher.submit({ action: "remove-vote", entityType, entityId }, { method: "POST", action: routes.api.votes() });
+	};
+
+	const upvote = () => vote(1);
+	const downvote = () => vote(-1);
 
 	return {
 		voteCounts,
@@ -279,60 +286,57 @@ function useVoting({ entityType, entityId }: { entityType: EntityType; entityId:
 		upvote,
 		downvote,
 		refetch: () => {
-			if (!votesEndpoint) return
-			const searchParams = new URLSearchParams({
-				entityType,
-				entityId,
-			})
-			fetcher.load(`${votesEndpoint}?${searchParams}`)
+			if (!votesEndpoint) return;
+			const searchParams = new URLSearchParams({ entityType, entityId });
+			loadFetcher.load(`${votesEndpoint}?${searchParams}`);
 		},
-	}
+	};
 }
 
 // =============================================================================
 // ENTITY FLAGS HOOKS
 // =============================================================================
 
-function useEntityFlags({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
-	const fetcher = useFetcher()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath)
+export function useEntityFlags({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
+	const fetcher = useFetcher();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath);
 
 	const [flags, setFlags] = useState<UserFlags>({
 		hidden: false,
 		archived: false,
 		starred: false,
 		priority: false,
-	})
-	const [isLoading, setIsLoading] = useState(true)
-	const [error, setError] = useState<string | null>(null)
+	});
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 	// Fix: Remove routes from deps to prevent infinite loop - routes is a new object every render
 	const entityFlagsEndpoint = useMemo(
 		() => (projectPath ? routes.api.entityFlags() : null),
 		[projectPath, routes.api.entityFlags]
-	)
+	);
 
 	// Fetch flags on mount and when parameters change
 	useEffect(() => {
-		if (!entityId || !entityFlagsEndpoint) return
+		if (!entityId || !entityFlagsEndpoint) return;
 
-		setIsLoading(true)
-		setError(null)
+		setIsLoading(true);
+		setError(null);
 
 		const searchParams = new URLSearchParams({
 			entityType,
 			entityId,
-		})
+		});
 
-		fetcher.load(`${entityFlagsEndpoint}?${searchParams}`)
+		fetcher.load(`${entityFlagsEndpoint}?${searchParams}`);
 		// Only depend on stable inputs; avoid fetcher/routes object identity churn
-	}, [entityType, entityId, entityFlagsEndpoint, fetcher.load])
+	}, [entityType, entityId, entityFlagsEndpoint, fetcher.load]);
 
 	// Handle fetcher state changes
 	useEffect(() => {
 		if (fetcher.state === "idle" && fetcher.data) {
 			if (fetcher.data.error) {
-				setError(fetcher.data.error.message || "Failed to fetch flags")
+				setError(fetcher.data.error.message || "Failed to fetch flags");
 			} else {
 				setFlags(
 					fetcher.data.flags || {
@@ -341,21 +345,21 @@ function useEntityFlags({ entityType, entityId }: { entityType: EntityType; enti
 						starred: false,
 						priority: false,
 					}
-				)
-				setError(null)
+				);
+				setError(null);
 			}
-			setIsLoading(false)
+			setIsLoading(false);
 		} else if (fetcher.state === "loading") {
-			setIsLoading(true)
+			setIsLoading(true);
 		}
-	}, [fetcher.state, fetcher.data])
+	}, [fetcher.state, fetcher.data]);
 
 	const setFlag = (flagType: FlagType, flagValue: boolean, metadata?: AnnotationMetadata) => {
 		// Optimistic update
 		setFlags((prev) => ({
 			...prev,
 			[flagType]: flagValue,
-		}))
+		}));
 
 		// Submit to server
 		fetcher.submit(
@@ -368,22 +372,22 @@ function useEntityFlags({ entityType, entityId }: { entityType: EntityType; enti
 				...(metadata && { metadata: JSON.stringify(metadata) }),
 			},
 			{ method: "POST", action: routes.api.entityFlags() }
-		)
-	}
+		);
+	};
 
 	const toggleFlag = (flagType: FlagType, metadata?: AnnotationMetadata) => {
-		const currentValue = flags[flagType]
-		setFlag(flagType, !currentValue, metadata)
-	}
+		const currentValue = flags[flagType];
+		setFlag(flagType, !currentValue, metadata);
+	};
 
-	const hide = () => setFlag("hidden", true)
-	const unhide = () => setFlag("hidden", false)
-	const archive = () => setFlag("archived", true)
-	const unarchive = () => setFlag("archived", false)
-	const star = () => setFlag("starred", true)
-	const unstar = () => setFlag("starred", false)
-	const setPriority = () => setFlag("priority", true)
-	const unsetPriority = () => setFlag("priority", false)
+	const hide = () => setFlag("hidden", true);
+	const unhide = () => setFlag("hidden", false);
+	const archive = () => setFlag("archived", true);
+	const unarchive = () => setFlag("archived", false);
+	const star = () => setFlag("starred", true);
+	const unstar = () => setFlag("starred", false);
+	const setPriority = () => setFlag("priority", true);
+	const unsetPriority = () => setFlag("priority", false);
 
 	return {
 		flags,
@@ -400,14 +404,14 @@ function useEntityFlags({ entityType, entityId }: { entityType: EntityType; enti
 		setPriority,
 		unsetPriority,
 		refetch: () => {
-			if (!entityFlagsEndpoint) return
+			if (!entityFlagsEndpoint) return;
 			const searchParams = new URLSearchParams({
 				entityType,
 				entityId,
-			})
-			fetcher.load(`${entityFlagsEndpoint}?${searchParams}`)
+			});
+			fetcher.load(`${entityFlagsEndpoint}?${searchParams}`);
 		},
-	}
+	};
 }
 
 // =============================================================================
@@ -421,27 +425,27 @@ export function useEntityAnnotations({
 	includeVoting = true,
 	includeFlags = true,
 }: {
-	entityType: EntityType
-	entityId: string
-	includeComments?: boolean
-	includeVoting?: boolean
-	includeFlags?: boolean
+	entityType: EntityType;
+	entityId: string;
+	includeComments?: boolean;
+	includeVoting?: boolean;
+	includeFlags?: boolean;
 }) {
 	const annotationsHook = useAnnotations({
 		entityType,
 		entityId,
 		annotationType: includeComments ? "comment" : undefined,
-	})
+	});
 
 	const votingHook = useVoting({
 		entityType,
 		entityId,
-	})
+	});
 
 	const flagsHook = useEntityFlags({
 		entityType,
 		entityId,
-	})
+	});
 
 	return {
 		// Annotations data
@@ -462,9 +466,9 @@ export function useEntityAnnotations({
 		submitVote: includeVoting
 			? ({ vote_value, _action }: { vote_value?: number; _action?: string }) => {
 					if (_action === "remove") {
-						votingHook.removeVote()
+						votingHook.removeVote();
 					} else if (vote_value) {
-						votingHook.vote(vote_value as 1 | -1)
+						votingHook.vote(vote_value as 1 | -1);
 					}
 				}
 			: () => {},
@@ -489,5 +493,5 @@ export function useEntityAnnotations({
 			(includeComments && annotationsHook.error) ||
 			(includeVoting && votingHook.error) ||
 			(includeFlags && flagsHook.error),
-	}
+	};
 }

@@ -21,6 +21,7 @@ export { generateInsightsTaskV2 } from "./generateInsights"
 export { assignPersonasTaskV2 } from "./assignPersonas"
 export { attributeAnswersTaskV2 } from "./attributeAnswers"
 export { finalizeInterviewTaskV2 } from "./finalizeInterview"
+export { runDeferredInterviewBatchV2 } from "./runDeferredBatch"
 
 // Types
 export type {

@@ -1,6 +1,6 @@
 interface OpenQuestionsNextStepsProps {
-	items: string[]
-	className?: string
+	items: string[];
+	className?: string;
 }
 
 export default function OpenQuestionsNextSteps({ items, className }: OpenQuestionsNextStepsProps) {
@@ -13,5 +13,5 @@ export default function OpenQuestionsNextSteps({ items, className }: OpenQuestio
 				))}
 			</ul>
 		</div>
-	)
+	);
 }

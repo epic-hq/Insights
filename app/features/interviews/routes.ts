@@ -1,4 +1,4 @@
-import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes"
+import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes";
 
 export default [
 	...prefix("interviews", [
@@ -10,4 +10,4 @@ export default [
 		route("/:interviewId/realtime", "./features/interviews/pages/realtime.tsx"),
 		// quick streaming page merged into interviews realtime
 	]),
-] satisfies RouteConfig
+] satisfies RouteConfig;

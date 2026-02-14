@@ -1,66 +1,66 @@
-import consola from "consola"
-import { useId } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Button } from "~/components/ui/button"
-import { ImageUploader } from "~/components/ui/ImageUploader"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
-import { createPerson } from "~/features/people/db"
-import { getPersonas } from "~/features/personas/db"
-import { userContext } from "~/server/user-context"
-import { createProjectRoutes } from "~/utils/routes.server"
+import consola from "consola";
+import { useId } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Form, redirect, useActionData, useLoaderData } from "react-router-dom";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Button } from "~/components/ui/button";
+import { ImageUploader } from "~/components/ui/ImageUploader";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
+import { createPerson } from "~/features/people/db";
+import { getPersonas } from "~/features/personas/db";
+import { userContext } from "~/server/user-context";
+import { createProjectRoutes } from "~/utils/routes.server";
 
 export const meta: MetaFunction = () => {
-	return [{ title: "New Person | Insights" }, { name: "description", content: "Create a new person" }]
-}
+	return [{ title: "New Person | Insights" }, { name: "description", content: "Create a new person" }];
+};
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const projectId = params.projectId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
 
 	if (!accountId || !projectId) {
-		throw new Response("Account ID and Project ID are required", { status: 400 })
+		throw new Response("Account ID and Project ID are required", { status: 400 });
 	}
-	const [{ data: personas }] = await Promise.all([getPersonas({ supabase, accountId, projectId })])
-	return { personas: personas || [] }
+	const [{ data: personas }] = await Promise.all([getPersonas({ supabase, accountId, projectId })]);
+	return { personas: personas || [] };
 }
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const accountId = params.accountId
-	const projectId = params.projectId
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const accountId = params.accountId;
+	const projectId = params.projectId;
 	if (!accountId || !projectId) {
-		throw new Response("Account ID and Project ID are required", { status: 400 })
+		throw new Response("Account ID and Project ID are required", { status: 400 });
 	}
-	const routes = createProjectRoutes(accountId, projectId)
+	const routes = createProjectRoutes(accountId, projectId);
 
-	const formData = await request.formData()
-	const firstname = formData.get("firstname") as string
-	const lastname = formData.get("lastname") as string
-	const email = formData.get("email") as string
-	const title = formData.get("title") as string
-	const _segment = formData.get("segment") as string
-	const _notes = formData.get("notes") as string
-	const image_url = formData.get("image_url") as string
-	const _persona_id = formData.get("persona_id") as string
+	const formData = await request.formData();
+	const firstname = formData.get("firstname") as string;
+	const lastname = formData.get("lastname") as string;
+	const email = formData.get("email") as string;
+	const title = formData.get("title") as string;
+	const _segment = formData.get("segment") as string;
+	const _notes = formData.get("notes") as string;
+	const image_url = formData.get("image_url") as string;
+	const _persona_id = formData.get("persona_id") as string;
 
 	if (!firstname?.trim()) {
-		return { error: "First name is required" }
+		return { error: "First name is required" };
 	}
 
 	// Build contact_info object if email is present
-	let contact_info: Record<string, string> | null = null
+	let contact_info: Record<string, string> | null = null;
 	if (email?.trim()) {
-		contact_info = { email: email.trim() }
+		contact_info = { email: email.trim() };
 	}
 
 	try {
@@ -68,7 +68,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			accountId,
 			projectId,
 			firstname: firstname.trim(),
-		})
+		});
 
 		const { data, error } = await createPerson({
 			supabase: supabase,
@@ -83,18 +83,18 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				project_id: projectId,
 				contact_info,
 			},
-		})
+		});
 
 		if (error) {
-			consola.error("[people/new] Failed to create person:", error)
-			return { error: "Failed to create person" }
+			consola.error("[people/new] Failed to create person:", error);
+			return { error: "Failed to create person" };
 		}
 
 		consola.info("[people/new] Created person:", {
 			id: data.id,
 			project_id: data.project_id,
 			firstname: data.firstname,
-		})
+		});
 
 		// Associate with persona if selected
 		if (_persona_id && _persona_id !== "none") {
@@ -104,32 +104,32 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 					persona_id: _persona_id,
 				},
 				{ onConflict: "person_id,persona_id" }
-			)
+			);
 			if (personaError) {
-				return { error: "Person created, but failed to associate persona" }
+				return { error: "Person created, but failed to associate persona" };
 			}
 		}
 
-		return redirect(routes.people.detail(data.id))
+		return redirect(routes.people.detail(data.id));
 	} catch (_error) {
-		return { error: "Failed to create person" }
+		return { error: "Failed to create person" };
 	}
 }
 
 export default function NewPerson() {
-	const actionData = useActionData<typeof action>()
+	const actionData = useActionData<typeof action>();
 	const { personas } = useLoaderData() as {
-		personas: { id: string; name: string }[]
-	}
+		personas: { id: string; name: string }[];
+	};
 
 	// Generate unique IDs for form fields
-	const firstnameId = useId()
-	const lastnameId = useId()
-	const emailId = useId()
-	const titleId = useId()
-	const segmentId = useId()
-	const personaId = useId()
-	const notesId = useId()
+	const firstnameId = useId();
+	const lastnameId = useId();
+	const emailId = useId();
+	const titleId = useId();
+	const segmentId = useId();
+	const personaId = useId();
+	const notesId = useId();
 
 	return (
 		<PageContainer size="sm" padded={false} className="max-w-2xl px-4 sm:px-6">
@@ -236,5 +236,5 @@ export default function NewPerson() {
 				</div>
 			</Form>
 		</PageContainer>
-	)
+	);
 }

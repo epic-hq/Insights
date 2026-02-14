@@ -1,36 +1,36 @@
-import { ControlBar, LiveKitRoom, RoomAudioRenderer, useLocalParticipant } from "@livekit/components-react"
-import type { ConnectionState } from "livekit-client"
-import { useEffect, useMemo, useState } from "react"
-import "@livekit/components-styles"
-import { Mic, MicOff, Phone } from "lucide-react"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { LiveWaveform } from "~/components/ui/live-waveform"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
+import { ControlBar, LiveKitRoom, RoomAudioRenderer, useLocalParticipant } from "@livekit/components-react";
+import type { ConnectionState } from "livekit-client";
+import { useEffect, useMemo, useState } from "react";
+import "@livekit/components-styles";
+import { Mic, MicOff, Phone } from "lucide-react";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { LiveWaveform } from "~/components/ui/live-waveform";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 
 interface ProjectStatusVoiceChatProps {
-	accountId: string
-	projectId: string
+	accountId: string;
+	projectId: string;
 }
 
 interface LiveKitSession {
-	token: string
-	url: string
-	roomName: string
-	identity: string
+	token: string;
+	url: string;
+	roomName: string;
+	identity: string;
 }
 
 export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVoiceChatProps) {
-	const [isClient, setIsClient] = useState(false)
-	const [isOpen, setIsOpen] = useState(false)
-	const [isLoading, setIsLoading] = useState(false)
-	const [connectionState, setConnectionState] = useState<ConnectionState | null>(null)
-	const [session, setSession] = useState<LiveKitSession | null>(null)
-	const [error, setError] = useState<string | null>(null)
+	const [isClient, setIsClient] = useState(false);
+	const [isOpen, setIsOpen] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
+	const [connectionState, setConnectionState] = useState<ConnectionState | null>(null);
+	const [session, setSession] = useState<LiveKitSession | null>(null);
+	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
-		setIsClient(true)
-	}, [])
+		setIsClient(true);
+	}, []);
 
 	const startVoiceChat = async () => {
 		console.log("[VoiceChat] Starting voice chat", {
@@ -38,59 +38,59 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 			accountId,
 			hasProjectId: !!projectId,
 			hasAccountId: !!accountId,
-		})
+		});
 		if (!projectId || !accountId) {
-			console.warn("[VoiceChat] Missing required context", { projectId, accountId })
-			return
+			console.warn("[VoiceChat] Missing required context", { projectId, accountId });
+			return;
 		}
-		setIsLoading(true)
-		setError(null)
+		setIsLoading(true);
+		setError(null);
 		try {
-			console.log("[VoiceChat] Requesting LiveKit token", { projectId, accountId })
+			console.log("[VoiceChat] Requesting LiveKit token", { projectId, accountId });
 			const response = await fetch("/api.livekit-token", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ projectId, accountId }),
-			})
+			});
 
-			console.log("[VoiceChat] Token response status", { status: response.status, ok: response.ok })
+			console.log("[VoiceChat] Token response status", { status: response.status, ok: response.ok });
 
 			if (!response.ok) {
-				const payload = await response.json().catch(() => ({}))
-				throw new Error(payload.error || "Unable to start voice chat")
+				const payload = await response.json().catch(() => ({}));
+				throw new Error(payload.error || "Unable to start voice chat");
 			}
 
-			const payload = (await response.json()) as LiveKitSession
+			const payload = (await response.json()) as LiveKitSession;
 			console.log("[VoiceChat] Received session", {
 				roomName: payload.roomName,
 				url: payload.url,
 				identity: payload.identity,
-			})
-			setSession(payload)
-			setIsOpen(true)
+			});
+			setSession(payload);
+			setIsOpen(true);
 		} catch (tokenError) {
-			console.error("[VoiceChat] Error starting voice chat", tokenError)
-			const message = tokenError instanceof Error ? tokenError.message : "Unable to request LiveKit token"
-			setError(message)
+			console.error("[VoiceChat] Error starting voice chat", tokenError);
+			const message = tokenError instanceof Error ? tokenError.message : "Unable to request LiveKit token";
+			setError(message);
 		} finally {
-			setIsLoading(false)
+			setIsLoading(false);
 		}
-	}
+	};
 
 	const stopVoiceChat = () => {
-		setIsOpen(false)
-		setSession(null)
-		setConnectionState(null)
-	}
+		setIsOpen(false);
+		setSession(null);
+		setConnectionState(null);
+	};
 
 	const connectionMessage = useMemo(() => {
-		if (!session) return ""
-		if (!connectionState) return "Connecting..."
+		if (!session) return "";
+		if (!connectionState) return "Connecting...";
 		if (connectionState === "connected") {
-			return "Connected"
+			return "Connected";
 		}
-		return `${connectionState}`
-	}, [connectionState, session])
+		return `${connectionState}`;
+	}, [connectionState, session]);
 
 	useEffect(() => {
 		if (session) {
@@ -99,9 +99,9 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 				roomName: session.roomName,
 				identity: session.identity,
 				tokenPrefix: session.token ? `${session.token.slice(0, 12)}...` : "missing",
-			})
+			});
 		}
-	}, [session])
+	}, [session]);
 
 	return (
 		<div className="mb-3 space-y-3">
@@ -138,11 +138,11 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 					data-lk-theme="default"
 					onConnected={() => setConnectionState("connected")}
 					onDisconnected={() => {
-						setConnectionState("disconnected")
+						setConnectionState("disconnected");
 					}}
 					onError={(roomError: Error) => {
-						const message = roomError.message || "LiveKit connection error"
-						setError(message)
+						const message = roomError.message || "LiveKit connection error";
+						setError(message);
 					}}
 				>
 					<Card className="border border-border bg-card">
@@ -188,30 +188,30 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 				</LiveKitRoom>
 			) : null}
 		</div>
-	)
+	);
 }
 
 // Component for mute/unmute button
 function MuteButton() {
-	const { isMicrophoneEnabled, localParticipant } = useLocalParticipant()
-	const [isMuted, setIsMuted] = useState(false)
+	const { isMicrophoneEnabled, localParticipant } = useLocalParticipant();
+	const [isMuted, setIsMuted] = useState(false);
 
 	// Sync with LiveKit state
 	useEffect(() => {
-		setIsMuted(!isMicrophoneEnabled)
-	}, [isMicrophoneEnabled])
+		setIsMuted(!isMicrophoneEnabled);
+	}, [isMicrophoneEnabled]);
 
 	const toggleMute = async () => {
 		if (localParticipant) {
-			const newState = !isMicrophoneEnabled
+			const newState = !isMicrophoneEnabled;
 			try {
-				await localParticipant.setMicrophoneEnabled(newState)
-				setIsMuted(!newState)
+				await localParticipant.setMicrophoneEnabled(newState);
+				setIsMuted(!newState);
 			} catch (error) {
-				console.error("Failed to toggle microphone:", error)
+				console.error("Failed to toggle microphone:", error);
 			}
 		}
-	}
+	};
 
 	return (
 		<Button
@@ -223,5 +223,5 @@ function MuteButton() {
 		>
 			{isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
 		</Button>
-	)
+	);
 }

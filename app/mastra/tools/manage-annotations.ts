@@ -1,9 +1,9 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
 
 /**
  * Comprehensive annotation management tool for Mastra agents
@@ -16,8 +16,8 @@ import type { Database } from "~/types"
  * - Comments and reactions on insights
  */
 
-const entityTypeEnum = z.enum(["insight", "persona", "opportunity", "interview", "person", "project", "organization"])
-const annotationTypeEnum = z.enum(["comment", "ai_suggestion", "flag", "note", "todo", "reaction"])
+const entityTypeEnum = z.enum(["insight", "persona", "opportunity", "interview", "person", "project", "organization"]);
+const annotationTypeEnum = z.enum(["comment", "ai_suggestion", "flag", "note", "todo", "reaction"]);
 
 export const manageAnnotationsTool = createTool({
 	id: "manage-annotations",
@@ -81,7 +81,11 @@ Entity Types Supported:
 
 		// List filters
 		filterByType: annotationTypeEnum.nullish().describe("Filter annotations by type when listing"),
-		includeArchived: z.boolean().optional().default(false).describe("Include archived/deleted annotations in list"),
+		includeArchived: z
+			.boolean()
+			.nullish()
+			.transform((v) => v ?? false)
+			.describe("Include archived/deleted annotations in list"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -124,25 +128,25 @@ Entity Types Supported:
 			.optional(),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
-		const runtimeAccountId = context?.requestContext?.get?.("account_id")
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const runtimeAccountId = context?.requestContext?.get?.("account_id");
 
 		// Extract tool parameters from input
-		const projectId = (input.projectId ?? runtimeProjectId ?? null) as string | null
-		const accountId = (input.accountId ?? runtimeAccountId ?? null) as string | null
-		const operation = input.operation
-		const entityType = input.entityType
-		const entityId = input.entityId
-		const annotationType = input.annotationType
-		const content = input.content
-		const contentJsonb = input.contentJsonb
-		const metadata = input.metadata
-		const dueDate = input.dueDate
-		const reactionType = input.reactionType
-		const annotationId = input.annotationId
-		const filterByType = input.filterByType
-		const includeArchived = input.includeArchived ?? false
+		const projectId = (input.projectId ?? runtimeProjectId ?? null) as string | null;
+		const accountId = (input.accountId ?? runtimeAccountId ?? null) as string | null;
+		const operation = input.operation;
+		const entityType = input.entityType;
+		const entityId = input.entityId;
+		const annotationType = input.annotationType;
+		const content = input.content;
+		const contentJsonb = input.contentJsonb;
+		const metadata = input.metadata;
+		const dueDate = input.dueDate;
+		const reactionType = input.reactionType;
+		const annotationId = input.annotationId;
+		const filterByType = input.filterByType;
+		const includeArchived = input.includeArchived ?? false;
 
 		consola.debug("manage-annotations: execute start", {
 			projectId,
@@ -152,14 +156,14 @@ Entity Types Supported:
 			entityId,
 			annotationType,
 			hasContent: !!content,
-		})
+		});
 
 		if (!projectId) {
 			return {
 				success: false,
 				message: "Missing projectId. Pass one explicitly or ensure the runtime context sets project_id.",
 				annotation: null,
-			}
+			};
 		}
 
 		if (!accountId) {
@@ -167,7 +171,7 @@ Entity Types Supported:
 				success: false,
 				message: "Missing accountId. Pass one explicitly or ensure the runtime context sets account_id.",
 				annotation: null,
-			}
+			};
 		}
 
 		try {
@@ -178,7 +182,7 @@ Entity Types Supported:
 						success: false,
 						message: "List operation requires entityType and entityId",
 						annotation: null,
-					}
+					};
 				}
 
 				let query = supabase
@@ -187,19 +191,19 @@ Entity Types Supported:
 					.eq("project_id", projectId)
 					.eq("entity_type", entityType)
 					.eq("entity_id", entityId)
-					.order("created_at", { ascending: false })
+					.order("created_at", { ascending: false });
 
 				if (filterByType) {
-					query = query.eq("annotation_type", filterByType)
+					query = query.eq("annotation_type", filterByType);
 				}
 
 				if (!includeArchived) {
-					query = query.eq("status", "active")
+					query = query.eq("status", "active");
 				}
 
-				const { data, error } = await query
+				const { data, error } = await query;
 
-				if (error) throw error
+				if (error) throw error;
 
 				return {
 					success: true,
@@ -220,7 +224,7 @@ Entity Types Supported:
 						reactionType: ann.reaction_type,
 						resolvedAt: ann.resolved_at,
 					})),
-				}
+				};
 			}
 
 			// DELETE operation
@@ -230,22 +234,22 @@ Entity Types Supported:
 						success: false,
 						message: "Delete operation requires annotationId",
 						annotation: null,
-					}
+					};
 				}
 
 				const { error } = await supabase
 					.from("annotations")
 					.update({ status: "deleted", updated_at: new Date().toISOString() })
 					.eq("id", annotationId)
-					.eq("project_id", projectId)
+					.eq("project_id", projectId);
 
-				if (error) throw error
+				if (error) throw error;
 
 				return {
 					success: true,
 					message: `Annotation ${annotationId} deleted`,
 					annotation: null,
-				}
+				};
 			}
 
 			// UPDATE operation
@@ -255,18 +259,18 @@ Entity Types Supported:
 						success: false,
 						message: "Update operation requires annotationId",
 						annotation: null,
-					}
+					};
 				}
 
 				const updateData: any = {
 					updated_at: new Date().toISOString(),
-				}
+				};
 
-				if (content !== undefined) updateData.content = content
-				if (contentJsonb !== undefined) updateData.content_jsonb = contentJsonb
-				if (metadata !== undefined) updateData.metadata = metadata
-				if (dueDate !== undefined) updateData.due_date = dueDate
-				if (reactionType !== undefined) updateData.reaction_type = reactionType
+				if (content !== undefined) updateData.content = content;
+				if (contentJsonb !== undefined) updateData.content_jsonb = contentJsonb;
+				if (metadata !== undefined) updateData.metadata = metadata;
+				if (dueDate !== undefined) updateData.due_date = dueDate;
+				if (reactionType !== undefined) updateData.reaction_type = reactionType;
 
 				const { data, error } = await supabase
 					.from("annotations")
@@ -274,9 +278,9 @@ Entity Types Supported:
 					.eq("id", annotationId)
 					.eq("project_id", projectId)
 					.select()
-					.single()
+					.single();
 
-				if (error) throw error
+				if (error) throw error;
 
 				return {
 					success: true,
@@ -294,7 +298,7 @@ Entity Types Supported:
 						createdAt: data.created_at,
 						updatedAt: data.updated_at,
 					},
-				}
+				};
 			}
 
 			// CREATE operation
@@ -304,7 +308,7 @@ Entity Types Supported:
 						success: false,
 						message: "Create operation requires entityType, entityId, and annotationType",
 						annotation: null,
-					}
+					};
 				}
 
 				const insertData: any = {
@@ -320,11 +324,11 @@ Entity Types Supported:
 					status: "active",
 					due_date: dueDate || null,
 					reaction_type: reactionType || null,
-				}
+				};
 
-				const { data, error } = await supabase.from("annotations").insert(insertData).select().single()
+				const { data, error } = await supabase.from("annotations").insert(insertData).select().single();
 
-				if (error) throw error
+				if (error) throw error;
 
 				return {
 					success: true,
@@ -342,21 +346,21 @@ Entity Types Supported:
 						createdAt: data.created_at,
 						updatedAt: data.updated_at,
 					},
-				}
+				};
 			}
 
 			return {
 				success: false,
 				message: "Invalid operation",
 				annotation: null,
-			}
+			};
 		} catch (error) {
-			consola.error("manage-annotations: unexpected error", error)
+			consola.error("manage-annotations: unexpected error", error);
 			return {
 				success: false,
 				message: `Failed to ${operation} annotation: ${error instanceof Error ? error.message : String(error)}`,
 				annotation: null,
-			}
+			};
 		}
 	},
-})
+});

@@ -2,18 +2,18 @@
  * Public share route for viewing interviews without authentication.
  * Validates share token, checks expiration, and renders read-only view.
  */
-import consola from "consola"
-import type { ComponentProps } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { useLoaderData } from "react-router"
-import { PublicInterviewView } from "~/features/interviews/components/PublicInterviewView"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
-import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
+import consola from "consola";
+import type { ComponentProps } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { useLoaderData } from "react-router";
+import { PublicInterviewView } from "~/features/interviews/components/PublicInterviewView";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server";
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	if (!data || "error" in data) {
-		return [{ title: "Share Not Found | Upsight" }]
+		return [{ title: "Share Not Found | Upsight" }];
 	}
 	return [
 		{
@@ -23,18 +23,18 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 			name: "description",
 			content: data.interview?.key_takeaways || "View shared interview",
 		},
-	]
-}
+	];
+};
 
 export async function loader({ params }: LoaderFunctionArgs) {
-	const { token } = params
+	const { token } = params;
 
 	if (!token) {
-		throw new Response("Share token required", { status: 400 })
+		throw new Response("Share token required", { status: 400 });
 	}
 
 	// Use admin client to bypass RLS for token lookup
-	const supabase = createSupabaseAdminClient()
+	const supabase = createSupabaseAdminClient();
 
 	// Fetch interview by share token
 	const { data: interview, error } = await supabase
@@ -63,19 +63,19 @@ export async function loader({ params }: LoaderFunctionArgs) {
     `
 		)
 		.eq("share_token", token)
-		.single()
+		.single();
 
 	if (error || !interview) {
-		consola.warn("[public-share] Interview not found for token", { token })
-		throw new Response("This share link is not valid", { status: 404 })
+		consola.warn("[public-share] Interview not found for token", { token });
+		throw new Response("This share link is not valid", { status: 404 });
 	}
 
 	// Validate sharing is enabled
 	if (!interview.share_enabled) {
 		consola.warn("[public-share] Sharing disabled for interview", {
 			interviewId: interview.id,
-		})
-		throw new Response("This share link has been disabled", { status: 403 })
+		});
+		throw new Response("This share link has been disabled", { status: 403 });
 	}
 
 	// Check expiration
@@ -83,26 +83,26 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		consola.warn("[public-share] Share link expired", {
 			interviewId: interview.id,
 			expiresAt: interview.share_expires_at,
-		})
-		throw new Response("This share link has expired", { status: 410 })
+		});
+		throw new Response("This share link has expired", { status: 410 });
 	}
 
 	// Generate fresh presigned URL for media (1 hour expiry)
-	let freshMediaUrl = interview.media_url
+	let freshMediaUrl = interview.media_url;
 	if (interview.media_url) {
 		try {
-			const r2Key = getR2KeyFromPublicUrl(interview.media_url)
+			const r2Key = getR2KeyFromPublicUrl(interview.media_url);
 			if (r2Key) {
 				const presignedResult = createR2PresignedUrl({
 					key: r2Key,
 					expiresInSeconds: 60 * 60, // 1 hour
-				})
+				});
 				if (presignedResult) {
-					freshMediaUrl = presignedResult.url
+					freshMediaUrl = presignedResult.url;
 				}
 			}
 		} catch (e) {
-			consola.warn("[public-share] Failed to generate presigned URL", e)
+			consola.warn("[public-share] Failed to generate presigned URL", e);
 			// Keep original URL as fallback
 		}
 	}
@@ -112,7 +112,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		.from("evidence")
 		.select("id, gist, verbatim, anchors, created_at, topic")
 		.eq("interview_id", interview.id)
-		.order("created_at", { ascending: true })
+		.order("created_at", { ascending: true });
 
 	// Debug: log evidence query result
 	consola.info("[public-share] Evidence query result", {
@@ -122,7 +122,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		error: evidenceError?.message || null,
 		errorCode: evidenceError?.code || null,
 		errorDetails: evidenceError?.details || null,
-	})
+	});
 
 	// Fetch participants (without sensitive info)
 	const { data: participants } = await supabase
@@ -140,18 +140,18 @@ export async function loader({ params }: LoaderFunctionArgs) {
       )
     `
 		)
-		.eq("interview_id", interview.id)
+		.eq("interview_id", interview.id);
 
 	// Get account name for branding
-	const { data: account } = await supabase.from("accounts").select("name").eq("id", interview.account_id).single()
+	const { data: account } = await supabase.from("accounts").select("name").eq("id", interview.account_id).single();
 
 	// Sanitize transcript data for public display with speaker diarization
-	const sanitizedTranscript = safeSanitizeTranscriptPayload(interview.transcript_formatted)
+	const sanitizedTranscript = safeSanitizeTranscriptPayload(interview.transcript_formatted);
 
 	consola.info("[public-share] Serving public interview", {
 		interviewId: interview.id,
 		token,
-	})
+	});
 
 	return {
 		interview: {
@@ -170,11 +170,11 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		participants: participants || [],
 		teamName: account?.name || null,
 		shareUrl: `${process.env.HOST || "https://getupsight.com"}/s/${token}`,
-	}
+	};
 }
 
 export default function PublicSharePage() {
-	const data = useLoaderData<typeof loader>()
+	const data = useLoaderData<typeof loader>();
 
 	// Type assertions needed due to Supabase's complex inferred types
 	return (
@@ -186,8 +186,8 @@ export default function PublicSharePage() {
 			teamName={data.teamName}
 			shareUrl={data.shareUrl}
 		/>
-	)
+	);
 }
 
 // Props type for the component
-type PublicInterviewViewProps = ComponentProps<typeof PublicInterviewView>
+type PublicInterviewViewProps = ComponentProps<typeof PublicInterviewView>;

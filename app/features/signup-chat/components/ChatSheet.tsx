@@ -1,17 +1,17 @@
 // ChatSheet.tsx
-import { useState } from "react"
+import { useState } from "react";
 
 export default function ChatSheet() {
-	const [messages, setMessages] = useState<{ role: "user" | "ai"; text: string }[]>([])
-	const [text, setText] = useState("")
+	const [messages, setMessages] = useState<{ role: "user" | "ai"; text: string }[]>([]);
+	const [text, setText] = useState("");
 	const send = async () => {
-		if (!text.trim()) return
-		const user = { role: "user" as const, text }
-		setMessages((m) => [...m, user])
-		setText("")
+		if (!text.trim()) return;
+		const user = { role: "user" as const, text };
+		setMessages((m) => [...m, user]);
+		setText("");
 		// call your backend here -> const aiText = await api.chat(text)
-		setMessages((m) => [...m, { role: "ai", text: "…stub…" }])
-	}
+		setMessages((m) => [...m, { role: "ai", text: "…stub…" }]);
+	};
 	return (
 		<div className="fixed inset-x-0 bottom-0 border bg-white md:static md:ml-auto md:max-w-sm md:rounded-xl">
 			<div className="h-64 space-y-2 overflow-y-auto p-3">
@@ -33,5 +33,5 @@ export default function ChatSheet() {
 				</button>
 			</div>
 		</div>
-	)
+	);
 }

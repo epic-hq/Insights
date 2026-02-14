@@ -1,24 +1,34 @@
 /**
  * ResearchAgent: specialist for interviews, surveys, and prompts.
  */
-import { Agent } from "@mastra/core/agent"
-import { TokenLimiterProcessor } from "@mastra/core/processors"
-import consola from "consola"
-import { openai } from "../../lib/billing/instrumented-openai.server"
-import { createSurveyTool } from "../tools/create-survey"
-import { deleteSurveyTool } from "../tools/delete-survey"
-import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
-import { fetchSurveysTool } from "../tools/fetch-surveys"
+import { Agent } from "@mastra/core/agent";
+import { TokenLimiterProcessor } from "@mastra/core/processors";
+import { Memory } from "@mastra/memory";
+import consola from "consola";
+import { openai } from "../../lib/billing/instrumented-openai.server";
+import { getSharedPostgresStore } from "../storage/postgres-singleton";
+import { createSurveyTool } from "../tools/create-survey";
+import { deleteSurveyTool } from "../tools/delete-survey";
+import { fetchInterviewContextTool } from "../tools/fetch-interview-context";
+import { fetchSurveysTool } from "../tools/fetch-surveys";
+import { fetchWebContentTool } from "../tools/fetch-web-content";
+import { generateProjectRoutesTool } from "../tools/generate-project-routes";
+import { importVideoFromUrlTool } from "../tools/import-video-from-url";
+import { manageDocumentsTool } from "../tools/manage-documents";
 import {
 	createInterviewPromptTool,
 	deleteInterviewPromptTool,
 	fetchInterviewPromptsTool,
 	updateInterviewPromptTool,
-} from "../tools/manage-interview-prompts"
-import { manageInterviewsTool } from "../tools/manage-interviews"
-import { navigateToPageTool } from "../tools/navigate-to-page"
-import { searchSurveyResponsesTool } from "../tools/search-survey-responses"
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
+} from "../tools/manage-interview-prompts";
+import { manageInterviewsTool } from "../tools/manage-interviews";
+import { navigateToPageTool } from "../tools/navigate-to-page";
+import { parseSpreadsheetTool } from "../tools/parse-spreadsheet";
+import { findSimilarPagesTool, webResearchTool } from "../tools/research-web";
+import { saveTableToAssetsTool } from "../tools/save-table-to-assets";
+import { searchSurveyResponsesTool } from "../tools/search-survey-responses";
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
+import { updateTableAssetTool } from "../tools/update-table-asset";
 
 export const researchAgent = new Agent({
 	id: "research-agent",
@@ -26,9 +36,8 @@ export const researchAgent = new Agent({
 	description: "Specialist for research operations: interviews, surveys, and interview prompts.",
 	instructions: async ({ requestContext }) => {
 		try {
-			const projectId = requestContext.get("project_id")
-			const accountId = requestContext.get("account_id")
-			const userId = requestContext.get("user_id")
+			const projectId = requestContext.get("project_id");
+			const accountId = requestContext.get("account_id");
 
 			return `
 You are a Research specialist that EXECUTES actions using tools. You do NOT describe what you would do - you DO it.
@@ -42,28 +51,33 @@ When the user asks to create a survey, waitlist, signup, or ask link, you MUST:
 1. IMMEDIATELY call the createSurvey tool with:
    - projectId: "${projectId}"
    - name: A descriptive name based on user request (e.g., "Product Waitlist", "Beta Signup")
-   - description: Brief description
+   - description: Brief description (or null)
    - questions: Array of 2-4 questions (see examples below)
    - isLive: true
+
+For updates to an existing survey, include surveyId in the tool arguments.
 
 2. After createSurvey succeeds, IMMEDIATELY call navigateToPage with the editUrl from the response
 
 DO NOT just describe what questions you would create. DO NOT provide fake URLs. CALL THE TOOL.
 
+Every question object MUST include this complete shape:
+{ "prompt": string, "type": "auto" | "short_text" | "long_text" | "single_select" | "multi_select" | "likert", "required": boolean, "options": string[] | null, "likertScale": number | null, "likertLabels": { "low": string | null, "high": string | null } | null }
+
 ## Question Examples
 
 For WAITLISTS:
 [
-  { "prompt": "What is your biggest challenge right now?", "type": "auto" },
-  { "prompt": "On a scale of 1-10, how urgently do you need a solution?", "type": "likert", "likertScale": 10, "likertLabels": { "low": "Not urgent", "high": "Very urgent" } },
-  { "prompt": "What features or outcomes are most important to you?", "type": "auto" }
+  { "prompt": "What is your biggest challenge right now?", "type": "auto", "required": true, "options": null, "likertScale": null, "likertLabels": null },
+  { "prompt": "On a scale of 1-10, how urgently do you need a solution?", "type": "likert", "required": true, "options": null, "likertScale": 10, "likertLabels": { "low": "Not urgent", "high": "Very urgent" } },
+  { "prompt": "What features or outcomes are most important to you?", "type": "auto", "required": false, "options": null, "likertScale": null, "likertLabels": null }
 ]
 
 For FEEDBACK:
 [
-  { "prompt": "What's working well for you?", "type": "auto" },
-  { "prompt": "What could be improved?", "type": "auto" },
-  { "prompt": "How likely are you to recommend us to a colleague?", "type": "likert", "likertScale": 10, "likertLabels": { "low": "Not likely", "high": "Very likely" } }
+  { "prompt": "What's working well for you?", "type": "auto", "required": true, "options": null, "likertScale": null, "likertLabels": null },
+  { "prompt": "What could be improved?", "type": "auto", "required": true, "options": null, "likertScale": null, "likertLabels": null },
+  { "prompt": "How likely are you to recommend us to a colleague?", "type": "likert", "required": false, "options": null, "likertScale": 10, "likertLabels": { "low": "Not likely", "high": "Very likely" } }
 ]
 
 # Other Operations
@@ -73,18 +87,40 @@ For FEEDBACK:
 - deleteSurvey: Archive or delete a survey
 - Interview prompts: Use fetch/create/update/deleteInterviewPrompt tools
 - Interviews: Use manageInterviews, fetchInterviewContext
+- URL ingestion/research: fetchWebContent, importVideoFromUrl, webResearch, findSimilarPages
+- Documents: manageDocuments for meeting notes/strategy docs
+- Tables: parseSpreadsheet, saveTableToAssets, updateTableAsset
+
+# Interview-Specific Guidance (Critical)
+
+When the user asks about interview prep, open questions, follow-ups, or "how do I address this interview":
+1. ALWAYS call fetchInterviewContext first.
+   - Use interviewId from runtime context when available.
+2. Base your answer on interview-specific fields, especially:
+   - open_questions_and_next_steps
+   - high_impact_themes
+   - participant/person context
+3. Avoid generic advice. If context is missing, say exactly what is missing and ask one concise clarification.
+
+# Linking & Navigation
+- When referencing surveys, interviews, or people, format as \`[Name](url)\` markdown link.
+- Tools may return \`url\` fields — use them directly.
+- For entities without tool URLs, call generateProjectRoutes with entityType (survey, interview, person) and the entityId.
+- Never fabricate URLs - only use URLs returned by tools or generateProjectRoutes.
 
 # Rules
 - ALWAYS use tools to take action. Never just describe what you would do.
 - After creating anything, use navigateToPage to take the user there.
-- Never fabricate URLs - only use URLs returned by tools.
-`
+`;
 		} catch (error) {
-			consola.error("Error in research agent instructions:", error)
-			return "You are a Research specialist for interviews and surveys."
+			consola.error("Error in research agent instructions:", error);
+			return "You are a Research specialist for interviews and surveys.";
 		}
 	},
 	model: openai("gpt-4o"),
+	memory: new Memory({
+		storage: getSharedPostgresStore(),
+	}),
 	tools: wrapToolsWithStatusEvents({
 		fetchInterviewContext: fetchInterviewContextTool,
 		manageInterviews: manageInterviewsTool,
@@ -96,7 +132,16 @@ For FEEDBACK:
 		searchSurveyResponses: searchSurveyResponsesTool,
 		createSurvey: createSurveyTool,
 		deleteSurvey: deleteSurveyTool,
+		fetchWebContent: fetchWebContentTool,
+		importVideoFromUrl: importVideoFromUrlTool,
+		webResearch: webResearchTool,
+		findSimilarPages: findSimilarPagesTool,
+		manageDocuments: manageDocumentsTool,
+		parseSpreadsheet: parseSpreadsheetTool,
+		saveTableToAssets: saveTableToAssetsTool,
+		updateTableAsset: updateTableAssetTool,
 		navigateToPage: navigateToPageTool,
+		generateProjectRoutes: generateProjectRoutesTool,
 	}),
 	outputProcessors: [new TokenLimiterProcessor(20_000)],
-})
+});

@@ -11,12 +11,12 @@ import {
 	Sparkles,
 	Trash2,
 	Users,
-} from "lucide-react"
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, Link, redirect, useActionData, useFetcher, useLoaderData } from "react-router-dom"
-import { LinkPersonDialog } from "~/components/dialogs/LinkPersonDialog"
-import { InlineEditableField } from "~/components/InlineEditableField"
-import { PageContainer } from "~/components/layout/PageContainer"
+} from "lucide-react";
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Form, Link, redirect, useActionData, useFetcher, useLoaderData } from "react-router-dom";
+import { LinkPersonDialog } from "~/components/dialogs/LinkPersonDialog";
+import { InlineEditableField } from "~/components/InlineEditableField";
+import { PageContainer } from "~/components/layout/PageContainer";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -27,13 +27,13 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 	AlertDialogTrigger,
-} from "~/components/ui/alert-dialog"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { DEFAULT_OPPORTUNITY_STAGES } from "~/features/opportunities/stage-config"
+} from "~/components/ui/alert-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { DEFAULT_OPPORTUNITY_STAGES } from "~/features/opportunities/stage-config";
 import {
 	deleteOrganization,
 	getOrganizationById,
@@ -41,48 +41,48 @@ import {
 	linkPersonToOrganization,
 	unlinkPersonFromOrganization,
 	updateOrganization,
-} from "~/features/organizations/db"
-import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server"
-import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { COMPANY_SIZE_RANGES, COMPANY_TYPES, FUNDING_STAGES } from "~/lib/constants/options"
-import { userContext } from "~/server/user-context"
-import type { Database, Interview, Opportunity, Organization, Person } from "~/types"
-import { createProjectRoutes } from "~/utils/routes.server"
+} from "~/features/organizations/db";
+import { syncTitleToJobTitleFacet } from "~/features/people/syncTitleToFacet.server";
+import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { COMPANY_SIZE_RANGES, COMPANY_TYPES, FUNDING_STAGES } from "~/lib/constants/options";
+import { userContext } from "~/server/user-context";
+import type { Database, Interview, Opportunity, Organization, Person } from "~/types";
+import { createProjectRoutes } from "~/utils/routes.server";
 
-type PeopleOrganization = Database["public"]["Tables"]["people_organizations"]["Row"]
+type PeopleOrganization = Database["public"]["Tables"]["people_organizations"]["Row"];
 
 // Helper to parse full name into first and last
 function parseFullName(fullName: string): {
-	firstname: string
-	lastname: string | null
+	firstname: string;
+	lastname: string | null;
 } {
-	const trimmed = fullName.trim()
-	if (!trimmed) return { firstname: "", lastname: null }
-	const parts = trimmed.split(/\s+/)
+	const trimmed = fullName.trim();
+	if (!trimmed) return { firstname: "", lastname: null };
+	const parts = trimmed.split(/\s+/);
 	if (parts.length === 1) {
-		return { firstname: parts[0], lastname: null }
+		return { firstname: parts[0], lastname: null };
 	}
 	return {
 		firstname: parts[0],
 		lastname: parts.slice(1).join(" "),
-	}
+	};
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
-	const title = data?.organization?.name ? `${data.organization.name} | Organizations` : "Organization"
-	return [{ title }, { name: "description", content: "Organization details and linked people" }]
-}
+	const title = data?.organization?.name ? `${data.organization.name} | Organizations` : "Organization";
+	return [{ title }, { name: "description", content: "Organization details and linked people" }];
+};
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const organizationId = params.organizationId
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const organizationId = params.organizationId;
 
 	if (!accountId || !projectId || !organizationId) {
-		throw new Response("Account ID, Project ID, and Organization ID are required", { status: 400 })
+		throw new Response("Account ID, Project ID, and Organization ID are required", { status: 400 });
 	}
 
 	const [{ data, error }, { data: people }, { data: opportunities }, { data: conversations }] = await Promise.all([
@@ -116,19 +116,19 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			.eq("project_id", projectId)
 			.eq("interview_people.people.people_organizations.organization_id", organizationId)
 			.order("interview_date", { ascending: false }),
-	])
+	]);
 
 	if (error || !data) {
-		throw new Response("Failed to load organization", { status: 500 })
+		throw new Response("Failed to load organization", { status: 500 });
 	}
 
 	return {
 		organization: data as Organization & {
 			people_organizations: Array<
 				PeopleOrganization & {
-					person: Pick<Person, "id" | "name" | "image_url" | "segment" | "title">
+					person: Pick<Person, "id" | "name" | "image_url" | "segment" | "title">;
 				}
-			>
+			>;
 		},
 		people: (people as Array<Pick<Person, "id" | "name" | "image_url" | "segment" | "title">>) ?? [],
 		opportunities:
@@ -147,33 +147,33 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 				>
 			>) ?? [],
 		conversations: (conversations as Array<Pick<Interview, "id" | "title" | "interview_date" | "status">>) ?? [],
-	}
+	};
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const organizationId = params.organizationId
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const organizationId = params.organizationId;
 
 	if (!accountId || !projectId || !organizationId) {
-		throw new Response("Account ID, Project ID, and Organization ID are required", { status: 400 })
+		throw new Response("Account ID, Project ID, and Organization ID are required", { status: 400 });
 	}
 
-	const routes = createProjectRoutes(accountId, projectId)
-	const formData = await request.formData()
-	const intent = formData.get("_action")
+	const routes = createProjectRoutes(accountId, projectId);
+	const formData = await request.formData();
+	const intent = formData.get("_action");
 
 	if (intent === "link-person") {
-		const personId = (formData.get("person_id") as string | null)?.trim()
+		const personId = (formData.get("person_id") as string | null)?.trim();
 		if (!personId) {
-			return { error: "Person is required" }
+			return { error: "Person is required" };
 		}
 
-		const role = (formData.get("role") as string | null)?.trim() || null
-		const relationshipStatus = (formData.get("relationship_status") as string | null)?.trim() || null
-		const notes = (formData.get("notes") as string | null)?.trim() || null
+		const jobTitle = (formData.get("role") as string | null)?.trim() || null; // form field still named "role"
+		const relationshipStatus = (formData.get("relationship_status") as string | null)?.trim() || null;
+		const notes = (formData.get("notes") as string | null)?.trim() || null;
 
 		const { error } = await linkPersonToOrganization({
 			supabase,
@@ -181,22 +181,22 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			projectId,
 			organizationId,
 			personId,
-			role,
+			jobTitle,
 			relationshipStatus,
 			notes,
-		})
+		});
 
 		if (error) {
-			return { error: "Failed to link person" }
+			return { error: "Failed to link person" };
 		}
 
-		return redirect(routes.organizations.detail(organizationId))
+		return redirect(routes.organizations.detail(organizationId));
 	}
 
 	if (intent === "unlink-person") {
-		const personId = formData.get("person_id") as string | null
+		const personId = formData.get("person_id") as string | null;
 		if (!personId) {
-			return { error: "Person is required" }
+			return { error: "Person is required" };
 		}
 
 		const { error } = await unlinkPersonFromOrganization({
@@ -205,27 +205,27 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			projectId,
 			organizationId,
 			personId,
-		})
+		});
 
 		if (error) {
-			return { error: "Failed to unlink person" }
+			return { error: "Failed to unlink person" };
 		}
 
-		return redirect(routes.organizations.detail(organizationId))
+		return redirect(routes.organizations.detail(organizationId));
 	}
 
 	if (intent === "create-and-link-person") {
-		const name = (formData.get("name") as string | null)?.trim()
+		const name = (formData.get("name") as string | null)?.trim();
 		if (!name) {
-			return { error: "Person name is required" }
+			return { error: "Person name is required" };
 		}
 
-		const { firstname, lastname } = parseFullName(name)
-		const primaryEmail = (formData.get("primary_email") as string | null)?.trim() || null
-		const title = (formData.get("title") as string | null)?.trim() || null
-		const role = (formData.get("role") as string | null)?.trim() || null
-		const relationshipStatus = (formData.get("relationship_status") as string | null)?.trim() || null
-		const notes = (formData.get("notes") as string | null)?.trim() || null
+		const { firstname, lastname } = parseFullName(name);
+		const primaryEmail = (formData.get("primary_email") as string | null)?.trim() || null;
+		const title = (formData.get("title") as string | null)?.trim() || null;
+		const orgJobTitle = (formData.get("role") as string | null)?.trim() || null; // form field still named "role"
+		const relationshipStatus = (formData.get("relationship_status") as string | null)?.trim() || null;
+		const notes = (formData.get("notes") as string | null)?.trim() || null;
 
 		// Create the person
 		const { data: newPerson, error: createError } = await supabase
@@ -239,26 +239,26 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				title,
 			})
 			.select()
-			.single()
+			.single();
 
 		if (createError || !newPerson) {
-			return { error: "Failed to create person" }
+			return { error: "Failed to create person" };
 		}
 
 		// Link person to project
 		await supabase.from("project_people").insert({
 			project_id: projectId,
 			person_id: newPerson.id,
-		})
+		});
 
 		// If title was provided, sync it to job_function facet
 		if (title) {
-			await syncTitleToJobFunctionFacet({
+			await syncTitleToJobTitleFacet({
 				supabase,
 				personId: newPerson.id,
 				accountId,
 				title,
-			})
+			});
 		}
 
 		// Link the person to the organization
@@ -268,21 +268,21 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			projectId,
 			organizationId,
 			personId: newPerson.id,
-			role,
+			jobTitle: orgJobTitle,
 			relationshipStatus,
 			notes,
-		})
+		});
 
 		if (linkError) {
-			return { error: "Person created but failed to link" }
+			return { error: "Person created but failed to link" };
 		}
 
-		return redirect(routes.organizations.detail(organizationId))
+		return redirect(routes.organizations.detail(organizationId));
 	}
 
 	if (intent === "update-field") {
-		const field = formData.get("field") as string
-		const value = formData.get("value") as string
+		const field = formData.get("field") as string;
+		const value = formData.get("value") as string;
 
 		// Whitelist of allowed fields to update
 		const allowedFields = [
@@ -297,10 +297,10 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			"linkedin_url",
 			"phone",
 			"email",
-		]
+		];
 
 		if (!allowedFields.includes(field)) {
-			return { error: `Field ${field} is not editable` }
+			return { error: `Field ${field} is not editable` };
 		}
 
 		const { error } = await updateOrganization({
@@ -308,13 +308,13 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			accountId,
 			id: organizationId,
 			data: { [field]: value || null },
-		})
+		});
 
 		if (error) {
-			return { error: `Failed to update ${field}` }
+			return { error: `Failed to update ${field}` };
 		}
 
-		return { success: true, field }
+		return { success: true, field };
 	}
 
 	if (intent === "delete") {
@@ -323,46 +323,48 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			accountId,
 			projectId,
 			id: organizationId,
-		})
+		});
 
 		if (error) {
-			return { error: "Failed to delete organization" }
+			return { error: "Failed to delete organization" };
 		}
 
-		return redirect(routes.organizations.index())
+		return redirect(routes.organizations.index());
 	}
 
-	return redirect(routes.organizations.detail(organizationId))
+	return redirect(routes.organizations.detail(organizationId));
 }
 
 export default function OrganizationDetailPage() {
-	const { organization, people, opportunities, conversations } = useLoaderData<typeof loader>()
-	const actionData = useActionData<typeof action>()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || `/a/${organization.account_id ?? ""}/${organization.project_id ?? ""}`)
-	const deleteFetcher = useFetcher()
-	const isDeleting = deleteFetcher.state !== "idle"
-	const researchFetcher = useFetcher()
-	const isResearching = researchFetcher.state !== "idle"
+	const { organization, people, opportunities, conversations } = useLoaderData<typeof loader>();
+	const actionData = useActionData<typeof action>();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(
+		projectPath || `/a/${organization.account_id ?? ""}/${organization.project_id ?? ""}`
+	);
+	const deleteFetcher = useFetcher();
+	const isDeleting = deleteFetcher.state !== "idle";
+	const researchFetcher = useFetcher();
+	const isResearching = researchFetcher.state !== "idle";
 
-	const linkedPersonIds = new Set((organization.people_organizations || []).map((link) => link.person.id))
-	const availablePeople = people.filter((person) => !linkedPersonIds.has(person.id))
+	const linkedPersonIds = new Set((organization.people_organizations || []).map((link) => link.person.id));
+	const availablePeople = people.filter((person) => !linkedPersonIds.has(person.id));
 
 	// Format currency amount
 	const formatAmount = (amount: number | null, currency: string | null) => {
-		if (amount == null) return null
+		if (amount == null) return null;
 		return new Intl.NumberFormat("en-US", {
 			style: "currency",
 			currency: currency || "USD",
 			minimumFractionDigits: 0,
 			maximumFractionDigits: 0,
-		}).format(amount)
-	}
+		}).format(amount);
+	};
 
 	// Get stage display info
 	const getStageInfo = (stage: string | null) => {
-		if (!stage) return { label: "Unknown", color: "bg-gray-100 text-gray-700" }
-		const stageConfig = DEFAULT_OPPORTUNITY_STAGES.find((s) => s.id === stage)
+		if (!stage) return { label: "Unknown", color: "bg-gray-100 text-gray-700" };
+		const stageConfig = DEFAULT_OPPORTUNITY_STAGES.find((s) => s.id === stage);
 		if (stageConfig) {
 			// Color based on stage type
 			const stageColors: Record<string, string> = {
@@ -374,14 +376,14 @@ export default function OrganizationDetailPage() {
 				commit: "bg-emerald-100 text-emerald-700",
 				"closed-won": "bg-green-100 text-green-700",
 				"closed-lost": "bg-red-100 text-red-700",
-			}
+			};
 			return {
 				label: stageConfig.label,
 				color: stageColors[stageConfig.id] || "bg-gray-100 text-gray-700",
-			}
+			};
 		}
-		return { label: stage, color: "bg-gray-100 text-gray-700" }
-	}
+		return { label: stage, color: "bg-gray-100 text-gray-700" };
+	};
 
 	return (
 		<PageContainer>
@@ -639,8 +641,8 @@ export default function OrganizationDetailPage() {
 						) : (
 							<div className="space-y-3">
 								{opportunities.map((opp) => {
-									const stageInfo = getStageInfo(opp.stage)
-									const amount = formatAmount(opp.amount, opp.currency)
+									const stageInfo = getStageInfo(opp.stage);
+									const amount = formatAmount(opp.amount, opp.currency);
 									return (
 										<Link
 											key={opp.id}
@@ -677,7 +679,7 @@ export default function OrganizationDetailPage() {
 											</div>
 											<ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
 										</Link>
-									)
+									);
 								})}
 							</div>
 						)}
@@ -747,13 +749,13 @@ export default function OrganizationDetailPage() {
 							) : (
 								<div className="space-y-3">
 									{organization.people_organizations.map((link) => {
-										const person = link.person
+										const person = link.person;
 										const initials = (person.name || "?")
 											.split(" ")
 											.map((part) => part[0])
 											.join("")
 											.slice(0, 2)
-											.toUpperCase()
+											.toUpperCase();
 										return (
 											<div
 												key={link.id}
@@ -795,7 +797,7 @@ export default function OrganizationDetailPage() {
 													</Button>
 												</Form>
 											</div>
-										)
+										);
 									})}
 								</div>
 							)}
@@ -811,5 +813,5 @@ export default function OrganizationDetailPage() {
 				</div>
 			</div>
 		</PageContainer>
-	)
+	);
 }

@@ -1,42 +1,43 @@
 // app/hooks/useSidebarCounts.ts
-import { useEffect, useMemo, useState } from "react"
-import { createClient } from "~/lib/supabase/client"
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "~/lib/supabase/client";
 
 type Counts = {
 	// Discovery
-	encounters?: number
-	personas?: number
-	themes?: number
-	insights?: number
-	content?: number
+	encounters?: number;
+	personas?: number;
+	themes?: number;
+	insights?: number;
+	content?: number;
 
 	// Directory
-	people?: number
-	organizations?: number
+	people?: number;
+	organizations?: number;
 
 	// Tasks
-	highPriorityTasks?: number
-	surveyResponses?: number
+	highPriorityTasks?: number;
+	surveys?: number;
+	surveyResponses?: number;
 
 	// Revenue (future)
-	accounts?: number
-	deals?: number
-	contacts?: number
-	opportunities?: number
-}
+	accounts?: number;
+	deals?: number;
+	contacts?: number;
+	opportunities?: number;
+};
 
 export function useSidebarCounts(accountId?: string, projectId?: string, _workflowType?: string | null) {
-	const [counts, setCounts] = useState<Counts>({})
-	const [loading, setLoading] = useState(false)
+	const [counts, setCounts] = useState<Counts>({});
+	const [loading, setLoading] = useState(false);
 
 	useEffect(() => {
-		if (!accountId || !projectId) return
-		let isCancelled = false
+		if (!accountId || !projectId) return;
+		let isCancelled = false;
 
-		;(async () => {
-			setLoading(true)
+		(async () => {
+			setLoading(true);
 			try {
-				const supabase = createClient()
+				const supabase = createClient();
 				// Execute all count queries in parallel
 				const [
 					interviewsResult,
@@ -49,6 +50,7 @@ export function useSidebarCounts(accountId?: string, projectId?: string, _workfl
 					organizationsResult,
 					opportunitiesResult,
 					highPriorityTasksResult,
+					surveysResult,
 					surveyResponsesResult,
 				] = await Promise.all([
 					// Count interviews
@@ -114,24 +116,33 @@ export function useSidebarCounts(accountId?: string, projectId?: string, _workfl
 						.eq("priority", 1)
 						.in("status", ["todo", "in_progress", "blocked", "review"]),
 
+					// Count surveys (research links)
+					supabase
+						.from("research_links")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
+
 					// Count survey responses (research link responses)
 					supabase
 						.from("research_link_responses")
-						.select("id, research_links!inner(project_id)", { count: "exact", head: true })
+						.select("id, research_links!inner(project_id)", {
+							count: "exact",
+							head: true,
+						})
 						.eq("research_links.project_id", projectId),
-				])
+				]);
 
 				if (!isCancelled) {
-					const interview_count = interviewsResult.count || 0
-					const notes_count = noteInterviewsResult.count || 0
-					const conversations_count = Math.max(0, interview_count - notes_count)
-					const files_count = projectAssetsResult.count || 0
-					const content_count = conversations_count + notes_count + files_count
+					const interview_count = interviewsResult.count || 0;
+					const notes_count = noteInterviewsResult.count || 0;
+					const conversations_count = Math.max(0, interview_count - notes_count);
+					const files_count = projectAssetsResult.count || 0;
+					const content_count = conversations_count + notes_count + files_count;
 					const insight_count = new Set(
 						(themeEvidenceThemesResult.data ?? [])
 							.map((row: { theme_id: string | null }) => row.theme_id)
 							.filter(Boolean)
-					).size
+					).size;
 
 					setCounts({
 						encounters: interview_count,
@@ -143,37 +154,38 @@ export function useSidebarCounts(accountId?: string, projectId?: string, _workfl
 						organizations: organizationsResult.count || 0,
 						opportunities: opportunitiesResult.count || 0,
 						highPriorityTasks: highPriorityTasksResult.count || 0,
+						surveys: surveysResult.count || 0,
 						surveyResponses: surveyResponsesResult.count || 0,
-					})
+					});
 				}
 			} catch (error) {
-				console.error("[useSidebarCounts] Error fetching counts:", error)
+				console.error("[useSidebarCounts] Error fetching counts:", error);
 				if (!isCancelled) {
-					setCounts({})
+					setCounts({});
 				}
 			} finally {
 				if (!isCancelled) {
-					setLoading(false)
+					setLoading(false);
 				}
 			}
-		})()
+		})();
 
 		return () => {
-			isCancelled = true
-		}
-	}, [accountId, projectId])
+			isCancelled = true;
+		};
+	}, [accountId, projectId]);
 
 	// Only surface counts > 0 to reduce noise.
 	const visible = useMemo(() => {
-		const out: Counts = {}
+		const out: Counts = {};
 		for (const k of Object.keys(counts) as (keyof Counts)[]) {
-			const v = counts[k]
+			const v = counts[k];
 			if (typeof v === "number" && v > 0) {
-				out[k] = v
+				out[k] = v;
 			}
 		}
-		return out
-	}, [counts])
+		return out;
+	}, [counts]);
 
-	return { counts: visible, loading }
+	return { counts: visible, loading };
 }

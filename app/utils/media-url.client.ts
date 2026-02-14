@@ -4,14 +4,14 @@
  */
 
 export interface MediaAnchor {
-	start_ms?: number
-	end_ms?: number
-	media_key?: string
-	chapter_title?: string
-	char_span?: any
+	start_ms?: number;
+	end_ms?: number;
+	media_key?: string;
+	chapter_title?: string;
+	char_span?: any;
 	// Legacy fields (for backwards compatibility)
-	target?: string
-	start_seconds?: number
+	target?: string;
+	start_seconds?: number;
 }
 
 /**
@@ -23,13 +23,13 @@ export interface MediaAnchor {
 export async function generateMediaUrl(anchor: MediaAnchor, fallbackMediaUrl?: string | null): Promise<string | null> {
 	// Handle legacy anchors with full URL in target
 	if (anchor.target && typeof anchor.target === "string" && anchor.target.startsWith("http")) {
-		return anchor.target
+		return anchor.target;
 	}
 
 	// Get media key (stable R2 object path)
-	const mediaKey = anchor.media_key
+	const mediaKey = anchor.media_key;
 	if (!mediaKey) {
-		return fallbackMediaUrl || null
+		return fallbackMediaUrl || null;
 	}
 
 	try {
@@ -42,25 +42,25 @@ export async function generateMediaUrl(anchor: MediaAnchor, fallbackMediaUrl?: s
 				expiresInSeconds: 3600, // 1 hour
 				intent: "playback",
 			}),
-		})
+		});
 
 		if (!response.ok) {
-			console.error("Failed to generate signed URL:", response.statusText)
-			return fallbackMediaUrl || null
+			console.error("Failed to generate signed URL:", response.statusText);
+			return fallbackMediaUrl || null;
 		}
 
-		const { signedUrl } = await response.json()
+		const { signedUrl } = await response.json();
 
 		// Append time parameter if we have timing data
 		if (signedUrl && anchor.start_ms !== undefined) {
-			const startSeconds = Math.floor(anchor.start_ms / 1000)
-			return `${signedUrl}${signedUrl.includes("?") ? "&" : "?"}t=${startSeconds}`
+			const startSeconds = Math.floor(anchor.start_ms / 1000);
+			return `${signedUrl}${signedUrl.includes("?") ? "&" : "?"}t=${startSeconds}`;
 		}
 
-		return signedUrl || fallbackMediaUrl || null
+		return signedUrl || fallbackMediaUrl || null;
 	} catch (error) {
-		console.error("Error generating media URL:", error)
-		return fallbackMediaUrl || null
+		console.error("Error generating media URL:", error);
+		return fallbackMediaUrl || null;
 	}
 }
 
@@ -69,10 +69,10 @@ export async function generateMediaUrl(anchor: MediaAnchor, fallbackMediaUrl?: s
  */
 export function getAnchorStartSeconds(anchor: MediaAnchor): number {
 	if (anchor.start_ms !== undefined) {
-		return Math.floor(anchor.start_ms / 1000)
+		return Math.floor(anchor.start_ms / 1000);
 	}
 	if (anchor.start_seconds !== undefined) {
-		return anchor.start_seconds
+		return anchor.start_seconds;
 	}
-	return 0
+	return 0;
 }

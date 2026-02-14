@@ -1,20 +1,20 @@
-import { openai } from "@ai-sdk/openai"
-import { generateObject } from "ai"
-import type { ActionFunctionArgs } from "react-router"
-import { z } from "zod"
-import { userContext } from "~/server/user-context"
+import { openai } from "@ai-sdk/openai";
+import { generateObject } from "ai";
+import type { ActionFunctionArgs } from "react-router";
+import { z } from "zod";
+import { userContext } from "~/server/user-context";
 
 export async function action({ request, context }: ActionFunctionArgs) {
 	// Ensure user is authenticated
-	const ctx = context.get(userContext)
+	const ctx = context.get(userContext);
 	if (!ctx?.claims?.sub) {
-		return Response.json({ suggestions: [] }, { status: 401 })
+		return Response.json({ suggestions: [] }, { status: 401 });
 	}
 
-	const { context: uiContext, lastMessage } = await request.json()
+	const { context: uiContext, lastMessage } = await request.json();
 
 	if (!lastMessage || typeof lastMessage !== "string") {
-		return Response.json({ suggestions: [] })
+		return Response.json({ suggestions: [] });
 	}
 
 	try {
@@ -39,11 +39,11 @@ Rules:
 - Format: Use the exact wording from the AI's examples when available
 - If no examples given, suggest short relevant responses based on context
 `,
-		})
+		});
 
-		return Response.json({ suggestions: result.object.suggestions })
+		return Response.json({ suggestions: result.object.suggestions });
 	} catch (error) {
-		console.error("Suggestion generation failed:", error)
-		return Response.json({ suggestions: [] })
+		console.error("Suggestion generation failed:", error);
+		return Response.json({ suggestions: [] });
 	}
 }
