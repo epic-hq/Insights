@@ -25,8 +25,8 @@ export function MessagePlayButton({ isPlaying, onPlay, onStop, variant = "light"
 						type="button"
 						onClick={isPlaying ? onStop : onPlay}
 						className={cn(
-							"flex h-6 w-6 items-center justify-center rounded-full shadow-sm transition-all",
-							"opacity-0 group-hover:opacity-100 focus:opacity-100",
+							"flex h-8 w-8 items-center justify-center rounded-full shadow-sm transition-all",
+							"opacity-0 focus:opacity-100 group-hover:opacity-100",
 							isPlaying && "!opacity-100",
 							variant === "dark"
 								? isPlaying
