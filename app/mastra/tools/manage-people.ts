@@ -12,8 +12,8 @@ const toolInputSchema = z.object({
     .string()
     .nullish()
     .describe("Required for get and delete actions"),
-  accountId: z.string().optional(),
-  projectId: z.string().optional(),
+  accountId: z.string().nullish(),
+  projectId: z.string().nullish(),
   nameSearch: z
     .string()
     .nullish()
