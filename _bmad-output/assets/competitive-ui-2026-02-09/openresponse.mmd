@@ -1,0 +1,74 @@
+flowchart TB
+  %% ========== INGEST + PIPELINE ==========
+  subgraph Fly["Fly.io: Your App + Jobs"]
+    UI["API/UI\n(upload, start job)"]
+    TD["Trigger.dev Pipeline\n(steps + retries + idempotency)"]
+    MAS["Mastra Agents\n(orchestrate tasks)"]
+    BAML["BAML Functions\n(structured outputs)"]
+    UI --> TD
+    TD --> MAS
+    MAS --> BAML
+  end
+
+  %% ========== GATEWAY (LOGICAL ONE, PHYSICALLY MANY) ==========
+  subgraph GW["Open Responses Gateway (1 logical endpoint)"]
+    LB["Load Balancer / Anycast DNS\n(optional regional instances)"]
+    AUTH["Auth + Tenant Isolation\n(API keys, projects)"]
+    ROUTE["Routing + Fallbacks\n(model/provider selection)"]
+    BUDGET["Budgets + Rate Limits\n($ caps, TPM/RPM, quotas)"]
+    RELIAB["Reliability\n(retries, timeouts, circuit breakers)"]
+    GUARD["Guardrails\n(schema validate, PII scrub, policy checks)"]
+    TOOLS["Tool Policy Layer\n(allow/deny tools per step)"]
+    OBS["Observability Hooks\n(trace_id, cost, latency)"]
+    CACHE["Optional Cache\n(idempotent step memoization)"]
+
+    LB --> AUTH --> ROUTE --> BUDGET --> RELIAB --> GUARD --> TOOLS --> OBS
+    ROUTE --> CACHE
+  end
+
+  %% ========== PROVIDERS ==========
+  subgraph Providers["Model Providers"]
+    OAI["OpenAI"]
+    ANT["Anthropic"]
+    GOO["Google"]
+    ORT["OpenRouter / Router"]
+    LOC["Local Models\n(vLLM/Ollama)"]
+  end
+
+  %% ========== DATA + TOOLS ==========
+  subgraph Data["Your Data + Tools"]
+    R2["Media Storage\n(R2/S3)"]
+    DB["DB / Vector Store\n(Supabase/Postgres)"]
+    STT["STT Service\n(AssemblyAI/Whisper/etc.)"]
+    MCP["MCP Tool Servers\n(Supabase, CRM, Calendar...)"]
+  end
+
+  %% ========== FLOW ==========
+  BAML -->|"responses.create()\n(model:auto + policy tags)" LB
+
+  ROUTE --> OAI
+  ROUTE --> ANT
+  ROUTE --> GOO
+  ROUTE --> ORT
+  ROUTE --> LOC
+
+  %% Tools can be executed by app or gateway
+  TOOLS --> MCP
+  TOOLS --> DB
+  TOOLS --> R2
+  TOOLS --> STT
+
+  %% Observability back to Langfuse/OTEL
+  subgraph ObsStack["Observability Stack"]
+    LANG["Langfuse"]
+    OTEL["OpenTelemetry Collector\n(optional)"]
+  end
+  OBS --> LANG
+  OBS --> OTEL
+
+  %% ========== POLICY CAPABILITIES (ANNOTATIONS) ==========
+  BAML -. "adds tags/hints:\n- evidence_extraction\n- tier=fast\n- max_cost_usd=0.03\n- fallbacks=[...]" .-> ROUTE
+  GUARD -. "enforce:\n- JSON schema required\n- PII redaction\n- content rules" .-> BAML
+  BUDGET -. "enforce:\n- per-step $ cap\n- per-user RPM\n- per-org TPM" .-> MAS
+  RELIAB -. "enforce:\n- retries on 5xx\n- timeouts\n- circuit breaker" .-> TD
+  TOOLS -. "enforce:\n- allowlist tools\n- deny web/db writes\n- scoped credentials" .-> MCP

@@ -1088,8 +1088,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
     if (userId) {
       const resourceId = `interviewStatusAgent-${userId}-${interviewId}`;
       try {
-        const threads = await memory.listThreadsByResourceId({
-          resourceId,
+        const threads = await memory.listThreads({
+          filter: { resourceId },
           orderBy: { field: "createdAt", direction: "DESC" },
           page: 0,
           perPage: 1,
@@ -1098,7 +1098,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
         if (threadId) {
           const { messages } = await memory.recall({
             threadId,
-            selectBy: { last: 50 },
+            perPage: 50,
           });
           assistantMessages = convertMessages(messages).to(
             "AIV5.UI",

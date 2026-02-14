@@ -18,9 +18,7 @@
  */
 
 import { createOpenAI, type OpenAIProvider } from "@ai-sdk/openai";
-import { wrapLanguageModel } from "ai";
 import consola from "consola";
-import { createLangfuseModelMiddleware } from "~/lib/langfuse-model-middleware.server";
 import type { BillingContext } from "./context";
 import { recordUsageOnly } from "./usage.server";
 
@@ -203,37 +201,11 @@ export async function withAgentBilling<T>(
   }
 }
 
-// Langfuse middleware applied to every model from this provider
-const langfuseMiddleware = createLangfuseModelMiddleware();
-
 /**
  * The instrumented OpenAI provider instance.
  * Import this instead of the default @ai-sdk/openai provider.
  *
- * Wraps each model with Langfuse middleware so all agent LLM calls
- * are automatically traced with token counts and cost data.
+ * Langfuse tracing is now handled by @mastra/langfuse via the Mastra
+ * observability config. This provider only adds billing tracking.
  */
-const rawOpenai = createInstrumentedOpenAI();
-
-export const openai: OpenAIProvider = Object.assign(
-  (modelId: string, ...args: unknown[]) => {
-    const model = (rawOpenai as any)(modelId, ...args);
-    return wrapLanguageModel({ model, middleware: langfuseMiddleware });
-  },
-  {
-    // Preserve provider methods for non-chat models
-    languageModel: rawOpenai.languageModel
-      ? (...args: Parameters<typeof rawOpenai.languageModel>) => {
-          const model = rawOpenai.languageModel(...args);
-          return wrapLanguageModel({ model, middleware: langfuseMiddleware });
-        }
-      : undefined,
-    textEmbeddingModel: rawOpenai.textEmbeddingModel,
-    imageModel: rawOpenai.imageModel,
-    chat: rawOpenai.chat,
-    completion: rawOpenai.completion,
-    embedding: rawOpenai.embedding,
-    image: rawOpenai.image,
-    responses: rawOpenai.responses,
-  },
-) as unknown as OpenAIProvider;
+export const openai: OpenAIProvider = createInstrumentedOpenAI();
