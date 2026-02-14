@@ -1,7 +1,7 @@
 # UpSight Brand Brief
 
 > **Document Purpose**: Canonical strategic foundation for all marketing, sales, product communications, and GTM execution. This is the single source of truth for positioning.
-> **Version**: 3.0 | **Date**: February 14, 2026
+> **Version**: 3.1 | **Date**: February 14, 2026
 > **Status**: Active
 
 ---
@@ -157,7 +157,38 @@ A platform that turns customer conversations into intelligence you can trust and
 
 CRM has specific associations (pipeline management, deal tracking, activity logging) that position UpSight against Salesforce, HubSpot, Clarify, and Nutshell — where we lose on integrations, ecosystem maturity, and pricing. CRM features exist in the product (contact management, organization tracking), but they are not the value proposition. CRM is a **feature**, not our **category**.
 
-### 4.3 Category Positioning
+### 4.3 YC Validation: "Cursor for Product Managers"
+
+Y Combinator's Spring 2026 Request for Startups lists **"Cursor for Product Managers"** as the #1 opportunity. Their framing:
+
+> "Cursor and Claude Code are great at helping teams build software once it's clear what needs to be built. But writing code is only part of building a product people want. **The most important part is figuring out what to build in the first place.**"
+
+YC's vision: upload customer interviews and product usage data → ask "what should we build next?" → get evidence-backed feature outlines → task breakdown for coding agents.
+
+**This is UpSight's pipeline.** Customer voice → evidence with receipts → themes & insights → action items.
+
+**Why this matters for positioning:**
+
+| YC's Thesis | UpSight's Reality |
+|-------------|-------------------|
+| AI forced the bottleneck upstream — from coding to deciding *what* to build | Our entire value prop is "build the right thing" |
+| Upload customer interviews, ask what to build | Our upload → synthesis → insight flow |
+| Evidence-backed recommendations | "Every insight shows its receipts" |
+| No comprehensive solution exists | Point solutions cover pieces; nobody connects voice → evidence → decision → action |
+
+**Where emerging competitors fall short:**
+
+| Competitor | What They Do | What's Missing |
+|------------|-------------|----------------|
+| **Mimir** (HN Feb 2026) | "Cursor for PMs" — PRD generation | No customer voice input. Starts *after* you already think you know what to build. |
+| **ChatPRD** | AI PRD generation, roadmap planning | Same gap — helps you write the PRD, not figure out if it's worth writing. |
+| **Dart** (YC W22) | "Cursor for Project Management" | Task management, not product discovery. Different problem. |
+| **VoicePanel** (YC W24) | Automated customer research | Research input only — no synthesis → decision → action pipeline. |
+| **BuildBetter** | AI customer feedback analysis | Feedback analysis only. No end-to-end discovery workflow. |
+
+**Our unique position**: We're the only tool that starts from *real customer voice* and connects it all the way through to defensible decisions. ChatPRD helps you write the PRD. We help you figure out if the PRD is worth writing.
+
+### 4.4 Category Positioning
 
 ```
 RESEARCH TOOLS                         SALES TOOLS
@@ -267,6 +298,9 @@ RESEARCH TOOLS                         SALES TOOLS
 | **Gong** | Sales call coaching ($300M+ ARR) | For the whole company, not just sales. Evidence for decisions, not coaching. | **High** (different market) |
 | **Looppanel** | Interview analysis ($27/mo) | End-to-end: capture, synthesize, connect to action. Not just analysis. | **Medium** |
 | **Clarify** | AI-native CRM (free + credits) | Depth of research analysis. Not a CRM competitor. | **Medium** |
+| **Mimir** | "Cursor for PMs" — PRD generation | Starts after you decide. We start from customer voice. No evidence traceability. | **Low** (early) |
+| **ChatPRD** | AI PRD generation + roadmap planning | Same gap — no customer voice input. Helps write the PRD, not decide if it's worth writing. | **Low** |
+| **Dart** (YC W22) | "Cursor for Project Management" | Project management, not product discovery. Different problem entirely. | **Low** |
 | **Notion + AI** | Docs with AI bolted on | Purpose-built for customer evidence. Not a general-purpose tool. | **Low** |
 
 ### 6.3 VoicePanel (Key Competitor Deep Dive)
@@ -312,7 +346,18 @@ RESEARCH TOOLS                         SALES TOOLS
 | **Supporting** | "Build the right thing, faster." | Product pages, feature context, action-oriented moments |
 | **Proof** | "Every insight shows its receipts." | Differentiation, competitive positioning, trust |
 
-### 7.2 Headlines by Context
+### 7.2 The "Upstream Bottleneck" Narrative
+
+Use in investor conversations, thought leadership, and category definition content:
+
+> AI made building software trivially fast. But building the *right* software? That's the bottleneck now. The teams that win aren't the ones who ship fastest — they're the ones who know what's worth shipping. That requires evidence, not opinions. UpSight is how you get it.
+
+**Key talking points:**
+- "Code is cheap now. Conviction is expensive." — AI coding tools solved execution. The constraint moved upstream to discovery and decision-making.
+- "YC's #1 startup idea for 2026 is literally what we built." — External validation for the category.
+- "Everyone's building AI tools for *after* you decide what to build. We help you make the decision." — Positions against ChatPRD, Cursor, Dart, and AI coding tools.
+
+### 7.3 Headlines by Context
 
 | Context | Headline |
 |---------|----------|
@@ -616,6 +661,7 @@ We're the person you want in the room when decisions get hard.
 | Sales teams? | **Deprioritized.** Not in GTM messaging. | No convincing case for early focus. Features exist but don't drive positioning. |
 | "Build the right thing" vs. "Make better decisions"? | **"Build the right thing"** as supporting message | More concrete, more actionable, applies to consultants (build the right SOW) and PMs alike |
 | AI skepticism angle? | **Yes, lean in.** "AI can say anything. We show where it came from." | Timely, differentiated, grounded. Matches "Trusted Operator" archetype. |
+| YC "Cursor for PMs" alignment? | **Yes, lean in.** Use for investor narrative and category validation. | YC's #1 RFS describes our pipeline. We're the only tool that starts from customer voice and connects to action. Emerging competitors (Mimir, ChatPRD) start *after* the decision is already made. |
 
 ### Open Questions (Remaining)
 
@@ -666,6 +712,7 @@ Moved to `./archive/`. Informed this brief but are no longer canonical.
 | 1.0 | Feb 2026 | Initial brand brief |
 | 2.0 | Feb 2026 | Elevated value prop from "receipts" to "build the right thing, faster" |
 | 3.0 | Feb 14, 2026 | **Master consolidation.** Promoted to canonical positioning doc. New primary tagline ("Get your customers. Build conviction."). Dropped CRM framing. Added post-launch founder persona. Deprecated sales persona from GTM. Added VoicePanel competitive entry. Integrated consultant beachhead strategy. Resolved all open questions from v2. Established document hierarchy across all market docs. |
+| 3.1 | Feb 14, 2026 | **YC validation.** Added Section 4.3 (YC "Cursor for PMs" RFS alignment). Added "Upstream Bottleneck" investor narrative (Section 7.2). Added Mimir, ChatPRD, Dart to competitive table. Key line: "ChatPRD helps you write the PRD. We help you figure out if the PRD is worth writing." |
 
 ---
 
