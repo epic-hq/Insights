@@ -8,8 +8,9 @@
  * - Automatic interruption on new messages or toggle-off
  * - Coexistence with LiveKit voice chat (auto-disables during calls)
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+
 import consola from "consola";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const TTS_STORAGE_KEY = "uppy-tts-enabled";
 const TTS_API_PATH = "/api/tts";

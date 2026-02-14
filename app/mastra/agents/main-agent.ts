@@ -9,33 +9,32 @@ import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 import { upsightTool } from "../tools/upsight-tool";
 
 export const AgentState = z.object({
-  plan: z.array(z.string()).default([]),
-  projectStatus: z
-    .object({
-      keyFindings: z.array(z.string()).default([]),
-      nextSteps: z.array(z.string()).default([]),
-      totalInsights: z.number().default(0),
-      totalInterviews: z.number().default(0),
-      totalOpportunities: z.number().default(0),
-      totalPeople: z.number().default(0),
-      totalPersonas: z.number().default(0),
-      lastUpdated: z.string().optional(),
-      currentProject: z.string().optional(),
-      currentAccount: z.string().optional(),
-      projectName: z.string().optional(),
-      currentPhase: z.string().optional(),
-      progressPercent: z.number().default(0),
-      must_do: z.string().optional(),
-    })
-    .optional(),
+	plan: z.array(z.string()).default([]),
+	projectStatus: z
+		.object({
+			keyFindings: z.array(z.string()).default([]),
+			nextSteps: z.array(z.string()).default([]),
+			totalInsights: z.number().default(0),
+			totalInterviews: z.number().default(0),
+			totalOpportunities: z.number().default(0),
+			totalPeople: z.number().default(0),
+			totalPersonas: z.number().default(0),
+			lastUpdated: z.string().optional(),
+			currentProject: z.string().optional(),
+			currentAccount: z.string().optional(),
+			projectName: z.string().optional(),
+			currentPhase: z.string().optional(),
+			progressPercent: z.number().default(0),
+			must_do: z.string().optional(),
+		})
+		.optional(),
 });
 
 export const mainAgent = new Agent({
-  id: "main-agent",
-  name: "Main Agent",
-  description:
-    "Main agent for handling user queries and looking up user research data",
-  instructions: `
+	id: "main-agent",
+	name: "Main Agent",
+	description: "Main agent for handling user queries and looking up user research data",
+	instructions: `
       You are a business analyst with powerful data science skills specializing in user research and product insights.
 
       Your primary role is to:
@@ -72,19 +71,19 @@ export const mainAgent = new Agent({
       - Context about what the data reveals about user needs and opportunities
       - Identification of critical tasks that should be marked as "must_do"
 `,
-  model: openai("gpt-5-mini"),
-  tools: wrapToolsWithStatusEvents({
-    upsight_search: upsightTool,
-    manage_organizations: manageOrganizationsTool,
-    manage_people: managePeopleTool,
-  }),
-  memory: new Memory({
-    storage: getSharedPostgresStore(),
-    options: {
-      workingMemory: {
-        enabled: true,
-        schema: AgentState,
-      },
-    },
-  }),
+	model: openai("gpt-5-mini"),
+	tools: wrapToolsWithStatusEvents({
+		upsight_search: upsightTool,
+		manage_organizations: manageOrganizationsTool,
+		manage_people: managePeopleTool,
+	}),
+	memory: new Memory({
+		storage: getSharedPostgresStore(),
+		options: {
+			workingMemory: {
+				enabled: true,
+				schema: AgentState,
+			},
+		},
+	}),
 });

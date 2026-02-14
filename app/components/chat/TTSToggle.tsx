@@ -17,7 +17,13 @@ interface TTSToggleProps {
 	variant?: "light" | "dark";
 }
 
-export function TTSToggle({ isEnabled, isPlaying, isDisabledByVoiceChat, onToggle, variant = "light" }: TTSToggleProps) {
+export function TTSToggle({
+	isEnabled,
+	isPlaying,
+	isDisabledByVoiceChat,
+	onToggle,
+	variant = "light",
+}: TTSToggleProps) {
 	const tooltipText = isDisabledByVoiceChat
 		? "TTS disabled during voice call"
 		: isEnabled

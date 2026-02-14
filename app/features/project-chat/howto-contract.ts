@@ -1,3 +1,6 @@
+import { HOST } from "~/paths";
+import { createRouteDefinitions } from "~/utils/route-definitions";
+
 export const HOWTO_REQUIRED_SECTION_HEADERS = [
 	"direct answer",
 	"do this now",
@@ -32,11 +35,12 @@ export function evaluateHowtoResponseContract(text: string): HowtoContractEvalua
 }
 
 export function buildHowtoQuickLinks(accountId: string, projectId: string): string {
-	const projectBase = accountId && projectId ? `/a/${accountId}/${projectId}` : "";
-	if (projectBase) {
-		return `- [People](${projectBase}/people)\n- [Insights](${projectBase}/insights)\n- [Ask](${projectBase}/ask)`;
+	if (accountId && projectId) {
+		const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
+		return `- [People](${HOST}${routes.people.index()})\n- [Insights](${HOST}${routes.insights.index()})\n- [Ask](${HOST}${routes.ask.index()})`;
 	}
-	return "- [Docs](/docs)\n- [Help](/help)";
+	const routes = createRouteDefinitions("");
+	return `- [Docs](${HOST}${routes.docs()})\n- [Help](${HOST}${routes.help()})`;
 }
 
 export function buildHowtoContractPatchText(existingText: string, accountId: string, projectId: string): string | null {

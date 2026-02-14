@@ -1,3 +1,4 @@
+```mermaid
 flowchart TB
   %% ========== INGEST + PIPELINE ==========
   subgraph Fly["Fly.io: Your App + Jobs"]
@@ -44,7 +45,7 @@ flowchart TB
   end
 
   %% ========== FLOW ==========
-  BAML -->|"responses.create()\n(model:auto + policy tags)" LB
+  BAML -.->|"responses.create()\n(model:auto + policy tags)"| LB
 
   ROUTE --> OAI
   ROUTE --> ANT
@@ -67,8 +68,9 @@ flowchart TB
   OBS --> OTEL
 
   %% ========== POLICY CAPABILITIES (ANNOTATIONS) ==========
-  BAML -. "adds tags/hints:\n- evidence_extraction\n- tier=fast\n- max_cost_usd=0.03\n- fallbacks=[...]" .-> ROUTE
-  GUARD -. "enforce:\n- JSON schema required\n- PII redaction\n- content rules" .-> BAML
-  BUDGET -. "enforce:\n- per-step $ cap\n- per-user RPM\n- per-org TPM" .-> MAS
-  RELIAB -. "enforce:\n- retries on 5xx\n- timeouts\n- circuit breaker" .-> TD
-  TOOLS -. "enforce:\n- allowlist tools\n- deny web/db writes\n- scoped credentials" .-> MCP
+  BAML -.->|"adds tags/hints:\n- evidence_extraction\n- tier=fast\n- max_cost_usd=0.03\n- fallbacks=[...]"| ROUTE
+  GUARD -.->|"enforce:\n- JSON schema required\n- PII redaction\n- content rules"| BAML
+  BUDGET -.->|"enforce:\n- per-step $ cap\n- per-user RPM\n- per-org TPM"| MAS
+  RELIAB -.->|"enforce:\n- retries on 5xx\n- timeouts\n- circuit breaker"| TD
+  TOOLS -.->|"enforce:\n- allowlist tools\n- deny web/db writes\n- scoped credentials"| MCP
+```
