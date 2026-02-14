@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uppy TTS Toggle - Placement Mockups</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        slate: {
+          750: '#293548',
+          850: '#172033',
+          950: '#0d1526',
+        }
+      }
+    }
+  }
+}
+</script>
+<style>
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+  }
+  .tts-active {
+    animation: pulse-ring 1.5s ease-out infinite;
+  }
+  @keyframes soundwave {
+    0%, 100% { height: 4px; }
+    50% { height: 14px; }
+  }
+  .soundwave-bar {
+    animation: soundwave 0.6s ease-in-out infinite;
+  }
+  .soundwave-bar:nth-child(2) { animation-delay: 0.1s; }
+  .soundwave-bar:nth-child(3) { animation-delay: 0.2s; }
+  .soundwave-bar:nth-child(4) { animation-delay: 0.15s; }
+
+  /* Highlight animation for currently-being-read text */
+  @keyframes text-highlight {
+    0% { background-size: 0% 100%; }
+    100% { background-size: 100% 100%; }
+  }
+  .reading-highlight {
+    background: linear-gradient(90deg, rgba(59, 130, 246, 0.15) 100%, transparent 100%);
+    background-size: 0% 100%;
+    background-repeat: no-repeat;
+    animation: text-highlight 3s ease-out forwards;
+    border-radius: 4px;
+    padding: 1px 2px;
+    margin: -1px -2px;
+  }
+</style>
+</head>
+<body class="bg-gray-950 text-white p-8 min-h-screen">
+
+<!-- Title -->
+<div class="max-w-5xl mx-auto mb-12">
+  <h1 class="text-3xl font-bold mb-2">Uppy TTS Toggle — Placement Mockups</h1>
+  <p class="text-slate-400">Three options for where to put the speaker button, plus interaction states</p>
+  <div class="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+    <p class="text-blue-300 text-sm font-medium">Recommendation: Option A (Header)</p>
+    <p class="text-slate-400 text-sm mt-1">Global toggle that persists across messages. Clean separation from input controls. Matches the existing header button pattern (New chat, Minimize).</p>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- OPTION A: Header placement (RECOMMENDED)     -->
+<!-- ============================================ -->
+<div class="max-w-5xl mx-auto mb-16">
+  <h2 class="text-xl font-semibold mb-1 flex items-center gap-2">
+    <span class="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">RECOMMENDED</span>
+    Option A: Header — Between Thread Selector and New Chat
+  </h2>
+  <p class="text-slate-400 text-sm mb-4">Speaker icon sits in the header button row. Acts as a global session toggle. Clean, discoverable, doesn't clutter the input area.</p>
+
+  <div class="flex gap-8">
+    <!-- OFF state -->
+    <div>
+      <p class="text-xs text-slate-500 mb-2 font-mono uppercase tracking-wider">TTS Off (default)</p>
+      <div class="w-[380px] bg-slate-900 rounded-2xl border border-white/[0.08] overflow-hidden shadow-2xl">
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-white/[0.08] px-4 py-2.5">
+          <div class="flex items-center gap-2.5">
+            <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
+              <svg class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+            </div>
+            <span class="font-semibold text-sm text-white">Uppy Assistant</span>
+          </div>
+          <div class="flex items-center gap-0.5">
+            <!-- Thread selector placeholder -->
+            <button class="h-7 px-2 text-slate-400 hover:text-white flex items-center gap-1 rounded-md text-xs">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </button>
+            <!-- 🔊 TTS TOGGLE — OFF STATE -->
+            <button class="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-white rounded-md transition-colors" title="Read responses aloud">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+                <path d="M15.54 8.46a5 5 0 010 7.07"/>
+                <path d="M19.07 4.93a10 10 0 010 14.14" opacity="0.4"/>
+              </svg>
+            </button>
+            <!-- New chat -->
+            <button class="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-white rounded-md">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <!-- Minimize -->
+            <button class="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-white rounded-md">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+            </button>
+          </div>
+        </div>
+        <!-- Messages -->
+        <div class="p-3 space-y-3 h-[280px] overflow-y-auto">
+          <div>
+            <p class="text-[11px] font-medium text-blue-300 mb-1">You</p>
+            <div class="bg-blue-600/30 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[85%]">
+              What's the status of our onboarding funnel?
+            </div>
+          </div>
+          <div>
+            <p class="text-[11px] font-medium text-slate-400 mb-1">Uppy Assistant</p>
+            <div class="bg-slate-700/60 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[95%] text-slate-200">
+              Based on 12 interviews this month, your onboarding funnel has 3 key pain points: step 2 confusion (mentioned by 8 people), slow loading on mobile (5 mentions), and unclear pricing tier selection (4 mentions).
+            </div>
+          </div>
+        </div>
+        <!-- Input -->
+        <div class="p-3 pt-0">
+          <div class="relative">
+            <textarea class="w-full min-h-[60px] resize-none rounded-xl pr-20 border border-white/10 bg-slate-700/60 text-slate-100 placeholder:text-slate-400 px-3 py-2 text-sm" placeholder="Ask Uppy anything..." rows="2"></textarea>
+            <div class="absolute right-2 bottom-2 flex items-center gap-1">
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              </button>
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg bg-blue-600 text-white">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="mt-1.5 flex items-center">
+            <div class="ml-auto">
+              <button class="flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-slate-800 px-3 text-sm text-slate-300">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                Voice
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ON state (actively reading) -->
+    <div>
+      <p class="text-xs text-slate-500 mb-2 font-mono uppercase tracking-wider">TTS On — Reading Response</p>
+      <div class="w-[380px] bg-slate-900 rounded-2xl border border-white/[0.08] overflow-hidden shadow-2xl">
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-white/[0.08] px-4 py-2.5">
+          <div class="flex items-center gap-2.5">
+            <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
+              <svg class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+            </div>
+            <span class="font-semibold text-sm text-white">Uppy Assistant</span>
+          </div>
+          <div class="flex items-center gap-0.5">
+            <button class="h-7 px-2 text-slate-400 hover:text-white flex items-center gap-1 rounded-md text-xs">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </button>
+            <!-- 🔊 TTS TOGGLE — ON STATE (pulsing) -->
+            <button class="h-7 w-7 flex items-center justify-center text-blue-400 rounded-md bg-blue-500/15 tts-active transition-colors" title="Reading aloud (click to stop)">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+                <path d="M15.54 8.46a5 5 0 010 7.07"/>
+                <path d="M19.07 4.93a10 10 0 010 14.14"/>
+              </svg>
+            </button>
+            <button class="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-white rounded-md">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button class="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-white rounded-md">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+            </button>
+          </div>
+        </div>
+        <!-- Messages with reading indicator -->
+        <div class="p-3 space-y-3 h-[280px] overflow-y-auto">
+          <div>
+            <p class="text-[11px] font-medium text-blue-300 mb-1">You</p>
+            <div class="bg-blue-600/30 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[85%]">
+              What's the status of our onboarding funnel?
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <p class="text-[11px] font-medium text-slate-400">Uppy Assistant</p>
+              <!-- Soundwave indicator next to label -->
+              <div class="flex items-end gap-[2px] h-3">
+                <div class="w-[2px] bg-blue-400 rounded-full soundwave-bar" style="height: 4px;"></div>
+                <div class="w-[2px] bg-blue-400 rounded-full soundwave-bar" style="height: 10px;"></div>
+                <div class="w-[2px] bg-blue-400 rounded-full soundwave-bar" style="height: 6px;"></div>
+                <div class="w-[2px] bg-blue-400 rounded-full soundwave-bar" style="height: 12px;"></div>
+              </div>
+            </div>
+            <div class="bg-slate-700/60 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[95%] text-slate-200 ring-1 ring-blue-500/20">
+              <span class="reading-highlight">Based on 12 interviews this month, your onboarding funnel has 3 key pain points:</span> step 2 confusion (mentioned by 8 people), slow loading on mobile (5 mentions), and unclear pricing tier selection (4 mentions).
+            </div>
+          </div>
+        </div>
+        <!-- Input (same) -->
+        <div class="p-3 pt-0">
+          <div class="relative">
+            <textarea class="w-full min-h-[60px] resize-none rounded-xl pr-20 border border-white/10 bg-slate-700/60 text-slate-100 placeholder:text-slate-400 px-3 py-2 text-sm" placeholder="Ask Uppy anything..." rows="2"></textarea>
+            <div class="absolute right-2 bottom-2 flex items-center gap-1">
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              </button>
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg bg-blue-600 text-white">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="mt-1.5 flex items-center">
+            <div class="ml-auto">
+              <button class="flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-slate-800 px-3 text-sm text-slate-300">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                Voice
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- OPTION B: Input area (next to mic)           -->
+<!-- ============================================ -->
+<div class="max-w-5xl mx-auto mb-16">
+  <h2 class="text-xl font-semibold mb-1">Option B: Input Area — Next to Mic Button</h2>
+  <p class="text-slate-400 text-sm mb-4">Speaker icon sits to the left of the mic button inside the textarea. Groups all audio controls together. Downside: makes the bottom-right area more crowded (3 buttons).</p>
+
+  <div class="flex gap-8">
+    <!-- OFF state -->
+    <div>
+      <p class="text-xs text-slate-500 mb-2 font-mono uppercase tracking-wider">TTS Off</p>
+      <div class="w-[380px] bg-slate-900 rounded-2xl border border-white/[0.08] overflow-hidden shadow-2xl">
+        <!-- Header (normal, no speaker icon) -->
+        <div class="flex items-center justify-between border-b border-white/[0.08] px-4 py-2.5">
+          <div class="flex items-center gap-2.5">
+            <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
+              <svg class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+            </div>
+            <span class="font-semibold text-sm text-white">Uppy Assistant</span>
+          </div>
+          <div class="flex items-center gap-0.5">
+            <button class="h-7 w-7 flex items-center justify-center text-slate-400 rounded-md">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button class="h-7 w-7 flex items-center justify-center text-slate-400 rounded-md">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+            </button>
+          </div>
+        </div>
+        <!-- Messages (abbreviated) -->
+        <div class="p-3 space-y-3 h-[280px] overflow-y-auto">
+          <div>
+            <p class="text-[11px] font-medium text-blue-300 mb-1">You</p>
+            <div class="bg-blue-600/30 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[85%]">
+              What's the status of our onboarding funnel?
+            </div>
+          </div>
+          <div>
+            <p class="text-[11px] font-medium text-slate-400 mb-1">Uppy Assistant</p>
+            <div class="bg-slate-700/60 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[95%] text-slate-200">
+              Based on 12 interviews this month, your onboarding funnel has 3 key pain points...
+            </div>
+          </div>
+        </div>
+        <!-- Input with speaker icon -->
+        <div class="p-3 pt-0">
+          <div class="relative">
+            <textarea class="w-full min-h-[60px] resize-none rounded-xl pr-24 border border-white/10 bg-slate-700/60 text-slate-100 placeholder:text-slate-400 px-3 py-2 text-sm" placeholder="Ask Uppy anything..." rows="2"></textarea>
+            <div class="absolute right-2 bottom-2 flex items-center gap-1">
+              <!-- 🔊 TTS TOGGLE in input area -->
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white transition-colors" title="Read responses aloud">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+                  <path d="M15.54 8.46a5 5 0 010 7.07"/>
+                  <path d="M19.07 4.93a10 10 0 010 14.14" opacity="0.4"/>
+                </svg>
+              </button>
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              </button>
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg bg-blue-600 text-white">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ON state -->
+    <div>
+      <p class="text-xs text-slate-500 mb-2 font-mono uppercase tracking-wider">TTS On</p>
+      <div class="w-[380px] bg-slate-900 rounded-2xl border border-white/[0.08] overflow-hidden shadow-2xl">
+        <div class="flex items-center justify-between border-b border-white/[0.08] px-4 py-2.5">
+          <div class="flex items-center gap-2.5">
+            <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
+              <svg class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+            </div>
+            <span class="font-semibold text-sm text-white">Uppy Assistant</span>
+          </div>
+          <div class="flex items-center gap-0.5">
+            <button class="h-7 w-7 flex items-center justify-center text-slate-400 rounded-md">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button class="h-7 w-7 flex items-center justify-center text-slate-400 rounded-md">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="p-3 space-y-3 h-[280px] overflow-y-auto">
+          <div>
+            <p class="text-[11px] font-medium text-blue-300 mb-1">You</p>
+            <div class="bg-blue-600/30 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[85%]">
+              What's the status of our onboarding funnel?
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <p class="text-[11px] font-medium text-slate-400">Uppy Assistant</p>
+              <div class="flex items-end gap-[2px] h-3">
+                <div class="w-[2px] bg-blue-400 rounded-full soundwave-bar" style="height: 4px;"></div>
+                <div class="w-[2px] bg-blue-400 rounded-full soundwave-bar" style="height: 10px;"></div>
+                <div class="w-[2px] bg-blue-400 rounded-full soundwave-bar" style="height: 6px;"></div>
+                <div class="w-[2px] bg-blue-400 rounded-full soundwave-bar" style="height: 12px;"></div>
+              </div>
+            </div>
+            <div class="bg-slate-700/60 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[95%] text-slate-200 ring-1 ring-blue-500/20">
+              <span class="reading-highlight">Based on 12 interviews this month, your onboarding funnel has 3 key pain points:</span> step 2 confusion (mentioned by 8 people), slow loading on mobile...
+            </div>
+          </div>
+        </div>
+        <div class="p-3 pt-0">
+          <div class="relative">
+            <textarea class="w-full min-h-[60px] resize-none rounded-xl pr-24 border border-white/10 bg-slate-700/60 text-slate-100 placeholder:text-slate-400 px-3 py-2 text-sm" placeholder="Ask Uppy anything..." rows="2"></textarea>
+            <div class="absolute right-2 bottom-2 flex items-center gap-1">
+              <!-- 🔊 TTS ON in input area -->
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg text-blue-400 bg-blue-500/15 tts-active transition-colors" title="Reading aloud (click to mute)">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+                  <path d="M15.54 8.46a5 5 0 010 7.07"/>
+                  <path d="M19.07 4.93a10 10 0 010 14.14"/>
+                </svg>
+              </button>
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              </button>
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg bg-blue-600 text-white">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- OPTION C: Per-message play button            -->
+<!-- ============================================ -->
+<div class="max-w-5xl mx-auto mb-16">
+  <h2 class="text-xl font-semibold mb-1">Option C: Per-Message Play Button (on hover)</h2>
+  <p class="text-slate-400 text-sm mb-4">No global toggle — instead, each assistant message gets a small play button on hover. User clicks to hear a specific response. Good for selective playback, but no auto-read.</p>
+  <p class="text-amber-400/80 text-sm mb-4">Note: This could be combined with Option A — global auto-read toggle in header + per-message replay buttons on hover.</p>
+
+  <div class="flex gap-8">
+    <div>
+      <p class="text-xs text-slate-500 mb-2 font-mono uppercase tracking-wider">Hover state — play button appears</p>
+      <div class="w-[380px] bg-slate-900 rounded-2xl border border-white/[0.08] overflow-hidden shadow-2xl">
+        <div class="flex items-center justify-between border-b border-white/[0.08] px-4 py-2.5">
+          <div class="flex items-center gap-2.5">
+            <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
+              <svg class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+            </div>
+            <span class="font-semibold text-sm text-white">Uppy Assistant</span>
+          </div>
+          <div class="flex items-center gap-0.5">
+            <button class="h-7 w-7 flex items-center justify-center text-slate-400 rounded-md">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button class="h-7 w-7 flex items-center justify-center text-slate-400 rounded-md">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="p-3 space-y-3 h-[320px] overflow-y-auto">
+          <div>
+            <p class="text-[11px] font-medium text-blue-300 mb-1">You</p>
+            <div class="bg-blue-600/30 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[85%]">
+              What's the status of our onboarding funnel?
+            </div>
+          </div>
+          <!-- First message (not hovered) -->
+          <div class="group relative">
+            <p class="text-[11px] font-medium text-slate-400 mb-1">Uppy Assistant</p>
+            <div class="bg-slate-700/60 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[95%] text-slate-200">
+              Based on 12 interviews this month, your onboarding funnel has 3 key pain points: step 2 confusion (mentioned by 8 people), slow loading on mobile (5 mentions), and unclear pricing tier selection (4 mentions).
+            </div>
+            <!-- Play button (always visible in mockup, hover in real) -->
+            <button class="absolute -right-1 top-5 h-6 w-6 flex items-center justify-center rounded-full bg-slate-700 border border-white/10 text-slate-300 hover:text-white hover:bg-slate-600 shadow-lg transition-all" title="Play this response">
+              <svg class="h-3 w-3 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </button>
+          </div>
+          <!-- Second message (playing) -->
+          <div>
+            <p class="text-[11px] font-medium text-blue-300 mb-1">You</p>
+            <div class="bg-blue-600/30 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[85%]">
+              What should we prioritize fixing first?
+            </div>
+          </div>
+          <div class="group relative">
+            <div class="flex items-center gap-2 mb-1">
+              <p class="text-[11px] font-medium text-slate-400">Uppy Assistant</p>
+              <div class="flex items-end gap-[2px] h-3">
+                <div class="w-[2px] bg-blue-400 rounded-full soundwave-bar" style="height: 4px;"></div>
+                <div class="w-[2px] bg-blue-400 rounded-full soundwave-bar" style="height: 10px;"></div>
+                <div class="w-[2px] bg-blue-400 rounded-full soundwave-bar" style="height: 6px;"></div>
+                <div class="w-[2px] bg-blue-400 rounded-full soundwave-bar" style="height: 12px;"></div>
+              </div>
+            </div>
+            <div class="bg-slate-700/60 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[95%] text-slate-200 ring-1 ring-blue-500/20">
+              <span class="reading-highlight">I'd prioritize the step 2 confusion — it has the highest mention count and directly impacts conversion.</span> The loading issue is likely a quick technical fix. Pricing tier clarity might need design iteration.
+            </div>
+            <!-- Stop button (replaces play when active) -->
+            <button class="absolute -right-1 top-5 h-6 w-6 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-lg tts-active" title="Stop reading">
+              <svg class="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="p-3 pt-0">
+          <div class="relative">
+            <textarea class="w-full min-h-[60px] resize-none rounded-xl pr-20 border border-white/10 bg-slate-700/60 text-slate-100 placeholder:text-slate-400 px-3 py-2 text-sm" placeholder="Ask Uppy anything..." rows="2"></textarea>
+            <div class="absolute right-2 bottom-2 flex items-center gap-1">
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              </button>
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg bg-blue-600 text-white">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Combo callout -->
+    <div class="flex items-center">
+      <div class="w-[340px] p-6 bg-slate-800/60 border border-white/10 rounded-xl">
+        <h3 class="font-semibold text-white mb-3">Best combo: A + C</h3>
+        <ul class="space-y-2 text-sm text-slate-300">
+          <li class="flex items-start gap-2">
+            <span class="text-blue-400 mt-0.5">1.</span>
+            <span><strong class="text-white">Header toggle (A)</strong> — global auto-read for new responses. Session-persistent.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-blue-400 mt-0.5">2.</span>
+            <span><strong class="text-white">Per-message play (C)</strong> — replay any past response on hover. Works whether toggle is on or off.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-blue-400 mt-0.5">3.</span>
+            <span><strong class="text-white">Interruption</strong> — clicking the header toggle, clicking a per-message stop button, or sending a new message all stop playback.</span>
+          </li>
+        </ul>
+        <div class="mt-4 pt-4 border-t border-white/10">
+          <p class="text-xs text-slate-400">
+            <strong class="text-slate-300">Voice button distinction:</strong> Mic = speech-to-text input (you talk). Speaker = text-to-speech output (Uppy talks). Phone = full duplex voice call (LiveKit). Three different affordances, three different icons, zero confusion.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- INTERACTION STATES                           -->
+<!-- ============================================ -->
+<div class="max-w-5xl mx-auto mb-16">
+  <h2 class="text-xl font-semibold mb-4">Interaction States & Behavior</h2>
+
+  <div class="grid grid-cols-2 gap-6">
+    <!-- State: New message while reading -->
+    <div class="bg-slate-800/60 border border-white/10 rounded-xl p-5">
+      <h3 class="font-semibold text-white mb-2 flex items-center gap-2">
+        <span class="h-6 w-6 flex items-center justify-center rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold">!</span>
+        New message arrives while reading
+      </h3>
+      <p class="text-slate-300 text-sm mb-3">When user sends a new message while TTS is playing:</p>
+      <ol class="space-y-1 text-sm text-slate-400">
+        <li>1. <strong class="text-slate-200">Stop</strong> current playback immediately</li>
+        <li>2. <strong class="text-slate-200">Cancel</strong> any queued audio chunks</li>
+        <li>3. <strong class="text-slate-200">Wait</strong> for new response to start streaming</li>
+        <li>4. <strong class="text-slate-200">Begin</strong> reading new response (if toggle still on)</li>
+      </ol>
+    </div>
+
+    <!-- State: Streaming response -->
+    <div class="bg-slate-800/60 border border-white/10 rounded-xl p-5">
+      <h3 class="font-semibold text-white mb-2 flex items-center gap-2">
+        <span class="h-6 w-6 flex items-center justify-center rounded-full bg-green-500/20 text-green-400 text-xs font-bold">&raquo;</span>
+        Streaming TTS (sentence chunking)
+      </h3>
+      <p class="text-slate-300 text-sm mb-3">Don't wait for full response. Stream audio by sentence:</p>
+      <ol class="space-y-1 text-sm text-slate-400">
+        <li>1. Buffer text until sentence boundary (. ! ? or newline)</li>
+        <li>2. Send sentence to OpenAI TTS API (streaming endpoint)</li>
+        <li>3. Play audio chunk while buffering next sentence</li>
+        <li>4. Overlap: fetch chunk N+1 while playing chunk N</li>
+      </ol>
+      <p class="text-xs text-slate-500 mt-2">Perceived latency: ~300ms from first sentence complete to audio start</p>
+    </div>
+
+    <!-- State: Toggle persistence -->
+    <div class="bg-slate-800/60 border border-white/10 rounded-xl p-5">
+      <h3 class="font-semibold text-white mb-2 flex items-center gap-2">
+        <span class="h-6 w-6 flex items-center justify-center rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold">S</span>
+        Session persistence
+      </h3>
+      <p class="text-slate-300 text-sm mb-3">Toggle state persists via:</p>
+      <ul class="space-y-1 text-sm text-slate-400">
+        <li>- <code class="text-slate-300 bg-slate-700 px-1 rounded text-xs">localStorage</code> key: <code class="text-slate-300 bg-slate-700 px-1 rounded text-xs">uppy-tts-enabled</code></li>
+        <li>- Survives page refresh and new chat sessions</li>
+        <li>- Does NOT auto-play past messages on load</li>
+        <li>- Only triggers on NEW assistant responses</li>
+      </ul>
+    </div>
+
+    <!-- State: Voice chat coexistence -->
+    <div class="bg-slate-800/60 border border-white/10 rounded-xl p-5">
+      <h3 class="font-semibold text-white mb-2 flex items-center gap-2">
+        <span class="h-6 w-6 flex items-center justify-center rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold">V</span>
+        Voice chat coexistence
+      </h3>
+      <p class="text-slate-300 text-sm mb-3">When LiveKit voice chat is active:</p>
+      <ul class="space-y-1 text-sm text-slate-400">
+        <li>- <strong class="text-slate-200">Auto-disable TTS toggle</strong> (LiveKit handles audio)</li>
+        <li>- Show tooltip: "TTS disabled during voice call"</li>
+        <li>- <strong class="text-slate-200">Re-enable when call ends</strong> (restore previous state)</li>
+        <li>- Per-message play buttons hidden during call</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- STANDALONE MODE                              -->
+<!-- ============================================ -->
+<div class="max-w-5xl mx-auto mb-16">
+  <h2 class="text-xl font-semibold mb-1">Standalone Mode (Light Theme Card)</h2>
+  <p class="text-slate-400 text-sm mb-4">Same speaker icon in the header button row, adapted for light theme.</p>
+
+  <div class="flex gap-8">
+    <div>
+      <p class="text-xs text-slate-500 mb-2 font-mono uppercase tracking-wider">TTS Off</p>
+      <div class="w-[360px] bg-white rounded-xl border border-gray-200 overflow-hidden shadow-lg">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+          <div class="flex items-center gap-2">
+            <!-- Wizard icon placeholder -->
+            <div class="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+            </div>
+            <span class="font-semibold text-gray-900">Ask Uppy</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <!-- 🔊 TTS TOGGLE -->
+            <button class="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 border border-transparent transition-colors" title="Read responses aloud">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+                <path d="M15.54 8.46a5 5 0 010 7.07"/>
+                <path d="M19.07 4.93a10 10 0 010 14.14" opacity="0.3"/>
+              </svg>
+            </button>
+            <!-- New chat -->
+            <button class="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 border border-transparent transition-colors">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <!-- Collapse -->
+            <button class="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 border border-transparent transition-colors">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <!-- Messages -->
+        <div class="p-3 space-y-3 h-[200px] overflow-y-auto">
+          <div>
+            <p class="text-[11px] font-medium text-blue-600 mb-1">You</p>
+            <div class="bg-blue-50 text-blue-900 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[85%]">
+              Summarize our latest research
+            </div>
+          </div>
+          <div class="group relative">
+            <p class="text-[11px] font-medium text-gray-500 mb-1">Uppy Assistant</p>
+            <div class="bg-gray-50 text-gray-800 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[95%]">
+              Your research covers 3 themes: onboarding friction, mobile performance, and pricing clarity...
+            </div>
+          </div>
+        </div>
+        <!-- Input -->
+        <div class="p-3 pt-0">
+          <div class="relative">
+            <textarea class="w-full min-h-[52px] resize-none rounded-xl pr-20 border-2 border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 px-3 py-2 text-sm" placeholder="Ask Uppy anything..." rows="2"></textarea>
+            <div class="absolute right-2 bottom-2 flex items-center gap-1">
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              </button>
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg bg-blue-600 text-white">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p class="text-xs text-slate-500 mb-2 font-mono uppercase tracking-wider">TTS On — Reading</p>
+      <div class="w-[360px] bg-white rounded-xl border border-gray-200 overflow-hidden shadow-lg">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+          <div class="flex items-center gap-2">
+            <div class="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+            </div>
+            <span class="font-semibold text-gray-900">Ask Uppy</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <!-- 🔊 TTS ON -->
+            <button class="h-7 w-7 flex items-center justify-center rounded-md text-blue-600 bg-blue-50 tts-active border border-blue-200 transition-colors" title="Reading aloud (click to stop)">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+                <path d="M15.54 8.46a5 5 0 010 7.07"/>
+                <path d="M19.07 4.93a10 10 0 010 14.14"/>
+              </svg>
+            </button>
+            <button class="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 border border-transparent">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button class="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 border border-transparent">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="p-3 space-y-3 h-[200px] overflow-y-auto">
+          <div>
+            <p class="text-[11px] font-medium text-blue-600 mb-1">You</p>
+            <div class="bg-blue-50 text-blue-900 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[85%]">
+              Summarize our latest research
+            </div>
+          </div>
+          <div class="group relative">
+            <div class="flex items-center gap-2 mb-1">
+              <p class="text-[11px] font-medium text-gray-500">Uppy Assistant</p>
+              <div class="flex items-end gap-[2px] h-3">
+                <div class="w-[2px] bg-blue-500 rounded-full soundwave-bar" style="height: 4px;"></div>
+                <div class="w-[2px] bg-blue-500 rounded-full soundwave-bar" style="height: 10px;"></div>
+                <div class="w-[2px] bg-blue-500 rounded-full soundwave-bar" style="height: 6px;"></div>
+                <div class="w-[2px] bg-blue-500 rounded-full soundwave-bar" style="height: 12px;"></div>
+              </div>
+            </div>
+            <div class="bg-gray-50 text-gray-800 rounded-xl rounded-tl-sm px-3 py-2 text-sm max-w-[95%] ring-1 ring-blue-200">
+              <span style="background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 100%, transparent 100%); background-size: 60% 100%; background-repeat: no-repeat; border-radius: 4px; padding: 1px 2px; margin: -1px -2px;">Your research covers 3 themes: onboarding friction,</span> mobile performance, and pricing clarity...
+            </div>
+          </div>
+        </div>
+        <div class="p-3 pt-0">
+          <div class="relative">
+            <textarea class="w-full min-h-[52px] resize-none rounded-xl pr-20 border-2 border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 px-3 py-2 text-sm" placeholder="Ask Uppy anything..." rows="2"></textarea>
+            <div class="absolute right-2 bottom-2 flex items-center gap-1">
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              </button>
+              <button class="h-7 w-7 flex items-center justify-center rounded-lg bg-blue-600 text-white">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Summary -->
+<div class="max-w-5xl mx-auto mb-12 p-6 bg-slate-800/40 border border-white/10 rounded-xl">
+  <h2 class="text-lg font-semibold text-white mb-3">Implementation Summary</h2>
+  <div class="grid grid-cols-3 gap-6 text-sm">
+    <div>
+      <h3 class="text-blue-400 font-medium mb-2">Provider</h3>
+      <p class="text-slate-300">OpenAI TTS (<code class="text-xs bg-slate-700 px-1 rounded">tts-1</code>)</p>
+      <p class="text-slate-400 text-xs mt-1">Voice: "nova" (warm, natural) or "alloy" (neutral)</p>
+      <p class="text-slate-400 text-xs">Cost: ~$0.003 per response</p>
+    </div>
+    <div>
+      <h3 class="text-blue-400 font-medium mb-2">Changes to Existing Code</h3>
+      <ul class="text-slate-300 space-y-1">
+        <li class="text-xs">+ Speaker icon in <code class="bg-slate-700 px-1 rounded">AIAssistantPanel</code> header</li>
+        <li class="text-xs">+ Speaker icon in <code class="bg-slate-700 px-1 rounded">ProjectStatusAgentChat</code> standalone header</li>
+        <li class="text-xs">+ Soundwave indicator on message bubbles</li>
+        <li class="text-xs">+ New hook: <code class="bg-slate-700 px-1 rounded">useTTS()</code></li>
+        <li class="text-xs">+ New API route: <code class="bg-slate-700 px-1 rounded">/api/tts</code></li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="text-blue-400 font-medium mb-2">New Files</h3>
+      <ul class="text-slate-300 space-y-1">
+        <li class="text-xs"><code class="bg-slate-700 px-1 rounded">app/hooks/useTTS.ts</code></li>
+        <li class="text-xs"><code class="bg-slate-700 px-1 rounded">app/features/chat/api/tts.server.ts</code></li>
+        <li class="text-xs"><code class="bg-slate-700 px-1 rounded">app/components/chat/TTSToggle.tsx</code></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
