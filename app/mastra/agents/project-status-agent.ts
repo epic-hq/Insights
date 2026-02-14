@@ -275,10 +275,10 @@ Call "getCurrentDate" first for any date/time questions.
 - Creates People records and Organizations from company column
 - Skips duplicates based on email (in "create" mode) or updates existing (in "upsert" mode)
 - Links people to organizations automatically
-- **FACET COLUMNS**: If parseSpreadsheet returns suggestedFacets, pass them as facetColumns:
-  - Each facetColumn MUST be an object with { column: string, facetKind: string }
-  - Example: facetColumns: [{ column: "Event Name", facetKind: "event" }, { column: "Survey Score", facetKind: "survey_response" }]
-  - DO NOT pass strings - always use the object format
+- **FACET COLUMNS**: If parseSpreadsheet returns suggestedFacets, pass them directly to importPeopleFromTable:
+  - Pass suggestedFacets directly: { assetId, columnMapping, suggestedFacets } - the tool accepts them natively
+  - These become searchable facets on people records (event attended, interest level, custom attributes)
+  - Example: suggestedFacets: [{ column: "Event Name", facetKind: "event" }, { column: "Interest Level", facetKind: "persona" }]
 
 **Opportunity Import** (importOpportunitiesFromTable):
 - Use after parseSpreadsheet when looksLikeOpportunities is true and user confirms import

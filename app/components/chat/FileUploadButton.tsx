@@ -4,7 +4,7 @@
  * Supports CSV files for contact/data import. When a file is selected,
  * it reads the content and calls onFileContent with the text for the agent to process.
  */
-import { Paperclip } from "lucide-react"
+import { Plus } from "lucide-react"
 import { useRef, useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
@@ -98,7 +98,7 @@ export function FileUploadButton({
 						className={cn("h-8 w-8", className)}
 						aria-label="Upload file"
 					>
-						<Paperclip className={cn("h-4 w-4", isLoading && "animate-pulse")} />
+						<Plus className={cn("h-4 w-4", isLoading && "animate-pulse")} />
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent side="top">

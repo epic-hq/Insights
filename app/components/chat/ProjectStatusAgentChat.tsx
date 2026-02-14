@@ -1,7 +1,7 @@
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
-import { ChevronRight, Mic, Paperclip, Plus, Send, Square } from "lucide-react"
+import { ChevronRight, Mic, Plus, Send, Square } from "lucide-react"
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useFetcher, useLocation, useNavigate, useRevalidator } from "react-router"
 import { useStickToBottom } from "use-stick-to-bottom"
@@ -1041,7 +1041,13 @@ export function ProjectStatusAgentChat({
 										placeholder="Ask.."
 										rows={2}
 										disabled={isBusy}
-										className="min-h-[72px] resize-none pr-12"
+										className="min-h-[72px] resize-none pl-10 pr-12"
+									/>
+									{/* File upload button - lower left */}
+									<FileUploadButton
+										onFileContent={handleFileUpload}
+										disabled={isBusy}
+										className="absolute left-2 bottom-2"
 									/>
 									{isVoiceSupported && (
 										<TooltipProvider>
@@ -1077,7 +1083,6 @@ export function ProjectStatusAgentChat({
 										</span>
 									)}
 									<div className="flex items-center gap-2">
-										<FileUploadButton onFileContent={handleFileUpload} disabled={isBusy} />
 										{isVoiceEnabled && <ProjectStatusVoiceChat accountId={accountId} projectId={projectId} />}
 										{isBusy ? (
 											<button
