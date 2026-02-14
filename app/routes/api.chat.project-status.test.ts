@@ -316,6 +316,35 @@ describe("api.chat.project-status", () => {
 		expect(mockedSetActiveBillingContext).toHaveBeenCalledTimes(1);
 	});
 
+	it("bypasses fast-standardized cache when /debug is used", async () => {
+		mockedHandleChatStream.mockImplementation(async ({ params }: any) => {
+			await params.onFinish?.({
+				text: "Status: baseline.",
+				usage: { inputTokens: 60, outputTokens: 12 },
+			});
+			return { kind: "live-chat-stream" } as any;
+		});
+
+		const first = await action(
+			buildArgs({
+				message: "/debug Give me quick standardized project guidance",
+				system: "overview",
+			})
+		);
+		expect(first.status).toBe(200);
+
+		const second = await action(
+			buildArgs({
+				message: "/debug Give me quick standardized project guidance",
+				system: "overview",
+			})
+		);
+		expect(second.status).toBe(200);
+
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(2);
+		expect(mockedCreateUIMessageStream).not.toHaveBeenCalled();
+	});
+
 	it("falls back to projectStatusAgent when routing confidence is below threshold", async () => {
 		mockedGenerateObject.mockResolvedValue({
 			object: {
@@ -647,6 +676,41 @@ describe("api.chat.project-status", () => {
 			.join("\n")
 			.trim();
 		expect(text.length).toBeGreaterThan(0);
+	});
+
+	it("caps research-agent system context at 1200 chars", async () => {
+		mockedGenerateObject.mockResolvedValue({
+			object: {
+				targetAgentId: "researchAgent",
+				confidence: 0.93,
+				responseMode: "normal",
+				rationale: "interview operations request",
+			},
+		} as any);
+		mockedHandleChatStream.mockImplementation(async ({ params }: any) => {
+			await params.onFinish?.({
+				text: "Created interview prompt draft.",
+				usage: { inputTokens: 120, outputTokens: 24 },
+			});
+			return { kind: "live-chat-stream" } as any;
+		});
+
+		const response = await action(
+			buildArgs({
+				message: "Create interview questions for onboarding research",
+				system: "x".repeat(1800),
+			})
+		);
+		expect(response.status).toBe(200);
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+		const call = mockedHandleChatStream.mock.calls[0][0] as any;
+		expect(call.agentId).toBe("researchAgent");
+		expect(call.params.requestContext.get("response_mode")).toBe("normal");
+
+		const contextText = call.params.context[0].content as string;
+		const systemPart = contextText.replace("## Context from the client's UI:\n", "");
+		expect(systemPart.length).toBe(1200);
 	});
 
 	it("routes people and task operational prompts through deterministic projectStatus network", async () => {

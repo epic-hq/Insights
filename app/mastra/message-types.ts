@@ -1,9 +1,12 @@
 import type { UIMessage } from "ai";
 import type { InferMastraUITools } from "./ai-tool-type-helpers";
+import { displayComponentTool } from "./tools/display-component";
+import { displayInterviewPromptsTool } from "./tools/display-interview-prompts";
 import { displayUserQuestionsTool } from "./tools/display-user-questions";
 import { fetchInterviewContextTool } from "./tools/fetch-interview-context";
 import { fetchProjectStatusContextTool } from "./tools/fetch-project-status-context";
 import { navigateToPageTool } from "./tools/navigate-to-page";
+import { requestUserInputTool } from "./tools/request-user-input";
 import { saveProjectSectionsDataTool } from "./tools/save-project-sections-data";
 import { saveUserSettingsDataTool } from "./tools/save-usersettings-data";
 
@@ -22,12 +25,15 @@ import { saveUserSettingsDataTool } from "./tools/save-usersettings-data";
 // type MyDataPart = z.infer<typeof dataPartSchema>;
 
 export const tools = {
-	displayUserQuestions: displayUserQuestionsTool,
-	fetchProjectStatusContext: fetchProjectStatusContextTool,
-	fetchInterviewContext: fetchInterviewContextTool,
-	navigateToPage: navigateToPageTool,
-	saveUserSettingsData: saveUserSettingsDataTool,
-	saveProjectSectionsData: saveProjectSectionsDataTool,
+  displayComponent: displayComponentTool,
+  displayInterviewPrompts: displayInterviewPromptsTool,
+  displayUserQuestions: displayUserQuestionsTool,
+  fetchProjectStatusContext: fetchProjectStatusContextTool,
+  fetchInterviewContext: fetchInterviewContextTool,
+  navigateToPage: navigateToPageTool,
+  requestUserInput: requestUserInputTool,
+  saveUserSettingsData: saveUserSettingsDataTool,
+  saveProjectSectionsData: saveProjectSectionsDataTool,
 };
 
 type UpsightTools = InferMastraUITools<typeof tools>;
