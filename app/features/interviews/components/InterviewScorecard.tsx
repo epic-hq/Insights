@@ -218,130 +218,122 @@ export function InterviewScorecard({
 						</div>
 					)}
 					{/* Actions Dropdown */}
-					{(interview.hasTranscript ||
-						interview.hasFormattedTranscript ||
-						interview.status === "error" ||
-						interview.status === "uploading" ||
-						interview.status === "transcribing" ||
-						interview.status === "processing" ||
-						interview.status === "uploaded") && (
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<button
-									disabled={fetcher.state !== "idle" || deleteFetcher.state !== "idle"}
-									className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
-									title="Actions"
-								>
-									<MoreVertical className="h-4 w-4" />
-									Actions
-								</button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								<DropdownMenuItem
-									onClick={async () => {
-										try {
-											const response = await fetch("/api/interview-restart", {
-												method: "POST",
-												headers: { "Content-Type": "application/json" },
-												body: JSON.stringify({ interviewId: interview.id }),
-											});
-											const result = await response.json();
-											if (result.success) {
-												revalidator.revalidate();
-											} else {
-												consola.error("Restart failed:", result.error || result.message);
-											}
-										} catch (e) {
-											consola.error("Restart processing failed", e);
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<button
+								disabled={fetcher.state !== "idle" || deleteFetcher.state !== "idle"}
+								className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
+								title="Actions"
+							>
+								<MoreVertical className="h-4 w-4" />
+								Actions
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem
+								onClick={async () => {
+									try {
+										const response = await fetch("/api/interview-restart", {
+											method: "POST",
+											headers: { "Content-Type": "application/json" },
+											body: JSON.stringify({ interviewId: interview.id }),
+										});
+										const result = await response.json();
+										if (result.success) {
+											revalidator.revalidate();
+										} else {
+											consola.error("Restart failed:", result.error || result.message);
 										}
-									}}
-									disabled={fetcher.state !== "idle"}
-									className="text-orange-600 focus:text-orange-600"
-								>
-									<RefreshCw className="mr-2 h-4 w-4" />
-									Restart Processing
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									onClick={() => {
-										try {
-											fetcher.submit(
-												{ interview_id: interview.id },
-												{ method: "post", action: "/api.generate-sales-lens" }
-											);
-										} catch (e) {
-											consola.error("Generate sales lens submit failed", e);
-										}
-									}}
-									disabled={fetcher.state !== "idle" || isProcessing}
-									className="text-blue-600 focus:text-blue-600"
-								>
-									Apply Lenses
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									onClick={async () => {
-										try {
-											const response = await fetch("/api/regenerate-conversation-analysis", {
-												method: "POST",
-												headers: { "Content-Type": "application/json" },
-												body: JSON.stringify({ interviewId: interview.id }),
-											});
-											const result = await response.json();
-											if (result.success) {
-												revalidator.revalidate();
-											} else {
-												consola.error("Regenerate analysis failed:", result.error);
-											}
-										} catch (e) {
-											consola.error("Regenerate analysis failed", e);
-										}
-									}}
-									disabled={fetcher.state !== "idle"}
-									className="text-amber-600 focus:text-amber-600"
-								>
-									<Sparkles className="mr-2 h-4 w-4" />
-									Regenerate Analysis
-								</DropdownMenuItem>
-								{linkedOpportunity ? (
-									<DropdownMenuItem asChild>
-										<Link
-											to={routes.opportunities.detail(linkedOpportunity.id)}
-											className="flex items-center gap-2 text-emerald-700"
-										>
-											<Briefcase className="h-4 w-4" />
-											View Opportunity: {linkedOpportunity.title}
-										</Link>
-									</DropdownMenuItem>
-								) : (
-									<DropdownMenuItem asChild>
-										<Link
-											to={routes.opportunities.new()}
-											state={{
-												interviewId: interview.id,
-												interviewTitle: interview.title,
-											}}
-											className="flex items-center gap-2 text-blue-700"
-										>
-											<Briefcase className="h-4 w-4" />
-											Create Opportunity
-										</Link>
-									</DropdownMenuItem>
-								)}
-								<DropdownMenuItem
-									onClick={() => {
-										deleteFetcher.submit(
-											{ interviewId: interview.id, projectId },
-											{ method: "post", action: "/api/interviews/delete" }
+									} catch (e) {
+										consola.error("Restart processing failed", e);
+									}
+								}}
+								disabled={fetcher.state !== "idle"}
+								className="text-orange-600 focus:text-orange-600"
+							>
+								<RefreshCw className="mr-2 h-4 w-4" />
+								Re-run Analysis
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => {
+									try {
+										fetcher.submit(
+											{ interview_id: interview.id },
+											{ method: "post", action: "/api.generate-sales-lens" }
 										);
-									}}
-									disabled={deleteFetcher.state !== "idle"}
-									className="text-destructive focus:text-destructive"
-								>
-									<Trash2 className="mr-2 h-4 w-4" />
-									Delete
+									} catch (e) {
+										consola.error("Generate sales lens submit failed", e);
+									}
+								}}
+								disabled={fetcher.state !== "idle" || isProcessing}
+								className="text-blue-600 focus:text-blue-600"
+							>
+								Apply Lenses
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={async () => {
+									try {
+										const response = await fetch("/api/regenerate-conversation-analysis", {
+											method: "POST",
+											headers: { "Content-Type": "application/json" },
+											body: JSON.stringify({ interviewId: interview.id }),
+										});
+										const result = await response.json();
+										if (result.success) {
+											revalidator.revalidate();
+										} else {
+											consola.error("Regenerate analysis failed:", result.error);
+										}
+									} catch (e) {
+										consola.error("Regenerate analysis failed", e);
+									}
+								}}
+								disabled={fetcher.state !== "idle"}
+								className="text-amber-600 focus:text-amber-600"
+							>
+								<Sparkles className="mr-2 h-4 w-4" />
+								Regenerate Analysis
+							</DropdownMenuItem>
+							{linkedOpportunity ? (
+								<DropdownMenuItem asChild>
+									<Link
+										to={routes.opportunities.detail(linkedOpportunity.id)}
+										className="flex items-center gap-2 text-emerald-700"
+									>
+										<Briefcase className="h-4 w-4" />
+										View Opportunity: {linkedOpportunity.title}
+									</Link>
 								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
-					)}
+							) : (
+								<DropdownMenuItem asChild>
+									<Link
+										to={routes.opportunities.new()}
+										state={{
+											interviewId: interview.id,
+											interviewTitle: interview.title,
+										}}
+										className="flex items-center gap-2 text-blue-700"
+									>
+										<Briefcase className="h-4 w-4" />
+										Create Opportunity
+									</Link>
+								</DropdownMenuItem>
+							)}
+							<DropdownMenuItem
+								onClick={() => {
+									deleteFetcher.submit(
+										{ interviewId: interview.id, projectId },
+										{ method: "post", action: "/api/interviews/delete" }
+									);
+								}}
+								disabled={deleteFetcher.state !== "idle"}
+								className="text-destructive focus:text-destructive"
+							>
+								<Trash2 className="mr-2 h-4 w-4" />
+								Delete
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 					<Link
 						to={routes.interviews.edit(interview.id)}
 						className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-gray-50"

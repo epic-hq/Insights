@@ -68,7 +68,9 @@ import {
   createBamlCollector,
   mapUsageToLangfuse,
   summarizeCollectorUsage,
+  type BamlUsageSummary,
 } from "~/lib/baml/collector.server";
+import { validateAttributionParity } from "~/lib/evidence/personAttribution.server";
 import {
   createTaskBillingContext,
   inferProvider,
@@ -171,6 +173,7 @@ export interface InterviewMetadata {
   accountId: string;
   userId?: string; // Add user ID for audit fields
   projectId?: string;
+  triggerRunId?: string;
   interviewTitle?: string;
   interviewDate?: string;
   interviewerName?: string;
@@ -224,6 +227,62 @@ function computeIndependenceKey(verbatim: string, kindTags: string[]): string {
   return stringHash(basis);
 }
 
+function roundUsd(value: number): number {
+  return Number(value.toFixed(6));
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function toUsageRollupEntry(
+  usage: BamlUsageSummary | null | undefined,
+  provider: string,
+  model: string,
+  idempotencyKey: string,
+): Record<string, unknown> {
+  const inputTokens =
+    typeof usage?.inputTokens === "number" ? usage.inputTokens : 0;
+  const outputTokens =
+    typeof usage?.outputTokens === "number" ? usage.outputTokens : 0;
+  const cachedInputTokens =
+    typeof usage?.cachedInputTokens === "number" ? usage.cachedInputTokens : 0;
+  const billedInputTokens =
+    typeof usage?.billedInputTokens === "number" ? usage.billedInputTokens : 0;
+  const totalTokens =
+    typeof usage?.totalTokens === "number"
+      ? usage.totalTokens
+      : inputTokens + outputTokens;
+  const promptCostUsd =
+    typeof usage?.promptCostUsd === "number"
+      ? roundUsd(usage.promptCostUsd)
+      : 0;
+  const completionCostUsd =
+    typeof usage?.completionCostUsd === "number"
+      ? roundUsd(usage.completionCostUsd)
+      : 0;
+  const totalCostUsd =
+    typeof usage?.totalCostUsd === "number" ? roundUsd(usage.totalCostUsd) : 0;
+
+  return {
+    provider,
+    model,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    cached_input_tokens: cachedInputTokens,
+    billed_input_tokens: billedInputTokens,
+    total_tokens: totalTokens,
+    prompt_cost_usd: promptCostUsd,
+    completion_cost_usd: completionCostUsd,
+    total_cost_usd: totalCostUsd,
+    idempotency_key: idempotencyKey,
+    recorded_at: new Date().toISOString(),
+  };
+}
+
 type EvidenceFromBaml = Awaited<
   ReturnType<typeof b.ExtractEvidenceFromTranscriptV2>
 >;
@@ -275,10 +334,60 @@ interface ExtractEvidenceResult {
     | "support"
     | "internal"
     | "debrief"
+    | "personal"
     | null;
   contextConfidence: number | null;
   contextReasoning: string | null;
   rawPeople?: EvidenceParticipant[];
+}
+
+function normalizeSpeakerLabelKey(
+  value: string | null | undefined,
+): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed.length) return null;
+  const upper = trimmed.toUpperCase();
+  return upper.startsWith("SPEAKER ") ? upper : `SPEAKER ${upper}`;
+}
+
+function isLikelyInterviewerSpeaker(
+  speakerLabel: string | null,
+  firstSpeakerLabel: string | null,
+): boolean {
+  const normalizedSpeaker = normalizeSpeakerLabelKey(speakerLabel);
+  const normalizedFirst = normalizeSpeakerLabelKey(firstSpeakerLabel);
+  if (!normalizedSpeaker || !normalizedFirst) return false;
+  return normalizedSpeaker === normalizedFirst;
+}
+
+/**
+ * Rough token estimate: ~4 chars per token for English JSON.
+ * Conservative to avoid exceeding context window.
+ */
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 3.5);
+}
+
+/** Context window for gpt-4o-mini. Reserve ~8K for prompt template + output. */
+const MODEL_CONTEXT_LIMIT = 128_000;
+const RESERVED_TOKENS = 8_000;
+const MAX_EVIDENCE_TOKENS = MODEL_CONTEXT_LIMIT - RESERVED_TOKENS; // ~120K
+
+/**
+ * Returns true if the error is a 400-level client error that should NOT be retried
+ * (e.g. context_length_exceeded, invalid_request_error).
+ */
+function isNonRetryableClientError(error: unknown): boolean {
+  const msg = String(error);
+  return (
+    msg.includes("status code: 400") ||
+    msg.includes("context_length_exceeded") ||
+    msg.includes("invalid_request_error") ||
+    msg.includes("status code: 401") ||
+    msg.includes("status code: 403") ||
+    msg.includes("status code: 422")
+  );
 }
 
 export async function generateInterviewInsightsFromEvidenceCore({
@@ -301,18 +410,61 @@ export async function generateInterviewInsightsFromEvidenceCore({
     };
   }
 
-  // No validation needed - source guarantees correct EvidenceUnit[] structure
+  // Token pre-check: estimate tokens and truncate evidence if over limit
+  let truncatedUnits = evidenceUnits;
+  const fullJson = JSON.stringify(evidenceUnits);
+  const estimatedTokens = estimateTokens(fullJson);
+
+  if (estimatedTokens > MAX_EVIDENCE_TOKENS) {
+    consola.warn(
+      `[generateInsightsCore] Evidence exceeds context window: ~${estimatedTokens} tokens (limit: ${MAX_EVIDENCE_TOKENS}). Truncating.`,
+    );
+
+    // Binary search for max evidence count that fits
+    let lo = 1;
+    let hi = evidenceUnits.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      const slice = JSON.stringify(evidenceUnits.slice(0, mid));
+      if (estimateTokens(slice) <= MAX_EVIDENCE_TOKENS) {
+        lo = mid;
+      } else {
+        hi = mid - 1;
+      }
+    }
+
+    truncatedUnits = evidenceUnits.slice(0, lo);
+    consola.info(
+      `[generateInsightsCore] Truncated evidence: ${evidenceUnits.length} → ${truncatedUnits.length} units (~${estimateTokens(JSON.stringify(truncatedUnits))} tokens)`,
+    );
+  } else {
+    consola.info(
+      `[generateInsightsCore] Evidence fits in context window: ~${estimatedTokens} tokens (${evidenceUnits.length} units)`,
+    );
+  }
+
+  // Retry loop with non-retryable error detection
   let lastErr: unknown = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const response = await b.GenerateKeyTakeawaysFromEvidence(
-        evidenceUnits,
+        truncatedUnits,
         instructions,
       );
       consola.log("BAML generateInterviewInsights response:", response);
       return response;
     } catch (error) {
       lastErr = error;
+
+      // Don't retry 400-level client errors — they'll fail again
+      if (isNonRetryableClientError(error)) {
+        consola.error(
+          `[generateInsightsCore] Non-retryable client error (attempt ${attempt + 1}/3), aborting:`,
+          error,
+        );
+        throw error;
+      }
+
       const delayMs = 500 * (attempt + 1);
       consola.warn(
         `GenerateKeyTakeawaysFromEvidence failed (attempt ${attempt + 1}/3), retrying in ${delayMs}ms`,
@@ -413,7 +565,6 @@ export async function extractEvidenceAndPeopleCore({
     }>
   >();
   const personKeyForEvidence: string[] = [];
-  const personRoleByKey = new Map<string, string | null>();
   const facetObservationsByPersonKey = new Map<
     string,
     PersonFacetObservation[]
@@ -434,6 +585,24 @@ export async function extractEvidenceAndPeopleCore({
     accountId,
     projectId,
   };
+  const usageRunKey =
+    normalizedMetadata.triggerRunId ?? analysisJobId ?? `manual-${Date.now()}`;
+  const extractModel = process.env.BAML_EXTRACT_EVIDENCE_MODEL || "gpt-5-mini";
+  const extractProvider = inferProvider(extractModel);
+  const extractUsageIdempotencyKey = `interview:${interviewRecord.id}:extract-evidence:${usageRunKey}`;
+  const synthesisModel = process.env.BAML_PERSONA_SYNTHESIS_MODEL || "gpt-5";
+  const synthesisProvider = inferProvider(synthesisModel);
+  const synthesisUsageIdempotencyKey = `interview:${interviewRecord.id}:persona-synthesis:${usageRunKey}`;
+  const firstTranscriptSpeakerLabel = (() => {
+    const raw = (transcriptData as Record<string, unknown>).speaker_transcripts;
+    if (!Array.isArray(raw)) return null;
+    for (const utterance of raw as Array<Record<string, unknown>>) {
+      const speaker =
+        typeof utterance.speaker === "string" ? utterance.speaker : null;
+      if (speaker && speaker.trim().length) return speaker;
+    }
+    return null;
+  })();
 
   if (!accountId) {
     throw new Error(
@@ -441,13 +610,10 @@ export async function extractEvidenceAndPeopleCore({
     );
   }
 
-  const facetCatalog = await resolveFacetCatalog(
-    db,
-    accountId,
-    projectId,
-  );
+  const facetCatalog = await resolveFacetCatalog(db, accountId, projectId);
   const facetLookup = buildFacetLookup(facetCatalog);
   const facetResolver = new FacetResolver(db, accountId);
+  const facetAccountIdCache = new Map<string, number>();
   const langfuse = getLangfuseClient();
   const lfTrace = (
     langfuse as unknown as {
@@ -467,6 +633,17 @@ export async function extractEvidenceAndPeopleCore({
       ? `${fullTranscript.slice(0, transcriptPreviewLength)}...`
       : fullTranscript
     : "(no fullTranscript provided)";
+  const traceInputSummary: Record<string, unknown> = {
+    language,
+    transcriptLength: fullTranscript?.length ?? 0,
+    transcriptPreview,
+    chapterCount: chapters.length,
+    facetCatalogVersion: facetCatalog.version,
+    speakerUtteranceCount: 0,
+  };
+  let traceOutputSummary: Record<string, unknown> | null = null;
+  let traceStatusMessage: string | null = null;
+  (lfTrace as any)?.update?.({ input: traceInputSummary });
   consola.info(`📊 Extracting evidence with ${chapters.length} chapters`, {
     chapterSample: chapters.slice(0, 3),
     transcriptLength: fullTranscript?.length ?? 0,
@@ -483,6 +660,7 @@ export async function extractEvidenceAndPeopleCore({
 
   const lfGeneration = lfTrace?.generation?.({
     name: "baml.ExtractEvidenceFromTranscriptV2",
+    model: extractModel,
     input: {
       language,
       transcriptLength: fullTranscript?.length ?? 0,
@@ -498,7 +676,7 @@ export async function extractEvidenceAndPeopleCore({
   const completionCostPer1K = Number(
     process.env.BAML_EXTRACT_EVIDENCE_COMPLETION_COST_PER_1K_TOKENS,
   );
-  const costOptions = {
+  const extractCostOptions = {
     promptCostPer1KTokens: Number.isFinite(promptCostPer1K)
       ? promptCostPer1K
       : undefined,
@@ -506,15 +684,28 @@ export async function extractEvidenceAndPeopleCore({
       ? completionCostPer1K
       : undefined,
   };
+  const synthesisPromptCostPer1K = Number(
+    process.env.BAML_PERSONA_SYNTHESIS_PROMPT_COST_PER_1K_TOKENS,
+  );
+  const synthesisCompletionCostPer1K = Number(
+    process.env.BAML_PERSONA_SYNTHESIS_COMPLETION_COST_PER_1K_TOKENS,
+  );
+  const synthesisCostOptions = {
+    promptCostPer1KTokens: Number.isFinite(synthesisPromptCostPer1K)
+      ? synthesisPromptCostPer1K
+      : undefined,
+    completionCostPer1KTokens: Number.isFinite(synthesisCompletionCostPer1K)
+      ? synthesisCompletionCostPer1K
+      : undefined,
+  };
   const instrumentedClient = b.withOptions({ collector });
   let evidenceResponse: EvidenceFromBaml | undefined;
   let usageSummary: ReturnType<typeof summarizeCollectorUsage> | null = null;
+  let synthesisUsageSummary: ReturnType<typeof summarizeCollectorUsage> | null =
+    null;
   let langfuseUsage: ReturnType<typeof mapUsageToLangfuse> | undefined;
   let generationEnded = false;
   try {
-    // Keep passing the merged facet catalog so the model can ground mentions against the project taxonomy.
-    // Dropping this trims the prompt slightly but increases the odds that facet references drift from known labels.
-
     // Get speaker transcripts from sanitized data
     const speakerTranscriptsRaw = (transcriptData as Record<string, unknown>)
       .speaker_transcripts;
@@ -532,6 +723,22 @@ export async function extractEvidenceAndPeopleCore({
               : null,
         }))
       : [];
+    traceInputSummary.speakerUtteranceCount = speakerTranscripts.length;
+    (lfTrace as any)?.update?.({ input: traceInputSummary });
+
+    if (speakerTranscripts.length === 0) {
+      traceStatusMessage =
+        "No speaker transcripts available after sanitization; cannot extract evidence.";
+      traceOutputSummary = {
+        status: "failed",
+        reason: traceStatusMessage,
+        evidenceCount: 0,
+        peopleCount: 0,
+      };
+      throw new Error(
+        `[extract-evidence] ${traceStatusMessage} interviewId=${interviewRecord.id}`,
+      );
+    }
 
     // Log speaker transcripts timing data for debugging
     const utterancesWithTiming = speakerTranscripts.filter(
@@ -554,7 +761,6 @@ export async function extractEvidenceAndPeopleCore({
           batch,
           chapters,
           language,
-          facetCatalog,
         );
       },
       // Progress callback - converts batch progress to overall extraction progress
@@ -571,7 +777,7 @@ export async function extractEvidenceAndPeopleCore({
           }
         : undefined,
     );
-    usageSummary = summarizeCollectorUsage(collector, costOptions);
+    usageSummary = summarizeCollectorUsage(collector, extractCostOptions);
     if (usageSummary) {
       consola.log(
         "[BAML usage] ExtractEvidenceFromTranscriptV2:",
@@ -579,28 +785,26 @@ export async function extractEvidenceAndPeopleCore({
       );
 
       // Record usage and spend credits for billing
-      if (usageSummary.totalCostUsd) {
-        const billingCtx = createTaskBillingContext(
-          normalizedMetadata,
-          "interview_extraction",
-        );
-        const model =
-          process.env.BAML_EXTRACT_EVIDENCE_MODEL || "claude-sonnet";
-        recordTaskUsage(
+      const billingCtx = createTaskBillingContext(
+        normalizedMetadata,
+        "interview_extraction",
+      );
+      try {
+        await recordTaskUsage(
           billingCtx,
           {
-            provider: inferProvider(model),
-            model,
+            provider: extractProvider,
+            model: extractModel,
             inputTokens: usageSummary.inputTokens || 0,
             outputTokens: usageSummary.outputTokens || 0,
-            estimatedCostUsd: usageSummary.totalCostUsd,
+            estimatedCostUsd: usageSummary.totalCostUsd ?? 0,
             resourceType: "interview",
             resourceId: interviewRecord.id,
           },
-          `interview:${interviewRecord.id}:extract-evidence`,
-        ).catch((err) => {
-          consola.warn("[billing] Failed to record extraction usage:", err);
-        });
+          extractUsageIdempotencyKey,
+        );
+      } catch (err) {
+        consola.warn("[billing] Failed to record extraction usage:", err);
       }
     }
     langfuseUsage = mapUsageToLangfuse(usageSummary);
@@ -612,6 +816,13 @@ export async function extractEvidenceAndPeopleCore({
         const mentions = (ev as { facet_mentions?: unknown[] }).facet_mentions;
         return sum + (Array.isArray(mentions) ? mentions.length : 0);
       }, 0) ?? 0;
+    traceOutputSummary = {
+      status: "ok",
+      evidenceCount,
+      peopleCount: evidenceResponse?.people?.length ?? 0,
+      totalFacetMentions,
+      chapterCount: chapters.length,
+    };
     consola.info(
       `🔍 BAML returned ${evidenceCount} evidence units with ${totalFacetMentions} total facet mentions`,
     );
@@ -623,6 +834,11 @@ export async function extractEvidenceAndPeopleCore({
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    traceStatusMessage = message;
+    traceOutputSummary = traceOutputSummary ?? {
+      status: "failed",
+      reason: message,
+    };
     lfGeneration?.end?.({
       level: "ERROR",
       statusMessage: message,
@@ -638,7 +854,22 @@ export async function extractEvidenceAndPeopleCore({
         metadata: usageSummary ? { tokenUsage: usageSummary } : undefined,
       });
     }
+    (lfTrace as any)?.update?.({
+      input: traceInputSummary,
+      output:
+        traceOutputSummary ??
+        (traceStatusMessage
+          ? { status: "failed", reason: traceStatusMessage }
+          : { status: "ok" }),
+      usage: langfuseUsage,
+      metadata: traceStatusMessage
+        ? { statusMessage: traceStatusMessage }
+        : undefined,
+    });
     (lfTrace as any)?.end?.();
+    await (langfuse as any)?.flushAsync?.().catch((error: unknown) => {
+      consola.warn("[langfuse] Failed to flush extract-evidence trace:", error);
+    });
   }
 
   if (!evidenceResponse) {
@@ -692,9 +923,14 @@ export async function extractEvidenceAndPeopleCore({
   const rawInteractionContext = (evidenceResponse as any)?.interaction_context;
   const interactionContext: ExtractEvidenceResult["interactionContext"] =
     rawInteractionContext &&
-    ["Research", "Sales", "Support", "Internal", "Debrief"].includes(
-      rawInteractionContext,
-    )
+    [
+      "Research",
+      "Sales",
+      "Support",
+      "Internal",
+      "Debrief",
+      "Personal",
+    ].includes(rawInteractionContext)
       ? (rawInteractionContext.toLowerCase() as ExtractEvidenceResult["interactionContext"])
       : null;
   const contextConfidence: number | null =
@@ -755,6 +991,7 @@ export async function extractEvidenceAndPeopleCore({
 
     const lfSynthesisGeneration = lfTrace?.generation?.({
       name: "baml.DerivePersonaFacetsFromEvidence",
+      model: synthesisModel,
       input: {
         evidenceCount: evidenceUnits.length,
         peopleCount: evidenceResponse?.people?.length ?? 0,
@@ -788,47 +1025,47 @@ export async function extractEvidenceAndPeopleCore({
       safeEvidenceResponse as any,
     );
 
-    const synthesisUsage = summarizeCollectorUsage(
+    synthesisUsageSummary = summarizeCollectorUsage(
       synthesisCollector,
-      costOptions,
+      synthesisCostOptions,
     );
-    if (synthesisUsage) {
+    if (synthesisUsageSummary) {
       consola.log(
         "[BAML usage] DerivePersonaFacetsFromEvidence:",
-        synthesisUsage,
+        synthesisUsageSummary,
       );
 
       // Record usage and spend credits for billing
-      if (synthesisUsage.totalCostUsd) {
-        const billingCtx = createTaskBillingContext(
-          normalizedMetadata,
-          "persona_synthesis",
-        );
-        const model =
-          process.env.BAML_PERSONA_SYNTHESIS_MODEL || "claude-sonnet";
-        recordTaskUsage(
+      const billingCtx = createTaskBillingContext(
+        normalizedMetadata,
+        "persona_synthesis",
+      );
+      try {
+        await recordTaskUsage(
           billingCtx,
           {
-            provider: inferProvider(model),
-            model,
-            inputTokens: synthesisUsage.inputTokens || 0,
-            outputTokens: synthesisUsage.outputTokens || 0,
-            estimatedCostUsd: synthesisUsage.totalCostUsd,
+            provider: synthesisProvider,
+            model: synthesisModel,
+            inputTokens: synthesisUsageSummary.inputTokens || 0,
+            outputTokens: synthesisUsageSummary.outputTokens || 0,
+            estimatedCostUsd: synthesisUsageSummary.totalCostUsd ?? 0,
             resourceType: "interview",
             resourceId: interviewRecord.id,
           },
-          `interview:${interviewRecord.id}:persona-synthesis`,
-        ).catch((err) => {
-          consola.warn("[billing] Failed to record synthesis usage:", err);
-        });
+          synthesisUsageIdempotencyKey,
+        );
+      } catch (err) {
+        consola.warn("[billing] Failed to record synthesis usage:", err);
       }
     }
-    const synthesisLangfuseUsage = mapUsageToLangfuse(synthesisUsage);
+    const synthesisLangfuseUsage = mapUsageToLangfuse(synthesisUsageSummary);
 
     lfSynthesisGeneration?.end?.({
       output: personaSynthesis,
       usage: synthesisLangfuseUsage,
-      metadata: synthesisUsage ? { tokenUsage: synthesisUsage } : undefined,
+      metadata: synthesisUsageSummary
+        ? { tokenUsage: synthesisUsageSummary }
+        : undefined,
     });
 
     // Group persona facets by person_key for efficient lookup
@@ -853,6 +1090,98 @@ export async function extractEvidenceAndPeopleCore({
     // Continue with raw mentions if synthesis fails
   }
 
+  try {
+    const extractRollup = toUsageRollupEntry(
+      usageSummary,
+      extractProvider,
+      extractModel,
+      extractUsageIdempotencyKey,
+    );
+    const synthesisRollup = toUsageRollupEntry(
+      synthesisUsageSummary,
+      synthesisProvider,
+      synthesisModel,
+      synthesisUsageIdempotencyKey,
+    );
+    const totalInputTokens =
+      Number(extractRollup.input_tokens ?? 0) +
+      Number(synthesisRollup.input_tokens ?? 0);
+    const totalOutputTokens =
+      Number(extractRollup.output_tokens ?? 0) +
+      Number(synthesisRollup.output_tokens ?? 0);
+    const totalCachedInputTokens =
+      Number(extractRollup.cached_input_tokens ?? 0) +
+      Number(synthesisRollup.cached_input_tokens ?? 0);
+    const totalBilledInputTokens =
+      Number(extractRollup.billed_input_tokens ?? 0) +
+      Number(synthesisRollup.billed_input_tokens ?? 0);
+    const totalTokens =
+      Number(extractRollup.total_tokens ?? 0) +
+      Number(synthesisRollup.total_tokens ?? 0);
+    const totalCostUsd = roundUsd(
+      Number(extractRollup.total_cost_usd ?? 0) +
+        Number(synthesisRollup.total_cost_usd ?? 0),
+    );
+    const rollupUpdatedAt = new Date().toISOString();
+
+    const { data: interviewUsageData, error: interviewUsageReadError } =
+      await db
+        .from("interviews")
+        .select("conversation_analysis")
+        .eq("id", interviewRecord.id)
+        .single();
+    if (interviewUsageReadError) {
+      consola.warn(
+        "[usage-rollup] Failed to load existing conversation_analysis:",
+        interviewUsageReadError.message,
+      );
+    } else {
+      const existingAnalysis =
+        asRecord(
+          (interviewUsageData as { conversation_analysis?: unknown } | null)
+            ?.conversation_analysis,
+        ) ?? {};
+      const existingLlmUsage = asRecord(existingAnalysis.llm_usage) ?? {};
+
+      const nextConversationAnalysis = {
+        ...existingAnalysis,
+        llm_usage: {
+          ...existingLlmUsage,
+          extract_evidence: extractRollup,
+          persona_synthesis: synthesisRollup,
+          totals: {
+            input_tokens: totalInputTokens,
+            output_tokens: totalOutputTokens,
+            cached_input_tokens: totalCachedInputTokens,
+            billed_input_tokens: totalBilledInputTokens,
+            total_tokens: totalTokens,
+            total_cost_usd: totalCostUsd,
+          },
+          last_run_key: usageRunKey,
+          updated_at: rollupUpdatedAt,
+        },
+      };
+
+      const { error: usageRollupErr } = await db
+        .from("interviews")
+        .update({
+          conversation_analysis: nextConversationAnalysis as unknown as Json,
+        })
+        .eq("id", interviewRecord.id);
+      if (usageRollupErr) {
+        consola.warn(
+          "[usage-rollup] Failed to persist llm_usage rollup:",
+          usageRollupErr.message,
+        );
+      }
+    }
+  } catch (usageRollupError) {
+    consola.warn(
+      "[usage-rollup] Unexpected failure while storing llm_usage rollup:",
+      usageRollupError,
+    );
+  }
+
   const rawPeople = Array.isArray(
     (evidenceResponse as { people?: EvidenceParticipant[] })?.people,
   )
@@ -871,7 +1200,8 @@ export async function extractEvidenceAndPeopleCore({
       display_name: raw?.display_name,
       inferred_name: raw?.inferred_name,
       person_name: raw?.person_name,
-      role: raw?.role,
+      job_title: raw?.job_title,
+      job_function: raw?.job_function,
     });
   }
   const participants: NormalizedParticipant[] = [];
@@ -886,15 +1216,16 @@ export async function extractEvidenceAndPeopleCore({
     if (participantByKey.has(person_key)) {
       person_key = `${person_key}-${i}`;
     }
-    const role = coerceString((raw as EvidenceParticipant).role);
     // Extract speaker_label from BAML Person (AssemblyAI format like "SPEAKER A")
     const speaker_label = coerceString((raw as any).speaker_label);
-    const display_name = coerceString(
-      (raw as EvidenceParticipant).display_name,
-    );
+    const display_name =
+      coerceString((raw as EvidenceParticipant).display_name) ??
+      coerceString((raw as EvidenceParticipant).person_name);
     const inferred_name = coerceString(
       (raw as EvidenceParticipant).inferred_name,
     );
+    const job_title = coerceString((raw as any).job_title);
+    const job_function = coerceString((raw as any).job_function);
     const organization = coerceString(
       (raw as EvidenceParticipant).organization,
     );
@@ -950,9 +1281,10 @@ export async function extractEvidenceAndPeopleCore({
     const normalized: NormalizedParticipant = {
       person_key,
       speaker_label,
-      role,
       display_name,
       inferred_name,
+      job_title,
+      job_function,
       organization,
       summary,
       segments,
@@ -962,7 +1294,6 @@ export async function extractEvidenceAndPeopleCore({
     };
     participants.push(normalized);
     participantByKey.set(person_key, normalized);
-    personRoleByKey.set(person_key, role ?? null);
   }
 
   if (!participants.length) {
@@ -972,9 +1303,10 @@ export async function extractEvidenceAndPeopleCore({
     const fallbackParticipant: NormalizedParticipant = {
       person_key: fallbackKey,
       speaker_label: null,
-      role: null,
       display_name: fallbackName,
       inferred_name: fallbackName,
+      job_title: null,
+      job_function: null,
       organization: null,
       summary: null,
       segments: metadata.segment ? [metadata.segment] : [],
@@ -984,13 +1316,18 @@ export async function extractEvidenceAndPeopleCore({
     };
     participants.push(fallbackParticipant);
     participantByKey.set(fallbackKey, fallbackParticipant);
-    personRoleByKey.set(fallbackKey, null);
   }
 
   const primaryParticipant =
     participants.find((participant) => {
-      const roleLower = participant.role?.toLowerCase();
-      return roleLower ? roleLower !== "interviewer" : false;
+      const normalizedSpeaker = normalizeSpeakerLabelKey(
+        participant.speaker_label,
+      );
+      const normalizedFirst = normalizeSpeakerLabelKey(
+        firstTranscriptSpeakerLabel,
+      );
+      if (!normalizedSpeaker || !normalizedFirst) return false;
+      return normalizedSpeaker !== normalizedFirst;
     }) ??
     participants[0] ??
     null;
@@ -1064,23 +1401,6 @@ export async function extractEvidenceAndPeopleCore({
     }
   }
 
-  const empathyStats = {
-    says: 0,
-    does: 0,
-    thinks: 0,
-    feels: 0,
-    pains: 0,
-    gains: 0,
-  };
-  const empathySamples: Record<keyof typeof empathyStats, string[]> = {
-    says: [],
-    does: [],
-    thinks: [],
-    feels: [],
-    pains: [],
-    gains: [],
-  };
-
   const evidenceRows: EvidenceInsert[] = [];
   const durationSeconds =
     typeof (transcriptData as { audio_duration?: unknown }).audio_duration ===
@@ -1129,6 +1449,294 @@ export async function extractEvidenceAndPeopleCore({
     wordsSample,
     segmentSample,
   });
+
+  // ============================================================================
+  // PERSON RESOLUTION - Moved before evidence loop to enable direct person_id attribution
+  // This eliminates the fragile two-step INSERT (with NULL) → UPDATE pattern
+  // ============================================================================
+
+  const personIdByKey = new Map<string, string>();
+  const personNameByKey = new Map<string, string>();
+  const keyByPersonId = new Map<string, string>();
+  const speakerLabelByPersonId = new Map<string, string>(); // AssemblyAI speaker label (e.g., "SPEAKER A")
+  const displayNameByKey = new Map<string, string>();
+  const personRoleById = new Map<string, string | null>();
+  const internalPerson = metadata.userId
+    ? await resolveInternalPerson({
+        supabase: db,
+        accountId,
+        projectId: projectId ?? null,
+        userId: metadata.userId,
+      })
+    : null;
+  let internalPersonLinked = false;
+  let internalPersonHasTranscriptKey = false;
+
+  if (projectId) {
+    const { data: existingInterviewPeople } = await db
+      .from("interview_people")
+      .select("person_id, transcript_key, display_name, role")
+      .eq("interview_id", interviewRecord.id);
+    if (Array.isArray(existingInterviewPeople)) {
+      existingInterviewPeople.forEach((row) => {
+        if (row.transcript_key && row.person_id) {
+          personIdByKey.set(row.transcript_key, row.person_id);
+          keyByPersonId.set(row.person_id, row.transcript_key);
+        }
+        if (row.display_name && row.transcript_key) {
+          displayNameByKey.set(row.transcript_key, row.display_name);
+        }
+        if (row.person_id && row.role) {
+          personRoleById.set(row.person_id, row.role);
+        }
+        if (internalPerson?.id && row.person_id === internalPerson.id) {
+          internalPersonLinked = true;
+          if (row.transcript_key) {
+            internalPersonHasTranscriptKey = true;
+          }
+        }
+      });
+    }
+  }
+
+  const upsertPerson = async (
+    fullName: string,
+    overrides: Partial<PeopleInsert> = {},
+  ): Promise<{ id: string; name: string }> => {
+    if (
+      peopleHooks?.isPlaceholderPerson?.(fullName) ||
+      /^participant\s*\d+$/i.test(fullName) ||
+      /^speaker\s+[A-Z]$/i.test(fullName)
+    ) {
+      throw new Error("skip-placeholder-person");
+    }
+
+    const { firstname, lastname } = parseFullName(fullName);
+    const payload: PeopleInsert = {
+      account_id: accountId,
+      project_id: projectId,
+      firstname: firstname || null,
+      lastname: lastname || null,
+      description: overrides.description ?? null,
+      segment: overrides.segment ?? metadata.segment ?? null,
+      contact_info: overrides.contact_info ?? null,
+      role: null,
+    };
+    (payload as Record<string, unknown>).title =
+      (overrides as Record<string, unknown>).title ?? null;
+    (payload as Record<string, unknown>).job_function =
+      (overrides as Record<string, unknown>).job_function ?? null;
+    if (peopleHooks?.upsertPerson) {
+      const result = await peopleHooks.upsertPerson(payload);
+      if (!result?.id) {
+        throw new Error(`Failed to upsert person ${fullName}: missing id`);
+      }
+      return { id: result.id, name: result.name ?? fullName.trim() };
+    }
+
+    const upserted = await upsertPersonWithOrgAwareConflict(db, payload);
+    if (!upserted?.id)
+      throw new Error(`Person upsert returned no id for ${fullName}`);
+    return { id: upserted.id, name: upserted.name ?? fullName.trim() };
+  };
+
+  let primaryPersonId: string | null = null;
+  let primaryPersonName: string | null = null;
+  let primaryPersonRole: string | null = null;
+  let primaryPersonDescription: string | null = null;
+  let primaryPersonOrganization: string | null = null;
+  let primaryPersonSegments: string[] = [];
+
+  consola.info(
+    `👥 Processing ${participants.length} participants for person records`,
+  );
+  if (participants.length) {
+    for (const [index, participant] of participants.entries()) {
+      const participantKey = participant.person_key;
+      consola.debug(`  - Creating person record for "${participantKey}"`);
+      const resolved = resolveName(participant, index, metadata);
+      if (peopleHooks?.isPlaceholderPerson?.(resolved.name)) {
+        consola.info(
+          `[extractEvidence] Skipping placeholder person "${resolved.name}"`,
+        );
+        continue;
+      }
+      const isInterviewer =
+        Boolean(internalPerson) &&
+        isLikelyInterviewerSpeaker(
+          participant.speaker_label,
+          firstTranscriptSpeakerLabel,
+        );
+
+      if (isInterviewer && internalPerson) {
+        personIdByKey.set(participantKey, internalPerson.id);
+        personNameByKey.set(
+          participantKey,
+          internalPerson.name ?? resolved.name,
+        );
+        keyByPersonId.set(internalPerson.id, participantKey);
+        personRoleById.set(internalPerson.id, "interviewer");
+        if (participant.speaker_label) {
+          speakerLabelByPersonId.set(
+            internalPerson.id,
+            participant.speaker_label,
+          );
+        }
+        const preferredDisplayName =
+          internalPerson.name ??
+          participant.display_name?.trim() ??
+          resolved.name;
+        if (preferredDisplayName) {
+          displayNameByKey.set(participantKey, preferredDisplayName);
+        }
+
+        if (!primaryPersonId && participant.person_key === primaryPersonKey) {
+          primaryPersonId = internalPerson.id;
+          primaryPersonName = internalPerson.name ?? resolved.name;
+          primaryPersonRole = "interviewer";
+          primaryPersonDescription = participant.summary ?? null;
+          primaryPersonOrganization = participant.organization ?? null;
+          primaryPersonSegments = participant.segments.length
+            ? participant.segments
+            : metadata.segment
+              ? [metadata.segment]
+              : [];
+        }
+
+        internalPersonLinked = true;
+        continue;
+      }
+      const segments = participant.segments.length
+        ? participant.segments
+        : metadata.segment
+          ? [metadata.segment]
+          : [];
+      const participantOverrides: Partial<PeopleInsert> = {
+        description: participant.summary ?? null,
+        segment: segments[0] || metadata.segment || null,
+      };
+      (participantOverrides as Record<string, unknown>).title =
+        participant.job_title ?? null;
+      (participantOverrides as Record<string, unknown>).job_function =
+        participant.job_function ?? null;
+      let personRecord: { id: string; name: string } | null = null;
+      try {
+        personRecord = await upsertPerson(resolved.name, participantOverrides);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg === "skip-placeholder-person") {
+          consola.info(
+            `[processInterview] Skipping placeholder person "${resolved.name}"`,
+          );
+          continue;
+        }
+        throw e;
+      }
+      if (!personRecord) continue;
+      personIdByKey.set(participantKey, personRecord.id);
+      personNameByKey.set(participantKey, personRecord.name);
+      keyByPersonId.set(personRecord.id, participantKey);
+      // Use speaker_label (AssemblyAI format like "SPEAKER A") for transcript_key
+      if (participant.speaker_label) {
+        const normalized =
+          peopleHooks?.normalizeSpeakerLabel?.(participant.speaker_label) ??
+          participant.speaker_label;
+        speakerLabelByPersonId.set(personRecord.id, normalized);
+      }
+      const preferredDisplayName =
+        participant.display_name?.trim() || personRecord.name || null;
+      if (preferredDisplayName) {
+        displayNameByKey.set(participantKey, preferredDisplayName);
+      }
+      personRoleById.set(
+        personRecord.id,
+        internalPerson ? "participant" : null,
+      );
+
+      if (!primaryPersonId && participant.person_key === primaryPersonKey) {
+        primaryPersonId = personRecord.id;
+        primaryPersonName = personRecord.name;
+        primaryPersonRole = internalPerson ? "participant" : null;
+        primaryPersonDescription = participantOverrides.description ?? null;
+        primaryPersonOrganization = participant.organization ?? null;
+        primaryPersonSegments = segments.length
+          ? segments
+          : metadata.segment
+            ? [metadata.segment]
+            : [];
+      }
+    }
+  }
+
+  if (!primaryPersonId && participants.length) {
+    const fallbackKey = participants[0].person_key;
+    const fallbackId = personIdByKey.get(fallbackKey) ?? null;
+    if (fallbackId) {
+      primaryPersonId = fallbackId;
+      primaryPersonName =
+        personNameByKey.get(fallbackKey) ??
+        resolveName(participants[0], 0, metadata).name;
+      primaryPersonRole = internalPerson ? "participant" : null;
+      primaryPersonDescription = participants[0].summary ?? null;
+      primaryPersonOrganization = participants[0].organization ?? null;
+      primaryPersonSegments = participants[0].segments.length
+        ? participants[0].segments
+        : metadata.segment
+          ? [metadata.segment]
+          : [];
+    }
+  }
+
+  if (
+    internalPerson?.id &&
+    primaryPersonId === internalPerson.id &&
+    personIdByKey.size > 1
+  ) {
+    const firstExternal = Array.from(personIdByKey.entries()).find(
+      ([, personId]) => personId !== internalPerson.id,
+    );
+    if (firstExternal) {
+      const [externalKey, externalId] = firstExternal;
+      primaryPersonId = externalId;
+      primaryPersonName = personNameByKey.get(externalKey) ?? primaryPersonName;
+      primaryPersonRole = "participant";
+      const participant = participantByKey.get(externalKey);
+      primaryPersonDescription =
+        participant?.summary ?? primaryPersonDescription;
+      primaryPersonOrganization =
+        participant?.organization ?? primaryPersonOrganization;
+      primaryPersonSegments =
+        participant?.segments?.length && participant.segments.length > 0
+          ? participant.segments
+          : primaryPersonSegments;
+    }
+  }
+
+  if (!primaryPersonId) {
+    const fallback = await upsertPerson(generateFallbackPersonName(metadata));
+    primaryPersonId = fallback.id;
+    primaryPersonName = fallback.name;
+    primaryPersonSegments = metadata.segment ? [metadata.segment] : [];
+    primaryPersonRole = primaryPersonRole ?? null;
+    primaryPersonDescription = primaryPersonDescription ?? null;
+    primaryPersonOrganization = primaryPersonOrganization ?? null;
+  }
+
+  if (!primaryPersonId)
+    throw new Error("Failed to resolve primary person for interview");
+
+  if (!personRoleById.has(primaryPersonId) || primaryPersonRole !== null) {
+    personRoleById.set(primaryPersonId, primaryPersonRole ?? null);
+  }
+
+  consola.info(
+    `✅ Person resolution complete: ${personIdByKey.size} people mapped`,
+  );
+
+  // ============================================================================
+  // EVIDENCE EXTRACTION LOOP - Now has personIdByKey available for direct attribution
+  // ============================================================================
+
   for (let idx = 0; idx < evidenceUnits.length; idx++) {
     const ev = evidenceUnits[idx] as EvidenceTurn;
     const rawPersonKey = coerceString(
@@ -1161,6 +1769,7 @@ export async function extractEvidenceAndPeopleCore({
 
     const kindSlugSet = new Set<string>();
     const mentionDedup = new Set<number>();
+    const currentEvidenceFacetRows: EvidenceFacetRow[] = [];
     const projectIdForInsert = projectId ?? null;
 
     for (const mention of facetMentions) {
@@ -1182,11 +1791,17 @@ export async function extractEvidenceAndPeopleCore({
       const synonyms = Array.isArray(matchedFacet?.synonyms)
         ? (matchedFacet?.synonyms ?? [])
         : [];
+      const facetCacheKey = `${kindRaw}|${resolvedLabel.toLowerCase()}`;
       let facetAccountId: number | null =
-        matchedFacet?.facet_account_id ?? null;
+        facetAccountIdCache.get(facetCacheKey) ?? null;
 
-      // If no match found in catalog, create new facet
       if (!facetAccountId) {
+        facetAccountId = matchedFacet?.facet_account_id ?? null;
+      }
+
+      // If no match found in catalog OR matched a global facet (id=0 sentinel),
+      // create account-specific facet via FacetResolver
+      if (!facetAccountId || facetAccountId === 0) {
         facetAccountId = await facetResolver.ensureFacet({
           kindSlug: kindRaw,
           label: resolvedLabel,
@@ -1195,6 +1810,7 @@ export async function extractEvidenceAndPeopleCore({
       }
 
       if (!facetAccountId) continue;
+      facetAccountIdCache.set(facetCacheKey, facetAccountId);
       if (mentionDedup.has(facetAccountId)) continue;
       mentionDedup.add(facetAccountId);
       kindSlugSet.add(kindRaw);
@@ -1202,18 +1818,25 @@ export async function extractEvidenceAndPeopleCore({
         (mention as FacetMention).quote ?? null,
       );
 
-      // Build evidence_facet row directly
-      evidenceFacetRowsToInsert.push({
+      // Build evidence_facet row - person_id will be set from personIdByKey map
+      // personKey is already resolved at this point (lines 1134-1142)
+      const facetPersonId =
+        personIdByKey.get(personKey) || primaryPersonId || null;
+
+      const facetRow: EvidenceFacetRow = {
         account_id: accountId,
         project_id: projectIdForInsert,
         evidence_index: idx,
+        person_id: facetPersonId,
         kind_slug: kindRaw,
         facet_account_id: facetAccountId,
         label: resolvedLabel,
         source: "interview",
         confidence: 0.8,
         quote: mentionQuote,
-      });
+      };
+      evidenceFacetRowsToInsert.push(facetRow);
+      currentEvidenceFacetRows.push(facetRow);
     }
 
     const kindSlugs = Array.from(kindSlugSet);
@@ -1226,16 +1849,14 @@ export async function extractEvidenceAndPeopleCore({
         facetMentionsByPersonKey.set(personKey, byPerson);
       }
       // Add facets for this evidence to person's collection
-      for (const row of evidenceFacetRowsToInsert) {
-        if (row.evidence_index === idx) {
-          byPerson.push({
-            kindSlug: row.kind_slug,
-            label: row.label,
-            facetAccountId: row.facet_account_id,
-            quote: row.quote,
-            evidenceIndex,
-          });
-        }
+      for (const row of currentEvidenceFacetRows) {
+        byPerson.push({
+          kindSlug: row.kind_slug,
+          label: row.label,
+          facetAccountId: row.facet_account_id,
+          quote: row.quote,
+          evidenceIndex,
+        });
       }
     }
     const confidenceStr: string = ((
@@ -1380,38 +2001,8 @@ export async function extractEvidenceAndPeopleCore({
       is_question: ev.isQuestion ?? false,
     };
 
-    const _says = Array.isArray(ev?.says) ? (ev.says as string[]) : [];
-    const _does = Array.isArray(ev?.does) ? (ev.does as string[]) : [];
-    const _thinks = Array.isArray(ev?.thinks) ? (ev.thinks as string[]) : [];
-    const _feels = Array.isArray(ev?.feels) ? (ev.feels as string[]) : [];
-    const _pains = Array.isArray(ev?.pains) ? (ev.pains as string[]) : [];
-    const _gains = Array.isArray(ev?.gains) ? (ev.gains as string[]) : [];
-    (row as Record<string, unknown>).says = _says;
-    (row as Record<string, unknown>).does = _does;
-    (row as Record<string, unknown>).thinks = _thinks;
-    (row as Record<string, unknown>).feels = _feels;
-    (row as Record<string, unknown>).pains = _pains;
-    (row as Record<string, unknown>).gains = _gains;
-
-    empathyStats.says += _says.length;
-    empathyStats.does += _does.length;
-    empathyStats.thinks += _thinks.length;
-    empathyStats.feels += _feels.length;
-    empathyStats.pains += _pains.length;
-    empathyStats.gains += _gains.length;
-    for (const [k, arr] of Object.entries({
-      says: _says,
-      does: _does,
-      thinks: _thinks,
-      feels: _feels,
-      pains: _pains,
-      gains: _gains,
-    }) as Array<[keyof typeof empathyStats, string[]]>) {
-      for (const v of arr) {
-        if (typeof v === "string" && v.trim() && empathySamples[k].length < 3)
-          empathySamples[k].push(v.trim());
-      }
-    }
+    // Empathy maps (says/does/thinks/feels/pains/gains) removed from extraction.
+    // Will be derived from facet_mentions as paid-tier feature. See bead Insights-vpws.
 
     const whyItMatters = sanitizeVerbatim(
       (ev as { why_it_matters?: string }).why_it_matters,
@@ -1483,13 +2074,34 @@ export async function extractEvidenceAndPeopleCore({
     }
 
     // Map evidence_index to evidence_id
-    const finalFacetRows = evidenceFacetRowsToInsert.map((row) => {
-      const { evidence_index, ...rest } = row;
-      return {
-        ...rest,
-        evidence_id: insertedEvidenceIds[evidence_index],
-      };
-    });
+    const finalFacetRows = evidenceFacetRowsToInsert
+      .map((row) => {
+        const { evidence_index, ...rest } = row;
+        const evidenceId = insertedEvidenceIds[evidence_index];
+        if (!evidenceId) {
+          consola.warn(
+            `Skipping evidence_facet row: no evidence_id for index ${evidence_index}`,
+          );
+          return null;
+        }
+        const fallbackPersonKey = personKeyForEvidence[evidence_index];
+        const fallbackPersonId =
+          (fallbackPersonKey && personIdByKey.get(fallbackPersonKey)) ||
+          primaryPersonId ||
+          null;
+        return {
+          ...rest,
+          person_id: rest.person_id ?? fallbackPersonId,
+          evidence_id: evidenceId,
+        };
+      })
+      .filter(
+        (
+          row,
+        ): row is Omit<EvidenceFacetRow, "evidence_index"> & {
+          evidence_id: string;
+        } => row !== null,
+      );
 
     if (finalFacetRows.length) {
       consola.info(
@@ -1514,246 +2126,8 @@ export async function extractEvidenceAndPeopleCore({
     }
   }
 
-  const personIdByKey = new Map<string, string>();
-  const personNameByKey = new Map<string, string>();
-  const keyByPersonId = new Map<string, string>();
-  const speakerLabelByPersonId = new Map<string, string>(); // AssemblyAI speaker label (e.g., "SPEAKER A")
-  const displayNameByKey = new Map<string, string>();
-  const personRoleById = new Map<string, string | null>();
-  const internalPerson = metadata.userId
-    ? await resolveInternalPerson({
-        supabase: db,
-        accountId,
-        projectId: projectId ?? null,
-        userId: metadata.userId,
-      })
-    : null;
-  let internalPersonLinked = false;
-  let internalPersonHasTranscriptKey = false;
-
-  if (projectId) {
-    const { data: existingInterviewPeople } = await db
-      .from("interview_people")
-      .select("person_id, transcript_key, display_name, role")
-      .eq("interview_id", interviewRecord.id);
-    if (Array.isArray(existingInterviewPeople)) {
-      existingInterviewPeople.forEach((row) => {
-        if (row.transcript_key && row.person_id) {
-          personIdByKey.set(row.transcript_key, row.person_id);
-          keyByPersonId.set(row.person_id, row.transcript_key);
-        }
-        if (row.display_name && row.transcript_key) {
-          displayNameByKey.set(row.transcript_key, row.display_name);
-        }
-        if (row.person_id && row.role) {
-          personRoleById.set(row.person_id, row.role);
-        }
-        if (internalPerson?.id && row.person_id === internalPerson.id) {
-          internalPersonLinked = true;
-          if (row.transcript_key) {
-            internalPersonHasTranscriptKey = true;
-          }
-        }
-      });
-    }
-  }
-
-  const upsertPerson = async (
-    fullName: string,
-    overrides: Partial<PeopleInsert> = {},
-  ): Promise<{ id: string; name: string }> => {
-    if (
-      peopleHooks?.isPlaceholderPerson?.(fullName) ||
-      /^participant\s*\d+$/i.test(fullName) ||
-      /^speaker\s+[A-Z]$/i.test(fullName)
-    ) {
-      throw new Error("skip-placeholder-person");
-    }
-
-    const { firstname, lastname } = parseFullName(fullName);
-    const payload: PeopleInsert = {
-      account_id: accountId,
-      project_id: projectId,
-      firstname: firstname || null,
-      lastname: lastname || null,
-      description: overrides.description ?? null,
-      segment: overrides.segment ?? metadata.segment ?? null,
-      contact_info: overrides.contact_info ?? null,
-      role: overrides.role ?? null,
-    };
-    if (peopleHooks?.upsertPerson) {
-      const result = await peopleHooks.upsertPerson(payload);
-      if (!result?.id) {
-        throw new Error(`Failed to upsert person ${fullName}: missing id`);
-      }
-      return { id: result.id, name: result.name ?? fullName.trim() };
-    }
-
-    const upserted = await upsertPersonWithOrgAwareConflict(db, payload);
-    if (!upserted?.id)
-      throw new Error(`Person upsert returned no id for ${fullName}`);
-    return { id: upserted.id, name: upserted.name ?? fullName.trim() };
-  };
-
-  let primaryPersonId: string | null = null;
-  let primaryPersonName: string | null = null;
-  let primaryPersonRole: string | null = null;
-  let primaryPersonDescription: string | null = null;
-  let primaryPersonOrganization: string | null = null;
-  let primaryPersonSegments: string[] = [];
-
-  consola.info(
-    `👥 Processing ${participants.length} participants for person records`,
-  );
-  if (participants.length) {
-    for (const [index, participant] of participants.entries()) {
-      const participantKey = participant.person_key;
-      consola.debug(
-        `  - Creating person record for "${participantKey}" (role: ${participant.role})`,
-      );
-      const resolved = resolveName(participant, index, metadata);
-      if (peopleHooks?.isPlaceholderPerson?.(resolved.name)) {
-        consola.info(
-          `[extractEvidence] Skipping placeholder person "${resolved.name}"`,
-        );
-        continue;
-      }
-      const normalizedRole = participant.role?.toLowerCase() ?? "";
-      const isInterviewer = internalPerson && normalizedRole === "interviewer";
-
-      if (isInterviewer && internalPerson) {
-        personIdByKey.set(participantKey, internalPerson.id);
-        personNameByKey.set(
-          participantKey,
-          internalPerson.name ?? resolved.name,
-        );
-        keyByPersonId.set(internalPerson.id, participantKey);
-        personRoleById.set(
-          internalPerson.id,
-          participant.role ?? "interviewer",
-        );
-        if (participant.speaker_label) {
-          speakerLabelByPersonId.set(
-            internalPerson.id,
-            participant.speaker_label,
-          );
-        }
-        const preferredDisplayName =
-          internalPerson.name ??
-          participant.display_name?.trim() ??
-          resolved.name;
-        if (preferredDisplayName) {
-          displayNameByKey.set(participantKey, preferredDisplayName);
-        }
-
-        if (!primaryPersonId && participant.person_key === primaryPersonKey) {
-          primaryPersonId = internalPerson.id;
-          primaryPersonName = internalPerson.name ?? resolved.name;
-          primaryPersonRole = participant.role ?? null;
-          primaryPersonDescription = participant.summary ?? null;
-          primaryPersonOrganization = participant.organization ?? null;
-          primaryPersonSegments = participant.segments.length
-            ? participant.segments
-            : metadata.segment
-              ? [metadata.segment]
-              : [];
-        }
-
-        internalPersonLinked = true;
-        continue;
-      }
-      const segments = participant.segments.length
-        ? participant.segments
-        : metadata.segment
-          ? [metadata.segment]
-          : [];
-      const participantOverrides: Partial<PeopleInsert> = {
-        description: participant.summary ?? null,
-        segment: segments[0] || metadata.segment || null,
-        company: participant.organization || "", // DB has NOT NULL default ''
-        role: participant.role ?? null,
-      };
-      let personRecord: { id: string; name: string } | null = null;
-      try {
-        personRecord = await upsertPerson(resolved.name, participantOverrides);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (msg === "skip-placeholder-person") {
-          consola.info(
-            `[processInterview] Skipping placeholder person "${resolved.name}"`,
-          );
-          continue;
-        }
-        throw e;
-      }
-      if (!personRecord) continue;
-      personIdByKey.set(participantKey, personRecord.id);
-      personNameByKey.set(participantKey, personRecord.name);
-      keyByPersonId.set(personRecord.id, participantKey);
-      // Use speaker_label (AssemblyAI format like "SPEAKER A") for transcript_key
-      if (participant.speaker_label) {
-        const normalized =
-          peopleHooks?.normalizeSpeakerLabel?.(participant.speaker_label) ??
-          participant.speaker_label;
-        speakerLabelByPersonId.set(personRecord.id, normalized);
-      }
-      const preferredDisplayName =
-        participant.display_name?.trim() || personRecord.name || null;
-      if (preferredDisplayName) {
-        displayNameByKey.set(participantKey, preferredDisplayName);
-      }
-      personRoleById.set(personRecord.id, participant.role ?? null);
-
-      if (!primaryPersonId && participant.person_key === primaryPersonKey) {
-        primaryPersonId = personRecord.id;
-        primaryPersonName = personRecord.name;
-        primaryPersonRole = participant.role ?? null;
-        primaryPersonDescription = participantOverrides.description ?? null;
-        primaryPersonOrganization = participantOverrides.company ?? null;
-        primaryPersonSegments = segments.length
-          ? segments
-          : metadata.segment
-            ? [metadata.segment]
-            : [];
-      }
-    }
-  }
-
-  if (!primaryPersonId && participants.length) {
-    const fallbackKey = participants[0].person_key;
-    const fallbackId = personIdByKey.get(fallbackKey) ?? null;
-    if (fallbackId) {
-      primaryPersonId = fallbackId;
-      primaryPersonName =
-        personNameByKey.get(fallbackKey) ??
-        resolveName(participants[0], 0, metadata).name;
-      primaryPersonRole = participants[0].role ?? null;
-      primaryPersonDescription = participants[0].summary ?? null;
-      primaryPersonOrganization = participants[0].organization ?? null;
-      primaryPersonSegments = participants[0].segments.length
-        ? participants[0].segments
-        : metadata.segment
-          ? [metadata.segment]
-          : [];
-    }
-  }
-
-  if (!primaryPersonId) {
-    const fallback = await upsertPerson(generateFallbackPersonName(metadata));
-    primaryPersonId = fallback.id;
-    primaryPersonName = fallback.name;
-    primaryPersonSegments = metadata.segment ? [metadata.segment] : [];
-    primaryPersonRole = primaryPersonRole ?? null;
-    primaryPersonDescription = primaryPersonDescription ?? null;
-    primaryPersonOrganization = primaryPersonOrganization ?? null;
-  }
-
-  if (!primaryPersonId)
-    throw new Error("Failed to resolve primary person for interview");
-
-  if (!personRoleById.has(primaryPersonId) || primaryPersonRole !== null) {
-    personRoleById.set(primaryPersonId, primaryPersonRole ?? null);
-  }
+  // Person resolution was moved before evidence loop (see lines 1134-1370)
+  // This enables direct person_id attribution during facet row building
 
   const ensuredPersonIds = new Set<string>([primaryPersonId]);
   for (const id of personIdByKey.values()) ensuredPersonIds.add(id);
@@ -1959,54 +2333,33 @@ export async function extractEvidenceAndPeopleCore({
   }
 
   if (insertedEvidenceIds.length) {
-    // Build evidence_id -> person_id mapping for both evidence_people and evidence_facet
-    const evidenceIdToPersonId = new Map<string, string>();
-
+    const evidencePeopleRows: Tables["evidence_people"]["Insert"][] = [];
     for (let idx = 0; idx < insertedEvidenceIds.length; idx++) {
       const evId = insertedEvidenceIds[idx];
       const key = personKeyForEvidence[idx];
       const targetPersonId = (key && personIdByKey.get(key)) || primaryPersonId;
       if (!targetPersonId) continue;
 
-      evidenceIdToPersonId.set(evId, targetPersonId);
-
       const role = targetPersonId ? personRoleById.get(targetPersonId) : null;
-      const { error: epErr } = await db.from("evidence_people").insert({
+      evidencePeopleRows.push({
         evidence_id: evId,
         person_id: targetPersonId,
         account_id: accountId,
         project_id: projectId ?? null,
         role: role || "speaker",
       });
-      if (epErr && !epErr.message?.includes("duplicate")) {
-        consola.warn(
-          `Failed linking evidence ${evId} to person ${targetPersonId}: ${epErr.message}`,
-        );
-      }
+
+      // evidence_facet.person_id is now set directly during INSERT (see facet row building around line 1210)
+      // No longer need fragile two-step INSERT (NULL) → UPDATE pattern
     }
 
-    // Update evidence_facet.person_id for direct attribution
-    // This enables efficient "get all facets for person" queries without junction traversal
-    if (evidenceIdToPersonId.size > 0) {
-      let facetsUpdated = 0;
-      for (const [evidenceId, personId] of evidenceIdToPersonId) {
-        const { error: facetUpdateErr, count } = await db
-          .from("evidence_facet")
-          .update({ person_id: personId })
-          .eq("evidence_id", evidenceId)
-          .is("person_id", null);
-
-        if (facetUpdateErr) {
-          consola.warn(
-            `Failed to set person_id on evidence_facet for evidence ${evidenceId}: ${facetUpdateErr.message}`,
-          );
-        } else {
-          facetsUpdated += count ?? 0;
-        }
-      }
-      if (facetsUpdated > 0) {
-        consola.info(
-          `✅ Set person_id on ${facetsUpdated} evidence_facet rows`,
+    if (evidencePeopleRows.length) {
+      const { error: epErr } = await db
+        .from("evidence_people")
+        .insert(evidencePeopleRows);
+      if (epErr && !epErr.message?.includes("duplicate")) {
+        consola.warn(
+          `Failed linking evidence to people in batch insert: ${epErr.message}`,
         );
       }
     }
@@ -2041,7 +2394,12 @@ export async function extractEvidenceAndPeopleCore({
     );
 
     for (const personKey of allPersonKeys) {
-      const personId = personIdByKey.get(personKey);
+      const personId =
+        personIdByKey.get(personKey) ||
+        (personIdByKey.size === 1
+          ? Array.from(personIdByKey.values())[0]
+          : primaryPersonId) ||
+        null;
       if (!personId) {
         consola.warn(
           `⚠️  Skipping facets for person_key "${personKey}" - no matching person record found`,
@@ -2051,6 +2409,11 @@ export async function extractEvidenceAndPeopleCore({
           Array.from(personIdByKey.keys()),
         );
         continue;
+      }
+      if (!personIdByKey.has(personKey)) {
+        consola.info(
+          `ℹ️  Remapping unresolved person_key "${personKey}" to person_id ${personId}`,
+        );
       }
 
       const facetObservations: PersonFacetObservation[] = [];
@@ -2144,6 +2507,29 @@ export async function extractEvidenceAndPeopleCore({
       progress: 100,
       detail: `Extraction complete: ${insertedEvidenceIds.length} evidence, ${rawPeople.length} people`,
     });
+  }
+
+  // TrustCore: Validate person attribution parity
+  try {
+    const parityResult = await validateAttributionParity(
+      db,
+      interviewRecord.id,
+      "trigger-v2",
+    );
+    if (!parityResult.passed) {
+      consola.warn(
+        "[TrustCore] Person attribution parity check failed in Trigger v2 extraction",
+        {
+          interviewId: interviewRecord.id,
+          mismatches: parityResult.mismatches,
+        },
+      );
+    }
+  } catch (parityError: unknown) {
+    consola.error(
+      "[TrustCore] Parity validation failed:",
+      parityError instanceof Error ? parityError.message : String(parityError),
+    );
   }
 
   return {

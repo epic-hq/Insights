@@ -2,25 +2,25 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import { HOST } from "~/paths";
-import type { contactInfoSchema } from "~/schemas";
-import { personDetailSchema } from "~/schemas";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import { HOST } from "../../paths";
+import type { contactInfoSchema } from "../../schemas";
+import { personDetailSchema } from "../../schemas";
 import type {
 	Database,
 	Interview,
 	InterviewPeople,
-	Organizations,
+	Organization,
 	PeopleOrganization,
 	PeoplePersona,
 	Person,
 	ProjectPeople,
-} from "~/types";
-import { createRouteDefinitions } from "~/utils/route-definitions";
+} from "../../types";
+import { createRouteDefinitions } from "../../utils/route-definitions";
 
 type PeopleOrganizationRow = PeopleOrganization & {
 	organization?: Pick<
-		Organizations,
+		Organization,
 		"id" | "name" | "website_url" | "domain" | "industry" | "size_range" | "headquarters_location"
 	> | null;
 };

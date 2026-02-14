@@ -47,7 +47,8 @@ const MOCK_EXTRACTION_RESULT = {
 			person_key: "participant-1",
 			person_name: "Speaker B",
 			inferred_name: null,
-			role: "Product Manager",
+			job_title: "Product Manager",
+			job_function: "Product",
 			is_interviewer: false,
 		},
 	],
@@ -111,7 +112,7 @@ describe("Realtime Evidence API", () => {
 			await action({ request, params: {}, context: {} });
 
 			expect(mockBAML.ExtractEvidenceFromTranscriptV2).toHaveBeenCalledTimes(1);
-			const [speakerUtterances, chapters, language, catalog] = mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0];
+			const [speakerUtterances, chapters, language] = mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0];
 
 			// Verify utterance mapping
 			expect(speakerUtterances).toHaveLength(2);
@@ -128,10 +129,7 @@ describe("Realtime Evidence API", () => {
 			// Verify language passthrough
 			expect(language).toBe("en");
 
-			// Verify facet catalog structure
-			expect(catalog.kinds.length).toBeGreaterThan(0);
-			expect(catalog.facets).toEqual([]);
-			expect(catalog.version).toBe("realtime-proto");
+			expect(mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0]).toHaveLength(3);
 		});
 
 		it("should handle null start/end timestamps", async () => {
@@ -171,7 +169,7 @@ describe("Realtime Evidence API", () => {
 			expect(data.evidence[0].gist).toBe("Tool fragmentation causes sync overhead");
 			expect(data.evidence[0].facet_mentions).toHaveLength(2);
 			expect(data.people).toHaveLength(1);
-			expect(data.people[0].role).toBe("Product Manager");
+			expect(data.people[0].job_title).toBe("Product Manager");
 			expect(data.scenes).toHaveLength(1);
 			expect(data.interactionContext).toBe("Research");
 			expect(data.contextConfidence).toBe(0.9);
@@ -212,26 +210,6 @@ describe("Realtime Evidence API", () => {
 			const data = await response.json();
 			expect(data.evidence).toEqual([]);
 			expect(data.people).toEqual([]);
-		});
-	});
-
-	describe("facet catalog", () => {
-		it("should include all standard facet kinds", async () => {
-			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any);
-
-			const request = createRequest({ utterances: [{ speaker: "A", text: "test" }] });
-			await action({ request, params: {}, context: {} });
-
-			const [, , , catalog] = mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0];
-			const slugs = catalog.kinds.map((k: any) => k.slug);
-
-			expect(slugs).toContain("goal");
-			expect(slugs).toContain("pain");
-			expect(slugs).toContain("behavior");
-			expect(slugs).toContain("tool");
-			expect(slugs).toContain("workflow");
-			expect(slugs).toContain("emotion");
-			expect(slugs).toContain("feature");
 		});
 	});
 });

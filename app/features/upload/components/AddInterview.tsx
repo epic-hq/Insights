@@ -3,7 +3,7 @@ import { Fragment, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useNavigate } from "react-router-dom";
 import { useNotification } from "~/contexts/NotificationContext";
-import type { ProcessingResult } from "~/utils/processInterview.server";
+import type { ProcessingResult } from "~/features/upload/types";
 
 interface AddInterviewProps {
 	open: boolean;

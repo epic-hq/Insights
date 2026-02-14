@@ -1,8 +1,8 @@
 import { Agent } from "@mastra/core/agent";
-import { LibSQLStore } from "@mastra/libsql";
 import { Memory } from "@mastra/memory";
 import z from "zod";
 import { openai } from "../../lib/billing/instrumented-openai.server";
+import { getSharedPostgresStore } from "../storage/postgres-singleton";
 import { manageOrganizationsTool } from "../tools/manage-organizations";
 import { managePeopleTool } from "../tools/manage-people";
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
@@ -78,10 +78,7 @@ export const mainAgent = new Agent({
 		manage_people: managePeopleTool,
 	}),
 	memory: new Memory({
-		storage: new LibSQLStore({
-			id: "main-agent-memory",
-			url: ":memory:", // using in-memory storage to avoid file connection issues
-		}),
+		storage: getSharedPostgresStore(),
 		options: {
 			workingMemory: {
 				enabled: true,

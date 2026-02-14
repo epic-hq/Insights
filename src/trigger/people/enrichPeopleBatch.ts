@@ -16,7 +16,7 @@ import { metadata, task, tasks } from "@trigger.dev/sdk";
 import consola from "consola";
 import type { EnrichPersonResult } from "~/features/people/services/enrichPersonData.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
-import { workflowRetryConfig } from "~/utils/processInterview.server";
+import { workflowRetryConfig } from "../interview/v2/config";
 import type { scoreICPMatchesTask } from "./scoreICPMatches";
 
 const MAX_BATCH_SIZE = 50;
@@ -84,11 +84,11 @@ export const enrichPeopleBatchTask = task({
 
     setProgress("loading");
 
-    // Fetch people to enrich - those missing title AND company
+    // Fetch people to enrich - those missing title or organization link
     let query = supabase
       .from("people")
       .select(
-        "id, name, firstname, lastname, title, company, role, primary_email, linkedin_url, default_organization_id",
+        "id, name, firstname, lastname, title, role, primary_email, linkedin_url, default_organization_id",
       )
       .eq("account_id", accountId)
       .eq("project_id", projectId)
@@ -99,7 +99,7 @@ export const enrichPeopleBatchTask = task({
       query = query.in("id", personIds);
     } else {
       // Only enrich people missing key data
-      query = query.or("title.is.null,company.is.null");
+      query = query.or("title.is.null,default_organization_id.is.null");
     }
 
     const { data: people, error: fetchError } = await query;

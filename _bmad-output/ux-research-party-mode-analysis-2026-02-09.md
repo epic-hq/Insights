@@ -249,3 +249,27 @@ Then we can outperform Dovetail specifically on practical UX research decision-m
 - Dovetail AI and search/channel docs indicate strong AI + automation capability and broad ecosystem integration.
 - Bryan applicability analysis aligns with a trust-first roadmap: traceability, correction loops, objective linkage, benchmarking.
 - Existing lens architecture already supports an evidence-first, role-specific output model; the leverage point is UX simplification and trust workflow completion.
+
+## 11) UX rework onboarding and user flows (2/12)
+get the bmad ux expert here for help.
+
+our app is not just research, it enables teams to both discover and fulfill customer needs. Customer discovery and slaes in a unified intelligence and action platform. 
+The simplicity strategy above misses the sales aspect. let us help user pick a success route.
+
+onboarding collects 3 pieces of information about the user. we store that then dump them into the user journey, but there's too many choices. this is the place we can show them later. 
+instead let us bridge like this:
+
+if the goal is to differentiate based on decision outcomes, and not just being a repository...
+lets guide them better.
+
+1. onboarding get to know them (they tell us what brings them here)
+2. show them 3 steps to Wow
+	1. [discovery] ...
+	2. [sales]... upload contacts, enrich data, reach out with a survey offer
+	3. ...
+
+the journey page can be a fall back when they want to explore more
+
+capture the existin gscreens in onboarding.
+Then create an improved flow that strives to shorten time to wow.
+

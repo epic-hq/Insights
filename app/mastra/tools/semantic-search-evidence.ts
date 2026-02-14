@@ -2,8 +2,8 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
 
 const DEFAULT_MATCH_COUNT = 10;
 const DEFAULT_MATCH_THRESHOLD = 0.5; // Lowered from 0.7 - semantic similarity scores are typically lower than exact matches

@@ -2,10 +2,10 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import { HOST } from "~/paths";
-import type { Database } from "~/types";
-import { createRouteDefinitions } from "~/utils/route-definitions";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import { HOST } from "../../paths";
+import type { Database } from "../../types";
+import { createRouteDefinitions } from "../../utils/route-definitions";
 
 function extractProjectIdFromResourceId(resourceId?: string | null): string | null {
 	if (!resourceId) return null;

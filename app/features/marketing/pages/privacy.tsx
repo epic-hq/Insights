@@ -208,8 +208,8 @@ export default function PrivacyPolicyPage() {
 							</ul>
 							<p className="mb-4 text-slate-700 leading-relaxed">
 								To exercise these rights, please contact us at{" "}
-								<a href="mailto:privacy@deeplight.io" className="text-orange-600 hover:underline">
-									privacy@deeplight.io
+								<a href="mailto:hello@getupsight.com" className="text-orange-600 hover:underline">
+									hello@getupsight.com
 								</a>
 								. We will respond to your request within 30 days.
 							</p>
@@ -314,8 +314,8 @@ export default function PrivacyPolicyPage() {
 								</li>
 								<li>
 									<strong>Data Protection Officer:</strong> You may contact our DPO at{" "}
-									<a href="mailto:dpo@deeplight.io" className="text-orange-600 hover:underline">
-										dpo@deeplight.io
+									<a href="mailto:hello@getupsight.com" className="text-orange-600 hover:underline">
+										hello@getupsight.com
 									</a>
 								</li>
 							</ul>
@@ -353,14 +353,14 @@ export default function PrivacyPolicyPage() {
 								</p>
 								<p className="mb-2 text-slate-700">
 									Email:{" "}
-									<a href="mailto:privacy@deeplight.io" className="text-orange-600 hover:underline">
-										privacy@deeplight.io
+									<a href="mailto:hello@getupsight.com" className="text-orange-600 hover:underline">
+										hello@getupsight.com
 									</a>
 								</p>
 								<p className="text-slate-700">
 									For data subject requests, please email{" "}
-									<a href="mailto:privacy@deeplight.io" className="text-orange-600 hover:underline">
-										privacy@deeplight.io
+									<a href="mailto:hello@getupsight.com" className="text-orange-600 hover:underline">
+										hello@getupsight.com
 									</a>{" "}
 									with the subject line "Data Subject Request."
 								</p>

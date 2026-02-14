@@ -30,11 +30,11 @@ const { mockSupabase } = vi.hoisted(() => ({
 	},
 }));
 
-vi.mock("~/lib/supabase/client.server", () => ({
+vi.mock("../../../lib/supabase/client.server", () => ({
 	supabaseAdmin: mockSupabase,
 }));
 
-vi.mock("~/utils/route-definitions", () => ({
+vi.mock("../../../utils/route-definitions", () => ({
 	createRouteDefinitions: vi.fn((projectPath: string) => ({
 		themes: {
 			detail: (themeId: string) => `${projectPath}/insights/${themeId}`,
@@ -45,7 +45,7 @@ vi.mock("~/utils/route-definitions", () => ({
 	})),
 }));
 
-vi.mock("~/paths", () => ({
+vi.mock("../../../paths", () => ({
 	HOST: "http://localhost:4280",
 }));
 

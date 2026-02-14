@@ -8,7 +8,13 @@ import { setActiveBillingContext, userBillingContext } from "~/lib/billing/instr
 import { recordUsageOnly } from "~/lib/billing/usage.server";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
+import { createSurveyTool } from "~/mastra/tools/create-survey";
+import { HOST } from "~/paths";
 import { action, buildQuickLinksMarkdown } from "./api.chat.project-status";
+
+const mockLangfuseGenerationEnd = vi.hoisted(() => vi.fn());
+const mockLangfuseTraceUpdate = vi.hoisted(() => vi.fn());
+const mockLangfuseTraceEnd = vi.hoisted(() => vi.fn());
 
 vi.mock("@mastra/ai-sdk", () => ({
 	handleChatStream: vi.fn(),
@@ -46,8 +52,10 @@ vi.mock("~/lib/billing/usage.server", () => ({
 vi.mock("~/lib/langfuse.server", () => ({
 	getLangfuseClient: vi.fn(() => ({
 		trace: () => ({
+			update: mockLangfuseTraceUpdate,
+			end: mockLangfuseTraceEnd,
 			generation: () => ({
-				end: vi.fn(),
+				end: mockLangfuseGenerationEnd,
 			}),
 		}),
 	})),
@@ -59,7 +67,7 @@ vi.mock("~/mastra", () => ({
 
 vi.mock("~/mastra/memory", () => ({
 	memory: {
-		listThreadsByResourceId: vi.fn(),
+		listThreads: vi.fn(),
 		createThread: vi.fn(),
 		deleteThread: vi.fn(),
 	},
@@ -77,6 +85,18 @@ vi.mock("~/mastra/tools/switch-agent", () => ({
 	switchAgentTool: {},
 }));
 
+vi.mock("~/mastra/tools/create-survey", () => ({
+	createSurveyTool: {
+		execute: vi.fn().mockResolvedValue({
+			success: true,
+			message: "created",
+			surveyId: "survey-1",
+			editUrl: "/a/acct-url/project-1/ask/survey-1/edit",
+			publicUrl: "/research/survey-1",
+		}),
+	},
+}));
+
 vi.mock("~/server/user-context", () => ({
 	userContext: Symbol("userContext"),
 }));
@@ -90,9 +110,10 @@ const mockedRecordUsageOnly = vi.mocked(recordUsageOnly);
 const mockedSetActiveBillingContext = vi.mocked(setActiveBillingContext);
 const mockedUserBillingContext = vi.mocked(userBillingContext);
 const mockedResolveAccountIdFromProject = vi.mocked(resolveAccountIdFromProject);
+const mockedCreateSurveyTool = vi.mocked(createSurveyTool);
 
 type MockedMemory = {
-	listThreadsByResourceId: ReturnType<typeof vi.fn>;
+	listThreads: ReturnType<typeof vi.fn>;
 	createThread: ReturnType<typeof vi.fn>;
 	deleteThread: ReturnType<typeof vi.fn>;
 };
@@ -173,11 +194,18 @@ function makeTextStream(options: { text?: string; toolName?: string; emitFinish?
 			controller.enqueue({ type: "start" });
 			controller.enqueue({ type: "start-step" });
 			if (options.toolName) {
-				controller.enqueue({ type: "tool-input-available", toolName: options.toolName });
+				controller.enqueue({
+					type: "tool-input-available",
+					toolName: options.toolName,
+				});
 			}
 			if (options.text) {
 				controller.enqueue({ type: "text-start", id: "chunk-a" });
-				controller.enqueue({ type: "text-delta", id: "chunk-a", delta: options.text });
+				controller.enqueue({
+					type: "text-delta",
+					id: "chunk-a",
+					delta: options.text,
+				});
 				controller.enqueue({ type: "text-end", id: "chunk-a" });
 			}
 			if (options.emitFinish ?? true) {
@@ -192,13 +220,17 @@ describe("api.chat.project-status", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockedResolveAccountIdFromProject.mockResolvedValue("acct-1");
-		mockedMemory.listThreadsByResourceId.mockResolvedValue({
+		mockedMemory.listThreads.mockResolvedValue({
 			total: 1,
 			threads: [{ id: "thread-1" }],
 		});
 		mockedMemory.createThread.mockResolvedValue({ id: "thread-created" });
-		mockedHandleChatStream.mockResolvedValue({ kind: "live-chat-stream" } as any);
-		mockedHandleNetworkStream.mockResolvedValue({ kind: "network-stream" } as any);
+		mockedHandleChatStream.mockResolvedValue({
+			kind: "live-chat-stream",
+		} as any);
+		mockedHandleNetworkStream.mockResolvedValue({
+			kind: "network-stream",
+		} as any);
 		mockedGenerateObject.mockResolvedValue({
 			object: {
 				targetAgentId: "chiefOfStaffAgent",
@@ -242,6 +274,13 @@ describe("api.chat.project-status", () => {
 		expect(mockedRecordUsageOnly).toHaveBeenCalledTimes(1);
 		expect(mockedSetActiveBillingContext).toHaveBeenCalledTimes(1);
 		expect(mockedUserBillingContext).toHaveBeenCalledTimes(1);
+		expect(mockLangfuseGenerationEnd).toHaveBeenCalledWith(
+			expect.objectContaining({
+				usage: { input: 120, output: 24, total: 144 },
+				usageDetails: { input: 120, output: 24, total: 144 },
+				costDetails: { total: 0.001 },
+			})
+		);
 	});
 
 	it("serves repeated fast standardized prompts from short-lived cache", async () => {
@@ -325,7 +364,11 @@ describe("api.chat.project-status", () => {
 			},
 		} as any);
 
-		const response = await action(buildArgs({ message: "what do john rubey and jered lish have in common" }));
+		const response = await action(
+			buildArgs({
+				message: "what do john rubey and jered lish have in common",
+			})
+		);
 		expect(response.status).toBe(200);
 		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
 		expect(mockedHandleChatStream).not.toHaveBeenCalled();
@@ -398,7 +441,7 @@ describe("api.chat.project-status", () => {
 		expect(text.toLowerCase()).toContain("prompt template");
 		expect(text.toLowerCase()).toContain("quick links");
 		expect(text.toLowerCase()).toContain("if stuck");
-		expect(text).toMatch(/\[[^\]]+\]\(\/a\/acct-1\/project-1\/people\)/);
+		expect(text).toContain(`[People](${HOST}/a/acct-1/project-1/people)`);
 	});
 
 	it("injects a fallback message when stream finishes without assistant text", async () => {
@@ -415,7 +458,10 @@ describe("api.chat.project-status", () => {
 				start(controller) {
 					controller.enqueue({ type: "start" });
 					controller.enqueue({ type: "start-step" });
-					controller.enqueue({ type: "tool-input-available", toolName: "recommendNextActions" });
+					controller.enqueue({
+						type: "tool-input-available",
+						toolName: "recommendNextActions",
+					});
 					controller.enqueue({ type: "finish", finishReason: "stop" });
 					controller.close();
 				},
@@ -451,7 +497,7 @@ describe("api.chat.project-status", () => {
 			.join("\n");
 		expect(text.length).toBeGreaterThan(0);
 		expect(text.toLowerCase()).toContain("quick links");
-		expect(text).toMatch(/\[[^\]]+\]\(\/a\/acct-1\/project-1\/(people|insights|ask)\)/);
+		expect(text).toContain(`${HOST}/a/acct-1/project-1/`);
 	});
 
 	it("supports /debug prefix, strips it from execution prompt, and appends a debug trace", async () => {
@@ -468,9 +514,16 @@ describe("api.chat.project-status", () => {
 				start(controller) {
 					controller.enqueue({ type: "start" });
 					controller.enqueue({ type: "text-start", id: "chunk-a" });
-					controller.enqueue({ type: "text-delta", id: "chunk-a", delta: "Prioritize ICP cleanup first." });
+					controller.enqueue({
+						type: "text-delta",
+						id: "chunk-a",
+						delta: "Prioritize ICP cleanup first.",
+					});
 					controller.enqueue({ type: "text-end", id: "chunk-a" });
-					controller.enqueue({ type: "tool-input-available", toolName: "recommendNextActions" });
+					controller.enqueue({
+						type: "tool-input-available",
+						toolName: "recommendNextActions",
+					});
 					controller.enqueue({ type: "finish", finishReason: "stop" });
 					controller.close();
 				},
@@ -496,41 +549,55 @@ describe("api.chat.project-status", () => {
 		expect(merged).toContain("- tool_calls: recommendNextActions");
 	});
 
-	it("routes survey creation prompts to researchAgent through deterministic flow", async () => {
-		mockedGenerateObject.mockResolvedValue({
+	it("executes deterministic survey quick-create (generate -> create -> navigate)", async () => {
+		mockedGenerateObject.mockResolvedValueOnce({
 			object: {
-				targetAgentId: "researchAgent",
-				confidence: 0.93,
-				responseMode: "normal",
-				rationale: "survey creation request",
+				name: "Beta Waitlist Survey",
+				description: "Learn intent and urgency.",
+				questions: [
+					{ prompt: "What is your current challenge?" },
+					{ prompt: "How urgent is this?", type: "likert", likertScale: 10 },
+					{ prompt: "What outcome matters most?" },
+				],
 			},
+			usage: { inputTokens: 100, outputTokens: 40 },
 		} as any);
-		mockedHandleChatStream.mockResolvedValue(
-			makeTextStream({
-				text: "Created [Beta Waitlist Survey](/a/acct-1/project-1/ask/survey-1/edit).",
-				toolName: "createSurvey",
-			}) as any
-		);
 
 		const response = await action(buildArgs({ message: "create a waitlist survey for our beta launch" }));
 		expect(response.status).toBe(200);
-		expect(mockedGenerateObject).not.toHaveBeenCalled();
-		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+		expect(mockedGenerateObject).toHaveBeenCalledTimes(1);
+		expect(mockedCreateSurveyTool.execute as any).toHaveBeenCalledTimes(1);
+		expect(mockedHandleChatStream).not.toHaveBeenCalled();
 		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
+		expect(mockLangfuseGenerationEnd).toHaveBeenCalledWith(
+			expect.objectContaining({
+				usage: { input: 100, output: 40, total: 140 },
+				usageDetails: { input: 100, output: 40, total: 140 },
+				costDetails: { total: 0.001 },
+			})
+		);
+
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+		expect(chunks.some((chunk) => chunk.type === "tool-input-available")).toBe(true);
 	});
 
-	it("returns fallback + debug trace when survey execution stream init fails", async () => {
+	it("returns fallback + debug trace when research stream init fails", async () => {
 		mockedGenerateObject.mockResolvedValue({
 			object: {
 				targetAgentId: "researchAgent",
 				confidence: 0.92,
 				responseMode: "normal",
-				rationale: "survey creation request",
+				rationale: "interview operations request",
 			},
 		} as any);
 		mockedHandleChatStream.mockRejectedValueOnce(new Error("simulated stream init failure"));
 
-		const response = await action(buildArgs({ message: "/debug create a survey to learn more from those people" }));
+		const response = await action(
+			buildArgs({
+				message: "/debug create interview questions for customer discovery",
+			})
+		);
 		expect(response.status).toBe(200);
 		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
 
@@ -561,7 +628,11 @@ describe("api.chat.project-status", () => {
 			}) as any
 		);
 
-		const response = await action(buildArgs({ message: "help me set up project and define research goals" }));
+		const response = await action(
+			buildArgs({
+				message: "help me set up project and define research goals",
+			})
+		);
 		expect(response.status).toBe(200);
 		expect(mockedGenerateObject).not.toHaveBeenCalled();
 		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
@@ -595,7 +666,10 @@ describe("api.chat.project-status", () => {
 		);
 
 		const peopleResponse = await action(
-			buildArgs({ message: "show people missing company and title", userId: "user-people-ops" })
+			buildArgs({
+				message: "show people missing company and title",
+				userId: "user-people-ops",
+			})
 		);
 		expect(peopleResponse.status).toBe(200);
 		expect(mockedGenerateObject).not.toHaveBeenCalled();
@@ -609,7 +683,10 @@ describe("api.chat.project-status", () => {
 			}) as any
 		);
 		const taskResponse = await action(
-			buildArgs({ message: "create a task to follow up with Mona tomorrow", userId: "user-people-ops" })
+			buildArgs({
+				message: "create a task to follow up with Mona tomorrow",
+				userId: "user-people-ops",
+			})
 		);
 		expect(taskResponse.status).toBe(200);
 		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(2);
@@ -648,7 +725,7 @@ describe("api.chat.project-status", () => {
 		});
 
 		expect(quickLinks).toContain("Quick links:");
-		expect(quickLinks).toContain("[People](/a/acct-1/project-1/lenses?tab=people)");
-		expect(quickLinks).toContain("[Insights](/a/acct-1/project-1/insights/table)");
+		expect(quickLinks).toContain(`[People](${HOST}/a/acct-1/project-1/people)`);
+		expect(quickLinks).toContain(`[Insights](${HOST}/a/acct-1/project-1/insights/table)`);
 	});
 });

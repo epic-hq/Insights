@@ -4,11 +4,12 @@
  * Scores a person against Ideal Customer Profile (ICP) criteria using a weighted algorithm.
  * Scores range from 0-1 and are converted to bands (HIGH/MEDIUM/LOW) for filtering.
  *
- * Algorithm (v2 — skip missing dimensions):
+ * Algorithm (v3 — 4 dimensions, skip missing):
  * - Only scores dimensions where the person HAS data AND criteria are defined
- * - Role match (base weight 0.4): Exact title or role field match
- * - Organization match (base weight 0.3): Industry, vertical, or company name match
- * - Company size match (base weight 0.3): Within target size ranges
+ * - Role match (base weight 0.33): Exact title or job_function match
+ * - Organization match (base weight 0.25): Industry, vertical, or company name match
+ * - Company size match (base weight 0.22): Within target size ranges
+ * - Facet match (base weight 0.20): Person has person_facet records matching target facets
  * - Weights are re-normalized across scored dimensions (e.g., if only role has data, it gets 100%)
  * - Confidence = dimensions_scored / total_criteria_dimensions (informational, not a multiplier)
  *
@@ -28,7 +29,7 @@ type PersonWithOrg = {
 	id: string;
 	name: string | null;
 	title: string | null;
-	role: string | null;
+	job_function: string | null;
 	organizations: {
 		id: string;
 		name: string | null;
@@ -41,21 +42,24 @@ export interface ICPCriteria {
 	target_roles: string[];
 	target_orgs: string[];
 	target_size_ranges: string[];
+	target_facets: Array<{ facet_account_id: number; label: string }>;
 }
 
 export interface ICPScoreBreakdown {
 	role_score: number | null; // 0-1, null if dimension skipped
 	org_score: number | null; // 0-1, null if dimension skipped
 	size_score: number | null; // 0-1, null if dimension skipped
+	facet_score: number | null; // 0-1, null if dimension skipped
 	overall_score: number | null; // weighted average, null if no dimensions scorable
 	band: "HIGH" | "MEDIUM" | "LOW" | null;
 	confidence: number; // 0-1 (dimensions_scored / criteria_dimensions)
-	dimensions_scored: number; // How many of 3 dimensions had data
+	dimensions_scored: number; // How many of 4 dimensions had data
 	dimensions_total: number; // How many criteria dimensions are defined
 	matched_criteria: {
 		role?: string; // Which role matched
 		org?: string; // Which org/industry matched
 		size?: string; // Which size matched
+		facets?: string[]; // Which facets matched
 	};
 }
 
@@ -66,20 +70,21 @@ type DimensionResult = {
 };
 
 /**
- * Score role match (base weight 0.4)
- * Returns score + whether person has data for this dimension
+ * Score role match (base weight 0.33)
+ * Checks title (exact match) and job_function (fuzzy match).
+ * people.role is deprecated — use job_function instead.
  */
 function scoreRoleMatch(person: PersonWithOrg, targetRoles: string[]): DimensionResult {
 	const hasTitle = !!person.title;
-	const hasRole = !!person.role;
-	const hasData = hasTitle || hasRole;
+	const hasJobFunction = !!person.job_function;
+	const hasData = hasTitle || hasJobFunction;
 
 	if (targetRoles.length === 0 || !hasData) {
 		return { score: 0, hasData };
 	}
 
 	const title = person.title?.toLowerCase() || "";
-	const role = person.role?.toLowerCase() || "";
+	const jobFunction = person.job_function?.toLowerCase() || "";
 
 	// Exact substring match in title (1.0)
 	for (const targetRole of targetRoles) {
@@ -89,10 +94,10 @@ function scoreRoleMatch(person: PersonWithOrg, targetRoles: string[]): Dimension
 		}
 	}
 
-	// Fuzzy match via role field (0.7)
+	// Fuzzy match via job_function (0.7)
 	for (const targetRole of targetRoles) {
 		const target = targetRole.toLowerCase();
-		if (role && role.includes(target)) {
+		if (jobFunction && jobFunction.includes(target)) {
 			return { score: 0.7, matched: targetRole, hasData: true };
 		}
 	}
@@ -177,6 +182,49 @@ function scoreSizeMatch(person: PersonWithOrg, targetSizes: string[]): Dimension
 	return { score: 0, hasData: true }; // Has data but no match
 }
 
+type FacetDimensionResult = DimensionResult & {
+	matchedFacets?: string[];
+};
+
+/**
+ * Score facet match (base weight 0.20)
+ * Checks if the person has person_facet records matching the target facets
+ */
+async function scoreFacetMatch(
+	supabase: SupabaseClient<Database>,
+	personId: string,
+	targetFacets: ICPCriteria["target_facets"]
+): Promise<FacetDimensionResult> {
+	// Check if person has any facet records
+	const { data: personFacets, error } = await supabase
+		.from("person_facet")
+		.select("facet_account_id")
+		.eq("person_id", personId);
+
+	if (error) {
+		consola.warn("Failed to fetch person facets:", error);
+		return { score: 0, hasData: false };
+	}
+
+	const hasData = (personFacets?.length || 0) > 0;
+
+	if (targetFacets.length === 0 || !hasData) {
+		return { score: 0, hasData };
+	}
+
+	const personFacetIds = new Set(personFacets!.map((f) => f.facet_account_id));
+	const matchedFacets = targetFacets.filter((tf) => personFacetIds.has(tf.facet_account_id));
+
+	const score = matchedFacets.length / targetFacets.length;
+
+	return {
+		score,
+		hasData: true,
+		matchedFacets: matchedFacets.map((f) => f.label),
+		matched: matchedFacets.length > 0 ? matchedFacets[0].label : undefined,
+	};
+}
+
 /**
  * Convert score to band
  */
@@ -214,7 +262,7 @@ export async function getICPCriteria(opts: {
 		.from("project_sections")
 		.select("kind, meta")
 		.eq("project_id", opts.projectId)
-		.in("kind", ["target_orgs", "target_roles", "target_company_sizes"]);
+		.in("kind", ["target_orgs", "target_roles", "target_company_sizes", "target_facets"]);
 
 	if (sectionsError) {
 		consola.warn("Failed to fetch project ICP overrides:", sectionsError);
@@ -224,11 +272,13 @@ export async function getICPCriteria(opts: {
 	const targetOrgsSection = sections?.find((s) => s.kind === "target_orgs");
 	const targetRolesSection = sections?.find((s) => s.kind === "target_roles");
 	const targetSizesSection = sections?.find((s) => s.kind === "target_company_sizes");
+	const targetFacetsSection = sections?.find((s) => s.kind === "target_facets");
 
 	return {
 		target_orgs: (targetOrgsSection?.meta as any)?.target_orgs || account?.target_orgs || [],
 		target_roles: (targetRolesSection?.meta as any)?.target_roles || account?.target_roles || [],
 		target_size_ranges: (targetSizesSection?.meta as any)?.target_company_sizes || account?.target_company_sizes || [],
+		target_facets: (targetFacetsSection?.meta as any)?.target_facets || [],
 	};
 }
 
@@ -260,7 +310,7 @@ export async function calculateICPScore(opts: {
 			id,
 			name,
 			title,
-			role,
+			job_function,
 			organizations:default_organization_id (
 				id,
 				name,
@@ -277,16 +327,21 @@ export async function calculateICPScore(opts: {
 		throw new Error("Person not found");
 	}
 
-	// Score each component
-	const roleResult = scoreRoleMatch(person as PersonWithOrg, criteria.target_roles);
-	const orgResult = scoreOrgMatch(person as PersonWithOrg, criteria.target_orgs);
-	const sizeResult = scoreSizeMatch(person as PersonWithOrg, criteria.target_size_ranges);
+	// Score each component (facet scoring is async)
+	const [roleResult, orgResult, sizeResult, facetResult] = await Promise.all([
+		Promise.resolve(scoreRoleMatch(person as PersonWithOrg, criteria.target_roles)),
+		Promise.resolve(scoreOrgMatch(person as PersonWithOrg, criteria.target_orgs)),
+		Promise.resolve(scoreSizeMatch(person as PersonWithOrg, criteria.target_size_ranges)),
+		scoreFacetMatch(opts.supabase, opts.personId, criteria.target_facets),
+	]);
 
 	// Count how many criteria dimensions are defined
+	// Base weights: role 0.33, org 0.25, size 0.22, facet 0.20
 	const criteriaDimensions: Array<{ result: DimensionResult; weight: number }> = [];
-	if (criteria.target_roles.length > 0) criteriaDimensions.push({ result: roleResult, weight: 0.4 });
-	if (criteria.target_orgs.length > 0) criteriaDimensions.push({ result: orgResult, weight: 0.3 });
-	if (criteria.target_size_ranges.length > 0) criteriaDimensions.push({ result: sizeResult, weight: 0.3 });
+	if (criteria.target_roles.length > 0) criteriaDimensions.push({ result: roleResult, weight: 0.33 });
+	if (criteria.target_orgs.length > 0) criteriaDimensions.push({ result: orgResult, weight: 0.25 });
+	if (criteria.target_size_ranges.length > 0) criteriaDimensions.push({ result: sizeResult, weight: 0.22 });
+	if (criteria.target_facets.length > 0) criteriaDimensions.push({ result: facetResult, weight: 0.2 });
 
 	// Filter to only dimensions where person has data
 	const scorableDimensions = criteriaDimensions.filter((d) => d.result.hasData);
@@ -300,6 +355,7 @@ export async function calculateICPScore(opts: {
 			role_score: roleResult.hasData ? roleResult.score : null,
 			org_score: orgResult.hasData ? orgResult.score : null,
 			size_score: sizeResult.hasData ? sizeResult.score : null,
+			facet_score: facetResult.hasData ? facetResult.score : null,
 			overall_score: null,
 			band: null,
 			confidence: 0,
@@ -322,6 +378,7 @@ export async function calculateICPScore(opts: {
 		role_score: roleResult.hasData ? roleResult.score : null,
 		org_score: orgResult.hasData ? orgResult.score : null,
 		size_score: sizeResult.hasData ? sizeResult.score : null,
+		facet_score: facetResult.hasData ? facetResult.score : null,
 		overall_score,
 		band,
 		confidence,
@@ -331,6 +388,7 @@ export async function calculateICPScore(opts: {
 			role: roleResult.matched,
 			org: orgResult.matched,
 			size: sizeResult.matched,
+			facets: facetResult.matchedFacets,
 		},
 	};
 }

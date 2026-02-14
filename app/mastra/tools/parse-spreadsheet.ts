@@ -3,9 +3,9 @@ import { tasks } from "@trigger.dev/sdk";
 import consola from "consola";
 import type { indexAssetTask } from "src/trigger/asset/indexAsset";
 import { z } from "zod";
-import { b } from "~/../baml_client";
-import type { Database } from "~/database.types";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { b } from "../../../baml_client";
+import type { Database } from "../../database.types";
+import { createSupabaseAdminClient } from "../../lib/supabase/client.server";
 
 // Type alias for database tables
 type ProjectAsset = Database["public"]["Tables"]["project_assets"]["Row"];
@@ -193,7 +193,11 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 			.nullish()
 			.default(20)
 			.describe("Maximum rows to show in the markdown table (default: 20)"),
-		includeStats: z.boolean().optional().default(true).describe("Include summary statistics for numeric columns"),
+		includeStats: z
+			.boolean()
+			.nullish()
+			.transform((v) => v ?? true)
+			.describe("Include summary statistics for numeric columns"),
 		saveToAssets: z
 			.boolean()
 			.nullish()

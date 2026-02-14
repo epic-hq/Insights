@@ -1,5 +1,5 @@
 import consola from "consola";
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { type ActionFunctionArgs, Link, redirect, useFetcher, useSearchParams } from "react-router";
 import { LogoBrand } from "~/components/branding";
 import { LoginForm } from "~/components/login-form";
@@ -38,6 +38,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function Login() {
 	const fetcher = useFetcher<typeof action>();
 	const [searchParams] = useSearchParams();
+	const emailId = useId();
+	const passwordId = useId();
 
 	const error = fetcher.data?.error || searchParams.get("error");
 	const loading = fetcher.state === "submitting";
@@ -80,26 +82,21 @@ export default function Login() {
 						<div className="hidden flex-col justify-between bg-gradient-to-br from-primary/5 via-transparent to-primary/10 p-8 md:flex">
 							<Link to="/">
 								<LogoBrand />
-								<p className="mt-4 text-lg text-muted-foreground">Get more out of every conversation</p>
 							</Link>
-							<div className="mb-4 flex items-center gap-3">
-								<div />
-							</div>
-							{/* <p className="mb-4 text-muted-foreground">
-													Transform customer interviews into actionable insights with AI-powered analysis.
-												</p> */}
+
+							<p className="text-center font-semibold text-2xl text-amber-500">Welcome back</p>
 							<ul className="space-y-3">
 								<li className="flex items-start gap-3">
-									<span className="mt-1 text-primary">✓</span>
-									<span className="mt-1 text-primary/70">Extract themes and patterns automatically</span>
+									<span className="mt-0.5 text-lg text-primary">✓</span>
+									<span className="text-base text-foreground/70">Extract themes and patterns automatically</span>
 								</li>
 								<li className="flex items-start gap-3">
-									<span className="mt-1 text-primary">✓</span>
-									<span className="mt-1 text-primary/70">Build personas from real feedback</span>
+									<span className="mt-0.5 text-lg text-primary">✓</span>
+									<span className="text-base text-foreground/70">Build personas from real feedback</span>
 								</li>
 								<li className="flex items-start gap-3">
-									<span className="mt-1 text-primary">✓</span>
-									<span className="mt-1 text-primary/70">Discover hidden opportunities</span>
+									<span className="mt-0.5 text-lg text-primary">✓</span>
+									<span className="text-base text-foreground/70">Discover hidden opportunities</span>
 								</li>
 							</ul>
 						</div>
@@ -115,12 +112,12 @@ export default function Login() {
 									{redirectTo && <input type="hidden" name="redirect" value={redirectTo} />}
 									<div className="flex flex-col gap-6">
 										<div className="grid gap-2">
-											<Label htmlFor="email">Email</Label>
-											<Input id="email" name="email" type="email" placeholder="m@example.com" required />
+											<Label htmlFor={emailId}>Email</Label>
+											<Input id={emailId} name="email" type="email" placeholder="m@example.com" required />
 										</div>
 										<div className="grid gap-2">
 											<div className="flex items-center">
-												<Label htmlFor="password">Password</Label>
+												<Label htmlFor={passwordId}>Password</Label>
 												<Link
 													to="/forgot-password"
 													className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
@@ -128,7 +125,7 @@ export default function Login() {
 													Forgot your password?
 												</Link>
 											</div>
-											<Input id="password" type="password" name="password" required />
+											<Input id={passwordId} type="password" name="password" required />
 										</div>
 										{error && <p className="text-red-500 text-sm">{error}</p>}
 										<Button type="submit" className="w-full" disabled={loading}>

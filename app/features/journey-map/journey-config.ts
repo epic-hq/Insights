@@ -188,6 +188,94 @@ export const JOURNEY_PHASES: JourneyPhaseConfig[] = [
 	},
 ];
 
+// --- Steps to Wow configuration ---
+
+export type WowPath = "discover" | "reach_out";
+
+export interface WowStepConfig {
+	title: string;
+	description: string;
+	cta: string;
+	timeHint?: string;
+	getRoute: (routes: RouteDefinitions) => string;
+	/** Key from useSidebarCounts to check completion (value > 0 means done) */
+	completionKey: string;
+}
+
+export interface WowPathConfig {
+	label: string;
+	tagline: string;
+	accentColor: string;
+	steps: WowStepConfig[];
+}
+
+export const WOW_PATHS: Record<WowPath, WowPathConfig> = {
+	discover: {
+		label: "Discover",
+		tagline: "Upload a conversation, see AI findings, click for receipts",
+		accentColor: "blue",
+		steps: [
+			{
+				title: "Upload a conversation",
+				description: "Drop in a recording, transcript, or notes. AI analyzes immediately.",
+				cta: "Upload now",
+				timeHint: "30 sec",
+				getRoute: (routes) => routes.interviews.upload(),
+				completionKey: "encounters",
+			},
+			{
+				title: "See what AI found",
+				description: "Themes, pain points, and opportunities — each linked to exact quotes.",
+				cta: "View evidence",
+				timeHint: "~2 min",
+				getRoute: (routes) => routes.evidence.index(),
+				completionKey: "themes",
+			},
+			{
+				title: "Click an insight — see the receipts",
+				description: "Every claim traces back to who said it, when, and why.",
+				cta: "Explore insights",
+				getRoute: (routes) => routes.insights.table(),
+				completionKey: "insights",
+			},
+		],
+	},
+	reach_out: {
+		label: "Reach Out",
+		tagline: "Send a smart survey, watch responses, see patterns",
+		accentColor: "amber",
+		steps: [
+			{
+				title: "Send a smart survey",
+				description: "Tell AI what you want to learn and get personalized multimedia questions in a shareable link.",
+				cta: "Create survey",
+				timeHint: "2 min",
+				getRoute: (routes) => routes.ask.new(),
+				completionKey: "surveys",
+			},
+			{
+				title: "Watch responses roll in",
+				description: "Share the link anywhere. AI analyzes each answer as it arrives.",
+				cta: "View responses",
+				getRoute: (routes) => routes.ask.index(),
+				completionKey: "surveyResponses",
+			},
+			{
+				title: "See patterns with receipts",
+				description: "Themes and opportunities extracted automatically, each linked to who said it.",
+				cta: "Explore insights",
+				getRoute: (routes) => routes.insights.table(),
+				completionKey: "themes",
+			},
+		],
+	},
+};
+
+export interface WowSettings {
+	wow_path?: WowPath | "full_setup" | null;
+	wow_steps_completed?: number[];
+}
+
 /** Get total number of cards across all phases */
 export function getTotalCards(): number {
 	return JOURNEY_PHASES.reduce((sum, phase) => sum + phase.cards.length, 0);

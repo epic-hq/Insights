@@ -773,9 +773,10 @@ export function createR2PresignedUploadUrl(options: R2PresignedUploadOptions): R
 		const dateStamp = amzDate.slice(0, 8);
 		const credentialScope = `${dateStamp}/${region}/s3/aws4_request`;
 
-		// For PUT, we need to include content-type in signed headers if provided
-		const signedHeadersList = contentType ? ["content-type", "host"] : ["host"];
-		const signedHeaders = signedHeadersList.sort().join(";");
+		// Only sign "host" — do NOT sign content-type for browser uploads.
+		// R2 rejects browser PUTs when content-type is signed because browsers
+		// may send a subtly different Content-Type than what was signed.
+		const signedHeaders = "host";
 
 		const queryParams: Array<[string, string]> = [
 			["X-Amz-Algorithm", "AWS4-HMAC-SHA256"],
@@ -787,12 +788,8 @@ export function createR2PresignedUploadUrl(options: R2PresignedUploadOptions): R
 
 		const canonicalQuery = buildCanonicalQuery(queryParams);
 
-		// Build canonical headers - must be sorted alphabetically
-		let canonicalHeaders = "";
-		if (contentType) {
-			canonicalHeaders += `content-type:${contentType}\n`;
-		}
-		canonicalHeaders += `host:${host}\n`;
+		// Only host in canonical headers — content-type intentionally excluded
+		const canonicalHeaders = `host:${host}\n`;
 
 		const payloadHash = "UNSIGNED-PAYLOAD";
 

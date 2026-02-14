@@ -10,7 +10,10 @@ import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { upsertConversationOverviewLens } from "~/lib/conversation-analyses/upsertConversationOverviewLens.server";
 import { createSupabaseAdminClient, getAuthenticatedUser } from "~/lib/supabase/client.server";
-import { generateConversationAnalysis } from "~/utils/conversationAnalysis.server";
+import {
+	enrichConversationAnalysisWithEvidenceIds,
+	generateConversationAnalysis,
+} from "~/utils/conversationAnalysis.server";
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
@@ -54,12 +57,26 @@ export async function action({ request }: ActionFunctionArgs) {
 			},
 		});
 
+		const { data: evidenceForTraceability } = await supabase
+			.from("evidence")
+			.select("id, verbatim, gist")
+			.eq("interview_id", interview.id);
+
+		const enrichedResult = enrichConversationAnalysisWithEvidenceIds(
+			result,
+			(evidenceForTraceability || []).map((item) => ({
+				id: item.id,
+				verbatim: item.verbatim,
+				gist: item.gist,
+			}))
+		);
+
 		const { success, error: upsertError } = await upsertConversationOverviewLens({
 			db: supabase,
 			interviewId: interview.id,
 			accountId: interview.account_id,
 			projectId: interview.project_id,
-			analysis: result,
+			analysis: enrichedResult,
 			computedBy: user.sub,
 		});
 
@@ -69,15 +86,15 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		consola.info("[regenerate-conversation-analysis] Done for interview", interview.id, {
-			keyTakeaways: result.key_takeaways.length,
-			recommendations: result.recommended_next_steps.length,
-			openQuestions: result.open_questions.length,
+			keyTakeaways: enrichedResult.key_takeaways.length,
+			recommendations: enrichedResult.recommended_next_steps.length,
+			openQuestions: enrichedResult.open_questions.length,
 		});
 
 		return Response.json({
 			success: true,
-			keyTakeaways: result.key_takeaways.length,
-			recommendations: result.recommended_next_steps.length,
+			keyTakeaways: enrichedResult.key_takeaways.length,
+			recommendations: enrichedResult.recommended_next_steps.length,
 		});
 	} catch (error) {
 		consola.error("[regenerate-conversation-analysis] Error:", error);

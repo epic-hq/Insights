@@ -3,7 +3,7 @@ import { tasks } from "@trigger.dev/sdk";
 import consola from "consola";
 import type { indexAssetTask } from "src/trigger/asset/indexAsset";
 import { z } from "zod";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { createSupabaseAdminClient } from "../../lib/supabase/client.server";
 
 /**
  * Save agent-generated tabular data to project_assets.

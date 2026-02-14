@@ -1,10 +1,12 @@
 /**
  * Batch Evidence Extraction Utility
  *
- * Splits large transcripts into batches and processes them in parallel
- * for faster extraction using GPT-4o-mini.
+ * Splits large transcripts into batches and processes them in parallel.
+ * Uses gpt-5-mini (fast) with BAML fallback to gpt-4o on API errors.
+ * Quality validation retries batches that return suspiciously empty results.
  */
 
+import { heartbeats } from "@trigger.dev/sdk";
 import consola from "consola";
 
 type SpeakerUtterance = {
@@ -17,9 +19,17 @@ type SpeakerUtterance = {
 type EvidenceResult = {
 	people: any[];
 	evidence: any[];
-	facet_mentions: any[];
+	facet_mentions?: any[];
 	scenes: any[];
 };
+
+function normalizeSpeakerKey(value: unknown): string | null {
+	if (typeof value !== "string") return null;
+	const trimmed = value.trim();
+	if (!trimmed.length) return null;
+	const upper = trimmed.toUpperCase();
+	return upper.startsWith("SPEAKER ") ? upper : `SPEAKER ${upper}`;
+}
 
 export interface BatchProgressInfo {
 	batchIndex: number;
@@ -30,8 +40,24 @@ export interface BatchProgressInfo {
 
 export type BatchProgressCallback = (info: BatchProgressInfo) => void | Promise<void>;
 
-const BATCH_SIZE = 75; // Process ~75 utterances per batch
-const MAX_CONCURRENT_BATCHES = 3; // Limit parallel API calls to prevent rate limiting
+const DEFAULT_BATCH_SIZE = 30; // Keep each model call shorter to reduce heartbeat stall risk
+const DEFAULT_MAX_CONCURRENT_BATCHES = 6; // Run more batches in parallel — GPT-5-mini/4o handle concurrency well
+const MAX_BATCH_SIZE = 75;
+const MAX_CONCURRENCY = 10;
+const BATCH_HEARTBEAT_INTERVAL_MS = 10_000;
+
+function readPositiveIntEnv(name: string, fallback: number): number {
+	const raw = process.env[name];
+	if (!raw) return fallback;
+	const parsed = Number.parseInt(raw, 10);
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const BATCH_SIZE = Math.min(MAX_BATCH_SIZE, readPositiveIntEnv("EVIDENCE_BATCH_SIZE", DEFAULT_BATCH_SIZE));
+const MAX_CONCURRENT_BATCHES = Math.min(
+	MAX_CONCURRENCY,
+	readPositiveIntEnv("EVIDENCE_MAX_CONCURRENT_BATCHES", DEFAULT_MAX_CONCURRENT_BATCHES)
+);
 
 /**
  * Process items with limited concurrency (pool pattern)
@@ -71,7 +97,7 @@ export async function batchExtractEvidence(
 		// Single call for small transcripts
 		consola.info(`⚡ Single-batch mode: ${speakerTranscripts.length} utterances (≤${BATCH_SIZE}, batching disabled)`);
 		const startTime = Date.now();
-		const result = await extractFn(speakerTranscripts);
+		const result = await withHeartbeatWhilePending(() => extractFn(speakerTranscripts), BATCH_HEARTBEAT_INTERVAL_MS);
 		const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 		consola.success(`✅ Single batch completed in ${duration}s`);
 
@@ -102,17 +128,30 @@ export async function batchExtractEvidence(
 	let completedBatches = 0;
 	let totalEvidenceCount = 0;
 
-	// Process batches with limited concurrency to prevent API rate limiting
+	// Process batches with limited concurrency
+	// Quality validation: retry batches that return zero evidence (likely model failure)
 	const batchResults = await processWithConcurrency(
 		batches,
 		async (batch, batchIndex) => {
+			await heartbeats.yield();
 			const batchStart = Date.now();
-			consola.info(`⏳ Batch ${batchIndex + 1}/${batches.length}: processing ${batch.length} utterances`);
+			const batchLabel = `Batch ${batchIndex + 1}/${batches.length}`;
+			consola.info(`⏳ ${batchLabel}: processing ${batch.length} utterances`);
 
-			const result = await extractFn(batch);
+			let result = await withHeartbeatWhilePending(() => extractFn(batch), BATCH_HEARTBEAT_INTERVAL_MS);
+
+			// Quality gate: if batch returned zero evidence from non-trivial input, retry once
+			const evidenceCount = result.evidence?.length ?? 0;
+			if (evidenceCount === 0 && batch.length >= 5) {
+				consola.warn(`⚠️  ${batchLabel}: 0 evidence from ${batch.length} utterances — retrying`);
+				await heartbeats.yield();
+				result = await withHeartbeatWhilePending(() => extractFn(batch), BATCH_HEARTBEAT_INTERVAL_MS);
+				const retryCount = result.evidence?.length ?? 0;
+				consola.info(`🔄 ${batchLabel} retry: ${retryCount} evidence units`);
+			}
 
 			const batchDuration = ((Date.now() - batchStart) / 1000).toFixed(1);
-			consola.success(`✅ Batch ${batchIndex + 1}/${batches.length}: completed in ${batchDuration}s`);
+			consola.success(`✅ ${batchLabel}: completed in ${batchDuration}s (${result.evidence?.length ?? 0} evidence)`);
 
 			// Report progress after each batch completes
 			completedBatches++;
@@ -137,29 +176,75 @@ export async function batchExtractEvidence(
 	const mergedEvidence: any[] = [];
 	const mergedFacetMentions: any[] = [];
 	const mergedScenes: any[] = [];
+	const canonicalPersonKeyByIdentity = new Map<string, string>();
 
 	for (const { result } of batchResults) {
-		// Merge people (dedupe by person_key)
+		await heartbeats.yield();
+		// Merge people using speaker identity first (speaker_label), fallback to person_key.
+		// This prevents cross-batch collisions from local person_key numbering.
+		const keyRewrite = new Map<string, string>();
 		for (const person of result.people || []) {
-			if (!mergedPeople.find((p) => p.person_key === person.person_key)) {
-				mergedPeople.push(person);
+			const identity =
+				normalizeSpeakerKey(person?.speaker_label) ??
+				(typeof person?.person_key === "string" ? person.person_key : null);
+			const sourceKey = typeof person?.person_key === "string" ? person.person_key : null;
+			if (!identity || !sourceKey) continue;
+
+			const existingKey = canonicalPersonKeyByIdentity.get(identity);
+			if (existingKey) {
+				keyRewrite.set(sourceKey, existingKey);
+				continue;
 			}
+
+			canonicalPersonKeyByIdentity.set(identity, sourceKey);
+			keyRewrite.set(sourceKey, sourceKey);
+			mergedPeople.push(person);
 		}
 
 		// Merge evidence with corrected indices
 		const evidenceOffset = mergedEvidence.length;
+		let localEvidenceIndex = 0;
 		for (const evidence of result.evidence || []) {
-			mergedEvidence.push(evidence);
+			const rewrittenPersonKey =
+				typeof evidence?.person_key === "string"
+					? (keyRewrite.get(evidence.person_key) ?? evidence.person_key)
+					: evidence?.person_key;
+			const correctedIndex =
+				typeof evidence?.index === "number" ? evidenceOffset + evidence.index : evidenceOffset + localEvidenceIndex;
+			const rewrittenMentions = Array.isArray(evidence?.facet_mentions)
+				? evidence.facet_mentions.map((mention: any) => ({
+						...mention,
+						person_key:
+							typeof mention?.person_key === "string"
+								? (keyRewrite.get(mention.person_key) ?? mention.person_key)
+								: mention?.person_key,
+						parent_index:
+							typeof mention?.parent_index === "number" ? evidenceOffset + mention.parent_index : correctedIndex,
+					}))
+				: evidence?.facet_mentions;
+			const normalizedEvidence = {
+				...evidence,
+				person_key: rewrittenPersonKey,
+				index: correctedIndex,
+				facet_mentions: rewrittenMentions,
+			};
+			mergedEvidence.push(normalizedEvidence);
 
 			// Merge nested facet_mentions with corrected parent_index
-			if (Array.isArray(evidence.facet_mentions)) {
-				for (const mention of evidence.facet_mentions) {
+			if (Array.isArray(rewrittenMentions)) {
+				for (const mention of rewrittenMentions) {
+					const mentionPersonKey =
+						typeof mention?.person_key === "string"
+							? (keyRewrite.get(mention.person_key) ?? mention.person_key)
+							: mention?.person_key;
 					mergedFacetMentions.push({
 						...mention,
-						parent_index: evidenceOffset + (mention.parent_index || 0),
+						person_key: mentionPersonKey,
+						parent_index: typeof mention?.parent_index === "number" ? mention.parent_index : correctedIndex,
 					});
 				}
 			}
+			localEvidenceIndex++;
 		}
 
 		// Merge scenes with corrected indices
@@ -187,4 +272,17 @@ export async function batchExtractEvidence(
 		facet_mentions: mergedFacetMentions,
 		scenes: mergedScenes,
 	};
+}
+
+async function withHeartbeatWhilePending<T>(operation: () => Promise<T>, intervalMs: number): Promise<T> {
+	const timer = setInterval(() => {
+		void heartbeats.yield();
+	}, intervalMs);
+
+	try {
+		return await operation();
+	} finally {
+		clearInterval(timer);
+		await heartbeats.yield();
+	}
 }

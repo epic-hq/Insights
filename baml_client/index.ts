@@ -48,4 +48,4 @@ export type { partial_types } from "./partial_types"
 export * from "./tracing"
 export * as watchers from "./watchers"
 export { resetBamlEnvVars } from "./globals"
-export { BamlClientHttpError, BamlValidationError, BamlClientFinishReasonError } from "@boundaryml/baml"
+// PATCHED: Error exports removed to fix SSR bundling

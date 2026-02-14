@@ -1,5 +1,5 @@
 import consola from "consola";
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { type ActionFunctionArgs, Link, redirect, useFetcher, useSearchParams } from "react-router";
 import { LogoBrand } from "~/components/branding";
 import { LoginForm } from "~/components/login-form";
@@ -62,6 +62,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function SignUp() {
 	const fetcher = useFetcher<typeof action>();
 	const [searchParams] = useSearchParams();
+	const emailId = useId();
+	const passwordId = useId();
+	const repeatPasswordId = useId();
 
 	const success = !!searchParams.has("success");
 	const error = fetcher.data?.error;
@@ -118,22 +121,21 @@ export default function SignUp() {
 						<div className="hidden flex-col justify-between bg-gradient-to-br from-primary/5 via-transparent to-primary/10 p-8 md:flex">
 							<Link to="/">
 								<LogoBrand />
-								<p className="mt-4 text-lg text-muted-foreground">Get more out of every conversation</p>
 							</Link>
 
-							<p className="text-center font-semibold text-foreground/50 text-xl">Start free for 14 days</p>
+							<p className="text-center font-semibold text-2xl text-amber-500">Start free for 14 days</p>
 							<ul className="space-y-3">
 								<li className="flex items-start gap-3">
-									<span className="mt-1 text-primary">✓</span>
-									<span className="mt-1 text-primary/70">Intuitive and comprehensive</span>
+									<span className="mt-0.5 text-lg text-primary">✓</span>
+									<span className="text-base text-foreground/70">Intuitive and comprehensive</span>
 								</li>
 								<li className="flex items-start gap-3">
-									<span className="mt-1 text-primary">✓</span>
-									<span className="mt-1 text-primary/70">Auto-personas from real people</span>
+									<span className="mt-0.5 text-lg text-primary">✓</span>
+									<span className="text-base text-foreground/70">Auto-personas from real people</span>
 								</li>
 								<li className="flex items-start gap-3">
-									<span className="mt-1 text-primary">✓</span>
-									<span className="mt-1 text-primary/70">Clear, powerful insights</span>
+									<span className="mt-0.5 text-lg text-primary">✓</span>
+									<span className="text-base text-foreground/70">Clear, powerful insights</span>
 								</li>
 							</ul>
 						</div>
@@ -162,20 +164,20 @@ export default function SignUp() {
 											{redirectTo && <input type="hidden" name="redirect" value={redirectTo} />}
 											<div className="flex flex-col gap-6">
 												<div className="grid gap-2">
-													<Label htmlFor="email">Email</Label>
-													<Input id="email" name="email" type="email" placeholder="m@example.com" required />
+													<Label htmlFor={emailId}>Email</Label>
+													<Input id={emailId} name="email" type="email" placeholder="m@example.com" required />
 												</div>
 												<div className="grid gap-2">
 													<div className="flex items-center">
-														<Label htmlFor="password">Password</Label>
+														<Label htmlFor={passwordId}>Password</Label>
 													</div>
-													<Input id="password" name="password" type="password" required />
+													<Input id={passwordId} name="password" type="password" required />
 												</div>
 												<div className="grid gap-2">
 													<div className="flex items-center">
-														<Label htmlFor="repeat-password">Repeat Password</Label>
+														<Label htmlFor={repeatPasswordId}>Repeat Password</Label>
 													</div>
-													<Input id="repeat-password" name="repeat-password" type="password" required />
+													<Input id={repeatPasswordId} name="repeat-password" type="password" required />
 												</div>
 												{error && <p className="text-red-500 text-sm">{error}</p>}
 												<Button type="submit" className="w-full" disabled={loading}>

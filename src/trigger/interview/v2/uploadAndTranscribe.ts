@@ -135,6 +135,28 @@ export const uploadAndTranscribeTaskV2 = task({
         }
 
         processedTranscriptData = assemblyResult;
+
+        // Validate that transcription produced actual speech
+        const transcriptText =
+          (assemblyResult as Record<string, unknown>).full_transcript as
+            | string
+            | undefined;
+        const speakerUtterances = (
+          assemblyResult as Record<string, unknown>
+        ).speaker_transcripts as unknown[] | undefined;
+
+        if (
+          (!transcriptText || transcriptText.trim().length === 0) &&
+          (!speakerUtterances || speakerUtterances.length === 0)
+        ) {
+          const audioDur =
+            (assemblyResult as Record<string, unknown>).audio_duration ?? "unknown";
+          throw new Error(
+            `No speech detected in audio file (duration: ${audioDur}s). ` +
+              `The file may be silent, have no audio track, or contain only music/noise. ` +
+              `Please verify the media file contains audible speech and re-upload.`,
+          );
+        }
       }
 
       // Call core function to handle upload and transcription

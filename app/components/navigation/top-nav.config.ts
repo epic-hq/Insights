@@ -21,6 +21,7 @@ import {
 	ScrollText,
 	Settings,
 	Sparkles,
+	Tag,
 	Target,
 	Upload,
 	Users,
@@ -147,6 +148,13 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
 				icon: FileText,
 				to: (routes) => routes.evidence.index(),
 				countKey: "evidence",
+			},
+			{
+				key: "vocabulary",
+				title: "Vocabulary",
+				description: "AI-discovered labels from your conversations",
+				icon: Tag,
+				to: (routes) => routes.facetsExplorer(),
 			},
 			{
 				key: "analysis",

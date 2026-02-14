@@ -2,11 +2,12 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import { HOST } from "~/paths";
-import { evidenceDetailSchema } from "~/schemas";
-import type { Database, Evidence, Insight, Interview } from "~/types";
-import { createRouteDefinitions } from "~/utils/route-definitions";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import { HOST } from "../../paths";
+import { evidenceDetailSchema } from "../../schemas";
+import type { Database, Evidence, Insight, Interview } from "../../types";
+import { createRouteDefinitions } from "../../utils/route-definitions";
+import { validateUUID } from "./context-utils";
 
 const DEFAULT_EVIDENCE_LIMIT = 50;
 
@@ -80,11 +81,10 @@ export const fetchEvidenceTool = createTool({
 		const runtimeProjectId = context?.requestContext?.get?.("project_id");
 		const runtimeAccountId = context?.requestContext?.get?.("account_id");
 
-		const runtimeProjectIdStr = runtimeProjectId ? String(runtimeProjectId).trim() : undefined;
-		const projectId = input.projectId ?? runtimeProjectIdStr ?? null;
-		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : undefined;
-		const interviewId = input.interviewId?.trim();
-		const personId = input.personId?.trim();
+		const projectId = validateUUID(input.projectId || runtimeProjectId, "projectId", "fetch-evidence");
+		const accountId = validateUUID(runtimeAccountId, "accountId", "fetch-evidence");
+		const interviewId = validateUUID(input.interviewId, "interviewId", "fetch-evidence");
+		const personId = validateUUID(input.personId, "personId", "fetch-evidence");
 		const evidenceSearch = (input.evidenceSearch ?? "").trim();
 		const sanitizedEvidenceSearch = evidenceSearch.replace(/[%*"'()]/g, "").trim();
 		const evidenceLimit = input.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT;

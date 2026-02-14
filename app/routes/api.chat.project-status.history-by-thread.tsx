@@ -6,6 +6,7 @@
 import { convertMessages } from "@mastra/core/agent";
 import consola from "consola";
 import type { LoaderFunctionArgs } from "react-router";
+import { findProjectStatusThread } from "~/features/project-chat/project-status-threads.server";
 import { memory } from "~/mastra/memory";
 import type { UpsightMessage } from "~/mastra/message-types";
 import { userContext } from "~/server/user-context";
@@ -31,9 +32,19 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
 	}
 
 	try {
+		const thread = await findProjectStatusThread({
+			memory,
+			userId,
+			projectId,
+			threadId,
+		});
+		if (!thread) {
+			return Response.json({ error: "Thread not found" }, { status: 404 });
+		}
+
 		const { messages } = await memory.recall({
 			threadId,
-			selectBy: { last: 10 },
+			perPage: 100,
 		});
 
 		let uiMessages: UpsightMessage[] = [];

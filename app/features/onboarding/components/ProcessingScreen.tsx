@@ -177,18 +177,8 @@ export default function ProcessingScreen({
 						: "You can safely navigate away. We'll notify you when processing is complete."}
 				</p>
 
-				{/* Debug info (only in development or when stuck) */}
-				{(status === "loading" || hasError) && (
-					<div className="space-y-1 rounded-md bg-muted/50 p-3 text-left font-mono text-xs">
-						<div className="text-muted-foreground">
-							Interview: {interviewId ? interviewId.slice(0, 8) + "..." : "—"}
-						</div>
-						<div className="text-muted-foreground">Run: {triggerRunId ? triggerRunId.slice(0, 12) + "..." : "—"}</div>
-						<div className="text-muted-foreground">
-							Status: {status} | Realtime: {isRealtime ? "yes" : "no"}
-						</div>
-						{hasError && <div className="text-destructive">{processingStage}</div>}
-					</div>
+				{hasError && (
+					<div className="rounded-md bg-destructive/10 p-3 text-left text-destructive text-sm">{processingStage}</div>
 				)}
 			</div>
 		</div>

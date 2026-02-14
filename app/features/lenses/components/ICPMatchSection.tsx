@@ -6,13 +6,14 @@
  * Shows data quality warnings when people records are missing fields.
  */
 
-import { AlertTriangle, Loader2, Pencil, Sparkles, Target } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Pencil, Search, Sparkles, Target, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useRevalidator } from "react-router";
 import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "~/components/ui/command";
 import {
 	Dialog,
 	DialogContent,
@@ -23,9 +24,24 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
 import type { ICPScoredPerson } from "./AnalysisByPersonTab";
 import { EditPersonDataSheet } from "./EditPersonDataSheet";
 import { ICPScoredPeopleTable } from "./ICPScoredPeopleTable";
+
+type AvailableFacet = {
+	id: number;
+	label: string;
+	slug: string;
+	kindSlug: string;
+	kindLabel: string;
+	personCount: number;
+};
+
+type SelectedFacet = {
+	facet_account_id: number;
+	label: string;
+};
 
 type ICPMatchSectionProps = {
 	accountId: string;
@@ -35,6 +51,7 @@ type ICPMatchSectionProps = {
 		target_orgs: string[];
 		target_roles: string[];
 		target_company_sizes: string[];
+		target_facets: SelectedFacet[];
 	};
 	distribution?: {
 		HIGH: number;
@@ -49,6 +66,7 @@ type ICPMatchSectionProps = {
 		withTitle: number;
 		withCompany: number;
 	};
+	availableFacets: AvailableFacet[];
 };
 
 export function BandBadge({ band, confidence }: { band: string | null; confidence?: number | null }) {
@@ -99,11 +117,13 @@ export function ICPMatchSection({
 	scoredPeople,
 	organizations,
 	dataQuality,
+	availableFacets,
 }: ICPMatchSectionProps) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [isScoring, setIsScoring] = useState(false);
 	const [isEnriching, setIsEnriching] = useState(false);
 	const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
+	const [facetPickerOpen, setFacetPickerOpen] = useState(false);
 	const revalidator = useRevalidator();
 
 	// Derive editing person from latest scoredPeople so data stays fresh after revalidation
@@ -117,6 +137,7 @@ export function ICPMatchSection({
 	const [roles, setRoles] = useState(initialCriteria.target_roles.join(", "));
 	const [orgs, setOrgs] = useState(initialCriteria.target_orgs.join(", "));
 	const [sizes, setSizes] = useState(initialCriteria.target_company_sizes.join(", "));
+	const [selectedFacets, setSelectedFacets] = useState<SelectedFacet[]>(initialCriteria.target_facets || []);
 
 	const handleSaveCriteria = async () => {
 		try {
@@ -138,6 +159,7 @@ export function ICPMatchSection({
 						.split(",")
 						.map((s) => s.trim())
 						.filter(Boolean),
+					target_facets: selectedFacets,
 				}),
 			});
 
@@ -235,7 +257,8 @@ export function ICPMatchSection({
 	const hasCriteria =
 		initialCriteria.target_roles.length > 0 ||
 		initialCriteria.target_orgs.length > 0 ||
-		initialCriteria.target_company_sizes.length > 0;
+		initialCriteria.target_company_sizes.length > 0 ||
+		initialCriteria.target_facets.length > 0;
 
 	// Data quality checks
 	const missingTitle = dataQuality.totalPeople - dataQuality.withTitle;
@@ -254,10 +277,8 @@ export function ICPMatchSection({
 								<Target className="h-4 w-4 text-primary" />
 							</div>
 							<div>
-								<CardTitle className="text-base">ICP Match Scoring</CardTitle>
-								<CardDescription className="text-xs">
-									Score contacts against your Ideal Customer Profile
-								</CardDescription>
+								<CardTitle className="text-base">Ideal Customer Profile</CardTitle>
+								<CardDescription className="text-xs">AI-powered matching against your criteria</CardDescription>
 							</div>
 						</div>
 						<div className="flex gap-2">
@@ -273,9 +294,9 @@ export function ICPMatchSection({
 				</CardHeader>
 				<CardContent className="space-y-4">
 					{/* Current Criteria */}
-					<div className="grid gap-3 sm:grid-cols-3">
+					<div className="grid gap-3 sm:grid-cols-4">
 						<div>
-							<p className="mb-1.5 font-medium text-foreground/60 text-xs">Target Roles</p>
+							<p className="mb-1.5 font-medium text-[11px] text-muted-foreground uppercase tracking-wide">Roles</p>
 							<div className="flex flex-wrap gap-1">
 								{initialCriteria.target_roles.length > 0 ? (
 									initialCriteria.target_roles.map((role) => (
@@ -289,7 +310,9 @@ export function ICPMatchSection({
 							</div>
 						</div>
 						<div>
-							<p className="mb-1.5 font-medium text-foreground/60 text-xs">Target Organizations</p>
+							<p className="mb-1.5 font-medium text-[11px] text-muted-foreground uppercase tracking-wide">
+								Organizations
+							</p>
 							<div className="flex flex-wrap gap-1">
 								{initialCriteria.target_orgs.length > 0 ? (
 									initialCriteria.target_orgs.map((org) => (
@@ -303,12 +326,28 @@ export function ICPMatchSection({
 							</div>
 						</div>
 						<div>
-							<p className="mb-1.5 font-medium text-foreground/60 text-xs">Target Company Sizes</p>
+							<p className="mb-1.5 font-medium text-[11px] text-muted-foreground uppercase tracking-wide">
+								Company Sizes
+							</p>
 							<div className="flex flex-wrap gap-1">
 								{initialCriteria.target_company_sizes.length > 0 ? (
 									initialCriteria.target_company_sizes.map((size) => (
 										<Badge key={size} variant="secondary" className="text-xs">
 											{size}
+										</Badge>
+									))
+								) : (
+									<span className="text-muted-foreground text-xs italic">(not set)</span>
+								)}
+							</div>
+						</div>
+						<div>
+							<p className="mb-1.5 font-medium text-[11px] text-muted-foreground uppercase tracking-wide">Facets</p>
+							<div className="flex flex-wrap gap-1">
+								{initialCriteria.target_facets.length > 0 ? (
+									initialCriteria.target_facets.map((facet) => (
+										<Badge key={facet.facet_account_id} variant="secondary" className="text-xs">
+											{facet.label}
 										</Badge>
 									))
 								) : (
@@ -417,8 +456,7 @@ export function ICPMatchSection({
 					{!hasCriteria && (
 						<div className="border-t pt-4">
 							<p className="text-center text-muted-foreground text-xs">
-								No ICP criteria defined. Click "Edit Criteria" to set your target roles, organizations, and company
-								sizes.
+								No criteria defined. Click "Edit Criteria" to set your roles, organizations, company sizes, and facets.
 							</p>
 						</div>
 					)}
@@ -438,52 +476,177 @@ export function ICPMatchSection({
 				hasNext={editingPersonIndex >= 0 && editingPersonIndex < scoredPeople.length - 1}
 			/>
 
-			{/* Edit Criteria Dialog */}
+			{/* Edit Criteria Dialog — wide two-column layout */}
 			<Dialog open={isEditing} onOpenChange={setIsEditing}>
-				<DialogContent className="max-w-2xl">
+				<DialogContent className="max-h-[85vh] max-w-[1200px] sm:max-w-[1200px]">
 					<DialogHeader>
-						<DialogTitle>Edit ICP Criteria</DialogTitle>
-						<DialogDescription>
-							Define your Ideal Customer Profile. Separate multiple values with commas.
-						</DialogDescription>
+						<DialogTitle>Ideal Customer Profile</DialogTitle>
+						<DialogDescription>AI handles synonyms and variations automatically.</DialogDescription>
 					</DialogHeader>
-					<div className="space-y-4 py-4">
-						<div className="space-y-2">
-							<Label htmlFor="roles">Target Roles</Label>
-							<Input
-								id="roles"
-								placeholder="e.g., Founder, Marketing Director, Sales Manager"
-								value={roles}
-								onChange={(e) => setRoles(e.target.value)}
-							/>
-							<p className="text-muted-foreground text-xs">Job titles or roles you want to reach</p>
+
+					<div className="grid grid-cols-1 gap-8 py-4 sm:grid-cols-[1fr_1.2fr]">
+						{/* Left column: text criteria */}
+						<div className="flex flex-col gap-5">
+							<div className="border-b pb-1.5 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+								Criteria
+							</div>
+							<div className="space-y-1.5">
+								<Label htmlFor="roles" className="text-[13px]">
+									Roles
+								</Label>
+								<Input
+									id="roles"
+									placeholder="Job titles — e.g. Founder, VP Product"
+									value={roles}
+									onChange={(e) => setRoles(e.target.value)}
+								/>
+							</div>
+							<div className="space-y-1.5">
+								<Label htmlFor="orgs" className="text-[13px]">
+									Organizations
+								</Label>
+								<Input
+									id="orgs"
+									placeholder="Industries or verticals — e.g. B2B SaaS"
+									value={orgs}
+									onChange={(e) => setOrgs(e.target.value)}
+								/>
+							</div>
+							<div className="space-y-1.5">
+								<Label htmlFor="sizes" className="text-[13px]">
+									Company Sizes
+								</Label>
+								<Input
+									id="sizes"
+									placeholder="Stage or size — e.g. Startup, SMB, Enterprise"
+									value={sizes}
+									onChange={(e) => setSizes(e.target.value)}
+								/>
+							</div>
 						</div>
-						<div className="space-y-2">
-							<Label htmlFor="orgs">Target Organizations</Label>
-							<Input
-								id="orgs"
-								placeholder="e.g., B2B SaaS, E-commerce, Healthcare"
-								value={orgs}
-								onChange={(e) => setOrgs(e.target.value)}
-							/>
-							<p className="text-muted-foreground text-xs">Industries, verticals, or organization types</p>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="sizes">Target Company Sizes</Label>
-							<Input
-								id="sizes"
-								placeholder="e.g., Startup, SMB, Enterprise"
-								value={sizes}
-								onChange={(e) => setSizes(e.target.value)}
-							/>
-							<p className="text-muted-foreground text-xs">Company size ranges you're targeting</p>
+
+						{/* Right column: facet picker */}
+						<div className="flex flex-col gap-4">
+							<div className="border-b pb-1.5 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
+								Facets{" "}
+								<span className="font-normal text-muted-foreground/60 normal-case tracking-normal">(up to 3)</span>
+							</div>
+							<div className="flex flex-col gap-3">
+								{/* Selected facet badges */}
+								{selectedFacets.length > 0 && (
+									<div className="flex flex-wrap gap-1.5">
+										{selectedFacets.map((facet) => {
+											const facetInfo = availableFacets.find((f) => f.id === facet.facet_account_id);
+											return (
+												<span
+													key={facet.facet_account_id}
+													className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 py-1 pr-1.5 pl-2.5 font-medium text-[13px]"
+												>
+													{facet.label}
+													{facetInfo && (
+														<span className="rounded border border-border bg-background px-1.5 py-px text-[10px] text-muted-foreground uppercase tracking-wider">
+															{facetInfo.kindLabel}
+														</span>
+													)}
+													<button
+														type="button"
+														className="ml-0.5 flex items-center justify-center rounded p-0.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
+														onClick={() =>
+															setSelectedFacets((prev) =>
+																prev.filter((f) => f.facet_account_id !== facet.facet_account_id)
+															)
+														}
+													>
+														<X className="h-3 w-3" />
+													</button>
+												</span>
+											);
+										})}
+									</div>
+								)}
+
+								{/* Facet combobox trigger */}
+								{selectedFacets.length < 3 && availableFacets.length > 0 && (
+									<Popover open={facetPickerOpen} onOpenChange={setFacetPickerOpen}>
+										<PopoverTrigger asChild>
+											<button
+												type="button"
+												className="flex w-full items-center gap-2 rounded-lg border border-border border-dashed px-3 py-2 text-[13px] text-muted-foreground transition-colors hover:border-primary hover:border-solid hover:text-foreground"
+											>
+												<Search className="h-3.5 w-3.5" />
+												Search vocabulary...
+											</button>
+										</PopoverTrigger>
+										<PopoverContent
+											className="w-[var(--radix-popover-trigger-width)] min-w-[320px] p-0"
+											align="start"
+											side="bottom"
+											sideOffset={4}
+										>
+											<Command>
+												<CommandInput placeholder="Search facets..." />
+												<CommandList className="max-h-[320px]">
+													<CommandEmpty>No facets found.</CommandEmpty>
+													<CommandGroup>
+														{availableFacets
+															.filter((f) => !selectedFacets.some((sf) => sf.facet_account_id === f.id))
+															.map((facet) => (
+																<CommandItem
+																	key={facet.id}
+																	value={facet.label}
+																	onSelect={() => {
+																		setSelectedFacets((prev) => [
+																			...prev,
+																			{
+																				facet_account_id: facet.id,
+																				label: facet.label,
+																			},
+																		]);
+																		setFacetPickerOpen(false);
+																	}}
+																	className="flex items-center justify-between"
+																>
+																	<div className="flex items-center gap-2">
+																		<span className="font-medium text-[13px]">{facet.label}</span>
+																		<span className="rounded border border-border bg-background px-1.5 py-px text-[10px] text-muted-foreground uppercase tracking-wider">
+																			{facet.kindLabel}
+																		</span>
+																	</div>
+																	<span className="ml-2 shrink-0 text-muted-foreground text-xs">
+																		{facet.personCount} people
+																	</span>
+																</CommandItem>
+															))}
+													</CommandGroup>
+												</CommandList>
+											</Command>
+										</PopoverContent>
+									</Popover>
+								)}
+
+								{/* Max reached message */}
+								{selectedFacets.length >= 3 && (
+									<p className="text-[11px] text-muted-foreground/60 italic">Max 3 selected. Remove one to swap.</p>
+								)}
+
+								{/* Empty state when no facets exist */}
+								{availableFacets.length === 0 && selectedFacets.length === 0 && (
+									<p className="text-[13px] text-muted-foreground">
+										No vocabulary facets yet. Facets are discovered from conversations.
+									</p>
+								)}
+							</div>
 						</div>
 					</div>
-					<DialogFooter>
+
+					<DialogFooter className="border-t pt-4">
 						<Button variant="outline" onClick={() => setIsEditing(false)}>
 							Cancel
 						</Button>
-						<Button onClick={handleSaveCriteria}>Save & Re-score</Button>
+						<Button onClick={handleSaveCriteria}>
+							<Check className="mr-1.5 h-3.5 w-3.5" />
+							Save & Re-score
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

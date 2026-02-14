@@ -3,7 +3,7 @@
  * Used by both client-side hooks and server-side utilities
  */
 
-import { PATHS } from "~/paths";
+import { PATHS } from "../paths";
 
 function extractAccountId(projectPath: string): string {
 	const match = projectPath.match(/^\/a\/([^/]+)/);
@@ -73,6 +73,7 @@ export interface RouteDefinitions {
 
 	// Facets
 	facets: () => string;
+	facetsExplorer: () => string;
 
 	// Lenses
 	lenses: {
@@ -291,6 +292,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 
 		// Facets
 		facets: () => `${base}/facets`,
+		facetsExplorer: () => `${base}/facets/explorer`,
 
 		// Lenses
 		lenses: {

@@ -22,11 +22,11 @@ const { mockSupabase, getProjectStatusDataMock } = vi.hoisted(() => ({
 	getProjectStatusDataMock: vi.fn(),
 }));
 
-vi.mock("~/lib/supabase/client.server", () => ({
+vi.mock("../../../lib/supabase/client.server", () => ({
 	supabaseAdmin: mockSupabase,
 }));
 
-vi.mock("~/utils/project-status.server", () => ({
+vi.mock("../../../utils/project-status.server", () => ({
 	getProjectStatusData: getProjectStatusDataMock,
 }));
 
@@ -185,7 +185,7 @@ describe("fetchProjectStatusContextTool", () => {
 					segment: "Freelancer",
 					role: "Founder",
 					title: null,
-					company: null,
+					default_organization: null,
 					description: null,
 					location: null,
 					image_url: null,
@@ -280,7 +280,11 @@ describe("fetchProjectStatusContextTool", () => {
 		requestContext.set("account_id", "account-123");
 
 		const result = (await fetchProjectStatusContextTool.execute(
-			{ projectId: "project-123", scopes: ["people"], peopleSearch: "Jane Doe" },
+			{
+				projectId: "project-123",
+				scopes: ["people"],
+				peopleSearch: "Jane Doe",
+			},
 			{ requestContext }
 		)) as ToolResult;
 
@@ -311,7 +315,7 @@ describe("fetchProjectStatusContextTool", () => {
 					segment: null,
 					role: "Founder",
 					title: "Founder",
-					company: "Acme",
+					default_organization: { name: "Acme" },
 					description: null,
 					location: null,
 					image_url: null,
@@ -334,7 +338,7 @@ describe("fetchProjectStatusContextTool", () => {
 					segment: null,
 					role: "Operator",
 					title: null,
-					company: "BetaCo",
+					default_organization: { name: "BetaCo" },
 					description: null,
 					location: null,
 					image_url: null,
@@ -344,10 +348,34 @@ describe("fetchProjectStatusContextTool", () => {
 			},
 		];
 		const summaryPeopleRows = [
-			{ person_id: "person-1", person: { id: "person-1", title: "Founder", company: "Acme" } },
-			{ person_id: "person-2", person: { id: "person-2", title: null, company: "BetaCo" } },
-			{ person_id: "person-3", person: { id: "person-3", title: "Consultant", company: null } },
-			{ person_id: "person-4", person: { id: "person-4", title: null, company: null } },
+			{
+				person_id: "person-1",
+				person: {
+					id: "person-1",
+					title: "Founder",
+					default_organization: { name: "Acme" },
+				},
+			},
+			{
+				person_id: "person-2",
+				person: {
+					id: "person-2",
+					title: null,
+					default_organization: { name: "BetaCo" },
+				},
+			},
+			{
+				person_id: "person-3",
+				person: {
+					id: "person-3",
+					title: "Consultant",
+					default_organization: null,
+				},
+			},
+			{
+				person_id: "person-4",
+				person: { id: "person-4", title: null, default_organization: null },
+			},
 		];
 		const icpScores = [
 			{ person_id: "person-1", score: 0.92, band: "HIGH", confidence: 0.9 },
@@ -454,7 +482,7 @@ describe("fetchProjectStatusContextTool", () => {
 					segment: null,
 					role: "Founder",
 					title: "Founder",
-					company: "Acme",
+					default_organization: { name: "Acme" },
 					description: null,
 					location: null,
 					image_url: null,
@@ -464,9 +492,30 @@ describe("fetchProjectStatusContextTool", () => {
 			},
 		];
 		const summaryPeopleRows = [
-			{ person_id: "person-1", person: { id: "person-1", title: "Founder", company: "Acme" } },
-			{ person_id: "person-1", person: { id: "person-1", title: null, company: "Acme" } },
-			{ person_id: "person-2", person: { id: "person-2", title: "Operator", company: null } },
+			{
+				person_id: "person-1",
+				person: {
+					id: "person-1",
+					title: "Founder",
+					default_organization: { name: "Acme" },
+				},
+			},
+			{
+				person_id: "person-1",
+				person: {
+					id: "person-1",
+					title: null,
+					default_organization: { name: "Acme" },
+				},
+			},
+			{
+				person_id: "person-2",
+				person: {
+					id: "person-2",
+					title: "Operator",
+					default_organization: null,
+				},
+			},
 		];
 		const icpScores = [
 			{ person_id: "person-1", score: 0.92, band: "HIGH", confidence: 0.9 },
@@ -739,7 +788,11 @@ describe("fetchProjectStatusContextTool", () => {
 		requestContext.set("account_id", "account-123");
 
 		const result = (await fetchProjectStatusContextTool.execute(
-			{ projectId: "project-123", scopes: ["evidence"], includeEvidence: false },
+			{
+				projectId: "project-123",
+				scopes: ["evidence"],
+				includeEvidence: false,
+			},
 			{ requestContext }
 		)) as ToolResult;
 

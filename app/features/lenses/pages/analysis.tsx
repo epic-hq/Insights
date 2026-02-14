@@ -110,6 +110,36 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.eq("project_id", projectId)
 		.order("name");
 
+	// Load facets with person counts for ICP facet picker
+	const { data: rawFacets, error: facetError } = await supabase
+		.from("facet_account")
+		.select(
+			`
+      id,
+      label,
+      slug,
+      is_active,
+      facet_kind_global!inner(slug, label),
+      person_count:person_facet(count)
+    `
+		)
+		.eq("account_id", accountId);
+
+	if (facetError) {
+		consola.warn("Failed to fetch facets for ICP picker:", facetError);
+	}
+
+	const facetsWithCounts = (rawFacets || [])
+		.map((f) => ({
+			id: f.id,
+			label: f.label,
+			slug: f.slug,
+			kindSlug: (f.facet_kind_global as any)?.slug || "",
+			kindLabel: (f.facet_kind_global as any)?.label || "",
+			personCount: (f.person_count as any)?.[0]?.count ?? 0,
+		}))
+		.sort((a, b) => b.personCount - a.personCount);
+
 	// Count evidence per person for table display
 	const { data: evidencePeople } = await supabase
 		.from("evidence_people")
@@ -178,6 +208,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			withTitle: peopleWithTitle,
 			withCompany: peopleWithCompany,
 		},
+		availableFacets: facetsWithCounts,
 	};
 }
 
@@ -275,10 +306,8 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 
 				if (interviews && interviews.length > 0) {
 					try {
-						const { applyAllLensesTask } = await import("~/../src/trigger/lens/applyAllLenses");
-
 						for (const interview of interviews) {
-							await applyAllLensesTask.trigger({
+							await tasks.trigger("lens.apply-all-lenses", {
 								interviewId: interview.id,
 								accountId: project.account_id,
 								projectId,
@@ -319,6 +348,7 @@ export default function AnalysisPage() {
 		icpScoredPeople,
 		organizations,
 		dataQuality,
+		availableFacets,
 	} = useLoaderData<typeof loader>();
 
 	const routes = useProjectRoutes(projectPath);
@@ -426,6 +456,7 @@ export default function AnalysisPage() {
 						icpScoredPeople={icpScoredPeople}
 						organizations={organizations}
 						dataQuality={dataQuality}
+						availableFacets={availableFacets}
 					/>
 				</TabsContent>
 

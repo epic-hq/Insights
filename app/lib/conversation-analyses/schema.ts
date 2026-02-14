@@ -19,6 +19,7 @@ export const conversationTakeawaySchema = z.object({
 	priority: z.enum(["high", "medium", "low"]),
 	summary: z.string().min(1),
 	evidence_snippets: z.array(z.string().min(1)).default([]),
+	supporting_evidence_ids: z.array(z.string().min(1)).default([]),
 });
 
 export const conversationRecommendationSchema = z.object({

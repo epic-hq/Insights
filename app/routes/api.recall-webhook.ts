@@ -158,8 +158,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Trigger background processing task
 		try {
-			const { processRecallMeetingTask } = await import("~/../src/trigger/interview/processRecallMeeting");
-			await processRecallMeetingTask.trigger({
+			const { tasks } = await import("@trigger.dev/sdk");
+			await tasks.trigger("interview.process-recall-meeting", {
 				interviewId,
 				recordingId,
 				accountId: account_id,

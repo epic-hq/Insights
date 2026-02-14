@@ -2,11 +2,11 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import { HOST } from "~/paths";
-import type { Database } from "~/types";
-import { getProjectStatusData } from "~/utils/project-status.server";
-import { createRouteDefinitions } from "~/utils/route-definitions";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import { HOST } from "../../paths";
+import type { Database } from "../../types";
+import { getProjectStatusData } from "../../utils/project-status.server";
+import { createRouteDefinitions } from "../../utils/route-definitions";
 
 const DEFAULT_INSIGHT_LIMIT = 8;
 const DEFAULT_EVIDENCE_LIMIT = 24;
@@ -54,7 +54,7 @@ type ProjectPeopleRow = Database["public"]["Tables"]["project_people"]["Row"] & 
 };
 type PersonaRow = Database["public"]["Tables"]["personas"]["Row"];
 type PeoplePersonaRow = Database["public"]["Tables"]["people_personas"]["Row"] & {
-	people?: Pick<Database["public"]["Tables"]["people"]["Row"], "id" | "name" | "segment" | "role"> | null;
+	people?: Pick<Database["public"]["Tables"]["people"]["Row"], "id" | "name" | "segment" | "job_function"> | null;
 };
 type PersonaInsightsRow = Database["public"]["Tables"]["persona_insights"]["Row"];
 type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"] & {
@@ -71,7 +71,7 @@ type IcpScoreRow = Pick<
 	Database["public"]["Tables"]["person_scale"]["Row"],
 	"person_id" | "score" | "band" | "confidence"
 >;
-type ProjectPersonSummary = Pick<Database["public"]["Tables"]["people"]["Row"], "id" | "title" | "company"> & {
+type ProjectPersonSummary = Pick<Database["public"]["Tables"]["people"]["Row"], "id" | "title"> & {
 	default_organization?: OrganizationNameSummary | OrganizationNameSummary[] | null;
 };
 type ProjectPeopleSummaryRow = Pick<Database["public"]["Tables"]["project_people"]["Row"], "person_id"> & {
@@ -248,7 +248,7 @@ const personSchema = z.object({
 	personId: z.string(),
 	name: z.string().nullable(),
 	segment: z.string().nullable(),
-	role: z.string().nullable(),
+	jobFunction: z.string().nullable(),
 	title: z.string().nullable(),
 	company: z.string().nullable(),
 	description: z.string().nullable(),
@@ -320,7 +320,7 @@ const personaSchema = z.object({
 				id: z.string(),
 				name: z.string().nullable(),
 				segment: z.string().nullable(),
-				role: z.string().nullable(),
+				jobFunction: z.string().nullable(),
 			})
 		)
 		.nullish(),
@@ -859,14 +859,13 @@ export const fetchProjectStatusContextTool = createTool({
 					let peopleQuery = supabase
 						.from("project_people")
 						.select(
-							"id, person_id, role, interview_count, first_seen_at, last_seen_at, created_at, updated_at, person:person_id(id, name, segment, role, title, description, location, image_url, contact_info, default_organization:organizations!default_organization_id(name), people_personas(persona_id, personas(id, name, color_hex)))"
+							"id, person_id, interview_count, first_seen_at, last_seen_at, created_at, updated_at, person:person_id(id, name, segment, title, job_function, description, location, image_url, contact_info, default_organization:organizations!default_organization_id(name), people_personas(persona_id, personas(id, name, color_hex)))"
 						)
 						.eq("project_id", projectId);
 
 					if (sanitizedPersonSearch) {
 						const pattern = `*${sanitizedPersonSearch}*`;
-						const orConditions = [`person.name.ilike.${pattern}`, `role.ilike.${pattern}`];
-						peopleQuery = peopleQuery.or(orConditions.join(","));
+						peopleQuery = peopleQuery.or(`person.name.ilike.${pattern},person.title.ilike.${pattern}`);
 					}
 
 					const { data: projectPeople, error } = await peopleQuery
@@ -1022,9 +1021,9 @@ export const fetchProjectStatusContextTool = createTool({
 							personId,
 							name: person?.name ?? null,
 							segment: person?.segment ?? null,
-							role: row.role ?? person?.role ?? null,
+							jobFunction: person?.job_function ?? null,
 							title: (person as { title?: string | null })?.title ?? null,
-							company: resolveOrganizationName(person?.default_organization) ?? person?.company ?? null,
+							company: resolveOrganizationName(person?.default_organization) ?? null,
 							description: person?.description ?? null,
 							location: person?.location ?? null,
 							image_url: person?.image_url ?? null,
@@ -1068,8 +1067,7 @@ export const fetchProjectStatusContextTool = createTool({
 							hasTitle: false,
 							hasCompany: false,
 						};
-						const summaryCompanyName =
-							resolveOrganizationName(summaryPerson?.default_organization) ?? summaryPerson?.company ?? null;
+						const summaryCompanyName = resolveOrganizationName(summaryPerson?.default_organization) ?? null;
 						summaryProfileByPersonId.set(personId, {
 							hasTitle: existing.hasTitle || Boolean(summaryPerson?.title),
 							hasCompany: existing.hasCompany || Boolean(summaryCompanyName),
@@ -1135,7 +1133,7 @@ export const fetchProjectStatusContextTool = createTool({
 							id: string;
 							name: string | null;
 							segment: string | null;
-							role: string | null;
+							jobFunction: string | null;
 						}>
 					>();
 
@@ -1144,7 +1142,7 @@ export const fetchProjectStatusContextTool = createTool({
 							supabase.from("persona_insights").select("persona_id, insight_id").in("persona_id", personaIds),
 							supabase
 								.from("people_personas")
-								.select("persona_id, people:person_id(id, name, segment, role)")
+								.select("persona_id, people:person_id(id, name, segment, job_function)")
 								.in("persona_id", personaIds),
 						]);
 
@@ -1173,7 +1171,7 @@ export const fetchProjectStatusContextTool = createTool({
 										id: person.id,
 										name: person.name ?? null,
 										segment: person.segment ?? null,
-										role: person.role ?? null,
+										jobFunction: person.job_function ?? null,
 									});
 									personaPeopleMap.set(row.persona_id, existing);
 								}

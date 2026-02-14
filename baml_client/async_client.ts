@@ -24,7 +24,7 @@ import { toBamlError, BamlStream, BamlAbortError, Collector, ClientRegistry } fr
 import type { Checked, Check, RecursivePartialNull as MovedRecursivePartialNull } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, AskLinkInsightsResponse, AuthorityInfo, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, BehaviorPattern, BudgetInfo, Category, Chapter, CompetitiveInsight, ConditionOperator, ContextualSuggestions, ConversationAnalysis, ConversationEvidence, ConversationLensResult, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, ConversationTakeaways, CrossLensFinding, CrossLensRecommendedAction, CrossLensSynthesisResult, DealAdvisorRecommendation, DealQualificationSignals, DecisionInsight, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, DocumentEvidence, DocumentExtraction, Emotions, EntityAggregation, EvidenceAnalysisResponse, EvidenceItem, EvidenceLinkResult, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, Extraction, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetGroupInput, FacetGroupSummary, FacetMention, FacetSignalInput, FeaturePrioritization, FeatureRequest, FieldSynthesis, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, GeneratedLensField, GeneratedLensSection, GeneratedLensTemplate, GoalAnswer, GoalLensExtraction, GuidelineAction, GuidelineParseResult, HistoryItem, HypothesisValidation, InferredPersonSegments, InsightMatch, InteractionContext, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, JobFunction, JobToBeDone, LensEntityResult, LensEvidenceHighlight, LensFieldValue, LensHygieneItem, LensNextStepItem, LensObjectionItem, LensRecommendation, LensSectionResult, LensStakeholderItem, LensSynthesisResult, MentalModel, NeedInfo, NextStepInfo, NoteSnippet, OpportunityRecommendation, PainMatrixInsights, PainMatrixInsightsInput, ParsedCondition, ParsedGuideline, Participant, ParticipantGoal, Person, PersonDescriptionSummary, PersonEvidenceHighlight, PersonFacetInput, PersonFacetLensRequest, PersonFacetLensResponse, PersonLensMetadata, PersonProfileInput, PersonScaleInput, PersonSegmentInput, PersonSnapshot, Persona, Persona1, PersonaAdvisorContext, PersonaAdvisorFacetInput, PersonaAdvisorPersonaInput, PersonaAdvisorReport, PersonaAdvisorScaleInput, PersonaAdvisorThemeInput, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, ProductGap, ProductLensExtraction, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, ProposedTheme, QALensResult, QAPair, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionInsight, QuestionIssue, QuestionPolicy, QuestionSet, QuickResponseSummary, ResearchGoal, ResearchInsightInput, ResearchLearning, ResearchLensExtraction, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionInsight, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, ResponseTheme, RuleConfidence, SalesLensExtraction, Scene, Scores, SectionSynthesis, SegmentPattern, SeniorityLevel, Set, SetRecord, Source, SpeakerUtterance, Spectrum, SpreadsheetAnalysis, SpreadsheetColumnMapping, StakeholderRole, SuggestedFacet, SuggestedQuestion, SurveyQuestionInput, SynthesisDiscrepancy, SynthesizedInsight, TargetFitAssessment, TimelineInfo, TopPainCell, TurnAnchors, UnknownResolution, UsabilityFinding, UserJourneyInsight} from "./types"
+import type {ActionButton, AskLinkInsightsResponse, AuthorityInfo, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, BehaviorPattern, BudgetInfo, Category, Chapter, CompetitiveInsight, ConditionOperator, ContextualSuggestions, ConversationAnalysis, ConversationEvidence, ConversationLensResult, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, ConversationTakeaways, CrossLensFinding, CrossLensRecommendedAction, CrossLensSynthesisResult, DealAdvisorRecommendation, DealQualificationSignals, DecisionInsight, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, DocumentEvidence, DocumentExtraction, Emotions, EntityAggregation, EvidenceAnalysisResponse, EvidenceItem, EvidenceLinkResult, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, ExecutiveInsight, ExecutiveSummary, ExtractedEvidence, ExtractedInsight, Extraction, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetGroupInput, FacetGroupSummary, FacetMention, FacetSignalInput, FeaturePrioritization, FeatureRequest, FieldSynthesis, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, GeneratedLensField, GeneratedLensSection, GeneratedLensTemplate, GoalAnswer, GoalLensExtraction, GuidelineAction, GuidelineParseResult, HistoryItem, HypothesisValidation, InferredPersonSegments, InsightMatch, InteractionContext, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, JobFunction, JobToBeDone, LensEntityResult, LensEvidenceHighlight, LensFieldValue, LensHygieneItem, LensNextStepItem, LensObjectionItem, LensRecommendation, LensSectionResult, LensStakeholderItem, LensSynthesisResult, MentalModel, NeedInfo, NextStepInfo, NoteSnippet, OpportunityRecommendation, PainMatrixInsights, PainMatrixInsightsInput, ParsedCondition, ParsedGuideline, Participant, ParticipantGoal, Person, PersonContext, PersonDescriptionSummary, PersonEvidenceHighlight, PersonFacetInput, PersonFacetLensRequest, PersonFacetLensResponse, PersonFacets, PersonLensMetadata, PersonNextStep, PersonNextStepsInput, PersonNextStepsOutput, PersonProfileInput, PersonScaleInput, PersonSegmentInput, PersonSnapshot, Persona, Persona1, PersonaAdvisorContext, PersonaAdvisorFacetInput, PersonaAdvisorPersonaInput, PersonaAdvisorReport, PersonaAdvisorScaleInput, PersonaAdvisorThemeInput, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, PersonalizedQuestion, ProductGap, ProductLensExtraction, ProjectAnalysis, ProjectContext, ProjectNameDescription, ProjectTemplateOut, ProposedTheme, QALensResult, QAPair, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionInsight, QuestionIssue, QuestionPolicy, QuestionSet, QuickResponseSummary, ResearchGoal, ResearchInsightInput, ResearchLearning, ResearchLensExtraction, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionInsight, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, ResponseTheme, RuleConfidence, SalesLensExtraction, Scene, Scores, SectionSynthesis, SegmentPattern, SeniorityLevel, Set, SetRecord, Source, SpeakerUtterance, Spectrum, SpreadsheetAnalysis, SpreadsheetColumnMapping, StakeholderRole, SuggestedFacet, SuggestedQuestion, SurveyGoal, SurveyQuestionInput, SynthesisDiscrepancy, SynthesizedInsight, TargetFitAssessment, ThemeValidation, TimelineInfo, TopPainCell, TurnAnchors, UnknownResolution, UsabilityFinding, UserJourneyInsight} from "./types"
 import type TypeBuilder from "./type_builder"
 import { AsyncHttpRequest, AsyncHttpStreamRequest } from "./async_request"
 import { LlmResponseParser, LlmStreamParser } from "./parser"
@@ -937,6 +937,62 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
             }
             }
             
+        async ExtractEvidenceFromAnswer(
+        question_text: string,answer_text: string,question_metadata: string,question_index: number,
+        __baml_options__?: BamlCallOptions<never>
+        ): Promise<types.ExtractedEvidence[]> {
+          try {
+          const __options__ = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+          const __signal__ = __options__.signal;
+
+          if (__signal__?.aborted) {
+          throw new BamlAbortError('Operation was aborted', __signal__.reason);
+          }
+
+          // Check if onTick is provided - route through streaming if so
+          if (__options__.onTick) {
+          const __stream__ = this.stream.ExtractEvidenceFromAnswer(
+          question_text,answer_text,question_metadata,question_index,
+          __baml_options__
+          );
+
+          return await __stream__.getFinalResponse();
+          }
+
+          const __collector__ = __options__.collector ? (Array.isArray(__options__.collector) ? __options__.collector :
+          [__options__.collector]) : [];
+          const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+          const __env__: Record<string, string> = Object.fromEntries(
+            Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+            );
+
+            // Resolve client option to clientRegistry (client takes precedence)
+            let __clientRegistry__ = __options__.clientRegistry;
+            if (__options__.client) {
+              __clientRegistry__ = __clientRegistry__ || new ClientRegistry();
+              __clientRegistry__.setPrimary(__options__.client);
+            }
+
+            const __raw__ = await this.runtime.callFunction(
+            "ExtractEvidenceFromAnswer",
+            {
+            "question_text": question_text,"answer_text": answer_text,"question_metadata": question_metadata,"question_index": question_index
+            },
+            this.ctxManager.cloneContext(),
+            __options__.tb?.__tb(),
+            __clientRegistry__,
+            __collector__,
+            __options__.tags || {},
+            __env__,
+            __signal__,
+            __options__.watchers,
+            )
+            return __raw__.parsed(false) as types.ExtractedEvidence[]
+            } catch (error) {
+            throw toBamlError(error);
+            }
+            }
+            
         async ExtractEvidenceFromDocument(
         document_text: string,document_title?: string | null,document_type: string,max_evidence: number,
         __baml_options__?: BamlCallOptions<never>
@@ -994,7 +1050,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
             }
             
         async ExtractEvidenceFromTranscriptV2(
-        speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
+        speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,
         __baml_options__?: BamlCallOptions<never>
         ): Promise<types.Extraction> {
           try {
@@ -1008,7 +1064,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
           // Check if onTick is provided - route through streaming if so
           if (__options__.onTick) {
           const __stream__ = this.stream.ExtractEvidenceFromTranscriptV2(
-          speaker_transcripts,chapters,language,facet_catalog,
+          speaker_transcripts,chapters,language,
           __baml_options__
           );
 
@@ -1032,7 +1088,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
             const __raw__ = await this.runtime.callFunction(
             "ExtractEvidenceFromTranscriptV2",
             {
-            "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
+            "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language
             },
             this.ctxManager.cloneContext(),
             __options__.tb?.__tb(),
@@ -2001,6 +2057,62 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
             }
             }
             
+        async GeneratePersonNextSteps(
+        input: types.PersonNextStepsInput,
+        __baml_options__?: BamlCallOptions<never>
+        ): Promise<types.PersonNextStepsOutput> {
+          try {
+          const __options__ = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+          const __signal__ = __options__.signal;
+
+          if (__signal__?.aborted) {
+          throw new BamlAbortError('Operation was aborted', __signal__.reason);
+          }
+
+          // Check if onTick is provided - route through streaming if so
+          if (__options__.onTick) {
+          const __stream__ = this.stream.GeneratePersonNextSteps(
+          input,
+          __baml_options__
+          );
+
+          return await __stream__.getFinalResponse();
+          }
+
+          const __collector__ = __options__.collector ? (Array.isArray(__options__.collector) ? __options__.collector :
+          [__options__.collector]) : [];
+          const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+          const __env__: Record<string, string> = Object.fromEntries(
+            Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+            );
+
+            // Resolve client option to clientRegistry (client takes precedence)
+            let __clientRegistry__ = __options__.clientRegistry;
+            if (__options__.client) {
+              __clientRegistry__ = __clientRegistry__ || new ClientRegistry();
+              __clientRegistry__.setPrimary(__options__.client);
+            }
+
+            const __raw__ = await this.runtime.callFunction(
+            "GeneratePersonNextSteps",
+            {
+            "input": input
+            },
+            this.ctxManager.cloneContext(),
+            __options__.tb?.__tb(),
+            __clientRegistry__,
+            __collector__,
+            __options__.tags || {},
+            __env__,
+            __signal__,
+            __options__.watchers,
+            )
+            return __raw__.parsed(false) as types.PersonNextStepsOutput
+            } catch (error) {
+            throw toBamlError(error);
+            }
+            }
+            
         async GeneratePersonaAdvisorReport(
         context: types.PersonaAdvisorContext,
         __baml_options__?: BamlCallOptions<never>
@@ -2052,6 +2164,62 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
             __options__.watchers,
             )
             return __raw__.parsed(false) as types.PersonaAdvisorReport
+            } catch (error) {
+            throw toBamlError(error);
+            }
+            }
+            
+        async GeneratePersonalizedQuestions(
+        person_context: types.PersonContext,project_context: types.ProjectContext,survey_goal: types.SurveyGoal,question_count: number,
+        __baml_options__?: BamlCallOptions<never>
+        ): Promise<types.PersonalizedQuestion[]> {
+          try {
+          const __options__ = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+          const __signal__ = __options__.signal;
+
+          if (__signal__?.aborted) {
+          throw new BamlAbortError('Operation was aborted', __signal__.reason);
+          }
+
+          // Check if onTick is provided - route through streaming if so
+          if (__options__.onTick) {
+          const __stream__ = this.stream.GeneratePersonalizedQuestions(
+          person_context,project_context,survey_goal,question_count,
+          __baml_options__
+          );
+
+          return await __stream__.getFinalResponse();
+          }
+
+          const __collector__ = __options__.collector ? (Array.isArray(__options__.collector) ? __options__.collector :
+          [__options__.collector]) : [];
+          const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+          const __env__: Record<string, string> = Object.fromEntries(
+            Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+            );
+
+            // Resolve client option to clientRegistry (client takes precedence)
+            let __clientRegistry__ = __options__.clientRegistry;
+            if (__options__.client) {
+              __clientRegistry__ = __clientRegistry__ || new ClientRegistry();
+              __clientRegistry__.setPrimary(__options__.client);
+            }
+
+            const __raw__ = await this.runtime.callFunction(
+            "GeneratePersonalizedQuestions",
+            {
+            "person_context": person_context,"project_context": project_context,"survey_goal": survey_goal,"question_count": question_count
+            },
+            this.ctxManager.cloneContext(),
+            __options__.tb?.__tb(),
+            __clientRegistry__,
+            __collector__,
+            __options__.tags || {},
+            __env__,
+            __signal__,
+            __options__.watchers,
+            )
+            return __raw__.parsed(false) as types.PersonalizedQuestion[]
             } catch (error) {
             throw toBamlError(error);
             }
@@ -4077,6 +4245,80 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
                   }
                   }
                   
+            ExtractEvidenceFromAnswer(
+            question_text: string,answer_text: string,question_metadata: string,question_index: number,
+            __baml_options__?: BamlCallOptions<never>
+            ): BamlStream<partial_types.ExtractedEvidence[], types.ExtractedEvidence[]>
+              {
+              try {
+              const __options__ = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+              const __signal__ = __options__.signal;
+
+              if (__signal__?.aborted) {
+              throw new BamlAbortError('Operation was aborted', __signal__.reason);
+              }
+
+              let __collector__ = __options__.collector ? (Array.isArray(__options__.collector) ? __options__.collector :
+              [__options__.collector]) : [];
+
+              let __onTickWrapper__: (() => void) | undefined;
+
+              // Create collector and wrap onTick if provided
+              if (__options__.onTick) {
+              const __tickCollector__ = new Collector("on-tick-collector");
+              __collector__ = [...__collector__, __tickCollector__];
+
+              __onTickWrapper__ = () => {
+              const __log__ = __tickCollector__.last;
+              if (__log__) {
+              try {
+              __options__.onTick!("Unknown", __log__);
+              } catch (error) {
+              console.error("Error in onTick callback for ExtractEvidenceFromAnswer", error);
+              }
+              }
+              };
+              }
+
+              const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+              const __env__: Record<string, string> = Object.fromEntries(
+                Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+                );
+
+                // Resolve client option to clientRegistry (client takes precedence)
+                let __clientRegistry__ = __options__.clientRegistry;
+                if (__options__.client) {
+                  __clientRegistry__ = __clientRegistry__ || new ClientRegistry();
+                  __clientRegistry__.setPrimary(__options__.client);
+                }
+
+                const __raw__ = this.runtime.streamFunction(
+                "ExtractEvidenceFromAnswer",
+                {
+                "question_text": question_text,"answer_text": answer_text,"question_metadata": question_metadata,"question_index": question_index
+                },
+                undefined,
+                this.ctxManager.cloneContext(),
+                __options__.tb?.__tb(),
+                __clientRegistry__,
+                __collector__,
+                __options__.tags || {},
+                __env__,
+                __signal__,
+                __onTickWrapper__,
+                )
+                return new BamlStream<partial_types.ExtractedEvidence[], types.ExtractedEvidence[]>(
+                  __raw__,
+                  (a): partial_types.ExtractedEvidence[] => a,
+                  (a): types.ExtractedEvidence[] => a,
+                  this.ctxManager.cloneContext(),
+                  __options__.signal,
+                  )
+                  } catch (error) {
+                  throw toBamlError(error);
+                  }
+                  }
+                  
             ExtractEvidenceFromDocument(
             document_text: string,document_title?: string | null,document_type: string,max_evidence: number,
             __baml_options__?: BamlCallOptions<never>
@@ -4152,7 +4394,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
                   }
                   
             ExtractEvidenceFromTranscriptV2(
-            speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
+            speaker_transcripts: types.SpeakerUtterance[],chapters: types.Chapter[],language: string,
             __baml_options__?: BamlCallOptions<never>
             ): BamlStream<partial_types.Extraction, types.Extraction>
               {
@@ -4201,7 +4443,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
                 const __raw__ = this.runtime.streamFunction(
                 "ExtractEvidenceFromTranscriptV2",
                 {
-                "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
+                "speaker_transcripts": speaker_transcripts,"chapters": chapters,"language": language
                 },
                 undefined,
                 this.ctxManager.cloneContext(),
@@ -5483,6 +5725,80 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
                   }
                   }
                   
+            GeneratePersonNextSteps(
+            input: types.PersonNextStepsInput,
+            __baml_options__?: BamlCallOptions<never>
+            ): BamlStream<partial_types.PersonNextStepsOutput, types.PersonNextStepsOutput>
+              {
+              try {
+              const __options__ = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+              const __signal__ = __options__.signal;
+
+              if (__signal__?.aborted) {
+              throw new BamlAbortError('Operation was aborted', __signal__.reason);
+              }
+
+              let __collector__ = __options__.collector ? (Array.isArray(__options__.collector) ? __options__.collector :
+              [__options__.collector]) : [];
+
+              let __onTickWrapper__: (() => void) | undefined;
+
+              // Create collector and wrap onTick if provided
+              if (__options__.onTick) {
+              const __tickCollector__ = new Collector("on-tick-collector");
+              __collector__ = [...__collector__, __tickCollector__];
+
+              __onTickWrapper__ = () => {
+              const __log__ = __tickCollector__.last;
+              if (__log__) {
+              try {
+              __options__.onTick!("Unknown", __log__);
+              } catch (error) {
+              console.error("Error in onTick callback for GeneratePersonNextSteps", error);
+              }
+              }
+              };
+              }
+
+              const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+              const __env__: Record<string, string> = Object.fromEntries(
+                Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+                );
+
+                // Resolve client option to clientRegistry (client takes precedence)
+                let __clientRegistry__ = __options__.clientRegistry;
+                if (__options__.client) {
+                  __clientRegistry__ = __clientRegistry__ || new ClientRegistry();
+                  __clientRegistry__.setPrimary(__options__.client);
+                }
+
+                const __raw__ = this.runtime.streamFunction(
+                "GeneratePersonNextSteps",
+                {
+                "input": input
+                },
+                undefined,
+                this.ctxManager.cloneContext(),
+                __options__.tb?.__tb(),
+                __clientRegistry__,
+                __collector__,
+                __options__.tags || {},
+                __env__,
+                __signal__,
+                __onTickWrapper__,
+                )
+                return new BamlStream<partial_types.PersonNextStepsOutput, types.PersonNextStepsOutput>(
+                  __raw__,
+                  (a): partial_types.PersonNextStepsOutput => a,
+                  (a): types.PersonNextStepsOutput => a,
+                  this.ctxManager.cloneContext(),
+                  __options__.signal,
+                  )
+                  } catch (error) {
+                  throw toBamlError(error);
+                  }
+                  }
+                  
             GeneratePersonaAdvisorReport(
             context: types.PersonaAdvisorContext,
             __baml_options__?: BamlCallOptions<never>
@@ -5549,6 +5865,80 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
                   __raw__,
                   (a): partial_types.PersonaAdvisorReport => a,
                   (a): types.PersonaAdvisorReport => a,
+                  this.ctxManager.cloneContext(),
+                  __options__.signal,
+                  )
+                  } catch (error) {
+                  throw toBamlError(error);
+                  }
+                  }
+                  
+            GeneratePersonalizedQuestions(
+            person_context: types.PersonContext,project_context: types.ProjectContext,survey_goal: types.SurveyGoal,question_count: number,
+            __baml_options__?: BamlCallOptions<never>
+            ): BamlStream<partial_types.PersonalizedQuestion[], types.PersonalizedQuestion[]>
+              {
+              try {
+              const __options__ = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+              const __signal__ = __options__.signal;
+
+              if (__signal__?.aborted) {
+              throw new BamlAbortError('Operation was aborted', __signal__.reason);
+              }
+
+              let __collector__ = __options__.collector ? (Array.isArray(__options__.collector) ? __options__.collector :
+              [__options__.collector]) : [];
+
+              let __onTickWrapper__: (() => void) | undefined;
+
+              // Create collector and wrap onTick if provided
+              if (__options__.onTick) {
+              const __tickCollector__ = new Collector("on-tick-collector");
+              __collector__ = [...__collector__, __tickCollector__];
+
+              __onTickWrapper__ = () => {
+              const __log__ = __tickCollector__.last;
+              if (__log__) {
+              try {
+              __options__.onTick!("Unknown", __log__);
+              } catch (error) {
+              console.error("Error in onTick callback for GeneratePersonalizedQuestions", error);
+              }
+              }
+              };
+              }
+
+              const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+              const __env__: Record<string, string> = Object.fromEntries(
+                Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+                );
+
+                // Resolve client option to clientRegistry (client takes precedence)
+                let __clientRegistry__ = __options__.clientRegistry;
+                if (__options__.client) {
+                  __clientRegistry__ = __clientRegistry__ || new ClientRegistry();
+                  __clientRegistry__.setPrimary(__options__.client);
+                }
+
+                const __raw__ = this.runtime.streamFunction(
+                "GeneratePersonalizedQuestions",
+                {
+                "person_context": person_context,"project_context": project_context,"survey_goal": survey_goal,"question_count": question_count
+                },
+                undefined,
+                this.ctxManager.cloneContext(),
+                __options__.tb?.__tb(),
+                __clientRegistry__,
+                __collector__,
+                __options__.tags || {},
+                __env__,
+                __signal__,
+                __onTickWrapper__,
+                )
+                return new BamlStream<partial_types.PersonalizedQuestion[], types.PersonalizedQuestion[]>(
+                  __raw__,
+                  (a): partial_types.PersonalizedQuestion[] => a,
+                  (a): types.PersonalizedQuestion[] => a,
                   this.ctxManager.cloneContext(),
                   __options__.signal,
                   )

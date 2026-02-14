@@ -1,6 +1,12 @@
 const DEFAULT_MULTIPART_THRESHOLD = 100 * 1024 * 1024; // 100MB
 const DEFAULT_PART_SIZE_BYTES = 10 * 1024 * 1024; // 10MB per part (R2/S3 requires >=5MB except last)
 const MIN_PART_SIZE_BYTES = 5 * 1024 * 1024;
+const ESTIMATED_UPLOAD_BYTES_PER_SECOND = 24 * 1024; // ~192 kbps floor to avoid premature timeout
+const TIMEOUT_BUFFER_MS = 30 * 1000;
+const SINGLE_UPLOAD_MIN_TIMEOUT_MS = 2 * 60 * 1000;
+const SINGLE_UPLOAD_MAX_TIMEOUT_MS = 20 * 60 * 1000;
+const PART_UPLOAD_MIN_TIMEOUT_MS = 2 * 60 * 1000;
+const PART_UPLOAD_MAX_TIMEOUT_MS = 15 * 60 * 1000;
 
 export type UploadPhase = "uploading" | "completing" | "done";
 
@@ -73,26 +79,34 @@ export async function uploadWithProgress({
 	signal,
 }: SinglePartUploadParams): Promise<{ etag?: string }> {
 	const totalBytes = file.size;
-	let bytesSent = 0;
-
-	const body = createProgressStream(file, (chunkBytes) => {
-		bytesSent += chunkBytes;
-		onProgress?.({
-			bytesSent,
-			totalBytes,
-			percent: calcPercent(bytesSent, totalBytes, { capAt: 99 }),
-			phase: "uploading",
-		});
+	const timeoutMs = calculateUploadTimeoutMs(totalBytes, {
+		minMs: SINGLE_UPLOAD_MIN_TIMEOUT_MS,
+		maxMs: SINGLE_UPLOAD_MAX_TIMEOUT_MS,
 	});
 
-	const response = await fetch(url, {
-		method: "PUT",
-		body,
-		headers: contentType ? { "Content-Type": contentType } : undefined,
-		signal,
-		// @ts-expect-error - duplex is required for streaming bodies in modern browsers
-		duplex: "half",
+	// Send Blob directly instead of streaming for cross-browser compatibility.
+	// ReadableStream body + duplex:"half" only works in Chromium — Firefox/Safari
+	// throw TypeError: Failed to fetch.
+	onProgress?.({
+		bytesSent: 0,
+		totalBytes,
+		percent: 0,
+		phase: "uploading",
 	});
+
+	const response = await fetchWithTimeout(
+		url,
+		{
+			method: "PUT",
+			body: file,
+			headers: contentType ? { "Content-Type": contentType } : undefined,
+		},
+		{
+			signal,
+			timeoutMs,
+			timeoutError: `R2 upload timed out after ${Math.round(timeoutMs / 1000)}s`,
+		}
+	);
 
 	if (!response.ok) {
 		throw new Error(`R2 upload failed with status ${response.status}`);
@@ -167,11 +181,22 @@ export async function uploadMultipartWithProgress({
 				},
 			});
 
-			const response = await fetch(partUrl, {
-				method: "PUT",
-				body: partBlob, // Send Blob directly - more compatible than streaming
-				signal,
+			const partTimeoutMs = calculateUploadTimeoutMs(partBlob.size, {
+				minMs: PART_UPLOAD_MIN_TIMEOUT_MS,
+				maxMs: PART_UPLOAD_MAX_TIMEOUT_MS,
 			});
+			const response = await fetchWithTimeout(
+				partUrl,
+				{
+					method: "PUT",
+					body: partBlob, // Send Blob directly - more compatible than streaming
+				},
+				{
+					signal,
+					timeoutMs: partTimeoutMs,
+					timeoutError: `R2 part ${partNumber}/${totalParts} timed out after ${Math.round(partTimeoutMs / 1000)}s`,
+				}
+			);
 
 			if (!response.ok) {
 				throw new Error(`R2 part ${partNumber} failed with status ${response.status}`);
@@ -274,25 +299,51 @@ function normalizeEtag(headerValue: string | null): string | undefined {
 	return headerValue.replaceAll('"', "");
 }
 
-function createProgressStream(blob: Blob, onChunk: (bytes: number) => void): ReadableStream<Uint8Array> {
-	const reader = blob.stream().getReader();
+function calculateUploadTimeoutMs(totalBytes: number, options: { minMs: number; maxMs: number }) {
+	if (!totalBytes || totalBytes <= 0) return options.minMs;
+	const estimatedDurationMs = Math.ceil((totalBytes / ESTIMATED_UPLOAD_BYTES_PER_SECOND) * 1000);
+	const withBuffer = estimatedDurationMs + TIMEOUT_BUFFER_MS;
+	return Math.max(options.minMs, Math.min(options.maxMs, withBuffer));
+}
 
-	return new ReadableStream<Uint8Array>({
-		async pull(controller) {
-			const { done, value } = await reader.read();
-			if (done) {
-				controller.close();
-				return;
-			}
-			if (value) {
-				onChunk(value.byteLength);
-				controller.enqueue(value);
-			}
-		},
-		cancel(reason) {
-			reader.cancel(reason).catch(() => {
-				/* ignore */
-			});
-		},
-	});
+async function fetchWithTimeout(
+	input: RequestInfo | URL,
+	init: Omit<RequestInit, "signal">,
+	options: {
+		signal?: AbortSignal;
+		timeoutMs: number;
+		timeoutError: string;
+	}
+): Promise<Response> {
+	const controller = new AbortController();
+	const onAbort = () => controller.abort();
+	let didTimeout = false;
+
+	if (options.signal?.aborted) {
+		controller.abort();
+	} else if (options.signal) {
+		options.signal.addEventListener("abort", onAbort, { once: true });
+	}
+
+	const timeoutId = setTimeout(() => {
+		didTimeout = true;
+		controller.abort();
+	}, options.timeoutMs);
+
+	try {
+		return await fetch(input, {
+			...init,
+			signal: controller.signal,
+		});
+	} catch (error) {
+		if (didTimeout && !options.signal?.aborted) {
+			throw new Error(options.timeoutError);
+		}
+		throw error;
+	} finally {
+		clearTimeout(timeoutId);
+		if (options.signal) {
+			options.signal.removeEventListener("abort", onAbort);
+		}
+	}
 }

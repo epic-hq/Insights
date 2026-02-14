@@ -100,18 +100,22 @@ export interface AnalysisJobSummary {
 export function extractAnalysisFromInterview(interview: {
 	id: string;
 	conversation_analysis: unknown;
+	processing_metadata?: unknown;
 	created_at: string | null;
 	updated_at: string | null;
 }): AnalysisJobSummary | null {
-	const conversationAnalysis = interview.conversation_analysis as Record<string, unknown> | null;
-	if (!conversationAnalysis) return null;
+	const metadata =
+		((interview.processing_metadata as Record<string, unknown> | null) ??
+			(interview.conversation_analysis as Record<string, unknown> | null)) ||
+		null;
+	if (!metadata) return null;
 
 	return {
 		id: interview.id,
-		status: (conversationAnalysis.status as string) || null,
-		status_detail: (conversationAnalysis.status_detail as string) || null,
-		progress: (conversationAnalysis.progress as number) || null,
-		trigger_run_id: (conversationAnalysis.trigger_run_id as string) || null,
+		status: (metadata.status as string) || null,
+		status_detail: (metadata.status_detail as string) || null,
+		progress: (metadata.progress as number) || null,
+		trigger_run_id: (metadata.trigger_run_id as string) || null,
 		created_at: interview.created_at,
 		updated_at: interview.updated_at,
 	};
@@ -123,6 +127,7 @@ export interface KeyTakeaway {
 	priority: "high" | "medium" | "low";
 	summary: string;
 	evidenceSnippets: string[];
+	supportingEvidenceIds?: string[];
 	evidenceId?: string;
 }
 
@@ -133,8 +138,19 @@ export interface EvidenceRecord {
 }
 
 export function matchTakeawaysToEvidence(takeaways: KeyTakeaway[], evidence: EvidenceRecord[]): void {
+	const availableEvidenceIds = new Set(evidence.map((item) => item.id));
+
 	for (const takeaway of takeaways) {
 		if (takeaway.evidenceId) continue; // already matched
+
+		if (Array.isArray(takeaway.supportingEvidenceIds) && takeaway.supportingEvidenceIds.length > 0) {
+			const directEvidenceId = takeaway.supportingEvidenceIds.find((id) => availableEvidenceIds.has(id));
+			if (directEvidenceId) {
+				takeaway.evidenceId = directEvidenceId;
+				continue;
+			}
+		}
+
 		if (!takeaway.evidenceSnippets?.length) continue;
 
 		let bestMatch: string | undefined;

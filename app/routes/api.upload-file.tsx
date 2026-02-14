@@ -87,6 +87,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			file.name.endsWith(".md") ||
 			file.name.endsWith(".markdown");
 
+		const isPdfFile = file.type === "application/pdf" || file.name.endsWith(".pdf");
+
+		const isDocumentFile = isTextFile || isPdfFile;
+
 		let transcriptData: Record<string, unknown>;
 		let mediaUrl: string;
 
@@ -105,8 +109,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			sourceType = "video_upload";
 		}
 		// webm without MIME info stays as audio_upload (safer default - smaller player)
-		if (isTextFile) {
-			sourceType = "document";
+		if (isDocumentFile) {
+			sourceType = "transcript";
 		}
 
 		// Create interview record upfront (used as analysisJobId)
@@ -115,7 +119,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			.insert({
 				account_id: accountId,
 				project_id: projectId,
-				title: isTextFile ? `Text Interview - ${format(new Date(), "yyyy-MM-dd")}` : interviewTitle,
+				title: isDocumentFile
+					? `${isPdfFile ? "PDF" : "Text"} Transcript - ${format(new Date(), "yyyy-MM-dd")}`
+					: interviewTitle,
 				status: "uploading",
 				original_filename: file.name,
 				source_type: sourceType,
@@ -147,26 +153,60 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			interviewId: interview.id,
 		});
 
-		if (isTextFile) {
-			// Handle text/markdown files - read content directly
-			consola.log("Processing text/markdown file:", file.name);
-			const textContent = await file.text();
+		if (isDocumentFile) {
+			// Handle text/markdown/PDF files - extract text directly (no AssemblyAI)
+			let textContent: string;
 
-			if (!textContent || textContent.trim().length === 0) {
-				return Response.json({ error: "Text file is empty or could not be read" }, { status: 400 });
+			if (isPdfFile) {
+				consola.log("Extracting text from PDF:", file.name);
+				const { default: pdfParse } = await import("pdf-parse");
+				const buffer = Buffer.from(await file.arrayBuffer());
+				const pdfData = await pdfParse(buffer);
+				textContent = pdfData.text;
+
+				if (!textContent || textContent.trim().length === 0) {
+					return Response.json(
+						{
+							error: "PDF appears to be scanned/image-based. Text-based PDFs are supported.",
+						},
+						{ status: 400 }
+					);
+				}
+
+				consola.log(`PDF extracted: ${pdfData.numpages} pages, ${textContent.length} characters`);
+			} else {
+				consola.log("Processing text/markdown file:", file.name);
+				textContent = await file.text();
 			}
 
-			// Create transcript data object matching expected format
+			if (!textContent || textContent.trim().length === 0) {
+				return Response.json({ error: "File is empty or could not be read" }, { status: 400 });
+			}
+
 			transcriptData = safeSanitizeTranscriptPayload({
 				full_transcript: textContent.trim(),
-				audio_duration: null, // No audio duration for text files
-				file_type: "text",
+				audio_duration: null,
+				file_type: isPdfFile ? "pdf" : "text",
 				original_filename: file.name,
 			});
-			mediaUrl = ""; // No media URL for text files
+			mediaUrl = "";
+
+			// For PDFs, store the original in R2 for reference/download
+			if (isPdfFile) {
+				const { mediaUrl: storedPdfUrl } = await storeAudioFile({
+					projectId,
+					interviewId: interview.id,
+					source: file,
+					originalFilename: file.name,
+					contentType: file.type,
+				});
+				if (storedPdfUrl) {
+					mediaUrl = storedPdfUrl;
+				}
+			}
 
 			consola.log(
-				"Text file processed:",
+				"Document processed:",
 				`${textContent.length} characters\n${textContent.slice(0, 500)}${textContent.length > 500 ? "..." : ""}`
 			);
 		} else {
@@ -213,7 +253,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			projectId,
 			userId: userId ?? undefined,
 			fileName: file?.name,
-			interviewTitle: isTextFile ? `Text Interview - ${format(new Date(), "yyyy-MM-dd")}` : interviewTitle,
+			interviewTitle: isDocumentFile
+				? `${isPdfFile ? "PDF" : "Text"} Transcript - ${format(new Date(), "yyyy-MM-dd")}`
+				: interviewTitle,
 			participantName: participant_name ?? "Anonymous",
 			participantOrganization: participant_organization ?? undefined,
 			segment: segment ?? "Unknown",

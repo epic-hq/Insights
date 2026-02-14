@@ -1,6 +1,7 @@
+import { tasks } from "@trigger.dev/sdk";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
-import { generatePersonaSummaryTask } from "~/../src/trigger/persona/generatePersonaSummary";
+import type { generatePersonaSummaryTask } from "~/../src/trigger/persona/generatePersonaSummary";
 import { getServerClient } from "~/lib/supabase/client.server";
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -22,7 +23,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		// 1. Aggregate people for this persona
-		const result = await generatePersonaSummaryTask.triggerAndWait({
+		const result = await tasks.triggerAndWait<typeof generatePersonaSummaryTask>("personas.generate-summary", {
 			personaId,
 			projectId,
 			accountId,

@@ -14,7 +14,7 @@
 import { schemaTask } from "@trigger.dev/sdk";
 import consola from "consola";
 import { z } from "zod";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { createSupabaseAdminClient } from "../../../app/lib/supabase/client.server";
 
 /** Question types supported in surveys */
 type QuestionType =

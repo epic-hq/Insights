@@ -6,7 +6,6 @@
 import { b } from "baml_client";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
-import { DEFAULT_FACET_KINDS } from "~/features/realtime-transcription/shared/facetKinds";
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
@@ -34,8 +33,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				end: u.end ?? null,
 			})),
 			[], // no chapters for realtime
-			language || "en",
-			{ kinds: DEFAULT_FACET_KINDS, facets: [], version: "realtime-proto" }
+			language || "en"
 		);
 
 		consola.info(`[realtime-evidence] Extracted ${result.evidence?.length || 0} evidence turns`);

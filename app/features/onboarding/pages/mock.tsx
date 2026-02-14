@@ -43,8 +43,8 @@ function MockUploadScreen() {
 		consola.log("Upload screen next:", { fileName: file.name, mediaType });
 	};
 
-	const handleUploadFromUrl = async (url: string) => {
-		consola.log("Upload from URL:", url);
+	const handleUploadFromUrl = async (items: Array<{ url: string; personId?: string }>) => {
+		consola.log("Upload from URL:", items);
 	};
 
 	const handleBack = () => {

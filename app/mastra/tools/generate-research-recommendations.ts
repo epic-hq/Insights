@@ -77,8 +77,8 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 	outputSchema: OutputSchema,
 	execute: async (input, context?) => {
 		// Dynamic imports to avoid static ~/  imports (Mastra pattern)
-		const { supabaseAdmin } = await import("~/lib/supabase/client.server");
-		const { Database } = await import("~/types");
+		const { supabaseAdmin } = await import("../../lib/supabase/client.server");
+		const { Database } = await import("../../types");
 
 		const supabase = supabaseAdmin as SupabaseClient<Database>;
 		const projectId = input.projectId;

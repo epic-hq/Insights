@@ -2,7 +2,14 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { createTask, createTaskLink, deleteTask, getTasks, getTopFocusTasks, updateTask } from "~/features/tasks/db";
+import {
+	createTask,
+	createTaskLink,
+	deleteTask,
+	getTasks,
+	getTopFocusTasks,
+	updateTask,
+} from "../../features/tasks/db";
 import type {
 	AgentType,
 	Assignee,
@@ -11,11 +18,11 @@ import type {
 	Task,
 	TaskStatus,
 	TaskUpdate,
-} from "~/features/tasks/types";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import { HOST } from "~/paths";
-import type { Database } from "~/types";
-import { createRouteDefinitions } from "~/utils/route-definitions";
+} from "../../features/tasks/types";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import { HOST } from "../../paths";
+import type { Database } from "../../types";
+import { createRouteDefinitions } from "../../utils/route-definitions";
 
 const taskOutputSchema = z.object({
 	id: z.string(),
@@ -543,26 +550,26 @@ export const createTaskTool = createTool({
 			.describe("Additional entity links to create for this task"),
 		assignee: z
 			.object({
-				userId: z.string().optional(),
-				email: z.string().email().optional(),
-				name: z.string().optional(),
+				userId: z.string().nullish(),
+				email: z.string().email().nullish(),
+				name: z.string().nullish(),
 				personId: z.string().nullish().describe("Project person id"),
 				personName: z.string().nullish().describe("Project person name"),
 				personCompany: z.string().nullish().describe("Project person company (disambiguation)"),
-				agentType: z.enum(["code-generation", "research", "testing", "documentation"]).optional(),
+				agentType: z.enum(["code-generation", "research", "testing", "documentation"]).nullish(),
 			})
 			.nullish()
 			.describe("Single assignee (alias for assignees[0])"),
 		assignees: z
 			.array(
 				z.object({
-					userId: z.string().optional(),
-					email: z.string().email().optional(),
-					name: z.string().optional(),
+					userId: z.string().nullish(),
+					email: z.string().email().nullish(),
+					name: z.string().nullish(),
 					personId: z.string().nullish().describe("Project person id"),
 					personName: z.string().nullish().describe("Project person name"),
 					personCompany: z.string().nullish().describe("Project person company (disambiguation)"),
-					agentType: z.enum(["code-generation", "research", "testing", "documentation"]).optional(),
+					agentType: z.enum(["code-generation", "research", "testing", "documentation"]).nullish(),
 				})
 			)
 			.nullish()
@@ -760,13 +767,13 @@ export const updateTaskTool = createTool({
 		assignees: z
 			.array(
 				z.object({
-					userId: z.string().optional(),
-					email: z.string().email().optional(),
-					name: z.string().optional(),
+					userId: z.string().nullish(),
+					email: z.string().email().nullish(),
+					name: z.string().nullish(),
 					personId: z.string().nullish().describe("Project person id"),
 					personName: z.string().nullish().describe("Project person name"),
 					personCompany: z.string().nullish().describe("Project person company (disambiguation)"),
-					agentType: z.enum(["code-generation", "research", "testing", "documentation"]).optional(),
+					agentType: z.enum(["code-generation", "research", "testing", "documentation"]).nullish(),
 				})
 			)
 			.nullish()

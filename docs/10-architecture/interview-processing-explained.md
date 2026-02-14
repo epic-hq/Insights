@@ -1,6 +1,6 @@
 # Interview Processing: How It Works
 
-> **Note (2026-02-07):** Person resolution now uses unified `resolveOrCreatePerson()` module for all ingestion paths (desktop realtime + batch upload). See [`CONTEXT-people-pipeline-integration.md`](../20-features-prds/features/people/CONTEXT-people-pipeline-integration.md) for details.
+> **Note (2026-02-12):** Person resolution now uses unified `resolveOrCreatePerson()` module for all ingestion paths (desktop realtime + batch upload). Desktop realtime uses `/api/desktop/people/resolve` + `/api/desktop/interviews/finalize` for parity with batch pipelines. See [`CONTEXT-people-pipeline-integration.md`](../20-features-prds/features/people/CONTEXT-people-pipeline-integration.md) for details.
 
 ## Simple Explanation (8th Grade Level)
 
@@ -37,6 +37,28 @@ Phase 2: Persona Synthesis (BAML + GPT-4)
    ↓
 Database: Store everything
 ```
+
+### Desktop Realtime Path (Current)
+
+For desktop live capture, the flow is incremental and API-driven:
+
+```text
+Recall SDK transcript/participant events
+  ↓
+desktop/src/main.js queues utterances + participant metadata
+  ↓
+POST /api/desktop/realtime-evidence (batched during meeting)
+  ↓
+Evidence/tasks/people persisted during recording
+  ↓
+POST /api/desktop/people/resolve (on stop/finalize)
+  ↓
+POST /api/desktop/interviews/finalize
+  ↓
+interview status=ready + transcript_formatted + person/evidence links
+```
+
+This keeps realtime desktop output aligned with batch processing and the shared people/org model.
 
 ### Phase 0: Transcription
 

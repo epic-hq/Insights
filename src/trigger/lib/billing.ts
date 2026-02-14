@@ -84,16 +84,6 @@ export async function recordTaskUsage(
   usage: UsageEvent,
   idempotencyKey: string,
 ): Promise<UsageResult> {
-  // Skip if no cost (nothing to bill)
-  if (!usage.estimatedCostUsd || usage.estimatedCostUsd <= 0) {
-    return {
-      success: true,
-      usageEventId: null,
-      creditsCharged: 0,
-      limitStatus: "ok",
-    };
-  }
-
   try {
     const result = await recordUsageAndSpendCredits(ctx, usage, idempotencyKey);
 

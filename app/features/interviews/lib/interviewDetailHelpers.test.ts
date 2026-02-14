@@ -270,6 +270,20 @@ describe("matchTakeawaysToEvidence", () => {
 		expect(takeaways[0].evidenceId).toBe("ev-3");
 	});
 
+	it("uses supportingEvidenceIds before fuzzy snippet matching", () => {
+		const takeaways: KeyTakeaway[] = [
+			{
+				priority: "high",
+				summary: "Direct link",
+				evidenceSnippets: ["This snippet should be ignored when direct ids are present"],
+				supportingEvidenceIds: ["ev-2", "ev-1"],
+			},
+		];
+
+		matchTakeawaysToEvidence(takeaways, evidence);
+		expect(takeaways[0].evidenceId).toBe("ev-2");
+	});
+
 	it("does not overwrite already-matched takeaways", () => {
 		const takeaways: KeyTakeaway[] = [
 			{

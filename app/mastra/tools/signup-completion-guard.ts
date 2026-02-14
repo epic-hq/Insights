@@ -2,10 +2,10 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
 const InputSchema = z.object({
-	problem: z.string().optional(),
-	need_to_learn: z.string().optional(),
-	challenges: z.string().optional(),
-	content_types: z.string().optional(),
+	problem: z.string().nullish(),
+	need_to_learn: z.string().nullish(),
+	challenges: z.string().nullish(),
+	content_types: z.string().nullish(),
 });
 
 const OutputSchema = z.object({

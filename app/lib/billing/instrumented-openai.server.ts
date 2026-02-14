@@ -190,5 +190,8 @@ export async function withAgentBilling<T>(
 /**
  * The instrumented OpenAI provider instance.
  * Import this instead of the default @ai-sdk/openai provider.
+ *
+ * Langfuse tracing is now handled by @mastra/langfuse via the Mastra
+ * observability config. This provider only adds billing tracking.
  */
-export const openai = createInstrumentedOpenAI();
+export const openai: OpenAIProvider = createInstrumentedOpenAI();

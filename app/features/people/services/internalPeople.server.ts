@@ -156,19 +156,24 @@ export async function resolveInternalPerson({
 			.eq("user_id", userId)
 			.maybeSingle();
 		if (error) {
-			consola.warn("[resolveInternalPerson] Failed to load user_settings", { userId, error: error.message });
+			consola.warn("[resolveInternalPerson] Failed to load user_settings", {
+				userId,
+				error: error.message,
+			});
 		} else if (data) {
 			resolvedSettings = data as UserSettings;
 		}
 	}
 
-	const profile = buildInternalProfile({ userSettings: resolvedSettings, userMetadata, authUser });
+	const profile = buildInternalProfile({
+		userSettings: resolvedSettings,
+		userMetadata,
+		authUser,
+	});
 
 	const { data: existingByUser, error: existingByUserError } = await supabase
 		.from("people")
-		.select(
-			"id, name, firstname, lastname, primary_email, image_url, title, role, company, industry, person_type, user_id"
-		)
+		.select("id, name, firstname, lastname, primary_email, image_url, title, role, person_type, user_id")
 		.eq("account_id", accountId)
 		.eq("user_id", userId)
 		.maybeSingle();
@@ -183,7 +188,11 @@ export async function resolveInternalPerson({
 	const existingRow = (existingByUser as PeopleRow | null) ?? null;
 
 	if (existingRow?.id) {
-		const update = applyProfileUpdates({ profile, current: existingRow, allowNullUpdates });
+		const update = applyProfileUpdates({
+			profile,
+			current: existingRow,
+			allowNullUpdates,
+		});
 		update.user_id = userId;
 
 		if (Object.keys(update).length > 1) {
@@ -203,9 +212,7 @@ export async function resolveInternalPerson({
 		if (!profile.email) return null;
 		const { data } = await supabase
 			.from("people")
-			.select(
-				"id, name, firstname, lastname, primary_email, image_url, title, role, company, industry, person_type, user_id"
-			)
+			.select("id, name, firstname, lastname, primary_email, image_url, title, role, person_type, user_id")
 			.eq("account_id", accountId)
 			.eq("primary_email", profile.email)
 			.maybeSingle();
@@ -216,9 +223,7 @@ export async function resolveInternalPerson({
 		if (!profile.fullName) return null;
 		const { data } = await supabase
 			.from("people")
-			.select(
-				"id, name, firstname, lastname, primary_email, image_url, title, role, company, industry, person_type, user_id"
-			)
+			.select("id, name, firstname, lastname, primary_email, image_url, title, role, person_type, user_id")
 			.eq("account_id", accountId)
 			.eq("name", profile.fullName)
 			.maybeSingle();
@@ -227,7 +232,11 @@ export async function resolveInternalPerson({
 
 	const attachExisting = async (row: PeopleRow | null) => {
 		if (!row?.id) return null;
-		const update = applyProfileUpdates({ profile, current: row, allowNullUpdates });
+		const update = applyProfileUpdates({
+			profile,
+			current: row,
+			allowNullUpdates,
+		});
 		update.user_id = userId;
 		const { error: updateError } = await supabase.from("people").update(update).eq("id", row.id);
 		if (updateError) {

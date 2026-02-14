@@ -16,39 +16,6 @@ vi.mock("~/lib/supabase/client.server", () => ({
 		}),
 }));
 
-vi.mock("~/utils/processInterview.server", () => ({
-	processInterviewTranscriptWithAdminClient: vi.fn().mockResolvedValue({
-		success: true,
-		insights: [
-			{
-				id: "00000000-0000-0000-0000-00000000a001",
-				name: "Test Insight",
-				pain: "Test pain point",
-				details: "Test details",
-				evidence: "Test evidence",
-				category: "Test",
-				journey_stage: "Awareness",
-				confidence: 0.9,
-				emotional_response: "Frustrated",
-				motivation: "Test motivation",
-				desired_outcome: "Test outcome",
-				jtbd: "Test JTBD",
-				values: ["test_value"],
-				related_tags: ["test_tag"],
-			},
-		],
-		people: [
-			{
-				id: "00000000-0000-0000-0000-00000000b001",
-				name: "Test Person",
-				description: "Test description",
-				segment: "Test Segment",
-				contact_info: "test@example.com",
-			},
-		],
-	}),
-}));
-
 vi.mock("consola");
 vi.mock("@trigger.dev/sdk", () => ({
 	tasks: {

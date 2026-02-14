@@ -2,27 +2,27 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
 
 const organizationSchema = z.object({
 	name: z.string().min(1, "Organization name is required"),
-	description: z.string().optional().nullable(),
-	website_url: z.string().optional().nullable(),
-	domain: z.string().optional().nullable(),
-	industry: z.string().optional().nullable(),
-	size_range: z.string().optional().nullable(),
-	company_type: z.string().optional().nullable(),
-	headquarters_location: z.string().optional().nullable(),
-	phone: z.string().optional().nullable(),
-	email: z.string().optional().nullable(),
+	description: z.string().nullish(),
+	website_url: z.string().nullish(),
+	domain: z.string().nullish(),
+	industry: z.string().nullish(),
+	size_range: z.string().nullish(),
+	company_type: z.string().nullish(),
+	headquarters_location: z.string().nullish(),
+	phone: z.string().nullish(),
+	email: z.string().nullish(),
 });
 
 const toolInputSchema = z.object({
 	action: z.enum(["create", "update", "delete", "get", "list"]),
 	organizationId: z.string().nullish().describe("Required for update, delete, and get actions"),
-	accountId: z.string().optional(),
-	projectId: z.string().optional(),
+	accountId: z.string().nullish(),
+	projectId: z.string().nullish(),
 	data: organizationSchema.partial().nullish().describe("Organization data for create/update actions"),
 });
 

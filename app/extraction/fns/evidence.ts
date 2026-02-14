@@ -1,11 +1,10 @@
-import type { Chapter, Extraction, FacetCatalog } from "baml";
+import type { Chapter, Extraction, SpeakerUtterance } from "baml";
 import { b } from "baml";
 
 export type EvidenceCallArgs = {
-	transcript: string;
+	speaker_transcripts: SpeakerUtterance[];
 	chapters: Chapter[];
 	language: string;
-	facet_catalog: FacetCatalog;
 };
 
 export type StreamOptions = {
@@ -15,8 +14,8 @@ export type StreamOptions = {
 
 // Primitive wrapper to generate/stream Evidence extraction results.
 export async function generateEvidence(args: EvidenceCallArgs, opts: StreamOptions = {}): Promise<Extraction> {
-	const { transcript, chapters, language, facet_catalog } = args;
-	return b.ExtractEvidenceFromTranscriptV2(transcript, chapters, language, facet_catalog, {
+	const { speaker_transcripts, chapters, language } = args;
+	return b.ExtractEvidenceFromTranscriptV2(speaker_transcripts, chapters, language, {
 		signal: opts.signal,
 		onTick: opts.onTick,
 	});

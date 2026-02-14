@@ -1,14 +1,27 @@
 #!/usr/bin/env tsx
+
 /**
  * Diagnostic script to check the state of a stuck interview
  * Usage: npx tsx scripts/diagnose-stuck-interview.ts <interview-id>
  */
 
+import { createClient } from "@supabase/supabase-js";
 import consola from "consola";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import dotenv from "dotenv";
+
+// Load .env file
+dotenv.config();
 
 async function diagnoseInterview(interviewId: string) {
-	const supabase = createSupabaseAdminClient();
+	const supabaseUrl = process.env.SUPABASE_URL;
+	const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+	if (!supabaseUrl || !supabaseServiceKey) {
+		consola.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+		process.exit(1);
+	}
+
+	const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 	consola.info(`🔍 Diagnosing interview: ${interviewId}`);
 
@@ -80,30 +93,19 @@ Analysis:
 		consola.warn("\n⚠️  No upload_jobs found");
 	}
 
-	// 3. Check analysis_jobs
-	const { data: analysisJobs } = await supabase
-		.from("analysis_jobs")
-		.select("*")
-		.eq("interview_id", interviewId)
-		.order("created_at", { ascending: false });
-
-	if (analysisJobs && analysisJobs.length > 0) {
-		consola.info(`\n🧠 Analysis Jobs (${analysisJobs.length}):`);
-		analysisJobs.forEach((job, i) => {
-			consola.log(`
-  ${i + 1}. Job ID: ${job.id}
-     Status: ${job.status}
-     Detail: ${job.status_detail || "N/A"}
-     Current step: ${job.current_step || "N/A"}
-     Progress: ${job.progress || 0}%
-     Trigger run ID: ${job.trigger_run_id || "N/A"}
-     Created: ${job.created_at}
-     Updated: ${job.updated_at}
-     Last error: ${job.last_error || "N/A"}
+	// 3. Check conversation_analysis (analysis_jobs table was removed)
+	// Workflow state is now stored in interviews.conversation_analysis JSONB column
+	consola.info("\n🧠 Conversation Analysis State:");
+	if (interview.conversation_analysis) {
+		const conversationAnalysis = interview.conversation_analysis as any;
+		consola.log(`
+  Current step: ${conversationAnalysis.current_step || "N/A"}
+  Completed steps: ${conversationAnalysis.completed_steps?.join(", ") || "N/A"}
+  Trigger run ID: ${conversationAnalysis.trigger_run_id || "N/A"}
+  Last error: ${conversationAnalysis.last_error || "N/A"}
 		`);
-		});
 	} else {
-		consola.warn("\n⚠️  No analysis_jobs found");
+		consola.warn("  No conversation_analysis data found");
 	}
 
 	// 4. Determine issue and recommend fix
@@ -139,16 +141,19 @@ Analysis:
 		recommendations.push("2. Call POST /api/fix-stuck-interview to mark upload_jobs as 'done'");
 	}
 
-	// Check for stuck analysis_jobs
-	const stuckAnalysisJobs = analysisJobs?.filter((j) => j.status === "pending" || j.status === "in_progress");
-	if (stuckAnalysisJobs && stuckAnalysisJobs.length > 0) {
-		issues.push(`❌ ${stuckAnalysisJobs.length} analysis_jobs stuck in '${stuckAnalysisJobs[0].status}'`);
-		recommendations.push("3. Call POST /api/fix-stuck-interview to mark analysis_jobs as 'done'");
+	// Check for stuck workflow state (conversation_analysis)
+	if (interview.conversation_analysis) {
+		const conversationAnalysis = interview.conversation_analysis as any;
+		const workflowState = conversationAnalysis.workflow_state;
+
+		if (workflowState && workflowState.currentStep && workflowState.currentStep !== "finalize") {
+			issues.push(`❌ Workflow stuck on step: ${workflowState.currentStep}`);
+			recommendations.push("3. Call POST /api/reprocess-interview to restart the workflow");
+		}
 
 		// If there's a trigger_run_id, mention checking Trigger.dev
-		const withTriggerRun = stuckAnalysisJobs.filter((j) => j.trigger_run_id);
-		if (withTriggerRun.length > 0) {
-			recommendations.push(`4. Check Trigger.dev dashboard for run: ${withTriggerRun[0].trigger_run_id}`);
+		if (conversationAnalysis.trigger_run_id) {
+			recommendations.push(`4. Check Trigger.dev dashboard for run: ${conversationAnalysis.trigger_run_id}`);
 		}
 	}
 

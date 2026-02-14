@@ -5,9 +5,10 @@
  * Triggers a calendar sync for the current user
  */
 
+import { tasks } from "@trigger.dev/sdk";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
-import { syncCalendarTask } from "src/trigger/calendar";
+import type { syncCalendarTask } from "src/trigger/calendar";
 import { getCalendarConnection } from "~/lib/integrations/calendar.server";
 import { userContext } from "~/server/user-context";
 
@@ -31,7 +32,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
 		}
 
 		// Trigger sync task
-		const handle = await syncCalendarTask.trigger({
+		const handle = await tasks.trigger<typeof syncCalendarTask>("calendar.sync", {
 			connectionId: connection.id,
 			daysAhead: 14,
 			daysBehind: 1,

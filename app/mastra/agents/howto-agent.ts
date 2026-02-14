@@ -3,6 +3,8 @@ import { TokenLimiterProcessor } from "@mastra/core/processors";
 import { Memory } from "@mastra/memory";
 import consola from "consola";
 import { openai } from "../../lib/billing/instrumented-openai.server";
+import { HOST } from "../../paths";
+import { createRouteDefinitions } from "../../utils/route-definitions";
 import { getSharedPostgresStore } from "../storage/postgres-singleton";
 
 const UX_RESEARCH_DISCIPLINE_PACK = `
@@ -30,8 +32,16 @@ export const howtoAgent = new Agent({
 			const projectId = String(requestContext.get("project_id") || "");
 			const accountId = String(requestContext.get("account_id") || "");
 			const responseMode = String(requestContext.get("response_mode") || "ux_research_mode");
-			const projectBase = accountId && projectId ? `/a/${accountId}/${projectId}` : "";
+			const routes =
+				accountId && projectId ? createRouteDefinitions(`/a/${accountId}/${projectId}`) : createRouteDefinitions("");
 			const isGtmMode = responseMode === "gtm_mode";
+			const quickLinkHints =
+				accountId && projectId
+					? `  - [People](${HOST}${routes.people.index()})
+  - [Insights](${HOST}${routes.insights.index()})
+  - [Ask](${HOST}${routes.ask.index()})`
+					: `  - [Docs](${HOST}${routes.docs()})
+  - [Help](${HOST}${routes.help()})`;
 
 			return `
 You are a How-To coach for product teams. Provide practical next actions with strong structure and explicit links.
@@ -57,9 +67,7 @@ Contract rules:
 - "Prompt template" must be copy/paste ready and include placeholders.
 - "Quick links" must contain at least one markdown link.
 - Prefer project-local links when possible:
-  - [People](${projectBase}/people)
-  - [Insights](${projectBase}/insights)
-  - [Ask](${projectBase}/ask)
+${quickLinkHints}
 
 ## Style
 - Keep it crisp and execution-oriented.

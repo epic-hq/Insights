@@ -1,5 +1,5 @@
 import consola from "consola";
-import { GitMerge, LayoutGrid, MoreHorizontal, Sparkles, Table as TableIcon, UserCircle } from "lucide-react";
+import { GitMerge, LayoutGrid, MoreHorizontal, Sparkles, Table as TableIcon, UserCircle, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData, useNavigate, useSearchParams } from "react-router";
 import { Link, useParams, useRevalidator } from "react-router-dom";
@@ -31,6 +31,7 @@ import EnhancedPersonCard from "~/features/people/components/EnhancedPersonCard"
 import { PeopleDataTable, type PersonTableRow } from "~/features/people/components/PeopleDataTable";
 import { getPeople } from "~/features/people/db";
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav";
+import { BulkGenerateSurveys } from "~/features/research-links/components/BulkGenerateSurveys";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 import { getFacetCatalog } from "~/lib/database/facets.server";
@@ -127,6 +128,8 @@ export default function PeopleIndexPage() {
 	}
 	const routes = useProjectRoutes(currentProjectContext?.projectPath);
 	const revalidator = useRevalidator();
+	const [selectedPeople, setSelectedPeople] = useState<PersonTableRow[]>([]);
+	const [showBulkGenerate, setShowBulkGenerate] = useState(false);
 	const [isEnriching, setIsEnriching] = useState(false);
 	const [isFindingDuplicates, setIsFindingDuplicates] = useState(false);
 	const [duplicateGroups, setDuplicateGroups] = useState<
@@ -594,7 +597,18 @@ export default function PeopleIndexPage() {
 						</div>
 					</div>
 				) : viewMode === "table" ? (
-					<PeopleDataTable rows={tableRows} organizations={organizationsList} />
+					<div className="space-y-3">
+						{selectedPeople.length > 0 && (
+							<div className="flex items-center gap-3">
+								<span className="text-muted-foreground text-sm">{selectedPeople.length} selected</span>
+								<Button size="sm" onClick={() => setShowBulkGenerate(true)}>
+									<Zap className="mr-1.5 size-4" />
+									Generate Surveys
+								</Button>
+							</div>
+						)}
+						<PeopleDataTable rows={tableRows} organizations={organizationsList} onSelectionChange={setSelectedPeople} />
+					</div>
 				) : (
 					<div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
 						{filteredPeopleWithFacets.map(({ person, facets }) => {
@@ -724,6 +738,17 @@ export default function PeopleIndexPage() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			<BulkGenerateSurveys
+				open={showBulkGenerate}
+				onOpenChange={setShowBulkGenerate}
+				selectedPeople={selectedPeople.map((p) => ({
+					id: p.id,
+					name: p.name,
+					title: p.title,
+					email: null,
+				}))}
+			/>
 		</>
 	);
 }

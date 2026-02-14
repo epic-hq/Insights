@@ -17,7 +17,7 @@ import {
 } from "~/lib/billing/instrumented-baml.server";
 import type { TaskStatus } from "~/features/tasks/types";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
-import { workflowRetryConfig } from "~/utils/processInterview.server";
+import { workflowRetryConfig } from "../interview/v2/config";
 
 // Progress stages for lens application
 const LENS_STAGES = {
@@ -50,6 +50,15 @@ export type ApplyLensPayload = {
   computedBy?: string | null;
   customInstructions?: string | null;
 };
+
+function toUuidOrNull(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidPattern.test(trimmed) ? trimmed : null;
+}
 
 /**
  * Map lens template category to task cluster
@@ -391,6 +400,7 @@ export const applyLensTask = task({
       computedBy,
       customInstructions,
     } = payload;
+    const computedByUserId = toUuidOrNull(computedBy);
     const client = createSupabaseAdminClient();
 
     consola.info(
@@ -531,7 +541,7 @@ export const applyLensTask = task({
           auto_detected: true,
           status: "completed",
           processed_at: new Date().toISOString(),
-          processed_by: computedBy,
+          processed_by: computedByUserId,
         },
         { onConflict: "interview_id,template_key" },
       );
@@ -633,7 +643,7 @@ export const applyLensTask = task({
           status: "failed",
           error_message: error instanceof Error ? error.message : String(error),
           processed_at: new Date().toISOString(),
-          processed_by: computedBy,
+          processed_by: computedByUserId,
         },
         { onConflict: "interview_id,template_key" },
       );
@@ -762,7 +772,7 @@ export const applyLensTask = task({
               supabase: client as any,
               accountId,
               projectId: effectiveProjectId,
-              userId: computedBy || "system",
+              userId: computedByUserId,
               data: {
                 title,
                 description: nextStep.owner
@@ -837,7 +847,7 @@ export const applyLensTask = task({
           auto_detected: true,
           status: "completed",
           processed_at: new Date().toISOString(),
-          processed_by: computedBy,
+          processed_by: computedByUserId,
         },
         { onConflict: "interview_id,template_key" },
       );

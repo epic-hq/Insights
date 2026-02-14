@@ -14,7 +14,7 @@ const marketingLinks = [
 	{ key: "benefits", label: "Why", link: "/#benefits" },
 	{ key: "features", label: "Features", link: "/#features" },
 	{ key: "pricing", label: "Pricing", link: "/pricing" },
-	{ key: "blog", label: "Learn", link: "/blog" },
+	{ key: "blog", label: "Blog", link: "/blog" },
 ];
 
 export default function MainNav() {

@@ -30,6 +30,12 @@ interface NextStep {
 	context: string;
 }
 
+interface AINextStep {
+	action: string;
+	reasoning: string;
+	priority: number;
+}
+
 interface PersonInsightsProps {
 	/** AI-generated description / key takeaways */
 	description: string | null;
@@ -51,6 +57,8 @@ interface PersonInsightsProps {
 	onRefreshDescription: () => void;
 	/** Whether the description is currently being regenerated */
 	isRefreshing?: boolean;
+	/** AI-generated next steps (null = use heuristic fallback) */
+	aiNextSteps?: AINextStep[] | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -146,6 +154,7 @@ export function PersonInsights({
 	routes,
 	onRefreshDescription,
 	isRefreshing = false,
+	aiNextSteps,
 }: PersonInsightsProps) {
 	const [showAllThemes, setShowAllThemes] = useState(false);
 
@@ -165,7 +174,9 @@ export function PersonInsights({
 		);
 	}
 
-	const nextSteps = generateNextSteps({
+	// Use AI next steps when available, fall back to heuristic
+	const useAI = aiNextSteps && aiNextSteps.length > 0;
+	const heuristicSteps = generateNextSteps({
 		lastContactDate,
 		surveyCount,
 		conversationCount,
@@ -174,6 +185,8 @@ export function PersonInsights({
 
 	const visibleThemes = showAllThemes ? themes : themes.slice(0, VISIBLE_THEME_COUNT);
 	const hiddenCount = themes.length - VISIBLE_THEME_COUNT;
+
+	const hasSteps = useAI || heuristicSteps.length > 0;
 
 	return (
 		<div className="rounded-xl border border-border/60 bg-card">
@@ -204,28 +217,54 @@ export function PersonInsights({
 			)}
 
 			{/* ── Divider ────────────────────────────────────────────── */}
-			{hasDescription && nextSteps.length > 0 && <div className="mx-6 my-4 h-px bg-border" />}
+			{hasDescription && hasSteps && <div className="mx-6 my-4 h-px bg-border" />}
 
 			{/* ── Recommended Next Steps ─────────────────────────────── */}
-			{nextSteps.length > 0 && (
+			{hasSteps && (
 				<div className="px-6">
 					<h3 className="mb-3 flex items-center gap-2 font-semibold text-muted-foreground text-sm">
 						<Target className="h-3.5 w-3.5" />
 						Recommended Next Steps
+						{useAI && (
+							<Badge variant="outline" className="ml-1 gap-1 px-1.5 py-0 font-normal text-[10px] text-primary">
+								<Sparkles className="h-2.5 w-2.5" />
+								AI
+							</Badge>
+						)}
 					</h3>
-					<ul className="space-y-2">
-						{nextSteps.map((step) => (
-							<li key={step.text} className="flex items-start gap-2.5">
-								<span className="mt-0.5 shrink-0 font-medium text-primary text-sm" aria-hidden="true">
-									&rarr;
-								</span>
-								<div className="min-w-0">
-									<span className="text-foreground text-sm">{step.text}</span>
-									<span className="ml-1.5 text-muted-foreground text-xs">({step.context})</span>
-								</div>
-							</li>
-						))}
-					</ul>
+
+					{useAI ? (
+						<ul className="space-y-3">
+							{aiNextSteps.map((step) => (
+								<li key={step.action} className="flex items-start gap-2.5">
+									<span
+										className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-[11px] text-primary"
+										aria-hidden="true"
+									>
+										{step.priority}
+									</span>
+									<div className="min-w-0">
+										<span className="text-foreground text-sm">{step.action}</span>
+										<p className="mt-0.5 text-muted-foreground text-xs leading-relaxed">{step.reasoning}</p>
+									</div>
+								</li>
+							))}
+						</ul>
+					) : (
+						<ul className="space-y-2">
+							{heuristicSteps.map((step) => (
+								<li key={step.text} className="flex items-start gap-2.5">
+									<span className="mt-0.5 shrink-0 font-medium text-primary text-sm" aria-hidden="true">
+										&rarr;
+									</span>
+									<div className="min-w-0">
+										<span className="text-foreground text-sm">{step.text}</span>
+										<span className="ml-1.5 text-muted-foreground text-xs">({step.context})</span>
+									</div>
+								</li>
+							))}
+						</ul>
+					)}
 				</div>
 			)}
 

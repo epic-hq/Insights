@@ -16,6 +16,7 @@ import {
 	CONVERSATION_OVERVIEW_TEMPLATE_KEY,
 	toConversationOverviewAnalysisData,
 } from "~/lib/conversation-analyses/upsertConversationOverviewLens.server";
+import { enrichConversationAnalysisWithEvidenceIds } from "~/utils/conversationAnalysis.server";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -46,11 +47,13 @@ const MOCK_BAML_OUTPUT: ConversationAnalysis = {
 			priority: "high",
 			summary: "Onboarding takes too long — 2 weeks average",
 			evidence_snippets: ["It takes forever to get started", "We lose most users in week one"],
+			supporting_evidence_ids: [],
 		},
 		{
 			priority: "medium",
 			summary: "Users want self-serve setup",
 			evidence_snippets: ["I don't want to wait for a call"],
+			supporting_evidence_ids: [],
 		},
 	],
 	open_questions: ["What's the ideal onboarding length?", "Do they need guided vs self-serve?"],
@@ -78,6 +81,7 @@ describe("toConversationOverviewAnalysisData", () => {
 			priority: "high",
 			summary: "Onboarding takes too long — 2 weeks average",
 			evidence_snippets: ["It takes forever to get started", "We lose most users in week one"],
+			supporting_evidence_ids: [],
 		});
 		expect(result.recommended_next_steps).toHaveLength(1);
 		expect(result.recommended_next_steps[0].focus_area).toBe("Onboarding");
@@ -106,6 +110,45 @@ describe("toConversationOverviewAnalysisData", () => {
 	});
 });
 
+describe("enrichConversationAnalysisWithEvidenceIds", () => {
+	it("links key takeaway snippets to evidence IDs", () => {
+		const enriched = enrichConversationAnalysisWithEvidenceIds(MOCK_BAML_OUTPUT, [
+			{
+				id: "ev-1",
+				verbatim: "It takes forever to get started and causes drop-off",
+				gist: "Slow onboarding",
+			},
+			{
+				id: "ev-2",
+				verbatim: "I don't want to wait for a call",
+				gist: "Self-serve setup preference",
+			},
+		]);
+
+		expect(enriched.key_takeaways[0].supporting_evidence_ids).toEqual(["ev-1"]);
+		expect(enriched.key_takeaways[1].supporting_evidence_ids).toEqual(["ev-2"]);
+	});
+
+	it("preserves existing supporting IDs when they are valid", () => {
+		const withExisting: ConversationAnalysis = {
+			...MOCK_BAML_OUTPUT,
+			key_takeaways: [
+				{
+					...MOCK_BAML_OUTPUT.key_takeaways[0],
+					supporting_evidence_ids: ["ev-keep"],
+				},
+			],
+		};
+
+		const enriched = enrichConversationAnalysisWithEvidenceIds(withExisting, [
+			{ id: "ev-keep", verbatim: "any", gist: null },
+			{ id: "ev-other", verbatim: "other", gist: null },
+		]);
+
+		expect(enriched.key_takeaways[0].supporting_evidence_ids).toEqual(["ev-keep"]);
+	});
+});
+
 // ---------------------------------------------------------------------------
 // parseConversationOverviewLens (primary read path)
 // ---------------------------------------------------------------------------
@@ -121,6 +164,7 @@ describe("parseConversationOverviewLens", () => {
 		expect(result!.keyTakeaways[0].priority).toBe("high");
 		expect(result!.keyTakeaways[0].summary).toBe("Onboarding takes too long — 2 weeks average");
 		expect(result!.keyTakeaways[0].evidenceSnippets).toHaveLength(2);
+		expect(result!.keyTakeaways[0].supportingEvidenceIds).toEqual([]);
 		expect(result!.recommendations).toHaveLength(1);
 		expect(result!.recommendations[0].focusArea).toBe("Onboarding");
 		expect(result!.recommendations[0].action).toBe("Build a self-serve onboarding wizard");
@@ -214,7 +258,25 @@ describe("CONVERSATION_OVERVIEW_TEMPLATE_KEY", () => {
 describe("upsertConversationOverviewLens", () => {
 	it("calls db.from('conversation_lens_analyses').upsert with correct shape", async () => {
 		const mockUpsert = vi.fn().mockResolvedValue({ error: null });
-		const mockFrom = vi.fn().mockReturnValue({ upsert: mockUpsert });
+		const mockTemplateMaybeSingle = vi.fn().mockResolvedValue({
+			data: { template_key: "conversation-overview" },
+			error: null,
+		});
+		const mockFrom = vi.fn((table: string) => {
+			if (table === "conversation_lens_templates") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							maybeSingle: mockTemplateMaybeSingle,
+						}),
+					}),
+				};
+			}
+			if (table === "conversation_lens_analyses") {
+				return { upsert: mockUpsert };
+			}
+			return {};
+		});
 		const mockDb = { from: mockFrom } as any;
 
 		const { upsertConversationOverviewLens } = await import(
@@ -250,7 +312,25 @@ describe("upsertConversationOverviewLens", () => {
 		const mockUpsert = vi.fn().mockResolvedValue({
 			error: { message: "constraint violation" },
 		});
-		const mockFrom = vi.fn().mockReturnValue({ upsert: mockUpsert });
+		const mockTemplateMaybeSingle = vi.fn().mockResolvedValue({
+			data: { template_key: "conversation-overview" },
+			error: null,
+		});
+		const mockFrom = vi.fn((table: string) => {
+			if (table === "conversation_lens_templates") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							maybeSingle: mockTemplateMaybeSingle,
+						}),
+					}),
+				};
+			}
+			if (table === "conversation_lens_analyses") {
+				return { upsert: mockUpsert };
+			}
+			return {};
+		});
 		const mockDb = { from: mockFrom } as any;
 
 		const { upsertConversationOverviewLens } = await import(

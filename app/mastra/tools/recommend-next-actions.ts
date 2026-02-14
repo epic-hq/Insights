@@ -7,16 +7,16 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { getProjectResearchContext, type ProjectResearchContext } from "~/features/research-links/db";
+import { getProjectResearchContext, type ProjectResearchContext } from "../../features/research-links/db";
 import {
 	determineProjectStage,
 	generateRecommendations,
 	type ProjectStage,
 	type Recommendation,
-} from "~/features/research-links/utils/recommendation-rules";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
-import { createRouteDefinitions } from "~/utils/route-definitions";
+} from "../../features/research-links/utils/recommendation-rules";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
+import { createRouteDefinitions } from "../../utils/route-definitions";
 
 function buildProjectPath(accountId: string, projectId: string) {
 	return `/a/${accountId}/${projectId}`;

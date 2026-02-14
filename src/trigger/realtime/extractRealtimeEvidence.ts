@@ -5,23 +5,7 @@
  * metadata streaming to push results back to the client.
  */
 import { b } from "baml_client"
-import type { FacetCatalogKind } from "baml_client"
 import { logger, metadata, task } from "@trigger.dev/sdk"
-
-const DEFAULT_FACET_KINDS: FacetCatalogKind[] = [
-	{ slug: "goal", label: "Goals" },
-	{ slug: "pain", label: "Pain Points" },
-	{ slug: "behavior", label: "Behaviors" },
-	{ slug: "tool", label: "Tools" },
-	{ slug: "value", label: "Values" },
-	{ slug: "preference", label: "Preferences" },
-	{ slug: "workflow", label: "Workflows" },
-	{ slug: "feature", label: "Features" },
-	{ slug: "emotion", label: "Emotions" },
-	{ slug: "context", label: "Context" },
-	{ slug: "demographic", label: "Demographics" },
-	{ slug: "artifact", label: "Artifacts" },
-]
 
 export const extractRealtimeEvidence = task({
 	id: "realtime.extract-evidence",
@@ -46,17 +30,16 @@ export const extractRealtimeEvidence = task({
 			sessionId,
 		})
 
-		const result = await b.ExtractEvidenceFromTranscriptV2(
-			utterances.map((u) => ({
-				speaker: u.speaker,
-				text: u.text,
-				start: u.start ?? null,
-				end: u.end ?? null,
-			})),
-			[], // no chapters for realtime
-			language || "en",
-			{ kinds: DEFAULT_FACET_KINDS, facets: [], version: "realtime-proto" },
-		)
+			const result = await b.ExtractEvidenceFromTranscriptV2(
+				utterances.map((u) => ({
+					speaker: u.speaker,
+					text: u.text,
+					start: u.start ?? null,
+					end: u.end ?? null,
+				})),
+				[], // no chapters for realtime
+				language || "en",
+			)
 
 		const evidenceCount = result.evidence?.length || 0
 		const peopleCount = result.people?.length || 0

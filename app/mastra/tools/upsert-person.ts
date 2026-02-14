@@ -2,8 +2,9 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
+import { validateUUID } from "./context-utils";
 
 /**
  * Parse a full name into firstname and lastname
@@ -200,8 +201,9 @@ export const upsertPersonTool = createTool({
 			whenMet,
 		} = input || {};
 
-		const projectId = (runtimeProjectId as string) || null;
-		const accountId = (runtimeAccountId as string) || null;
+		const projectId = validateUUID(runtimeProjectId, "projectId", "upsert-person");
+		const accountId = validateUUID(runtimeAccountId, "accountId", "upsert-person");
+		const validatedPersonId = personId ? validateUUID(personId, "personId", "upsert-person") : null;
 
 		consola.debug("upsert-person: execute start", {
 			personId,
@@ -278,12 +280,12 @@ export const upsertPersonTool = createTool({
 			} | null = null;
 			let organization_link_error: string | null = null;
 
-			if (personId) {
+			if (validatedPersonId) {
 				// Update existing person
 				const { data, error } = await supabase
 					.from("people")
 					.update(updateData)
-					.eq("id", personId)
+					.eq("id", validatedPersonId)
 					.eq("account_id", accountId)
 					.select("id, name, title, primary_email, primary_phone")
 					.single();

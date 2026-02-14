@@ -47,6 +47,7 @@ interface EvidenceItem {
 	confidence: string | null;
 	anchors: unknown;
 	thumbnail_url: string | null;
+	speakerNames?: string[];
 }
 
 interface Participant {
@@ -386,6 +387,15 @@ export function EvidenceVerificationDrawer({
 										<Badge variant="outline" className="text-xs">
 											{selectedEvidence.topic}
 										</Badge>
+									)}
+									{Array.isArray(selectedEvidence.speakerNames) && selectedEvidence.speakerNames.length > 0 && (
+										<div className="flex flex-wrap items-center gap-1">
+											{selectedEvidence.speakerNames.map((name) => (
+												<Badge key={name} variant="secondary" className="text-[10px]">
+													{name}
+												</Badge>
+											))}
+										</div>
 									)}
 									{selectedEvidence.verbatim && (
 										<blockquote className="border-primary/40 border-l-2 pl-3 text-foreground text-sm italic">

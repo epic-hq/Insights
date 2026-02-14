@@ -46,9 +46,12 @@ export async function runBamlWithTracing<TResult>({
 	costEnvPrefix,
 	logUsageLabel,
 	model,
-}: RunBamlWithTracingOptions<TResult>): Promise<{ result: TResult; usage?: BamlUsageSummary | null }> {
+}: RunBamlWithTracingOptions<TResult>): Promise<{
+	result: TResult;
+	usage?: BamlUsageSummary | null;
+}> {
 	const langfuse = getLangfuseClient();
-	const resolvedModel = model ?? process.env.BAML_DEFAULT_MODEL ?? "CustomGPT4o";
+	const resolvedModel = model ?? process.env.BAML_DEFAULT_MODEL ?? "gpt-4o";
 	const trace = (langfuse as any).trace?.({
 		name: traceName ?? `baml.${functionName}`,
 		metadata,
@@ -127,5 +130,8 @@ export async function runBamlWithTracing<TResult>({
 				? { amount: usageSummary.totalCostUsd, currency: "USD" as const }
 				: undefined;
 		trace?.end?.({ usage: finalUsage, cost: finalCost, metadata });
+		await (langfuse as any)?.flushAsync?.().catch((error: unknown) => {
+			consola.warn(`[langfuse] Failed to flush trace for baml.${functionName}:`, error);
+		});
 	}
 }

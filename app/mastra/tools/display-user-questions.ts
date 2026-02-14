@@ -7,7 +7,7 @@ export const displayUserQuestionsTool = createTool({
 	id: "display-user-questions",
 	description: "Display research questions to the user",
 	inputSchema: z.object({
-		questions: z.array(z.string()).optional(),
+		questions: z.array(z.string()).nullish(),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

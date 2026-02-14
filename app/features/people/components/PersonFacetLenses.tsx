@@ -59,13 +59,23 @@ const KIND_ICON_MAP: Record<string, { icon: LucideIcon; color: string; bg: strin
 	preference: { icon: AlignLeft, color: "text-indigo-700", bg: "bg-indigo-50" },
 	artifact: { icon: Box, color: "text-purple-700", bg: "bg-purple-50" },
 	tool: { icon: Wrench, color: "text-cyan-700", bg: "bg-cyan-50" },
-	behavior: { icon: PersonStanding, color: "text-orange-700", bg: "bg-orange-50" },
+	behavior: {
+		icon: PersonStanding,
+		color: "text-orange-700",
+		bg: "bg-orange-50",
+	},
 	context: { icon: Image, color: "text-teal-700", bg: "bg-teal-50" },
 	job_function: { icon: Boxes, color: "text-violet-700", bg: "bg-violet-50" },
 };
 
 function getIcon(kindSlug: string) {
-	return KIND_ICON_MAP[kindSlug] ?? { icon: Sparkles, color: "text-slate-700", bg: "bg-slate-100" };
+	return (
+		KIND_ICON_MAP[kindSlug] ?? {
+			icon: Sparkles,
+			color: "text-slate-700",
+			bg: "bg-slate-100",
+		}
+	);
 }
 
 function confidenceIcon(confidence: number | null) {
@@ -122,7 +132,7 @@ export function PersonFacetLenses({
 
 	if (!groups.length) return null;
 
-	const defaultAccordionValue = groups[0]?.kind_slug;
+	const defaultAccordionValues = groups.map((g) => g.kind_slug);
 
 	const handleRemoveFacet = (facetAccountId: number) => {
 		fetcher.submit(
@@ -140,7 +150,6 @@ export function PersonFacetLenses({
 			<div className="flex items-center justify-between gap-2">
 				<div className="space-y-1">
 					<h2 className="font-semibold text-foreground text-lg">Attribute lenses</h2>
-					<p className="text-muted-foreground text-sm">Headline takeaways per facet group, details inside.</p>
 				</div>
 				{isGenerating ? (
 					<Badge variant="outline" className="text-[0.65rem] uppercase">
@@ -149,7 +158,7 @@ export function PersonFacetLenses({
 				) : null}
 			</div>
 
-			<Accordion type="single" collapsible defaultValue={defaultAccordionValue} className="mx-auto max-w-3xl space-y-3">
+			<Accordion type="multiple" defaultValue={defaultAccordionValues} className="space-y-3">
 				{groups.map((group) => {
 					const iconConfig = getIcon(group.kind_slug);
 					const _summaryText = group.summary?.trim() || fallbackSummary(group.facets);

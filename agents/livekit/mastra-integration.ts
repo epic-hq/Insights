@@ -222,7 +222,8 @@ export function createMastraTools(context: {
           const peopleDetails = topPeople.map((p) => {
             const parts = [p.name];
             if (p.title) parts.push(p.title);
-            if (p.default_organization?.name) parts.push(`at ${p.default_organization.name}`);
+            if (p.default_organization?.name)
+              parts.push(`at ${p.default_organization.name}`);
             return parts.join(", ");
           });
 
@@ -249,10 +250,6 @@ export function createMastraTools(context: {
         title: z.string().optional().describe("Job title or role"),
         phone: z.string().optional().describe("Phone number"),
         segment: z.string().optional().describe("Customer segment or category"),
-        notes: z
-          .string()
-          .optional()
-          .describe("Additional notes or context about the person"),
       }),
       execute: async ({
         name,
@@ -261,7 +258,6 @@ export function createMastraTools(context: {
         title,
         phone,
         segment,
-        notes,
       }: {
         name: string;
         email?: string;
@@ -269,7 +265,6 @@ export function createMastraTools(context: {
         title?: string;
         phone?: string;
         segment?: string;
-        notes?: string;
       }) => {
         try {
           consola.info("createPerson: creating person", {
@@ -294,7 +289,6 @@ export function createMastraTools(context: {
               segment: segment || null,
               contact_info:
                 Object.keys(contactInfo).length > 0 ? contactInfo : null,
-              notes: notes || null,
             },
           });
 

@@ -2,13 +2,13 @@ import { createTool } from "@mastra/core/tools";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { getInsights } from "~/features/insights/db";
-import { getInterviews } from "~/features/interviews/db";
-import { getOpportunities } from "~/features/opportunities/db";
-import { getPeople } from "~/features/people/db";
-import { getPersonas } from "~/features/personas/db";
-import { getProjectById, getProjects } from "~/features/projects/db";
-import type { Database, Insight, Interview, Opportunity, Person, Persona } from "~/types";
+import { getInsights } from "../../features/insights/db";
+import { getInterviews } from "../../features/interviews/db";
+import { getOpportunities } from "../../features/opportunities/db";
+import { getPeople } from "../../features/people/db";
+import { getPersonas } from "../../features/personas/db";
+import { getProjectById, getProjects } from "../../features/projects/db";
+import type { Database, Insight, Interview, Opportunity, Person, Persona } from "../../types";
 
 // Project search and analysis tool for Upsight
 export const upsightTool = createTool({

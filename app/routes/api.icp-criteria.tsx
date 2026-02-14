@@ -24,7 +24,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const { client: userDb } = getServerClient(request);
 
 		const body = await request.json();
-		const { accountId, projectId, target_roles, target_orgs, target_company_sizes } = body;
+		const { accountId, projectId, target_roles, target_orgs, target_company_sizes, target_facets } = body;
 
 		if (!projectId || !accountId) {
 			return Response.json({ error: "Missing projectId or accountId" }, { status: 400 });
@@ -47,6 +47,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			{ kind: "target_roles", meta: { target_roles } },
 			{ kind: "target_orgs", meta: { target_orgs } },
 			{ kind: "target_company_sizes", meta: { target_company_sizes } },
+			{ kind: "target_facets", meta: { target_facets: target_facets || [] } },
 		];
 
 		for (const section of sections) {

@@ -94,7 +94,7 @@ export default function QuestionsIndex() {
 
 	const handleRecordNow = useCallback(() => {
 		if (projectId) {
-			recordNow({ projectId });
+			recordNow({ projectId, mode: "interview" });
 		}
 	}, [projectId, recordNow]);
 

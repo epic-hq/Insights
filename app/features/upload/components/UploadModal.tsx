@@ -3,7 +3,7 @@ import { Fragment, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useCurrentProject } from "~/contexts/current-project-context";
 import { useNotification } from "~/contexts/NotificationContext";
-import type { ProcessingResult } from "~/utils/processInterview.server";
+import type { ProcessingResult } from "~/features/upload/types";
 
 interface UploadModalProps {
 	open: boolean;

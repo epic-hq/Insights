@@ -1,7 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import consola from "consola";
 import { z } from "zod";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { createSupabaseAdminClient } from "../../lib/supabase/client.server";
 
 /**
  * Column mapping schema - maps spreadsheet columns to opportunity fields
@@ -72,7 +72,10 @@ function normalizeColumnName(name: string): string {
  */
 function autoDetectMappings(headers: string[]): ColumnMapping {
 	const mapping: ColumnMapping = {};
-	const normalizedHeaders = headers.map((h) => ({ original: h, normalized: normalizeColumnName(h) }));
+	const normalizedHeaders = headers.map((h) => ({
+		original: h,
+		normalized: normalizeColumnName(h),
+	}));
 
 	const patterns: Record<keyof ColumnMapping, string[]> = {
 		name: ["dealname", "opportunityname", "deal", "opportunity"],
@@ -183,9 +186,17 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 			.nullish()
 			.default(true)
 			.describe("Create organizations from account column if they don't exist"),
-		skipDuplicates: z.boolean().optional().default(true).describe("Skip rows where CRM external ID already exists"),
+		skipDuplicates: z
+			.boolean()
+			.nullish()
+			.transform((v) => v ?? true)
+			.describe("Skip rows where CRM external ID already exists"),
 		defaultStage: z.string().nullish().describe("Default stage for opportunities without a stage column"),
-		defaultCurrency: z.string().optional().default("USD").describe("Default currency if not specified in data"),
+		defaultCurrency: z
+			.string()
+			.nullish()
+			.transform((v) => v ?? "USD")
+			.describe("Default currency if not specified in data"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -254,7 +265,10 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 				};
 			}
 
-			const tableData = (asset as any).table_data as { headers: string[]; rows: TableRow[] } | null;
+			const tableData = (asset as any).table_data as {
+				headers: string[];
+				rows: TableRow[];
+			} | null;
 			if (!tableData || !tableData.headers || !tableData.rows) {
 				return {
 					success: false,

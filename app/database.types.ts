@@ -938,6 +938,72 @@ export type Database = {
 					},
 				];
 			};
+			artifacts: {
+				Row: {
+					a2ui_doc: Json;
+					account_id: string;
+					artifact_type: string;
+					capabilities_snapshot: Json;
+					created_at: string;
+					created_by: string;
+					data_model: Json;
+					etag: string;
+					id: string;
+					parent_id: string | null;
+					status: string;
+					thread_id: string;
+					trace_id: string | null;
+					version: number;
+				};
+				Insert: {
+					a2ui_doc: Json;
+					account_id: string;
+					artifact_type: string;
+					capabilities_snapshot: Json;
+					created_at?: string;
+					created_by: string;
+					data_model: Json;
+					etag: string;
+					id?: string;
+					parent_id?: string | null;
+					status?: string;
+					thread_id: string;
+					trace_id?: string | null;
+					version?: number;
+				};
+				Update: {
+					a2ui_doc?: Json;
+					account_id?: string;
+					artifact_type?: string;
+					capabilities_snapshot?: Json;
+					created_at?: string;
+					created_by?: string;
+					data_model?: Json;
+					etag?: string;
+					id?: string;
+					parent_id?: string | null;
+					status?: string;
+					thread_id?: string;
+					trace_id?: string | null;
+					version?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "artifacts_parent_id_fkey";
+						columns: ["parent_id"];
+						isOneToOne: false;
+						referencedRelation: "artifacts";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "artifacts_thread_id_fkey";
+						columns: ["thread_id"];
+						isOneToOne: false;
+						referencedRelation: "threads";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			asset_evidence: {
 				Row: {
 					account_id: string;
@@ -1541,13 +1607,6 @@ export type Database = {
 						referencedRelation: "projects";
 						referencedColumns: ["id"];
 					},
-					{
-						foreignKeyName: "conversation_lens_summaries_template_key_fkey";
-						columns: ["template_key"];
-						isOneToOne: false;
-						referencedRelation: "conversation_lens_templates";
-						referencedColumns: ["template_key"];
-					},
 				];
 			};
 			conversation_lens_templates: {
@@ -1801,6 +1860,7 @@ export type Database = {
 					context_summary: string | null;
 					created_at: string;
 					created_by: string | null;
+					deleted_at: string | null;
 					does: string[] | null;
 					embedding: string | null;
 					embedding_generated_at: string | null;
@@ -1811,6 +1871,7 @@ export type Database = {
 					id: string;
 					independence_key: string | null;
 					interview_id: string | null;
+					is_archived: boolean;
 					is_question: boolean | null;
 					journey_stage: string | null;
 					method: string | null;
@@ -1825,6 +1886,7 @@ export type Database = {
 					source_type: string | null;
 					support: string | null;
 					thinks: string[] | null;
+					thumbnail_url: string | null;
 					topic: string | null;
 					updated_at: string;
 					updated_by: string | null;
@@ -1841,6 +1903,7 @@ export type Database = {
 					context_summary?: string | null;
 					created_at?: string;
 					created_by?: string | null;
+					deleted_at?: string | null;
 					does?: string[] | null;
 					embedding?: string | null;
 					embedding_generated_at?: string | null;
@@ -1851,6 +1914,7 @@ export type Database = {
 					id?: string;
 					independence_key?: string | null;
 					interview_id?: string | null;
+					is_archived?: boolean;
 					is_question?: boolean | null;
 					journey_stage?: string | null;
 					method?: string | null;
@@ -1865,6 +1929,7 @@ export type Database = {
 					source_type?: string | null;
 					support?: string | null;
 					thinks?: string[] | null;
+					thumbnail_url?: string | null;
 					topic?: string | null;
 					updated_at?: string;
 					updated_by?: string | null;
@@ -1881,6 +1946,7 @@ export type Database = {
 					context_summary?: string | null;
 					created_at?: string;
 					created_by?: string | null;
+					deleted_at?: string | null;
 					does?: string[] | null;
 					embedding?: string | null;
 					embedding_generated_at?: string | null;
@@ -1891,6 +1957,7 @@ export type Database = {
 					id?: string;
 					independence_key?: string | null;
 					interview_id?: string | null;
+					is_archived?: boolean;
 					is_question?: boolean | null;
 					journey_stage?: string | null;
 					method?: string | null;
@@ -1905,6 +1972,7 @@ export type Database = {
 					source_type?: string | null;
 					support?: string | null;
 					thinks?: string[] | null;
+					thumbnail_url?: string | null;
 					topic?: string | null;
 					updated_at?: string;
 					updated_by?: string | null;
@@ -2992,6 +3060,7 @@ export type Database = {
 					share_expires_at: string | null;
 					share_token: string | null;
 					source_type: string | null;
+					speaker_review_needed: boolean | null;
 					status: Database["public"]["Enums"]["interview_status"];
 					thumbnail_url: string | null;
 					title: string | null;
@@ -3037,6 +3106,7 @@ export type Database = {
 					share_expires_at?: string | null;
 					share_token?: string | null;
 					source_type?: string | null;
+					speaker_review_needed?: boolean | null;
 					status?: Database["public"]["Enums"]["interview_status"];
 					thumbnail_url?: string | null;
 					title?: string | null;
@@ -3082,6 +3152,7 @@ export type Database = {
 					share_expires_at?: string | null;
 					share_token?: string | null;
 					source_type?: string | null;
+					speaker_review_needed?: boolean | null;
 					status?: Database["public"]["Enums"]["interview_status"];
 					thumbnail_url?: string | null;
 					title?: string | null;
@@ -3968,10 +4039,10 @@ export type Database = {
 					account_id: string | null;
 					age: number | null;
 					age_range: string | null;
-					company: string;
 					contact_info: Json | null;
 					created_at: string;
 					default_organization_id: string | null;
+					deleted_at: string | null;
 					description: string | null;
 					education: string | null;
 					firstname: string | null;
@@ -3979,7 +4050,6 @@ export type Database = {
 					id: string;
 					image_url: string | null;
 					income: number | null;
-					industry: string | null;
 					job_function: string | null;
 					languages: string[] | null;
 					lastname: string | null;
@@ -3989,7 +4059,6 @@ export type Database = {
 					location: string | null;
 					name: string | null;
 					name_hash: string | null;
-					occupation: string | null;
 					person_type: string | null;
 					preferences: string | null;
 					primary_email: string | null;
@@ -4009,10 +4078,10 @@ export type Database = {
 					account_id?: string | null;
 					age?: number | null;
 					age_range?: string | null;
-					company?: string;
 					contact_info?: Json | null;
 					created_at?: string;
 					default_organization_id?: string | null;
+					deleted_at?: string | null;
 					description?: string | null;
 					education?: string | null;
 					firstname?: string | null;
@@ -4020,7 +4089,6 @@ export type Database = {
 					id?: string;
 					image_url?: string | null;
 					income?: number | null;
-					industry?: string | null;
 					job_function?: string | null;
 					languages?: string[] | null;
 					lastname?: string | null;
@@ -4030,7 +4098,6 @@ export type Database = {
 					location?: string | null;
 					name?: string | null;
 					name_hash?: string | null;
-					occupation?: string | null;
 					person_type?: string | null;
 					preferences?: string | null;
 					primary_email?: string | null;
@@ -4050,10 +4117,10 @@ export type Database = {
 					account_id?: string | null;
 					age?: number | null;
 					age_range?: string | null;
-					company?: string;
 					contact_info?: Json | null;
 					created_at?: string;
 					default_organization_id?: string | null;
+					deleted_at?: string | null;
 					description?: string | null;
 					education?: string | null;
 					firstname?: string | null;
@@ -4061,7 +4128,6 @@ export type Database = {
 					id?: string;
 					image_url?: string | null;
 					income?: number | null;
-					industry?: string | null;
 					job_function?: string | null;
 					languages?: string[] | null;
 					lastname?: string | null;
@@ -4071,7 +4137,6 @@ export type Database = {
 					location?: string | null;
 					name?: string | null;
 					name_hash?: string | null;
-					occupation?: string | null;
 					person_type?: string | null;
 					preferences?: string | null;
 					primary_email?: string | null;
@@ -4373,6 +4438,78 @@ export type Database = {
 						columns: ["project_id"];
 						isOneToOne: false;
 						referencedRelation: "projects";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			person_merge_history: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					deleted_at: string | null;
+					evidence_count: number | null;
+					facet_count: number | null;
+					id: string;
+					interview_count: number | null;
+					merged_at: string;
+					merged_by: string | null;
+					project_id: string;
+					reason: string | null;
+					source_person_data: Json | null;
+					source_person_id: string;
+					source_person_name: string | null;
+					target_person_id: string;
+					target_person_name: string | null;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					deleted_at?: string | null;
+					evidence_count?: number | null;
+					facet_count?: number | null;
+					id?: string;
+					interview_count?: number | null;
+					merged_at?: string;
+					merged_by?: string | null;
+					project_id: string;
+					reason?: string | null;
+					source_person_data?: Json | null;
+					source_person_id: string;
+					source_person_name?: string | null;
+					target_person_id: string;
+					target_person_name?: string | null;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					deleted_at?: string | null;
+					evidence_count?: number | null;
+					facet_count?: number | null;
+					id?: string;
+					interview_count?: number | null;
+					merged_at?: string;
+					merged_by?: string | null;
+					project_id?: string;
+					reason?: string | null;
+					source_person_data?: Json | null;
+					source_person_id?: string;
+					source_person_name?: string | null;
+					target_person_id?: string;
+					target_person_name?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "person_merge_history_project_id_fkey";
+						columns: ["project_id"];
+						isOneToOne: false;
+						referencedRelation: "projects";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "person_merge_history_target_person_id_fkey";
+						columns: ["target_person_id"];
+						isOneToOne: false;
+						referencedRelation: "people";
 						referencedColumns: ["id"];
 					},
 				];
@@ -5330,40 +5467,46 @@ export type Database = {
 				Row: {
 					completed: boolean;
 					created_at: string;
-					email: string;
+					email: string | null;
 					evidence_id: string | null;
 					id: string;
 					person_id: string | null;
+					phone: string | null;
 					research_link_id: string;
 					response_mode: string;
 					responses: Json;
 					updated_at: string;
+					utm_params: Json | null;
 					video_url: string | null;
 				};
 				Insert: {
 					completed?: boolean;
 					created_at?: string;
-					email: string;
+					email?: string | null;
 					evidence_id?: string | null;
 					id?: string;
 					person_id?: string | null;
+					phone?: string | null;
 					research_link_id: string;
 					response_mode?: string;
 					responses?: Json;
 					updated_at?: string;
+					utm_params?: Json | null;
 					video_url?: string | null;
 				};
 				Update: {
 					completed?: boolean;
 					created_at?: string;
-					email?: string;
+					email?: string | null;
 					evidence_id?: string | null;
 					id?: string;
 					person_id?: string | null;
+					phone?: string | null;
 					research_link_id?: string;
 					response_mode?: string;
 					responses?: Json;
 					updated_at?: string;
+					utm_params?: Json | null;
 					video_url?: string | null;
 				};
 				Relationships: [
@@ -5408,6 +5551,8 @@ export type Database = {
 					hero_subtitle: string | null;
 					hero_title: string | null;
 					id: string;
+					identity_field: string;
+					identity_mode: string;
 					instructions: string | null;
 					is_live: boolean;
 					name: string;
@@ -5439,6 +5584,8 @@ export type Database = {
 					hero_subtitle?: string | null;
 					hero_title?: string | null;
 					id?: string;
+					identity_field?: string;
+					identity_mode?: string;
 					instructions?: string | null;
 					is_live?: boolean;
 					name: string;
@@ -5470,6 +5617,8 @@ export type Database = {
 					hero_subtitle?: string | null;
 					hero_title?: string | null;
 					id?: string;
+					identity_field?: string;
+					identity_mode?: string;
 					instructions?: string | null;
 					is_live?: boolean;
 					name?: string;
@@ -6429,6 +6578,151 @@ export type Database = {
 					},
 				];
 			};
+			thread_seq: {
+				Row: {
+					account_id: string;
+					next_seq: number;
+					thread_id: string;
+				};
+				Insert: {
+					account_id: string;
+					next_seq?: number;
+					thread_id: string;
+				};
+				Update: {
+					account_id?: string;
+					next_seq?: number;
+					thread_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "thread_seq_thread_id_fkey";
+						columns: ["thread_id"];
+						isOneToOne: true;
+						referencedRelation: "threads";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			threads: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					id: string;
+					resource_id: string | null;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					id?: string;
+					resource_id?: string | null;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					id?: string;
+					resource_id?: string | null;
+				};
+				Relationships: [];
+			};
+			ui_events: {
+				Row: {
+					account_id: string;
+					actor: string;
+					artifact_id: string | null;
+					client_event_id: string;
+					created_at: string;
+					event_type: string;
+					id: string;
+					path: string;
+					seq: number;
+					thread_id: string;
+					trace_id: string | null;
+					value: Json | null;
+				};
+				Insert: {
+					account_id: string;
+					actor: string;
+					artifact_id?: string | null;
+					client_event_id: string;
+					created_at?: string;
+					event_type: string;
+					id?: string;
+					path: string;
+					seq: number;
+					thread_id: string;
+					trace_id?: string | null;
+					value?: Json | null;
+				};
+				Update: {
+					account_id?: string;
+					actor?: string;
+					artifact_id?: string | null;
+					client_event_id?: string;
+					created_at?: string;
+					event_type?: string;
+					id?: string;
+					path?: string;
+					seq?: number;
+					thread_id?: string;
+					trace_id?: string | null;
+					value?: Json | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "ui_events_artifact_id_fkey";
+						columns: ["artifact_id"];
+						isOneToOne: false;
+						referencedRelation: "artifacts";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "ui_events_thread_id_fkey";
+						columns: ["thread_id"];
+						isOneToOne: false;
+						referencedRelation: "threads";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			ui_state: {
+				Row: {
+					account_id: string;
+					seq: number;
+					state_key: string;
+					state_value: Json;
+					thread_id: string;
+					updated_at: string;
+					updated_by: string;
+				};
+				Insert: {
+					account_id: string;
+					seq: number;
+					state_key: string;
+					state_value: Json;
+					thread_id: string;
+					updated_at?: string;
+					updated_by: string;
+				};
+				Update: {
+					account_id?: string;
+					seq?: number;
+					state_key?: string;
+					state_value?: Json;
+					thread_id?: string;
+					updated_at?: string;
+					updated_by?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "ui_state_thread_id_fkey";
+						columns: ["thread_id"];
+						isOneToOne: false;
+						referencedRelation: "threads";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			user_settings: {
 				Row: {
 					company_description: string | null;
@@ -7289,6 +7583,20 @@ export type Database = {
 					upvotes: number;
 				}[];
 			};
+			ingest_ui_event: {
+				Args: {
+					p_account_id: string;
+					p_actor: string;
+					p_artifact_id: string;
+					p_client_event_id: string;
+					p_event_type: string;
+					p_path: string;
+					p_thread_id: string;
+					p_trace_id: string;
+					p_value: Json;
+				};
+				Returns: Json;
+			};
 			insert_theme: {
 				Args: {
 					p_account_id: string;
@@ -7326,6 +7634,23 @@ export type Database = {
 			};
 			lookup_invitation: {
 				Args: { lookup_invitation_token: string };
+				Returns: Json;
+			};
+			merge_people_transaction: {
+				Args: {
+					p_account_id: string;
+					p_evidence_count: number;
+					p_facet_count: number;
+					p_interview_count: number;
+					p_merged_by: string;
+					p_project_id: string;
+					p_reason: string;
+					p_source_person_data: Json;
+					p_source_person_id: string;
+					p_source_person_name: string;
+					p_target_person_id: string;
+					p_target_person_name: string;
+				};
 				Returns: Json;
 			};
 			process_embedding_queue: { Args: never; Returns: string };

@@ -4,8 +4,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateObject } from "ai";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
 
 const relationshipSchema = z.object({
 	organizationName: z.string().min(1, "Organization name is required"),
@@ -24,18 +24,18 @@ const extractionSchema = z.object({
 const toolInputSchema = z
 	.object({
 		personId: z.string(),
-		accountId: z.string().optional(),
-		projectId: z.string().optional(),
+		accountId: z.string().nullish(),
+		projectId: z.string().nullish(),
 		transcript: z
 			.string()
 			.nullish()
 			.describe("Natural language text describing one or more organization relationships."),
-		relationships: z.array(relationshipSchema).optional(),
+		relationships: z.array(relationshipSchema).nullish(),
 		defaultIsPrimary: z
 			.boolean()
 			.nullish()
 			.describe("Fallback flag applied when a relationship omits isPrimary (defaults to false)."),
-		dryRun: z.boolean().optional(),
+		dryRun: z.boolean().nullish(),
 	})
 	.refine(
 		(value) => {

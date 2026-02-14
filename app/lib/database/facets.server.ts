@@ -34,6 +34,8 @@ export class FacetResolver {
 	private kindIdToSlug: Map<number, string> | null = null;
 	private facetCacheBySlug = new Map<string, number>();
 	private globalFacetCache = new Map<number, { label: string; kind_id: number; synonyms: string[] | null }>();
+	private warnedUnknownKinds = new Set<string>();
+	private warnedAliases = new Set<string>();
 
 	constructor(
 		private db: SupabaseClient<Database>,
@@ -58,6 +60,38 @@ export class FacetResolver {
 	private ensureSlug(kindId: number, label: string): string {
 		const base = slugify(label, { separator: "_" }) || `facet_${kindId}_${Date.now()}`;
 		return base.toLowerCase();
+	}
+
+	private canonicalizeKindSlug(input: string): string | null {
+		const normalized = input
+			.trim()
+			.toLowerCase()
+			.replace(/[-\s]+/g, "_");
+		if (!normalized) return null;
+		const known = this.kindSlugToId;
+		if (!known) return normalized;
+		if (known.has(normalized)) return normalized;
+
+		const aliases: Record<string, string[]> = {
+			motivation: ["goal", "value", "preference"],
+			belief: ["value", "context"],
+			attitude: ["value", "preference"],
+			habit: ["behavior", "workflow"],
+			feature: ["requirements", "artifact", "tool"],
+		};
+
+		const candidates = aliases[normalized] ?? [];
+		for (const candidate of candidates) {
+			if (!known.has(candidate)) continue;
+			const aliasKey = `${normalized}->${candidate}`;
+			if (!this.warnedAliases.has(aliasKey)) {
+				this.warnedAliases.add(aliasKey);
+				consola.info(`[FacetResolver] Canonicalized facet kind '${normalized}' to '${candidate}'`);
+			}
+			return candidate;
+		}
+
+		return null;
 	}
 
 	async ensureFacetForRef(
@@ -122,12 +156,17 @@ export class FacetResolver {
 		isActive?: boolean;
 	}): Promise<number | null> {
 		const label = normalizeLabel(options.label);
-		const kindSlug = options.kindSlug;
-		if (!label || !kindSlug) return null;
+		const rawKindSlug = options.kindSlug;
+		if (!label || !rawKindSlug) return null;
 		await this.loadKindMaps();
-		const kindId = this.kindSlugToId?.get(kindSlug);
+		const kindSlug = this.canonicalizeKindSlug(rawKindSlug);
+		const kindId = kindSlug ? this.kindSlugToId?.get(kindSlug) : null;
 		if (!kindId) {
-			consola.warn(`Unknown facet kind '${kindSlug}'`);
+			const unknown = rawKindSlug.trim().toLowerCase();
+			if (!this.warnedUnknownKinds.has(unknown)) {
+				this.warnedUnknownKinds.add(unknown);
+				consola.warn(`Unknown facet kind '${rawKindSlug}'`);
+			}
 			return null;
 		}
 
@@ -235,15 +274,20 @@ export async function getFacetCatalog({ db, accountId }: FacetCatalogOptions): P
 	if (globalError) throw new Error(`Failed to load global facets: ${globalError.message}`);
 	if (accountError) throw new Error(`Failed to load account facets: ${accountError.message}`);
 
-	const kinds: FacetCatalogKind[] = (kindRows ?? []).map((row) => ({ slug: row.slug, label: row.label }));
+	const kinds: FacetCatalogKind[] = (kindRows ?? []).map((row) => ({
+		slug: row.slug,
+		label: row.label,
+	}));
 	const kindIdToSlug = new Map<number, string>((kindRows ?? []).map((row) => [row.id, row.slug]));
 
 	const entries = new Map<number, FacetCatalogEntry>();
 	let newestTimestamp = getMaxTimestamp(kindRows ?? []);
 
+	// Global facets are reference data only - they don't have facet_account_ids yet
+	// When matched, they trigger FacetResolver.ensureFacet() to create account-specific entries
 	for (const row of globalRows ?? []) {
 		entries.set(row.id, {
-			facet_account_id: row.id,
+			facet_account_id: 0, // Sentinel value - signals "create via FacetResolver"
 			kind_slug: kindIdToSlug.get(row.kind_id) ?? "",
 			label: row.label,
 			synonyms: row.synonyms ?? [],

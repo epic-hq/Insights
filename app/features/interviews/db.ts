@@ -24,6 +24,7 @@ export const getInterviews = async ({
 			observations_and_notes,
 			open_questions_and_next_steps,
 			conversation_analysis,
+			processing_metadata,
 			status,
 			media_url,
 			thumbnail_url,
@@ -137,7 +138,8 @@ export const getInterviewById = async ({
 			share_enabled,
 			share_expires_at,
 			transcript_formatted,
-			conversation_analysis
+			conversation_analysis,
+			processing_metadata
 		`
 		)
 		.eq("project_id", projectId)

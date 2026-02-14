@@ -43,8 +43,8 @@ export const enrichPersonDataTool = createTool({
 		error: z.string().optional(),
 	}),
 	execute: async (input, context?) => {
-		const { enrichPersonData } = await import("~/features/people/services/enrichPersonData.server");
-		const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server");
+		const { enrichPersonData } = await import("../../features/people/services/enrichPersonData.server");
+		const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
 
 		const accountId = input.accountId || context?.requestContext?.get?.("account_id");
 		const projectId = input.projectId || context?.requestContext?.get?.("project_id");
@@ -66,9 +66,7 @@ export const enrichPersonDataTool = createTool({
 		// Load current person data for hints
 		const { data: person, error: fetchError } = await supabase
 			.from("people")
-			.select(
-				"id, name, firstname, lastname, title, company, role, primary_email, linkedin_url, default_organization_id"
-			)
+			.select("id, name, firstname, lastname, title, role, primary_email, linkedin_url, default_organization_id")
 			.eq("id", input.personId)
 			.eq("account_id", accountId)
 			.single();
@@ -82,18 +80,6 @@ export const enrichPersonDataTool = createTool({
 				confidence: 0,
 				data: {},
 				error: fetchError?.message || "Person not found",
-			};
-		}
-
-		// If person already has all key fields, skip
-		if (person.title && person.company) {
-			return {
-				success: true,
-				enriched: false,
-				fieldsUpdated: [],
-				source: "none",
-				confidence: 1,
-				data: {},
 			};
 		}
 

@@ -46,6 +46,9 @@ type UploadResponse<T> =
 			error: string;
 	  };
 
+const MULTIPART_COMPLETE_TIMEOUT_MS = 2 * 60 * 1000;
+const MULTIPART_ABORT_TIMEOUT_MS = 30 * 1000;
+
 function postFormDataWithProgress<T>({
 	url,
 	formData,
@@ -134,6 +137,29 @@ function postFormDataWithProgress<T>({
 		console.log("[Upload] Starting XHR send to:", url);
 		xhr.send(formData);
 	});
+}
+
+async function fetchWithTimeout(
+	input: RequestInfo | URL,
+	init: Omit<RequestInit, "signal">,
+	timeoutMs: number
+): Promise<Response> {
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+	try {
+		return await fetch(input, {
+			...init,
+			signal: controller.signal,
+		});
+	} catch (error) {
+		if (error instanceof Error && error.name === "AbortError") {
+			throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`);
+		}
+		throw error;
+	} finally {
+		clearTimeout(timeoutId);
+	}
 }
 
 interface OnboardingFlowProps {
@@ -290,48 +316,52 @@ export default function OnboardingFlow({
 
 				let r2Key: string | null = null;
 
-				// Use direct R2 upload for audio/video files (with fallback to server upload)
+				// Audio/video files MUST go through direct R2 upload — no server fallback
 				if (isAudioVideo && uploadProjectId) {
-					try {
-						console.log("[Upload] Attempting direct R2 upload for", file.name);
+					console.log("[Upload] Direct R2 upload for", file.name, "to project", uploadProjectId);
 
-						// Step 1: Get presigned upload URL from server
-						const presignedResponse = await fetch("/api/upload/presigned-url", {
-							method: "POST",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({
-								projectId: uploadProjectId,
-								filename: file.name,
-								contentType: file.type || "application/octet-stream",
-								fileSize: file.size,
-							}),
-						});
+					// Step 1: Get presigned upload URL from server
+					const presignedResponse = await fetch("/api/upload/presigned-url", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							projectId: uploadProjectId,
+							filename: file.name,
+							contentType: file.type || "application/octet-stream",
+							fileSize: file.size,
+						}),
+					});
 
-						if (!presignedResponse.ok) {
-							const errorData = await presignedResponse.json().catch(() => ({}));
-							throw new Error(errorData.error || "Failed to get upload URL");
-						}
+					if (!presignedResponse.ok) {
+						const errorData = await presignedResponse.json().catch(() => ({}));
+						throw new Error(errorData.error || `Failed to get upload URL (${presignedResponse.status})`);
+					}
 
-						const presignedData = await presignedResponse.json();
-						console.log("[Upload] Got presigned URL:", presignedData.type);
+					const presignedData = await presignedResponse.json();
+					console.log("[Upload] Got presigned URL:", presignedData.type);
 
-						// Step 2: Upload directly to R2
-						if (presignedData.type === "multipart") {
-							// Large file - use multipart upload
-							console.log("[Upload] Starting multipart upload with", presignedData.totalParts, "parts");
-							await uploadToR2WithProgress({
-								file,
-								singlePartUrl: "", // Not used for multipart
-								contentType: file.type || "application/octet-stream",
-								multipartThresholdBytes: 0, // Force multipart
-								partSizeBytes: presignedData.partSize,
-								multipartHandlers: {
-									createMultipartUpload: async () => ({
-										uploadId: presignedData.uploadId,
-										partUrls: presignedData.partUrls, // Already Record<number, string> from server
-									}),
-									completeMultipartUpload: async ({ parts }) => {
-										const completeResponse = await fetch("/api/upload/presigned-url?action=complete", {
+					// Step 2: Upload directly to R2
+					if (presignedData.type === "multipart") {
+						// Large file - use multipart upload
+						console.log("[Upload] Starting multipart upload with", presignedData.totalParts, "parts");
+						let lastPartStarted = 0;
+						let lastPartCompleted = 0;
+						let loggedCompleting = false;
+						await uploadToR2WithProgress({
+							file,
+							singlePartUrl: "", // Not used for multipart
+							contentType: file.type || "application/octet-stream",
+							multipartThresholdBytes: 0, // Force multipart
+							partSizeBytes: presignedData.partSize,
+							multipartHandlers: {
+								createMultipartUpload: async () => ({
+									uploadId: presignedData.uploadId,
+									partUrls: presignedData.partUrls,
+								}),
+								completeMultipartUpload: async ({ parts }) => {
+									const completeResponse = await fetchWithTimeout(
+										"/api/upload/presigned-url?action=complete",
+										{
 											method: "POST",
 											headers: { "Content-Type": "application/json" },
 											body: JSON.stringify({
@@ -342,40 +372,68 @@ export default function OnboardingFlow({
 													etag: p.etag,
 												})),
 											}),
-										});
+										},
+										MULTIPART_COMPLETE_TIMEOUT_MS
+									);
 
-										if (!completeResponse.ok) {
-											throw new Error("Failed to complete multipart upload");
-										}
-									},
+									if (!completeResponse.ok) {
+										const errorData = await completeResponse.json().catch(() => ({}));
+										throw new Error(errorData.error || "Failed to complete multipart upload");
+									}
 								},
-								onProgress: handleUploadProgress,
-							});
-							r2Key = presignedData.key;
-						} else {
-							// Small file - single PUT upload
-							console.log("[Upload] Starting single PUT upload");
-							await uploadToR2WithProgress({
-								file,
-								singlePartUrl: presignedData.uploadUrl,
-								contentType: file.type || "application/octet-stream",
-								onProgress: handleUploadProgress,
-							});
-							r2Key = presignedData.key;
-						}
+								abortMultipartUpload: async () => {
+									const abortResponse = await fetchWithTimeout(
+										"/api/upload/presigned-url?action=abort",
+										{
+											method: "POST",
+											headers: { "Content-Type": "application/json" },
+											body: JSON.stringify({
+												key: presignedData.key,
+												uploadId: presignedData.uploadId,
+											}),
+										},
+										MULTIPART_ABORT_TIMEOUT_MS
+									);
 
-						console.log("[Upload] Direct R2 upload complete:", r2Key);
-					} catch (r2Error) {
-						// Fall back to server-proxied upload
-						console.warn("[Upload] Direct R2 upload failed, falling back to server upload:", r2Error);
-						r2Key = null; // Ensure we use server upload path
-						setUploadProgress({
-							bytesSent: 0,
-							totalBytes: file.size,
-							percent: 0,
-							phase: "uploading",
-						}); // Reset progress for server upload
+									if (!abortResponse.ok) {
+										const errorData = await abortResponse.json().catch(() => ({}));
+										throw new Error(errorData.error || "Failed to abort multipart upload");
+									}
+								},
+							},
+							onProgress: (progress) => {
+								handleUploadProgress(progress);
+
+								if (progress.phase === "completing" && !loggedCompleting) {
+									loggedCompleting = true;
+									console.log("[Upload] Finalizing multipart upload");
+								}
+
+								if (!progress.part) return;
+								if (progress.part.bytesSent === 0 && progress.part.index !== lastPartStarted) {
+									lastPartStarted = progress.part.index;
+									console.log(`[Upload] Multipart part ${progress.part.index}/${progress.part.total} started`);
+								}
+								if (progress.part.bytesSent === progress.part.size && progress.part.index !== lastPartCompleted) {
+									lastPartCompleted = progress.part.index;
+									console.log(`[Upload] Multipart part ${progress.part.index}/${progress.part.total} complete`);
+								}
+							},
+						});
+						r2Key = presignedData.key;
+					} else {
+						// Small file - single PUT upload
+						console.log("[Upload] Starting single PUT upload");
+						await uploadToR2WithProgress({
+							file,
+							singlePartUrl: presignedData.uploadUrl,
+							contentType: file.type || "application/octet-stream",
+							onProgress: handleUploadProgress,
+						});
+						r2Key = presignedData.key;
 					}
+
+					console.log("[Upload] Direct R2 upload complete:", r2Key);
 				}
 
 				// Step 3: Call onboarding-start API (with r2Key if direct upload was used)
@@ -386,8 +444,11 @@ export default function OnboardingFlow({
 					formData.append("originalFilename", file.name);
 					formData.append("originalFileSize", String(file.size));
 					formData.append("originalContentType", file.type);
+				} else if (isAudioVideo) {
+					// Should never reach here — R2 upload is mandatory for audio/video
+					throw new Error("Upload failed: could not upload file to storage. Please try again.");
 				} else {
-					// Legacy path - send file through server
+					// Non-audio/video files (documents, text) can go through server
 					formData.append("file", file);
 				}
 				formData.append(
@@ -405,7 +466,6 @@ export default function OnboardingFlow({
 						mediaType,
 					})
 				);
-				// accountId will be retrieved from authenticated user by API
 				if (uploadProjectId) {
 					formData.append("projectId", uploadProjectId);
 				}
@@ -429,7 +489,7 @@ export default function OnboardingFlow({
 
 				// Call the onboarding-start API
 				// For direct R2 uploads, this just triggers processing (no file upload)
-				// For legacy flow, this uploads through server
+				// For non-audio files, this uploads through server (small files only)
 				const response = r2Key
 					? await fetch("/api/onboarding-start", {
 							method: "POST",
@@ -527,13 +587,14 @@ export default function OnboardingFlow({
 			} catch (error) {
 				// Handle error - show error message and return to upload screen
 				const errorMessage = error instanceof Error ? error.message : "Upload failed";
+				console.error("[Upload] Failed:", errorMessage, error);
 				setIsUploading(false);
 				setUploadProgress(null);
 				setData((prev) => ({ ...prev, error: errorMessage }));
 				setCurrentStep("upload"); // Return to upload screen so user can retry
 			}
 		},
-		[data, accountId]
+		[data, accountId, handleUploadProgress]
 	);
 
 	const handleProcessingComplete = useCallback(() => {
@@ -578,7 +639,7 @@ export default function OnboardingFlow({
 	const currentProjectId = useMemo(() => data.projectId || projectId, [data.projectId, projectId]);
 
 	const handleUploadFromUrl = useCallback(
-		async (url: string, personId?: string) => {
+		async (items: Array<{ url: string; personId?: string }>) => {
 			if (!currentProjectId) {
 				setData((prev) => ({
 					...prev,
@@ -587,12 +648,26 @@ export default function OnboardingFlow({
 				throw new Error("A project is required to import from a URL.");
 			}
 
+			const normalizedItems = items
+				.map((item) => ({
+					url: item.url.trim(),
+					...(item.personId ? { personId: item.personId } : {}),
+				}))
+				.filter((item) => item.url.length > 0);
+
+			if (normalizedItems.length === 0) {
+				throw new Error("At least one URL is required.");
+			}
+
+			const primaryUrl = normalizedItems[0]?.url ?? "";
+			const uploadLabel = normalizedItems.length > 1 ? `${normalizedItems.length} URLs` : primaryUrl;
+
 			setData((prev) => ({
 				...prev,
 				file: undefined,
 				mediaType: "interview",
-				uploadLabel: url,
-				uploadedUrl: url,
+				uploadLabel,
+				uploadedUrl: primaryUrl,
 				triggerRunId: undefined,
 				triggerAccessToken: null,
 				interviewId: undefined,
@@ -603,9 +678,12 @@ export default function OnboardingFlow({
 			try {
 				const formData = new FormData();
 				formData.append("projectId", currentProjectId);
-				formData.append("url", url);
-				if (personId) {
-					formData.append("personId", personId);
+				formData.append("urls", JSON.stringify(normalizedItems));
+
+				// Keep legacy fields for backward compatibility with older server versions.
+				formData.append("url", primaryUrl);
+				if (normalizedItems.length === 1 && normalizedItems[0]?.personId) {
+					formData.append("personId", normalizedItems[0].personId);
 				}
 
 				const response = await fetch("/api/upload-from-url", {
@@ -624,8 +702,8 @@ export default function OnboardingFlow({
 					...prev,
 					interviewId: result.interviewId ?? prev.interviewId,
 					projectId: prev.projectId || currentProjectId,
-					uploadLabel: url,
-					uploadedUrl: url,
+					uploadLabel,
+					uploadedUrl: primaryUrl,
 					triggerRunId: result.triggerRunId ?? prev.triggerRunId,
 					triggerAccessToken: result.publicRunToken ?? prev.triggerAccessToken,
 				}));
@@ -723,9 +801,12 @@ export default function OnboardingFlow({
 		handleQuestionsNext,
 		handleBack,
 		handleUploadNext,
+		handleUploadFromUrl,
 		handleProcessingComplete,
 		getProjectName,
 		accountId,
+		uploadProgress,
+		isUploading,
 	]);
 
 	return (

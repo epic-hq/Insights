@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "~/components/ui/button";
 import { useCurrentProject } from "~/contexts/current-project-context";
+import type { ProcessingResult } from "~/features/upload/types";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
-import type { ProcessingResult } from "~/utils/processInterview.server";
 
 export default function AddInterviewButton() {
 	const [_open, _setOpen] = useState(false);

@@ -5,7 +5,7 @@
 import { createTool } from "@mastra/core/tools";
 import consola from "consola";
 import { z } from "zod";
-import { resolveProjectContext } from "./context-utils";
+import { resolveProjectContext, validateUUID } from "./context-utils";
 
 const SurveyOutputSchema = z.object({
 	id: z.string(),
@@ -62,7 +62,7 @@ Returns survey metadata including:
 		total: z.number(),
 	}),
 	execute: async (input, context?) => {
-		const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server");
+		const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
 		const supabase = createSupabaseAdminClient();
 
 		// Resolve project context
@@ -111,7 +111,16 @@ Returns survey metadata including:
 				.order("created_at", { ascending: false });
 
 			if (input.surveyId) {
-				query = query.eq("id", input.surveyId);
+				const validSurveyId = validateUUID(input.surveyId, "surveyId", "fetch-surveys");
+				if (!validSurveyId) {
+					return {
+						success: false,
+						message: "surveyId must be a valid UUID. Non-UUID values like route segments are not valid survey IDs.",
+						surveys: [],
+						total: 0,
+					};
+				}
+				query = query.eq("id", validSurveyId);
 			}
 
 			if (input.search) {

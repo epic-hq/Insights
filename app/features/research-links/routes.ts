@@ -14,5 +14,6 @@ export default [
 		route("api/generate-from-voice", "./features/research-links/api/generate-from-voice.tsx"),
 		route("api/parse-branch-rule", "./features/research-links/api/parse-branch-rule.tsx"),
 		route("api/suggest-surveys", "./features/research-links/api/suggest-surveys.tsx"),
+		// Campaign API routes registered in app/routes.ts under :projectId scope
 	]),
 ] satisfies RouteConfig;

@@ -4,22 +4,22 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateObject } from "ai";
 import consola from "consola";
 import { z } from "zod";
-import { FacetResolver } from "~/lib/database/facets.server";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
+import { FacetResolver } from "../../lib/database/facets.server";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
 
 const DEFAULT_CONFIDENCE = 0.78;
 const ALLOWED_SOURCES = ["interview", "survey", "telemetry", "inferred", "manual", "document"] as const;
 type PersonFacetSource = (typeof ALLOWED_SOURCES)[number];
 
 const manualFacetSchema = z.object({
-	label: z.string().optional(),
-	kindSlug: z.string().optional(),
-	facetAccountId: z.number().optional(),
-	synonyms: z.array(z.string()).optional(),
-	confidence: z.number().min(0).max(1).optional(),
-	action: z.enum(["add", "remove"]).optional(),
-	reason: z.string().optional(),
+	label: z.string().nullish(),
+	kindSlug: z.string().nullish(),
+	facetAccountId: z.number().nullish(),
+	synonyms: z.array(z.string()).nullish(),
+	confidence: z.number().min(0).max(1).nullish(),
+	action: z.enum(["add", "remove"]).nullish(),
+	reason: z.string().nullish(),
 });
 
 const extractionSchema = z.object({
@@ -123,7 +123,10 @@ function dedupStrings(values?: string[] | null): string[] {
 	return Array.from(seen);
 }
 
-function resolveSourceLabel(rawSource?: string | null): { source: PersonFacetSource; normalizedFrom?: string | null } {
+function resolveSourceLabel(rawSource?: string | null): {
+	source: PersonFacetSource;
+	normalizedFrom?: string | null;
+} {
 	const candidate = normalizeLabel(rawSource)?.toLowerCase().replace(/\s+/g, "_");
 	if (candidate && (ALLOWED_SOURCES as readonly string[]).includes(candidate)) {
 		return { source: candidate as PersonFacetSource };
@@ -402,7 +405,12 @@ export const upsertPersonFacetsTool = createTool({
 				status: "inserted" | "updated";
 			}> = [];
 			const desiredFacetAccountIds = new Set<number>();
-			const removalRecords: Array<{ facetAccountId: number; label?: string; kindSlug?: string; reason?: string }> = [];
+			const removalRecords: Array<{
+				facetAccountId: number;
+				label?: string;
+				kindSlug?: string;
+				reason?: string;
+			}> = [];
 			const warnings: string[] = [];
 			if (sourceResolution.normalizedFrom) {
 				warnings.push(
@@ -474,14 +482,22 @@ export const upsertPersonFacetsTool = createTool({
 				replaceRemovals = Array.from(existingFacetIdSet).filter((id) => !keepIds.has(id));
 				if (replaceRemovals.length) {
 					removalRecords.push(
-						...replaceRemovals.map((facetAccountId) => ({ facetAccountId, reason: "Replace mode cleanup" }))
+						...replaceRemovals.map((facetAccountId) => ({
+							facetAccountId,
+							reason: "Replace mode cleanup",
+						}))
 					);
 				}
 			}
 
 			const removalById = new Map<
 				number,
-				{ facetAccountId: number; label?: string; kindSlug?: string; reason?: string }
+				{
+					facetAccountId: number;
+					label?: string;
+					kindSlug?: string;
+					reason?: string;
+				}
 			>();
 			for (const record of removalRecords) {
 				removalById.set(record.facetAccountId, {

@@ -946,8 +946,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		if (userId) {
 			const resourceId = `interviewStatusAgent-${userId}-${interviewId}`;
 			try {
-				const threads = await memory.listThreadsByResourceId({
-					resourceId,
+				const threads = await memory.listThreads({
+					filter: { resourceId },
 					orderBy: { field: "createdAt", direction: "DESC" },
 					page: 0,
 					perPage: 1,
@@ -956,7 +956,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (threadId) {
 					const { messages } = await memory.recall({
 						threadId,
-						selectBy: { last: 50 },
+						perPage: 50,
 					});
 					assistantMessages = convertMessages(messages).to("AIV5.UI") as UpsightMessage[];
 				}
@@ -1040,6 +1040,16 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		});
 		throw new Response(`Failed to load interview: ${msg}`, { status: 500 });
 	}
+}
+
+/**
+ * Force revalidation when explicitly triggered by revalidator
+ * This ensures fresh data is fetched when interview processing completes
+ */
+export function shouldRevalidate({ actionResult, defaultShouldRevalidate }: any) {
+	// Always revalidate when explicitly called via revalidator.revalidate()
+	// This fixes the issue where completed interviews don't show fresh data
+	return true;
 }
 
 export default function InterviewDetail({ enableRecording = false }: { enableRecording?: boolean }) {
@@ -1142,10 +1152,16 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				? {
 						id: interviewState.id,
 						status: interviewState.status,
+						processing_metadata: interviewState.processing_metadata,
 						conversation_analysis: interviewState.conversation_analysis,
 					}
 				: null,
-		[interviewState?.id, interviewState?.status, interviewState?.conversation_analysis]
+		[
+			interviewState?.id,
+			interviewState?.status,
+			interviewState?.processing_metadata,
+			interviewState?.conversation_analysis,
+		]
 	);
 
 	const { progressInfo, isRealtime } = useInterviewProgress({
@@ -1159,7 +1175,21 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const refreshTriggeredRef = useRef(false);
 	const fetcherPrevStateRef = useRef(fetcher.state);
 	const takeawaysPollTaskIdRef = useRef<string | null>(null);
-	const takeawaysPollTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>();
+	const takeawaysPollTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+	if (!Array.isArray(takeawaysPollTimeoutsRef.current)) {
+		takeawaysPollTimeoutsRef.current = [];
+	}
+
+	const getTakeawaysPollTimeouts = useCallback((): Array<ReturnType<typeof setTimeout>> => {
+		return Array.isArray(takeawaysPollTimeoutsRef.current) ? takeawaysPollTimeoutsRef.current : [];
+	}, []);
+
+	const clearTakeawaysPollTimeouts = useCallback(() => {
+		for (const timeout of getTakeawaysPollTimeouts()) {
+			clearTimeout(timeout);
+		}
+		takeawaysPollTimeoutsRef.current = [];
+	}, [getTakeawaysPollTimeouts]);
 
 	const submitInterviewFieldUpdate = (field_name: string, field_value: string) => {
 		const target = field_name === "observations_and_notes" ? notesFetcher : fetcher;
@@ -1189,6 +1219,32 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		revalidator.revalidate();
 	}, [revalidator]);
 
+	const getEvidenceSpeakerNames = useCallback((item: unknown): string[] => {
+		if (!item || typeof item !== "object") return [];
+		const record = item as {
+			evidence_people?: Array<{ people?: { name?: string | null } | null }>;
+			anchors?: unknown;
+		};
+		const links = Array.isArray(record.evidence_people) ? record.evidence_people : [];
+		const names = links
+			.map((link) => link?.people?.name?.trim())
+			.filter((name): name is string => Boolean(name && name.length > 0));
+		if (names.length > 0) return Array.from(new Set(names));
+
+		const anchors = Array.isArray(record.anchors) ? record.anchors : [];
+		const anchorSpeakers = anchors
+			.map((anchor) => {
+				if (!anchor || typeof anchor !== "object") return null;
+				const speaker = (anchor as { speaker?: unknown; speaker_label?: unknown }).speaker;
+				if (typeof speaker === "string" && speaker.trim().length > 0) return speaker.trim();
+				const speakerLabel = (anchor as { speaker_label?: unknown }).speaker_label;
+				if (typeof speakerLabel === "string" && speakerLabel.trim().length > 0) return speakerLabel.trim();
+				return null;
+			})
+			.filter((name): name is string => Boolean(name && name.toLowerCase() !== "unknown speaker"));
+		return Array.from(new Set(anchorSpeakers));
+	}, []);
+
 	const selectedEvidence = useMemo(() => {
 		if (!selectedEvidenceId) return null;
 		const item = evidence.find((e) => e.id === selectedEvidenceId);
@@ -1202,8 +1258,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			confidence: item.confidence ?? null,
 			anchors: item.anchors,
 			thumbnail_url: (item as { thumbnail_url?: string | null }).thumbnail_url ?? null,
+			speakerNames: getEvidenceSpeakerNames(item),
 		};
-	}, [selectedEvidenceId, evidence]);
+	}, [selectedEvidenceId, evidence, getEvidenceSpeakerNames]);
 
 	useEffect(() => {
 		const prevState = fetcherPrevStateRef.current;
@@ -1224,25 +1281,22 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			if (takeawaysPollTaskIdRef.current === taskId) return;
 
 			takeawaysPollTaskIdRef.current = taskId;
-			for (const timeout of takeawaysPollTimeoutsRef.current) {
-				clearTimeout(timeout);
-			}
-			takeawaysPollTimeoutsRef.current = [];
+			clearTakeawaysPollTimeouts();
 
 			const intervals = [2000, 5000, 8000, 12000, 16000, 22000, 30000];
+			const nextTimeouts = getTakeawaysPollTimeouts();
 			for (const delay of intervals) {
-				takeawaysPollTimeoutsRef.current.push(setTimeout(() => revalidator.revalidate(), delay));
+				nextTimeouts.push(setTimeout(() => revalidator.revalidate(), delay));
 			}
+			takeawaysPollTimeoutsRef.current = nextTimeouts;
 		}
-	}, [fetcher.state, fetcher.data, revalidator]);
+	}, [fetcher.state, fetcher.data, revalidator, clearTakeawaysPollTimeouts, getTakeawaysPollTimeouts]);
 
 	useEffect(() => {
 		return () => {
-			for (const timeout of takeawaysPollTimeoutsRef.current) {
-				clearTimeout(timeout);
-			}
+			clearTakeawaysPollTimeouts();
 		};
-	}, []);
+	}, [clearTakeawaysPollTimeouts]);
 
 	useEffect(() => {
 		if (deleteFetcher.state !== "idle") return;
@@ -1561,6 +1615,20 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		}
 	}, [progressInfo.isComplete, revalidator]);
 
+	// Fallback polling: periodically revalidate while processing to catch completion
+	// when realtime subscriptions (Supabase / Trigger.dev) fail to deliver updates
+	useEffect(() => {
+		if (!isProcessing) return;
+
+		const interval = setInterval(() => {
+			if (revalidator.state === "idle") {
+				revalidator.revalidate();
+			}
+		}, 10_000);
+
+		return () => clearInterval(interval);
+	}, [isProcessing, revalidator]);
+
 	const _handleCustomLensUpdate = (lensId: string, field: "summary" | "notes", value: string) => {
 		setCustomLensOverrides((prev) => ({
 			...prev,
@@ -1809,6 +1877,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						confidence: e.confidence ?? null,
 						anchors: e.anchors,
 						thumbnail_url: (e as { thumbnail_url?: string | null }).thumbnail_url ?? null,
+						speakerNames: getEvidenceSpeakerNames(e),
 					}))}
 				interview={interview}
 				evidenceDetailRoute={routes.evidence.detail}

@@ -9,6 +9,11 @@ import {
 	buildHowtoFallbackResponse,
 	evaluateHowtoResponseContract,
 } from "~/features/project-chat/howto-contract";
+import {
+	buildShortThreadTitle,
+	findProjectStatusThread,
+	getPrimaryProjectStatusResourceId,
+} from "~/features/project-chat/project-status-threads.server";
 import { detectHowtoPromptMode } from "~/features/project-chat/howto-routing";
 import {
 	clearActiveBillingContext,
@@ -22,9 +27,12 @@ import { getLangfuseClient } from "~/lib/langfuse.server";
 import { mastra } from "~/mastra";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
+import { createSurveyTool } from "~/mastra/tools/create-survey";
 import { navigateToPageTool } from "~/mastra/tools/navigate-to-page";
 import { switchAgentTool } from "~/mastra/tools/switch-agent";
+import { HOST } from "~/paths";
 import { userContext } from "~/server/user-context";
+import { createRouteDefinitions } from "~/utils/route-definitions";
 
 function getLastUserText(messages: Array<{ role?: string; content?: unknown; parts?: unknown[] }>): string {
 	for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -45,6 +53,7 @@ const routingTargetAgents = [
 	"projectStatusAgent",
 	"chiefOfStaffAgent",
 	"researchAgent",
+	"feedbackAgent",
 	"projectSetupAgent",
 	"howtoAgent",
 ] as const;
@@ -86,6 +95,7 @@ Agents:
 - projectSetupAgent: onboarding, setup, research goals, company context.
 - chiefOfStaffAgent: strategic prioritization / "what should I do next".
 - researchAgent: create/manage surveys, interview prompts, interview operations.
+- feedbackAgent: classify feedback/bug/feature requests and submit to PostHog.
 - howtoAgent: procedural guidance ("how do I", "best way", "teach me", "where do I").
 - projectStatusAgent: factual status/data lookup (themes, ICP, people, evidence, interviews).
 
@@ -97,15 +107,75 @@ Modes:
 - ux_research_mode: howtoAgent prompts about UX or product research/how-to.
 - normal: everything else.
 
-Rule: For people comparisons ("what do X and Y have in common", "compare these people"), use mode="normal", not theme_people_snapshot.`;
+Rule: For people comparisons ("what do X and Y have in common", "compare these people"), use mode="normal", not theme_people_snapshot.
+Rule: If system context indicates interview detail and the prompt is about open questions/prep/follow-up, route to researchAgent with mode="normal".`;
 const DEBUG_PREFIX_REGEX = /^\s*\/debug\b[:\s-]*/i;
 const FALLBACK_EMPTY_RESPONSE_TEXT = "Sorry, I couldn't answer that just now. Please try again.";
 const MARKDOWN_LINK_REGEX = /\[[^\]]+\]\((?:\/|https?:\/\/|#|mailto:)[^)]+\)/;
+const SURVEY_QUESTION_TYPE_VALUES = [
+	"auto",
+	"short_text",
+	"long_text",
+	"single_select",
+	"multi_select",
+	"likert",
+] as const;
+const surveyQuestionDraftSchema = z
+	.object({
+		prompt: z.string().min(1),
+		type: z.enum(SURVEY_QUESTION_TYPE_VALUES).nullish(),
+		required: z.boolean().nullish(),
+		options: z.array(z.string()).nullish(),
+		likertScale: z.number().int().min(3).max(10).nullish(),
+		likertLabels: z
+			.object({
+				low: z.string().nullish(),
+				high: z.string().nullish(),
+			})
+			.nullish(),
+	})
+	.passthrough();
+const surveyQuickCreateDraftSchema = z.object({
+	name: z.string().min(2),
+	description: z.string().nullish(),
+	questions: z.array(surveyQuestionDraftSchema).min(3).max(8),
+});
+
+function mapUsageToLangfuse(usage?: { inputTokens?: number; outputTokens?: number }) {
+	if (!usage) return { usage: undefined, usageDetails: undefined };
+	const inputTokens = usage.inputTokens;
+	const outputTokens = usage.outputTokens;
+	const totalTokens =
+		typeof inputTokens === "number" || typeof outputTokens === "number"
+			? (inputTokens ?? 0) + (outputTokens ?? 0)
+			: undefined;
+
+	const usagePayload: Record<string, number> = {};
+	if (typeof inputTokens === "number") usagePayload.input = inputTokens;
+	if (typeof outputTokens === "number") usagePayload.output = outputTokens;
+	if (typeof totalTokens === "number") usagePayload.total = totalTokens;
+
+	const usageDetailsPayload: Record<string, number> = {};
+	if (typeof inputTokens === "number") usageDetailsPayload.input = inputTokens;
+	if (typeof outputTokens === "number") usageDetailsPayload.output = outputTokens;
+	if (typeof totalTokens === "number") usageDetailsPayload.total = totalTokens;
+
+	return {
+		usage: Object.keys(usagePayload).length > 0 ? usagePayload : undefined,
+		usageDetails: Object.keys(usageDetailsPayload).length > 0 ? usageDetailsPayload : undefined,
+	};
+}
+
+function mapCostDetailsToLangfuse(totalCostUsd: number | null | undefined) {
+	if (typeof totalCostUsd !== "number" || !Number.isFinite(totalCostUsd)) return undefined;
+	return { total: totalCostUsd };
+}
 
 const MAX_STEPS_BY_AGENT: Record<RoutingTargetAgent, number> = {
 	projectStatusAgent: 6,
 	chiefOfStaffAgent: 4,
 	researchAgent: 4,
+	feedbackAgent: 3,
 	projectSetupAgent: 5,
 	howtoAgent: 4,
 };
@@ -114,6 +184,7 @@ const BILLING_MODEL_BY_AGENT: Record<RoutingTargetAgent, string> = {
 	projectStatusAgent: "gpt-4.1",
 	chiefOfStaffAgent: "gpt-4o-mini",
 	researchAgent: "gpt-4o",
+	feedbackAgent: "gpt-4o-mini",
 	projectSetupAgent: "gpt-5.1",
 	howtoAgent: "gpt-4o-mini",
 };
@@ -159,9 +230,48 @@ function streamPlainAssistantText(text: string) {
 	});
 }
 
+function streamSurveyQuickCreateResult(options: { text: string; navigatePath?: string }) {
+	return createUIMessageStream({
+		execute: async ({ writer }) => {
+			const messageChunkId = `survey-${Date.now().toString(36)}`;
+			writer.write({ type: "start" });
+			writer.write({ type: "start-step" });
+			writer.write({ type: "text-start", id: messageChunkId });
+			writer.write({ type: "text-delta", id: messageChunkId, delta: options.text });
+			writer.write({ type: "text-end", id: messageChunkId });
+
+			if (options.navigatePath) {
+				writer.write({
+					type: "tool-input-available",
+					toolCallId: `navigate-${Date.now().toString(36)}`,
+					toolName: "navigateToPage",
+					input: { path: options.navigatePath },
+				});
+			}
+
+			writer.write({ type: "finish-step" });
+			writer.write({ type: "finish", finishReason: "stop" });
+		},
+	});
+}
+
 function stripDebugPrefix(prompt: string): string {
 	const stripped = prompt.replace(DEBUG_PREFIX_REGEX, "").trim();
 	return stripped.length > 0 ? stripped : "what should I do next";
+}
+
+function extractInterviewIdFromSystemContext(systemContext: string): string | null {
+	if (!systemContext) return null;
+
+	// Match only valid UUIDs from interview routes and view context
+	const UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+	const routeMatch = systemContext.match(new RegExp(`/interviews/(${UUID_PATTERN})\\b`, "i"));
+	if (routeMatch?.[1]) return routeMatch[1];
+
+	const viewMatch = systemContext.match(new RegExp(`View:\\s*Interview detail \\(id=(${UUID_PATTERN})\\)`, "i"));
+	if (viewMatch?.[1]) return viewMatch[1];
+
+	return null;
 }
 
 function normalizeMessagesForExecution(
@@ -215,20 +325,23 @@ export function buildQuickLinksMarkdown(options: {
 	const { accountId, projectId, lastUserText, targetAgentId } = options;
 	if (!accountId || !projectId) return "";
 
-	const base = `/a/${accountId}/${projectId}`;
+	const projectPath = `/a/${accountId}/${projectId}`;
+	const routes = createRouteDefinitions(projectPath);
+	const withHost = (path: string) => `${HOST}${path}`;
 	const normalizedPrompt = lastUserText.toLowerCase();
 	const mentionsPeople = /\b(people|person|contact|contacts|icp)\b/.test(normalizedPrompt);
 	const mentionsSurvey = /\b(survey|ask link|ask|questionnaire|responses?)\b/.test(normalizedPrompt);
 	const mentionsThemes = /\b(theme|insight|insights|evidence)\b/.test(normalizedPrompt);
 
 	const links: string[] = [];
-	if (mentionsPeople) links.push(`[People](${base}/lenses?tab=people)`);
-	if (mentionsSurvey || targetAgentId === "researchAgent") links.push(`[Ask](${base}/ask)`);
-	if (mentionsThemes || targetAgentId === "projectStatusAgent") links.push(`[Insights](${base}/insights/table)`);
+	if (mentionsPeople) links.push(`[People](${withHost(routes.people.index())})`);
+	if (mentionsSurvey || targetAgentId === "researchAgent") links.push(`[Ask](${withHost(routes.ask.index())})`);
+	if (mentionsThemes || targetAgentId === "projectStatusAgent")
+		links.push(`[Insights](${withHost(routes.insights.table())})`);
 
 	if (links.length === 0) {
-		links.push(`[Insights](${base}/insights/table)`);
-		links.push(`[People](${base}/lenses?tab=people)`);
+		links.push(`[Insights](${withHost(routes.insights.table())})`);
+		links.push(`[People](${withHost(routes.people.index())})`);
 	}
 
 	return `Quick links: ${links.join(" · ")}`;
@@ -390,10 +503,42 @@ function augmentStreamForReliability(
 	return transformed;
 }
 
-function routeByDeterministicPrompt(lastUserText: string): z.infer<typeof intentRoutingSchema> | null {
+function routeByDeterministicPrompt(
+	lastUserText: string,
+	options?: { systemContext?: string }
+): z.infer<typeof intentRoutingSchema> | null {
 	const prompt = lastUserText.trim().toLowerCase();
 	if (!prompt) return null;
 	const hasAny = (...tokens: string[]) => tokens.some((token) => prompt.includes(token));
+	const systemContext = options?.systemContext ?? "";
+	const interviewIdFromContext = extractInterviewIdFromSystemContext(systemContext);
+	const looksLikeFailureReport = hasAny(
+		"did not",
+		"didn't",
+		"does not",
+		"doesn't",
+		"failed",
+		"failure",
+		"broken",
+		"not working",
+		"error",
+		"crash",
+		"bug",
+		"issue"
+	);
+	// Capability / scope questions stay on projectStatusAgent (uses capabilityLookup tool)
+	const asksForCapabilities =
+		hasAny("what can you do", "what do you do", "what are your capabilities") ||
+		(hasAny("can you", "are you able") && hasAny("help", "do"));
+	if (asksForCapabilities) {
+		return {
+			targetAgentId: "projectStatusAgent",
+			confidence: 1,
+			responseMode: "normal",
+			rationale: "deterministic routing for capability/scope questions",
+		};
+	}
+
 	const howtoRouting = detectHowtoPromptMode(prompt);
 	if (howtoRouting.isHowto) {
 		return {
@@ -428,7 +573,9 @@ function routeByDeterministicPrompt(lastUserText: string): z.infer<typeof intent
 	}
 
 	const asksForSurveyCreate =
-		hasAny("survey", "waitlist", "ask link", "questionnaire") && hasAny("create", "make", "build", "draft", "generate");
+		hasAny("survey", "waitlist", "ask link", "questionnaire") &&
+		hasAny("create", "make", "build", "draft", "generate") &&
+		!looksLikeFailureReport;
 	if (asksForSurveyCreate) {
 		return {
 			targetAgentId: "researchAgent",
@@ -446,6 +593,31 @@ function routeByDeterministicPrompt(lastUserText: string): z.infer<typeof intent
 			confidence: 1,
 			responseMode: "normal",
 			rationale: "deterministic routing for interview operations",
+		};
+	}
+
+	const asksForInterviewOpenQuestionHelp =
+		Boolean(interviewIdFromContext) &&
+		hasAny("open question", "open questions", "next steps", "follow up", "follow-up", "prepare", "prep");
+	if (asksForInterviewOpenQuestionHelp) {
+		return {
+			targetAgentId: "researchAgent",
+			confidence: 1,
+			responseMode: "normal",
+			rationale: "deterministic routing for interview detail open-question guidance",
+		};
+	}
+
+	const asksForFeedbackTriage =
+		(hasAny("feedback", "bug", "bug report", "feature request") &&
+			hasAny("posthog", "log", "submit", "report", "track")) ||
+		(hasAny("bug report", "feature request") && hasAny("submit", "log", "track"));
+	if (asksForFeedbackTriage) {
+		return {
+			targetAgentId: "feedbackAgent",
+			confidence: 1,
+			responseMode: "normal",
+			rationale: "deterministic routing for feedback triage and PostHog submission",
 		};
 	}
 
@@ -492,12 +664,49 @@ function routeByDeterministicPrompt(lastUserText: string): z.infer<typeof intent
 
 async function routeAgentByIntent(
 	lastUserText: string,
-	resourceId?: string
+	resourceId?: string,
+	options?: { systemContext?: string }
 ): Promise<z.infer<typeof intentRoutingSchema> | null> {
 	const prompt = lastUserText.trim();
 	if (!prompt) return null;
 
-	const deterministicRoute = routeByDeterministicPrompt(prompt);
+	const promptLower = prompt.toLowerCase();
+	const promptLooksLikeFollowupFeedbackDetail = [
+		"did not",
+		"didn't",
+		"does not",
+		"doesn't",
+		"failed",
+		"failure",
+		"broken",
+		"not working",
+		"error",
+		"crash",
+		"bug",
+		"issue",
+	].some((token) => promptLower.includes(token));
+
+	// Sticky routing for feedback clarifications:
+	// if we just routed to feedbackAgent and the next turn looks like issue detail,
+	// keep routing to feedbackAgent so the user can complete the bug report flow.
+	if (resourceId) {
+		const sticky = lastRoutedAgentMap.get(resourceId);
+		if (
+			sticky &&
+			sticky.agentId === "feedbackAgent" &&
+			Date.now() - sticky.timestamp < STICKY_ROUTING_TTL_MS &&
+			promptLooksLikeFollowupFeedbackDetail
+		) {
+			return {
+				targetAgentId: "feedbackAgent",
+				confidence: 0.95,
+				responseMode: "normal",
+				rationale: "sticky routing — continuing feedbackAgent clarification flow",
+			};
+		}
+	}
+
+	const deterministicRoute = routeByDeterministicPrompt(prompt, options);
 	if (deterministicRoute) return deterministicRoute;
 
 	// Sticky routing: if the last routed agent was projectSetupAgent and no
@@ -533,6 +742,69 @@ Message: """${prompt.slice(0, ROUTING_CLASSIFIER_MAX_PROMPT_CHARS)}"""`,
 	}
 }
 
+async function executeSurveyQuickCreate(options: {
+	prompt: string;
+	projectId: string;
+	accountId: string;
+	requestContext: RequestContext;
+	systemContext: string;
+}): Promise<{
+	success: boolean;
+	text: string;
+	navigatePath?: string;
+	usage?: { inputTokens?: number; outputTokens?: number };
+}> {
+	const draft = await generateObject({
+		model: instrumentedOpenai("gpt-4o"),
+		schema: surveyQuickCreateDraftSchema,
+		temperature: 0.2,
+		prompt: `Create a ready-to-launch survey draft from the user request.
+
+User request:
+"""${options.prompt}"""
+
+Project context:
+${options.systemContext || "No extra context."}
+
+Requirements:
+- Return 3-6 practical questions.
+- Use question types that match intent (auto, short_text, long_text, single_select, multi_select, likert).
+- Only include options for select questions.
+- Only include likertScale/likertLabels for likert questions.
+- Keep prompts concise and natural.
+- Survey must be immediately usable without follow-up.`,
+	});
+
+	const created = await createSurveyTool.execute(
+		{
+			projectId: options.projectId,
+			name: draft.object.name,
+			description: draft.object.description ?? null,
+			questions: draft.object.questions,
+			isLive: true,
+		},
+		{ requestContext: options.requestContext }
+	);
+
+	if (!created.success || !created.editUrl) {
+		return {
+			success: false,
+			text: created.message || "I couldn't create the survey yet. Please try again.",
+			usage: draft.usage,
+		};
+	}
+
+	const editPath = created.editUrl;
+	const editUrl = `${HOST}${editPath}`;
+
+	return {
+		success: true,
+		text: `Created "${draft.object.name}" and prefilled the questions. Opening the editor now: [Open survey](${editUrl})`,
+		navigatePath: editPath,
+		usage: draft.usage,
+	};
+}
+
 export async function action({ request, context, params }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return new Response("Method Not Allowed", { status: 405 });
@@ -554,7 +826,16 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		});
 	}
 
-	const { messages, system, userTimezone } = await request.json();
+	const body = (await request.json().catch(() => ({}))) as {
+		messages?: unknown[];
+		system?: unknown;
+		userTimezone?: unknown;
+		threadId?: unknown;
+	};
+	const messages = body.messages;
+	const system = typeof body.system === "string" ? body.system : undefined;
+	const userTimezone = typeof body.userTimezone === "string" ? body.userTimezone : undefined;
+	const requestedThreadId = typeof body.threadId === "string" && body.threadId.trim() ? body.threadId.trim() : null;
 	const sanitizedMessages = Array.isArray(messages)
 		? messages.map((message) => {
 				if (!message || typeof message !== "object") return message;
@@ -593,7 +874,9 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const lastUserText = debugRequested ? stripDebugPrefix(lastUserTextRaw) : lastUserTextRaw;
 	const runtimeMessagesForExecution = normalizeMessagesForExecution(runtimeMessages, debugRequested);
 	const routingResourceId = `project-chat-${userId}-${projectId}`;
-	const routeDecision = await routeAgentByIntent(lastUserText, routingResourceId);
+	const routeDecision = await routeAgentByIntent(lastUserText, routingResourceId, {
+		systemContext: typeof system === "string" ? system : "",
+	});
 	const resolvedResponseMode: RoutingResponseMode =
 		(routeDecision?.responseMode as RoutingResponseMode | undefined) ?? "normal";
 	const targetAgentId: RoutingTargetAgent =
@@ -615,7 +898,41 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			? MAX_RESEARCH_SYSTEM_CONTEXT_CHARS
 			: MAX_SYSTEM_CONTEXT_CHARS;
 	const systemContext = typeof system === "string" ? system.slice(0, systemContextLimit) : "";
-	const threadResourceId = `${targetAgentId}-${userId}-${projectId}`;
+	const defaultThreadResourceId = getPrimaryProjectStatusResourceId(userId, projectId);
+	let threadResourceId = defaultThreadResourceId;
+	const langfuse = getLangfuseClient();
+	const requestTrace = (langfuse as any).trace?.({
+		name: "api.chat.project-status",
+		userId: userId || undefined,
+		sessionId: routingResourceId,
+		input: {
+			lastUserText,
+			systemContext,
+			userTimezone: userTimezone || null,
+		},
+		metadata: {
+			accountId,
+			projectId,
+			debugRequested,
+		},
+	});
+	const requestGeneration = requestTrace?.generation?.({
+		name: "api.chat.project-status.route",
+		model: BILLING_MODEL_BY_AGENT[targetAgentId] || "gpt-4o",
+		input: {
+			lastUserText,
+			systemContext,
+			userTimezone: userTimezone || null,
+			targetAgentId,
+			responseMode: resolvedResponseMode,
+		},
+		metadata: {
+			accountId,
+			projectId,
+			debugRequested,
+			routingSource,
+		},
+	});
 
 	if (typeof system === "string" && system.length > systemContext.length) {
 		consola.debug("project-status: truncated system context", {
@@ -641,6 +958,19 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		rawResponseMode: routeDecision?.responseMode ?? "normal",
 		rationale: routeDecision?.rationale ?? null,
 	});
+	requestTrace?.update?.({
+		metadata: {
+			accountId,
+			projectId,
+			debugRequested,
+			targetAgentId,
+			targetMaxSteps,
+			routingSource,
+			routingConfidence: routeDecision?.confidence ?? null,
+			responseMode: resolvedResponseMode,
+			rawResponseMode: routeDecision?.responseMode ?? "normal",
+		},
+	});
 
 	if (targetAgentId === "howtoAgent") {
 		consola.info("project-status: howto routing telemetry", {
@@ -653,40 +983,180 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		});
 	}
 
-	const threads = await memory.listThreadsByResourceId({
-		resourceId: threadResourceId,
-		orderBy: { field: "createdAt", direction: "DESC" },
-		page: 0,
-		perPage: 1,
-	});
-
 	let threadId = "";
-	if (!(threads?.total && threads.total > 0)) {
-		const newThread = await memory.createThread({
-			resourceId: threadResourceId,
-			title: `${targetAgentId} ${projectId}`,
-			metadata: {
-				user_id: userId,
-				project_id: projectId,
-				account_id: accountId,
-			},
+	if (requestedThreadId) {
+		const existingThread = await findProjectStatusThread({
+			memory,
+			userId,
+			projectId,
+			threadId: requestedThreadId,
 		});
-		threadId = newThread.id;
-	} else {
-		threadId = threads.threads[0].id;
+		if (existingThread) {
+			threadId = existingThread.id;
+			threadResourceId = existingThread.resourceId || defaultThreadResourceId;
+		}
 	}
+
+	if (!threadId) {
+		const threads = await memory.listThreads({
+			filter: { resourceId: defaultThreadResourceId },
+			orderBy: { field: "createdAt", direction: "DESC" },
+			page: 0,
+			perPage: 1,
+		});
+
+		if (threads?.total && threads.total > 0) {
+			threadId = threads.threads[0].id;
+		} else {
+			const newThread = await memory.createThread({
+				resourceId: defaultThreadResourceId,
+				title: buildShortThreadTitle(lastUserText),
+				metadata: {
+					user_id: userId,
+					project_id: projectId,
+					account_id: accountId,
+					source: "chat_first_message",
+				},
+			});
+			threadId = newThread.id;
+		}
+
+		threadResourceId = defaultThreadResourceId;
+	}
+	requestTrace?.update?.({
+		metadata: {
+			accountId,
+			projectId,
+			debugRequested,
+			targetAgentId,
+			targetMaxSteps,
+			routingSource,
+			routingConfidence: routeDecision?.confidence ?? null,
+			responseMode: resolvedResponseMode,
+			rawResponseMode: routeDecision?.responseMode ?? "normal",
+			threadId,
+			threadResourceId,
+			requestedThreadId,
+		},
+	});
 
 	const requestContext = new RequestContext();
 	requestContext.set("user_id", userId);
 	requestContext.set("account_id", accountId);
 	requestContext.set("project_id", projectId);
+	const interviewIdFromSystemContext = extractInterviewIdFromSystemContext(typeof system === "string" ? system : "");
+	if (interviewIdFromSystemContext) {
+		requestContext.set("interview_id", interviewIdFromSystemContext);
+	}
 	if (userTimezone) {
 		requestContext.set("user_timezone", userTimezone);
 	}
 	requestContext.set("response_mode", resolvedResponseMode);
 	requestContext.set("routing_source", routingSource);
+	requestContext.set("thread_id", threadId);
+	requestContext.set("thread_resource_id", threadResourceId);
 	if (debugRequested) {
 		requestContext.set("debug_mode", true);
+	}
+
+	if (targetAgentId === "researchAgent" && resolvedResponseMode === "survey_quick_create") {
+		try {
+			const quickCreate = await executeSurveyQuickCreate({
+				prompt: lastUserText,
+				projectId,
+				accountId,
+				requestContext,
+				systemContext,
+			});
+
+			const quickCreateLangfuseUsage = mapUsageToLangfuse(quickCreate.usage);
+			const quickCreateCost =
+				quickCreate.usage && (quickCreate.usage.inputTokens || quickCreate.usage.outputTokens)
+					? estimateOpenAICost(
+							BILLING_MODEL_BY_AGENT.researchAgent || "gpt-4o",
+							quickCreate.usage.inputTokens || 0,
+							quickCreate.usage.outputTokens || 0
+						)
+					: null;
+			const quickCreateCostDetails = mapCostDetailsToLangfuse(quickCreateCost);
+
+			if (quickCreate.usage && (quickCreate.usage.inputTokens || quickCreate.usage.outputTokens)) {
+				const inputTokens = quickCreate.usage.inputTokens || 0;
+				const outputTokens = quickCreate.usage.outputTokens || 0;
+				const model = BILLING_MODEL_BY_AGENT.researchAgent || "gpt-4o";
+				const costUsd = quickCreateCost ?? estimateOpenAICost(model, inputTokens, outputTokens);
+				const billingCtx = userBillingContext({
+					accountId,
+					userId,
+					featureSource: "project_status_agent",
+					projectId,
+				});
+
+				await recordUsageOnly(
+					billingCtx,
+					{
+						provider: "openai",
+						model,
+						inputTokens,
+						outputTokens,
+						estimatedCostUsd: costUsd,
+					},
+					`agent:project-status:${userId}:${projectId}:survey-quick-create:${Date.now()}`
+				).catch((err) => {
+					consola.error("[billing] Failed to record survey quick-create usage:", err);
+				});
+			}
+
+			requestGeneration?.end?.({
+				output: {
+					success: quickCreate.success,
+					text: quickCreate.text,
+					navigatePath: quickCreate.navigatePath ?? null,
+				},
+				usage: quickCreateLangfuseUsage.usage,
+				usageDetails: quickCreateLangfuseUsage.usageDetails,
+				costDetails: quickCreateCostDetails,
+			});
+			requestTrace?.update?.({
+				output: {
+					success: quickCreate.success,
+					text: quickCreate.text,
+					navigatePath: quickCreate.navigatePath ?? null,
+				},
+			});
+			requestTrace?.end?.();
+
+			return createUIMessageStreamResponse({
+				stream: streamSurveyQuickCreateResult({
+					text: quickCreate.text,
+					navigatePath: quickCreate.navigatePath,
+				}),
+			});
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			consola.error("project-status: survey quick-create failed", {
+				error: errorMessage,
+				projectId,
+			});
+			requestTrace?.update?.({
+				output: {
+					success: false,
+					error: errorMessage,
+				},
+			});
+			requestGeneration?.end?.({
+				level: "ERROR",
+				statusMessage: errorMessage,
+				output: {
+					success: false,
+					error: errorMessage,
+				},
+			});
+			requestTrace?.end?.();
+			return createUIMessageStreamResponse({
+				stream: streamPlainAssistantText(`I couldn't create the survey yet: ${errorMessage}`),
+			});
+		}
 	}
 
 	const fastGuidanceCacheKey =
@@ -701,6 +1171,11 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				targetAgentId,
 				projectId,
 			});
+			requestGeneration?.end?.({
+				output: { text: cached.text, cached: true },
+			});
+			requestTrace?.update?.({ output: { text: cached.text, cached: true } });
+			requestTrace?.end?.();
 			return createUIMessageStreamResponse({
 				stream: streamPlainAssistantText(cached.text),
 			});
@@ -738,11 +1213,12 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		// Create a fresh thread
 		const freshThread = await memory.createThread({
 			resourceId: threadResourceId,
-			title: `${targetAgentId} ${projectId}`,
+			title: buildShortThreadTitle(lastUserText),
 			metadata: {
 				user_id: userId,
 				project_id: projectId,
 				account_id: accountId,
+				source: "chat_recovery",
 			},
 		});
 		return freshThread.id;
@@ -794,11 +1270,21 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			}
 
 			const usage = data.usage;
+			const traceUsage = mapUsageToLangfuse(usage);
+			const traceCostUsd =
+				usage && (usage.inputTokens || usage.outputTokens)
+					? estimateOpenAICost(
+							BILLING_MODEL_BY_AGENT[targetAgentId] || "gpt-4o",
+							usage.inputTokens || 0,
+							usage.outputTokens || 0
+						)
+					: null;
+			const traceCostDetails = mapCostDetailsToLangfuse(traceCostUsd);
 			if (usage && (usage.inputTokens || usage.outputTokens) && billingCtx.accountId) {
 				const model = BILLING_MODEL_BY_AGENT[targetAgentId] || "gpt-4o";
 				const inputTokens = usage.inputTokens || 0;
 				const outputTokens = usage.outputTokens || 0;
-				const costUsd = estimateOpenAICost(model, inputTokens, outputTokens);
+				const costUsd = traceCostUsd ?? estimateOpenAICost(model, inputTokens, outputTokens);
 
 				consola.info("project-status: billing", {
 					inputTokens,
@@ -839,19 +1325,32 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				});
 			}
 
+			requestGeneration?.end?.({
+				output: {
+					text: data.text ?? "",
+					finishReason: data.finishReason ?? null,
+					toolCallCount: Array.isArray(data.toolCalls) ? data.toolCalls.length : 0,
+					stepCount: data.steps?.length ?? 0,
+				},
+				usage: traceUsage.usage,
+				usageDetails: traceUsage.usageDetails,
+				costDetails: traceCostDetails,
+			});
+			requestTrace?.update?.({
+				output: {
+					text: data.text ?? "",
+					finishReason: data.finishReason ?? null,
+					toolCallCount: Array.isArray(data.toolCalls) ? data.toolCalls.length : 0,
+					stepCount: data.steps?.length ?? 0,
+				},
+			});
+			requestTrace?.end?.();
+
 			clearActiveBillingContext();
 
 			consola.debug("project-status: finished", {
 				steps: data.steps?.length || 0,
 			});
-			const langfuse = getLangfuseClient();
-			const lfTrace = langfuse.trace?.({ name: "api.chat.project-status" });
-			const gen = lfTrace?.generation?.({
-				name: "api.chat.project-status",
-				input: messages,
-				output: data,
-			});
-			gen?.end?.();
 		},
 	});
 
@@ -899,6 +1398,23 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				targetAgentId,
 				projectId,
 			});
+			requestTrace?.update?.({
+				output: {
+					error: errorMessage,
+					targetAgentId,
+					responseMode: resolvedResponseMode,
+				},
+			});
+			requestGeneration?.end?.({
+				level: "ERROR",
+				statusMessage: errorMessage,
+				output: {
+					error: errorMessage,
+					targetAgentId,
+					responseMode: resolvedResponseMode,
+				},
+			});
+			requestTrace?.end?.();
 			const debugSuffix = debugRequested
 				? `\n\nDebug Trace:\n- routed_to: ${targetAgentId}\n- response_mode: ${resolvedResponseMode}\n- max_steps: ${targetMaxSteps}\n- tool_calls: none (stream init failed)`
 				: "";

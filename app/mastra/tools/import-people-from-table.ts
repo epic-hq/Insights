@@ -1,9 +1,9 @@
 import { createTool } from "@mastra/core/tools";
 import consola from "consola";
 import { z } from "zod";
-import type { Database } from "~/database.types";
-import { persistFacetObservations } from "~/lib/database/facets.server";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import type { Database } from "../../database.types";
+import { persistFacetObservations } from "../../lib/database/facets.server";
+import { createSupabaseAdminClient } from "../../lib/supabase/client.server";
 
 // Type aliases for database tables - using explicit types to avoid schema drift issues
 type ProjectAsset = Database["public"]["Tables"]["project_assets"]["Row"];

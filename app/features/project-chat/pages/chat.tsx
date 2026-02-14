@@ -87,8 +87,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		throw new Response("Unauthorized", { status: 401 });
 	}
 	const resourceId = `projectSetupAgent-${userId}-${projectId}`;
-	const threads = await memory.listThreadsByResourceId({
-		resourceId,
+	const threads = await memory.listThreads({
+		filter: { resourceId },
 		orderBy: { field: "createdAt", direction: "DESC" },
 		page: 0,
 		perPage: 100,
@@ -99,7 +99,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		const newThread = await memory.createThread({
 			resourceId,
 			title: `Project Setup ${projectId}`,
-			metadata: { user_id: userId, project_id: projectId, account_id: accountId },
+			metadata: {
+				user_id: userId,
+				project_id: projectId,
+				account_id: accountId,
+			},
 		});
 		consola.log("New project-setup thread created", newThread);
 		threadId = newThread.id;
@@ -109,7 +113,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	const { messages: memoryMessages } = await memory.recall({
 		threadId,
-		selectBy: { last: 50 },
+		perPage: 50,
 	});
 	const aiv5Messages = convertMessages(memoryMessages).to("AIV5.UI") as UpsightMessage[];
 
@@ -277,7 +281,9 @@ export default function ProjectChatPage() {
 									<span className="ml-2 h-2 w-8 overflow-hidden rounded-full bg-red-100" aria-hidden>
 										<span
 											className="block h-full bg-red-500 transition-[width]"
-											style={{ width: `${Math.min(100, Math.max(10, voiceIntensity * 100))}%` }}
+											style={{
+												width: `${Math.min(100, Math.max(10, voiceIntensity * 100))}%`,
+											}}
 										/>
 									</span>
 								)}

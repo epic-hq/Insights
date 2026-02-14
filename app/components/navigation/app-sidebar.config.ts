@@ -11,6 +11,7 @@ import {
 	Map,
 	MessageSquareText,
 	Sparkles,
+	Tag,
 	Users,
 } from "lucide-react";
 import type { RouteDefinitions } from "~/utils/route-definitions";
@@ -102,6 +103,13 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				description: "What we learned from your content.",
 				icon: Sparkles,
 				to: (routes) => routes.insights.table(),
+			},
+			{
+				key: "vocabulary",
+				title: "Vocabulary",
+				description: "AI-discovered labels from your conversations.",
+				icon: Tag,
+				to: (routes) => routes.facetsExplorer(),
 			},
 			{
 				key: "opportunities",

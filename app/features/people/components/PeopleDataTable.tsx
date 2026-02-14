@@ -14,6 +14,7 @@ import {
 	flexRender,
 	getCoreRowModel,
 	getSortedRowModel,
+	type RowSelectionState,
 	type SortingState,
 	useReactTable,
 	type VisibilityState,
@@ -24,6 +25,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useFetcher, useRevalidator } from "react-router-dom";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "~/components/ui/command";
 import {
 	DropdownMenu,
@@ -78,6 +80,7 @@ interface Organization {
 interface PeopleDataTableProps {
 	rows: PersonTableRow[];
 	organizations?: Organization[];
+	onSelectionChange?: (selectedRows: PersonTableRow[]) => void;
 }
 
 // Job function options
@@ -583,11 +586,22 @@ function CompanySizeCell({
 	);
 }
 
-export function PeopleDataTable({ rows, organizations = [] }: PeopleDataTableProps) {
+export function PeopleDataTable({ rows, organizations = [], onSelectionChange }: PeopleDataTableProps) {
 	const { projectPath } = useCurrentProject();
 	const routes = useProjectRoutes(projectPath || "");
 	const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
+	const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 	const storageKey = "people_table_columns_v2";
+
+	// Notify parent of selection changes
+	useEffect(() => {
+		if (!onSelectionChange) return;
+		const selectedRows = Object.keys(rowSelection)
+			.filter((key) => rowSelection[key])
+			.map((key) => rows[Number(key)])
+			.filter(Boolean);
+		onSelectionChange(selectedRows);
+	}, [rowSelection, rows, onSelectionChange]);
 
 	// Endpoint for inline updates - used by all editable cells
 	const updateEndpoint = `${routes.people.index()}/api/update-inline`;
@@ -648,6 +662,24 @@ export function PeopleDataTable({ rows, organizations = [] }: PeopleDataTablePro
 
 	const columns = useMemo<ColumnDef<PersonTableRow>[]>(
 		() => [
+			{
+				id: "select",
+				header: ({ table }) => (
+					<Checkbox
+						checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+						onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+						aria-label="Select all"
+					/>
+				),
+				cell: ({ row }) => (
+					<Checkbox
+						checked={row.getIsSelected()}
+						onCheckedChange={(value) => row.toggleSelected(!!value)}
+						aria-label="Select row"
+					/>
+				),
+				enableSorting: false,
+			},
 			{
 				accessorKey: "name",
 				header: "Name",
@@ -840,9 +872,10 @@ export function PeopleDataTable({ rows, organizations = [] }: PeopleDataTablePro
 	const table = useReactTable({
 		data: rows,
 		columns,
-		state: { sorting, columnVisibility },
+		state: { sorting, columnVisibility, rowSelection },
 		onSortingChange: setSorting,
 		onColumnVisibilityChange: setColumnVisibility,
+		onRowSelectionChange: setRowSelection,
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 	});

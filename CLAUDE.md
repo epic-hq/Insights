@@ -198,11 +198,17 @@ When making UI/layout changes, preserve existing component structure and reuse e
 
 ### Mastra Tools (IMPORTANT)
 
-No static `~/` imports in tools. Use dynamic imports inside `execute()`:
+- **No `~/` path aliases** in tool files — use relative imports (`../../lib/...`) or dynamic imports inside `execute()`. The `~/` alias is not resolved in the Mastra server context.
+- **Validate UUID inputs** before passing to Supabase `.eq()` queries — use `validateUUID()` from `./context-utils` to prevent Postgres 22P02 errors.
+- Tool signature: `execute: async (input, context?) => { ... }` — context has `context?.requestContext?.get?.("key")`.
+- Workflow step signature is different: `execute: async ({ inputData, requestContext }) => { ... }`.
 
 ```typescript
-execute: async (input) => {
-  const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server");
+import { validateUUID } from "./context-utils";
+
+execute: async (input, context?) => {
+  const projectId = validateUUID(context?.requestContext?.get?.("project_id"), "projectId", "my-tool");
+  const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
   const supabase = createSupabaseAdminClient();
 }
 ```
@@ -235,8 +241,11 @@ execute: async (input) => {
 - **Never use `json()`** in loaders/actions — React Router 7 deprecated it, causes 500 errors
 - **Never use `dangerouslySetInnerHTML`** for user content
 - **Never call `supabase.auth.getUser()` in loaders** — use middleware context
-- **Never use static `~/` imports** in Mastra tool files — use dynamic imports
+- **Never use `~/` path aliases** in Mastra tool files — use relative imports or dynamic imports
 - **Never run bare `bv`** — blocks the session with interactive TUI
+- **Never use `new URL(request.url).origin`** for webhook/callback URLs — returns HTTP behind proxy. Use `createDomain(request)` from `~/utils/http`
+- **Never sign Content-Type in R2 presigned upload URLs** — browsers may send subtly different Content-Type than signed, causing `SignatureDoesNotMatch`. Only sign `host`. See `createR2PresignedUploadUrl()` in `r2.server.ts`
+- **Never use `ReadableStream` body + `duplex:"half"` for browser uploads** — not cross-browser. Use `Blob` body directly
 
 ### Package Quirks
 

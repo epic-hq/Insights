@@ -68,6 +68,20 @@
 			background-position: 100% 50%;
 		}
 	}
+
+	--animate-tts-pulse: tts-pulse 1.5s ease-out infinite;
+
+	@keyframes tts-pulse {
+		0% {
+			box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+		}
+		70% {
+			box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+		}
+		100% {
+			box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+		}
+	}
 }
 /*---break--- */
 /* For ai-sdk streamdown https://ai-sdk.dev/elements/components/response */
@@ -140,7 +154,7 @@
 	--radius: 0.625rem;
 
 	/* Brand Light Theme - Professional & Clean */
-	--brand-logo-color: oklch(0.4969 0.224 252.37); /* UpSight Corp Color */
+	--brand-logo-color: #0284c7; /* UpSight Corp Color */
 	--background: oklch(0.99 0.002 106.42);
 	--foreground: oklch(0.09 0.005 285.82);
 	--card: oklch(1 0 0);
@@ -149,7 +163,7 @@
 	--popover-foreground: oklch(0.09 0.005 285.82);
 
 	/* Brand Primary - Modern Blue */
-	--primary: oklch(0.4969 0.224 252.37);
+	--primary: #0284c7;
 	--primary-foreground: oklch(0.99 0.002 106.42);
 
 	/* Secondary - Subtle Gray */
@@ -171,10 +185,10 @@
 	/* Borders & Inputs */
 	--border: oklch(0.89 0.005 285.82);
 	--input: oklch(0.96 0.006 285.82);
-	--ring: oklch(0.4969 0.224 252.37);
+	--ring: #0284c7;
 
 	/* Charts - Harmonious Color Palette */
-	--chart-1: oklch(0.4969 0.224 252.37);
+	--chart-1: #0284c7;
 	--chart-2: oklch(0.6 0.15 180);
 	--chart-3: oklch(0.65 0.18 120);
 	--chart-4: oklch(0.7 0.15 60);
@@ -183,12 +197,12 @@
 	/* Sidebar */
 	--sidebar: oklch(0.99 0.002 106.42);
 	--sidebar-foreground: oklch(0.09 0.005 285.82);
-	--sidebar-primary: oklch(0.4969 0.224 252.37);
+	--sidebar-primary: #0284c7;
 	--sidebar-primary-foreground: oklch(0.99 0.002 106.42);
 	--sidebar-accent: oklch(0.96 0.006 285.82);
 	--sidebar-accent-foreground: oklch(0.09 0.005 285.82);
 	--sidebar-border: oklch(0.89 0.005 285.82);
-	--sidebar-ring: oklch(0.4969 0.224 252.37);
+	--sidebar-ring: #0284c7;
 
 	/* Legacy Variables */
 	--hu-font-geist: var(--font-geist);
@@ -217,6 +231,7 @@
 /*---break--- */
 .dark {
 	/* Brand Dark Theme - Modern & Professional */
+	--brand-logo-color: #38bdf8;
 	--background: hsl(240 10% 4%);
 	--foreground: hsl(0 0% 98%);
 	--card: hsl(240 6% 12%);
@@ -225,7 +240,7 @@
 	--popover-foreground: hsl(0 0% 98%);
 
 	/* Brand Primary - Bright Blue for Dark Mode */
-	--primary: oklch(0.6969 0.196 252.37);
+	--primary: #38bdf8;
 	--primary-foreground: oklch(0.08 0.004 285.82);
 
 	/* Secondary - Elevated Surface */
@@ -247,10 +262,10 @@
 	/* Borders & Inputs */
 	--border: hsl(240 5% 24%);
 	--input: hsl(240 5% 24%);
-	--ring: oklch(0.6969 0.196 252.37);
+	--ring: #38bdf8;
 
 	/* Charts - Dark Mode Harmonious Palette */
-	--chart-1: oklch(0.6969 0.196 252.37);
+	--chart-1: #38bdf8;
 	--chart-2: oklch(0.7 0.12 180);
 	--chart-3: oklch(0.75 0.15 120);
 	--chart-4: oklch(0.8 0.12 60);
@@ -259,12 +274,12 @@
 	/* Sidebar */
 	--sidebar: hsl(240 6% 12%);
 	--sidebar-foreground: hsl(0 0% 98%);
-	--sidebar-primary: oklch(0.6969 0.196 252.37);
+	--sidebar-primary: #38bdf8;
 	--sidebar-primary-foreground: oklch(0.08 0.004 285.82);
 	--sidebar-accent: hsl(240 5% 18%);
 	--sidebar-accent-foreground: hsl(0 0% 98%);
 	--sidebar-border: hsl(240 5% 24%);
-	--sidebar-ring: oklch(0.6969 0.196 252.37);
+	--sidebar-ring: #38bdf8;
 
 	/* Legacy Variables */
 	--hu-background: hsl(240, 10%, 4%);

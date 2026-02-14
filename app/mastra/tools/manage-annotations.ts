@@ -2,8 +2,8 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
 
 /**
  * Comprehensive annotation management tool for Mastra agents
@@ -81,7 +81,11 @@ Entity Types Supported:
 
 		// List filters
 		filterByType: annotationTypeEnum.nullish().describe("Filter annotations by type when listing"),
-		includeArchived: z.boolean().optional().default(false).describe("Include archived/deleted annotations in list"),
+		includeArchived: z
+			.boolean()
+			.nullish()
+			.transform((v) => v ?? false)
+			.describe("Include archived/deleted annotations in list"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

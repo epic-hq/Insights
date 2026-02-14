@@ -3068,6 +3068,7 @@ export type Database = {
           share_expires_at: string | null
           share_token: string | null
           source_type: string | null
+          speaker_review_needed: boolean | null
           status: Database["public"]["Enums"]["interview_status"]
           thumbnail_url: string | null
           title: string | null
@@ -3115,6 +3116,7 @@ export type Database = {
           share_expires_at?: string | null
           share_token?: string | null
           source_type?: string | null
+          speaker_review_needed?: boolean | null
           status?: Database["public"]["Enums"]["interview_status"]
           thumbnail_url?: string | null
           title?: string | null
@@ -3162,6 +3164,7 @@ export type Database = {
           share_expires_at?: string | null
           share_token?: string | null
           source_type?: string | null
+          speaker_review_needed?: boolean | null
           status?: Database["public"]["Enums"]["interview_status"]
           thumbnail_url?: string | null
           title?: string | null
@@ -4051,6 +4054,7 @@ export type Database = {
           contact_info: Json | null
           created_at: string
           default_organization_id: string | null
+          deleted_at: string | null
           description: string | null
           education: string | null
           firstname: string | null
@@ -4089,6 +4093,7 @@ export type Database = {
           contact_info?: Json | null
           created_at?: string
           default_organization_id?: string | null
+          deleted_at?: string | null
           description?: string | null
           education?: string | null
           firstname?: string | null
@@ -4127,6 +4132,7 @@ export type Database = {
           contact_info?: Json | null
           created_at?: string
           default_organization_id?: string | null
+          deleted_at?: string | null
           description?: string | null
           education?: string | null
           firstname?: string | null
@@ -4448,6 +4454,78 @@ export type Database = {
           },
         ]
       }
+      person_merge_history: {
+        Row: {
+          account_id: string
+          created_at: string
+          deleted_at: string | null
+          evidence_count: number | null
+          facet_count: number | null
+          id: string
+          interview_count: number | null
+          merged_at: string
+          merged_by: string | null
+          project_id: string
+          reason: string | null
+          source_person_data: Json | null
+          source_person_id: string
+          source_person_name: string | null
+          target_person_id: string
+          target_person_name: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          deleted_at?: string | null
+          evidence_count?: number | null
+          facet_count?: number | null
+          id?: string
+          interview_count?: number | null
+          merged_at?: string
+          merged_by?: string | null
+          project_id: string
+          reason?: string | null
+          source_person_data?: Json | null
+          source_person_id: string
+          source_person_name?: string | null
+          target_person_id: string
+          target_person_name?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          evidence_count?: number | null
+          facet_count?: number | null
+          id?: string
+          interview_count?: number | null
+          merged_at?: string
+          merged_by?: string | null
+          project_id?: string
+          reason?: string | null
+          source_person_data?: Json | null
+          source_person_id?: string
+          source_person_name?: string | null
+          target_person_id?: string
+          target_person_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_merge_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_merge_history_target_person_id_fkey"
+            columns: ["target_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_scale: {
         Row: {
           account_id: string
@@ -4563,6 +4641,91 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personalized_surveys: {
+        Row: {
+          account_id: string
+          approved_at: string | null
+          completed_at: string | null
+          created_at: string
+          evidence_count: number
+          evidence_extracted: boolean
+          extraction_metadata: Json | null
+          generation_metadata: Json
+          id: string
+          opened_at: string | null
+          person_id: string
+          project_id: string | null
+          questions: Json
+          research_link_id: string
+          sent_at: string | null
+          status: string
+          survey_goal: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          approved_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          evidence_count?: number
+          evidence_extracted?: boolean
+          extraction_metadata?: Json | null
+          generation_metadata: Json
+          id?: string
+          opened_at?: string | null
+          person_id: string
+          project_id?: string | null
+          questions?: Json
+          research_link_id: string
+          sent_at?: string | null
+          status?: string
+          survey_goal: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          approved_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          evidence_count?: number
+          evidence_extracted?: boolean
+          extraction_metadata?: Json | null
+          generation_metadata?: Json
+          id?: string
+          opened_at?: string | null
+          person_id?: string
+          project_id?: string | null
+          questions?: Json
+          research_link_id?: string
+          sent_at?: string | null
+          status?: string
+          survey_goal?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personalized_surveys_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personalized_surveys_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personalized_surveys_research_link_id_fkey"
+            columns: ["research_link_id"]
+            isOneToOne: false
+            referencedRelation: "research_links"
             referencedColumns: ["id"]
           },
         ]
@@ -5402,9 +5565,12 @@ export type Database = {
           completed: boolean
           created_at: string
           email: string | null
+          evidence_count: number | null
+          evidence_extracted: boolean | null
           evidence_id: string | null
           id: string
           person_id: string | null
+          personalized_survey_id: string | null
           phone: string | null
           research_link_id: string
           response_mode: string
@@ -5417,9 +5583,12 @@ export type Database = {
           completed?: boolean
           created_at?: string
           email?: string | null
+          evidence_count?: number | null
+          evidence_extracted?: boolean | null
           evidence_id?: string | null
           id?: string
           person_id?: string | null
+          personalized_survey_id?: string | null
           phone?: string | null
           research_link_id: string
           response_mode?: string
@@ -5432,9 +5601,12 @@ export type Database = {
           completed?: boolean
           created_at?: string
           email?: string | null
+          evidence_count?: number | null
+          evidence_extracted?: boolean | null
           evidence_id?: string | null
           id?: string
           person_id?: string | null
+          personalized_survey_id?: string | null
           phone?: string | null
           research_link_id?: string
           response_mode?: string
@@ -5459,6 +5631,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "research_link_responses_personalized_survey_id_fkey"
+            columns: ["personalized_survey_id"]
+            isOneToOne: false
+            referencedRelation: "personalized_surveys"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "research_link_responses_research_link_id_fkey"
             columns: ["research_link_id"]
             isOneToOne: false
@@ -5473,13 +5652,18 @@ export type Database = {
           ai_analysis: Json | null
           ai_analysis_updated_at: string | null
           ai_autonomy: string
+          ai_recommendation_metadata: Json | null
           allow_chat: boolean
           allow_video: boolean
           allow_voice: boolean
           calendar_url: string | null
+          campaign_goal: string | null
+          campaign_status: string
+          campaign_strategy: string | null
           created_at: string
           default_response_mode: string
           description: string | null
+          generation_metadata: Json | null
           hero_cta_helper: string | null
           hero_cta_label: string | null
           hero_subtitle: string | null
@@ -5490,6 +5674,7 @@ export type Database = {
           instructions: string | null
           is_live: boolean
           name: string
+          personalized_for: string | null
           project_id: string | null
           questions: Json
           redirect_url: string | null
@@ -5497,6 +5682,7 @@ export type Database = {
           slug: string
           statistics: Json | null
           stats_updated_at: string | null
+          survey_goal: string | null
           updated_at: string
           walkthrough_thumbnail_url: string | null
           walkthrough_video_url: string | null
@@ -5506,13 +5692,18 @@ export type Database = {
           ai_analysis?: Json | null
           ai_analysis_updated_at?: string | null
           ai_autonomy?: string
+          ai_recommendation_metadata?: Json | null
           allow_chat?: boolean
           allow_video?: boolean
           allow_voice?: boolean
           calendar_url?: string | null
+          campaign_goal?: string | null
+          campaign_status?: string
+          campaign_strategy?: string | null
           created_at?: string
           default_response_mode?: string
           description?: string | null
+          generation_metadata?: Json | null
           hero_cta_helper?: string | null
           hero_cta_label?: string | null
           hero_subtitle?: string | null
@@ -5523,6 +5714,7 @@ export type Database = {
           instructions?: string | null
           is_live?: boolean
           name: string
+          personalized_for?: string | null
           project_id?: string | null
           questions?: Json
           redirect_url?: string | null
@@ -5530,6 +5722,7 @@ export type Database = {
           slug: string
           statistics?: Json | null
           stats_updated_at?: string | null
+          survey_goal?: string | null
           updated_at?: string
           walkthrough_thumbnail_url?: string | null
           walkthrough_video_url?: string | null
@@ -5539,13 +5732,18 @@ export type Database = {
           ai_analysis?: Json | null
           ai_analysis_updated_at?: string | null
           ai_autonomy?: string
+          ai_recommendation_metadata?: Json | null
           allow_chat?: boolean
           allow_video?: boolean
           allow_voice?: boolean
           calendar_url?: string | null
+          campaign_goal?: string | null
+          campaign_status?: string
+          campaign_strategy?: string | null
           created_at?: string
           default_response_mode?: string
           description?: string | null
+          generation_metadata?: Json | null
           hero_cta_helper?: string | null
           hero_cta_label?: string | null
           hero_subtitle?: string | null
@@ -5556,6 +5754,7 @@ export type Database = {
           instructions?: string | null
           is_live?: boolean
           name?: string
+          personalized_for?: string | null
           project_id?: string | null
           questions?: Json
           redirect_url?: string | null
@@ -5563,11 +5762,19 @@ export type Database = {
           slug?: string
           statistics?: Json | null
           stats_updated_at?: string | null
+          survey_goal?: string | null
           updated_at?: string
           walkthrough_thumbnail_url?: string | null
           walkthrough_video_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "research_links_personalized_for_fkey"
+            columns: ["personalized_for"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "research_links_project_id_fkey"
             columns: ["project_id"]
@@ -7447,6 +7654,35 @@ export type Database = {
           count: number
         }[]
       }
+      get_campaign_recommendations: {
+        Args: {
+          p_account_id: string
+          p_limit?: number
+          p_project_id: string
+          p_strategy: string
+        }
+        Returns: {
+          evidence_count: number
+          icp_score: number
+          person_email: string
+          person_id: string
+          person_name: string
+          person_title: string
+          recommendation_reason: string
+          recommendation_score: number
+        }[]
+      }
+      get_campaign_stats: {
+        Args: { p_research_link_id: string }
+        Returns: {
+          avg_evidence_per_response: number
+          completion_rate: number
+          total_completed: number
+          total_evidence_extracted: number
+          total_opened: number
+          total_sent: number
+        }[]
+      }
       get_cluster_strength: {
         Args: { cluster_facet_ids: string[]; project_id_param: string }
         Returns: {
@@ -7478,6 +7714,13 @@ export type Database = {
           total_cost_usd: number
           total_credits: number
           total_tokens: number
+        }[]
+      }
+      get_person_top_themes: {
+        Args: { p_limit?: number; p_person_id: string }
+        Returns: {
+          evidence_count: number
+          theme_name: string
         }[]
       }
       get_personal_account: { Args: never; Returns: Json }
@@ -7574,6 +7817,23 @@ export type Database = {
       }
       lookup_invitation: {
         Args: { lookup_invitation_token: string }
+        Returns: Json
+      }
+      merge_people_transaction: {
+        Args: {
+          p_account_id: string
+          p_evidence_count: number
+          p_facet_count: number
+          p_interview_count: number
+          p_merged_by: string
+          p_project_id: string
+          p_reason: string
+          p_source_person_data: Json
+          p_source_person_id: string
+          p_source_person_name: string
+          p_target_person_id: string
+          p_target_person_name: string
+        }
         Returns: Json
       }
       process_embedding_queue: { Args: never; Returns: string }

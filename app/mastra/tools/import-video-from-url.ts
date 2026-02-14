@@ -12,13 +12,13 @@ import { createTool } from "@mastra/core/tools";
 import { tasks } from "@trigger.dev/sdk";
 import consola from "consola";
 import { z } from "zod";
-import type { importFromUrlTask } from "~/../src/trigger/interview/importFromUrl";
+import type { importFromUrlTask } from "../../../src/trigger/interview/importFromUrl";
 import {
 	type ExtractionResult,
 	extractAllMediaUrls,
 	isDirectMediaUrl,
 	isStreamingUrl,
-} from "~/utils/extractMediaUrl.server";
+} from "../../utils/extractMediaUrl.server";
 import { resolveProjectContext } from "./context-utils";
 
 export const importVideoFromUrlTool = createTool({

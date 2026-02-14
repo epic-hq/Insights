@@ -37,7 +37,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server";
-import { createAndProcessAnalysisJob } from "~/utils/processInterviewAnalysis.server";
+import type { processInterviewOrchestratorV2 } from "./v2/orchestrator";
 import { uploadToR2 } from "~/utils/r2.server";
 import {
   isDirectMediaUrl,
@@ -834,28 +834,36 @@ export const importFromUrlTask = schemaTask({
           }
         }
 
-        // 6. Trigger the interview processing workflow using createAndProcessAnalysisJob
-        // This uses the same code path as the upload screen and chat agent
+        // 6. Trigger the v2 interview processing workflow directly
         consola.info(`Triggering interview workflow for: ${defaultTitle}`);
 
-        const runInfo = await createAndProcessAnalysisJob({
-          interviewId: interview.id,
-          transcriptData: { needs_transcription: true },
-          customInstructions: "",
-          adminClient: client,
-          mediaUrl: actualR2Key,
-          initiatingUserId: userId,
-          participantName: participantName ?? null,
-          participantOrganization: participantOrganization ?? null,
-          segment: participantSegment ?? null,
-        });
+        const handle = await tasks.trigger<typeof processInterviewOrchestratorV2>(
+          "interview.v2.orchestrator",
+          {
+            analysisJobId: interview.id,
+            existingInterviewId: interview.id,
+            metadata: {
+              accountId,
+              projectId,
+              userId: userId ?? undefined,
+              interviewTitle: interview.title ?? undefined,
+              fileName: interview.original_filename ?? undefined,
+              participantName: participantName ?? undefined,
+              participantOrganization: participantOrganization ?? undefined,
+              segment: participantSegment ?? undefined,
+            },
+            transcriptData: { needs_transcription: true },
+            mediaUrl: actualR2Key,
+            userCustomInstructions: "",
+          },
+        );
 
         consola.success(`✅ Import complete: ${defaultTitle}`);
         results.push({
           url,
           success: true,
           interviewId: interview.id,
-          triggerRunId: runInfo.runId,
+          triggerRunId: handle.id,
         });
       } catch (error) {
         consola.error(`Error processing ${url}:`, error);

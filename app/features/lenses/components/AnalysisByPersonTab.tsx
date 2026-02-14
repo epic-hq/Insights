@@ -42,6 +42,7 @@ type ByPersonTabProps = {
 		target_orgs: string[];
 		target_roles: string[];
 		target_size_ranges: string[];
+		target_facets: Array<{ facet_account_id: number; label: string }>;
 	};
 	icpDistribution: {
 		HIGH: number;
@@ -56,6 +57,14 @@ type ByPersonTabProps = {
 		withTitle: number;
 		withCompany: number;
 	};
+	availableFacets: Array<{
+		id: number;
+		label: string;
+		slug: string;
+		kindSlug: string;
+		kindLabel: string;
+		personCount: number;
+	}>;
 };
 
 function getInitials(name: string): string {
@@ -174,6 +183,7 @@ export function AnalysisByPersonTab({
 	icpScoredPeople,
 	organizations,
 	dataQuality,
+	availableFacets,
 }: ByPersonTabProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedPerson, setSelectedPerson] = useState<PersonAnalysisSummary | null>(null);
@@ -220,11 +230,13 @@ export function AnalysisByPersonTab({
 						target_orgs: icpCriteria.target_orgs,
 						target_roles: icpCriteria.target_roles,
 						target_company_sizes: icpCriteria.target_size_ranges,
+						target_facets: icpCriteria.target_facets,
 					}}
 					distribution={icpDistribution}
 					scoredPeople={icpScoredPeople}
 					organizations={organizations}
 					dataQuality={dataQuality}
+					availableFacets={availableFacets}
 				/>
 
 				{/* Search */}

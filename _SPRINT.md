@@ -86,9 +86,39 @@ Jot notes here as you work. Close beads with `bd close`. When you ask me to upda
 - email campaign start
 - usage visibility in PH
 
-* event promo for 2/19
+* event promo for 2/19 DONE
+* Interview page conversation lens key highlights link to evidence
 
+## Wednesday 2/11 - fixing bugs
+* Desktop app
+	* unified conversation pipeline flow
+	* build proc, node vs mastra bundle
+	* Signin/out
+	* confirmed multiperson, transcript, evidence showing
+* Main issues
+	* facets showing semantic searchable
+	* upload process QA 
+		* todo: Test multiple URLs
+	* ICP Facet selection
+	* Thumbnails not showing up **PAIN** not working
+		* havent had thumbnail_url since 1/26. file extension type is missing too in interviews table
+* AI Survey Feature (Personal Touch AI)
+	* make it smarter. identify what to ask whom
+	* eventually support sending from linked email
 
+## Thursday 2/12 - AI Survey
+* deliver a demo of the basic
+	* video how to
+
+Tee up: Marketing messages
+- home page needs to be elevated. Redesigned. DONE
+- improved onboarding workflow to WOW
+- standardized on blue and orange colors in HP
+- 
+Bugs:
+- upload multipart Auth header failure
+- time exceeded in trigger dev evidence pipeline. complete refactor, removing obttleneck by adding concurrency, removing facet catalog injection, usering smaller cheaper models for extraction.
+-  
 ## Parking Lot (not this sprint)
 
 - Smarter agent loop / recommendation memory (next sprint) -- ha, kinda doing it now a bit.
@@ -96,6 +126,9 @@ Jot notes here as you work. Close beads with `bd close`. When you ask me to upda
 - Gen-UI component expansion (backlog)
 - Code quality / lint cleanup (backlog)
 - PLG email sequences in Brevo (backlog)**NEED at least onboarding**
+- Akshay
+- plugin notion marketplace. 
+- customer insights agent
 
 NEW & RAW TODO:
 - Simple person detail should have a nicer experience. user wants to see pithy udnerstanding of the user and "next steps" field. But data quality is an issue, and nobody likes data entry into CRMs. HMW make this more pleasant and useful?  Solution ideas: Make display of key data more prominent. waste less space by rearranging the layout. have UX expert review it. Offer a Nice "Record updates" via voice widget prominently. Make frequent actions more obvious in the UI. Those would be: update, make a task, send a survey link or meeting request (& copy to email)

@@ -13,6 +13,7 @@ import type { ActionFunctionArgs } from "react-router";
 import { z } from "zod";
 import { createTask, createTaskLink } from "~/features/tasks/db";
 import { authenticateDesktopRequest } from "~/lib/auth/desktop-auth.server";
+import { validateAttributionParity } from "~/lib/evidence/personAttribution.server";
 import { resolveOrCreatePerson } from "~/lib/people/resolution.server";
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
@@ -24,7 +25,7 @@ const FinalizeRequestSchema = z.object({
 			z.object({
 				speaker: z.string(),
 				text: z.string(),
-				timestamp_ms: z.coerce.number().optional(),
+				timestamp_ms: z.coerce.number().nullish(),
 			})
 		)
 		.optional(),
@@ -33,8 +34,8 @@ const FinalizeRequestSchema = z.object({
 		.array(
 			z.object({
 				text: z.string(),
-				assignee: z.string().optional(),
-				due: z.string().optional(),
+				assignee: z.string().nullish(),
+				due: z.string().nullish(),
 			})
 		)
 		.optional(),
@@ -44,11 +45,11 @@ const FinalizeRequestSchema = z.object({
 			z.object({
 				person_key: z.string(),
 				person_name: z.string(),
-				role: z.string().optional(),
-				recall_participant_id: z.string().optional(),
-				recall_platform: z.string().optional(),
-				email: z.string().optional(),
-				is_host: z.boolean().optional(),
+				role: z.string().nullish(),
+				recall_participant_id: z.coerce.string().nullish(),
+				recall_platform: z.string().nullish(),
+				email: z.string().nullish(),
+				is_host: z.boolean().nullish(),
 			})
 		)
 		.optional(),
@@ -62,16 +63,16 @@ const FinalizeRequestSchema = z.object({
 		)
 		.optional(),
 	// Meeting metadata
-	duration_seconds: z.number().optional(),
-	platform: z.string().optional(),
-	meeting_title: z.string().optional(),
+	duration_seconds: z.coerce.number().nullish(),
+	platform: z.string().nullish(),
+	meeting_title: z.string().nullish(),
 });
 
 type FinalizePerson = z.infer<typeof FinalizeRequestSchema>["people"] extends Array<infer T> ? T : never;
 
 const normalizeLookup = (value: string | null | undefined) => (value || "").toLowerCase().replace(/\s+/g, " ").trim();
 
-const toRelativeMs = (value: number | undefined, fallbackMs: number) => {
+const toRelativeMs = (value: number | null | undefined, fallbackMs: number) => {
 	if (typeof value !== "number" || Number.isNaN(value)) {
 		return fallbackMs;
 	}
@@ -85,7 +86,7 @@ const estimateTurnDurationMs = (text: string) => {
 	return Math.max(1200, Math.min(12000, estimated || 1200));
 };
 
-const parseDueDate = (dueText: string | undefined): string | null => {
+const parseDueDate = (dueText: string | null | undefined): string | null => {
 	if (!dueText) return null;
 
 	const now = new Date();
@@ -112,7 +113,7 @@ const parseDueDate = (dueText: string | undefined): string | null => {
 const getErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 function buildTranscriptPayload(
-	transcript: Array<{ speaker: string; text: string; timestamp_ms?: number }>,
+	transcript: Array<{ speaker: string; text: string; timestamp_ms?: number | null }>,
 	durationSeconds?: number
 ) {
 	const turns = transcript.filter((turn) => turn.text?.trim().length > 0);
@@ -334,9 +335,9 @@ export async function action({ request }: ActionFunctionArgs) {
 			});
 
 			if (interviewPeopleRows.length > 0) {
-				const { error: interviewPeopleError } = await supabase
-					.from("interview_people")
-					.upsert(interviewPeopleRows, { onConflict: "interview_id,person_id" });
+				const { error: interviewPeopleError } = await supabase.from("interview_people").upsert(interviewPeopleRows, {
+					onConflict: "interview_id,person_id",
+				});
 
 				if (interviewPeopleError) {
 					consola.warn("[desktop-finalize] Failed to upsert interview_people:", interviewPeopleError.message);
@@ -486,9 +487,9 @@ export async function action({ request }: ActionFunctionArgs) {
 						}
 
 						if (evidencePeopleRows.length > 0) {
-							const { error: evidencePeopleError } = await supabase
-								.from("evidence_people")
-								.upsert(evidencePeopleRows, { onConflict: "evidence_id,person_id,account_id" });
+							const { error: evidencePeopleError } = await supabase.from("evidence_people").upsert(evidencePeopleRows, {
+								onConflict: "evidence_id,person_id,account_id",
+							});
 
 							if (evidencePeopleError) {
 								consola.warn("[desktop-finalize] Failed to upsert evidence_people:", evidencePeopleError.message);
@@ -546,6 +547,19 @@ export async function action({ request }: ActionFunctionArgs) {
 			consola.error("[desktop-finalize] Status update failed:", statusError.message);
 		} else {
 			results.status_updated = true;
+		}
+
+		// 6. Validate person attribution parity (TrustCore check)
+		try {
+			const parityResult = await validateAttributionParity(supabase, interview_id, "desktop-finalize");
+			if (!parityResult.passed) {
+				consola.warn("[TrustCore] Person attribution parity check failed after finalize", {
+					interviewId: interview_id,
+					mismatches: parityResult.mismatches,
+				});
+			}
+		} catch (parityError: unknown) {
+			consola.error("[desktop-finalize] Parity validation failed:", getErrorMessage(parityError));
 		}
 
 		consola.info(`[desktop-finalize] Finalization complete for ${interview_id}`, results);

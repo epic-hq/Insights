@@ -4,7 +4,7 @@
  * Evidence items include "Verify" affordance that opens the verification drawer.
  */
 import { ArrowRight, Clock, ThumbsDown, ThumbsUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Badge } from "~/components/ui/badge";
 import { MediaPlayer } from "~/components/ui/MediaPlayer";
 import type { VoteCounts } from "~/features/annotations/db";
@@ -70,6 +70,31 @@ function formatTimestamp(seconds: number): string {
 	return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function getEvidenceSpeakerNames(item: Evidence): string[] {
+	const record = item as {
+		evidence_people?: Array<{ people?: { name?: string | null } | null }>;
+		anchors?: unknown;
+	};
+	const links = Array.isArray(record.evidence_people) ? record.evidence_people : [];
+	const names = links
+		.map((link) => link?.people?.name?.trim())
+		.filter((name): name is string => Boolean(name && name.length > 0));
+	if (names.length > 0) return Array.from(new Set(names));
+
+	const anchors = Array.isArray(record.anchors) ? record.anchors : [];
+	const anchorSpeakers = anchors
+		.map((anchor) => {
+			if (!anchor || typeof anchor !== "object") return null;
+			const speaker = (anchor as { speaker?: unknown; speaker_label?: unknown }).speaker;
+			if (typeof speaker === "string" && speaker.trim().length > 0) return speaker.trim();
+			const speakerLabel = (anchor as { speaker_label?: unknown }).speaker_label;
+			if (typeof speakerLabel === "string" && speakerLabel.trim().length > 0) return speakerLabel.trim();
+			return null;
+		})
+		.filter((name): name is string => Boolean(name && name.toLowerCase() !== "unknown speaker"));
+	return Array.from(new Set(anchorSpeakers));
+}
+
 interface Participant {
 	id: number;
 	role: string | null;
@@ -120,6 +145,7 @@ export function InterviewSourcePanel({
 	onClearHighlight,
 }: InterviewSourcePanelProps) {
 	const [playbackTime, setPlaybackTime] = useState<number | null>(null);
+	const evidenceScrollContainerId = useId();
 
 	const handleChapterClick = (seconds: number | null) => {
 		if (seconds !== null) {
@@ -132,7 +158,7 @@ export function InterviewSourcePanel({
 		console.log("[SourcePanel] Highlight triggered for:", highlightedEvidenceId);
 
 		const timer = setTimeout(() => {
-			const container = document.getElementById("evidence-scroll-container");
+			const container = document.getElementById(evidenceScrollContainerId);
 			const el = document.getElementById(`evidence-${highlightedEvidenceId}`);
 			console.log(
 				"[SourcePanel] Looking for element:",
@@ -163,7 +189,7 @@ export function InterviewSourcePanel({
 			clearTimeout(timer);
 			clearTimeout(clearTimer);
 		};
-	}, [highlightedEvidenceId, onClearHighlight]);
+	}, [highlightedEvidenceId, onClearHighlight, evidenceScrollContainerId]);
 
 	return (
 		<div className="space-y-6">
@@ -187,12 +213,13 @@ export function InterviewSourcePanel({
 			{evidence.length > 0 && onEvidenceSelect && (
 				<div className="space-y-3">
 					<h3 className="font-semibold text-base text-foreground">Evidence ({evidence.length})</h3>
-					<div className="max-h-[400px] space-y-2 overflow-y-auto pr-1" id="evidence-scroll-container">
+					<div className="max-h-[400px] space-y-2 overflow-y-auto pr-1" id={evidenceScrollContainerId}>
 						{evidence.map((item) => {
 							const seconds = extractAnchorSeconds(item.anchors);
 							const votes = evidenceVoteCounts?.[item.id];
 							const hasVotes = votes && (votes.upvotes > 0 || votes.downvotes > 0);
 							const isHighlighted = highlightedEvidenceId === item.id;
+							const speakerNames = getEvidenceSpeakerNames(item);
 
 							return (
 								<div
@@ -218,6 +245,11 @@ export function InterviewSourcePanel({
 									{/* Footer: topic, timestamp, votes, verify link */}
 									<div className="flex items-center justify-between gap-2">
 										<div className="flex items-center gap-2">
+											{speakerNames.length > 0 && (
+												<Badge variant="secondary" className="text-[10px] leading-tight">
+													{speakerNames.join(", ")}
+												</Badge>
+											)}
 											{item.topic && (
 												<Badge variant="outline" className="text-[10px] leading-tight">
 													{item.topic}

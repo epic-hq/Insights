@@ -1,8 +1,9 @@
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { createClient } from "@supabase/supabase-js";
+import { generateText } from "ai";
 import { z } from "zod";
-import { getLangfuseClient } from "~/lib/langfuse.server";
-import { llmAgent } from "../agents/llmAgent";
+import { openai } from "../../lib/billing/instrumented-openai.server";
+import { getLangfuseClient } from "../../lib/langfuse.server";
 
 const StateSchema = z.object({
 	name: z.string().optional(),
@@ -87,11 +88,23 @@ const MergeAnswerStep = createStep({
 
 		const nextKey = chooseNextKey(state);
 		if (!nextKey) {
-			return { state, assigned: false, assigned_key: null, message: clean, user_id };
+			return {
+				state,
+				assigned: false,
+				assigned_key: null,
+				message: clean,
+				user_id,
+			};
 		}
 
 		if (!looksValid) {
-			return { state, assigned: false, assigned_key: nextKey, message: clean, user_id };
+			return {
+				state,
+				assigned: false,
+				assigned_key: nextKey,
+				message: clean,
+				user_id,
+			};
 		}
 
 		// Basic inline cleanup for name: first token, capitalized
@@ -103,7 +116,13 @@ const MergeAnswerStep = createStep({
 		}
 
 		const newState = { ...state, [nextKey]: value };
-		return { state: newState, assigned: true, assigned_key: nextKey, message: clean, user_id };
+		return {
+			state: newState,
+			assigned: true,
+			assigned_key: nextKey,
+			message: clean,
+			user_id,
+		};
 	},
 });
 
@@ -133,10 +152,18 @@ const NormalizeAssignedStep = createStep({
 Fix spelling and grammar. Keep it short (max ~12 words). Do not add new facts.
 User input: "${message}"`;
 			const langfuse = getLangfuseClient();
-			const trace = (langfuse as any).trace?.({ name: "llm.normalize-assigned" });
+			const trace = (langfuse as any).trace?.({
+				name: "llm.normalize-assigned",
+			});
 			const gen = trace?.generation?.({ name: "llm.normalize-assigned" });
-			const { text } = await llmAgent.generate([{ role: "user", content: prompt }]);
-			gen?.update?.({ input: { assigned_key, promptLen: prompt.length }, output: { text } });
+			const { text } = await generateText({
+				model: openai("gpt-4o-mini"),
+				messages: [{ role: "user", content: prompt }],
+			});
+			gen?.update?.({
+				input: { assigned_key, promptLen: prompt.length },
+				output: { text },
+			});
 			gen?.end?.();
 			const cleaned = (text || state[assigned_key] || "").toString().trim();
 			const newState = { ...state, [assigned_key]: cleaned };
@@ -214,7 +241,11 @@ const SaveIfCompleteStep = createStep({
 
 			if (!user_id) {
 				// No user context; just return reply
-				return { reply, state: { ...state, completed: true } as any, completed: true };
+				return {
+					reply,
+					state: { ...state, completed: true } as any,
+					completed: true,
+				};
 			}
 
 			const { error } = await supabase.rpc("upsert_signup_data", {
@@ -231,7 +262,11 @@ const SaveIfCompleteStep = createStep({
 				};
 			}
 
-			return { reply, state: { ...state, completed: true } as any, completed: true };
+			return {
+				reply,
+				state: { ...state, completed: true } as any,
+				completed: true,
+			};
 		} catch {
 			return {
 				reply: `${reply} (Note: couldn't save right now)`,

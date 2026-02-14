@@ -189,6 +189,14 @@ export function RealtimeSession({ participantNames = [], projectId, interviewId 
 
 	// Refs for simulation
 	const simTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+	const getSimulationTimers = useCallback((): ReturnType<typeof setTimeout>[] => {
+		return Array.isArray(simTimersRef.current) ? simTimersRef.current : [];
+	}, []);
+
+	const clearSimulationTimers = useCallback(() => {
+		for (const timer of getSimulationTimers()) clearTimeout(timer);
+		simTimersRef.current = [];
+	}, [getSimulationTimers]);
 
 	// Scroll refs
 	const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -575,8 +583,7 @@ export function RealtimeSession({ participantNames = [], projectId, interviewId 
 	}, [addTurn, extractEvidence]);
 
 	const stopSimulation = useCallback(() => {
-		for (const timer of simTimersRef.current) clearTimeout(timer);
-		simTimersRef.current = [];
+		clearSimulationTimers();
 		if (durationTimerRef.current) {
 			clearInterval(durationTimerRef.current);
 			durationTimerRef.current = null;
@@ -585,7 +592,7 @@ export function RealtimeSession({ participantNames = [], projectId, interviewId 
 		if (allTurnsRef.current.length > lastExtractedCountRef.current) {
 			extractEvidence();
 		}
-	}, [extractEvidence]);
+	}, [extractEvidence, clearSimulationTimers]);
 
 	// ── Cleanup ─────────────────────────────────────────────────────────
 
@@ -606,9 +613,9 @@ export function RealtimeSession({ participantNames = [], projectId, interviewId 
 			}
 			if (durationTimerRef.current) clearInterval(durationTimerRef.current);
 			if (extractionTimerRef.current) clearTimeout(extractionTimerRef.current);
-			for (const timer of simTimersRef.current) clearTimeout(timer);
+			clearSimulationTimers();
 		};
-	}, []);
+	}, [clearSimulationTimers]);
 
 	// ── Render ──────────────────────────────────────────────────────────
 

@@ -45,11 +45,6 @@ test ExtractEvidence_SalesCall {
     ]
     chapters []
     language "en"
-    facet_catalog {
-      kinds []
-      facets []
-      version "test"
-    }
   }
 }
 
@@ -85,11 +80,6 @@ test ExtractEvidence_SupportConversation {
     ]
     chapters []
     language "en"
-    facet_catalog {
-      kinds []
-      facets []
-      version "test"
-    }
   }
 }
 
@@ -113,10 +103,5 @@ test ExtractEvidence_VoiceMemo {
     ]
     chapters []
     language "en"
-    facet_catalog {
-      kinds []
-      facets []
-      version "test"
-    }
   }
 }

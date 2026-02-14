@@ -16,6 +16,7 @@ type Counts = {
 
 	// Tasks
 	highPriorityTasks?: number;
+	surveys?: number;
 	surveyResponses?: number;
 
 	// Revenue (future)
@@ -49,6 +50,7 @@ export function useSidebarCounts(accountId?: string, projectId?: string, _workfl
 					organizationsResult,
 					opportunitiesResult,
 					highPriorityTasksResult,
+					surveysResult,
 					surveyResponsesResult,
 				] = await Promise.all([
 					// Count interviews
@@ -114,10 +116,19 @@ export function useSidebarCounts(accountId?: string, projectId?: string, _workfl
 						.eq("priority", 1)
 						.in("status", ["todo", "in_progress", "blocked", "review"]),
 
+					// Count surveys (research links)
+					supabase
+						.from("research_links")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
+
 					// Count survey responses (research link responses)
 					supabase
 						.from("research_link_responses")
-						.select("id, research_links!inner(project_id)", { count: "exact", head: true })
+						.select("id, research_links!inner(project_id)", {
+							count: "exact",
+							head: true,
+						})
 						.eq("research_links.project_id", projectId),
 				]);
 
@@ -143,6 +154,7 @@ export function useSidebarCounts(accountId?: string, projectId?: string, _workfl
 						organizations: organizationsResult.count || 0,
 						opportunities: opportunitiesResult.count || 0,
 						highPriorityTasks: highPriorityTasksResult.count || 0,
+						surveys: surveysResult.count || 0,
 						surveyResponses: surveyResponsesResult.count || 0,
 					});
 				}

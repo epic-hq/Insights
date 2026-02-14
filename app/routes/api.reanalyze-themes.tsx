@@ -11,8 +11,6 @@ const requestSchema = z.object({
 	interview_id: z.string().uuid(),
 });
 
-type EvidenceUnitInput = z.infer<typeof evidenceUnitsSchema>[number];
-
 function ensureArray(input: unknown): string[] | null {
 	if (Array.isArray(input)) {
 		const cleaned = input
@@ -78,16 +76,13 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		const transcriptFormatted = (interview.transcript_formatted as Record<string, unknown> | null) ?? {};
 		const sanitizedTranscript = safeSanitizeTranscriptPayload(transcriptFormatted);
-		const fullTranscript =
-			typeof sanitizedTranscript.full_transcript === "string"
-				? sanitizedTranscript.full_transcript
-				: typeof interview.transcript === "string"
-					? interview.transcript
-					: "";
 
 		// Get custom_instructions from conversation_analysis
-		const conversationAnalysis = (interview.conversation_analysis as any) || {};
-		const customInstructions = conversationAnalysis.custom_instructions ?? undefined;
+		const conversationAnalysis = (interview.conversation_analysis as Record<string, unknown> | null) ?? {};
+		const customInstructions =
+			typeof conversationAnalysis.custom_instructions === "string"
+				? conversationAnalysis.custom_instructions
+				: undefined;
 
 		const { data: evidenceRows, error: evidenceErr } = await userDb
 			.from("evidence")
@@ -170,7 +165,6 @@ export async function action({ request }: ActionFunctionArgs) {
 			: { data: [] };
 
 		let primaryPersonId = participantPersonId ?? peopleRows?.[0]?.id ?? null;
-		let primaryPerson = primaryPersonId ? (peopleRows?.find((person) => person.id === primaryPersonId) ?? null) : null;
 
 		if (!primaryPersonId) {
 			const fallbackName = fallbackPersonName({
@@ -194,15 +188,6 @@ export async function action({ request }: ActionFunctionArgs) {
 				return Response.json({ error: "Failed to ensure participant record" }, { status: 500 });
 			}
 			primaryPersonId = ensuredPerson.id;
-			primaryPerson = ensuredPerson as {
-				id: string;
-				name: string | null;
-				description: string | null;
-				role: string | null;
-				company: string | null;
-				segment: string | null;
-			};
-
 			const { error: linkErr } = await admin.from("interview_people").upsert(
 				{
 					interview_id: interviewId,
@@ -220,9 +205,6 @@ export async function action({ request }: ActionFunctionArgs) {
 		if (!primaryPersonId) {
 			return Response.json({ error: "Unable to resolve interview participant" }, { status: 500 });
 		}
-
-		const participantRole =
-			primaryPerson?.role ?? interviewPeopleRows?.find((row) => row.person_id === primaryPersonId)?.role ?? null;
 
 		const evidenceUnits = evidenceRows.map((row) => {
 			const evidenceId = row.id;
@@ -296,7 +278,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			fileName: (sanitizedTranscript?.original_filename as string | undefined) ?? undefined,
 		};
 
-		// Update conversation_analysis for reprocessing
+		// Update conversation_analysis for deferred reprocessing
 		await admin
 			.from("interviews")
 			.update({
@@ -305,8 +287,8 @@ export async function action({ request }: ActionFunctionArgs) {
 					...conversationAnalysis,
 					transcript_data: sanitizedTranscript,
 					custom_instructions: customInstructions ?? null,
-					status_detail: "Re-analyzing themes and personas",
-					current_step: "insights",
+					status_detail: "Re-running enrichment and attribution",
+					current_step: "enrich-person",
 					progress: 70,
 				},
 			})
@@ -314,8 +296,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		analysisJobId = interviewId; // Use interview ID as job ID
 
-		// Use v2 orchestrator with resumeFrom: "insights"
-		consola.info("Using v2 orchestrator with resumeFrom: 'insights'");
+		// Use v2 orchestrator deferred path starting at enrich-person
+		consola.info("Using v2 orchestrator with resumeFrom: 'enrich-person' (deferred pass)");
 
 		// Generate fresh presigned URL from R2 key if needed
 		let mediaUrlForTask = interview.media_url || "";
@@ -331,7 +313,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			}
 		}
 
-		// Store evidence units in workflow state so v2 orchestrator can use them
+		// Store evidence units in workflow state so deferred steps can reference them
 		await admin
 			.from("interviews")
 			.update({
@@ -343,7 +325,7 @@ export async function action({ request }: ActionFunctionArgs) {
 						evidenceUnits: validatedEvidenceUnits,
 						personId: primaryPersonId,
 						completedSteps: ["upload", "evidence"],
-						currentStep: "insights",
+						currentStep: "enrich-person",
 						lastUpdated: new Date().toISOString(),
 					},
 				},
@@ -357,7 +339,9 @@ export async function action({ request }: ActionFunctionArgs) {
 			mediaUrl: mediaUrlForTask,
 			existingInterviewId: interviewId,
 			userCustomInstructions: customInstructions ?? undefined,
-			resumeFrom: "insights", // Skip upload/transcription/evidence, start from insights
+			resumeFrom: "enrich-person",
+			skipSteps: ["upload", "evidence", "finalize"],
+			includeDeferredSteps: true,
 		});
 
 		// Store trigger_run_id in conversation_analysis
@@ -367,7 +351,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				conversation_analysis: {
 					...conversationAnalysis,
 					trigger_run_id: handle.id,
-					status_detail: "Analyzing themes and personas",
+					status_detail: "Running deferred enrichment and attribution",
 					progress: 75,
 				},
 			})
@@ -381,14 +365,14 @@ export async function action({ request }: ActionFunctionArgs) {
 		if (analysisJobId) {
 			const errorAnalysis = (
 				await admin.from("interviews").select("conversation_analysis").eq("id", interviewId).single()
-			).data?.conversation_analysis as any;
+			).data?.conversation_analysis as Record<string, unknown> | null;
 
 			await admin
 				.from("interviews")
 				.update({
 					status: "error",
 					conversation_analysis: {
-						...(errorAnalysis || {}),
+						...(errorAnalysis ?? {}),
 						status_detail: "Re-analyze themes failed",
 						last_error: message,
 					},

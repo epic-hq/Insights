@@ -1,3 +1,7 @@
+---
+tags:
+  - marketing
+---
 # UpSight Positioning Brief
 
 *Version: 1.0 | Created: 2026-01-17*

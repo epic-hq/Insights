@@ -30,8 +30,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
 	const { client: supabase } = getServerClient(request);
 	// Basic usage with default parameters
-	const result = await memory.listThreadsByResourceId({
-		resourceId: `signupAgent-${user.sub}`,
+	const result = await memory.listThreads({
+		filter: { resourceId: `signupAgent-${user.sub}` },
 		orderBy: { field: "createdAt", direction: "DESC" },
 		page: 0,
 		perPage: 100,
@@ -57,9 +57,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 	// Get messages in the V2 format (roughly equivalent to AI SDK's UIMessage format)
 	const { messages } = await memory.recall({
 		threadId: threadId,
-		selectBy: {
-			last: 50,
-		},
+		perPage: 50,
 	});
 	const aiv5Messages = convertMessages(messages).to("AIV5.UI") as UpsightMessage[];
 

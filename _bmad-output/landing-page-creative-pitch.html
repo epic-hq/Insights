@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>See Your People — UpSight Creative Direction</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Permanent+Marker&family=Inter:wght@300;400;500;600;700&family=Special+Elite&family=Caveat:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* ===========================================
+           THEME & VARIABLES
+           =========================================== */
+        :root {
+            --bg: #080808;
+            --bg-warm: #0e0c0a;
+            --text: #f5f0e8;
+            --text-dim: rgba(245,240,232,0.5);
+            --accent: #f97316;
+            --accent-glow: rgba(249,115,22,0.3);
+            --marker-red: #e11d48;
+            --marker-black: #1a1a18;
+            --cyan: #06b6d4;
+            --cyan-glow: rgba(6,182,212,0.4);
+            --cork: #c4a882;
+            --cream: #f5f0e1;
+            --red-string: #dc2626;
+
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-marker: 'Permanent Marker', cursive;
+            --font-body: 'Inter', system-ui, sans-serif;
+            --font-typewriter: 'Special Elite', 'Courier New', monospace;
+            --font-hand: 'Caveat', cursive;
+
+            --title-size: clamp(2rem, 6vw, 5rem);
+            --h2-size: clamp(1.5rem, 4vw, 3rem);
+            --h3-size: clamp(1.1rem, 2.5vw, 1.75rem);
+            --body-size: clamp(0.75rem, 1.3vw, 1.05rem);
+            --small-size: clamp(0.65rem, 1vw, 0.85rem);
+            --slide-pad: clamp(1.5rem, 4vw, 4rem);
+            --gap: clamp(0.75rem, 2vw, 2rem);
+
+            --ease: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* ===========================================
+           BASE
+           =========================================== */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { height: 100%; scroll-snap-type: y mandatory; scroll-behavior: smooth; overflow-x: hidden; }
+        body { font-family: var(--font-body); background: var(--bg); color: var(--text); height: 100%; overflow-x: hidden; }
+
+        .slide {
+            width: 100vw; height: 100vh; height: 100dvh;
+            overflow: hidden; scroll-snap-align: start;
+            display: flex; flex-direction: column;
+            position: relative; padding: var(--slide-pad);
+        }
+        .slide-content {
+            flex: 1; display: flex; flex-direction: column;
+            justify-content: center; max-height: 100%; overflow: hidden;
+        }
+
+        /* Reveal animations */
+        .r { opacity: 0; transform: translateY(24px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); }
+        .slide.visible .r { opacity: 1; transform: translateY(0); }
+        .slide.visible .r:nth-child(2) { transition-delay: 0.12s; }
+        .slide.visible .r:nth-child(3) { transition-delay: 0.24s; }
+        .slide.visible .r:nth-child(4) { transition-delay: 0.36s; }
+        .slide.visible .r:nth-child(5) { transition-delay: 0.48s; }
+        .slide.visible .r:nth-child(6) { transition-delay: 0.6s; }
+
+        /* Slide counter */
+        .slide-num {
+            position: absolute; top: var(--slide-pad); right: var(--slide-pad);
+            font-family: var(--font-body); font-size: var(--small-size);
+            color: var(--text-dim); font-weight: 300; letter-spacing: 0.1em;
+        }
+
+        /* Section label */
+        .section-label {
+            font-family: var(--font-body); font-size: var(--small-size);
+            text-transform: uppercase; letter-spacing: 0.2em;
+            color: var(--accent); font-weight: 500; margin-bottom: clamp(0.5rem, 1.5vw, 1.5rem);
+        }
+
+        /* Color swatches */
+        .palette { display: flex; gap: clamp(6px, 1vw, 12px); align-items: center; flex-wrap: wrap; }
+        .swatch {
+            width: clamp(28px, 4vw, 48px); height: clamp(28px, 4vw, 48px);
+            border-radius: 50%; border: 2px solid rgba(255,255,255,0.1);
+            position: relative;
+        }
+        .swatch-label {
+            font-size: clamp(0.5rem, 0.7vw, 0.65rem); color: var(--text-dim);
+            margin-top: 4px; text-align: center; font-family: var(--font-body);
+        }
+        .swatch-group { display: flex; flex-direction: column; align-items: center; }
+
+        /* Keyword tags */
+        .tags { display: flex; gap: clamp(4px, 0.8vw, 10px); flex-wrap: wrap; }
+        .tag {
+            padding: clamp(3px, 0.5vw, 6px) clamp(8px, 1.2vw, 16px);
+            border: 1px solid rgba(255,255,255,0.15); border-radius: 100px;
+            font-size: var(--small-size); color: var(--text-dim);
+            font-weight: 300; letter-spacing: 0.05em;
+        }
+
+        /* ===========================================
+           PERSON SILHOUETTES
+           =========================================== */
+        .sil {
+            position: absolute; display: flex; flex-direction: column;
+            align-items: center; transform: scale(var(--s, 1));
+            opacity: var(--o, 0.4); transition: opacity 0.4s, transform 0.4s;
+        }
+        .sil:hover { opacity: calc(var(--o, 0.4) + 0.2); }
+        .sil-h {
+            width: clamp(14px, 2vw, 22px); height: clamp(14px, 2vw, 22px);
+            border-radius: 50%; background: var(--c, #6b6560);
+        }
+        .sil-b {
+            width: clamp(22px, 3vw, 34px); height: clamp(30px, 4.2vw, 48px);
+            margin-top: -2px; border-radius: clamp(10px, 1.4vw, 16px) clamp(10px, 1.4vw, 16px) 3px 3px;
+            background: var(--c, #6b6560);
+        }
+
+        /* Featured person with polaroid frame */
+        .featured-wrap {
+            position: absolute; z-index: 10;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .polaroid {
+            background: #fff; padding: clamp(6px, 1vw, 12px);
+            padding-bottom: clamp(20px, 3vw, 40px);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.3);
+            transform: rotate(-2deg);
+        }
+        .polaroid-inner {
+            background: linear-gradient(135deg, #8a8070, #6b6560);
+            width: clamp(50px, 8vw, 90px); height: clamp(70px, 11vw, 130px);
+            border-radius: clamp(18px, 3vw, 32px) clamp(18px, 3vw, 32px) 4px 4px;
+            position: relative; display: flex; flex-direction: column; align-items: center;
+        }
+        .polaroid-head {
+            width: clamp(20px, 3.2vw, 36px); height: clamp(20px, 3.2vw, 36px);
+            border-radius: 50%; background: #a09888; margin-top: clamp(6px, 1vw, 12px);
+        }
+        .polaroid-body {
+            width: clamp(34px, 5.4vw, 62px); height: clamp(40px, 6.5vw, 76px);
+            margin-top: -2px; border-radius: clamp(14px, 2.2vw, 24px) clamp(14px, 2.2vw, 24px) 4px 4px;
+            background: #a09888;
+        }
+
+        /* ===========================================
+           ANNOTATIONS
+           =========================================== */
+        .anno {
+            position: absolute; white-space: nowrap; z-index: 20;
+            font-family: var(--font-marker); color: var(--marker-red);
+            font-size: clamp(0.6rem, 1.1vw, 0.95rem);
+            transform: rotate(var(--rot, -1deg));
+        }
+        .anno-label {
+            font-family: var(--font-body); font-size: clamp(0.5rem, 0.7vw, 0.6rem);
+            text-transform: uppercase; letter-spacing: 0.15em;
+            color: var(--accent); display: block; margin-bottom: 2px;
+        }
+        .anno-line {
+            position: absolute; height: 2px; background: var(--marker-red);
+            opacity: 0.6;
+        }
+
+        /* ===========================================
+           EVIDENCE BOARD STYLES
+           =========================================== */
+        .cork-bg {
+            background:
+                repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(160,130,90,0.03) 2px, rgba(160,130,90,0.03) 4px),
+                linear-gradient(135deg, #c4a882, #b8976e, #d4b896);
+            border-radius: 8px;
+        }
+        .pin {
+            width: clamp(10px, 1.4vw, 16px); height: clamp(10px, 1.4vw, 16px);
+            border-radius: 50%; background: radial-gradient(circle at 35% 35%, #f87171, #dc2626, #991b1b);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: absolute; z-index: 5;
+        }
+        .red-string {
+            position: absolute; height: 2px; background: var(--red-string);
+            opacity: 0.7; transform-origin: left center; z-index: 1;
+        }
+        .evidence-card {
+            background: #fff; padding: clamp(6px, 1vw, 10px);
+            padding-bottom: clamp(16px, 2.5vw, 32px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+            position: absolute;
+        }
+        .evidence-person {
+            width: clamp(45px, 7vw, 80px); height: clamp(55px, 9vw, 100px);
+            background: linear-gradient(135deg, #bbb, #999);
+            border-radius: clamp(16px, 2.5vw, 28px) clamp(16px, 2.5vw, 28px) 4px 4px;
+        }
+        .evidence-text {
+            font-family: var(--font-marker); color: var(--red-string);
+            font-size: clamp(0.5rem, 0.9vw, 0.75rem); position: absolute;
+        }
+        .evidence-type {
+            font-family: var(--font-typewriter); color: #444;
+            font-size: clamp(0.45rem, 0.7vw, 0.6rem); text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* ===========================================
+           X-RAY STYLES
+           =========================================== */
+        .xray-bg { background: #f8f9fa; border-radius: 8px; }
+        .xray-sil {
+            position: absolute; display: flex; flex-direction: column; align-items: center;
+        }
+        .xray-head {
+            width: clamp(22px, 3.5vw, 40px); height: clamp(22px, 3.5vw, 40px);
+            border-radius: 50%; background: #374151;
+        }
+        .xray-body {
+            width: clamp(36px, 5.5vw, 60px); height: clamp(50px, 8vw, 90px);
+            margin-top: -3px; border-radius: clamp(14px, 2.2vw, 24px) clamp(14px, 2.2vw, 24px) 4px 4px;
+            background: #374151;
+        }
+        .xray-anno {
+            position: absolute; font-family: var(--font-body); font-weight: 300;
+            font-size: clamp(0.55rem, 0.95vw, 0.8rem); color: var(--cyan);
+            text-shadow: 0 0 12px var(--cyan-glow), 0 0 24px rgba(6,182,212,0.2);
+            white-space: nowrap;
+        }
+        .xray-line {
+            position: absolute; height: 1px; background: var(--cyan); opacity: 0.5;
+        }
+        .xray-label {
+            font-size: clamp(0.4rem, 0.6vw, 0.5rem); text-transform: uppercase;
+            letter-spacing: 0.2em; color: rgba(6,182,212,0.6); display: block; margin-bottom: 2px;
+        }
+
+        /* ===========================================
+           HEADLINE STYLES
+           =========================================== */
+        .headline-option {
+            padding: clamp(0.6rem, 1.2vw, 1.2rem) 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            display: flex; align-items: baseline; gap: clamp(0.5rem, 1.5vw, 2rem);
+        }
+        .headline-num {
+            font-family: var(--font-body); font-size: var(--small-size);
+            color: var(--accent); font-weight: 600; min-width: 2em;
+        }
+
+        /* ===========================================
+           WIREFRAME STYLES
+           =========================================== */
+        .wire-section {
+            border: 1px solid rgba(255,255,255,0.15); border-radius: 6px;
+            padding: clamp(0.5rem, 1vw, 1rem); position: relative;
+            background: rgba(255,255,255,0.02);
+        }
+        .wire-label {
+            position: absolute; top: clamp(4px, 0.5vw, 8px); left: clamp(6px, 0.8vw, 12px);
+            font-size: clamp(0.45rem, 0.6vw, 0.55rem); text-transform: uppercase;
+            letter-spacing: 0.15em; color: var(--accent); font-weight: 600;
+        }
+
+        /* ===========================================
+           RESPONSIVE
+           =========================================== */
+        @media (max-height: 700px) {
+            :root { --slide-pad: clamp(1rem, 3vw, 2rem); --gap: clamp(0.5rem, 1.5vw, 1rem); }
+        }
+        @media (max-height: 500px) {
+            :root { --title-size: clamp(1.25rem, 5vw, 2rem); --h2-size: clamp(1rem, 3vw, 1.5rem); }
+            .slide-num, .section-label { display: none; }
+        }
+        @media (max-width: 600px) {
+            :root { --title-size: clamp(1.5rem, 8vw, 2.5rem); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .r { transition-duration: 0.2s; transform: none; }
+            html { scroll-behavior: auto; }
+        }
+
+        /* ===========================================
+           NAV DOTS
+           =========================================== */
+        .nav-dots {
+            position: fixed; right: clamp(8px, 1.5vw, 20px); top: 50%;
+            transform: translateY(-50%); z-index: 100; display: flex;
+            flex-direction: column; gap: 8px;
+        }
+        .nav-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: rgba(255,255,255,0.15); cursor: pointer;
+            transition: all 0.3s; border: none; padding: 0;
+        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
+        .nav-dot:hover { background: rgba(255,255,255,0.4); }
+
+        /* Progress bar */
+        .progress {
+            position: fixed; top: 0; left: 0; height: 2px;
+            background: var(--accent); z-index: 100; transition: width 0.3s;
+        }
+
+        /* Annotation comparison columns */
+        .anno-compare {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: clamp(0.5rem, 2vw, 2rem); height: 100%;
+        }
+        .anno-col {
+            display: flex; flex-direction: column; align-items: center;
+            padding: clamp(0.5rem, 1vw, 1.5rem); border-radius: 8px;
+            position: relative;
+        }
+
+        /* Mockup container */
+        .mockup-area {
+            position: relative; flex: 1; min-height: 0;
+            border-radius: 8px; overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<nav class="nav-dots" id="navDots"></nav>
+
+<!-- =============================================
+     SLIDE 1: TITLE
+     ============================================= -->
+<section class="slide" style="background: radial-gradient(ellipse at 30% 70%, rgba(249,115,22,0.08), transparent 60%), radial-gradient(ellipse at 70% 30%, rgba(225,29,72,0.05), transparent 50%), var(--bg);">
+    <span class="slide-num">01 / 13</span>
+    <div class="slide-content" style="align-items: center; text-align: center; gap: var(--gap);">
+        <p class="r section-label" style="color: var(--text-dim);">Creative Direction Proposal</p>
+        <h1 class="r" style="font-family: var(--font-display); font-size: var(--title-size); font-weight: 900; line-height: 1.1; max-width: 14ch;">
+            See Your <span style="color: var(--accent); font-style: italic;">People</span>
+        </h1>
+        <p class="r" style="font-size: clamp(0.9rem, 1.8vw, 1.3rem); color: var(--text-dim); max-width: 40ch; line-height: 1.5; font-weight: 300;">
+            A landing page redesign for UpSight.<br>Three directions. One emotion.
+        </p>
+        <div class="r" style="margin-top: clamp(1rem, 2vw, 2rem); display: flex; gap: 1rem; align-items: center;">
+            <span style="font-family: var(--font-marker); color: var(--marker-red); font-size: clamp(0.7rem, 1vw, 0.9rem); transform: rotate(-3deg); display: inline-block;">head / heart / hand</span>
+            <span style="color: var(--text-dim); font-size: var(--small-size);">&mdash; the annotation system</span>
+        </div>
+        <p class="r" style="font-size: var(--small-size); color: rgba(245,240,232,0.25); margin-top: auto; padding-bottom: 1rem;">
+            UpSight &bull; February 2026 &bull; Confidential
+        </p>
+    </div>
+</section>
+
+<!-- =============================================
+     SLIDE 2: THE PROBLEM
+     ============================================= -->
+<section class="slide" style="background: var(--bg);">
+    <span class="slide-num">02 / 13</span>
+    <div class="slide-content" style="gap: var(--gap);">
+        <p class="r section-label">The Problem</p>
+        <h2 class="r" style="font-family: var(--font-display); font-size: var(--h2-size); font-weight: 700; max-width: 20ch; line-height: 1.15;">
+            Every SaaS landing page looks like <span style="color: var(--text-dim); text-decoration: line-through;">every other one.</span>
+        </h2>
+        <div class="r" style="display: grid; grid-template-columns: 1fr auto 1fr; gap: clamp(1rem, 3vw, 3rem); align-items: center; margin-top: var(--gap);">
+            <!-- Generic SaaS -->
+            <div style="text-align: center;">
+                <div style="background: linear-gradient(135deg, #667eea22, #764ba222); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: clamp(1rem, 2vw, 2rem); display: flex; flex-direction: column; gap: 0.5rem; align-items: center;">
+                    <div style="width: 60%; height: clamp(6px, 0.8vw, 10px); background: rgba(255,255,255,0.1); border-radius: 4px;"></div>
+                    <div style="width: 80%; height: clamp(4px, 0.6vw, 6px); background: rgba(255,255,255,0.05); border-radius: 3px;"></div>
+                    <div style="display: flex; gap: 6px; margin-top: 0.5rem;">
+                        <div style="width: clamp(30px, 5vw, 60px); height: clamp(30px, 5vw, 60px); background: rgba(255,255,255,0.04); border-radius: 8px;"></div>
+                        <div style="width: clamp(30px, 5vw, 60px); height: clamp(30px, 5vw, 60px); background: rgba(255,255,255,0.04); border-radius: 8px;"></div>
+                        <div style="width: clamp(30px, 5vw, 60px); height: clamp(30px, 5vw, 60px); background: rgba(255,255,255,0.04); border-radius: 8px;"></div>
+                    </div>
+                </div>
+                <p style="margin-top: 0.5rem; font-size: var(--small-size); color: var(--text-dim);">Gradient hero. Feature cards. Benefit grid.<br><span style="opacity: 0.5;">Every. Single. Time.</span></p>
+            </div>
+            <!-- Arrow -->
+            <div style="font-size: clamp(1.5rem, 3vw, 2.5rem); color: var(--accent);">&rarr;</div>
+            <!-- Our vision -->
+            <div style="text-align: center;">
+                <div style="background: linear-gradient(135deg, #1a1a18, #2a2520); border: 1px solid rgba(249,115,22,0.2); border-radius: 12px; padding: clamp(1rem, 2vw, 2rem); position: relative; overflow: hidden;">
+                    <!-- Mini crowd hint -->
+                    <div style="display: flex; justify-content: center; gap: 4px; margin-bottom: 0.5rem; opacity: 0.3;">
+                        <div style="width: 8px; height: 8px; border-radius: 50%; background: #8a8070;"></div>
+                        <div style="width: 8px; height: 8px; border-radius: 50%; background: #8a8070;"></div>
+                        <div style="width: 8px; height: 8px; border-radius: 50%; background: #8a8070;"></div>
+                        <div style="width: 8px; height: 8px; border-radius: 50%; background: #8a8070;"></div>
+                        <div style="width: 8px; height: 8px; border-radius: 50%; background: #8a8070;"></div>
+                    </div>
+                    <!-- Featured person hint -->
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <div style="width: 16px; height: 16px; border-radius: 50%; background: var(--accent);"></div>
+                        <div style="width: 24px; height: 30px; margin-top: -2px; border-radius: 10px 10px 3px 3px; background: var(--accent);"></div>
+                    </div>
+                    <p style="font-family: var(--font-marker); color: var(--marker-red); font-size: clamp(0.55rem, 0.8vw, 0.7rem); margin-top: 0.5rem; transform: rotate(-2deg);">sees what others miss</p>
+                </div>
+                <p style="margin-top: 0.5rem; font-size: var(--small-size); color: var(--accent);">Emotion first. Humanity second.<br><span style="color: var(--text-dim);">Features never.</span></p>
+            </div>
+        </div>
+        <p class="r" style="font-size: var(--body-size); color: var(--text-dim); max-width: 55ch; line-height: 1.6; margin-top: var(--gap);">
+            The goal: a visitor scrolls once and feels <em>"oh&mdash;they help me understand my customer so I can get my customer."</em> Not a feature list. A <strong style="color: var(--text);">brand moment.</strong>
+        </p>
+    </div>
+</section>
+
+<!-- =============================================
+     SLIDE 3: DIRECTION A — MOOD BOARD
+     ============================================= -->
+<section class="slide" style="background: linear-gradient(135deg, #0e0c0a, #1a1714);">
+    <span class="slide-num">03 / 13</span>
+    <div class="slide-content" style="gap: var(--gap);">
+        <div class="r" style="display: flex; align-items: baseline; gap: clamp(0.5rem, 1.5vw, 1.5rem);">
+            <span class="section-label" style="margin-bottom: 0;">Direction A</span>
+            <h2 style="font-family: var(--font-display); font-size: var(--h2-size); font-weight: 900; font-style: italic;">&ldquo;The Street&rdquo;</h2>
+        </div>
+        <p class="r" style="font-size: var(--body-size); color: var(--text-dim); max-width: 60ch; line-height: 1.5;">
+            Cinematic. Editorial. A Manhattan crosswalk frozen in time&mdash;one person pulled forward like a Polaroid, their inner world written on them in Sharpie. Apple &ldquo;Shot on iPhone&rdquo; meets analog intelligence.
+        </p>
+
+        <div class="r" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); margin-top: 0.5rem;">
+            <!-- Left: Palette + Typography -->
+            <div style="display: flex; flex-direction: column; gap: var(--gap);">
+                <div>
+                    <p style="font-size: var(--small-size); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;">Color Palette</p>
+                    <div class="palette">
+                        <div class="swatch-group"><div class="swatch" style="background: #1a1a18;"></div><span class="swatch-label">Charcoal</span></div>
+                        <div class="swatch-group"><div class="swatch" style="background: #f5f0e8; border-color: rgba(0,0,0,0.1);"></div><span class="swatch-label">Warm White</span></div>
+                        <div class="swatch-group"><div class="swatch" style="background: #f97316;"></div><span class="swatch-label">Orange</span></div>
+                        <div class="swatch-group"><div class="swatch" style="background: #d4a574;"></div><span class="swatch-label">Tan</span></div>
+                        <div class="swatch-group"><div class="swatch" style="background: #e11d48;"></div><span class="swatch-label">Marker</span></div>
+                    </div>
+                </div>
+                <div>
+                    <p style="font-size: var(--small-size); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;">Typography</p>
+                    <p style="font-family: var(--font-display); font-size: clamp(1rem, 2vw, 1.5rem); font-weight: 900;">Playfair Display &mdash; Headlines</p>
+                    <p style="font-family: var(--font-marker); font-size: clamp(0.8rem, 1.5vw, 1.2rem); color: var(--marker-red); transform: rotate(-1deg); display: inline-block; margin: 0.3rem 0;">Permanent Marker &mdash; Annotations</p>
+                    <p style="font-family: var(--font-body); font-size: var(--body-size); font-weight: 300; color: var(--text-dim);">Inter Light &mdash; Body copy</p>
+                </div>
+            </div>
+            <!-- Right: Keywords + References -->
+            <div style="display: flex; flex-direction: column; gap: var(--gap);">
+                <div>
+                    <p style="font-size: var(--small-size); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;">Keywords</p>
+                    <div class="tags">
+                        <span class="tag">Cinematic</span>
+                        <span class="tag">Avedon Portraits</span>
+                        <span class="tag">Street Photography</span>
+                        <span class="tag">Analog Intelligence</span>
+                        <span class="tag">Anti-SaaS</span>
+                    </div>
+                </div>
+                <div>
+                    <p style="font-size: var(--small-size); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;">Reference Energy</p>
+                    <p style="font-size: var(--body-size); color: var(--text-dim); line-height: 1.6;">
+                        Apple &ldquo;Shot on iPhone&rdquo; billboards<br>
+                        Nike &ldquo;Just Do It&rdquo; simplicity<br>
+                        Helmut Lang campaign typography<br>
+                        <span style="font-family: var(--font-marker); color: var(--marker-red); font-size: clamp(0.65rem, 1vw, 0.85rem);">the sharpie says: &ldquo;a human saw this&rdquo;</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- =============================================
+     SLIDE 4: DIRECTION A — VISUAL MOCKUP
+     ============================================= -->
+<section class="slide" style="background: linear-gradient(180deg, #0e0c0a 0%, #1a1714 40%, #252018 100%);">
+    <span class="slide-num">04 / 13</span>
+    <div class="slide-content" style="gap: clamp(0.5rem, 1vw, 1rem);">
+        <p class="r section-label">Direction A &mdash; Hero Concept</p>
+        <h3 class="r" style="font-family: var(--font-display); font-size: var(--h3-size); font-weight: 700; font-style: italic; margin-bottom: 0.25rem;">
+            &ldquo;What if you could read your customers&mdash;not their data?&rdquo;
+        </h3>
+
+        <!-- The crowd mockup -->
+        <div class="r mockup-area" style="background: linear-gradient(180deg, #12100e 0%, #1e1a16 50%, #2a2520 100%); border: 1px solid rgba(255,255,255,0.05);">
+            <!-- Atmospheric glow -->
+            <div style="position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 80%, rgba(249,115,22,0.06), transparent 60%);"></div>
+
+            <!-- Back row silhouettes -->
+            <div class="sil" style="--s: 0.55; --o: 0.2; --c: #4a4540; left: 8%; bottom: 55%;"><div class="sil-h"></div><div class="sil-b"></div></div>
+            <div class="sil" style="--s: 0.5; --o: 0.15; --c: #4a4540; left: 20%; bottom: 58%;"><div class="sil-h"></div><div class="sil-b"></div></div>
+            <div class="sil" style="--s: 0.6; --o: 0.2; --c: #504a44; left: 35%; bottom: 54%;"><div class="sil-h"></div><div class="sil-b"></div></div>
+            <div class="sil" style="--s: 0.5; --o: 0.15; --c: #4a4540; left: 62%; bottom: 57%;"><div class="sil-h"></div><div class="sil-b"></div></div>
+            <div class="sil" style="--s: 0.55; --o: 0.18; --c: #504a44; left: 78%; bottom: 55%;"><div class="sil-h"></div><div class="sil-b"></div></div>
+            <div class="sil" style="--s: 0.5; --o: 0.12; --c: #4a4540; left: 90%; bottom: 58%;"><div class="sil-h"></div><div class="sil-b"></div></div>
+
+            <!-- Middle row -->
+            <div class="sil" style="--s: 0.75; --o: 0.3; --c: #5a5550; left: 5%; bottom: 35%;"><div class="sil-h"></div><div class="sil-b"></div></div>
+            <div class="sil" style="--s: 0.8; --o: 0.35; --c: #605a54; left: 18%; bottom: 32%;"><div class="sil-h"></div><div class="sil-b"></div></div>
+            <div class="sil" style="--s: 0.7; --o: 0.28; --c: #5a5550; left: 70%; bottom: 34%;"><div class="sil-h"></div><div class="sil-b"></div></div>
+            <div class="sil" style="--s: 0.75; --o: 0.32; --c: #605a54; left: 84%; bottom: 33%;"><div class="sil-h"></div><div class="sil-b"></div></div>
+
+            <!-- Front row (flanking) -->
+            <div class="sil" style="--s: 1; --o: 0.45; --c: #6b6560; left: 10%; bottom: 10%;"><div class="sil-h"></div><div class="sil-b"></div></div>
+            <div class="sil" style="--s: 0.95; --o: 0.4; --c: #6b6560; left: 75%; bottom: 12%;"><div class="sil-h"></div><div class="sil-b"></div></div>
+
+            <!-- FEATURED PERSON (center, pulled forward with polaroid frame) -->
+            <div class="featured-wrap" style="left: 50%; bottom: 8%; transform: translateX(-50%);">
+                <div class="polaroid">
+                    <div class="polaroid-inner">
+                        <div class="polaroid-head"></div>
+                        <div class="polaroid-body"></div>
+                    </div>
+                </div>
+                <!-- Annotations -->
+                <div class="anno" style="top: clamp(-8px, -1vw, -14px); right: clamp(-140px, -18vw, -220px); --rot: -3deg;">
+                    <span class="anno-label">Thinks</span>
+                    &ldquo;We keep building what nobody asked for&rdquo;
+                </div>
+                <div class="anno" style="top: clamp(40px, 6vw, 70px); left: clamp(-155px, -20vw, -240px); --rot: 1deg; color: var(--accent);">
+                    <span class="anno-label" style="color: var(--marker-red);">Wants</span>
+                    Proof her research actually matters
+                </div>
+                <div class="anno" style="bottom: clamp(10px, 2vw, 24px); right: clamp(-125px, -16vw, -200px); --rot: -1deg;">
+                    <span class="anno-label">Uses</span>
+                    Dovetail, Notion, Google Docs
+                </div>
+            </div>
+
+            <!-- Subtle CTA hint -->
+            <div style="position: absolute; bottom: clamp(8px, 1.5vw, 16px); left: 50%; transform: translateX(-50%); font-size: var(--small-size); color: rgba(245,240,232,0.2); font-weight: 300; letter-spacing: 0.1em;">
+                hover to discover &bull; click to reveal
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- =============================================
+     SLIDE 5: DIRECTION B — MOOD BOARD
+     ============================================= -->
+<section class="slide" style="background: linear-gradient(135deg, #0e0c0a, #1a1714);">
+    <span class="slide-num">05 / 13</span>
+    <div class="slide-content" style="gap: var(--gap);">
+        <div class="r" style="display: flex; align-items: baseline; gap: clamp(0.5rem, 1.5vw, 1.5rem);">
+            <span class="section-label" style="margin-bottom: 0;">Direction B</span>
+            <h2 style="font-family: var(--font-display); font-size: var(--h2-size); font-weight: 900; font-style: italic;">&ldquo;The Evidence Board&rdquo;</h2>
+        </div>
+        <p class="r" style="font-size: var(--body-size); color: var(--text-dim); max-width: 60ch; line-height: 1.5;">
+            Detective meets designer. A beautiful evidence wall where each customer is pinned, connected by red strings to what they think, feel, and do. The &ldquo;A Beautiful Mind&rdquo; wall&mdash;but clean, modern, and intentional.
+        </p>
+
+        <div class="r" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); margin-top: 0.5rem;">
+            <div style="display: flex; flex-direction: column; gap: var(--gap);">
+                <div>
+                    <p style="font-size: var(--small-size); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;">Color Palette</p>
+                    <div class="palette">
+                        <div class="swatch-group"><div class="swatch" style="background: #f5f0e1; border-color: rgba(0,0,0,0.1);"></div><span class="swatch-label">Cream</span></div>
+                        <div class="swatch-group"><div class="swatch" style="background: #c4a882;"></div><span class="swatch-label">Cork</span></div>
+                        <div class="swatch-group"><div class="swatch" style="background: #dc2626;"></div><span class="swatch-label">Red String</span></div>
+                        <div class="swatch-group"><div class="swatch" style="background: #2d2d2d;"></div><span class="swatch-label">Typewriter</span></div>
+                        <div class="swatch-group"><div class="swatch" style="background: #8b7355;"></div><span class="swatch-label">Aged</span></div>
+                    </div>
+                </div>
+                <div>
+                    <p style="font-size: var(--small-size); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;">Typography</p>
+                    <p style="font-family: var(--font-typewriter); font-size: clamp(0.9rem, 1.6vw, 1.3rem); color: #c4a882;">Special Elite &mdash; Labels</p>
+                    <p style="font-family: var(--font-marker); font-size: clamp(0.8rem, 1.5vw, 1.2rem); color: var(--red-string); transform: rotate(-1deg); display: inline-block; margin: 0.3rem 0;">Permanent Marker &mdash; Annotations</p>
+                    <p style="font-family: var(--font-body); font-size: var(--body-size); font-weight: 300; color: var(--text-dim);">Inter Light &mdash; Body copy</p>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: var(--gap);">
+                <div>
+                    <p style="font-size: var(--small-size); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;">Keywords</p>
+                    <div class="tags">
+                        <span class="tag">Investigation</span>
+                        <span class="tag">Connecting Dots</span>
+                        <span class="tag">Cork &amp; String</span>
+                        <span class="tag">Analog Evidence</span>
+                    </div>
+                </div>
+                <div>
+                    <p style="font-size: var(--small-size); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;">Reference Energy</p>
+                    <p style="font-size: var(--body-size); color: var(--text-dim); line-height: 1.6;">
+                        &ldquo;A Beautiful Mind&rdquo; wall scene<br>
+                        True crime podcast branding<br>
+                        Vintage detective noir aesthetics<br>
+                        <span style="font-family: var(--font-typewriter); color: #c4a882; font-size: clamp(0.65rem, 1vw, 0.85rem);">CASE FILE: CUSTOMER-001</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- =============================================
+     SLIDE 6: DIRECTION B — VISUAL MOCKUP
+     ============================================= -->
+<section class="slide" style="background: var(--bg);">
+    <span class="slide-num">06 / 13</span>
+    <div class="slide-content" style="gap: clamp(0.5rem, 1vw, 1rem);">
+        <p class="r section-label">Direction B &mdash; Hero Concept</p>
+        <h3 class="r" style="font-family: var(--font-typewriter); font-size: var(--h3-size); color: #c4a882; letter-spacing: 0.05em;">
+            CASE FILE: Your Customers Are Telling You Everything.
+        </h3>
+
+        <!-- Evidence board mockup -->
+        <div class="r mockup-area cork-bg" style="border: 1px solid rgba(139,115,85,0.3);">
+            <!-- Red strings connecting the three cards -->
+            <div class="red-string" style="left: 28%; top: 35%; width: 20%; transform: rotate(15deg);"></div>
+            <div class="red-string" style="left: 50%; top: 30%; width: 22%; transform: rotate(-10deg);"></div>
+            <div class="red-string" style="left: 30%; top: 60%; width: 40%; transform: rotate(5deg);"></div>
+
+            <!-- Card 1: Sarah (left) -->
+            <div class="evidence-card" style="left: 10%; top: 15%; transform: rotate(-4deg);">
+                <div class="pin" style="top: -6px; left: 50%; transform: translateX(-50%);"></div>
+                <div class="evidence-person" style="background: linear-gradient(135deg, #b8a898, #9a8a7a);"></div>
+                <p class="evidence-type" style="margin-top: 4px; text-align: center;">Sarah &mdash; Product Lead</p>
+                <span class="evidence-text" style="top: clamp(10px, 2vw, 20px); right: clamp(-80px, -12vw, -130px); transform: rotate(2deg);">frustrated!</span>
+                <span class="evidence-text" style="bottom: clamp(20px, 3vw, 35px); right: clamp(-95px, -14vw, -150px); transform: rotate(-1deg); color: #8b4513;">wants: proof</span>
+            </div>
+
+            <!-- Card 2: Marcus (center) -->
+            <div class="evidence-card" style="left: 38%; top: 20%; transform: rotate(2deg);">
+                <div class="pin" style="top: -6px; left: 50%; transform: translateX(-50%);"></div>
+                <div class="evidence-person" style="background: linear-gradient(135deg, #a09080, #887868);"></div>
+                <p class="evidence-type" style="margin-top: 4px; text-align: center;">Marcus &mdash; Founder</p>
+                <span class="evidence-text" style="top: clamp(5px, 1.5vw, 14px); left: clamp(-75px, -11vw, -120px); transform: rotate(-3deg);">lost the signal</span>
+                <span class="evidence-text" style="bottom: clamp(15px, 2.5vw, 30px); left: clamp(-90px, -13vw, -145px); transform: rotate(1deg); color: #8b4513;">wants: alignment</span>
+            </div>
+
+            <!-- Card 3: Priya (right) -->
+            <div class="evidence-card" style="right: 10%; top: 12%; transform: rotate(-1deg);">
+                <div class="pin" style="top: -6px; left: 50%; transform: translateX(-50%);"></div>
+                <div class="evidence-person" style="background: linear-gradient(135deg, #c0b0a0, #a89888);"></div>
+                <p class="evidence-type" style="margin-top: 4px; text-align: center;">Priya &mdash; CS Lead</p>
+                <span class="evidence-text" style="top: clamp(8px, 1.8vw, 16px); right: clamp(-70px, -10vw, -110px); transform: rotate(2deg);">sees the churn</span>
+                <span class="evidence-text" style="bottom: clamp(18px, 2.8vw, 32px); right: clamp(-85px, -12vw, -135px); transform: rotate(-2deg); color: #8b4513;">wants: to be heard</span>
+            </div>
+
+            <!-- Center label -->
+            <div style="position: absolute; bottom: clamp(12px, 2.5vw, 24px); left: 50%; transform: translateX(-50%); font-family: var(--font-typewriter); font-size: clamp(0.6rem, 1vw, 0.85rem); color: #5a4a3a; letter-spacing: 0.1em; text-transform: uppercase; background: rgba(196,168,130,0.3); padding: 4px 12px; border-radius: 2px;">
+                Connected by UpSight
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- =============================================
+     SLIDE 7: DIRECTION C — MOOD BOARD
+     ============================================= -->
+<section class="slide" style="background: linear-gradient(135deg, #0e0c0a, #1a1714);">
+    <span class="slide-num">07 / 13</span>
+    <div class="slide-content" style="gap: var(--gap);">
+        <div class="r" style="display: flex; align-items: baseline; gap: clamp(0.5rem, 1.5vw, 1.5rem);">
+            <span class="section-label" style="margin-bottom: 0;">Direction C</span>
+            <h2 style="font-family: var(--font-display); font-size: var(--h2-size); font-weight: 900; font-style: italic;">&ldquo;The X-Ray&rdquo;</h2>
+        </div>
+        <p class="r" style="font-size: var(--body-size); color: var(--text-dim); max-width: 60ch; line-height: 1.5;">
+            High-tech. Minimal. X-ray vision for customer understanding. Clean silhouettes with glowing annotations that reveal what&rsquo;s beneath the surface. Medical imaging precision meets Apple Vision Pro aesthetics.
+        </p>
+
+        <div class="r" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); margin-top: 0.5rem;">
+            <div style="display: flex; flex-direction: column; gap: var(--gap);">
+                <div>
+                    <p style="font-size: var(--small-size); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;">Color Palette</p>
+                    <div class="palette">
+                        <div class="swatch-group"><div class="swatch" style="background: #f8f9fa; border-color: rgba(0,0,0,0.1);"></div><span class="swatch-label">White</span></div>
+                        <div class="swatch-group"><div class="swatch" style="background: #374151;"></div><span class="swatch-label">Charcoal</span></div>
+                        <div class="swatch-group"><div class="swatch" style="background: #06b6d4; box-shadow: 0 0 12px rgba(6,182,212,0.4);"></div><span class="swatch-label">Cyan</span></div>
+                        <div class="swatch-group"><div class="swatch" style="background: #3b82f6; box-shadow: 0 0 12px rgba(59,130,246,0.3);"></div><span class="swatch-label">Electric</span></div>
+                        <div class="swatch-group"><div class="swatch" style="background: #e5e7eb;"></div><span class="swatch-label">Light Gray</span></div>
+                    </div>
+                </div>
+                <div>
+                    <p style="font-size: var(--small-size); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;">Typography</p>
+                    <p style="font-family: var(--font-body); font-size: clamp(1rem, 2vw, 1.5rem); font-weight: 600;">Inter Semibold &mdash; Headlines</p>
+                    <p style="font-family: var(--font-body); font-size: clamp(0.8rem, 1.4vw, 1.1rem); font-weight: 300; color: var(--cyan); text-shadow: 0 0 8px var(--cyan-glow); margin: 0.3rem 0;">Inter Light + Glow &mdash; Annotations</p>
+                    <p style="font-family: var(--font-body); font-size: var(--body-size); font-weight: 300; color: var(--text-dim);">Inter Light &mdash; Body copy</p>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: var(--gap);">
+                <div>
+                    <p style="font-size: var(--small-size); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;">Keywords</p>
+                    <div class="tags">
+                        <span class="tag" style="border-color: rgba(6,182,212,0.3);">Transparency</span>
+                        <span class="tag" style="border-color: rgba(6,182,212,0.3);">Seeing Through</span>
+                        <span class="tag" style="border-color: rgba(6,182,212,0.3);">Medical Precision</span>
+                        <span class="tag" style="border-color: rgba(6,182,212,0.3);">Clean Tech</span>
+                    </div>
+                </div>
+                <div>
+                    <p style="font-size: var(--small-size); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;">Reference Energy</p>
+                    <p style="font-size: var(--body-size); color: var(--text-dim); line-height: 1.6;">
+                        Minority Report interface design<br>
+                        Apple Vision Pro spatial computing<br>
+                        Medical imaging aesthetics<br>
+                        <span style="font-family: var(--font-body); font-weight: 300; color: var(--cyan); text-shadow: 0 0 6px var(--cyan-glow); font-size: clamp(0.65rem, 1vw, 0.85rem);">scanning... insights detected</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- =============================================
+     SLIDE 8: DIRECTION C — VISUAL MOCKUP
+     ============================================= -->
+<section class="slide" style="background: var(--bg);">
+    <span class="slide-num">08 / 13</span>
+    <div class="slide-content" style="gap: clamp(0.5rem, 1vw, 1rem);">
+        <p class="r section-label" style="color: var(--cyan);">Direction C &mdash; Hero Concept</p>
+        <h3 class="r" style="font-family: var(--font-body); font-size: var(--h3-size); font-weight: 600; color: var(--text);">
+            See through the surface. Understand what drives them.
+        </h3>
+
+        <!-- X-Ray mockup -->
+        <div class="r mockup-area xray-bg" style="border: 1px solid #e5e7eb;">
+            <!-- Scan lines effect -->
+            <div style="position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(6,182,212,0.02) 3px, rgba(6,182,212,0.02) 4px); pointer-events: none;"></div>
+
+            <!-- Person 1: Left -->
+            <div class="xray-sil" style="left: 15%; bottom: 15%;">
+                <div class="xray-head"></div>
+                <div class="xray-body"></div>
+                <div class="xray-anno" style="top: clamp(-4px, -0.5vw, -8px); left: clamp(50px, 7vw, 80px);">
+                    <span class="xray-label">Thinks</span>
+                    &ldquo;Our roadmap is guesswork&rdquo;
+                </div>
+                <div class="xray-anno" style="top: clamp(32px, 5vw, 55px); left: clamp(50px, 7vw, 80px);">
+                    <span class="xray-label">Wants</span>
+                    Evidence-backed priorities
+                </div>
+                <div class="xray-anno" style="bottom: clamp(4px, 1vw, 10px); left: clamp(50px, 7vw, 80px);">
+                    <span class="xray-label">Uses</span>
+                    Notion + gut feeling
+                </div>
+            </div>
+
+            <!-- Person 2: Center -->
+            <div class="xray-sil" style="left: 42%; bottom: 18%; transform: scale(1.15);">
+                <div class="xray-head"></div>
+                <div class="xray-body"></div>
+                <div class="xray-anno" style="top: clamp(-8px, -1vw, -14px); right: clamp(-140px, -18vw, -200px);">
+                    <span class="xray-label">Thinks</span>
+                    &ldquo;I heard this 3 months ago&rdquo;
+                </div>
+                <div class="xray-anno" style="top: clamp(35px, 5.5vw, 60px); right: clamp(-130px, -16vw, -190px);">
+                    <span class="xray-label">Wants</span>
+                    Team alignment on what to build
+                </div>
+                <div class="xray-anno" style="bottom: clamp(8px, 1.5vw, 16px); right: clamp(-110px, -14vw, -170px);">
+                    <span class="xray-label">Uses</span>
+                    Slack + Zoom + spreadsheets
+                </div>
+            </div>
+
+            <!-- Person 3: Right -->
+            <div class="xray-sil" style="right: 12%; bottom: 15%;">
+                <div class="xray-head"></div>
+                <div class="xray-body"></div>
+                <div class="xray-anno" style="top: clamp(-4px, -0.5vw, -8px); right: clamp(50px, 7vw, 80px); text-align: right;">
+                    <span class="xray-label">Thinks</span>
+                    &ldquo;Nobody listens to CS&rdquo;
+                </div>
+                <div class="xray-anno" style="top: clamp(32px, 5vw, 55px); right: clamp(50px, 7vw, 80px); text-align: right;">
+                    <span class="xray-label">Wants</span>
+                    Early warning with receipts
+                </div>
+                <div class="xray-anno" style="bottom: clamp(4px, 1vw, 10px); right: clamp(50px, 7vw, 80px); text-align: right;">
+                    <span class="xray-label">Uses</span>
+                    Intercom + hope
+                </div>
+            </div>
+
+            <!-- Scan indicator -->
+            <div style="position: absolute; top: clamp(8px, 1.5vw, 16px); right: clamp(8px, 1.5vw, 16px); font-family: var(--font-body); font-size: clamp(0.45rem, 0.65vw, 0.55rem); color: rgba(6,182,212,0.5); letter-spacing: 0.15em; text-transform: uppercase;">
+                UpSight Scan &bull; 3 Insights Detected
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- =============================================
+     SLIDE 9: ANNOTATION COMPARISON
+     ============================================= -->
+<section class="slide" style="background: var(--bg);">
+    <span class="slide-num">09 / 13</span>
+    <div class="slide-content" style="gap: clamp(0.5rem, 1vw, 1rem);">
+        <p class="r section-label">The Annotation System</p>
+        <h2 class="r" style="font-family: var(--font-display); font-size: clamp(1.2rem, 2.5vw, 2rem); font-weight: 700;">
+            Same person. Three visual languages.
+        </h2>
+
+        <div class="r anno-compare" style="flex: 1; min-height: 0;">
+            <!-- Column A: Sharpie -->
+            <div class="anno-col" style="background: linear-gradient(135deg, #1a1a18, #252018); border: 1px solid rgba(255,255,255,0.06);">
+                <p style="font-size: var(--small-size); color: var(--accent); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;">A: Sharpie</p>
+                <!-- Silhouette -->
+                <div style="display: flex; flex-direction: column; align-items: center; position: relative; flex: 1; justify-content: center;">
+                    <div style="width: clamp(20px, 3.5vw, 36px); height: clamp(20px, 3.5vw, 36px); border-radius: 50%; background: #8a8070;"></div>
+                    <div style="width: clamp(32px, 5vw, 52px); height: clamp(44px, 7vw, 72px); margin-top: -3px; border-radius: clamp(12px, 2vw, 20px) clamp(12px, 2vw, 20px) 4px 4px; background: #8a8070;"></div>
+                    <!-- Annotations -->
+                    <div style="position: absolute; top: clamp(-2px, 0, -4px); width: 100%; text-align: center;">
+                        <span style="font-family: var(--font-marker); color: var(--marker-red); font-size: clamp(0.5rem, 0.85vw, 0.7rem); transform: rotate(-3deg); display: inline-block;">&ldquo;frustrated&rdquo;</span>
+                    </div>
+                    <div style="position: absolute; top: 45%; width: 100%; text-align: center;">
+                        <span style="font-family: var(--font-marker); color: var(--accent); font-size: clamp(0.5rem, 0.85vw, 0.7rem); transform: rotate(1deg); display: inline-block;">wants proof</span>
+                    </div>
+                    <div style="position: absolute; bottom: clamp(8px, 2vw, 16px); width: 100%; text-align: center;">
+                        <span style="font-family: var(--font-marker); color: var(--marker-red); font-size: clamp(0.45rem, 0.75vw, 0.6rem); transform: rotate(-1deg); display: inline-block;">uses Notion</span>
+                    </div>
+                </div>
+                <p style="font-size: clamp(0.5rem, 0.7vw, 0.6rem); color: var(--text-dim); text-align: center; margin-top: 0.25rem;">Raw. Human. Anti-SaaS.</p>
+            </div>
+
+            <!-- Column B: Evidence -->
+            <div class="anno-col cork-bg" style="border: 1px solid rgba(139,115,85,0.3);">
+                <p style="font-size: var(--small-size); color: #5a4a3a; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem; font-family: var(--font-typewriter);">B: Evidence</p>
+                <div style="display: flex; flex-direction: column; align-items: center; position: relative; flex: 1; justify-content: center;">
+                    <!-- Polaroid frame -->
+                    <div style="background: white; padding: 4px; padding-bottom: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transform: rotate(1deg);">
+                        <div style="width: clamp(28px, 4.5vw, 48px); height: clamp(38px, 6vw, 64px); background: linear-gradient(135deg, #bbb, #999); border-radius: clamp(10px, 1.6vw, 18px) clamp(10px, 1.6vw, 18px) 3px 3px;"></div>
+                    </div>
+                    <!-- Red string annotations -->
+                    <div style="position: absolute; top: clamp(2px, 0.5vw, 6px); width: 100%; text-align: center;">
+                        <span style="font-family: var(--font-marker); color: var(--red-string); font-size: clamp(0.5rem, 0.85vw, 0.7rem); transform: rotate(-2deg); display: inline-block;">&ldquo;frustrated&rdquo;</span>
+                    </div>
+                    <div style="position: absolute; top: 47%; width: 100%; text-align: center;">
+                        <span style="font-family: var(--font-marker); color: #8b4513; font-size: clamp(0.5rem, 0.85vw, 0.7rem); display: inline-block;">wants proof</span>
+                    </div>
+                    <div style="position: absolute; bottom: clamp(8px, 2vw, 16px); width: 100%; text-align: center;">
+                        <span style="font-family: var(--font-typewriter); color: #5a4a3a; font-size: clamp(0.45rem, 0.7vw, 0.55rem);">TOOLS: Notion</span>
+                    </div>
+                    <!-- Pin -->
+                    <div style="position: absolute; top: clamp(16px, 3vw, 28px); left: 50%; transform: translateX(-50%); width: 8px; height: 8px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #f87171, #991b1b); box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
+                </div>
+                <p style="font-size: clamp(0.5rem, 0.7vw, 0.6rem); color: #5a4a3a; text-align: center; margin-top: 0.25rem;">Investigative. Warm. Tactile.</p>
+            </div>
+
+            <!-- Column C: X-Ray -->
+            <div class="anno-col xray-bg" style="border: 1px solid #e5e7eb;">
+                <p style="font-size: var(--small-size); color: var(--cyan); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;">C: X-Ray</p>
+                <div style="display: flex; flex-direction: column; align-items: center; position: relative; flex: 1; justify-content: center;">
+                    <div style="width: clamp(20px, 3.5vw, 36px); height: clamp(20px, 3.5vw, 36px); border-radius: 50%; background: #374151;"></div>
+                    <div style="width: clamp(32px, 5vw, 52px); height: clamp(44px, 7vw, 72px); margin-top: -3px; border-radius: clamp(12px, 2vw, 20px) clamp(12px, 2vw, 20px) 4px 4px; background: #374151;"></div>
+                    <!-- Glow annotations -->
+                    <div style="position: absolute; top: clamp(-2px, 0, -4px); width: 100%; text-align: center;">
+                        <span style="font-family: var(--font-body); font-weight: 300; color: var(--cyan); text-shadow: 0 0 10px var(--cyan-glow); font-size: clamp(0.5rem, 0.85vw, 0.7rem);">&ldquo;frustrated&rdquo;</span>
+                    </div>
+                    <div style="position: absolute; top: 45%; width: 100%; text-align: center;">
+                        <span style="font-family: var(--font-body); font-weight: 300; color: #3b82f6; text-shadow: 0 0 10px rgba(59,130,246,0.3); font-size: clamp(0.5rem, 0.85vw, 0.7rem);">wants proof</span>
+                    </div>
+                    <div style="position: absolute; bottom: clamp(8px, 2vw, 16px); width: 100%; text-align: center;">
+                        <span style="font-family: var(--font-body); font-weight: 300; color: var(--cyan); text-shadow: 0 0 8px var(--cyan-glow); font-size: clamp(0.45rem, 0.75vw, 0.6rem);">uses Notion</span>
+                    </div>
+                </div>
+                <p style="font-size: clamp(0.5rem, 0.7vw, 0.6rem); color: #6b7280; text-align: center; margin-top: 0.25rem;">Precise. Clinical. Futuristic.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- =============================================
+     SLIDE 10: HEADLINE EXPLORATION
+     ============================================= -->
+<section class="slide" style="background: var(--bg);">
+    <span class="slide-num">10 / 13</span>
+    <div class="slide-content" style="gap: var(--gap);">
+        <p class="r section-label">Headline Exploration</p>
+        <h2 class="r" style="font-family: var(--font-display); font-size: clamp(1.2rem, 2.5vw, 2rem); font-weight: 700; margin-bottom: 0.5rem;">
+            Five ways to open the conversation.
+        </h2>
+
+        <div class="r" style="display: flex; flex-direction: column;">
+            <!-- Headline 1 - RECOMMENDED -->
+            <div class="headline-option" style="border-top: 1px solid rgba(255,255,255,0.06);">
+                <span class="headline-num">01</span>
+                <div style="flex: 1;">
+                    <p style="font-family: var(--font-display); font-size: clamp(1rem, 2.2vw, 1.8rem); font-weight: 700; font-style: italic; line-height: 1.2;">
+                        What if you could read your customers&mdash;<span style="color: var(--accent);">not their data?</span>
+                    </p>
+                    <span style="font-size: var(--small-size); color: var(--accent); font-weight: 500;">RECOMMENDED</span>
+                </div>
+            </div>
+            <!-- Headline 2 -->
+            <div class="headline-option">
+                <span class="headline-num">02</span>
+                <p style="font-family: var(--font-display); font-size: clamp(1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.2;">
+                    They told you everything. <span style="color: var(--text-dim);">You forgot.</span>
+                </p>
+            </div>
+            <!-- Headline 3 -->
+            <div class="headline-option">
+                <span class="headline-num">03</span>
+                <p style="font-family: var(--font-display); font-size: clamp(1rem, 2.2vw, 1.8rem); font-weight: 400; line-height: 1.2;">
+                    You already talk to your customers. <em>Do you <span style="text-decoration: underline; text-decoration-color: var(--accent);">see</span> them?</em>
+                </p>
+            </div>
+            <!-- Headline 4 -->
+            <div class="headline-option">
+                <span class="headline-num">04</span>
+                <p style="font-family: var(--font-body); font-size: clamp(0.9rem, 2vw, 1.6rem); font-weight: 300; line-height: 1.2; letter-spacing: 0.02em;">
+                    Every person in the room heard something different.
+                </p>
+            </div>
+            <!-- Headline 5 -->
+            <div class="headline-option" style="border-bottom: none;">
+                <span class="headline-num">05</span>
+                <p style="font-family: var(--font-display); font-size: clamp(1rem, 2.2vw, 1.8rem); font-weight: 700; line-height: 1.2;">
+                    Behind every number is a person who <span style="font-family: var(--font-marker); color: var(--marker-red); transform: rotate(-1deg); display: inline-block;">told you what to build.</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- =============================================
+     SLIDE 11: PAGE ARCHITECTURE
+     ============================================= -->
+<section class="slide" style="background: var(--bg);">
+    <span class="slide-num">11 / 13</span>
+    <div class="slide-content" style="gap: var(--gap);">
+        <p class="r section-label">Page Architecture</p>
+        <h2 class="r" style="font-family: var(--font-display); font-size: clamp(1.2rem, 2.5vw, 2rem); font-weight: 700;">
+            Four sections. Not seven. <span style="color: var(--text-dim);">Emotion &rarr; Promise &rarr; Proof &rarr; Action.</span>
+        </h2>
+
+        <div class="r" style="display: grid; grid-template-rows: 2.5fr 0.8fr 1.5fr 1fr; gap: clamp(6px, 1vw, 12px); flex: 1; min-height: 0;">
+            <!-- Section 1: Hero -->
+            <div class="wire-section" style="background: linear-gradient(135deg, rgba(249,115,22,0.05), rgba(225,29,72,0.03)); display: flex; align-items: center; justify-content: center;">
+                <span class="wire-label">1. Hero &mdash; The Crowd</span>
+                <div style="text-align: center;">
+                    <p style="font-family: var(--font-display); font-size: clamp(0.7rem, 1.4vw, 1.1rem); font-style: italic; color: var(--text-dim);">Interactive crowd scene with annotation reveals</p>
+                    <p style="font-family: var(--font-marker); font-size: clamp(0.55rem, 0.9vw, 0.75rem); color: var(--marker-red); margin-top: 0.25rem;">head / heart / hand</p>
+                </div>
+            </div>
+            <!-- Section 2: Break line -->
+            <div class="wire-section" style="display: flex; align-items: center; justify-content: center; border-color: rgba(249,115,22,0.3);">
+                <span class="wire-label">2. Break Line</span>
+                <p style="font-family: var(--font-display); font-size: clamp(0.7rem, 1.4vw, 1.1rem); font-weight: 900; text-align: center;">
+                    &ldquo;They told you everything. You forgot.&rdquo;
+                </p>
+            </div>
+            <!-- Section 3: Three Promises -->
+            <div class="wire-section" style="display: flex; align-items: center; justify-content: center;">
+                <span class="wire-label">3. Three Promises</span>
+                <div style="display: flex; gap: clamp(1rem, 3vw, 3rem); text-align: center;">
+                    <div>
+                        <p style="font-size: clamp(0.65rem, 1.1vw, 0.9rem); font-weight: 600;">See what they think</p>
+                        <p style="font-size: var(--small-size); color: var(--text-dim);">Head</p>
+                    </div>
+                    <div>
+                        <p style="font-size: clamp(0.65rem, 1.1vw, 0.9rem); font-weight: 600;">Feel what they want</p>
+                        <p style="font-size: var(--small-size); color: var(--text-dim);">Heart</p>
+                    </div>
+                    <div>
+                        <p style="font-size: clamp(0.65rem, 1.1vw, 0.9rem); font-weight: 600;">Know what they do</p>
+                        <p style="font-size: var(--small-size); color: var(--text-dim);">Hand</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Section 4: CTA -->
+            <div class="wire-section" style="display: flex; align-items: center; justify-content: center; border-color: rgba(249,115,22,0.3);">
+                <span class="wire-label">4. Final CTA</span>
+                <div style="text-align: center;">
+                    <p style="font-family: var(--font-display); font-size: clamp(0.65rem, 1.2vw, 1rem); font-weight: 700;">&ldquo;Start with one project.&rdquo;</p>
+                    <div style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.3rem;">
+                        <span style="font-size: var(--small-size); background: var(--accent); color: var(--bg); padding: 2px 10px; border-radius: 4px;">Start Trial</span>
+                        <span style="font-size: var(--small-size); border: 1px solid rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 4px;">Get Demo</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- =============================================
+     SLIDE 12: THE RECOMMENDATION
+     ============================================= -->
+<section class="slide" style="background: radial-gradient(ellipse at 40% 60%, rgba(249,115,22,0.06), transparent 60%), var(--bg);">
+    <span class="slide-num">12 / 13</span>
+    <div class="slide-content" style="gap: var(--gap); align-items: center; text-align: center;">
+        <p class="r section-label">Our Recommendation</p>
+        <h2 class="r" style="font-family: var(--font-display); font-size: var(--h2-size); font-weight: 900; line-height: 1.15; max-width: 20ch;">
+            Direction A.<br><span style="font-style: italic; color: var(--accent);">&ldquo;The Street.&rdquo;</span>
+        </h2>
+        <div class="r" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); max-width: min(90vw, 700px); margin-top: 0.5rem;">
+            <div style="text-align: center;">
+                <p style="font-size: clamp(0.65rem, 1vw, 0.85rem); font-weight: 600; margin-bottom: 0.25rem; color: var(--accent);">Anti-SaaS</p>
+                <p style="font-size: var(--small-size); color: var(--text-dim); line-height: 1.5;">Every competitor has gradient cards and glassmorphism. A Sharpie on a real photo is an act of rebellion.</p>
+            </div>
+            <div style="text-align: center;">
+                <p style="font-size: clamp(0.65rem, 1vw, 0.85rem); font-weight: 600; margin-bottom: 0.25rem; color: var(--accent);">Human</p>
+                <p style="font-size: var(--small-size); color: var(--text-dim); line-height: 1.5;">The handwritten annotation says &ldquo;a human saw this.&rdquo; That mirrors the product truth: AI finds it, humans verify it.</p>
+            </div>
+            <div style="text-align: center;">
+                <p style="font-size: clamp(0.65rem, 1vw, 0.85rem); font-weight: 600; margin-bottom: 0.25rem; color: var(--accent);">Memorable</p>
+                <p style="font-size: var(--small-size); color: var(--text-dim); line-height: 1.5;">Visitors won't forget the Polaroid moment. It's a brand act, not a landing page. People share brand acts.</p>
+            </div>
+        </div>
+        <p class="r" style="font-size: var(--body-size); color: var(--text-dim); max-width: 50ch; line-height: 1.6;">
+            The Sharpie annotation can become UpSight's <strong style="color: var(--text);">visual brand language</strong>&mdash;product screenshots, blog headers, email, social. One system that says: <em>we added the insight layer that was always missing.</em>
+        </p>
+    </div>
+</section>
+
+<!-- =============================================
+     SLIDE 13: NEXT STEPS
+     ============================================= -->
+<section class="slide" style="background: var(--bg);">
+    <span class="slide-num">13 / 13</span>
+    <div class="slide-content" style="gap: var(--gap);">
+        <p class="r section-label">Next Steps</p>
+        <h2 class="r" style="font-family: var(--font-display); font-size: var(--h2-size); font-weight: 700;">
+            From concept to code.
+        </h2>
+
+        <div class="r" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); margin-top: 0.5rem;">
+            <div>
+                <p style="font-size: clamp(0.65rem, 1vw, 0.85rem); font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">To Build This</p>
+                <div style="display: flex; flex-direction: column; gap: clamp(0.3rem, 0.8vw, 0.6rem);">
+                    <div style="display: flex; gap: 0.5rem; align-items: baseline;">
+                        <span style="color: var(--accent); font-size: var(--small-size);">01</span>
+                        <p style="font-size: var(--body-size); color: var(--text-dim);">Select direction and lock creative brief</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: baseline;">
+                        <span style="color: var(--accent); font-size: var(--small-size);">02</span>
+                        <p style="font-size: var(--body-size); color: var(--text-dim);">Source photography or commission illustrations</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: baseline;">
+                        <span style="color: var(--accent); font-size: var(--small-size);">03</span>
+                        <p style="font-size: var(--body-size); color: var(--text-dim);">Design high-fidelity mockup in Figma</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: baseline;">
+                        <span style="color: var(--accent); font-size: var(--small-size);">04</span>
+                        <p style="font-size: var(--body-size); color: var(--text-dim);">Build interactive prototype (React + Framer Motion)</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: baseline;">
+                        <span style="color: var(--accent); font-size: var(--small-size);">05</span>
+                        <p style="font-size: var(--body-size); color: var(--text-dim);">Ship, test, iterate on engagement metrics</p>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <p style="font-size: clamp(0.65rem, 1vw, 0.85rem); font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">Key Decisions</p>
+                <div style="display: flex; flex-direction: column; gap: clamp(0.3rem, 0.8vw, 0.6rem);">
+                    <div style="display: flex; gap: 0.5rem; align-items: baseline;">
+                        <span style="color: var(--marker-red);">&bull;</span>
+                        <p style="font-size: var(--body-size); color: var(--text-dim);"><strong style="color: var(--text);">Photography vs. illustration?</strong> Real photos = maximum emotional impact</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: baseline;">
+                        <span style="color: var(--marker-red);">&bull;</span>
+                        <p style="font-size: var(--body-size); color: var(--text-dim);"><strong style="color: var(--text);">3 or 5 characters?</strong> Start with 3 for focused storytelling</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: baseline;">
+                        <span style="color: var(--marker-red);">&bull;</span>
+                        <p style="font-size: var(--body-size); color: var(--text-dim);"><strong style="color: var(--text);">Static or animated?</strong> Subtle parallax + hover reveals recommended</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: baseline;">
+                        <span style="color: var(--marker-red);">&bull;</span>
+                        <p style="font-size: var(--body-size); color: var(--text-dim);"><strong style="color: var(--text);">Mobile adaptation?</strong> Tap to reveal instead of hover, swipe between people</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="r" style="text-align: center; margin-top: auto; padding-top: 0.5rem;">
+            <p style="font-family: var(--font-display); font-size: clamp(0.9rem, 1.8vw, 1.4rem); font-style: italic; color: var(--text-dim);">
+                &ldquo;What if you could read your customers&mdash;not their data?&rdquo;
+            </p>
+            <p style="font-size: var(--small-size); color: rgba(245,240,232,0.3); margin-top: 0.5rem;">
+                UpSight &bull; Customer truth, connected.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- ===========================================
+     JAVASCRIPT
+     =========================================== -->
+<script>
+    /* Intersection Observer for scroll-triggered animations */
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                updateNav(entry.target);
+            }
+        });
+    }, { threshold: 0.3 });
+
+    document.querySelectorAll('.slide').forEach(s => observer.observe(s));
+
+    /* Navigation dots */
+    const slides = document.querySelectorAll('.slide');
+    const navDots = document.getElementById('navDots');
+    slides.forEach((s, i) => {
+        const dot = document.createElement('button');
+        dot.className = 'nav-dot';
+        dot.setAttribute('aria-label', `Slide ${i + 1}`);
+        dot.onclick = () => s.scrollIntoView({ behavior: 'smooth' });
+        navDots.appendChild(dot);
+    });
+
+    function updateNav(activeSlide) {
+        const idx = Array.from(slides).indexOf(activeSlide);
+        document.querySelectorAll('.nav-dot').forEach((d, i) => {
+            d.classList.toggle('active', i === idx);
+        });
+        /* Update progress bar */
+        const pct = ((idx + 1) / slides.length) * 100;
+        document.getElementById('progress').style.width = pct + '%';
+    }
+
+    /* Keyboard navigation */
+    document.addEventListener('keydown', (e) => {
+        const current = Array.from(slides).findIndex(s => s.classList.contains('visible'));
+        if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') {
+            e.preventDefault();
+            if (current < slides.length - 1) slides[current + 1].scrollIntoView({ behavior: 'smooth' });
+        }
+        if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+            e.preventDefault();
+            if (current > 0) slides[current - 1].scrollIntoView({ behavior: 'smooth' });
+        }
+    });
+
+    /* Mark first slide visible on load */
+    slides[0].classList.add('visible');
+    updateNav(slides[0]);
+</script>
+
+</body>
+</html>

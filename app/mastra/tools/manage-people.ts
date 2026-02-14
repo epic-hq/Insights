@@ -2,14 +2,15 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
+import { validateUUID } from "./context-utils";
 
 const toolInputSchema = z.object({
 	action: z.enum(["get", "list", "delete"]),
 	personId: z.string().nullish().describe("Required for get and delete actions"),
-	accountId: z.string().optional(),
-	projectId: z.string().optional(),
+	accountId: z.string().nullish(),
+	projectId: z.string().nullish(),
 	nameSearch: z.string().nullish().describe("Optional case-insensitive name search for list"),
 	limit: z.number().int().min(1).max(200).nullish().describe("Max rows for list (default 50)"),
 	dryRun: z.boolean().nullish().describe("For delete: return what would be deleted without mutating"),
@@ -110,8 +111,9 @@ export const managePeopleTool = createTool({
 		const runtime_account_id = context?.requestContext?.get?.("account_id") as string | undefined;
 		const runtime_project_id = context?.requestContext?.get?.("project_id") as string | undefined;
 
-		const resolved_account_id = account_override || runtime_account_id;
-		const resolved_project_id = project_override || runtime_project_id;
+		const resolved_account_id = validateUUID(account_override || runtime_account_id, "accountId", "manage-people");
+		const resolved_project_id = validateUUID(project_override || runtime_project_id, "projectId", "manage-people");
+		const validated_person_id = personId ? validateUUID(personId, "personId", "manage-people") : null;
 
 		if (!resolved_account_id || !resolved_project_id) {
 			return {
@@ -123,8 +125,12 @@ export const managePeopleTool = createTool({
 
 		try {
 			if (action === "get") {
-				if (!personId) {
-					return { success: false, message: "personId is required for get.", person: null };
+				if (!validated_person_id) {
+					return {
+						success: false,
+						message: "personId is required for get and must be a valid UUID.",
+						person: null,
+					};
 				}
 
 				const { data: person_row, error } = await supabase
@@ -132,7 +138,7 @@ export const managePeopleTool = createTool({
 					.select(
 						"id, name, title, primary_email, segment, account_id, project_id, default_organization:organizations!default_organization_id(name)"
 					)
-					.eq("id", personId)
+					.eq("id", validated_person_id)
 					.eq("account_id", resolved_account_id)
 					.eq("project_id", resolved_project_id)
 					.single();
@@ -148,7 +154,12 @@ export const managePeopleTool = createTool({
 						id: person_row.id,
 						name: person_row.name,
 						title: person_row.title,
-						company: (person_row.default_organization as { name: string | null } | null)?.name ?? null,
+						company:
+							(
+								person_row.default_organization as {
+									name: string | null;
+								} | null
+							)?.name ?? null,
 						primary_email: person_row.primary_email,
 						segment: person_row.segment,
 					},
@@ -187,7 +198,11 @@ export const managePeopleTool = createTool({
 					message: `Found ${people_rows?.length || 0} people.`,
 					people:
 						(
-							people_rows as Array<PersonListRow & { default_organization?: { name: string | null } | null }> | null
+							people_rows as Array<
+								PersonListRow & {
+									default_organization?: { name: string | null } | null;
+								}
+							> | null
 						)?.map((row) => ({
 							id: row.id,
 							name: row.name,
@@ -200,14 +215,18 @@ export const managePeopleTool = createTool({
 			}
 
 			if (action === "delete") {
-				if (!personId) {
-					return { success: false, message: "personId is required for delete.", person: null };
+				if (!validated_person_id) {
+					return {
+						success: false,
+						message: "personId is required for delete and must be a valid UUID.",
+						person: null,
+					};
 				}
 
 				const { data: person_row, error: fetch_error } = await supabase
 					.from("people")
 					.select("id, name, account_id, project_id")
-					.eq("id", personId)
+					.eq("id", validated_person_id)
 					.eq("account_id", resolved_account_id)
 					.eq("project_id", resolved_project_id)
 					.maybeSingle();
@@ -236,7 +255,10 @@ export const managePeopleTool = createTool({
 							.eq("project_id", resolved_project_id)
 					: { data: [] as { id: string; title: string | null }[] };
 
-				const linked_interviews = (interview_rows ?? []).map((row) => ({ id: row.id, title: row.title }));
+				const linked_interviews = (interview_rows ?? []).map((row) => ({
+					id: row.id,
+					title: row.title,
+				}));
 				const total_links =
 					linked_counts.interview_people +
 					linked_counts.project_people +
@@ -337,7 +359,11 @@ export const managePeopleTool = createTool({
 				};
 			}
 
-			return { success: false, message: `Unknown action: ${action}`, person: null };
+			return {
+				success: false,
+				message: `Unknown action: ${action}`,
+				person: null,
+			};
 		} catch (error) {
 			consola.error("manage-people: unexpected failure", error);
 			return {

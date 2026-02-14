@@ -10,7 +10,6 @@ import {
 	userBillingContext,
 } from "~/lib/billing/instrumented-openai.server";
 import { recordUsageOnly } from "~/lib/billing/usage.server";
-import { getLangfuseClient } from "~/lib/langfuse.server";
 import { mastra } from "~/mastra";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
@@ -40,8 +39,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const { messages, system } = await request.json();
 
 	const resourceId = `interviewStatusAgent-${userId}-${interviewId}`;
-	const threads = await memory.listThreadsByResourceId({
-		resourceId,
+	const threads = await memory.listThreads({
+		filter: { resourceId },
 		orderBy: { field: "createdAt", direction: "DESC" },
 		page: 0,
 		perPage: 100,
@@ -139,14 +138,6 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				textLength: data.text?.length || 0,
 				stepsCount: data.steps?.length || 0,
 			});
-			const langfuse = getLangfuseClient();
-			const lfTrace = langfuse.trace?.({ name: "api.chat.interview" });
-			const gen = lfTrace?.generation?.({
-				name: "api.chat.interview",
-				input: messages,
-				output: data,
-			});
-			gen?.end?.();
 		},
 	});
 

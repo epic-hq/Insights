@@ -47,8 +47,9 @@ export function summarizeCollectorUsage(
 
 	const promptCostRate = costOptions?.promptCostPer1KTokens;
 	const completionCostRate = costOptions?.completionCostPer1KTokens;
-	if (typeof promptCostRate === "number" && typeof summary.inputTokens === "number") {
-		summary.promptCostUsd = Number(((summary.inputTokens / 1000) * promptCostRate).toFixed(6));
+	const promptTokenBase = summary.billedInputTokens ?? summary.inputTokens;
+	if (typeof promptCostRate === "number" && typeof promptTokenBase === "number") {
+		summary.promptCostUsd = Number(((promptTokenBase / 1000) * promptCostRate).toFixed(6));
 	}
 	if (typeof completionCostRate === "number" && typeof summary.outputTokens === "number") {
 		summary.completionCostUsd = Number(((summary.outputTokens / 1000) * completionCostRate).toFixed(6));
@@ -70,9 +71,9 @@ export function mapUsageToLangfuse(usage: BamlUsageSummary | null | undefined) {
 			: undefined);
 	const cachedTokens = usage.cachedInputTokens;
 	const payload: Record<string, number> = {};
-	if (typeof promptTokens === "number") payload.prompt_tokens = promptTokens;
-	if (typeof completionTokens === "number") payload.completion_tokens = completionTokens;
-	if (typeof totalTokens === "number") payload.total_tokens = totalTokens;
+	if (typeof promptTokens === "number") payload.promptTokens = promptTokens;
+	if (typeof completionTokens === "number") payload.completionTokens = completionTokens;
+	if (typeof totalTokens === "number") payload.totalTokens = totalTokens;
 	if (typeof cachedTokens === "number") payload.cached_tokens = cachedTokens;
 	return Object.keys(payload).length ? payload : undefined;
 }

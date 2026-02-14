@@ -17,6 +17,7 @@ export type ConversationAnalysisForDisplay = {
 		priority: "high" | "medium" | "low";
 		summary: string;
 		evidenceSnippets: string[];
+		supportingEvidenceIds: string[];
 		/** Matched evidence ID for cross-column linking (populated post-parse) */
 		evidenceId?: string;
 	}>;
@@ -53,8 +54,10 @@ function parseKeyTakeaways(raw: unknown): ConversationAnalysisForDisplay["keyTak
 				entry.priority === "high" || entry.priority === "medium" || entry.priority === "low"
 					? entry.priority
 					: "medium";
-			const evidenceSnippets = parseStringArray(entry.evidence_snippets);
-			return { priority, summary, evidenceSnippets };
+			const structuredSnippets = parseStringArray(entry.evidence_snippets);
+			const evidenceSnippets = structuredSnippets.length ? structuredSnippets : parseStringArray(entry.evidence);
+			const supportingEvidenceIds = parseStringArray(entry.supporting_evidence_ids);
+			return { priority, summary, evidenceSnippets, supportingEvidenceIds };
 		})
 		.filter(
 			(
@@ -63,6 +66,7 @@ function parseKeyTakeaways(raw: unknown): ConversationAnalysisForDisplay["keyTak
 				priority: "high" | "medium" | "low";
 				summary: string;
 				evidenceSnippets: string[];
+				supportingEvidenceIds: string[];
 			} => item !== null
 		);
 }

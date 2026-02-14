@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UpSight — Read Your Customers, Not Their Data</title>
+    <meta name="description" content="Voice of Customer platform with AI-powered surveys, interview guides, UX research synthesis, and evidence-backed customer intelligence. Turn conversations into decisions you can defend.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ===========================================
+           THEME
+           =========================================== */
+        :root {
+            --bg: #050508;
+            --bg2: #0a0a10;
+            --bg-warm: #08080c;
+            --text: #eeeef2;
+            --dim: rgba(238,238,242,0.5);
+            --dim2: rgba(238,238,242,0.25);
+            --amber: #f59e0b;
+            --amber-soft: rgba(245,158,11,0.15);
+            --amber-glow: rgba(245,158,11,0.3);
+            --sky: #38bdf8;
+            --font: 'Inter', system-ui, sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+            --title: clamp(2.2rem, 5.5vw, 4.5rem);
+            --h2: clamp(1.6rem, 4vw, 3.2rem);
+            --h3: clamp(1.1rem, 2.2vw, 1.6rem);
+            --body: clamp(0.85rem, 1.3vw, 1.05rem);
+            --sm: clamp(0.7rem, 1vw, 0.85rem);
+            --xs: clamp(0.55rem, 0.75vw, 0.68rem);
+            --pad: clamp(1.5rem, 4vw, 5rem);
+            --ease: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { height: 100%; scroll-behavior: smooth; }
+        body { font-family: var(--font); background: var(--bg); color: var(--text); overflow-x: hidden; line-height: 1.5; }
+        img { display: block; max-width: 100%; }
+
+        /* ===========================================
+           NAV
+           =========================================== */
+        .nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: clamp(10px, 1.5vw, 16px) var(--pad);
+            background: rgba(5,5,8,0.85); backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .nav-logo { font-weight: 800; font-size: clamp(1.05rem, 1.8vw, 1.35rem); letter-spacing: -0.03em; }
+        .nav-logo span { color: var(--amber); }
+        .nav-links { display: flex; gap: clamp(1rem, 2.5vw, 2rem); align-items: center; }
+        .nav-links a { color: var(--dim); font-size: var(--sm); text-decoration: none; font-weight: 400; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--text); }
+        .btn-primary {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: clamp(8px, 1vw, 12px) clamp(16px, 2.5vw, 28px);
+            background: var(--amber); color: var(--bg); font-weight: 700;
+            font-size: var(--sm); border: none; border-radius: 6px;
+            cursor: pointer; letter-spacing: 0.01em; text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px var(--amber-glow); }
+        .btn-outline {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: clamp(8px, 1vw, 12px) clamp(16px, 2.5vw, 28px);
+            background: transparent; color: var(--text); font-weight: 600;
+            font-size: var(--sm); border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px; cursor: pointer; text-decoration: none;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .btn-outline:hover { border-color: var(--amber); background: rgba(245,158,11,0.05); }
+
+        /* ===========================================
+           HERO
+           =========================================== */
+        .hero {
+            min-height: 100vh; min-height: 100dvh;
+            display: flex; flex-direction: column;
+            padding: calc(var(--pad) + 56px) var(--pad) var(--pad);
+            position: relative; overflow: hidden;
+        }
+        /* Crowd background */
+        .hero-crowd {
+            position: absolute; inset: 0; z-index: 0;
+        }
+        .hero-crowd img {
+            width: 100%; height: 100%; object-fit: cover;
+            filter: brightness(0.2) saturate(0.6);
+        }
+        .hero-crowd-fallback {
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0a0a12, #12100e, #0a0a12);
+        }
+        .hero-crowd::after {
+            content: ''; position: absolute; inset: 0;
+            background:
+                linear-gradient(180deg, rgba(5,5,8,0.5) 0%, rgba(5,5,8,0.2) 30%, rgba(5,5,8,0.4) 70%, rgba(5,5,8,0.95) 100%),
+                radial-gradient(ellipse at 50% 50%, rgba(245,158,11,0.03), transparent 60%);
+        }
+
+        /* Hero headline */
+        .hero-top {
+            text-align: center; position: relative; z-index: 2;
+            margin-bottom: clamp(1rem, 3vw, 2.5rem);
+        }
+        .hero-top .kicker {
+            font-family: var(--mono); font-size: var(--xs); color: var(--amber);
+            text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: clamp(0.5rem, 1vw, 1rem);
+            opacity: 0; transform: translateY(10px);
+            transition: opacity 0.6s 0.2s var(--ease), transform 0.6s 0.2s var(--ease);
+        }
+        .hero.visible .hero-top .kicker { opacity: 0.8; transform: translateY(0); }
+        .hero-top h1 {
+            font-size: var(--title); font-weight: 900; line-height: 1.05;
+            letter-spacing: -0.03em; max-width: 16ch; margin: 0 auto;
+            opacity: 0; transform: translateY(20px);
+            transition: opacity 0.8s 0.4s var(--ease), transform 0.8s 0.4s var(--ease);
+        }
+        .hero.visible .hero-top h1 { opacity: 1; transform: translateY(0); }
+        .hero-top h1 em { font-style: normal; color: var(--amber); }
+        .hero-top .sub {
+            font-size: clamp(0.95rem, 1.5vw, 1.2rem); color: var(--dim);
+            font-weight: 300; max-width: 40ch; margin: clamp(0.5rem, 1vw, 1rem) auto 0;
+            opacity: 0; transition: opacity 0.6s 0.6s var(--ease);
+        }
+        .hero.visible .hero-top .sub { opacity: 1; }
+
+        /* ===========================================
+           PORTRAIT GALLERY (the zoom-from-crowd)
+           =========================================== */
+        .portraits-area {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            position: relative; z-index: 2; min-height: 0;
+            gap: clamp(2rem, 5vw, 5rem);
+            padding: clamp(0.5rem, 1vw, 1rem) 0;
+        }
+
+        .portrait-scene {
+            position: relative; display: flex; flex-direction: column;
+            align-items: center; flex-shrink: 0;
+            opacity: 0; transform: translateY(30px) scale(0.95);
+            transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+        }
+        .hero.visible .portrait-scene { opacity: 1; transform: translateY(0) scale(1); }
+        .hero.visible .portrait-scene:nth-child(1) { transition-delay: 0.6s; }
+        .hero.visible .portrait-scene:nth-child(2) { transition-delay: 0.8s; }
+        .hero.visible .portrait-scene:nth-child(3) { transition-delay: 1.0s; }
+
+        /* Center portrait is larger */
+        .portrait-scene.center { z-index: 3; }
+        .portrait-scene.center .portrait-card {
+            width: clamp(160px, 20vw, 240px);
+        }
+        .portrait-scene.side .portrait-card {
+            width: clamp(120px, 15vw, 180px);
+        }
+
+        .portrait-card {
+            aspect-ratio: 3/4; border-radius: 6px; overflow: hidden;
+            box-shadow: 0 12px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08);
+            position: relative; cursor: pointer;
+            transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease);
+        }
+        .portrait-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(245,158,11,0.2), 0 0 30px rgba(245,158,11,0.08);
+        }
+        .portrait-card img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .portrait-card .fallback {
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #2a2a35, #1a1a25);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .portrait-card .fallback-icon {
+            width: 40%; height: 40%; opacity: 0.15;
+            border-radius: 50%; background: rgba(255,255,255,0.1);
+        }
+
+        /* Name tag under portrait */
+        .portrait-name {
+            margin-top: clamp(6px, 1vw, 12px);
+            font-size: var(--sm); font-weight: 600; text-align: center;
+        }
+        .portrait-role {
+            font-size: var(--xs); color: var(--dim); font-weight: 400;
+        }
+
+        /* ===========================================
+           ANNOTATION SYSTEM
+           Costanoa-style arcs from portrait to labels
+           =========================================== */
+        .anno-layer {
+            position: absolute; inset: 0; pointer-events: none; z-index: 4;
+            overflow: visible;
+        }
+
+        /* Labels positioned relative to portrait scene */
+        .p-label {
+            position: absolute; white-space: nowrap; pointer-events: auto;
+            opacity: 0; transition: opacity 0.5s var(--ease);
+        }
+        .hero.visible .p-label { opacity: 1; }
+        .hero.visible .portrait-scene:nth-child(1) .p-label { transition-delay: 1.2s; }
+        .hero.visible .portrait-scene:nth-child(2) .p-label { transition-delay: 1.0s; }
+        .hero.visible .portrait-scene:nth-child(3) .p-label { transition-delay: 1.4s; }
+
+        .p-label .key {
+            font-family: var(--mono); font-size: clamp(0.55rem, 0.8vw, 0.7rem);
+            text-transform: uppercase; letter-spacing: 0.18em;
+            color: var(--amber); display: block; margin-bottom: 1px; font-weight: 500;
+        }
+        .p-label .val {
+            font-size: clamp(0.72rem, 1.05vw, 0.9rem); font-weight: 400;
+            color: var(--text); line-height: 1.3;
+        }
+        .p-label .val em { color: var(--sky); font-style: normal; }
+
+        /* Connector lines (CSS-based for responsiveness) */
+        .p-label::before {
+            content: ''; position: absolute; top: 50%;
+            height: 1px; background: rgba(245,158,11,0.3);
+        }
+        .p-label.from-right::before { right: 100%; width: clamp(12px, 2vw, 28px); margin-right: 6px; }
+        .p-label.from-left::before { left: 100%; width: clamp(12px, 2vw, 28px); margin-left: 6px; }
+
+        /* Small dot at connection point */
+        .p-label.from-right::after, .p-label.from-left::after {
+            content: ''; position: absolute; top: 50%; transform: translateY(-50%);
+            width: 4px; height: 4px; border-radius: 50%; background: var(--amber); opacity: 0.6;
+        }
+        .p-label.from-right::after { right: calc(100% + clamp(12px, 2vw, 28px) + 4px); }
+        .p-label.from-left::after { left: calc(100% + clamp(12px, 2vw, 28px) + 4px); }
+
+        /* Hero CTA */
+        .hero-cta {
+            text-align: center; position: relative; z-index: 2;
+            margin-top: clamp(1rem, 2vw, 2rem);
+            opacity: 0; transform: translateY(15px);
+            transition: opacity 0.6s 1.4s var(--ease), transform 0.6s 1.4s var(--ease);
+        }
+        .hero.visible .hero-cta { opacity: 1; transform: translateY(0); }
+
+        /* ===========================================
+           BREAK SECTION
+           =========================================== */
+        .break-section {
+            padding: clamp(4rem, 10vw, 8rem) var(--pad);
+            text-align: center;
+            background: var(--bg);
+            border-top: 1px solid rgba(255,255,255,0.03);
+        }
+        .break-section h2 {
+            font-size: var(--h2); font-weight: 800; line-height: 1.2;
+            letter-spacing: -0.02em; max-width: 22ch; margin: 0 auto;
+        }
+        .break-section h2 span { color: var(--amber); }
+
+        /* ===========================================
+           HEAD / HEART / HAND — BIG
+           =========================================== */
+        .promises {
+            padding: clamp(4rem, 10vw, 8rem) var(--pad);
+            background: radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.03), transparent 50%), var(--bg);
+        }
+        .promises-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: clamp(2rem, 4vw, 4rem);
+            max-width: min(95vw, 1000px); margin: 0 auto;
+        }
+        .promise {
+            text-align: center;
+            padding: clamp(1.5rem, 3vw, 3rem) clamp(1rem, 2vw, 2rem);
+        }
+        .promise-icon-area {
+            margin-bottom: clamp(0.75rem, 1.5vw, 1.5rem);
+        }
+        .promise-icon-label {
+            font-family: var(--mono); font-size: clamp(0.65rem, 0.95vw, 0.8rem);
+            text-transform: uppercase; letter-spacing: 0.25em;
+            color: var(--amber); font-weight: 500;
+        }
+        .promise h3 {
+            font-size: clamp(1.4rem, 2.8vw, 2.2rem);
+            font-weight: 800; letter-spacing: -0.02em;
+            margin-bottom: clamp(0.5rem, 1vw, 1rem); line-height: 1.15;
+        }
+        .promise p {
+            font-size: clamp(0.85rem, 1.2vw, 1rem);
+            color: var(--dim); font-weight: 300; line-height: 1.65;
+            max-width: 28ch; margin: 0 auto;
+        }
+
+        /* ===========================================
+           CAPABILITIES (SEO / Progressive Disclosure)
+           =========================================== */
+        .capabilities {
+            padding: clamp(4rem, 10vw, 8rem) var(--pad);
+            background: var(--bg2);
+            border-top: 1px solid rgba(255,255,255,0.03);
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+        .cap-header {
+            text-align: center; margin-bottom: clamp(2rem, 4vw, 4rem);
+        }
+        .cap-header .kicker {
+            font-family: var(--mono); font-size: var(--xs);
+            color: var(--amber); text-transform: uppercase; letter-spacing: 0.2em;
+            margin-bottom: clamp(0.5rem, 1vw, 1rem);
+        }
+        .cap-header h2 {
+            font-size: var(--h2); font-weight: 800; letter-spacing: -0.02em;
+        }
+        .cap-header p {
+            font-size: var(--body); color: var(--dim); font-weight: 300;
+            max-width: 50ch; margin: clamp(0.5rem, 1vw, 1rem) auto 0;
+        }
+        .cap-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: clamp(1rem, 2vw, 2rem);
+            max-width: min(95vw, 1000px); margin: 0 auto;
+        }
+        .cap-card {
+            padding: clamp(1.2rem, 2vw, 2rem);
+            border: 1px solid rgba(255,255,255,0.05); border-radius: 8px;
+            background: rgba(255,255,255,0.01);
+            transition: border-color 0.3s, background 0.3s, transform 0.3s;
+        }
+        .cap-card:hover {
+            border-color: rgba(245,158,11,0.15);
+            background: rgba(245,158,11,0.02);
+            transform: translateY(-2px);
+        }
+        .cap-card h4 {
+            font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+            font-weight: 700; margin-bottom: clamp(0.3rem, 0.6vw, 0.5rem);
+            letter-spacing: -0.01em;
+        }
+        .cap-card p {
+            font-size: var(--sm); color: var(--dim); font-weight: 300; line-height: 1.6;
+        }
+        .cap-card .cap-tag {
+            font-family: var(--mono); font-size: var(--xs);
+            color: var(--amber); text-transform: uppercase;
+            letter-spacing: 0.12em; margin-bottom: clamp(0.4rem, 0.8vw, 0.75rem);
+            display: block; font-weight: 500;
+        }
+
+        /* ===========================================
+           CTA SECTION
+           =========================================== */
+        .cta-section {
+            padding: clamp(5rem, 12vw, 10rem) var(--pad);
+            text-align: center;
+            background:
+                radial-gradient(ellipse at 50% 70%, rgba(245,158,11,0.05), transparent 50%),
+                var(--bg);
+        }
+        .cta-section h2 {
+            font-size: var(--h2); font-weight: 900; letter-spacing: -0.02em;
+            margin-bottom: clamp(0.5rem, 1vw, 1rem);
+        }
+        .cta-section .sub {
+            font-size: clamp(0.95rem, 1.4vw, 1.15rem); color: var(--dim);
+            font-weight: 300; max-width: 40ch; margin: 0 auto clamp(1.5rem, 3vw, 2.5rem);
+        }
+        .cta-buttons {
+            display: flex; gap: clamp(0.75rem, 1.5vw, 1.25rem);
+            justify-content: center; flex-wrap: wrap;
+        }
+        .cta-section .tagline {
+            font-size: var(--sm); color: var(--dim2); margin-top: clamp(1.5rem, 3vw, 2.5rem);
+            font-weight: 300; letter-spacing: 0.04em;
+        }
+
+        /* ===========================================
+           FOOTER
+           =========================================== */
+        .footer {
+            padding: clamp(1.5rem, 3vw, 2rem) var(--pad);
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: var(--xs); color: var(--dim2);
+            border-top: 1px solid rgba(255,255,255,0.03);
+        }
+        .footer a { color: var(--dim2); text-decoration: none; transition: color 0.2s; }
+        .footer a:hover { color: var(--dim); }
+        .footer-links { display: flex; gap: clamp(1rem, 2vw, 2rem); }
+
+        /* ===========================================
+           REVEAL ANIMATION
+           =========================================== */
+        .rv {
+            opacity: 0; transform: translateY(20px);
+            transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+        }
+        .visible .rv { opacity: 1; transform: translateY(0); }
+        .visible .rv:nth-child(2) { transition-delay: 0.12s; }
+        .visible .rv:nth-child(3) { transition-delay: 0.24s; }
+        .visible .rv:nth-child(4) { transition-delay: 0.36s; }
+
+        /* ===========================================
+           RESPONSIVE
+           =========================================== */
+        @media (max-width: 768px) {
+            .portraits-area { flex-direction: column; gap: clamp(1.5rem, 4vw, 2.5rem); }
+            .portrait-scene.side .portrait-card { width: clamp(130px, 40vw, 180px); }
+            .portrait-scene.center .portrait-card { width: clamp(160px, 50vw, 220px); }
+            .p-label { display: none; }
+            .portrait-scene.center .p-label { display: block; }
+            .promises-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+            .cap-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+            .nav-links a:not(.btn-primary) { display: none; }
+        }
+        @media (max-width: 500px) {
+            .portrait-scene.side { display: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .rv, .portrait-scene, .hero-top h1, .hero-top .kicker, .hero-top .sub, .hero-cta, .p-label {
+                transition-duration: 0.15s; transition-delay: 0s !important;
+                opacity: 1; transform: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===========================================
+     NAV
+     =========================================== -->
+<nav class="nav">
+    <div class="nav-logo">Up<span>Sight</span></div>
+    <div class="nav-links">
+        <a href="#capabilities">Platform</a>
+        <a href="#cta">Pricing</a>
+        <a href="https://cal.com/rickmoy" class="btn-primary">Start Trial &rarr;</a>
+    </div>
+</nav>
+
+<!-- ===========================================
+     HERO: THE CROWD + ZOOM PORTRAITS
+     =========================================== -->
+<section class="hero" id="hero">
+    <!-- Crowd background photo -->
+    <div class="hero-crowd">
+        <img
+            src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1920&q=80"
+            alt="Team meeting"
+            loading="eager"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+        >
+        <div class="hero-crowd-fallback" style="display:none;"></div>
+    </div>
+
+    <!-- Headline -->
+    <div class="hero-top">
+        <p class="kicker">Customer Intelligence Platform</p>
+        <h1>Read your customers &mdash; <em>not their data.</em></h1>
+        <p class="sub">See what they think, feel, and do. Written right there, for your whole team.</p>
+    </div>
+
+    <!-- Portrait gallery — zoomed from the crowd -->
+    <div class="portraits-area">
+
+        <!-- PERSON 1: Sarah (left, side) -->
+        <div class="portrait-scene side">
+            <div class="portrait-card">
+                <img
+                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&h=530&q=80"
+                    alt="Sarah, Product Lead"
+                    loading="eager"
+                    onerror="this.style.display='none'; this.parentElement.querySelector('.fallback').style.display='flex';"
+                >
+                <div class="fallback" style="display:none;"><div class="fallback-icon"></div></div>
+            </div>
+            <div class="portrait-name">Sarah</div>
+            <div class="portrait-role">Product Lead, Series A</div>
+            <!-- Annotations -->
+            <div class="anno-layer">
+                <div class="p-label from-right" style="top: 12%; right: calc(100% + clamp(20px, 3vw, 40px));">
+                    <span class="key">Thinks</span>
+                    <span class="val">&ldquo;The roadmap is <em>guesswork</em>&rdquo;</span>
+                </div>
+                <div class="p-label from-right" style="top: 48%; right: calc(100% + clamp(20px, 3vw, 40px));">
+                    <span class="key">Wants</span>
+                    <span class="val">Evidence-backed priorities</span>
+                </div>
+                <div class="p-label from-right" style="bottom: 22%; right: calc(100% + clamp(20px, 3vw, 40px));">
+                    <span class="key">Uses</span>
+                    <span class="val"><em>Notion</em>, Linear, Slack</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PERSON 2: Marcus (center, featured) -->
+        <div class="portrait-scene center">
+            <div class="portrait-card">
+                <img
+                    src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=480&h=640&q=80"
+                    alt="Marcus, Founder"
+                    loading="eager"
+                    onerror="this.style.display='none'; this.parentElement.querySelector('.fallback').style.display='flex';"
+                >
+                <div class="fallback" style="display:none;"><div class="fallback-icon"></div></div>
+            </div>
+            <div class="portrait-name">Marcus</div>
+            <div class="portrait-role">Founder &amp; CEO</div>
+            <!-- Annotations -->
+            <div class="anno-layer">
+                <div class="p-label from-left" style="top: 10%; left: calc(100% + clamp(20px, 3vw, 40px));">
+                    <span class="key">Thinks</span>
+                    <span class="val">&ldquo;I heard this <em>3 months ago</em>&rdquo;</span>
+                </div>
+                <div class="p-label from-left" style="top: 45%; left: calc(100% + clamp(20px, 3vw, 40px));">
+                    <span class="key">Wants</span>
+                    <span class="val">Team aligned on <em>what to build</em></span>
+                </div>
+                <div class="p-label from-left" style="bottom: 20%; left: calc(100% + clamp(20px, 3vw, 40px));">
+                    <span class="key">Uses</span>
+                    <span class="val"><em>Zoom</em>, spreadsheets, memory</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PERSON 3: Priya (right, side) -->
+        <div class="portrait-scene side">
+            <div class="portrait-card">
+                <img
+                    src="https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&h=530&q=80"
+                    alt="Priya, CS Lead"
+                    loading="eager"
+                    onerror="this.style.display='none'; this.parentElement.querySelector('.fallback').style.display='flex';"
+                >
+                <div class="fallback" style="display:none;"><div class="fallback-icon"></div></div>
+            </div>
+            <div class="portrait-name">Priya</div>
+            <div class="portrait-role">Customer Success Lead</div>
+            <!-- Annotations -->
+            <div class="anno-layer">
+                <div class="p-label from-left" style="top: 12%; left: calc(100% + clamp(20px, 3vw, 40px));">
+                    <span class="key">Thinks</span>
+                    <span class="val">&ldquo;<em>Nobody</em> listens to CS&rdquo;</span>
+                </div>
+                <div class="p-label from-left" style="top: 48%; left: calc(100% + clamp(20px, 3vw, 40px));">
+                    <span class="key">Wants</span>
+                    <span class="val">Early warning with <em>receipts</em></span>
+                </div>
+                <div class="p-label from-left" style="bottom: 22%; left: calc(100% + clamp(20px, 3vw, 40px));">
+                    <span class="key">Uses</span>
+                    <span class="val"><em>Intercom</em>, HubSpot, hope</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hero CTA -->
+    <div class="hero-cta">
+        <a href="#" class="btn-primary" style="font-size: var(--body); padding: clamp(12px, 1.5vw, 16px) clamp(28px, 4vw, 48px);">
+            Start seeing your customers &rarr;
+        </a>
+    </div>
+</section>
+
+<!-- ===========================================
+     BREAK
+     =========================================== -->
+<section class="break-section" id="break">
+    <h2 class="rv">They&rsquo;re telling you everything.<br><span>Are you truly hearing them?</span></h2>
+</section>
+
+<!-- ===========================================
+     HEAD / HEART / HAND
+     =========================================== -->
+<section class="promises" id="promises">
+    <div class="promises-grid">
+        <div class="promise rv">
+            <div class="promise-icon-area">
+                <div class="promise-icon-label">// Head</div>
+            </div>
+            <h3>See what<br>they think</h3>
+            <p>Surface frustrations, beliefs, and objections from real conversations. Not surveys. Not guesses. Their words.</p>
+        </div>
+        <div class="promise rv">
+            <div class="promise-icon-area">
+                <div class="promise-icon-label">// Heart</div>
+            </div>
+            <h3>Feel what<br>they want</h3>
+            <p>Understand desires and motivations with evidence you can verify. Click any insight &mdash; see exactly who said it, when.</p>
+        </div>
+        <div class="promise rv">
+            <div class="promise-icon-area">
+                <div class="promise-icon-label">// Hand</div>
+            </div>
+            <h3>Know what<br>they do</h3>
+            <p>Map tools, workflows, and behaviors across your entire customer base. Patterns emerge in minutes, not weeks of synthesis.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ===========================================
+     CAPABILITIES (SEO + Progressive Disclosure)
+     =========================================== -->
+<section class="capabilities" id="capabilities">
+    <div class="cap-header">
+        <p class="kicker rv" style="font-family: var(--mono); font-size: var(--xs); color: var(--amber); text-transform: uppercase; letter-spacing: 0.2em;">One platform. Every touchpoint.</p>
+        <h2 class="rv">From conversation to conviction.</h2>
+        <p class="rv">Capture customer intelligence from every channel. Turn it into decisions your whole team can defend.</p>
+    </div>
+    <div class="cap-grid">
+        <div class="cap-card rv">
+            <span class="cap-tag">Capture</span>
+            <h4>Voice of Customer</h4>
+            <p>Ingest conversations from calls, meetings, support tickets, and field notes. Every customer touchpoint in one place.</p>
+        </div>
+        <div class="cap-card rv">
+            <span class="cap-tag">Engage</span>
+            <h4>AI-Powered Surveys</h4>
+            <p>Smart surveys with intelligent follow-up questions. Collect text, audio, and video responses. AI analyzes themes automatically.</p>
+        </div>
+        <div class="cap-card rv">
+            <span class="cap-tag">Guide</span>
+            <h4>Interview Guides &amp; Recording</h4>
+            <p>Plan interview prompts, record live or upload recordings. Auto-transcribe with speaker identification and timestamps.</p>
+        </div>
+        <div class="cap-card rv">
+            <span class="cap-tag">Analyze</span>
+            <h4>UX Research Synthesis</h4>
+            <p>AI extracts themes, personas, and evidence across conversations. Click any insight to see the exact source &mdash; the receipts.</p>
+        </div>
+        <div class="cap-card rv">
+            <span class="cap-tag">Connect</span>
+            <h4>AI-Native CRM</h4>
+            <p>Customer intelligence that flows to your whole team. Not another database &mdash; a shared reality where every insight is traceable.</p>
+        </div>
+        <div class="cap-card rv">
+            <span class="cap-tag">Act</span>
+            <h4>Evidence-Linked Actions</h4>
+            <p>Turn insights into tasks with evidence attached. Every decision stays grounded in what customers actually said.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ===========================================
+     CTA
+     =========================================== -->
+<section class="cta-section" id="cta">
+    <h2 class="rv">Start with one project.</h2>
+    <p class="rv sub">Five conversations. Hear what you&rsquo;ve been missing.</p>
+    <div class="rv cta-buttons">
+        <a href="#" class="btn-primary" style="font-size: var(--body); padding: 14px 36px;">Start Pro Trial &rarr;</a>
+        <a href="https://cal.com/rickmoy" class="btn-outline" style="font-size: var(--body); padding: 14px 36px;">Get a Demo</a>
+    </div>
+    <p class="rv tagline">Customer truth, connected.</p>
+</section>
+
+<!-- ===========================================
+     FOOTER
+     =========================================== -->
+<footer class="footer">
+    <span>&copy; 2026 UpSight by DeepLight</span>
+    <div class="footer-links">
+        <a href="/terms">Terms</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/about">About</a>
+    </div>
+</footer>
+
+<!-- ===========================================
+     JAVASCRIPT
+     =========================================== -->
+<script>
+    /* Intersection Observer for scroll animations */
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) e.target.classList.add('visible');
+        });
+    }, { threshold: 0.15 });
+
+    document.querySelectorAll('.hero, .break-section, .promises, .capabilities, .cta-section').forEach(s => observer.observe(s));
+
+    /* Trigger hero immediately */
+    document.querySelector('.hero').classList.add('visible');
+
+    /* Smooth scroll for nav links */
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); }
+        });
+    });
+</script>
+
+</body>
+</html>

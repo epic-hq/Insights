@@ -3,7 +3,6 @@ import { RequestContext } from "@mastra/core/di";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
-import { getLangfuseClient } from "~/lib/langfuse.server";
 import { getAuthenticatedUser } from "~/lib/supabase/client.server";
 import { mastra } from "~/mastra";
 import { memory } from "~/mastra/memory";
@@ -22,8 +21,8 @@ export async function action({ request }: ActionFunctionArgs) {
 	const resourceId = `signupAgent-${user.sub}`;
 
 	// Get threads using v1 API
-	const threads = await memory.listThreadsByResourceId({
-		resourceId,
+	const threads = await memory.listThreads({
+		filter: { resourceId },
 		page: 0,
 		perPage: 100,
 	});
@@ -84,14 +83,6 @@ export async function action({ request }: ActionFunctionArgs) {
 			: undefined,
 		onFinish: (data) => {
 			consola.log("onFinish", data);
-			const langfuse = getLangfuseClient();
-			const lfTrace = langfuse.trace?.({ name: "api.signup-agent" });
-			const gen = lfTrace?.generation?.({
-				name: "api.signup-agent",
-				input: messages,
-				output: data,
-			});
-			gen?.end?.();
 		},
 	});
 

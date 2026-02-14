@@ -33,7 +33,7 @@ export function InterviewRecommendations({ recommendations, openQuestions }: Int
 		<div className="space-y-4">
 			{/* Recommendations / Next Steps */}
 			{recommendations.length > 0 && (
-				<div className="space-y-3 rounded-xl border bg-card p-5 shadow-sm">
+				<div className="space-y-3">
 					<div className="flex items-center gap-2">
 						<Lightbulb className="h-5 w-5 text-amber-500" />
 						<h3 className="font-semibold text-base text-foreground">Recommendations</h3>

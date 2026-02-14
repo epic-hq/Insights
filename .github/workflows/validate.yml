@@ -10,6 +10,7 @@ on:
 permissions:
   actions: write
   contents: read
+  issues: write
   # Required to put a comment into the pull-request
   pull-requests: write
 jobs:
@@ -50,8 +51,27 @@ jobs:
       - run: pnpm install --prefer-offline --frozen-lockfile
       - run: pnpm run check:unused
 
-  vitest:
+  build:
     needs: [lint, typecheck]
+    name: 🏗️ Build validation
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip build]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "package.json"
+          cache: "pnpm"
+      - run: pnpm install --prefer-offline --frozen-lockfile
+      - name: Build app
+        run: pnpm run build
+        env:
+          # Use test env vars to avoid requiring production secrets
+          NODE_ENV: production
+
+  vitest:
+    needs: [lint, typecheck, build]
     name: ⚡ Unit Tests
     runs-on: ubuntu-latest
     if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip test]') }}
@@ -69,3 +89,22 @@ jobs:
         # Only works if you set `reportOnFailure: true` in your vite config as specified above
         if: always()
         uses: davelosert/vitest-coverage-report-action@v2
+
+  notify-failure:
+    name: 🔔 Notify on failure
+    needs: [lint, typecheck, build, vitest]
+    if: ${{ failure() && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const commit = context.sha.slice(0, 8);
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🔴 Validation failed on main (${commit})`,
+              body: `**Commit:** \`${commit}\` by @${context.actor}\n**Message:** ${context.payload.head_commit?.message?.split('\n')[0] || 'N/A'}\n**Logs:** ${runUrl}`,
+              labels: ['ci-failure'],
+            });

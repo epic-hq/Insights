@@ -9,6 +9,8 @@
     "start:electron": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
+    "make:release": "REQUIRE_NOTARIZATION=1 electron-forge make && bash ./scripts/verify-macos-release.sh",
+    "verify:macos-release": "bash ./scripts/verify-macos-release.sh",
     "publish": "electron-forge publish",
     "lint": "echo \"No linting configured\""
   },

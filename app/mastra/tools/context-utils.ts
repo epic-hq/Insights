@@ -8,7 +8,32 @@
  */
 
 import consola from "consola";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { createSupabaseAdminClient } from "../../lib/supabase/client.server";
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Validates that a string is a valid UUID v4 format.
+ * Use this to guard ID values before passing to Supabase .eq() queries,
+ * preventing Postgres 22P02 errors from non-UUID strings.
+ */
+export function isValidUUID(value: unknown): value is string {
+	return typeof value === "string" && UUID_REGEX.test(value);
+}
+
+/**
+ * Validates and returns a UUID string, or null if invalid/missing.
+ * Logs a warning when an invalid (non-empty, non-UUID) value is rejected.
+ */
+export function validateUUID(value: unknown, fieldName: string, toolName: string): string | null {
+	if (!value || (typeof value === "string" && !value.trim())) return null;
+	const str = String(value).trim();
+	if (isValidUUID(str)) return str;
+	consola.warn(`[${toolName}] Rejected invalid UUID for ${fieldName}`, {
+		value: str,
+	});
+	return null;
+}
 
 export interface ResolvedContext {
 	accountId: string;

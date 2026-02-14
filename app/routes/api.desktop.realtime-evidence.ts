@@ -15,6 +15,7 @@ import type { ActionFunctionArgs } from "react-router";
 import { z } from "zod";
 import { authenticateDesktopRequest } from "~/lib/auth/desktop-auth.server";
 import { FacetResolver } from "~/lib/database/facets.server";
+import { validateAttributionParity } from "~/lib/evidence/personAttribution.server";
 
 const EvidenceSchema = z.object({
 	evidence: z.array(
@@ -75,7 +76,7 @@ function findBestTimestampMsForEvidence(
 	utterances: RealtimeEvidenceRequest["utterances"],
 	candidateText: string,
 	speakerLabel?: string
-): number | null {
+): RealtimeEvidenceRequest["utterances"][number] | null {
 	if (!utterances.length) return null;
 
 	const normalizedSpeaker = normalizeForMatch(speakerLabel);
@@ -86,37 +87,31 @@ function findBestTimestampMsForEvidence(
 
 	const normalizedCandidate = normalizeForMatch(candidateText);
 	if (!normalizedCandidate) {
-		const firstTs = pool.find((u) => typeof u.timestamp_ms === "number")?.timestamp_ms;
-		return typeof firstTs === "number" && Number.isFinite(firstTs) ? Math.max(0, firstTs) : null;
+		return pool[0] ?? null;
 	}
 
 	const exactMatch = pool.find((u) => {
 		const utteranceText = normalizeForMatch(u.text);
 		return utteranceText.includes(normalizedCandidate) || normalizedCandidate.includes(utteranceText);
 	});
-	if (exactMatch && typeof exactMatch.timestamp_ms === "number" && Number.isFinite(exactMatch.timestamp_ms)) {
-		return Math.max(0, exactMatch.timestamp_ms);
-	}
+	if (exactMatch) return exactMatch;
 
 	const candidateWords = new Set(normalizedCandidate.split(" ").filter((word) => word.length > 3));
-	let best: { ts: number | null; overlap: number } = { ts: null, overlap: 0 };
+	let best: { overlap: number; utterance: RealtimeEvidenceRequest["utterances"][number] | null } = {
+		overlap: 0,
+		utterance: null,
+	};
 	for (const utterance of pool) {
 		const utteranceWords = normalizeForMatch(utterance.text)
 			.split(" ")
 			.filter((word) => word.length > 3);
 		const overlap = utteranceWords.filter((word) => candidateWords.has(word)).length;
 		if (overlap > best.overlap) {
-			best = {
-				ts:
-					typeof utterance.timestamp_ms === "number" && Number.isFinite(utterance.timestamp_ms)
-						? Math.max(0, utterance.timestamp_ms)
-						: null,
-				overlap,
-			};
+			best = { overlap, utterance };
 		}
 	}
 
-	return best.ts;
+	return best.utterance;
 }
 
 const getErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -203,8 +198,28 @@ ${transcript}`,
 			action: e.action || "new",
 		}));
 
-		// Filter out "skip" actions and transform to expected format
-		const actionableEvidence = normalizedEvidence.filter((e) => e.action !== "skip");
+		// Filter out "skip" actions, infer speaker labels from matched utterances,
+		// and attach anchor timestamps for persistence + UI attribution.
+		const actionableEvidence = normalizedEvidence
+			.filter((e) => e.action !== "skip")
+			.map((e) => {
+				const verbatim = e.verbatim || e.gist;
+				const bestUtterance = findBestTimestampMsForEvidence(utterances, verbatim || e.gist, e.speaker_label);
+				const anchorStartMs =
+					typeof bestUtterance?.timestamp_ms === "number" && Number.isFinite(bestUtterance.timestamp_ms)
+						? Math.max(0, bestUtterance.timestamp_ms)
+						: null;
+				const inferredSpeaker =
+					typeof bestUtterance?.speaker === "string" && bestUtterance.speaker.trim().length > 0
+						? bestUtterance.speaker.trim()
+						: undefined;
+
+				return {
+					...e,
+					speaker_label: e.speaker_label || inferredSpeaker,
+					anchor_start_ms: anchorStartMs,
+				};
+			});
 		const evidence = actionableEvidence.map((e) => ({
 			action: e.action,
 			updates_gist: e.updates_gist,
@@ -275,13 +290,12 @@ ${transcript}`,
 
 					for (const e of actionableEvidence) {
 						const verbatim = e.verbatim || e.gist;
-						const anchorStartMs = findBestTimestampMsForEvidence(utterances, verbatim || e.gist, e.speaker_label);
 						const anchors =
-							anchorStartMs !== null || e.speaker_label
+							e.anchor_start_ms !== null || e.speaker_label
 								? [
 										{
 											type: "transcript",
-											start_ms: anchorStartMs,
+											start_ms: e.anchor_start_ms,
 											speaker: e.speaker_label || null,
 										},
 									]
@@ -316,7 +330,9 @@ ${transcript}`,
 								}));
 								const { error: evidencePeopleError } = await supabase
 									.from("evidence_people")
-									.upsert(evidencePeopleRows, { onConflict: "evidence_id,person_id,account_id" });
+									.upsert(evidencePeopleRows, {
+										onConflict: "evidence_id,person_id,account_id",
+									});
 								if (evidencePeopleError) {
 									consola.warn(
 										`[desktop-realtime-evidence] Failed to backfill evidence_people for updates: ${evidencePeopleError.message}`
@@ -423,6 +439,20 @@ ${transcript}`,
 							},
 						})
 						.eq("id", interviewId);
+
+					// TrustCore: Validate person attribution parity after persistence
+					try {
+						const parityResult = await validateAttributionParity(supabase, interviewId, "desktop-realtime");
+						if (!parityResult.passed) {
+							consola.warn("[TrustCore] Person attribution parity check failed in desktop realtime", {
+								interviewId,
+								batchIndex,
+								mismatches: parityResult.mismatches,
+							});
+						}
+					} catch (parityError: unknown) {
+						consola.error("[desktop-realtime-evidence] Parity validation failed:", getErrorMessage(parityError));
+					}
 				}
 			} catch (persistError: unknown) {
 				consola.error("[desktop-realtime-evidence] Persistence error:", getErrorMessage(persistError));

@@ -2,8 +2,9 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database, Evidence, Interview, InterviewPeople } from "~/types";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database, Evidence, Interview, InterviewPeople } from "../../types";
+import { validateUUID } from "./context-utils";
 
 const DEFAULT_EVIDENCE_LIMIT = 12;
 
@@ -94,7 +95,11 @@ function buildEmpathyMap(evidence: EvidenceRow[] | null | undefined): EmpathyMap
 		if (Array.isArray(item.says)) {
 			for (const says of item.says) {
 				if (typeof says === "string" && says.trim()) {
-					map.says.push({ text: says.trim(), evidenceId, anchors: item.anchors });
+					map.says.push({
+						text: says.trim(),
+						evidenceId,
+						anchors: item.anchors,
+					});
 				}
 			}
 		}
@@ -102,7 +107,11 @@ function buildEmpathyMap(evidence: EvidenceRow[] | null | undefined): EmpathyMap
 		if (Array.isArray(item.does)) {
 			for (const does of item.does) {
 				if (typeof does === "string" && does.trim()) {
-					map.does.push({ text: does.trim(), evidenceId, anchors: item.anchors });
+					map.does.push({
+						text: does.trim(),
+						evidenceId,
+						anchors: item.anchors,
+					});
 				}
 			}
 		}
@@ -110,7 +119,11 @@ function buildEmpathyMap(evidence: EvidenceRow[] | null | undefined): EmpathyMap
 		if (Array.isArray(item.thinks)) {
 			for (const thinks of item.thinks) {
 				if (typeof thinks === "string" && thinks.trim()) {
-					map.thinks.push({ text: thinks.trim(), evidenceId, anchors: item.anchors });
+					map.thinks.push({
+						text: thinks.trim(),
+						evidenceId,
+						anchors: item.anchors,
+					});
 				}
 			}
 		}
@@ -118,7 +131,11 @@ function buildEmpathyMap(evidence: EvidenceRow[] | null | undefined): EmpathyMap
 		if (Array.isArray(item.feels)) {
 			for (const feels of item.feels) {
 				if (typeof feels === "string" && feels.trim()) {
-					map.feels.push({ text: feels.trim(), evidenceId, anchors: item.anchors });
+					map.feels.push({
+						text: feels.trim(),
+						evidenceId,
+						anchors: item.anchors,
+					});
 				}
 			}
 		}
@@ -126,7 +143,11 @@ function buildEmpathyMap(evidence: EvidenceRow[] | null | undefined): EmpathyMap
 		if (Array.isArray(item.pains)) {
 			for (const pains of item.pains) {
 				if (typeof pains === "string" && pains.trim()) {
-					map.pains.push({ text: pains.trim(), evidenceId, anchors: item.anchors });
+					map.pains.push({
+						text: pains.trim(),
+						evidenceId,
+						anchors: item.anchors,
+					});
 				}
 			}
 		}
@@ -134,7 +155,11 @@ function buildEmpathyMap(evidence: EvidenceRow[] | null | undefined): EmpathyMap
 		if (Array.isArray(item.gains)) {
 			for (const gains of item.gains) {
 				if (typeof gains === "string" && gains.trim()) {
-					map.gains.push({ text: gains.trim(), evidenceId, anchors: item.anchors });
+					map.gains.push({
+						text: gains.trim(),
+						evidenceId,
+						anchors: item.anchors,
+					});
 				}
 			}
 		}
@@ -333,8 +358,8 @@ export const fetchInterviewContextTool = createTool({
 		const runtimeInterviewId = context?.requestContext?.get?.("interview_id");
 		const runtimeProjectId = context?.requestContext?.get?.("project_id");
 		const runtimeAccountId = context?.requestContext?.get?.("account_id");
-		const interviewId = (input.interviewId || runtimeInterviewId || "").toString().trim();
-		const projectId = (runtimeProjectId || "").toString().trim();
+		const interviewId = validateUUID(input.interviewId || runtimeInterviewId, "interviewId", "fetch-interview-context");
+		const projectId = validateUUID(runtimeProjectId, "projectId", "fetch-interview-context");
 		const accountId = runtimeAccountId;
 		const includeEvidence = input.includeEvidence !== false;
 		const evidenceLimit = input.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT;
@@ -348,13 +373,14 @@ export const fetchInterviewContextTool = createTool({
 		});
 
 		if (!interviewId) {
-			consola.warn("fetch-interview-context: missing interviewId", {
+			consola.warn("fetch-interview-context: missing or invalid interviewId", {
 				requestedInterviewId: input.interviewId,
 				runtimeInterviewId,
 			});
 			return {
 				success: false,
-				message: "Missing interviewId. Pass one explicitly or ensure the runtime context sets interview_id.",
+				message:
+					"Missing or invalid interviewId. Provide a valid UUID, or ensure the runtime context sets interview_id. Non-UUID values like route segments (e.g. 'upload') are not valid interview IDs.",
 			};
 		}
 
@@ -520,18 +546,30 @@ export const fetchInterviewContextTool = createTool({
 									contact_info: participant.people.contact_info,
 									personas:
 										participant.people.people_personas
-											?.map((entry): { id: string; name: string | null; color_hex: string | null } | null =>
-												entry?.personas
-													? {
-															id: entry.personas.id,
-															name: entry.personas.name,
-															color_hex: entry.personas.color_hex,
-														}
-													: null
+											?.map(
+												(
+													entry
+												): {
+													id: string;
+													name: string | null;
+													color_hex: string | null;
+												} | null =>
+													entry?.personas
+														? {
+																id: entry.personas.id,
+																name: entry.personas.name,
+																color_hex: entry.personas.color_hex,
+															}
+														: null
 											)
 											.filter(
-												(persona): persona is { id: string; name: string | null; color_hex: string | null } =>
-													persona !== null
+												(
+													persona
+												): persona is {
+													id: string;
+													name: string | null;
+													color_hex: string | null;
+												} => persona !== null
 											) || undefined,
 								}
 							: null,

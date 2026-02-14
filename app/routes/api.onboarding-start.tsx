@@ -11,6 +11,7 @@ import { createPlannedAnswersForInterview } from "~/lib/database/project-answers
 import { getLangfuseClient } from "~/lib/langfuse.server";
 import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server";
 import type { InterviewInsert } from "~/types";
+import { createDomain } from "~/utils/http";
 import { storeAudioFile } from "~/utils/storeAudioFile.server";
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
@@ -719,7 +720,7 @@ Please extract insights that specifically address these research questions and h
 
 			const baseUrl = process.env.PUBLIC_TUNNEL_URL
 				? `https://${process.env.PUBLIC_TUNNEL_URL}`
-				: new URL(request.url).origin;
+				: createDomain(request);
 			const webhookUrl = `${baseUrl}/api/assemblyai-webhook?voiceMemoOnly=true`;
 
 			const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
@@ -927,7 +928,7 @@ Please extract insights that specifically address these research questions and h
 				// Use PUBLIC_TUNNEL_URL for local dev, otherwise infer from request
 				const baseUrl = process.env.PUBLIC_TUNNEL_URL
 					? `https://${process.env.PUBLIC_TUNNEL_URL}`
-					: new URL(request.url).origin;
+					: createDomain(request);
 
 				const webhookUrl = `${baseUrl}/api/assemblyai-webhook`;
 

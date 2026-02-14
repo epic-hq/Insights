@@ -1,11 +1,12 @@
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { createClient } from "@supabase/supabase-js";
+import { generateText } from "ai";
 import consola from "consola";
 import { z } from "zod";
-import { getInsights } from "~/features/insights/db";
-import { getLangfuseClient } from "~/lib/langfuse.server";
-import type { SupabaseClient } from "~/types";
-import { llmAgent } from "../agents/llmAgent";
+import { getInsights } from "../../features/insights/db";
+import { openai } from "../../lib/billing/instrumented-openai.server";
+import { getLangfuseClient } from "../../lib/langfuse.server";
+import type { SupabaseClient } from "../../types";
 
 /**
  * Daily Brief Workflow
@@ -95,8 +96,14 @@ const BriefingSummaryStep = createStep({
 			const langfuse = getLangfuseClient();
 			const trace = (langfuse as any).trace?.({ name: "llm.daily-brief" });
 			const gen = trace?.generation?.({ name: "llm.daily-brief" });
-			const { text } = await llmAgent.generate([{ role: "user", content: prompt }]);
-			gen?.update?.({ input: { insights_count: value.length, prompt_len: prompt.length }, output: { text } });
+			const { text } = await generateText({
+				model: openai("gpt-4o-mini"),
+				messages: [{ role: "user", content: prompt }],
+			});
+			gen?.update?.({
+				input: { insights_count: value.length, prompt_len: prompt.length },
+				output: { text },
+			});
 			gen?.end?.();
 			consola.log("LLM summary:", text);
 			return { value: text };

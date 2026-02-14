@@ -47,6 +47,26 @@ async function makeSignedReadUrl(key: string, expiresInSeconds: number): Promise
 	return getSignedUrl(getS3Client(), command, { expiresIn: expiresInSeconds })
 }
 
+function normalizeMediaKey(value: string): string {
+	const trimmed = value.trim()
+	if (!trimmed) return trimmed
+	if (!/^https?:\/\//i.test(trimmed)) {
+		return trimmed.replace(/^\/+/, "")
+	}
+
+	try {
+		const parsed = new URL(trimmed)
+		let key = decodeURIComponent(parsed.pathname).replace(/^\/+/, "")
+		const bucket = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME
+		if (bucket && key.startsWith(`${bucket}/`)) {
+			key = key.slice(bucket.length + 1)
+		}
+		return key
+	} catch {
+		return trimmed.replace(/^\/+/, "")
+	}
+}
+
 const GenerateThumbnailPayload = z.object({
 	/** R2 key for the media file (e.g., "originals/abc123.mp4") */
 	mediaKey: z.string(),
@@ -69,6 +89,7 @@ export const generateThumbnail = schemaTask({
 	},
 	run: async (payload) => {
 		const { mediaKey, interviewId, timestampSec = 1, accountId } = payload
+		const normalizedMediaKey = normalizeMediaKey(mediaKey)
 
 		if (!ffmpeg) {
 			throw new Error("ffmpeg binary not found")
@@ -76,7 +97,7 @@ export const generateThumbnail = schemaTask({
 
 		// Generate signed URL for reading the source video
 		// ffmpeg will stream directly from this URL - no need to download the whole file
-		const signedSourceUrl = await makeSignedReadUrl(mediaKey, 3600) // 1 hour TTL
+		const signedSourceUrl = await makeSignedReadUrl(normalizedMediaKey, 3600) // 1 hour TTL
 
 		// First, probe the file to check if it has video streams
 		// Use ffmpeg to get stream info - if no video stream, skip thumbnail generation
@@ -91,7 +112,7 @@ export const generateThumbnail = schemaTask({
 			const hasVideoStream = /Stream.*Video:/i.test(probeOutput)
 
 			if (!hasVideoStream) {
-				console.log(`Skipping thumbnail for ${mediaKey} - no video stream (audio-only file)`)
+				console.log(`Skipping thumbnail for ${normalizedMediaKey} - no video stream (audio-only file)`)
 				return {
 					success: false,
 					skipped: true,
@@ -129,7 +150,7 @@ export const generateThumbnail = schemaTask({
 				outputPath,
 			]
 
-			console.log(`Extracting thumbnail from ${mediaKey} at ${timestampSec}s`)
+			console.log(`Extracting thumbnail from ${normalizedMediaKey} at ${timestampSec}s`)
 			await execa(ffmpeg, ffmpegArgs, { timeout: 60000 }) // 60s timeout
 
 			// Verify output file exists and has content
@@ -153,7 +174,7 @@ export const generateThumbnail = schemaTask({
 					ContentType: "image/jpeg",
 					Metadata: {
 						interviewId,
-						sourceKey: mediaKey,
+						sourceKey: normalizedMediaKey,
 						timestampSec: String(timestampSec),
 						...(accountId && { accountId }),
 					},

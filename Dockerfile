@@ -3,8 +3,8 @@
 ############################
 # Base & shared settings
 ############################
-ARG NODE_VERSION=24-slim
-FROM node:${NODE_VERSION} AS base
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node:24-slim
+FROM ${NODE_IMAGE} AS base
 ENV NODE_ENV=production \
     PNPM_HOME=/root/.local/share/pnpm \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0
@@ -43,7 +43,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.pnpm-store \
 ############################
 # Runtime (slim)
 ############################
-FROM node:${NODE_VERSION} AS runtime
+FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production \
     PORT=3000 \
     HOST=0.0.0.0 \
@@ -67,15 +67,18 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 # Copy built assets only
 COPY --from=build /app/build ./build
 COPY --from=build /app/public ./public
-COPY --chown=node:node --from=build /app/.mastra ./.mastra
+COPY --from=build /app/tsconfig.json ./tsconfig.json
 COPY --from=build /app/agents ./agents
 COPY --from=build /app/app ./app
+COPY --from=build /app/src/trigger ./src/trigger
 COPY --from=build /app/baml_client ./baml_client
 COPY --from=build /app/supabase/types.ts ./supabase/types.ts
 
 # Minimal runtime data dir + Mastra output dir (Mastra writes server configs here)
+# Reinstate node ownership for runtime-writable paths, including node_modules.
 RUN mkdir -p /app/data /app/.mastra/output /app/app/mastra/public \
-  && chown -R node:node /app/data /app/.mastra /app/app/mastra/public
+  && chown -R node:node /app/data /app/.mastra /app/app/mastra/public \
+  && chown -R node:node /app/node_modules
 # Copy production env file for dotenvx
 COPY --chown=node:node .env.production ./.env.production
 

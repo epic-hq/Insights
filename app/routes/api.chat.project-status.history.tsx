@@ -1,6 +1,7 @@
 import { convertMessages } from "@mastra/core/agent";
 import consola from "consola";
 import type { LoaderFunctionArgs } from "react-router";
+import { listProjectStatusThreads } from "~/features/project-chat/project-status-threads.server";
 import { memory } from "~/mastra/memory";
 import type { UpsightMessage } from "~/mastra/message-types";
 import { userContext } from "~/server/user-context";
@@ -30,35 +31,23 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	}
 
 	try {
-		const resourceId = `projectStatusAgent-${userId}-${projectId}`;
-
-		// consola.info("project-status history: searching for threads", {
-		// 	resourceId,
-		// })
-
-		// Get the most recent thread for this project
-		const threads = await memory.listThreadsByResourceId({
-			resourceId,
-			orderBy: { field: "createdAt", direction: "DESC" },
-			page: 0,
-			perPage: 1,
+		const threads = await listProjectStatusThreads({
+			memory,
+			userId,
+			projectId,
+			perPage: 100,
 		});
 
-		// consola.info("project-status history: threads found", {
-		// 	total: threads?.total || 0,
-		// 	threadsCount: threads?.threads?.length || 0,
-		// })
-
-		if (!threads?.total || threads.total === 0) {
+		if (threads.length === 0) {
 			return Response.json({ messages: [] });
 		}
 
-		const threadId = threads.threads[0].id;
+		const threadId = threads[0].id;
 
 		// Query messages using Memory API (v1: query() renamed to recall(), messagesV2 renamed to messages)
 		const { messages } = await memory.recall({
 			threadId,
-			selectBy: { last: 10 },
+			perPage: 100,
 		});
 
 		// Convert messages to UI format

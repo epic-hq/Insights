@@ -1,17 +1,16 @@
 /**
  * Stepper-based Ask link creation wizard
- * 3 simple steps: Basics → Questions → Review & Share
+ * 2 steps: What do you want to learn? → Review & Create
  * Each step is a separate "page" - only one visible at a time
  *
  * Features voice-first survey creation - just describe what you want to learn
  */
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import {
 	AlertCircle,
 	ArrowLeft,
 	ArrowRight,
 	Check,
-	Copy,
 	Lightbulb,
 	Loader2,
 	MessageSquare,
@@ -21,6 +20,7 @@ import {
 	Sparkles,
 	Square,
 	X,
+	Zap,
 } from "lucide-react";
 import { customAlphabet } from "nanoid";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -31,7 +31,6 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
-import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
 import { getServerClient } from "~/lib/supabase/client.server";
@@ -114,7 +113,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	const rawPayload = {
 		name: formData.get("name") ?? "",
 		slug: formData.get("slug") ?? "",
-		description: formData.get("description") ?? "",
+		description: "",
 		instructions: formData.get("instructions") ?? "",
 		heroTitle: formData.get("hero_title") ?? "",
 		heroSubtitle: "",
@@ -180,7 +179,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	return redirect(routes.ask.edit(data.id));
 }
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2;
 
 // BASE58 alphabet excludes ambiguous characters: 0, O, I, l
 const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -199,13 +198,10 @@ export default function CreateResearchLinkPage() {
 	// Wizard state - start at step 0 (suggestions) if available
 	const [step, setStep] = useState<Step>(1);
 	const [name, setName] = useState("");
-	const [description, setDescription] = useState("");
 	const [instructions, setInstructions] = useState("");
 	// Generate random slug once on mount - no manual editing needed
 	const [slug] = useState(() => generateSlug());
 	const [questions, setQuestions] = useState<ResearchLinkQuestion[]>([]);
-	const [isLive, setIsLive] = useState(true);
-	const [copied, setCopied] = useState(false);
 
 	// Track which creation mode is active to focus the UI
 	const [activeInput, setActiveInput] = useState<"voice" | "form" | null>(null);
@@ -268,7 +264,6 @@ export default function CreateResearchLinkPage() {
 		if (voiceFetcher.data && !voiceFetcher.data.error) {
 			const data = voiceFetcher.data;
 			if (data.name) setName(data.name);
-			if (data.description) setDescription(data.description);
 			if (data.instructions) setInstructions(data.instructions);
 
 			let generatedQuestions = data.questions ?? [];
@@ -357,14 +352,7 @@ export default function CreateResearchLinkPage() {
 	const step1Valid = name.trim().length > 0;
 	const step2Valid = questions.length > 0 && questions.every((q) => q.prompt.trim().length > 0);
 
-	const publicUrl = `${typeof window !== "undefined" ? window.location.origin : ""}${routes.ask.public(slug || "your-ask")}`;
 	const questionsJson = useMemo(() => JSON.stringify(questions), [questions]);
-
-	const handleCopyLink = useCallback(() => {
-		navigator.clipboard.writeText(publicUrl);
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
-	}, [publicUrl]);
 
 	const handleBulkSubmit = () => {
 		const lines = bulkText
@@ -392,7 +380,7 @@ export default function CreateResearchLinkPage() {
 		generateFetcher.submit(
 			{
 				surveyName: name,
-				surveyDescription: description,
+				surveyDescription: "",
 				existingQuestions: JSON.stringify(questions.map((q) => q.prompt)),
 				customPrompt: customPrompt ?? "",
 			},
@@ -419,15 +407,14 @@ export default function CreateResearchLinkPage() {
 	// Handle selecting a suggestion
 	const handleSelectSuggestion = (suggestion: (typeof suggestions)[0]) => {
 		setName(suggestion.title);
-		setDescription(suggestion.description);
-		// Move to step 1 with pre-filled data
-		setStep(1);
+		// Move to step 2 directly with pre-filled title
+		setStep(2);
 	};
 
 	// Step indicator component
 	const StepIndicator = () => (
 		<div className="mb-8 flex items-center justify-center gap-2">
-			{[1, 2, 3].map((s) => (
+			{[1, 2].map((s) => (
 				<div key={s} className="flex items-center">
 					<div
 						className={cn(
@@ -441,7 +428,7 @@ export default function CreateResearchLinkPage() {
 					>
 						{step > s ? <Check className="h-5 w-5" /> : s}
 					</div>
-					{s < 3 && (
+					{s < 2 && (
 						<div className={cn("mx-2 h-1 w-12 rounded-full transition-all", step > s ? "bg-green-500" : "bg-muted")} />
 					)}
 				</div>
@@ -491,6 +478,39 @@ export default function CreateResearchLinkPage() {
 								</div>
 							</CardContent>
 						</Card>
+					</motion.div>
+				)}
+
+				{/* AI Personalized Surveys CTA */}
+				{step === 1 && !name && (
+					<motion.div
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.1 }}
+						className="mb-6"
+					>
+						<Link to={routes.people.index()}>
+							<Card className="group cursor-pointer border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-background shadow-sm transition-all hover:border-emerald-300 hover:shadow-md dark:border-emerald-800 dark:from-emerald-950/30 dark:hover:border-emerald-700">
+								<CardContent className="flex items-center gap-4 p-5">
+									<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+										<Zap className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+									</div>
+									<div className="min-w-0 flex-1">
+										<div className="flex items-center gap-2">
+											<h3 className="font-semibold text-sm">AI Personalized Surveys</h3>
+											<span className="rounded-full bg-emerald-100 px-2 py-0.5 font-medium text-[10px] text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+												NEW
+											</span>
+										</div>
+										<p className="text-muted-foreground text-xs">
+											Select people and generate tailored questions based on their profile, ICP score, and conversation
+											history.
+										</p>
+									</div>
+									<ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
+								</CardContent>
+							</Card>
+						</Link>
 					</motion.div>
 				)}
 
@@ -628,19 +648,6 @@ export default function CreateResearchLinkPage() {
 												placeholder="e.g., Pricing Feedback, User Research, Beta Interest"
 												className="h-12 text-lg"
 												autoFocus={!isVoiceSupported}
-											/>
-										</div>
-
-										<div className="space-y-2">
-											<Label htmlFor="description" className="font-medium">
-												Description <span className="font-normal text-muted-foreground">(optional)</span>
-											</Label>
-											<Textarea
-												id="description"
-												value={description}
-												onChange={(e) => setDescription(e.target.value)}
-												placeholder="What should respondents know about this?"
-												rows={3}
 											/>
 										</div>
 
@@ -898,97 +905,46 @@ export default function CreateResearchLinkPage() {
 										</>
 									)}
 
-									{/* Navigation */}
-									<div className="flex gap-3 border-t pt-6">
-										<Button type="button" variant="ghost" onClick={() => setStep(1)} className="flex-1">
-											<ArrowLeft className="mr-2 h-4 w-4" />
-											Back
-										</Button>
-										<Button
-											type="button"
-											onClick={() => setStep(3)}
-											disabled={!step2Valid}
-											size="lg"
-											className="flex-1"
-										>
-											Next: Review
-											<ArrowRight className="ml-2 h-4 w-4" />
-										</Button>
-									</div>
-								</div>
-							</CardContent>
-						</Card>
-					</motion.div>
-				)}
-
-				{/* STEP 3: Review & Create */}
-				{step === 3 && (
-					<Form method="post">
-						<input type="hidden" name="name" value={name} />
-						<input type="hidden" name="slug" value={slug} />
-						<input type="hidden" name="description" value={description} />
-						<input type="hidden" name="instructions" value={instructions} />
-						<input type="hidden" name="hero_title" value={name} />
-						<input type="hidden" name="questions" value={questionsJson} />
-						<input type="hidden" name="is_live" value={String(isLive)} />
-
-						<motion.div
-							initial={{ opacity: 0, y: 20 }}
-							animate={{ opacity: 1, y: 0 }}
-							exit={{ opacity: 0, y: -20 }}
-							className="space-y-6"
-						>
-							{/* Share & Settings */}
-							<Card className="shadow-lg">
-								<CardContent className="space-y-6 p-8">
-									<div>
-										<Label className="font-medium text-base">Your shareable link</Label>
-										<div className="mt-2 flex gap-2">
-											<Input value={publicUrl} readOnly className="font-mono text-sm" />
-											<Button type="button" variant="outline" onClick={handleCopyLink} className="shrink-0 gap-2">
-												{copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-												{copied ? "Copied!" : "Copy"}
-											</Button>
-										</div>
-									</div>
-
-									<div className="flex items-center justify-between rounded-lg border p-4">
-										<div>
-											<p className="font-medium">Go live immediately</p>
-											<p className="text-muted-foreground text-sm">Make the Ask link live at this URL</p>
-										</div>
-										<Switch checked={isLive} onCheckedChange={setIsLive} />
-									</div>
-
+									{/* Error display */}
 									{(actionData?.errors?._form || actionData?.errors?.slug) && (
 										<div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">
 											{actionData?.errors?._form || actionData?.errors?.slug}
 										</div>
 									)}
 
-									<div className="flex gap-3 border-t pt-6">
-										<Button type="button" variant="ghost" onClick={() => setStep(2)} className="flex-1">
-											<ArrowLeft className="mr-2 h-4 w-4" />
-											Back
-										</Button>
-										<Button type="submit" size="lg" disabled={isSubmitting} className="flex-1">
-											{isSubmitting ? (
-												<>
-													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-													Creating...
-												</>
-											) : (
-												<>
-													Create and Edit Survey
-													<Check className="ml-2 h-4 w-4" />
-												</>
-											)}
-										</Button>
-									</div>
-								</CardContent>
-							</Card>
-						</motion.div>
-					</Form>
+									{/* Navigation + Create */}
+									<Form method="post" className="border-t pt-6">
+										<input type="hidden" name="name" value={name} />
+										<input type="hidden" name="slug" value={slug} />
+										<input type="hidden" name="instructions" value={instructions} />
+										<input type="hidden" name="hero_title" value={name} />
+										<input type="hidden" name="questions" value={questionsJson} />
+										<input type="hidden" name="is_live" value="true" />
+
+										<div className="flex gap-3">
+											<Button type="button" variant="ghost" onClick={() => setStep(1)} className="flex-1">
+												<ArrowLeft className="mr-2 h-4 w-4" />
+												Back
+											</Button>
+											<Button type="submit" disabled={!step2Valid || isSubmitting} size="lg" className="flex-1">
+												{isSubmitting ? (
+													<>
+														<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+														Creating...
+													</>
+												) : (
+													<>
+														Create Survey
+														<Check className="ml-2 h-4 w-4" />
+													</>
+												)}
+											</Button>
+										</div>
+									</Form>
+								</div>
+							</CardContent>
+						</Card>
+					</motion.div>
 				)}
 			</div>
 		</div>

@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UpSight — Get Your Customers. Build Conviction.</title>
+    <meta name="description" content="Voice of Customer platform with AI-powered surveys, interview guides, UX research synthesis, and evidence-backed customer intelligence. Turn conversations into decisions you can defend.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ===========================================
+           THEME
+           =========================================== */
+        :root {
+            --bg: #050508;
+            --bg2: #0a0a10;
+            --text: #eeeef2;
+            --dim: rgba(238,238,242,0.5);
+            --dim2: rgba(238,238,242,0.25);
+            --amber: #f59e0b;
+            --amber-soft: rgba(245,158,11,0.15);
+            --amber-glow: rgba(245,158,11,0.3);
+            --sky: #38bdf8;
+            --font: 'Inter', system-ui, sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+            --title: clamp(2.2rem, 5.5vw, 4.5rem);
+            --h2: clamp(1.6rem, 4vw, 3.2rem);
+            --h3: clamp(1.1rem, 2.2vw, 1.6rem);
+            --body: clamp(0.85rem, 1.3vw, 1.05rem);
+            --sm: clamp(0.7rem, 1vw, 0.85rem);
+            --xs: clamp(0.55rem, 0.75vw, 0.68rem);
+            --pad: clamp(1.5rem, 4vw, 5rem);
+            --ease: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { height: 100%; scroll-behavior: smooth; }
+        body { font-family: var(--font); background: var(--bg); color: var(--text); overflow-x: hidden; line-height: 1.5; }
+        img { display: block; max-width: 100%; }
+
+        /* ===========================================
+           NAV
+           =========================================== */
+        .nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: clamp(10px, 1.5vw, 16px) var(--pad);
+            background: rgba(5,5,8,0.85); backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .nav-logo { font-weight: 800; font-size: clamp(1.05rem, 1.8vw, 1.35rem); letter-spacing: -0.03em; }
+        .nav-logo span { color: var(--amber); }
+        .nav-links { display: flex; gap: clamp(1rem, 2.5vw, 2rem); align-items: center; }
+        .nav-links a { color: var(--dim); font-size: var(--sm); text-decoration: none; font-weight: 400; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--text); }
+        .btn-primary {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: clamp(8px, 1vw, 12px) clamp(16px, 2.5vw, 28px);
+            background: var(--amber); color: var(--bg); font-weight: 700;
+            font-size: var(--sm); border: none; border-radius: 6px;
+            cursor: pointer; letter-spacing: 0.01em; text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px var(--amber-glow); }
+        .btn-outline {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: clamp(8px, 1vw, 12px) clamp(16px, 2.5vw, 28px);
+            background: transparent; color: var(--text); font-weight: 600;
+            font-size: var(--sm); border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px; cursor: pointer; text-decoration: none;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .btn-outline:hover { border-color: var(--amber); background: rgba(245,158,11,0.05); }
+
+        /* ===========================================
+           HERO
+           =========================================== */
+        .hero {
+            min-height: 100vh; min-height: 100dvh;
+            display: flex; flex-direction: column;
+            padding: calc(var(--pad) + 56px) var(--pad) var(--pad);
+            position: relative; overflow: hidden;
+        }
+        .hero-crowd {
+            position: absolute; inset: 0; z-index: 0;
+        }
+        .hero-crowd img {
+            width: 100%; height: 100%; object-fit: cover;
+            filter: brightness(0.18) saturate(0.5);
+        }
+        .hero-crowd-fallback {
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0a0a12, #12100e, #0a0a12);
+        }
+        .hero-crowd::after {
+            content: ''; position: absolute; inset: 0;
+            background:
+                linear-gradient(180deg, rgba(5,5,8,0.6) 0%, rgba(5,5,8,0.15) 30%, rgba(5,5,8,0.3) 65%, rgba(5,5,8,0.95) 100%),
+                radial-gradient(ellipse at 50% 50%, rgba(245,158,11,0.03), transparent 60%);
+        }
+
+        /* Hero headline */
+        .hero-top {
+            text-align: center; position: relative; z-index: 2;
+            margin-bottom: clamp(0.75rem, 2.5vw, 2rem);
+        }
+        .hero-top .kicker {
+            font-family: var(--mono); font-size: var(--xs); color: var(--amber);
+            text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: clamp(0.5rem, 1vw, 1rem);
+            opacity: 0; transform: translateY(10px);
+            transition: opacity 0.6s 0.2s var(--ease), transform 0.6s 0.2s var(--ease);
+        }
+        .hero.visible .hero-top .kicker { opacity: 0.8; transform: translateY(0); }
+        .hero-top h1 {
+            font-size: var(--title); font-weight: 900; line-height: 1.05;
+            letter-spacing: -0.03em; max-width: 18ch; margin: 0 auto;
+            opacity: 0; transform: translateY(20px);
+            transition: opacity 0.8s 0.4s var(--ease), transform 0.8s 0.4s var(--ease);
+        }
+        .hero.visible .hero-top h1 { opacity: 1; transform: translateY(0); }
+        .hero-top h1 em { font-style: normal; color: var(--amber); }
+        .hero-top .sub {
+            font-size: clamp(0.95rem, 1.5vw, 1.2rem); color: var(--dim);
+            font-weight: 300; max-width: 44ch; margin: clamp(0.5rem, 1vw, 1rem) auto 0;
+            opacity: 0; transition: opacity 0.6s 0.6s var(--ease);
+        }
+        .hero.visible .hero-top .sub { opacity: 1; }
+
+        /* ===========================================
+           PORTRAIT CAROUSEL — Polaroid style
+           =========================================== */
+        .portrait-stage {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            position: relative; z-index: 2; min-height: 0;
+            padding: clamp(0.25rem, 0.5vw, 0.5rem) 0;
+        }
+
+        .portrait-scene {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            gap: clamp(1rem, 2vw, 2rem);
+            opacity: 0;
+            transform: scale(0.88);
+            transition: opacity 1s var(--ease), transform 1.2s var(--ease);
+            pointer-events: none;
+        }
+        .portrait-scene.active {
+            position: relative;
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+
+        /* Polaroid card — white border, angled */
+        .polaroid-wrap {
+            position: relative; flex-shrink: 0;
+        }
+        .polaroid {
+            background: #f5f3ef;
+            padding: clamp(6px, 0.8vw, 10px) clamp(6px, 0.8vw, 10px) clamp(28px, 4vw, 48px);
+            border-radius: 2px;
+            box-shadow:
+                0 2px 8px rgba(0,0,0,0.3),
+                0 16px 56px rgba(0,0,0,0.5),
+                inset 0 0 0 1px rgba(0,0,0,0.04);
+            transition: transform 0.6s var(--ease);
+        }
+        /* Each person gets a unique tilt */
+        .portrait-scene[data-person="0"] .polaroid { transform: rotate(-2.5deg); }
+        .portrait-scene[data-person="1"] .polaroid { transform: rotate(1.8deg); }
+        .portrait-scene[data-person="2"] .polaroid { transform: rotate(-1.2deg); }
+
+        .polaroid-img {
+            width: clamp(180px, 22vw, 280px);
+            aspect-ratio: 3/4;
+            overflow: hidden; position: relative;
+        }
+        .polaroid-img img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .polaroid-img .fallback {
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #d4d0c8, #bbb5a9);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .polaroid-img .fallback-icon {
+            width: 40%; height: 40%; opacity: 0.15;
+            border-radius: 50%; background: rgba(0,0,0,0.1);
+        }
+
+        /* Name handwritten on the Polaroid bottom strip */
+        .polaroid-caption {
+            text-align: center; color: #2a2520;
+            padding-top: clamp(4px, 0.5vw, 8px);
+        }
+        .polaroid-caption .name {
+            font-size: clamp(0.85rem, 1.2vw, 1.05rem);
+            font-weight: 600; letter-spacing: -0.01em;
+        }
+        .polaroid-caption .role {
+            font-size: clamp(0.6rem, 0.85vw, 0.75rem);
+            color: #6b6560; font-weight: 400;
+        }
+
+        /* ===========================================
+           ANNOTATION LINES that cross INTO the image
+           SVG overlay sits on top of the portrait
+           =========================================== */
+        .anno-svg {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            pointer-events: none; overflow: visible;
+            z-index: 5;
+        }
+        /* Amber connector lines */
+        .anno-svg line {
+            stroke: var(--amber); stroke-width: 4.5;
+            opacity: 0;
+            transition: opacity 0.5s var(--ease);
+        }
+        .portrait-scene.active .anno-svg line { opacity: 0.5; }
+        .portrait-scene.active .anno-svg line.delay-1 { transition-delay: 0.3s; }
+        .portrait-scene.active .anno-svg line.delay-2 { transition-delay: 0.5s; }
+        .portrait-scene.active .anno-svg line.delay-3 { transition-delay: 0.7s; }
+
+        /* Amber dots ON the body */
+        .anno-svg circle {
+            fill: var(--amber); opacity: 0;
+            transition: opacity 0.5s var(--ease);
+            r: 6;
+        }
+        .portrait-scene.active .anno-svg circle { opacity: 0.7; }
+        .portrait-scene.active .anno-svg circle.delay-1 { transition-delay: 0.3s; }
+        .portrait-scene.active .anno-svg circle.delay-2 { transition-delay: 0.5s; }
+        .portrait-scene.active .anno-svg circle.delay-3 { transition-delay: 0.7s; }
+
+        /* Pulse ring on dots */
+        .anno-svg .pulse {
+            fill: none; stroke: var(--amber); stroke-width: 1;
+            opacity: 0;
+        }
+        .portrait-scene.active .anno-svg .pulse {
+            animation: pulseRing 2.5s ease-out infinite;
+        }
+        .portrait-scene.active .anno-svg .pulse.delay-1 { animation-delay: 0.3s; }
+        .portrait-scene.active .anno-svg .pulse.delay-2 { animation-delay: 0.5s; }
+        .portrait-scene.active .anno-svg .pulse.delay-3 { animation-delay: 0.7s; }
+
+        @keyframes pulseRing {
+            0% { r: 4; opacity: 0.5; }
+            70% { r: 14; opacity: 0; }
+            100% { r: 14; opacity: 0; }
+        }
+
+        /* Annotation text labels — positioned by JS */
+        .anno-label {
+            position: absolute; pointer-events: auto;
+            opacity: 0; transform: translateX(15px);
+            transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+            z-index: 6;
+        }
+        .anno-label.left-side {
+            text-align: right;
+            transform: translateX(-15px);
+        }
+        .anno-label.right-side {
+            text-align: left;
+            transform: translateX(15px);
+        }
+        .portrait-scene.active .anno-label { opacity: 1; transform: translateX(0); }
+        .portrait-scene.active .anno-label.d1 { transition-delay: 0.3s; }
+        .portrait-scene.active .anno-label.d2 { transition-delay: 0.5s; }
+        .portrait-scene.active .anno-label.d3 { transition-delay: 0.7s; }
+
+        .anno-label .key {
+            font-family: var(--mono);
+            font-size: clamp(0.6rem, 0.85vw, 0.72rem);
+            text-transform: uppercase; letter-spacing: 0.18em;
+            color: var(--amber); display: block;
+            margin-bottom: 1px; font-weight: 500;
+        }
+        .anno-label .val {
+            font-size: clamp(1rem, 1.8vw, 1.35rem);
+            font-weight: 500; color: var(--text); line-height: 1.3;
+            white-space: nowrap;
+        }
+        .anno-label .val em { color: var(--sky); font-style: normal; }
+
+        /* Carousel pips + timer */
+        .carousel-controls {
+            position: relative; z-index: 2;
+            display: flex; flex-direction: column; align-items: center;
+            margin-top: clamp(0.5rem, 1vw, 0.8rem);
+            opacity: 0; transition: opacity 0.6s 1.4s var(--ease);
+        }
+        .hero.visible .carousel-controls { opacity: 1; }
+        .carousel-pips {
+            display: flex; gap: 10px;
+        }
+        .carousel-pip {
+            width: 8px; height: 8px; border-radius: 50%;
+            border: 1.5px solid rgba(255,255,255,0.25);
+            background: transparent; cursor: pointer;
+            transition: background 0.3s, border-color 0.3s, transform 0.3s;
+        }
+        .carousel-pip.active {
+            background: var(--amber); border-color: var(--amber);
+            transform: scale(1.2);
+        }
+        .carousel-pip:hover:not(.active) { border-color: rgba(255,255,255,0.5); }
+        .carousel-timer {
+            width: clamp(80px, 12vw, 160px); height: 2px;
+            background: rgba(255,255,255,0.06); border-radius: 1px;
+            margin-top: clamp(6px, 0.8vw, 10px);
+            overflow: hidden;
+        }
+        .carousel-timer-fill {
+            height: 100%; background: var(--amber); border-radius: 1px;
+            width: 0%; transition: width 0.1s linear;
+        }
+
+        /* Hero CTA area */
+        .hero-cta {
+            text-align: center; position: relative; z-index: 2;
+            margin-top: clamp(0.75rem, 1.5vw, 1.5rem);
+            opacity: 0; transform: translateY(15px);
+            transition: opacity 0.6s 1.6s var(--ease), transform 0.6s 1.6s var(--ease);
+        }
+        .hero.visible .hero-cta { opacity: 1; transform: translateY(0); }
+        .hero-cta-main {
+            margin-bottom: 0;
+        }
+
+        /* ===========================================
+           BREAK SECTION
+           =========================================== */
+        .break-section {
+            padding: clamp(4rem, 10vw, 8rem) var(--pad);
+            text-align: center;
+            background: var(--bg);
+            border-top: 1px solid rgba(255,255,255,0.03);
+        }
+        .break-section h2 {
+            font-size: var(--h2); font-weight: 800; line-height: 1.2;
+            letter-spacing: -0.02em; max-width: 22ch; margin: 0 auto;
+        }
+        .break-section h2 span { color: var(--amber); }
+
+        /* ===========================================
+           HEAD / HEART / HAND
+           =========================================== */
+        .promises {
+            padding: clamp(4rem, 10vw, 8rem) var(--pad);
+            background: radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.03), transparent 50%), var(--bg);
+        }
+        .promises-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: clamp(2rem, 4vw, 4rem);
+            max-width: min(95vw, 1000px); margin: 0 auto;
+        }
+        .promise {
+            text-align: center;
+            padding: clamp(1.5rem, 3vw, 3rem) clamp(1rem, 2vw, 2rem);
+        }
+        .promise-icon-area {
+            margin-bottom: clamp(0.75rem, 1.5vw, 1.5rem);
+        }
+        .promise-icon-label {
+            font-family: var(--mono); font-size: clamp(0.65rem, 0.95vw, 0.8rem);
+            text-transform: uppercase; letter-spacing: 0.25em;
+            color: var(--amber); font-weight: 500;
+        }
+        .promise h3 {
+            font-size: clamp(1.4rem, 2.8vw, 2.2rem);
+            font-weight: 800; letter-spacing: -0.02em;
+            margin-bottom: clamp(0.5rem, 1vw, 1rem); line-height: 1.15;
+        }
+        .promise p {
+            font-size: clamp(0.85rem, 1.2vw, 1rem);
+            color: var(--dim); font-weight: 300; line-height: 1.65;
+            max-width: 28ch; margin: 0 auto;
+        }
+
+        /* ===========================================
+           CAPABILITIES (SEO / Progressive Disclosure)
+           =========================================== */
+        .capabilities {
+            padding: clamp(4rem, 10vw, 8rem) var(--pad);
+            background: var(--bg2);
+            border-top: 1px solid rgba(255,255,255,0.03);
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+        .cap-header {
+            text-align: center; margin-bottom: clamp(2rem, 4vw, 4rem);
+        }
+        .cap-header .kicker {
+            font-family: var(--mono); font-size: var(--xs);
+            color: var(--amber); text-transform: uppercase; letter-spacing: 0.2em;
+            margin-bottom: clamp(0.5rem, 1vw, 1rem);
+        }
+        .cap-header h2 {
+            font-size: var(--h2); font-weight: 800; letter-spacing: -0.02em;
+        }
+        .cap-header p {
+            font-size: var(--body); color: var(--dim); font-weight: 300;
+            max-width: 50ch; margin: clamp(0.5rem, 1vw, 1rem) auto 0;
+        }
+        .cap-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: clamp(1rem, 2vw, 2rem);
+            max-width: min(95vw, 1000px); margin: 0 auto;
+        }
+        .cap-card {
+            padding: clamp(1.2rem, 2vw, 2rem);
+            border: 1px solid rgba(255,255,255,0.05); border-radius: 8px;
+            background: rgba(255,255,255,0.01);
+            transition: border-color 0.3s, background 0.3s, transform 0.3s;
+        }
+        .cap-card:hover {
+            border-color: rgba(245,158,11,0.15);
+            background: rgba(245,158,11,0.02);
+            transform: translateY(-2px);
+        }
+        .cap-card h4 {
+            font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+            font-weight: 700; margin-bottom: clamp(0.3rem, 0.6vw, 0.5rem);
+            letter-spacing: -0.01em;
+        }
+        .cap-card p {
+            font-size: var(--sm); color: var(--dim); font-weight: 300; line-height: 1.6;
+        }
+        .cap-card .cap-tag {
+            font-family: var(--mono); font-size: var(--xs);
+            color: var(--amber); text-transform: uppercase;
+            letter-spacing: 0.12em; margin-bottom: clamp(0.4rem, 0.8vw, 0.75rem);
+            display: block; font-weight: 500;
+        }
+
+        /* ===========================================
+           CTA SECTION
+           =========================================== */
+        .cta-section {
+            padding: clamp(5rem, 12vw, 10rem) var(--pad);
+            text-align: center;
+            background:
+                radial-gradient(ellipse at 50% 70%, rgba(245,158,11,0.05), transparent 50%),
+                var(--bg);
+        }
+        .cta-section h2 {
+            font-size: var(--h2); font-weight: 900; letter-spacing: -0.02em;
+            margin-bottom: clamp(0.5rem, 1vw, 1rem);
+        }
+        .cta-section .sub {
+            font-size: clamp(0.95rem, 1.4vw, 1.15rem); color: var(--dim);
+            font-weight: 300; max-width: 40ch; margin: 0 auto clamp(1.5rem, 3vw, 2.5rem);
+        }
+        .cta-buttons {
+            display: flex; gap: clamp(0.75rem, 1.5vw, 1.25rem);
+            justify-content: center; flex-wrap: wrap;
+        }
+        .cta-section .tagline {
+            font-size: var(--sm); color: var(--dim2); margin-top: clamp(1.5rem, 3vw, 2.5rem);
+            font-weight: 300; letter-spacing: 0.04em;
+        }
+
+        /* ===========================================
+           FOOTER
+           =========================================== */
+        .footer {
+            padding: clamp(1.5rem, 3vw, 2rem) var(--pad);
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: var(--xs); color: var(--dim2);
+            border-top: 1px solid rgba(255,255,255,0.03);
+        }
+        .footer a { color: var(--dim2); text-decoration: none; transition: color 0.2s; }
+        .footer a:hover { color: var(--dim); }
+        .footer-links { display: flex; gap: clamp(1rem, 2vw, 2rem); }
+
+        /* ===========================================
+           REVEAL ANIMATION
+           =========================================== */
+        .rv {
+            opacity: 0; transform: translateY(20px);
+            transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+        }
+        .visible .rv { opacity: 1; transform: translateY(0); }
+        .visible .rv:nth-child(2) { transition-delay: 0.12s; }
+        .visible .rv:nth-child(3) { transition-delay: 0.24s; }
+        .visible .rv:nth-child(4) { transition-delay: 0.36s; }
+
+        /* ===========================================
+           RESPONSIVE
+           =========================================== */
+        @media (max-width: 900px) {
+            .anno-label { white-space: normal; max-width: 160px; }
+            .anno-label .val { font-size: clamp(0.85rem, 1.5vw, 1.1rem); }
+        }
+        @media (max-width: 768px) {
+            .portrait-scene { flex-direction: column; gap: clamp(0.75rem, 2vw, 1.2rem); }
+            .anno-label { position: static !important; transform: none !important; text-align: center !important; white-space: normal; }
+            .anno-label.left-side { text-align: center !important; }
+            .anno-svg { display: none; }
+            .polaroid-wrap { order: -1; }
+            /* Stack annotations below as a row */
+            .portrait-scene .anno-labels-mobile {
+                display: flex; gap: 1.2rem; justify-content: center; flex-wrap: wrap;
+            }
+            .promises-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+            .cap-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+            .nav-links a:not(.btn-primary) { display: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .rv, .portrait-scene, .anno-label, .anno-svg line, .anno-svg circle,
+            .hero-top h1, .hero-top .kicker, .hero-top .sub, .hero-cta {
+                transition-duration: 0.15s; transition-delay: 0s !important;
+                opacity: 1; transform: none;
+            }
+            .anno-svg .pulse { animation: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+    <div class="nav-logo">Up<span>Sight</span></div>
+    <div class="nav-links">
+        <a href="#capabilities">Platform</a>
+        <a href="#cta">Pricing</a>
+        <a href="https://cal.com/rickmoy" class="btn-primary">Start Trial &rarr;</a>
+    </div>
+</nav>
+
+<!-- ===========================================
+     HERO
+     =========================================== -->
+<section class="hero" id="hero">
+    <div class="hero-crowd">
+        <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1920&q=80" alt="Team meeting" loading="eager" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+        <div class="hero-crowd-fallback" style="display:none;"></div>
+    </div>
+
+    <div class="hero-top">
+        <p class="kicker">Customer Intelligence Platform</p>
+        <h1>Get your customers.<br><em>Build conviction.</em></h1>
+        <p class="sub">Turn conversations into shared conviction across your entire team.</p>
+    </div>
+
+    <!-- ===========================================
+         PORTRAIT CAROUSEL — one person at a time
+         Polaroid cards with lines INTO the photo
+         =========================================== -->
+    <div class="portrait-stage" id="portraitStage">
+
+        <!-- PERSON 0: Sarah -->
+        <div class="portrait-scene active" data-person="0">
+            <!-- SVG overlay spans entire scene for label-to-body lines -->
+            <svg class="anno-svg" id="svg0"></svg>
+            <div class="polaroid-wrap" id="pw0">
+                <div class="polaroid">
+                    <div class="polaroid-img" id="pi0">
+                        <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=480&h=640&q=80" alt="Sarah, Product Lead" loading="eager" onerror="this.style.display='none'; this.parentElement.querySelector('.fallback').style.display='flex';">
+                        <div class="fallback" style="display:none;"><div class="fallback-icon"></div></div>
+                    </div>
+                    <div class="polaroid-caption">
+                        <div class="name">Sarah</div>
+                        <div class="role">Product Lead, Series A</div>
+                    </div>
+                </div>
+            </div>
+            <div class="anno-label left-side d1" id="a0-thinks" data-side="left" data-zone="head">
+                <span class="key">// Thinks</span>
+                <span class="val">&ldquo;The roadmap is <em>guesswork</em>&rdquo;</span>
+            </div>
+            <div class="anno-label right-side d2" id="a0-feels" data-side="right" data-zone="heart">
+                <span class="key">// Feels</span>
+                <span class="val">Evidence-backed <em>priorities</em></span>
+            </div>
+            <div class="anno-label right-side d3" id="a0-uses" data-side="right" data-zone="hand">
+                <span class="key">// Uses</span>
+                <span class="val"><em>Notion</em>, Linear, Slack</span>
+            </div>
+        </div>
+
+        <!-- PERSON 1: Marcus -->
+        <div class="portrait-scene" data-person="1">
+            <svg class="anno-svg" id="svg1"></svg>
+            <div class="polaroid-wrap" id="pw1">
+                <div class="polaroid">
+                    <div class="polaroid-img" id="pi1">
+                        <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=480&h=640&q=80" alt="Marcus, Founder" loading="eager" onerror="this.style.display='none'; this.parentElement.querySelector('.fallback').style.display='flex';">
+                        <div class="fallback" style="display:none;"><div class="fallback-icon"></div></div>
+                    </div>
+                    <div class="polaroid-caption">
+                        <div class="name">Marcus</div>
+                        <div class="role">Founder &amp; CEO</div>
+                    </div>
+                </div>
+            </div>
+            <div class="anno-label left-side d1" id="a1-thinks" data-side="left" data-zone="head">
+                <span class="key">// Thinks</span>
+                <span class="val">&ldquo;I heard this <em>3 months ago</em>&rdquo;</span>
+            </div>
+            <div class="anno-label right-side d2" id="a1-feels" data-side="right" data-zone="heart">
+                <span class="key">// Feels</span>
+                <span class="val">Team aligned on <em>what to build</em></span>
+            </div>
+            <div class="anno-label right-side d3" id="a1-uses" data-side="right" data-zone="hand">
+                <span class="key">// Uses</span>
+                <span class="val"><em>Zoom</em>, spreadsheets, memory</span>
+            </div>
+        </div>
+
+        <!-- PERSON 2: Priya -->
+        <div class="portrait-scene" data-person="2">
+            <svg class="anno-svg" id="svg2"></svg>
+            <div class="polaroid-wrap" id="pw2">
+                <div class="polaroid">
+                    <div class="polaroid-img" id="pi2">
+                        <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=480&h=640&q=80" alt="Priya, CS Lead" loading="eager" onerror="this.style.display='none'; this.parentElement.querySelector('.fallback').style.display='flex';">
+                        <div class="fallback" style="display:none;"><div class="fallback-icon"></div></div>
+                    </div>
+                    <div class="polaroid-caption">
+                        <div class="name">Priya</div>
+                        <div class="role">Customer Success Lead</div>
+                    </div>
+                </div>
+            </div>
+            <div class="anno-label left-side d1" id="a2-thinks" data-side="left" data-zone="head">
+                <span class="key">// Thinks</span>
+                <span class="val">&ldquo;<em>Nobody</em> listens to CS&rdquo;</span>
+            </div>
+            <div class="anno-label right-side d2" id="a2-feels" data-side="right" data-zone="heart">
+                <span class="key">// Feels</span>
+                <span class="val">Early warning with <em>receipts</em></span>
+            </div>
+            <div class="anno-label right-side d3" id="a2-uses" data-side="right" data-zone="hand">
+                <span class="key">// Uses</span>
+                <span class="val"><em>Intercom</em>, HubSpot, hope</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="carousel-controls">
+        <div class="carousel-pips">
+            <div class="carousel-pip active" data-idx="0"></div>
+            <div class="carousel-pip" data-idx="1"></div>
+            <div class="carousel-pip" data-idx="2"></div>
+        </div>
+        <div class="carousel-timer"><div class="carousel-timer-fill"></div></div>
+    </div>
+
+    <!-- Hero CTA — primary + two entry options -->
+    <div class="hero-cta">
+        <div class="hero-cta-main">
+            <a href="#" class="btn-primary" style="font-size: var(--body); padding: clamp(12px, 1.5vw, 16px) clamp(28px, 4vw, 48px);">
+                Start seeing your customers &rarr;
+            </a>
+        </div>
+        <p style="font-size: clamp(1rem, 1.8vw, 1.35rem); color: var(--dim); font-weight: 300; margin-top: clamp(0.75rem, 1.5vw, 1.2rem); line-height: 1.6; max-width: 36ch; margin-left: auto; margin-right: auto;">
+            Start with a <a href="#" style="color: var(--text); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(238,238,242,0.3); font-weight: 500;">smart survey</a>
+            <span style="color: var(--amber); font-weight: 500;">(personalized by AI)</span><br>
+            or a <a href="#" style="color: var(--text); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(238,238,242,0.3); font-weight: 500;">conversation</a>.
+        </p>
+    </div>
+</section>
+
+<!-- BREAK -->
+<section class="break-section" id="break">
+    <h2 class="rv">They&rsquo;re telling you.<br><span>Are you getting it?</span></h2>
+</section>
+
+<!-- THINKS / FEELS / USES -->
+<section class="promises" id="promises">
+    <div class="promises-grid">
+        <div class="promise rv">
+            <div class="promise-icon-area"><div class="promise-icon-label">// Thinks</div></div>
+            <h3>What they<br>think</h3>
+            <p>Surface frustrations, beliefs, and objections from real conversations. Not surveys. Not guesses. Their words.</p>
+        </div>
+        <div class="promise rv">
+            <div class="promise-icon-area"><div class="promise-icon-label">// Feels</div></div>
+            <h3>What they<br>feel</h3>
+            <p>Understand desires and motivations with evidence you can verify. Click any insight &mdash; see exactly who said it, when.</p>
+        </div>
+        <div class="promise rv">
+            <div class="promise-icon-area"><div class="promise-icon-label">// Uses</div></div>
+            <h3>What they<br>use</h3>
+            <p>Map tools, workflows, and behaviors across your entire customer base. Patterns emerge in minutes, not weeks of synthesis.</p>
+        </div>
+    </div>
+</section>
+
+<!-- CAPABILITIES -->
+<section class="capabilities" id="capabilities">
+    <div class="cap-header">
+        <p class="kicker rv">One platform. Every touchpoint.</p>
+        <h2 class="rv">From conversation to conviction.</h2>
+        <p class="rv">Capture customer intelligence from every channel. Turn it into decisions your whole team can defend.</p>
+    </div>
+    <div class="cap-grid">
+        <div class="cap-card rv">
+            <span class="cap-tag">Capture</span>
+            <h4>Voice of Customer</h4>
+            <p>Ingest conversations from calls, meetings, support tickets, and field notes. Every customer touchpoint in one place.</p>
+        </div>
+        <div class="cap-card rv">
+            <span class="cap-tag">Engage</span>
+            <h4>AI-Powered Surveys</h4>
+            <p>Smart surveys with intelligent follow-up questions. Collect text, audio, and video responses. AI analyzes themes automatically.</p>
+        </div>
+        <div class="cap-card rv">
+            <span class="cap-tag">Guide</span>
+            <h4>Interview Guides &amp; Recording</h4>
+            <p>Plan interview prompts, record live or upload recordings. Auto-transcribe with speaker identification and timestamps.</p>
+        </div>
+        <div class="cap-card rv">
+            <span class="cap-tag">Analyze</span>
+            <h4>UX Research Synthesis</h4>
+            <p>AI extracts themes, personas, and evidence across conversations. Click any insight to see the exact source &mdash; the receipts.</p>
+        </div>
+        <div class="cap-card rv">
+            <span class="cap-tag">Connect</span>
+            <h4>AI-Native CRM</h4>
+            <p>Customer intelligence that flows to your whole team. Not another database &mdash; a shared reality where every insight is traceable.</p>
+        </div>
+        <div class="cap-card rv">
+            <span class="cap-tag">Act</span>
+            <h4>Evidence-Linked Actions</h4>
+            <p>Turn insights into tasks with evidence attached. Every decision stays grounded in what customers actually said.</p>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="cta">
+    <h2 class="rv">Start with a smart survey<br><span style="color: var(--amber);">(personalized by AI)</span> or a conversation.</h2>
+    <p class="rv sub">See what conviction feels like when it&rsquo;s backed by evidence.</p>
+    <div class="rv cta-buttons">
+        <a href="#" class="btn-primary" style="font-size: var(--body); padding: 14px 36px;">Start Pro Trial &rarr;</a>
+        <a href="https://cal.com/rickmoy" class="btn-outline" style="font-size: var(--body); padding: 14px 36px;">Get a Demo</a>
+    </div>
+    <p class="rv tagline">Customer truth, connected.</p>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+    <span>&copy; 2026 UpSight by DeepLight</span>
+    <div class="footer-links">
+        <a href="/blog">Blog</a>
+        <a href="/terms">Terms</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/about">About</a>
+    </div>
+</footer>
+
+<!-- ===========================================
+     JAVASCRIPT
+     =========================================== -->
+<script>
+    /* ===========================================
+       INTERSECTION OBSERVER
+       =========================================== */
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) e.target.classList.add('visible');
+        });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.hero, .break-section, .promises, .capabilities, .cta-section').forEach(s => observer.observe(s));
+    document.querySelector('.hero').classList.add('visible');
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); }
+        });
+    });
+
+    /* ===========================================
+       ANNOTATION POSITIONING ENGINE
+       SVG now lives on portrait-scene (full width).
+       Lines run from label edge → across gap → INTO the body.
+       Body zones: head 18%, heart 50%, hand 75% of image height.
+       =========================================== */
+    const BODY_ZONES = { head: 0.18, heart: 0.50, hand: 0.75 };
+    const LABEL_GAP = 48; // px gap between polaroid edge and label start
+
+    function positionAnnotations(personIdx) {
+        const scene = document.querySelector(`.portrait-scene[data-person="${personIdx}"]`);
+        if (!scene) return;
+
+        const wrap = scene.querySelector('.polaroid-wrap');
+        const imgEl = scene.querySelector('.polaroid-img');
+        const svgEl = scene.querySelector('.anno-svg');
+        const annoLabels = scene.querySelectorAll('.anno-label');
+
+        if (!wrap || !imgEl || !svgEl) return;
+
+        const sceneRect = scene.getBoundingClientRect();
+        const wrapRect  = wrap.getBoundingClientRect();
+        const imgRect   = imgEl.getBoundingClientRect();
+
+        // SVG covers the entire scene
+        const sw = sceneRect.width;
+        const sh = sceneRect.height;
+        svgEl.setAttribute('viewBox', `0 0 ${sw} ${sh}`);
+        svgEl.style.width = sw + 'px';
+        svgEl.style.height = sh + 'px';
+
+        // Offsets: where is the image within the scene?
+        const imgL = imgRect.left - sceneRect.left;
+        const imgT = imgRect.top  - sceneRect.top;
+        const imgW = imgRect.width;
+        const imgH = imgRect.height;
+
+        // Where is the polaroid wrap within the scene?
+        const wrapL = wrapRect.left - sceneRect.left;
+        const wrapR = wrapRect.right - sceneRect.left;
+        const wrapT = wrapRect.top - sceneRect.top;
+
+        let svgContent = '';
+        const delays = ['delay-1', 'delay-2', 'delay-3'];
+
+        annoLabels.forEach((label, i) => {
+            const side = label.dataset.side || 'left';
+            const zone = label.dataset.zone || 'head';
+            const yPct = BODY_ZONES[zone] || 0.5;
+
+            // Body dot Y position (relative to scene)
+            const dotY = imgT + imgH * yPct;
+
+            if (side === 'left') {
+                // Body dot: 35% into image from left
+                const dotX = imgL + imgW * 0.35;
+
+                // Position label to the left, vertically aligned with dot
+                label.style.position = 'absolute';
+                label.style.right = (sw - wrapL + LABEL_GAP) + 'px';
+                label.style.left = 'auto';
+                label.style.top = dotY + 'px';
+                label.style.transform = 'translateY(-50%)';
+
+                // After positioning, get label's right edge for line start
+                // Line goes from (label right edge) → (body dot)
+                const labelRight = wrapL - LABEL_GAP;
+                svgContent += `<line class="${delays[i]}" x1="${labelRight}" y1="${dotY}" x2="${dotX}" y2="${dotY}" />`;
+                svgContent += `<circle class="${delays[i]}" cx="${dotX}" cy="${dotY}" r="6" />`;
+                svgContent += `<circle class="pulse ${delays[i]}" cx="${dotX}" cy="${dotY}" r="6" />`;
+            } else {
+                // Body dot: 65% into image from left
+                const dotX = imgL + imgW * 0.65;
+
+                // Position label to the right
+                label.style.position = 'absolute';
+                label.style.left = (wrapR + LABEL_GAP) + 'px';
+                label.style.right = 'auto';
+                label.style.top = dotY + 'px';
+                label.style.transform = 'translateY(-50%)';
+
+                // Line from body dot → label left edge
+                const labelLeft = wrapR + LABEL_GAP;
+                svgContent += `<line class="${delays[i]}" x1="${dotX}" y1="${dotY}" x2="${labelLeft}" y2="${dotY}" />`;
+                svgContent += `<circle class="${delays[i]}" cx="${dotX}" cy="${dotY}" r="6" />`;
+                svgContent += `<circle class="pulse ${delays[i]}" cx="${dotX}" cy="${dotY}" r="6" />`;
+            }
+        });
+
+        svgEl.innerHTML = svgContent;
+    }
+
+    /* ===========================================
+       PORTRAIT CAROUSEL
+       6s intervals. Zoom-in entrance. Linger.
+       =========================================== */
+    const scenes = document.querySelectorAll('.portrait-scene');
+    const pips = document.querySelectorAll('.carousel-pip');
+    const timerFill = document.querySelector('.carousel-timer-fill');
+    let current = 0;
+    const INTERVAL = 6000;
+    let timerStart = null;
+    let rafId = null;
+    let autoTimer = null;
+
+    function showPerson(idx) {
+        // Remove active from all
+        scenes.forEach(s => s.classList.remove('active'));
+        pips.forEach(p => p.classList.remove('active'));
+
+        // Activate new
+        scenes[idx].classList.add('active');
+        pips[idx].classList.add('active');
+        current = idx;
+        timerStart = performance.now();
+
+        // Re-position annotations after transition starts
+        requestAnimationFrame(() => {
+            setTimeout(() => positionAnnotations(idx), 50);
+        });
+    }
+
+    function nextPerson() {
+        showPerson((current + 1) % scenes.length);
+    }
+
+    function animateTimer(now) {
+        if (timerStart === null) timerStart = now;
+        const elapsed = now - timerStart;
+        const pct = Math.min((elapsed / INTERVAL) * 100, 100);
+        timerFill.style.width = pct + '%';
+        rafId = requestAnimationFrame(animateTimer);
+    }
+
+    function stopCarousel() {
+        clearInterval(autoTimer);
+        cancelAnimationFrame(rafId);
+        autoTimer = null;
+        rafId = null;
+    }
+
+    function startCarousel() {
+        stopCarousel(); // always clear first to prevent duplicate timers
+        timerStart = performance.now();
+        rafId = requestAnimationFrame(animateTimer);
+        autoTimer = setInterval(nextPerson, INTERVAL);
+    }
+
+    pips.forEach(pip => {
+        pip.addEventListener('click', () => {
+            stopCarousel();
+            showPerson(parseInt(pip.dataset.idx));
+            startCarousel();
+        });
+    });
+
+    const heroEl = document.querySelector('.hero');
+    const heroObs = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (!e.isIntersecting) {
+                stopCarousel();
+            } else {
+                startCarousel();
+            }
+        });
+    }, { threshold: 0.3 });
+    heroObs.observe(heroEl);
+
+    /* Initial positioning once images load or on timeout */
+    function initAnnotations() {
+        positionAnnotations(0);
+    }
+
+    // Position after a short delay (images loading)
+    window.addEventListener('load', () => {
+        setTimeout(initAnnotations, 200);
+    });
+    // Also fire on resize
+    window.addEventListener('resize', () => positionAnnotations(current));
+
+    // Fallback: position even before images finish
+    setTimeout(initAnnotations, 600);
+
+    startCarousel();
+</script>
+
+</body>
+</html>

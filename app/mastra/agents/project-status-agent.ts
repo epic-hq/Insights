@@ -6,9 +6,7 @@ import { openai } from "../../lib/billing/instrumented-openai.server";
 // ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
 // import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
 import { getSharedPostgresStore } from "../storage/postgres-singleton";
-import { buildGenUISystemContext } from "~/lib/gen-ui/agent-context";
 import { capabilityLookupTool } from "../tools/capability-lookup";
-import { displayComponentTool } from "../tools/display-component";
 import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses";
 import { fetchEvidenceTool } from "../tools/fetch-evidence";
 import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache";
@@ -22,12 +20,12 @@ import { generateProjectRoutesTool } from "../tools/generate-project-routes";
 import { generateResearchRecommendationsTool } from "../tools/generate-research-recommendations";
 import { getCurrentDateTool } from "../tools/get-current-date";
 import { recommendNextActionsTool } from "../tools/recommend-next-actions";
-import { requestUserInputTool } from "../tools/request-user-input";
 import { semanticSearchAssetsTool } from "../tools/semantic-search-assets";
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence";
 import { suggestionTool } from "../tools/suggestion-tool";
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 import { chiefOfStaffAgent } from "./chief-of-staff-agent";
+import { feedbackAgent } from "./feedback-agent";
 import { howtoAgent } from "./howto-agent";
 import { opsAgent } from "./ops-agent";
 import { peopleAgent } from "./people-agent";
@@ -35,105 +33,97 @@ import { researchAgent } from "./research-agent";
 import { taskAgent } from "./task-agent";
 
 function auditToolSchemas(agent_name: string, tools: Record<string, unknown>) {
-  try {
-    const tool_entries = Object.entries(tools);
-    const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> =
-      [];
+	try {
+		const tool_entries = Object.entries(tools);
+		const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> = [];
 
-    for (const [tool_name, tool] of tool_entries) {
-      if (!tool || typeof tool !== "object") {
-        issues.push({
-          tool: tool_name,
-          issue: `tool is not an object (${typeof tool})`,
-        });
-        continue;
-      }
+		for (const [tool_name, tool] of tool_entries) {
+			if (!tool || typeof tool !== "object") {
+				issues.push({
+					tool: tool_name,
+					issue: `tool is not an object (${typeof tool})`,
+				});
+				continue;
+			}
 
-      const own_props = Object.getOwnPropertyNames(tool);
-      const has_input_schema = own_props.includes("inputSchema");
-      const has_output_schema = own_props.includes("outputSchema");
+			const own_props = Object.getOwnPropertyNames(tool);
+			const has_input_schema = own_props.includes("inputSchema");
+			const has_output_schema = own_props.includes("outputSchema");
 
-      const input_schema = (tool as any).inputSchema;
-      const output_schema = (tool as any).outputSchema;
-      const input_is_zod =
-        !!input_schema &&
-        typeof input_schema === "object" &&
-        typeof input_schema.safeParse === "function";
-      const output_is_zod =
-        !!output_schema &&
-        typeof output_schema === "object" &&
-        typeof output_schema.safeParse === "function";
+			const input_schema = (tool as any).inputSchema;
+			const output_schema = (tool as any).outputSchema;
+			const input_is_zod =
+				!!input_schema && typeof input_schema === "object" && typeof input_schema.safeParse === "function";
+			const output_is_zod =
+				!!output_schema && typeof output_schema === "object" && typeof output_schema.safeParse === "function";
 
-      if (!has_input_schema || !input_is_zod) {
-        issues.push({
-          tool: tool_name,
-          issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
-          ownProps: own_props,
-        });
-      }
-      if (!has_output_schema || !output_is_zod) {
-        issues.push({
-          tool: tool_name,
-          issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
-          ownProps: own_props,
-        });
-      }
-    }
+			if (!has_input_schema || !input_is_zod) {
+				issues.push({
+					tool: tool_name,
+					issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
+					ownProps: own_props,
+				});
+			}
+			if (!has_output_schema || !output_is_zod) {
+				issues.push({
+					tool: tool_name,
+					issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
+					ownProps: own_props,
+				});
+			}
+		}
 
-    if (issues.length > 0) {
-      consola.warn("[mastra-schema-audit] tool schema issues", {
-        agent: agent_name,
-        issueCount: issues.length,
-        issues,
-      });
-    } else {
-      consola.info("[mastra-schema-audit] all tool schemas look valid", {
-        agent: agent_name,
-        toolCount: tool_entries.length,
-      });
-    }
-  } catch (error) {
-    consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
-  }
+		if (issues.length > 0) {
+			consola.warn("[mastra-schema-audit] tool schema issues", {
+				agent: agent_name,
+				issueCount: issues.length,
+				issues,
+			});
+		} else {
+			consola.info("[mastra-schema-audit] all tool schemas look valid", {
+				agent: agent_name,
+				toolCount: tool_entries.length,
+			});
+		}
+	} catch (error) {
+		consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
+	}
 }
 
 const project_status_agent_tools = {
-  displayComponent: displayComponentTool,
-  getCurrentDate: getCurrentDateTool,
-  fetchProjectStatusContext: fetchProjectStatusContextTool,
-  fetchEvidence: fetchEvidenceTool,
-  semanticSearchEvidence: semanticSearchEvidenceTool,
-  semanticSearchAssets: semanticSearchAssetsTool,
-  fetchProjectGoals: fetchProjectGoalsTool,
-  fetchThemes: fetchThemesTool,
-  fetchTopThemesWithPeople: fetchTopThemesWithPeopleTool,
-  fetchPainMatrixCache: fetchPainMatrixCacheTool,
-  fetchSegments: fetchSegmentsTool,
-  fetchConversationLenses: fetchConversationLensesTool,
-  generateProjectRoutes: generateProjectRoutesTool,
-  generateDocumentLink: generateDocumentLinkTool,
-  capabilityLookup: capabilityLookupTool,
-  suggestNextSteps: suggestionTool,
-  recommendNextActions: recommendNextActionsTool,
-  // Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
-  "recommend-next-actions": recommendNextActionsTool,
-  generateResearchRecommendations: generateResearchRecommendationsTool,
-  "generate-research-recommendations": generateResearchRecommendationsTool,
-  requestUserInput: requestUserInputTool,
-  "request-user-input": requestUserInputTool,
+	getCurrentDate: getCurrentDateTool,
+	fetchProjectStatusContext: fetchProjectStatusContextTool,
+	fetchEvidence: fetchEvidenceTool,
+	semanticSearchEvidence: semanticSearchEvidenceTool,
+	semanticSearchAssets: semanticSearchAssetsTool,
+	fetchProjectGoals: fetchProjectGoalsTool,
+	fetchThemes: fetchThemesTool,
+	fetchTopThemesWithPeople: fetchTopThemesWithPeopleTool,
+	fetchPainMatrixCache: fetchPainMatrixCacheTool,
+	fetchSegments: fetchSegmentsTool,
+	fetchConversationLenses: fetchConversationLensesTool,
+	generateProjectRoutes: generateProjectRoutesTool,
+	generateDocumentLink: generateDocumentLinkTool,
+	capabilityLookup: capabilityLookupTool,
+	suggestNextSteps: suggestionTool,
+	recommendNextActions: recommendNextActionsTool,
+	// Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
+	"recommend-next-actions": recommendNextActionsTool,
+	generateResearchRecommendations: generateResearchRecommendationsTool,
+	"generate-research-recommendations": generateResearchRecommendationsTool,
 };
 
 auditToolSchemas("projectStatusAgent", project_status_agent_tools);
 
 export const projectStatusAgent = new Agent({
-  id: "project-status-agent",
-  name: "projectStatusAgent",
-  instructions: async ({ requestContext }) => {
-    try {
-      const projectId = requestContext.get("project_id");
-      const accountId = requestContext.get("account_id");
-      const userId = requestContext.get("user_id");
-      return `
+	id: "project-status-agent",
+	name: "projectStatusAgent",
+	instructions: async ({ requestContext }) => {
+		try {
+			const projectId = requestContext.get("project_id");
+			const accountId = requestContext.get("account_id");
+			const userId = requestContext.get("user_id");
+			return `
 You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
 
 project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}, user_id=${userId || "<unknown>"}
@@ -208,6 +198,7 @@ Call "getCurrentDate" first for any date/time questions.
 - For questions like "top themes", "most common themes", or "who has this theme", ALWAYS call "fetchTopThemesWithPeople" first.
   - If totalThemes > 0, NEVER claim there are no themes.
   - If totalThemes = 0, explicitly say no themes with evidence were found and suggest the next action.
+- **Themes for a specific person** (e.g. "what themes stand out for Kai?"): call "fetchTopThemesWithPeople" with limit=10 and peoplePerTheme=10, then filter the results to themes where that person appears in the people array. Report those themes ranked by the person's mentionCount. If the person doesn't appear in any theme's people list, say so and offer to search their evidence directly.
 - "semanticSearchEvidence" with natural language query—searches quotes AND structured facets (pains, gains, thinks, feels) from INTERVIEWS only
 - Survey and interview data are handled by the ResearchAgent sub-agent.
   **MANDATORY: Link EVERY survey quote/citation to its source:**
@@ -224,6 +215,13 @@ Call "getCurrentDate" first for any date/time questions.
 - Interview requests are handled by the ResearchAgent sub-agent.
 - "fetchProjectStatusContext" for project-wide status and metrics
 
+**Interview Detail Mode (No Generic Advice):**
+- If the system context shows you're on an interview detail page (e.g., "View: Interview detail (id=...)"), treat interview-specific questions as context-aware.
+- For prompts about open questions, prep, follow-up, or "how to address this interview":
+  1. Delegate to ResearchAgent and require interview context retrieval first.
+  2. Ground the answer in interview-specific fields (especially \`open_questions_and_next_steps\`) and named participant context.
+  3. Do NOT give generic coaching fluff. If interview-specific data is missing, say exactly what's missing and ask one focused clarification.
+
 **Sales & Pipeline**:
 - Sales and pipeline requests are handled by the OpsAgent sub-agent.
 - For BANT analysis: fetchConversationLenses(mode='analyses', templateKey='sales-bant') → synthesize Budget/Authority/Need/Timeline signals → identify strengths and gaps → recommend specific follow-up actions
@@ -232,8 +230,9 @@ Call "getCurrentDate" first for any date/time questions.
 - Deals and organization ops are handled by the OpsAgent sub-agent.
 - People: delegate to PeopleAgent for all people/persona operations
 - Documents, table editing/imports, and URL content ingestion are handled by the ResearchAgent or OpsAgent sub-agent.
+- Product feedback ingestion into PostHog is handled by the feedbackAgent sub-agent.
 - **Search files/assets**: "semanticSearchAssets" to find previously saved tables, documents, spreadsheets by natural language query
-- Capabilities lookup: "capabilityLookup" when user asks what you can do or to restate scope/guardrails
+- Capabilities lookup: "capabilityLookup" when user asks what you can do or to restate scope. Present the tool's summary verbatim — do NOT add "Do this now", "Prompt template", "If stuck", or any extra sections
 - Document links: "generateDocumentLink" to give the user a clickable link after saving or reading a document
 - Annotations are handled by the OpsAgent sub-agent
 - **Tasks**: Task operations (create, update, complete, delete) are handled by the taskAgent sub-agent. The network will automatically route task-related requests.
@@ -271,34 +270,33 @@ For strategic planning, task prioritization, or "what should I do next?", delega
 
 ## How-To Guidance
 For "how do I", "where do I", "best way to", and "teach me" guidance requests, delegate to the howtoAgent sub-agent.
-
-${buildGenUISystemContext()}
 `;
-    } catch (error) {
-      consola.error("Error in project status agent instructions:", error);
-      return `
+		} catch (error) {
+			consola.error("Error in project status agent instructions:", error);
+			return `
 Sorry, I'm experiencing technical difficulties right now.
 
 Please try:
 
 1. Refreshing the page and trying again
 2. Contacting support if the issue persists`;
-    }
-  },
-  model: openai("gpt-4.1"),
-  tools: wrapToolsWithStatusEvents(project_status_agent_tools),
-  agents: {
-    taskAgent,
-    peopleAgent,
-    researchAgent,
-    opsAgent,
-    chiefOfStaffAgent,
-    howtoAgent,
-  },
-  memory: new Memory({
-    storage: getSharedPostgresStore(),
-  }),
-  // TokenLimiterProcessor prevents context window overflow
-  // Note: Using number format for Zod v4 compatibility
-  outputProcessors: [new TokenLimiterProcessor(45_000)],
+		}
+	},
+	model: openai("gpt-4.1"),
+	tools: wrapToolsWithStatusEvents(project_status_agent_tools),
+	agents: {
+		taskAgent,
+		peopleAgent,
+		researchAgent,
+		opsAgent,
+		feedbackAgent,
+		chiefOfStaffAgent,
+		howtoAgent,
+	},
+	memory: new Memory({
+		storage: getSharedPostgresStore(),
+	}),
+	// TokenLimiterProcessor prevents context window overflow
+	// Note: Using number format for Zod v4 compatibility
+	outputProcessors: [new TokenLimiterProcessor(45_000)],
 });

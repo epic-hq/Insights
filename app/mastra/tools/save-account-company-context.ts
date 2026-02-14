@@ -8,7 +8,7 @@
 import { createTool } from "@mastra/core/tools";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
 import { resolveAccountId } from "./context-utils";
 
 export const saveAccountCompanyContextTool = createTool({
@@ -29,14 +29,14 @@ Fields to save:
 	inputSchema: z.object({
 		account_id: z.string().nullish().describe("Account ID to save context to. Use 'current' to use runtime context."),
 		project_id: z.string().nullish().describe("Project ID to resolve account from (if account_id not provided)."),
-		website_url: z.string().optional().nullable(),
-		company_description: z.string().optional().nullable(),
-		customer_problem: z.string().optional().nullable(),
-		offerings: z.array(z.string()).optional().nullable(),
-		target_orgs: z.array(z.string()).optional().nullable(),
-		target_roles: z.array(z.string()).optional().nullable(),
-		competitors: z.array(z.string()).optional().nullable(),
-		industry: z.string().optional().nullable(),
+		website_url: z.string().nullish(),
+		company_description: z.string().nullish(),
+		customer_problem: z.string().nullish(),
+		offerings: z.array(z.string()).nullish(),
+		target_orgs: z.array(z.string()).nullish(),
+		target_roles: z.array(z.string()).nullish(),
+		competitors: z.array(z.string()).nullish(),
+		industry: z.string().nullish(),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

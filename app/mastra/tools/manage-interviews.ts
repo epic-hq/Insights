@@ -2,8 +2,9 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
+import type { Database } from "../../types";
+import { validateUUID } from "./context-utils";
 
 const toolInputSchema = z.object({
 	action: z.enum(["get", "list", "delete"]),
@@ -99,8 +100,9 @@ export const manageInterviewsTool = createTool({
 		const runtime_account_id = context?.requestContext?.get?.("account_id") as string | undefined;
 		const runtime_project_id = context?.requestContext?.get?.("project_id") as string | undefined;
 
-		const resolved_account_id = account_override || runtime_account_id;
-		const resolved_project_id = project_override || runtime_project_id;
+		const resolved_account_id = validateUUID(account_override || runtime_account_id, "accountId", "manage-interviews");
+		const resolved_project_id = validateUUID(project_override || runtime_project_id, "projectId", "manage-interviews");
+		const validated_interview_id = interviewId ? validateUUID(interviewId, "interviewId", "manage-interviews") : null;
 
 		if (!resolved_account_id || !resolved_project_id) {
 			return {
@@ -112,10 +114,10 @@ export const manageInterviewsTool = createTool({
 
 		try {
 			if (action === "get") {
-				if (!interviewId) {
+				if (!validated_interview_id) {
 					return {
 						success: false,
-						message: "interviewId is required for get.",
+						message: "interviewId is required for get and must be a valid UUID.",
 						interview: null,
 					};
 				}
@@ -123,7 +125,7 @@ export const manageInterviewsTool = createTool({
 				const { data: interview_row, error } = await supabase
 					.from("interviews")
 					.select("id, title, status, account_id, project_id")
-					.eq("id", interviewId)
+					.eq("id", validated_interview_id)
 					.eq("account_id", resolved_account_id)
 					.eq("project_id", resolved_project_id)
 					.single();
@@ -186,10 +188,10 @@ export const manageInterviewsTool = createTool({
 			}
 
 			if (action === "delete") {
-				if (!interviewId) {
+				if (!validated_interview_id) {
 					return {
 						success: false,
-						message: "interviewId is required for delete.",
+						message: "interviewId is required for delete and must be a valid UUID.",
 						interview: null,
 					};
 				}
@@ -197,7 +199,7 @@ export const manageInterviewsTool = createTool({
 				const { data: interview_row, error: fetch_error } = await supabase
 					.from("interviews")
 					.select("id, title, account_id, project_id")
-					.eq("id", interviewId)
+					.eq("id", validated_interview_id)
 					.eq("account_id", resolved_account_id)
 					.eq("project_id", resolved_project_id)
 					.maybeSingle();

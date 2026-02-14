@@ -13,8 +13,10 @@ import {
 } from "~/features/organizations/db";
 import { deletePerson, getPersonById, updatePerson } from "~/features/people/db";
 import { calculateICPScore } from "~/features/people/services/calculateICPScore.server";
+import { enrichPersonData } from "~/features/people/services/enrichPersonData.server";
 import { generatePersonDescription } from "~/features/people/services/generatePersonDescription.server";
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav";
+import { BulkGenerateSurveys } from "~/features/research-links/components/BulkGenerateSurveys";
 import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
 import { getFacetCatalog } from "~/lib/database/facets.server";
 import { userContext } from "~/server/user-context";
@@ -27,6 +29,7 @@ import { PersonInsights } from "../components/PersonInsights";
 import { PersonProfileSection } from "../components/PersonProfileSection";
 import { PersonScorecard } from "../components/PersonScorecard";
 import { generatePersonFacetSummaries } from "../services/generatePersonFacetSummaries.server";
+import { generatePersonNextSteps } from "../services/generatePersonNextSteps.server";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -264,13 +267,66 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			throw new Response("Failed to load organizations", { status: 500 });
 		}
 
-		// Refresh or reuse facet lens summaries in-line so the accordion always has a headline
-		const facetSummaries = await generatePersonFacetSummaries({
-			supabase,
-			person,
-			projectId,
-			accountId,
-		});
+		// Compute derived values needed for AI next steps
+		const allInterviewLinksForLoader = (person.interview_people || []).filter(
+			(ip: { interviews?: { id?: string } }) => ip.interviews?.id
+		);
+		const interviewLinksForLoader = allInterviewLinksForLoader.filter(
+			(ip: { interviews?: { source_type?: string; media_type?: string } }) =>
+				ip.interviews?.source_type !== "note" &&
+				ip.interviews?.source_type !== "survey_response" &&
+				ip.interviews?.source_type !== "public_chat" &&
+				ip.interviews?.media_type !== "voice_memo"
+		);
+		const surveyLinksForLoader = allInterviewLinksForLoader.filter(
+			(ip: { interviews?: { source_type?: string } }) => ip.interviews?.source_type === "survey_response"
+		);
+		const lastContactDates = allInterviewLinksForLoader
+			.map((link: { interviews?: { created_at?: string } }) => link.interviews?.created_at)
+			.filter((d: string | undefined): d is string => Boolean(d))
+			.map((d: string) => new Date(d));
+		const lastContactDateForLoader =
+			lastContactDates.length > 0
+				? lastContactDates.reduce((latest: Date, d: Date) => (d > latest ? d : latest))
+				: null;
+
+		const primaryOrgForLoader =
+			person.people_organizations?.find((po: { is_primary?: boolean | null }) => po.is_primary)?.organization ??
+			person.people_organizations?.[0]?.organization ??
+			null;
+
+		const icpScales = (person as Record<string, unknown>).person_scale as Array<{
+			kind_slug: string;
+			score: number | null;
+			band: string | null;
+		}> | null;
+		const icpEntry = icpScales?.find((s) => s.kind_slug === "icp_match") ?? null;
+
+		// Run facet summaries and AI next steps in parallel
+		const [facetSummaries, aiNextSteps] = await Promise.all([
+			generatePersonFacetSummaries({
+				supabase,
+				person,
+				projectId,
+				accountId,
+			}),
+			generatePersonNextSteps({
+				supabase,
+				personId,
+				projectId,
+				person: {
+					name: person.name,
+					title: person.title,
+					description: person.description,
+				},
+				companyName: (primaryOrgForLoader as { name?: string | null } | null)?.name ?? null,
+				icpMatch: icpEntry ? { band: icpEntry.band, score: icpEntry.score } : null,
+				lastContactDate: lastContactDateForLoader,
+				conversationCount: interviewLinksForLoader.length,
+				surveyCount: surveyLinksForLoader.length,
+				themes: personThemes,
+			}),
+		]);
 
 		// Convert R2 key to presigned URL if needed
 		let imageUrl = person.image_url;
@@ -300,6 +356,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			surveyResponses: surveyResponsesList,
 			personThemes,
 			researchLinkResponses: researchLinkResponses ?? [],
+			aiNextSteps,
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
@@ -409,6 +466,112 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to score ICP match.";
 			return { scoreIcp: { error: message } };
+		}
+	}
+
+	if (intent === "enrich-person") {
+		try {
+			const person = await getPersonById({
+				supabase,
+				accountId,
+				projectId,
+				id: personId,
+			});
+			if (!person) {
+				return { enrich: { error: "Person not found" } };
+			}
+
+			// Resolve org name for search hints
+			const primaryOrgLink =
+				person.people_organizations?.find((po: { is_primary?: boolean | null }) => po.is_primary) ??
+				person.people_organizations?.[0];
+			const orgName = (primaryOrgLink?.organization as { name?: string | null } | null)?.name ?? null;
+
+			const result = await enrichPersonData({
+				personId,
+				accountId,
+				knownName: person.name || [person.firstname, person.lastname].filter(Boolean).join(" ") || null,
+				knownEmail: person.primary_email,
+				knownCompany: orgName,
+				knownTitle: person.title,
+				knownLinkedIn: person.linkedin_url,
+			});
+
+			if (result.error) {
+				return { enrich: { error: result.error } };
+			}
+
+			if (!result.enriched) {
+				return {
+					enrich: {
+						success: true,
+						enriched: false,
+						message: "No additional data found via web search.",
+					},
+				};
+			}
+
+			// Persist only null fields
+			const updates: Record<string, string | null> = {};
+			if (result.data.title && !person.title) updates.title = result.data.title;
+			if (result.data.role && !(person as Record<string, unknown>).role) updates.role = result.data.role;
+			if (result.data.linkedinUrl && !person.linkedin_url) updates.linkedin_url = result.data.linkedinUrl;
+			if (result.data.industry && !person.industry) updates.industry = result.data.industry;
+
+			if (Object.keys(updates).length > 0) {
+				await updatePerson({
+					supabase,
+					accountId,
+					projectId,
+					id: personId,
+					data: updates,
+				});
+			}
+
+			// Auto re-score ICP after enrichment
+			let icpRescored = false;
+			if (Object.keys(updates).length > 0) {
+				try {
+					const scoreBreakdown = await calculateICPScore({
+						supabase,
+						accountId,
+						projectId,
+						personId,
+					});
+					await supabase.from("person_scale").upsert(
+						{
+							person_id: personId,
+							account_id: accountId,
+							project_id: projectId,
+							kind_slug: "icp_match",
+							score: scoreBreakdown.overall_score ?? 0,
+							band: scoreBreakdown.band,
+							source: "inferred",
+							confidence: scoreBreakdown.confidence,
+							noted_at: new Date().toISOString(),
+						},
+						{ onConflict: "person_id,kind_slug" }
+					);
+					icpRescored = true;
+				} catch (icpErr) {
+					consola.warn("[enrich-person] ICP re-score failed:", icpErr);
+				}
+			}
+
+			return {
+				enrich: {
+					success: true,
+					enriched: true,
+					fieldsUpdated: Object.keys(updates),
+					source: result.source,
+					confidence: result.confidence,
+					icpRescored,
+				},
+			};
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to enrich person.";
+			consola.error("[enrich-person] Error:", error);
+			return { enrich: { error: message } };
 		}
 	}
 
@@ -701,15 +864,25 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 }
 
 export default function PersonDetail() {
-	const { person, catalog, organizations, relatedAssets, surveyResponses, personThemes, researchLinkResponses } =
-		useLoaderData<typeof loader>();
+	const {
+		person,
+		catalog,
+		organizations,
+		relatedAssets,
+		surveyResponses,
+		personThemes,
+		researchLinkResponses,
+		aiNextSteps,
+	} = useLoaderData<typeof loader>();
 	const actionData = useActionData<typeof action>();
 	const refreshError = actionData?.refresh?.error;
 	const { projectPath } = useCurrentProject();
 	const { accountId, projectId } = useParams();
 	const revalidator = useRevalidator();
 	const refreshFetcher = useFetcher<typeof action>();
-	const [pendingAction, setPendingAction] = useState<"refresh-description" | "score-icp" | null>(null);
+	const [pendingAction, setPendingAction] = useState<"refresh-description" | "score-icp" | "enrich-person" | null>(
+		null
+	);
 	const autoIcpRequestedRef = useRef(false);
 	const routesByIds = useProjectRoutesFromIds(accountId ?? "", projectId ?? "");
 	const routesByPath = useProjectRoutes(projectPath || "");
@@ -718,6 +891,13 @@ export default function PersonDetail() {
 		| {
 				refresh?: { success?: boolean; error?: string };
 				scoreIcp?: { success?: boolean; error?: string };
+				enrich?: {
+					success?: boolean;
+					error?: string;
+					enriched?: boolean;
+					fieldsUpdated?: string[];
+					message?: string;
+				};
 		  }
 		| undefined;
 
@@ -872,12 +1052,11 @@ export default function PersonDetail() {
 
 	const hasIcpScore = Boolean(icpScaleEntry);
 	const hasIcpScorableSignals = useMemo(() => {
-		const company = typeof person.company === "string" ? person.company : null;
 		const role = typeof person.role === "string" ? person.role : null;
 		const orgHasSignals = linkedOrganizations.some((link) =>
 			Boolean(link.organization?.industry || link.organization?.size_range || link.organization?.name)
 		);
-		return Boolean(person.title || role || company || orgHasSignals);
+		return Boolean(person.title || role || orgHasSignals);
 	}, [linkedOrganizations, person]);
 
 	// ---- Refresh / delete handlers ----
@@ -885,8 +1064,10 @@ export default function PersonDetail() {
 	const activeFetcherAction = (refreshFetcher.formData?.get("_action") as string | null) ?? pendingAction;
 	const isRefreshingDescription = isFetcherBusy && activeFetcherAction === "refresh-description";
 	const isScoringICP = isFetcherBusy && activeFetcherAction === "score-icp";
+	const isEnriching = isFetcherBusy && activeFetcherAction === "enrich-person";
 	const fetcherRefreshError = fetcherData?.refresh?.error;
 	const fetcherScoreError = fetcherData?.scoreIcp?.error;
+	const fetcherEnrichError = fetcherData?.enrich?.error;
 	const isFacetSummaryPending = facetLensGroups.some((group) => !group.summary);
 
 	const handleRefreshDescription = () => {
@@ -897,6 +1078,11 @@ export default function PersonDetail() {
 	const handleScoreICP = () => {
 		setPendingAction("score-icp");
 		refreshFetcher.submit({ _action: "score-icp" }, { method: "post" });
+	};
+
+	const handleEnrichPerson = () => {
+		setPendingAction("enrich-person");
+		refreshFetcher.submit({ _action: "enrich-person" }, { method: "post" });
 	};
 
 	const handleDelete = () => {
@@ -912,7 +1098,9 @@ export default function PersonDetail() {
 		const success =
 			pendingAction === "refresh-description"
 				? Boolean(fetcherData?.refresh?.success)
-				: Boolean(fetcherData?.scoreIcp?.success);
+				: pendingAction === "enrich-person"
+					? Boolean(fetcherData?.enrich?.success)
+					: Boolean(fetcherData?.scoreIcp?.success);
 		if (success) {
 			revalidator.revalidate();
 		}
@@ -928,6 +1116,9 @@ export default function PersonDetail() {
 
 	// ---- Quick Note dialog ----
 	const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+
+	// ---- Survey dialog ----
+	const [surveyDialogOpen, setSurveyDialogOpen] = useState(false);
 
 	const handleSaveNote = useCallback(
 		async (note: {
@@ -972,9 +1163,18 @@ export default function PersonDetail() {
 
 			<PageContainer className="space-y-8 pb-16">
 				{/* Error banner */}
-				{(refreshError || fetcherRefreshError || fetcherScoreError) && (
+				{(refreshError || fetcherRefreshError || fetcherScoreError || fetcherEnrichError) && (
 					<div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-destructive text-sm">
-						{refreshError || fetcherRefreshError || fetcherScoreError}
+						{refreshError || fetcherRefreshError || fetcherScoreError || fetcherEnrichError}
+					</div>
+				)}
+
+				{/* Enrich success banner */}
+				{fetcherData?.enrich?.success && !isEnriching && (
+					<div className="rounded-md border border-emerald-300/30 bg-emerald-50 p-3 text-emerald-800 text-sm dark:border-emerald-700/30 dark:bg-emerald-950 dark:text-emerald-300">
+						{fetcherData.enrich.enriched
+							? `Enriched: ${fetcherData.enrich.fieldsUpdated?.join(", ") || "data updated"}`
+							: fetcherData.enrich.message || "No additional data found."}
 					</div>
 				)}
 
@@ -997,17 +1197,37 @@ export default function PersonDetail() {
 						showAutoScoringHint={!hasIcpScore && (isScoringICP || autoIcpRequestedRef.current)}
 						onDelete={handleDelete}
 						onLogNote={() => setNoteDialogOpen(true)}
+						onEnrichPerson={handleEnrichPerson}
+						isEnriching={isEnriching}
+						onSendSurvey={() => setSurveyDialogOpen(true)}
 						isRefreshing={isRefreshingDescription}
 					/>
 				</section>
 
-				{/* Section 2: Profile, Contact & Attributes - Actionable widgets first */}
+				{/* Section 2: Insights & Next Steps */}
+				<section id="insights">
+					<PersonInsights
+						description={person.description}
+						themes={personThemes}
+						lastContactDate={lastContactDate}
+						surveyCount={surveyLinks.length}
+						conversationCount={interviewLinks.length}
+						icpMatch={icpMatch}
+						routes={routes}
+						onRefreshDescription={handleRefreshDescription}
+						isRefreshing={isRefreshingDescription}
+						aiNextSteps={aiNextSteps}
+					/>
+				</section>
+
+				{/* Section 3: Profile, Contact & Attributes */}
 				<section id="profile">
 					<PersonProfileSection
 						person={person}
 						primaryOrg={primaryOrg}
 						facetLensGroups={facetLensGroups}
 						availableFacetsByKind={availableFacetsByKind}
+						catalogKinds={catalog.kinds}
 						isGenerating={isRefreshingDescription || isFacetSummaryPending}
 						personScale={
 							(person as Record<string, unknown>).person_scale as Array<{
@@ -1020,21 +1240,6 @@ export default function PersonDetail() {
 						sortedLinkedOrganizations={sortedLinkedOrganizations}
 						routes={routes}
 						availableOrganizations={organizations}
-					/>
-				</section>
-
-				{/* Section 3: Insights & Next Steps */}
-				<section id="insights">
-					<PersonInsights
-						description={person.description}
-						themes={personThemes}
-						lastContactDate={lastContactDate}
-						surveyCount={surveyLinks.length}
-						conversationCount={interviewLinks.length}
-						icpMatch={icpMatch}
-						routes={routes}
-						onRefreshDescription={handleRefreshDescription}
-						isRefreshing={isRefreshingDescription}
 					/>
 				</section>
 
@@ -1051,6 +1256,19 @@ export default function PersonDetail() {
 			</PageContainer>
 
 			<QuickNoteDialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen} onSave={handleSaveNote} />
+
+			<BulkGenerateSurveys
+				open={surveyDialogOpen}
+				onOpenChange={setSurveyDialogOpen}
+				selectedPeople={[
+					{
+						id: person.id,
+						name: person.name || "Unknown",
+						title: person.title,
+						email: person.primary_email,
+					},
+				]}
+			/>
 		</div>
 	);
 }

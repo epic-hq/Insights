@@ -25,15 +25,17 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		const resourceId = `projectSetupAgent-${userId}-${projectId}`;
 
 		// Get the most recent thread for this project
-		const threads = await memory.listThreadsByResourceId({
-			resourceId,
+		const threads = await memory.listThreads({
+			filter: { resourceId },
 			orderBy: { field: "createdAt", direction: "DESC" },
 			page: 0,
 			perPage: 1,
 		});
 
 		if (!threads?.total || threads.total === 0) {
-			consola.info("project-setup history: no threads found for resourceId", { resourceId });
+			consola.info("project-setup history: no threads found for resourceId", {
+				resourceId,
+			});
 			return Response.json({ messages: [] });
 		}
 
@@ -43,7 +45,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// Query messages using Memory API (v1: query() renamed to recall(), messagesV2 renamed to messages)
 		const { messages: memoryMessages } = await memory.recall({
 			threadId,
-			selectBy: { last: 20 }, // Get more messages for setup context
+			perPage: 20, // Get more messages for setup context
 		});
 
 		consola.info("project-setup history loaded", {

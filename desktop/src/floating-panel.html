@@ -74,6 +74,7 @@
       }
 
       .floating-panel.minimized .panel-header,
+      .floating-panel.minimized .panel-context,
       .floating-panel.minimized .recording-controls,
       .floating-panel.minimized .panel-tabs,
       .floating-panel.minimized .panel-content,
@@ -236,19 +237,92 @@
         color: var(--text-primary);
       }
 
+      .panel-btn.logout-btn:hover {
+        background: rgba(129, 140, 248, 0.2);
+        border-color: rgba(129, 140, 248, 0.65);
+        color: #e2e8f0;
+      }
+
+      .panel-btn.logout-btn {
+        width: auto;
+        min-width: 86px;
+        padding: 0 10px;
+        gap: 5px;
+        color: #cbd5e1;
+        border: 1px solid rgba(148, 163, 184, 0.32);
+        background: rgba(15, 23, 42, 0.55);
+      }
+
+      .panel-btn.logout-btn.signed-out {
+        color: #c7d2fe;
+        border-color: rgba(129, 140, 248, 0.35);
+        background: rgba(129, 140, 248, 0.12);
+      }
+
+      .panel-btn.logout-btn.signed-out:hover {
+        color: #e2e8f0;
+        border-color: rgba(129, 140, 248, 0.6);
+        background: rgba(129, 140, 248, 0.2);
+      }
+
+      .panel-btn.logout-btn.pending {
+        cursor: wait;
+        opacity: 0.9;
+      }
+
+      .panel-btn.logout-btn:disabled {
+        cursor: wait;
+      }
+
+      .logout-btn-icon {
+        display: inline-flex;
+      }
+
+      .panel-btn.logout-btn.pending .logout-btn-icon {
+        display: none;
+      }
+
+      .btn-spinner {
+        width: 11px;
+        height: 11px;
+        border-radius: 999px;
+        border: 1.5px solid rgba(148, 163, 184, 0.45);
+        border-top-color: #c7d2fe;
+        animation: spin 0.75s linear infinite;
+        display: none;
+      }
+
+      .panel-btn.logout-btn.pending .btn-spinner {
+        display: inline-flex;
+      }
+
+      .logout-btn-label {
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .panel-context {
+        padding: 10px 14px 8px;
+        background-color: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-color);
+      }
+
       /* Recording Controls */
       .recording-controls {
         display: flex;
-        align-items: center;
+        align-items: stretch;
         justify-content: center;
-        padding: 10px 14px;
-        background-color: var(--bg-secondary);
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px 14px 10px;
+        background-color: rgba(15, 23, 42, 0.55);
         border-bottom: 1px solid var(--border-color);
       }
 
       .record-btn {
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
         padding: 8px 16px;
         border-radius: 20px;
@@ -264,6 +338,17 @@
 
       .record-btn:hover {
         background: #475569;
+      }
+
+      .record-btn:disabled {
+        background: #334155;
+        color: #94a3b8;
+        opacity: 0.75;
+        cursor: not-allowed;
+      }
+
+      .record-btn:disabled:hover {
+        background: #334155;
       }
 
       .record-btn.recording {
@@ -284,6 +369,168 @@
 
       .record-btn.recording .stop-icon {
         display: block;
+      }
+
+      .recording-auth-status {
+        display: none;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(129, 140, 248, 0.3);
+        background: rgba(129, 140, 248, 0.12);
+      }
+
+      .recording-auth-status.show {
+        display: flex;
+      }
+
+      .recording-auth-status.error {
+        border-color: rgba(239, 68, 68, 0.35);
+        background: rgba(239, 68, 68, 0.14);
+      }
+
+      .recording-auth-status.ready {
+        border-color: rgba(74, 222, 128, 0.35);
+        background: rgba(74, 222, 128, 0.12);
+      }
+
+      .recording-auth-status.loading {
+        border-color: rgba(129, 140, 248, 0.45);
+        background: rgba(129, 140, 248, 0.16);
+      }
+
+      .auth-status-spinner {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        border: 1.5px solid rgba(148, 163, 184, 0.45);
+        border-top-color: #c7d2fe;
+        animation: spin 0.75s linear infinite;
+        display: none;
+        flex: 0 0 auto;
+      }
+
+      .recording-auth-status.loading .auth-status-spinner {
+        display: inline-flex;
+      }
+
+      .auth-status-text {
+        font-size: 12px;
+        line-height: 1.3;
+        color: var(--text-secondary);
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      .routing-context {
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-radius: 8px;
+        background: rgba(15, 23, 42, 0.42);
+        padding: 8px 10px;
+      }
+
+      .routing-context-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .routing-context-label {
+        color: var(--text-muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .routing-context-switch {
+        border: 1px solid var(--border-color);
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 10px;
+        border-radius: 6px;
+        padding: 4px 8px;
+        cursor: pointer;
+      }
+
+      .routing-context-switch:hover {
+        border-color: var(--accent);
+        color: var(--text-primary);
+      }
+
+      .routing-context-switch:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .routing-context-value {
+        color: var(--text-primary);
+        font-size: 12px;
+        margin-top: 4px;
+        line-height: 1.3;
+      }
+
+      .routing-context-editor {
+        margin-top: 8px;
+        display: none;
+        gap: 6px;
+        flex-direction: column;
+      }
+
+      .routing-context-editor.active {
+        display: flex;
+      }
+
+      .context-select-label {
+        color: var(--text-muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .context-select {
+        width: 100%;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: #0b1328;
+        color: var(--text-primary);
+        font-size: 12px;
+        padding: 7px 8px;
+      }
+
+      .context-select:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      .context-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 6px;
+      }
+
+      .context-btn {
+        border: 1px solid var(--border-color);
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 11px;
+        border-radius: 6px;
+        padding: 5px 9px;
+        cursor: pointer;
+      }
+
+      .context-btn:hover {
+        color: var(--text-primary);
+      }
+
+      .context-btn.save {
+        border-color: rgba(129, 140, 248, 0.5);
+        color: #c7d2fe;
       }
 
       /* Tabs */
@@ -804,6 +1051,13 @@
           </div>
         </div>
         <div class="panel-controls">
+          <button class="panel-btn logout-btn" id="logoutBtn" title="Sign out">
+            <svg class="logout-btn-icon" width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M16 17v-2h-5V9h5V7l5 5-5 5zM3 5h8v2H5v10h6v2H3V5z" fill="currentColor"/>
+            </svg>
+            <span class="btn-spinner" id="logoutBtnSpinner" aria-hidden="true"></span>
+            <span class="logout-btn-label" id="logoutBtnLabel">Sign out</span>
+          </button>
           <button class="panel-btn" id="minimizeBtn" title="Minimize">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
               <path d="M19 13H5v-2h14v2z" fill="currentColor"/>
@@ -822,6 +1076,26 @@
         </div>
       </div>
 
+      <div class="panel-context">
+        <div class="routing-context" id="routingContext">
+          <div class="routing-context-header">
+            <span class="routing-context-label">Project</span>
+            <button class="routing-context-switch" id="contextSwitchBtn" style="display:none;">Switch</button>
+          </div>
+          <div class="routing-context-value" id="routingContextValue">Checking project access…</div>
+          <div class="routing-context-editor" id="routingContextEditor">
+            <span class="context-select-label">Team</span>
+            <select class="context-select" id="accountSelect"></select>
+            <span class="context-select-label">Project</span>
+            <select class="context-select" id="projectSelect"></select>
+            <div class="context-actions">
+              <button class="context-btn" id="contextCancelBtn">Cancel</button>
+              <button class="context-btn save" id="contextSaveBtn">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Recording Controls -->
       <div class="recording-controls">
         <button class="record-btn" id="recordBtn">
@@ -833,6 +1107,10 @@
           </svg>
           <span id="recordLabel">Record</span>
         </button>
+        <div class="recording-auth-status" id="recordingAuthStatus">
+          <span class="auth-status-spinner" id="authStatusSpinner" aria-hidden="true"></span>
+          <span class="auth-status-text" id="authStatusText">Checking sign-in...</span>
+        </div>
       </div>
 
       <!-- Tabs -->
@@ -967,6 +1245,8 @@
       // DOM elements
       const panel = document.getElementById('floatingPanel');
       const minimizeBtn = document.getElementById('minimizeBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const logoutBtnLabel = document.getElementById('logoutBtnLabel');
       const expandBtn = document.getElementById('expandBtn');
       const closeBtn = document.getElementById('closeBtn');
       const recordBtn = document.getElementById('recordBtn');
@@ -986,9 +1266,156 @@
       const closeCancel = document.getElementById('closeCancel');
       const closeConfirmBtn = document.getElementById('closeConfirmBtn');
       const minimizedIndicator = document.getElementById('minimizedIndicator');
+      const recordingAuthStatus = document.getElementById('recordingAuthStatus');
+      const authStatusText = document.getElementById('authStatusText');
+      const contextSwitchBtn = document.getElementById('contextSwitchBtn');
+      const routingContextValue = document.getElementById('routingContextValue');
+      const routingContextEditor = document.getElementById('routingContextEditor');
+      const accountSelect = document.getElementById('accountSelect');
+      const projectSelect = document.getElementById('projectSelect');
+      const contextCancelBtn = document.getElementById('contextCancelBtn');
+      const contextSaveBtn = document.getElementById('contextSaveBtn');
+      let canStartRecording = false;
+      let authIsLoggedIn = false;
+      let authPending = false;
+      let authRefreshInFlight = false;
+      let authPollInterval = null;
+      let userContext = null;
+      let contextEditorOpen = false;
+
+      function setAuthControlMode(isLoggedIn) {
+        authIsLoggedIn = !!isLoggedIn;
+        if (authPending) {
+          return;
+        }
+        logoutBtn.classList.toggle('signed-out', !authIsLoggedIn);
+        logoutBtn.title = authIsLoggedIn ? 'Sign out' : 'Sign in';
+        logoutBtnLabel.textContent = authIsLoggedIn ? 'Sign out' : 'Sign in';
+        const hasMultipleAccounts = (userContext?.accounts?.length || 0) > 1;
+        const accountId = userContext?.default_account_id;
+        const projectCount = accountId ? getProjectsForAccount(accountId).length : 0;
+        const hasMultipleProjects = projectCount > 1;
+        contextSwitchBtn.style.display =
+          authIsLoggedIn && (hasMultipleAccounts || hasMultipleProjects)
+            ? 'inline-flex'
+            : 'none';
+      }
+
+      function setAuthPending(pending, label = 'Checking…') {
+        authPending = !!pending;
+        logoutBtn.classList.toggle('pending', authPending);
+        logoutBtn.disabled = authPending;
+
+        if (authPending) {
+          logoutBtn.title = 'Checking sign-in';
+          logoutBtnLabel.textContent = label;
+          contextSwitchBtn.style.display = 'none';
+          if (!authIsLoggedIn && !isRecording) {
+            routingContextValue.textContent = 'Checking project access…';
+          }
+          return;
+        }
+
+        setAuthControlMode(authIsLoggedIn);
+      }
+
+      function getAccountById(accountId) {
+        if (!userContext?.accounts?.length) return null;
+        return userContext.accounts.find((account) => account.id === accountId) || null;
+      }
+
+      function getProjectsForAccount(accountId) {
+        if (!userContext?.projects?.length) return [];
+        return userContext.projects.filter((project) => project.accountId === accountId);
+      }
+
+      function renderRoutingContextSummary() {
+        if (!authIsLoggedIn) {
+          routingContextValue.textContent = 'Sign in to load team/project';
+          return;
+        }
+
+        const account = getAccountById(userContext?.default_account_id);
+        const project = userContext?.projects?.find(
+          (candidate) => candidate.id === userContext?.default_project_id,
+        );
+
+        if (!account || !project) {
+          routingContextValue.textContent = 'Workspace context unavailable';
+          return;
+        }
+
+        routingContextValue.textContent = `${account.name} / ${project.name}`;
+      }
+
+      function closeContextEditor() {
+        contextEditorOpen = false;
+        routingContextEditor.classList.remove('active');
+      }
+
+      function populateContextEditor(accountId, projectId) {
+        accountSelect.innerHTML = '';
+        for (const account of userContext?.accounts || []) {
+          const option = document.createElement('option');
+          option.value = account.id;
+          option.textContent = account.name || 'Untitled Team';
+          accountSelect.appendChild(option);
+        }
+
+        accountSelect.value = accountId || accountSelect.options[0]?.value || '';
+        populateProjectOptions(accountSelect.value, projectId);
+      }
+
+      function populateProjectOptions(accountId, selectedProjectId = null) {
+        const scopedProjects = getProjectsForAccount(accountId);
+        projectSelect.innerHTML = '';
+
+        for (const project of scopedProjects) {
+          const option = document.createElement('option');
+          option.value = project.id;
+          option.textContent = project.name || 'Untitled Project';
+          projectSelect.appendChild(option);
+        }
+
+        if (selectedProjectId && scopedProjects.some((p) => p.id === selectedProjectId)) {
+          projectSelect.value = selectedProjectId;
+        } else {
+          projectSelect.value = scopedProjects[0]?.id || '';
+        }
+      }
 
       // Minimize panel to small circle in corner
       let isMinimized = false;
+      logoutBtn.addEventListener('click', async () => {
+        if (!window.electronAPI) return;
+        if (!authIsLoggedIn) {
+          setAuthPending(true);
+          await openAuthWindow();
+          showAuthStatus('Waiting for sign-in in the main window…', { loading: true });
+          return;
+        }
+        if (isRecording) {
+          showAuthStatus('Stop recording before signing out.', { tone: 'error' });
+          return;
+        }
+
+        try {
+          setAuthPending(true, 'Signing out…');
+          await window.electronAPI.logout();
+          await window.electronAPI.openAuthWindow?.();
+          setAuthPending(false);
+          setAuthControlMode(false);
+          userContext = null;
+          closeContextEditor();
+          renderRoutingContextSummary();
+          setRecordReady(false);
+          showAuthStatus('Signed out. Sign in to start recording.', { tone: 'error' });
+        } catch (_) {
+          setAuthPending(false);
+          showAuthStatus('Sign out failed. Retry.', { tone: 'error' });
+        }
+      });
+
       minimizeBtn.addEventListener('click', () => {
         isMinimized = true;
         panel.classList.add('minimized');
@@ -1028,9 +1455,108 @@
         window.electronAPI?.closePanel();
       });
 
+      contextSwitchBtn.addEventListener('click', () => {
+        if (!authIsLoggedIn || !userContext) return;
+        if (isRecording) {
+          showAuthStatus('Stop recording before switching team/project.', { tone: 'error' });
+          return;
+        }
+        if (!contextEditorOpen) {
+          populateContextEditor(
+            userContext.default_account_id,
+            userContext.default_project_id,
+          );
+          contextEditorOpen = true;
+          routingContextEditor.classList.add('active');
+        } else {
+          closeContextEditor();
+        }
+      });
+
+      accountSelect.addEventListener('change', () => {
+        populateProjectOptions(accountSelect.value, null);
+      });
+
+      contextCancelBtn.addEventListener('click', () => {
+        closeContextEditor();
+      });
+
+      contextSaveBtn.addEventListener('click', async () => {
+        if (!window.electronAPI) return;
+        if (isRecording) {
+          showAuthStatus('Stop recording before switching team/project.', { tone: 'error' });
+          return;
+        }
+        const accountId = accountSelect.value;
+        const projectId = projectSelect.value;
+        if (!accountId || !projectId) {
+          showAuthStatus('Choose a team and project first.', { tone: 'error' });
+          return;
+        }
+
+        contextSaveBtn.disabled = true;
+        contextSaveBtn.textContent = 'Saving...';
+        try {
+          const result = await window.electronAPI.setUserContextSelection({
+            accountId,
+            projectId,
+          });
+
+          if (!result?.success || !result?.data) {
+            showAuthStatus('Could not switch team/project. Retry.', { tone: 'error' });
+            return;
+          }
+
+          userContext = result.data;
+          setAuthControlMode(true);
+          renderRoutingContextSummary();
+          closeContextEditor();
+          hideAuthStatus();
+        } catch (_) {
+          showAuthStatus('Could not switch team/project. Retry.', { tone: 'error' });
+        } finally {
+          contextSaveBtn.disabled = false;
+          contextSaveBtn.textContent = 'Save';
+        }
+      });
+
       // Record button
-      recordBtn.addEventListener('click', () => {
-        window.electronAPI?.toggleRecording();
+      recordBtn.addEventListener('click', async () => {
+        if (!window.electronAPI) return;
+
+        if (!isRecording && !canStartRecording) {
+          const ready = await refreshRecordingReadiness();
+          if (!ready) return;
+        }
+
+        const result = await window.electronAPI.toggleRecording();
+        if (!result || result.success) return;
+
+        if (result.action === 'ignored' && result.reason === 'in_progress') {
+          showAuthStatus('Starting recording…');
+          return;
+        }
+
+        if (result.error === 'auth_required') {
+          setRecordReady(false);
+          showAuthStatus('Sign in to start meeting recording.', { tone: 'error' });
+          return;
+        }
+
+        if (result.error === 'upload_token_unavailable') {
+          setRecordReady(false);
+          showAuthStatus('Could not fetch upload token. Retry.', { tone: 'error' });
+          return;
+        }
+
+        if (result.error === 'No meeting detected') {
+          showAuthStatus('No active meeting detected yet.', {
+            tone: 'error',
+          });
+          return;
+        }
+
+        showAuthStatus('Could not start recording. Retry.', { tone: 'error' });
       });
 
       // Tab switching
@@ -1076,6 +1602,105 @@
           noteInput.placeholder = 'Add a task... (⌘⇧T)';
         } else {
           noteInput.placeholder = 'Add a note... (⌘⇧N)';
+        }
+      }
+
+      function hideAuthStatus() {
+        recordingAuthStatus.classList.remove('show', 'error', 'ready', 'loading');
+        authStatusText.textContent = '';
+      }
+
+      function showAuthStatus(message, options = {}) {
+        const {
+          tone = 'info',
+          loading = false,
+        } = options;
+
+        recordingAuthStatus.classList.add('show');
+        recordingAuthStatus.classList.remove('error', 'ready', 'loading');
+        if (loading) {
+          recordingAuthStatus.classList.add('loading');
+        } else if (tone === 'error') {
+          recordingAuthStatus.classList.add('error');
+        } else if (tone === 'ready') {
+          recordingAuthStatus.classList.add('ready');
+        }
+
+        authStatusText.textContent = message;
+      }
+
+      function setRecordReady(ready) {
+        canStartRecording = ready;
+        if (!isRecording) {
+          recordBtn.disabled = !ready;
+        }
+      }
+
+      async function openAuthWindow() {
+        if (window.electronAPI?.openAuthWindow) {
+          await window.electronAPI.openAuthWindow();
+          return;
+        }
+        if (window.electronAPI?.navigateToHome) {
+          await window.electronAPI.navigateToHome();
+        }
+      }
+
+      async function refreshRecordingReadiness() {
+        if (!window.electronAPI || authRefreshInFlight) {
+          return canStartRecording;
+        }
+
+        authRefreshInFlight = true;
+        setAuthPending(true);
+        try {
+          showAuthStatus('Checking sign-in…', { loading: true });
+
+          const authStatus = await window.electronAPI.getAuthStatus();
+          if (!authStatus?.isLoggedIn) {
+            setAuthPending(false);
+            setAuthControlMode(false);
+            userContext = null;
+            closeContextEditor();
+            renderRoutingContextSummary();
+            setRecordReady(false);
+            showAuthStatus('Sign in to start meeting recording.', { tone: 'error' });
+            return false;
+          }
+
+          const contextResult = await window.electronAPI.getUserContext();
+          const context = contextResult?.data;
+          if (
+            !contextResult?.success ||
+            !context?.default_account_id ||
+            !context?.default_project_id
+          ) {
+            userContext = context || null;
+            setAuthPending(false);
+            setAuthControlMode(authStatus?.isLoggedIn);
+            renderRoutingContextSummary();
+            setRecordReady(false);
+            showAuthStatus('Workspace connection failed. Retry.', { tone: 'error' });
+            return false;
+          }
+
+          userContext = context;
+          setAuthPending(false);
+          setAuthControlMode(authStatus?.isLoggedIn);
+          renderRoutingContextSummary();
+          setRecordReady(true);
+          hideAuthStatus();
+          return true;
+        } catch (_) {
+          setAuthPending(false);
+          userContext = null;
+          closeContextEditor();
+          renderRoutingContextSummary();
+          setRecordReady(false);
+          showAuthStatus('Could not verify account. Retry.', { tone: 'error' });
+          return false;
+        } finally {
+          authRefreshInFlight = false;
         }
       }
 
@@ -1141,12 +1766,18 @@
         recordingIndicator.classList.toggle('active', recording);
         listeningIndicator.classList.toggle('active', recording);
         headerWaves.classList.toggle('active', recording);
+        contextSwitchBtn.disabled = recording;
 
         if (recording) {
+          recordBtn.disabled = false;
+          closeContextEditor();
+          hideAuthStatus();
           recordingStartTime = startTime || Date.now();
           startTimer();
         } else {
+          recordBtn.disabled = !canStartRecording;
           stopTimer();
+          refreshRecordingReadiness();
         }
       }
 
@@ -1340,6 +1971,18 @@
 
       // IPC handlers (will be set up by preload)
       if (window.electronAPI) {
+        setAuthPending(true);
+        renderRoutingContextSummary();
+        setRecordReady(false);
+        showAuthStatus('Checking sign-in…', { loading: true });
+        refreshRecordingReadiness();
+
+        authPollInterval = setInterval(() => {
+          if (!isRecording) {
+            refreshRecordingReadiness();
+          }
+        }, 15000);
+
         window.electronAPI.onRecordingState((state) => {
           updateRecordingState(state.isRecording, state.startTime);
         });
@@ -1360,7 +2003,19 @@
         window.electronAPI.onTranscript((transcript) => {
           addTranscript(transcript);
         });
+      } else {
+        setAuthPending(false);
+        setAuthControlMode(false);
+        renderRoutingContextSummary();
+        setRecordReady(false);
+        showAuthStatus('Desktop connection unavailable.', { tone: 'error' });
       }
+
+      window.addEventListener('beforeunload', () => {
+        if (authPollInterval) {
+          clearInterval(authPollInterval);
+        }
+      });
     </script>
   </body>
 </html>
