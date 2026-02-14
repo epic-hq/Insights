@@ -467,9 +467,10 @@ export function ProjectStatusAgentChat({
 	// The history is loaded for UI display only - when sending new messages,
 	// we only send the new message. Mastra's memory system handles including
 	// historical context server-side, so we don't send history to avoid duplicates.
-	const historyFetcher = useFetcher<{ messages: UpsightMessage[] }>();
+	const historyFetcher = useFetcher<{ threadId?: string; messages?: UpsightMessage[]; error?: string }>();
 	const historyLoadedRef = useRef(false);
 	const historyAppliedRef = useRef(false);
+	const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
 
 	// Handle pendingInput from context (inserted by other components like priorities table)
 	useEffect(() => {
@@ -523,7 +524,7 @@ export function ProjectStatusAgentChat({
 	const { messages, sendMessage, status, addToolResult, stop, setMessages } = useChat<UpsightMessage>({
 		transport: new DefaultChatTransport({
 			api: `/a/${accountId}/${projectId}/api/chat/project-status`,
-			body: { system: mergedSystemContext, userTimezone },
+			body: { system: mergedSystemContext, userTimezone, threadId: activeThreadId },
 		}),
 		// Note: Mastra's memory system on the server handles historical context.
 		// We load history for display but don't need to send it back since the server
@@ -600,6 +601,14 @@ export function ProjectStatusAgentChat({
 		},
 	});
 
+	// Reset thread state when the project context changes.
+	useEffect(() => {
+		historyLoadedRef.current = false;
+		historyAppliedRef.current = false;
+		setActiveThreadId(null);
+		setMessages([]);
+	}, [accountId, projectId, setMessages]);
+
 	// Load history once on mount
 	useEffect(() => {
 		if (historyLoadedRef.current) return;
@@ -616,16 +625,22 @@ export function ProjectStatusAgentChat({
 	useEffect(() => {
 		if (historyAppliedRef.current) return;
 
+		const fetcherData = historyFetcher.data;
+		if (!fetcherData) return;
+
+		historyAppliedRef.current = true;
+
+		if (typeof fetcherData.threadId === "string" && fetcherData.threadId) {
+			setActiveThreadId(fetcherData.threadId);
+		}
+
 		// Check for error response (including auth errors that return error JSON)
-		const fetcherData = historyFetcher.data as { messages?: UpsightMessage[]; error?: string } | undefined;
 		if (fetcherData?.error) {
-			historyAppliedRef.current = true;
 			consola.warn("Chat history load failed, skipping:", fetcherData.error);
 			return;
 		}
 
 		if (fetcherData?.messages && fetcherData.messages.length > 0) {
-			historyAppliedRef.current = true;
 			consola.info("Chat history loaded, updating messages:", fetcherData.messages.length, "messages");
 			setMessages(fetcherData.messages);
 			// Scroll to bottom after history loads
@@ -660,12 +675,41 @@ export function ProjectStatusAgentChat({
 		[sendMessage]
 	);
 
-	// Clear chat and allow history to be re-applied if user navigates back
+	const createNewThread = useCallback(async () => {
+		const createUrl = `/a/${accountId}/${projectId}/api/chat/project-status/threads`;
+		try {
+			const response = await fetch(createUrl, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ title: "New Chat" }),
+			});
+			const data = (await response.json()) as {
+				thread?: { id?: string };
+				error?: string;
+			};
+			if (!response.ok || data?.error || !data?.thread?.id) {
+				consola.warn("Failed to create new thread, falling back to UI clear:", data?.error || response.statusText);
+				setMessages([]);
+				setActiveThreadId(null);
+				return;
+			}
+			setMessages([]);
+			setActiveThreadId(data.thread.id);
+			requestAnimationFrame(() => {
+				scrollToBottom();
+				textareaRef.current?.focus();
+			});
+		} catch (err) {
+			consola.error("Failed to create new thread:", err);
+			setMessages([]);
+			setActiveThreadId(null);
+		}
+	}, [accountId, projectId, setMessages, scrollToBottom]);
+
+	// New chat should create a real server-side thread, not only clear local UI.
 	const handleClearChat = useCallback(() => {
-		setMessages([]);
-		// Don't reset historyAppliedRef - we don't want to reload history
-		// after user intentionally clears chat
-	}, [setMessages]);
+		void createNewThread();
+	}, [createNewThread]);
 
 	// Expose clearChat to parent via callback ref
 	useEffect(() => {
@@ -679,11 +723,12 @@ export function ProjectStatusAgentChat({
 			const historyUrl = `/a/${accountId}/${projectId}/api/chat/project-status/history-by-thread?threadId=${encodeURIComponent(threadId)}`;
 			fetch(historyUrl)
 				.then((res) => res.json())
-				.then((data: { messages?: UpsightMessage[]; error?: string }) => {
+				.then((data: { threadId?: string; messages?: UpsightMessage[]; error?: string }) => {
 					if (data.error) {
 						consola.warn("Failed to load thread:", data.error);
 						return;
 					}
+					setActiveThreadId(data.threadId || threadId);
 					if (data.messages) {
 						setMessages(data.messages);
 						requestAnimationFrame(() => {
@@ -892,7 +937,10 @@ export function ProjectStatusAgentChat({
 		if (lastAutoPlayedMessageIdRef.current === lastMsg.id) return;
 
 		const textParts = lastMsg.parts?.filter((p) => p.type === "text").map((p) => p.text) ?? [];
-		const text = textParts.filter((t) => typeof t === "string" && !isNetworkDebugText(t)).join("\n").trim();
+		const text = textParts
+			.filter((t) => typeof t === "string" && !isNetworkDebugText(t))
+			.join("\n")
+			.trim();
 		if (!text) return;
 
 		lastAutoPlayedMessageIdRef.current = lastMsg.id;
@@ -1043,7 +1091,7 @@ export function ProjectStatusAgentChat({
 										</div>
 										{/* Per-message TTS play button (assistant messages with text only) */}
 										{isAssistant && messageText && (
-											<div className="absolute -right-1 top-5">
+											<div className="-right-1 absolute top-5">
 												<MessagePlayButton
 													isPlaying={isThisMessagePlaying}
 													onPlay={() => tts.playText(messageText, message.id)}

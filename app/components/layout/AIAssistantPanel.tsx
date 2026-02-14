@@ -49,7 +49,7 @@ function ChatThreadSelector({ accountId, projectId, onSelectThread, onNewChat }:
 
 	const handleOpenChange = (isOpen: boolean) => {
 		setOpen(isOpen);
-		if (isOpen && threadsFetcher.state === "idle" && !threadsFetcher.data) {
+		if (isOpen && threadsFetcher.state === "idle") {
 			threadsFetcher.load(`/a/${accountId}/${projectId}/api/chat/project-status/threads`);
 		}
 	};
