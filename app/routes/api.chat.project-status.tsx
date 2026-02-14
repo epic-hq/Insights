@@ -480,6 +480,19 @@ function routeByDeterministicPrompt(
     "bug",
     "issue",
   );
+  // Capability / scope questions stay on projectStatusAgent (uses capabilityLookup tool)
+  const asksForCapabilities =
+    hasAny("what can you do", "what do you do", "what are your capabilities") ||
+    (hasAny("can you", "are you able") && hasAny("help", "do"));
+  if (asksForCapabilities) {
+    return {
+      targetAgentId: "projectStatusAgent",
+      confidence: 1,
+      responseMode: "normal",
+      rationale: "deterministic routing for capability/scope questions",
+    };
+  }
+
   const howtoRouting = detectHowtoPromptMode(prompt);
   if (howtoRouting.isHowto) {
     return {
