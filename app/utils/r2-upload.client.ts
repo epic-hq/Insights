@@ -7,6 +7,8 @@ const SINGLE_UPLOAD_MIN_TIMEOUT_MS = 2 * 60 * 1000;
 const SINGLE_UPLOAD_MAX_TIMEOUT_MS = 20 * 60 * 1000;
 const PART_UPLOAD_MIN_TIMEOUT_MS = 2 * 60 * 1000;
 const PART_UPLOAD_MAX_TIMEOUT_MS = 15 * 60 * 1000;
+const MAX_PART_RETRIES = 3;
+const INITIAL_RETRY_DELAY_MS = 1000;
 
 export type UploadPhase = "uploading" | "completing" | "done";
 
@@ -185,24 +187,55 @@ export async function uploadMultipartWithProgress({
 				minMs: PART_UPLOAD_MIN_TIMEOUT_MS,
 				maxMs: PART_UPLOAD_MAX_TIMEOUT_MS,
 			});
-			const response = await fetchWithTimeout(
-				partUrl,
-				{
-					method: "PUT",
-					body: partBlob, // Send Blob directly - more compatible than streaming
-				},
-				{
-					signal,
-					timeoutMs: partTimeoutMs,
-					timeoutError: `R2 part ${partNumber}/${totalParts} timed out after ${Math.round(partTimeoutMs / 1000)}s`,
-				}
-			);
 
-			if (!response.ok) {
-				throw new Error(`R2 part ${partNumber} failed with status ${response.status}`);
+			// Retry per-part uploads with exponential backoff to handle transient network failures
+			let etag: string | undefined;
+			for (let attempt = 1; attempt <= MAX_PART_RETRIES; attempt++) {
+				try {
+					const response = await fetchWithTimeout(
+						partUrl,
+						{
+							method: "PUT",
+							body: partBlob, // Send Blob directly - more compatible than streaming
+						},
+						{
+							signal,
+							timeoutMs: partTimeoutMs,
+							timeoutError: `R2 part ${partNumber}/${totalParts} timed out after ${Math.round(partTimeoutMs / 1000)}s`,
+						}
+					);
+
+					if (!response.ok) {
+						throw new Error(`R2 part ${partNumber} failed with status ${response.status}`);
+					}
+
+					etag = normalizeEtag(response.headers.get("etag")) ?? `part-${partNumber}`;
+					if (attempt > 1) {
+						console.log(`[Upload] Part ${partNumber}/${totalParts} succeeded on retry ${attempt}`);
+					}
+					break; // Success — exit retry loop
+				} catch (partError) {
+					// If the user cancelled, don't retry
+					if (signal?.aborted) throw partError;
+
+					const isLastAttempt = attempt === MAX_PART_RETRIES;
+					if (isLastAttempt) {
+						console.error(`[Upload] Part ${partNumber}/${totalParts} failed after ${MAX_PART_RETRIES} attempts`);
+						throw partError;
+					}
+
+					const backoffMs = INITIAL_RETRY_DELAY_MS * 2 ** (attempt - 1);
+					console.warn(
+						`[Upload] Part ${partNumber}/${totalParts} attempt ${attempt} failed, retrying in ${backoffMs}ms...`,
+						partError instanceof Error ? partError.message : partError,
+					);
+					await new Promise((resolve) => setTimeout(resolve, backoffMs));
+				}
 			}
 
-			const etag = normalizeEtag(response.headers.get("etag")) ?? `part-${partNumber}`;
+			if (!etag) {
+				throw new Error(`R2 part ${partNumber} upload produced no ETag`);
+			}
 			completedParts.push({ partNumber, etag, size: partBlob.size });
 
 			// Update bytesSent after successful part upload
