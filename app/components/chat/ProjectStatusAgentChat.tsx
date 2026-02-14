@@ -7,7 +7,9 @@ import { useFetcher, useLocation, useNavigate, useRevalidator } from "react-rout
 import { useStickToBottom } from "use-stick-to-bottom";
 import { Response as AiResponse } from "~/components/ai-elements/response";
 import { Suggestion, Suggestions } from "~/components/ai-elements/suggestion";
+import { MessagePlayButton } from "~/components/chat/MessagePlayButton";
 import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat";
+import { TTSToggle } from "~/components/chat/TTSToggle";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Textarea } from "~/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
@@ -15,6 +17,7 @@ import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
+import { useTTS } from "~/hooks/useTTS";
 import { cn } from "~/lib/utils";
 import type { UpsightMessage } from "~/mastra/message-types";
 import { HOST, PRODUCTION_HOST } from "~/paths";
@@ -339,6 +342,14 @@ function extractActiveToolCall(message: UpsightMessage): string | null {
 	return null;
 }
 
+/** TTS state exposed to parent components via callback ref */
+export interface TTSState {
+	isEnabled: boolean;
+	isPlaying: boolean;
+	isDisabledByVoiceChat: boolean;
+	toggleEnabled: () => void;
+}
+
 interface ProjectStatusAgentChatProps {
 	accountId: string;
 	projectId: string;
@@ -350,6 +361,8 @@ interface ProjectStatusAgentChatProps {
 	onClearChatRef?: (clearFn: (() => void) | null) => void;
 	/** Ref callback to expose loadThread to parent (used by AIAssistantPanel) */
 	onLoadThreadRef?: (loadFn: ((threadId: string) => void) | null) => void;
+	/** Ref callback to expose TTS state to parent (used by AIAssistantPanel for header toggle) */
+	onTTSStateRef?: (state: TTSState | null) => void;
 }
 
 const INTERNAL_ORIGINS = [HOST, PRODUCTION_HOST]
@@ -414,6 +427,7 @@ export function ProjectStatusAgentChat({
 	embedded,
 	onClearChatRef,
 	onLoadThreadRef,
+	onTTSStateRef,
 }: ProjectStatusAgentChatProps) {
 	const [input, setInput] = useState("");
 	const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -434,6 +448,20 @@ export function ProjectStatusAgentChat({
 		setForceExpandChat,
 	} = useProjectStatusAgent();
 	const { isEnabled: isVoiceEnabled } = usePostHogFeatureFlag("ffVoice");
+
+	// TTS: text-to-speech for assistant responses
+	const tts = useTTS({ voiceChatActive: false });
+
+	// Expose TTS state to parent (AIAssistantPanel) for header toggle
+	useEffect(() => {
+		onTTSStateRef?.({
+			isEnabled: tts.isEnabled,
+			isPlaying: tts.isPlaying,
+			isDisabledByVoiceChat: tts.isDisabledByVoiceChat,
+			toggleEnabled: tts.toggleEnabled,
+		});
+		return () => onTTSStateRef?.(null);
+	}, [onTTSStateRef, tts.isEnabled, tts.isPlaying, tts.isDisabledByVoiceChat, tts.toggleEnabled]);
 
 	// Load chat history from the server for display
 	// The history is loaded for UI display only - when sending new messages,
@@ -853,21 +881,42 @@ export function ProjectStatusAgentChat({
 		revalidator.revalidate();
 	}, [displayableMessages, revalidator]);
 
+	// TTS: Auto-play new assistant responses when TTS is enabled
+	const lastAutoPlayedMessageIdRef = useRef<string | null>(null);
+	useEffect(() => {
+		if (!tts.isEnabled || status === "streaming" || status === "submitted") return;
+		if (displayableMessages.length === 0) return;
+
+		const lastMsg = displayableMessages[displayableMessages.length - 1];
+		if (!lastMsg || lastMsg.role !== "assistant") return;
+		if (lastAutoPlayedMessageIdRef.current === lastMsg.id) return;
+
+		const textParts = lastMsg.parts?.filter((p) => p.type === "text").map((p) => p.text) ?? [];
+		const text = textParts.filter((t) => typeof t === "string" && !isNetworkDebugText(t)).join("\n").trim();
+		if (!text) return;
+
+		lastAutoPlayedMessageIdRef.current = lastMsg.id;
+		tts.playText(text, lastMsg.id);
+	}, [tts.isEnabled, status, displayableMessages]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// TTS: Stop playback when user sends a new message
+	const submitMessage = () => {
+		const trimmed = input.trim();
+		if (!trimmed) return;
+		tts.stopPlayback();
+		sendMessage({ text: trimmed });
+		setInput("");
+	};
+
 	const suggestions = toolSuggestions.length > 0 ? toolSuggestions : generatedSuggestions;
 
 	const handleSuggestionClick = useCallback(
 		(suggestion: string) => {
+			tts.stopPlayback();
 			sendMessage({ text: suggestion });
 		},
-		[sendMessage]
+		[sendMessage, tts.stopPlayback] // eslint-disable-line react-hooks/exhaustive-deps
 	);
-
-	const submitMessage = () => {
-		const trimmed = input.trim();
-		if (!trimmed) return;
-		sendMessage({ text: trimmed });
-		setInput("");
-	};
 
 	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -930,8 +979,10 @@ export function ProjectStatusAgentChat({
 									(isTool ? extractToolResultText(message) : null) ||
 									filteredTextParts.filter(Boolean).join("\n").trim();
 								const networkSteps = extractNetworkSteps(message);
+								const isAssistant = !isUser && !isTool;
+								const isThisMessagePlaying = tts.playingMessageId === message.id;
 								return (
-									<div key={key} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+									<div key={key} className={`group relative flex ${isUser ? "justify-end" : "justify-start"}`}>
 										<div className="max-w-[85%]">
 											<div
 												className={cn(
@@ -948,7 +999,8 @@ export function ProjectStatusAgentChat({
 														? "bg-blue-600 text-white"
 														: embedded
 															? "bg-slate-700/50 text-slate-200 ring-1 ring-white/[0.06]"
-															: "bg-background text-foreground ring-1 ring-border/60"
+															: "bg-background text-foreground ring-1 ring-border/60",
+													isThisMessagePlaying && (embedded ? "ring-blue-500/30" : "ring-blue-300")
 												)}
 												onClick={!isUser ? handleAssistantLinkClick : undefined}
 											>
@@ -989,6 +1041,17 @@ export function ProjectStatusAgentChat({
 												)}
 											</div>
 										</div>
+										{/* Per-message TTS play button (assistant messages with text only) */}
+										{isAssistant && messageText && (
+											<div className="absolute -right-1 top-5">
+												<MessagePlayButton
+													isPlaying={isThisMessagePlaying}
+													onPlay={() => tts.playText(messageText, message.id)}
+													onStop={() => tts.stopPlayback()}
+													variant={embedded ? "dark" : "light"}
+												/>
+											</div>
+										)}
 									</div>
 								);
 							})}
@@ -1115,22 +1178,31 @@ export function ProjectStatusAgentChat({
 				>
 					<div className="flex items-center justify-between">
 						{!isCollapsed && (
-							<CardTitle
-								onClick={() => setIsCollapsed(!isCollapsed)}
-								className="flex cursor-pointer items-center gap-2 text-base transition-opacity hover:opacity-80 sm:text-lg"
-								role="button"
-								tabIndex={0}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" || e.key === " ") {
-										e.preventDefault();
-										setIsCollapsed(!isCollapsed);
-									}
-								}}
-								aria-label="Toggle chat"
-							>
-								<WizardIcon className="h-8 w-8 border-0 bg-transparent p-0 text-blue-600" />
-								Ask Uppy
-							</CardTitle>
+							<div className="flex items-center gap-2">
+								<CardTitle
+									onClick={() => setIsCollapsed(!isCollapsed)}
+									className="flex cursor-pointer items-center gap-2 text-base transition-opacity hover:opacity-80 sm:text-lg"
+									role="button"
+									tabIndex={0}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											setIsCollapsed(!isCollapsed);
+										}
+									}}
+									aria-label="Toggle chat"
+								>
+									<WizardIcon className="h-8 w-8 border-0 bg-transparent p-0 text-blue-600" />
+									Ask Uppy
+								</CardTitle>
+								<TTSToggle
+									isEnabled={tts.isEnabled}
+									isPlaying={tts.isPlaying}
+									isDisabledByVoiceChat={tts.isDisabledByVoiceChat}
+									onToggle={tts.toggleEnabled}
+									variant="light"
+								/>
+							</div>
 						)}
 						{isCollapsed && (
 							<div

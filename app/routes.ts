@@ -27,6 +27,7 @@ import segmentsRoutes from "./features/segments/routes";
 import signupChatRoutes from "./features/signup-chat/routes";
 import sourcesRoutes from "./features/sources/routes";
 import teamsRoutes, { teamsAccountRoutes as teamRoutes } from "./features/teams/routes";
+import ttsRoutes from "./features/tts/routes";
 import voiceRoutes from "./features/voice/routes";
 
 const routes = [
@@ -287,6 +288,7 @@ const routes = [
 	route("api/test-user-groups", "./routes/api.test-user-groups.tsx"),
 	route("api/test-pain-matrix", "./routes/api.test-pain-matrix.tsx"),
 
+	...ttsRoutes,
 	...voiceRoutes,
 	...realtimeTranscriptionRoutes,
 
