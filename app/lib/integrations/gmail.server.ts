@@ -301,6 +301,51 @@ export async function getSurveySendStats(
 }
 
 /**
+ * Get survey send stats for multiple surveys at once (for list views)
+ */
+export async function getBatchSurveySendStats(
+  supabase: SupabaseClient<Database>,
+  surveyIds: string[],
+): Promise<
+  Record<
+    string,
+    { total: number; sent: number; opened: number; completed: number }
+  >
+> {
+  if (surveyIds.length === 0) return {};
+
+  const { data, error } = await supabase
+    .from("survey_sends")
+    .select("survey_id, status")
+    .in("survey_id", surveyIds);
+
+  if (error) {
+    consola.error("[gmail] Failed to get batch survey send stats:", error);
+    return {};
+  }
+
+  if (!data || data.length === 0) return {};
+
+  const result: Record<
+    string,
+    { total: number; sent: number; opened: number; completed: number }
+  > = {};
+
+  for (const row of data) {
+    if (!result[row.survey_id]) {
+      result[row.survey_id] = { total: 0, sent: 0, opened: 0, completed: 0 };
+    }
+    const stats = result[row.survey_id];
+    stats.total++;
+    if (row.status === "sent") stats.sent++;
+    else if (row.status === "opened") stats.opened++;
+    else if (row.status === "completed") stats.completed++;
+  }
+
+  return result;
+}
+
+/**
  * Get all sends for a survey (for the recipient table)
  */
 export async function getSurveySends(
