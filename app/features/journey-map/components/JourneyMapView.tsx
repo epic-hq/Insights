@@ -6,6 +6,8 @@
 
 import { ChevronsUpDown, User } from "lucide-react";
 import { useMemo } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { useAuth } from "~/contexts/AuthContext";
 import type { RouteDefinitions } from "~/utils/route-definitions";
 import { getPhaseState, JOURNEY_PHASES } from "../journey-config";
 import { JourneyBackground } from "./JourneyBackground";
@@ -23,6 +25,7 @@ interface JourneyMapViewProps {
 }
 
 export function JourneyMapView({ routes, counts, journeyProgress }: JourneyMapViewProps) {
+	const { user } = useAuth();
 	const phaseStates = useMemo(
 		() => JOURNEY_PHASES.map((_, i) => getPhaseState(i, counts, journeyProgress)),
 		[counts, journeyProgress]
@@ -30,6 +33,11 @@ export function JourneyMapView({ routes, counts, journeyProgress }: JourneyMapVi
 
 	// Find active phase index for player avatar position
 	const activePhaseIndex = phaseStates.findIndex((state) => state === "active");
+	const avatarUrl =
+		(user?.user_metadata?.avatar_url as string | undefined) ||
+		(user?.user_metadata?.picture as string | undefined) ||
+		"";
+	const fallbackText = (user?.email ?? "You").slice(0, 1).toUpperCase();
 
 	return (
 		<div className="relative min-h-full w-full overflow-hidden bg-[#0f1729] text-slate-200">
@@ -53,7 +61,14 @@ export function JourneyMapView({ routes, counts, journeyProgress }: JourneyMapVi
 						{activePhaseIndex === index && (
 							<div className="-translate-x-1/2 -top-14 absolute left-1/2 z-50">
 								<div className="flex h-10 w-10 animate-[player-bounce_2s_ease-in-out_infinite] items-center justify-center rounded-full border-[3px] border-amber-400 bg-gradient-to-br from-amber-400 to-orange-500 shadow-[0_0_20px_rgba(245,158,11,0.4)]">
-									<User className="h-5 w-5 text-white" />
+									{avatarUrl ? (
+										<Avatar className="h-9 w-9">
+											<AvatarImage src={avatarUrl} alt="You" />
+											<AvatarFallback className="bg-white/20 text-white text-xs">{fallbackText}</AvatarFallback>
+										</Avatar>
+									) : (
+										<User className="h-5 w-5 text-white" />
+									)}
 								</div>
 								<div className="mt-0.5 text-center font-bold text-[9px] text-amber-400 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">
 									YOU

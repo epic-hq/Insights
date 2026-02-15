@@ -1,18 +1,17 @@
 import consola from "consola";
-import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LoaderFunctionArgs } from "react-router";
 import {
-  isRouteErrorResponse,
-  Links,
-  type LinksFunction,
-  Meta,
-  type MetaFunction,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-  useRouteError,
+	isRouteErrorResponse,
+	Links,
+	type LinksFunction,
+	Meta,
+	type MetaFunction,
+	Outlet,
+	Scripts,
+	ScrollRestoration,
+	useRouteError,
 } from "react-router";
 import { useChangeLanguage } from "remix-i18next/react";
 import { Toaster } from "sonner";
@@ -27,171 +26,144 @@ import { ClientHintCheck, getHints } from "./services/client-hints";
 import tailwindcss from "./tailwind.css?url";
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
-  const requestUrl = new URL(request.url);
-  if (requestUrl.pathname === "/" && requestUrl.searchParams.has("code")) {
-    return authCallbackLoader({ request, params: {} });
-  }
+	const requestUrl = new URL(request.url);
+	if (requestUrl.pathname === "/" && requestUrl.searchParams.has("code")) {
+		return authCallbackLoader({ request, params: {} });
+	}
 
-  let lang = "en";
-  let clientEnv: Record<string, unknown> | undefined;
+	let lang = "en";
+	let clientEnv: Record<string, unknown> | undefined;
 
-  try {
-    const loadCtx = context.get(loadContext) as {
-      lang?: string;
-      clientEnv?: Record<string, unknown>;
-      env?: { APP_ENV: string };
-      isProductionDeployment?: boolean;
-      t?: (key: string) => string;
-    };
+	try {
+		const loadCtx = context.get(loadContext) as {
+			lang?: string;
+			clientEnv?: Record<string, unknown>;
+			env?: { APP_ENV: string };
+			isProductionDeployment?: boolean;
+			t?: (key: string) => string;
+		};
 
-    if (loadCtx?.lang) {
-      lang = loadCtx.lang;
-    }
+		if (loadCtx?.lang) {
+			lang = loadCtx.lang;
+		}
 
-    if (loadCtx?.clientEnv) {
-      clientEnv = loadCtx.clientEnv;
-    }
-  } catch (error) {
-    consola.warn(
-      "[root.loader] Missing loadContext; falling back to defaults",
-      error,
-    );
-  }
+		if (loadCtx?.clientEnv) {
+			clientEnv = loadCtx.clientEnv;
+		}
+	} catch (error) {
+		consola.warn("[root.loader] Missing loadContext; falling back to defaults", error);
+	}
 
-  const hints = getHints(request);
+	const hints = getHints(request);
 
-  return {
-    lang,
-    clientEnv: clientEnv ?? getClientEnv(),
-    hints,
-  };
+	return {
+		lang,
+		clientEnv: clientEnv ?? getClientEnv(),
+		hints,
+	};
 }
 
 // Define the links for the application
 export const links: LinksFunction = () => [
-  // Stylesheet
-  { rel: "stylesheet", href: tailwindcss },
-  // Favicon
-  { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
-  // Apple touch icon
-  {
-    rel: "apple-touch-icon",
-    sizes: "180x180",
-    href: "/icons/apple-touch-icon.png",
-  },
-  // Web app manifest
-  { rel: "manifest", href: "/manifest.json" },
-  // Additional icon sizes for various platforms
-  {
-    rel: "icon",
-    type: "image/png",
-    sizes: "32x32",
-    href: "/icons/icon-32x32.png",
-  },
-  {
-    rel: "icon",
-    type: "image/png",
-    sizes: "16x16",
-    href: "/icons/icon-16x16.png",
-  },
-  {
-    rel: "icon",
-    type: "image/png",
-    sizes: "192x192",
-    href: "/icons/icon-192x192.png",
-  },
-  {
-    rel: "icon",
-    type: "image/png",
-    sizes: "512x512",
-    href: "/icons/icon-512x512.png",
-  },
+	// Stylesheet
+	{ rel: "stylesheet", href: tailwindcss },
+	// Favicon
+	{ rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+	// Apple touch icon
+	{
+		rel: "apple-touch-icon",
+		sizes: "180x180",
+		href: "/icons/apple-touch-icon.png",
+	},
+	// Web app manifest
+	{ rel: "manifest", href: "/manifest.json" },
+	// Additional icon sizes for various platforms
+	{
+		rel: "icon",
+		type: "image/png",
+		sizes: "32x32",
+		href: "/icons/icon-32x32.png",
+	},
+	{
+		rel: "icon",
+		type: "image/png",
+		sizes: "16x16",
+		href: "/icons/icon-16x16.png",
+	},
+	{
+		rel: "icon",
+		type: "image/png",
+		sizes: "192x192",
+		href: "/icons/icon-192x192.png",
+	},
+	{
+		rel: "icon",
+		type: "image/png",
+		sizes: "512x512",
+		href: "/icons/icon-512x512.png",
+	},
 ];
 
 // Define meta tags for the application
 export const meta: MetaFunction = () => {
-  return [
-    { name: "viewport", content: "width=device-width,initial-scale=1" },
-    { name: "theme-color", content: "#2563eb" },
-    { name: "msapplication-config", content: "/browserconfig.xml" },
-    { name: "msapplication-TileColor", content: "#2563eb" },
-    { name: "msapplication-TileImage", content: "/icons/icon-144x144.png" },
-  ];
+	return [
+		{ name: "viewport", content: "width=device-width,initial-scale=1" },
+		{ name: "theme-color", content: "#2563eb" },
+		{ name: "msapplication-config", content: "/browserconfig.xml" },
+		{ name: "msapplication-TileColor", content: "#2563eb" },
+		{ name: "msapplication-TileImage", content: "/icons/icon-144x144.png" },
+	];
 };
 
 export const handle = {
-  i18n: "common",
+	i18n: "common",
 };
 
 export default function App({ loaderData }: Route.ComponentProps) {
-  const { lang, clientEnv } = loaderData;
-  useChangeLanguage(lang);
+	const { lang, clientEnv } = loaderData;
+	useChangeLanguage(lang);
 
-  // Minimal PostHog host normalization: add https:// if missing and trim trailing slash
-  const apiHost = clientEnv.POSTHOG_HOST
-    ? (
-        (clientEnv.POSTHOG_HOST.startsWith("http")
-          ? clientEnv.POSTHOG_HOST
-          : `https://${clientEnv.POSTHOG_HOST}`) as string
-      ).replace(/\/+$/, "")
-    : undefined;
+	// Make clientEnv available globally on window.env for polyEnv pattern
+	if (typeof window !== "undefined") {
+		window.env = clientEnv;
+	}
 
-  // Make clientEnv available globally on window.env for polyEnv pattern
-  if (typeof window !== "undefined") {
-    window.env = clientEnv;
-  }
-
-  return (
-    <ThemeProvider defaultTheme="light">
-      <PostHogProvider
-        apiKey={clientEnv.POSTHOG_KEY}
-        options={{
-          api_host: apiHost,
-          ui_host: "https://us.posthog.com",
-          defaults: "2025-05-24",
-          capture_exceptions: true,
-          debug: false, // import.meta.env.MODE === "development",
-        }}
-      >
-        <NotificationProvider>
-          <ValidationViewProvider>
-            <Outlet />
-            <Toaster />
-          </ValidationViewProvider>
-        </NotificationProvider>
-      </PostHogProvider>
-    </ThemeProvider>
-  );
+	return (
+		<ThemeProvider defaultTheme="light">
+			<NotificationProvider>
+				<ValidationViewProvider>
+					<Outlet />
+					<Toaster />
+				</ValidationViewProvider>
+			</NotificationProvider>
+		</ThemeProvider>
+	);
 }
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { i18n } = useTranslation();
-  return (
-    <html
-      className="overflow-y-auto overflow-x-hidden"
-      lang={i18n.language}
-      dir={i18n.dir()}
-    >
-      <head>
-        <ClientHintCheck />
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <Meta />
-        <Links />
-      </head>
-      <body className="h-full w-full bg-background text-foreground">
-        {/* <LanguageSwitcher /> */}
-        {children}
-        <ScrollRestoration />
-        <Scripts />
-      </body>
-    </html>
-  );
+	const { i18n } = useTranslation();
+	return (
+		<html className="overflow-y-auto overflow-x-hidden" lang={i18n.language} dir={i18n.dir()}>
+			<head>
+				<ClientHintCheck />
+				<meta charSet="utf-8" />
+				<meta name="viewport" content="width=device-width, initial-scale=1" />
+				<Meta />
+				<Links />
+			</head>
+			<body className="h-full w-full bg-background text-foreground">
+				{/* <LanguageSwitcher /> */}
+				{children}
+				<ScrollRestoration />
+				<Scripts />
+			</body>
+		</html>
+	);
 };
 
 // Animated 404 experience adapted from https://codepen.io/jkantner/pen/YPwZWoy
 const NotFoundFace = () => {
-  const faceStyles = `
+	const faceStyles = `
 [data-404-page] *,
 [data-404-page] *::before,
 [data-404-page] *::after {
@@ -417,109 +389,67 @@ const NotFoundFace = () => {
 }
 `;
 
-  return (
-    <div data-404-page>
-      <style>{faceStyles}</style>
-      <main>
-        <svg
-          className="face"
-          viewBox="0 0 320 380"
-          width="320"
-          height="380"
-          aria-label="A 404 becomes a face, looks to the sides, and blinks. The 4s slide up, the 0 slides down, and then a mouth appears."
-        >
-          <g
-            fill="none"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={25}
-          >
-            <g className="face__eyes" transform="translate(0, 112.5)">
-              <g transform="translate(15, 0)">
-                <polyline
-                  className="face__eye-lid"
-                  points="37,0 0,120 75,120"
-                />
-                <polyline
-                  className="face__pupil"
-                  points="55,120 55,155"
-                  strokeDasharray="35 35"
-                />
-              </g>
-              <g transform="translate(230, 0)">
-                <polyline
-                  className="face__eye-lid"
-                  points="37,0 0,120 75,120"
-                />
-                <polyline
-                  className="face__pupil"
-                  points="55,120 55,155"
-                  strokeDasharray="35 35"
-                />
-              </g>
-            </g>
-            <rect
-              className="face__nose"
-              rx={4}
-              ry={4}
-              x={132.5}
-              y={112.5}
-              width={55}
-              height={155}
-            />
-            <g strokeDasharray="102 102" transform="translate(65, 334)">
-              <path
-                className="face__mouth-left"
-                d="M 0 30 C 0 30 40 0 95 0"
-                strokeDashoffset={-102}
-              />
-              <path
-                className="face__mouth-right"
-                d="M 95 0 C 150 0 190 30 190 30"
-                strokeDashoffset={102}
-              />
-            </g>
-          </g>
-        </svg>
-        <h1>404 — Page Not Found</h1>
-        <p>
-          We looked everywhere but couldn&apos;t find the page you requested.
-        </p>
-        <div className="not-found__actions">
-          <button
-            type="button"
-            onClick={() => window.history.back()}
-            className="not-found__cta not-found__cta--ghost"
-          >
-            ← Go Back
-          </button>
-          <a href="/home" className="not-found__cta">
-            Head Home
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+	return (
+		<div data-404-page>
+			<style>{faceStyles}</style>
+			<main>
+				<svg
+					className="face"
+					viewBox="0 0 320 380"
+					width="320"
+					height="380"
+					aria-label="A 404 becomes a face, looks to the sides, and blinks. The 4s slide up, the 0 slides down, and then a mouth appears."
+				>
+					<g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={25}>
+						<g className="face__eyes" transform="translate(0, 112.5)">
+							<g transform="translate(15, 0)">
+								<polyline className="face__eye-lid" points="37,0 0,120 75,120" />
+								<polyline className="face__pupil" points="55,120 55,155" strokeDasharray="35 35" />
+							</g>
+							<g transform="translate(230, 0)">
+								<polyline className="face__eye-lid" points="37,0 0,120 75,120" />
+								<polyline className="face__pupil" points="55,120 55,155" strokeDasharray="35 35" />
+							</g>
+						</g>
+						<rect className="face__nose" rx={4} ry={4} x={132.5} y={112.5} width={55} height={155} />
+						<g strokeDasharray="102 102" transform="translate(65, 334)">
+							<path className="face__mouth-left" d="M 0 30 C 0 30 40 0 95 0" strokeDashoffset={-102} />
+							<path className="face__mouth-right" d="M 95 0 C 150 0 190 30 190 30" strokeDashoffset={102} />
+						</g>
+					</g>
+				</svg>
+				<h1>404 — Page Not Found</h1>
+				<p>We looked everywhere but couldn&apos;t find the page you requested.</p>
+				<div className="not-found__actions">
+					<button type="button" onClick={() => window.history.back()} className="not-found__cta not-found__cta--ghost">
+						← Go Back
+					</button>
+					<a href="/home" className="not-found__cta">
+						Head Home
+					</a>
+				</div>
+			</main>
+		</div>
+	);
 };
 
 const ServerErrorGears = ({
-  status = 500,
-  headline = "Unexpected Error",
-  message,
+	status = 500,
+	headline = "Unexpected Error",
+	message,
 }: {
-  status?: number;
-  headline?: string;
-  message?: string;
+	status?: number;
+	headline?: string;
+	message?: string;
 }) => {
-  const [isLoading, setIsLoading] = useState(true);
+	const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => setIsLoading(false), 1000);
-    return () => window.clearTimeout(timeoutId);
-  }, []);
+	useEffect(() => {
+		const timeoutId = window.setTimeout(() => setIsLoading(false), 1000);
+		return () => window.clearTimeout(timeoutId);
+	}, []);
 
-  const gearStyles = `
+	const gearStyles = `
 [data-500-page],
 [data-500-page] * {
 	box-sizing: border-box;
@@ -825,90 +755,71 @@ const ServerErrorGears = ({
 }
 `;
 
-  const resolvedMessage =
-    message ??
-    "We ran into a problem while processing your request. Please try again in a moment.";
+	const resolvedMessage =
+		message ?? "We ran into a problem while processing your request. Please try again in a moment.";
 
-  return (
-    <div data-500-page className={isLoading ? "loading" : undefined}>
-      <style>{gearStyles}</style>
-      <main>
-        <h1>{status}</h1>
-        <h2>
-          {headline} <span aria-hidden="true">:(</span>
-          <span className="server-error__sr-only">Sad face</span>
-        </h2>
-        <p>{resolvedMessage}</p>
-        <div className="gears" aria-hidden="true">
-          <div className="gear one">
-            <div className="bar" />
-            <div className="bar" />
-            <div className="bar" />
-          </div>
-          <div className="gear two">
-            <div className="bar" />
-            <div className="bar" />
-            <div className="bar" />
-          </div>
-          <div className="gear three">
-            <div className="bar" />
-            <div className="bar" />
-            <div className="bar" />
-          </div>
-        </div>
-        <div className="server-error__actions">
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="server-error__cta server-error__cta--ghost"
-          >
-            Try Again
-          </button>
-          <a href="/home" className="server-error__cta">
-            Head Home
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+	return (
+		<div data-500-page className={isLoading ? "loading" : undefined}>
+			<style>{gearStyles}</style>
+			<main>
+				<h1>{status}</h1>
+				<h2>
+					{headline} <span aria-hidden="true">:(</span>
+					<span className="server-error__sr-only">Sad face</span>
+				</h2>
+				<p>{resolvedMessage}</p>
+				<div className="gears" aria-hidden="true">
+					<div className="gear one">
+						<div className="bar" />
+						<div className="bar" />
+						<div className="bar" />
+					</div>
+					<div className="gear two">
+						<div className="bar" />
+						<div className="bar" />
+						<div className="bar" />
+					</div>
+					<div className="gear three">
+						<div className="bar" />
+						<div className="bar" />
+						<div className="bar" />
+					</div>
+				</div>
+				<div className="server-error__actions">
+					<button
+						type="button"
+						onClick={() => window.location.reload()}
+						className="server-error__cta server-error__cta--ghost"
+					>
+						Try Again
+					</button>
+					<a href="/home" className="server-error__cta">
+						Head Home
+					</a>
+				</div>
+			</main>
+		</div>
+	);
 };
 
 export const ErrorBoundary = () => {
-  const error = useRouteError();
+	const error = useRouteError();
 
-  // For 404 errors, show the splat route style (keeping existing behavior)
-  if (isRouteErrorResponse(error) && error.status === 404) {
-    return <NotFoundFace />;
-  }
+	// For 404 errors, show the splat route style (keeping existing behavior)
+	if (isRouteErrorResponse(error) && error.status === 404) {
+		return <NotFoundFace />;
+	}
 
-  if (isRouteErrorResponse(error) && error.status >= 500) {
-    const headline = error.statusText || "Unexpected Error";
-    const errorMessage =
-      typeof error.data === "string"
-        ? error.data
-        : "Something went wrong on our end.";
-    return (
-      <ServerErrorGears
-        status={error.status}
-        headline={headline}
-        message={errorMessage}
-      />
-    );
-  }
+	if (isRouteErrorResponse(error) && error.status >= 500) {
+		const headline = error.statusText || "Unexpected Error";
+		const errorMessage = typeof error.data === "string" ? error.data : "Something went wrong on our end.";
+		return <ServerErrorGears status={error.status} headline={headline} message={errorMessage} />;
+	}
 
-  // For everything else, fall back to our standard error boundary
-  if (error instanceof Error) {
-    return (
-      <ServerErrorGears
-        headline={error.name || "Unexpected Error"}
-        message={error.message}
-      />
-    );
-  }
+	// For everything else, fall back to our standard error boundary
+	if (error instanceof Error) {
+		return <ServerErrorGears headline={error.name || "Unexpected Error"} message={error.message} />;
+	}
 
-  return (
-    <ErrorBoundaryComponent
-      error={error instanceof Error ? error : undefined}
-    />
-  );
+	return <ErrorBoundaryComponent error={error instanceof Error ? error : undefined} />;
 };
