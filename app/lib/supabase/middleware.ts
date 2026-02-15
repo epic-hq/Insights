@@ -36,6 +36,49 @@ export async function updateSession(request: NextRequest) {
 	const { data } = await supabase.auth.getClaims();
 	const user = data?.claims;
 
+	// Track daily session start in PostHog (first request of the day)
+	if (user?.sub) {
+		const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+		const lastSessionDate = request.cookies.get("last_session_date")?.value;
+
+		// If this is the first request today, track session_started
+		if (lastSessionDate !== today) {
+			try {
+				const { getPostHogServerClient } = await import("../posthog.server");
+				const posthog = getPostHogServerClient();
+				if (posthog) {
+					// Fire and forget - don't block request
+					posthog
+						.capture({
+							distinctId: user.sub,
+							event: "session_started",
+							properties: {
+								session_date: today,
+								timestamp: new Date().toISOString(),
+								user_agent: request.headers.get("user-agent") ?? undefined,
+								referrer: request.headers.get("referer") ?? undefined,
+							},
+						})
+						.catch((error) => {
+							console.error("[PostHog] Failed to track session_started", error);
+						});
+				}
+			} catch (error) {
+				// Non-fatal: PostHog tracking failure shouldn't break auth
+				console.warn("[PostHog] Failed to load PostHog client", error);
+			}
+
+			// Update the session date cookie
+			supabaseResponse.cookies.set("last_session_date", today, {
+				httpOnly: true,
+				secure: process.env.NODE_ENV === "production",
+				sameSite: "lax",
+				maxAge: 60 * 60 * 24 * 365, // 1 year
+				path: "/",
+			});
+		}
+	}
+
 	if (!user && !request.nextUrl.pathname.startsWith("/login") && !request.nextUrl.pathname.startsWith("/auth")) {
 		// no user, potentially respond by redirecting the user to the login page
 		const url = request.nextUrl.clone();

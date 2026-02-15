@@ -254,6 +254,43 @@ export const extractSurveyEvidenceTask = schemaTask({
           `[extractSurveyEvidence] Linked ${insertedIds.length} evidence records to person ${response.person_id}`,
         );
       }
+
+      // Track AI analysis completion in PostHog
+      try {
+        const { getPostHogServerClient } = await import(
+          "../../../app/lib/posthog.server"
+        );
+        const posthog = getPostHogServerClient();
+        if (posthog) {
+          // Fire and forget - don't block task completion
+          posthog
+            .capture({
+              distinctId: response.person_id,
+              event: "survey_ai_analyzed",
+              properties: {
+                survey_id: response.research_link_id,
+                survey_name: surveyName,
+                response_id: responseId,
+                person_id: response.person_id,
+                account_id: accountId,
+                project_id: projectId,
+                evidence_count: insertedIds.length,
+                text_questions_analyzed: textQuestionsWithAnswers.length,
+                analysis_method: "extraction",
+                completion_time: new Date().toISOString(),
+              },
+            })
+            .catch((error) => {
+              consola.error(
+                "[PostHog] Failed to track survey_ai_analyzed",
+                error,
+              );
+            });
+        }
+      } catch (error) {
+        // Non-fatal: PostHog tracking failure shouldn't break the task
+        consola.warn("[PostHog] Failed to load PostHog client", error);
+      }
     }
 
     consola.success(

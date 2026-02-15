@@ -3,6 +3,7 @@ import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { ResearchLinkResponseSaveSchema } from "~/features/research-links/schemas";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { getPostHogServerClient } from "~/lib/posthog.server";
 import type { Database } from "~/types";
 
 export const loader = () => Response.json({ message: "Method not allowed" }, { status: 405 });
@@ -47,7 +48,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	const { responseId, responses, completed, merge } = parsed.data;
 	const { data: existing, error: existingError } = await supabase
 		.from("research_link_responses")
-		.select("id, email, evidence_id, responses")
+		.select("id, email, evidence_id, responses, response_mode")
 		.eq("id", responseId)
 		.eq("research_link_id", list.id)
 		.maybeSingle();
@@ -106,6 +107,42 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			questions,
 			responses: nextResponses,
 		});
+
+		// Track survey completion in PostHog
+		const posthog = getPostHogServerClient();
+		if (posthog) {
+			// Calculate text question count (questions that generate evidence)
+			const textQuestionCount = questions.filter((q) => {
+				const qType = q.type ?? "auto";
+				return !STRUCTURAL_QUESTION_TYPES.includes(qType);
+			}).length;
+
+			// Use person_id if available, fallback to email, then responseId
+			const distinctId = personId ?? existing.email ?? responseId;
+
+			// Fire and forget - don't block response
+			posthog
+				.capture({
+					distinctId,
+					event: "survey_response_received",
+					properties: {
+						survey_id: list.id,
+						survey_name: list.name,
+						response_id: responseId,
+						person_id: personId,
+						account_id: list.account_id,
+						project_id: list.project_id,
+						response_mode: (existing.response_mode as string | undefined) ?? "form",
+						question_count: questions.length,
+						text_questions: textQuestionCount,
+						has_person: !!personId,
+						completion_time: new Date().toISOString(),
+					},
+				})
+				.catch((error) => {
+					consola.error("[PostHog] Failed to track survey_response_received", error);
+				});
+		}
 	}
 
 	return { ok: true };
