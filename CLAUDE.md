@@ -235,6 +235,7 @@ execute: async (input, context?) => {
 - **Person resolution**: Use shared `resolveOrCreatePerson()` for all ingestion paths (desktop, BAML, import) — prevents duplicates
 - **Idempotent creation**: Try-insert-catch-find pattern with constraint violation (code 23505) handling — safe for retries
 - **Platform IDs**: Store in `contact_info` JSONB for cross-meeting identity — supports multiple platforms without migrations
+- **Declarative schema first**: Always create/update `supabase/schemas/*.sql` before generating migrations with `supabase db diff` — keeps schemas as source of truth
 
 ### Patterns To Avoid
 

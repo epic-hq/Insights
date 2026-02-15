@@ -216,18 +216,21 @@ alter table public.ui_state enable row level security;
 alter table public.artifacts enable row level security;
 
 -- RLS Policies for threads
+drop policy if exists "Account members can access threads" on public.threads;
 create policy "Account members can access threads"
   on public.threads
   for select
   to authenticated
   using (account_id in (select accounts.get_accounts_with_role()));
 
+drop policy if exists "Account members can insert threads" on public.threads;
 create policy "Account members can insert threads"
   on public.threads
   for insert
   to authenticated
   with check (account_id in (select accounts.get_accounts_with_role()));
 
+drop policy if exists "Account members can update threads" on public.threads;
 create policy "Account members can update threads"
   on public.threads
   for update
@@ -236,12 +239,14 @@ create policy "Account members can update threads"
   with check (account_id in (select accounts.get_accounts_with_role()));
 
 -- RLS Policies for ui_events
+drop policy if exists "Account members can access ui_events" on public.ui_events;
 create policy "Account members can access ui_events"
   on public.ui_events
   for select
   to authenticated
   using (account_id in (select accounts.get_accounts_with_role()));
 
+drop policy if exists "Account members can insert ui_events" on public.ui_events;
 create policy "Account members can insert ui_events"
   on public.ui_events
   for insert
@@ -249,18 +254,21 @@ create policy "Account members can insert ui_events"
   with check (account_id in (select accounts.get_accounts_with_role()));
 
 -- RLS Policies for ui_state
+drop policy if exists "Account members can access ui_state" on public.ui_state;
 create policy "Account members can access ui_state"
   on public.ui_state
   for select
   to authenticated
   using (account_id in (select accounts.get_accounts_with_role()));
 
+drop policy if exists "Account members can write ui_state" on public.ui_state;
 create policy "Account members can write ui_state"
   on public.ui_state
   for insert
   to authenticated
   with check (account_id in (select accounts.get_accounts_with_role()));
 
+drop policy if exists "Account members can update ui_state" on public.ui_state;
 create policy "Account members can update ui_state"
   on public.ui_state
   for update
@@ -269,18 +277,21 @@ create policy "Account members can update ui_state"
   with check (account_id in (select accounts.get_accounts_with_role()));
 
 -- RLS Policies for artifacts
+drop policy if exists "Account members can access artifacts" on public.artifacts;
 create policy "Account members can access artifacts"
   on public.artifacts
   for select
   to authenticated
   using (account_id in (select accounts.get_accounts_with_role()));
 
+drop policy if exists "Account members can insert artifacts" on public.artifacts;
 create policy "Account members can insert artifacts"
   on public.artifacts
   for insert
   to authenticated
   with check (account_id in (select accounts.get_accounts_with_role()));
 
+drop policy if exists "Account members can update artifacts" on public.artifacts;
 create policy "Account members can update artifacts"
   on public.artifacts
   for update
@@ -289,6 +300,7 @@ create policy "Account members can update artifacts"
   with check (account_id in (select accounts.get_accounts_with_role()));
 
 -- Service role policies for thread_seq (RPC function runs as definer)
+drop policy if exists "Service role can manage thread_seq" on public.thread_seq;
 create policy "Service role can manage thread_seq"
   on public.thread_seq
   for all

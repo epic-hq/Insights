@@ -1,7 +1,8 @@
 # Gmail Email Integration PRD
 
-> **Status**: Draft
-> **Last Updated**: 2025-01-24
+> **Status**: Implemented (branch: `claude/gmail-email-integration-fJzb6`)
+> **Last Updated**: 2026-02-14
+> **Setup Guide**: [setup-and-testing.md](./setup-and-testing.md)
 > **Owner**: Product/Engineering
 > **Dependencies**: Pica AuthKit (existing), Pica Passthrough API (existing)
 
@@ -9,42 +10,168 @@
 
 ## Executive Summary
 
-Enable users to send emails through their connected Gmail accounts directly from UpSight. This unlocks two high-value workflows:
+**Primary Goal**: Close the activation gap where users create surveys but don't get responses.
 
-1. **Survey Distribution**: Send survey/interview links to contact lists at scale
-2. **Outreach & Follow-ups**: Send personalized outreach, track responses, and surface opportunities
+Enable users to send survey invites and follow-ups through their connected Gmail accounts, with automatic reminders (auto-nudge) to non-respondents. This is the critical missing piece in the survey user journey:
 
-All outbound emails flow through a **staging queue** where humans can review/approve before sending, with optional auto-approval rules.
+```
+Create Survey → [THIS FEATURE] → Get Responses → Extract Insights → Value
+                     ↑
+              Users currently stuck here
+```
+
+### Strategic Rationale
+
+1. **Activation unlock**: Users who get survey responses see value → retain
+2. **Competitive parity**: SurveyMonkey/Qualtrics have built-in distribution
+3. **Platform stickiness**: Email touchpoints → more reasons to stay in UpSight
+4. **Foundation for AI**: Gmail access enables future AI agent reading/replying
 
 ---
 
 ## Problem Statement
 
-### Current Pain Points
+### The Activation Gap
 
-| Pain | Impact |
-|------|--------|
-| **Manual survey distribution** | Users export contacts, switch to Gmail, manually send invites |
-| **No outreach tracking** | Follow-ups happen outside UpSight, no visibility into responses |
-| **Disconnected CRM** | Email conversations with prospects aren't captured or analyzed |
-| **Context switching** | "Draft email" → copy to Gmail → send → come back to UpSight |
+**Current user journey failure mode**:
+1. User creates a survey in UpSight ✅
+2. User needs to distribute it... ❌ **STUCK**
+3. User exports contacts, opens Gmail/Brevo, manually sends
+4. No tracking of who received, opened, clicked
+5. No easy way to follow up with non-respondents
+6. User doesn't get enough responses → doesn't see value → churns
 
-### Why User's Gmail (not System Email)?
+**Evidence from user conversations**:
+> "I created a survey but people aren't responding to it"
+> "I have to use Brevo for a simple survey - that's extra steps"
 
-| Factor | System Email (Engage.so) | User's Gmail |
-|--------|--------------------------|--------------|
-| **Deliverability** | Good for transactional | Best - recipient knows sender |
-| **Reply handling** | Requires forwarding setup | Native - replies go to user |
-| **Personalization** | Limited - looks automated | High - looks personal |
-| **Trust** | Lower open rates | Higher - real relationship |
-| **Threading** | No context | Full conversation history |
-| **Use case** | System notifications | Outreach, surveys, follow-ups |
+### Competitive Landscape
+
+| Feature | SurveyMonkey | Qualtrics | UpSight (Current) |
+|---------|--------------|-----------|-------------------|
+| Send survey invites | ✅ Built-in | ✅ Built-in | ❌ Manual |
+| Upload contact list | ✅ CSV, 10K limit | ✅ Contact lists | ✅ People CRM |
+| Auto-reminders | ✅ To non-respondents | ✅ Automatic | ❌ None |
+| Track opens/clicks | ✅ Full analytics | ✅ Full analytics | ❌ None |
+| Track completions | ✅ Per recipient | ✅ Per recipient | ❌ None |
+| From address | SM servers | Qualtrics/custom | N/A |
+
+**Key insight**: Both SM and Qualtrics send from their own servers. However, using user's Gmail provides:
+- Better deliverability (recipient knows sender)
+- Natural reply handling (goes to user's inbox)
+- Relationship continuity (not a faceless survey tool)
+
+### Sending Options Analysis
+
+| Factor | User's Gmail (Pica) | System Email (Engage.so) | Own Infrastructure |
+|--------|---------------------|--------------------------|---------------------|
+| **Deliverability** | 🟢 Best - recipient knows sender | 🟡 Good but impersonal | 🟡 Depends on reputation |
+| **Reply handling** | 🟢 Goes to user's inbox | 🔴 Need routing | 🟡 Complex routing |
+| **Setup friction** | 🟡 OAuth required | 🟢 Zero | 🟢 Zero |
+| **Daily send limit** | 🔴 500 (consumer) / 2000 (Workspace) | 🟢 No limits | 🟢 No limits |
+| **Spam risk** | 🔴 User's account at risk | 🟢 Isolated domain | 🟢 Isolated |
+| **Personal feel** | 🟢 Real person | 🟡 Automated | 🟡 Automated |
+| **Tracking** | 🟡 Polling required | 🟢 Built-in | 🟢 Built-in |
+| **Build effort** | 🟢 Pica handles OAuth | 🟢 Already built | 🔴 New build |
+
+### Decision: Gmail for MVP
+
+**Gmail is the right choice for survey distribution because:**
+
+1. **Volume is manageable** - Survey invites typically <100 per batch, well within limits
+2. **Personal touch matters** - "From: sarah@acme.com" > "From: notify@upsight.com" for response rates
+3. **Reply handling is natural** - When someone replies to survey invite, it goes to user's inbox
+4. **Foundation for future** - Gmail connection enables AI agent reading/replying later
+
+**Risks we accept:**
+
+| Risk | Mitigation |
+|------|------------|
+| Gmail rate limits (500/day consumer) | Batch processing; guide users to Workspace if needed |
+| User spam complaints hurt their reputation | Clear opt-out; quality templates; don't allow cold outreach initially |
+| OAuth friction | One-time setup; clear value prop |
+
+**Future consideration: Hybrid approach**
+
+| Use Case | Send Via |
+|----------|----------|
+| Survey invites | User's Gmail (personal) |
+| Follow-ups to known contacts | User's Gmail (relationship) |
+| High-volume sequences | System email (scale) |
+| Cold outreach campaigns | System email (protect user reputation) |
 
 ---
 
 ## Use Cases
 
-### Use Case 1: Survey Link Distribution
+### Use Case 1: Survey Distribution with Auto-Nudge (MVP)
+
+> **This is the primary activation use case.** Users create surveys but don't get responses because distribution is manual and there's no follow-up system.
+
+**The Problem Today**:
+```
+User creates survey → Exports contacts → Opens Gmail/Brevo → Manually sends
+                                              ↓
+                    No tracking → No follow-up → Low response rate → No value
+```
+
+**The Solution**:
+```
+User creates survey → Selects recipients → Sends via UpSight
+                                              ↓
+         Tracking (sent/opened/completed) → Auto-nudge non-respondents
+                                              ↓
+                              Higher response rate → Insights → Value
+```
+
+**Auto-Nudge Flow**:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         AUTO-NUDGE SEQUENCE                             │
+│                                                                         │
+│  Day 0                 Day 3                    Day 7                   │
+│    │                     │                        │                     │
+│    ▼                     ▼                        ▼                     │
+│  ┌────────┐         ┌──────────┐            ┌──────────┐               │
+│  │ Initial│         │ Reminder │            │ Final    │               │
+│  │ Invite │ ──────► │ #1       │ ─────────► │ Reminder │               │
+│  └────────┘         └──────────┘            └──────────┘               │
+│       │                  │                       │                      │
+│       ▼                  ▼                       ▼                      │
+│   Completed?         Completed?              Completed?                 │
+│   Yes → STOP         Yes → STOP              Yes → STOP                │
+│   No → Continue      No → Continue           No → Give up              │
+│                                                                         │
+│  Configurable: delay, # reminders, reminder content                    │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Auto-Nudge Configuration UI**:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Follow-up Settings                                                      │
+│                                                                         │
+│ ┌─────────────────────────────────────────────────────────────────────┐│
+│ │ ☑ Automatically remind non-respondents                              ││
+│ │                                                                     ││
+│ │   First reminder after: [3 days ▼]                                 ││
+│ │   Second reminder after: [7 days ▼]  (optional)                    ││
+│ │                                                                     ││
+│ │   Stop reminding after: [14 days ▼] or [2 reminders ▼]            ││
+│ │                                                                     ││
+│ │   Reminder subject: [Re: {original_subject} ▼]                     ││
+│ │   Reminder message: [Just a friendly reminder... ▼]                ││
+│ └─────────────────────────────────────────────────────────────────────┘│
+│                                                                         │
+│ Preview: "50 contacts selected. ~20 will likely need a reminder."      │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Use Case 1b: Survey Link Distribution (Original)
 
 **Scenario**: PM wants to send survey invites to 50 customers from a recent event.
 
@@ -669,91 +796,202 @@ function DraftOutreachEmail(context: EmailContext) -> EmailDraft {
 
 ---
 
-## Implementation Phases
+## Implementation Phases (Activation-Focused)
 
-### Phase 1: Gmail Connection & Basic Sending (Week 1-2)
+### MVP: Survey Distribution with Auto-Nudge
 
-| Task | Effort | Dependencies |
-|------|--------|--------------|
-| Gmail OAuth via Pica AuthKit | 4 hrs | Existing PicaConnectButton |
-| `gmail_connections` table | 2 hrs | - |
-| `sendGmailEmail()` function | 4 hrs | Pica Passthrough |
-| Basic email compose UI | 6 hrs | - |
-| Settings page: Connect Gmail | 4 hrs | - |
+**Goal**: Close the activation gap. Users can send surveys and get responses without leaving UpSight.
 
-**Deliverable**: Users can connect Gmail and send a single email from UpSight
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         MVP USER JOURNEY                                │
+│                                                                         │
+│  ┌──────────┐    ┌──────────────┐    ┌─────────────┐    ┌───────────┐  │
+│  │ Create   │    │ Select       │    │ Review &    │    │ Track &   │  │
+│  │ Survey   │ → │ Recipients   │ → │ Send        │ → │ Nudge     │  │
+│  └──────────┘    └──────────────┘    └─────────────┘    └───────────┘  │
+│       ↓                ↓                   ↓                  ↓        │
+│   Existing        From People         Preview emails      Auto-remind  │
+│   feature         CRM or CSV          Edit if needed      non-responders│
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-### Phase 2: Staging Queue (Week 2-3)
+---
 
-| Task | Effort | Dependencies |
-|------|--------|--------------|
-| `email_queue` table schema | 2 hrs | - |
-| Queue API routes (list, approve, reject, edit) | 6 hrs | - |
-| Queue UI page | 8 hrs | - |
-| Email preview/edit modal | 6 hrs | - |
-| Bulk actions (approve all, reject all) | 4 hrs | - |
-| Background job: Process approved emails | 4 hrs | Trigger.dev |
+### Phase 1: Gmail Connection + Survey Send (MVP Core)
 
-**Deliverable**: All emails go through staging queue with approval workflow
+**Timeline**: ~1 week
+**Objective**: Users can send survey invites from their Gmail
 
-### Phase 3: Survey Distribution (Week 3-4)
+| Task | Effort | Priority |
+|------|--------|----------|
+| Gmail OAuth via Pica AuthKit | 4 hrs | P0 |
+| `gmail_connections` table | 2 hrs | P0 |
+| `sendGmailEmail()` function via Passthrough | 4 hrs | P0 |
+| "Send Survey" button on survey page | 4 hrs | P0 |
+| Recipient picker (from People or quick CSV paste) | 6 hrs | P0 |
+| Simple email preview before sending | 4 hrs | P0 |
+| Basic `survey_invites` table (track sends) | 2 hrs | P0 |
 
-| Task | Effort | Dependencies |
-|------|--------|--------------|
-| "Send Survey" action from survey page | 4 hrs | Phase 2 |
-| Recipient selection (from People or CSV) | 6 hrs | - |
-| AI personalization for survey invites | 4 hrs | BAML |
-| Batch email generation | 4 hrs | - |
-| Survey link tracking (who clicked) | 4 hrs | - |
+**Deliverable**:
+- Connect Gmail in settings
+- From survey page: Select recipients → Preview → Send
+- Emails sent from user's actual Gmail address
 
-**Deliverable**: Send personalized survey invites to contact lists
+**What we skip for now**:
+- Full staging queue (emails send immediately after preview)
+- AI personalization (simple template with merge fields)
+- Tracking pixels (rely on survey completion tracking)
 
-### Phase 4: Response Monitoring (Week 4-5)
+---
 
-| Task | Effort | Dependencies |
-|------|--------|--------------|
-| Gmail thread fetching via Passthrough | 4 hrs | - |
-| `monitorGmailRepliesTask` | 6 hrs | Trigger.dev |
-| Reply classification (BAML) | 4 hrs | - |
-| Opportunity update from replies | 4 hrs | - |
-| User notifications for replies | 4 hrs | - |
-| Reply indicator in queue/sent list | 2 hrs | - |
+### Phase 2: Completion Tracking + Auto-Nudge
 
-**Deliverable**: Automatic reply detection, classification, and opportunity updates
+**Timeline**: ~1 week
+**Objective**: Track who completed, auto-remind who didn't
 
-### Phase 5: Outreach & Follow-ups (Week 5-6)
+| Task | Effort | Priority |
+|------|--------|----------|
+| Unique survey links per recipient | 4 hrs | P0 |
+| Track: sent → opened survey → completed | 4 hrs | P0 |
+| Survey distribution dashboard (who did what) | 6 hrs | P0 |
+| Auto-nudge configuration (remind after X days) | 4 hrs | P0 |
+| `sendReminderTask` - scheduled Trigger.dev job | 4 hrs | P0 |
+| Stop nudging on completion | 2 hrs | P0 |
+| "Nudge Now" manual button | 2 hrs | P1 |
 
-| Task | Effort | Dependencies |
-|------|--------|--------------|
-| "Follow Up" action from Opportunity | 4 hrs | - |
-| Context-aware email drafting (conversation history) | 6 hrs | BAML |
-| Follow-up reminders (if no reply in X days) | 4 hrs | - |
-| Email templates library | 6 hrs | - |
+**Deliverable**:
+- See status: 50 sent → 40 opened → 25 completed
+- Auto-remind the 25 who haven't completed after 3 days
+- Stop reminding once they complete
 
-**Deliverable**: One-click contextual follow-ups from opportunities
+**Auto-Nudge Flow**:
+```
+Day 0: Send survey invite
+Day 3: If not completed → Send reminder #1
+Day 7: If not completed → Send reminder #2 (optional)
+Day 14: Stop (give up gracefully)
+```
 
-### Phase 6: Auto-Approval Rules (Week 6-7)
+---
 
-| Task | Effort | Dependencies |
-|------|--------|--------------|
-| `email_auto_approval_rules` table | 2 hrs | - |
-| Rule builder UI | 8 hrs | - |
-| Rule evaluation engine | 4 hrs | - |
-| Auto-approval with delay option | 2 hrs | - |
+### Phase 3: Staging Queue + Bulk Actions
 
-**Deliverable**: Configurable auto-approval for trusted email types
+**Timeline**: ~1 week
+**Objective**: Review/approve emails before sending (especially for larger sends)
 
-### Phase 7: Sequences (Future)
+| Task | Effort | Priority |
+|------|--------|----------|
+| `email_queue` table schema | 2 hrs | P0 |
+| Queue UI: list pending emails | 6 hrs | P0 |
+| Preview/edit modal | 4 hrs | P0 |
+| Approve individual / Approve all | 4 hrs | P0 |
+| Background job: process approved queue | 4 hrs | P0 |
+| Schedule send for later | 4 hrs | P1 |
 
-| Task | Effort | Dependencies |
-|------|--------|--------------|
-| `email_sequences` and `email_sequence_enrollments` tables | 4 hrs | - |
-| Sequence builder UI | 12 hrs | - |
-| Sequence execution engine | 8 hrs | Trigger.dev |
-| Stop conditions handling | 4 hrs | - |
-| Sequence analytics | 6 hrs | - |
+**Deliverable**:
+- Emails for large batches (>10?) go to queue for review
+- User can edit individual emails before approving
+- Batch approve for efficiency
 
-**Deliverable**: Multi-step automated email sequences
+**When to use queue vs immediate send**:
+- Small sends (≤10 recipients): Preview → Send immediately
+- Large sends (>10 recipients): Preview → Queue → Approve → Send
+
+---
+
+### Phase 4: AI Personalization
+
+**Timeline**: ~3-4 days
+**Objective**: Better emails = better response rates
+
+| Task | Effort | Priority |
+|------|--------|----------|
+| BAML prompt for survey invite personalization | 4 hrs | P1 |
+| Use Person context (name, company, title) | 2 hrs | P1 |
+| Use Opportunity/conversation context if available | 4 hrs | P1 |
+| A/B subject line suggestions | 4 hrs | P2 |
+
+**Deliverable**:
+- AI writes personalized intro based on recipient context
+- "Hey Sarah, following up on our chat about customer feedback..."
+
+---
+
+### Phase 5: Response Monitoring (Opportunity Creation)
+
+**Timeline**: ~1 week
+**Objective**: Turn email replies into tracked opportunities
+
+| Task | Effort | Priority |
+|------|--------|----------|
+| Gmail inbox polling for replies to sent emails | 6 hrs | P1 |
+| Reply classification (interested/not interested/question) | 4 hrs | P1 |
+| Auto-create Opportunity from positive reply | 4 hrs | P1 |
+| Notification: "John replied to your survey invite" | 4 hrs | P1 |
+| Link reply to Person record | 2 hrs | P1 |
+
+**Deliverable**:
+- Someone replies "Yes, happy to take your survey" → Opportunity created
+- User notified, can follow up in UpSight
+
+---
+
+### Phase 6: Auto-Approval Rules
+
+**Timeline**: ~3-4 days
+**Objective**: Trusted email types can skip manual approval
+
+| Task | Effort | Priority |
+|------|--------|----------|
+| `email_auto_approval_rules` table | 2 hrs | P2 |
+| Simple rule builder (source type + recipient tags) | 6 hrs | P2 |
+| Rule evaluation in queue processor | 4 hrs | P2 |
+
+**Deliverable**:
+- "Auto-approve survey invites to contacts tagged 'customer'"
+- Reduces friction for trusted, repeated workflows
+
+---
+
+### Phase 7: Outreach Sequences (Future)
+
+**Timeline**: ~2 weeks
+**Objective**: Multi-step nurture campaigns
+
+| Task | Effort | Priority |
+|------|--------|----------|
+| Sequence builder UI | 12 hrs | P3 |
+| Sequence execution engine | 8 hrs | P3 |
+| Stop conditions (reply, unsubscribe, bounce) | 4 hrs | P3 |
+| Sequence analytics | 6 hrs | P3 |
+
+**Deliverable**:
+- Day 1 → Day 3 → Day 7 automated sequences
+- Stops automatically when goal achieved
+
+---
+
+### Phase Summary
+
+| Phase | Focus | Activation Impact | Effort |
+|-------|-------|-------------------|--------|
+| **1** | Gmail + Survey Send | 🟢 **Critical** - closes the gap | ~1 week |
+| **2** | Tracking + Auto-Nudge | 🟢 **Critical** - drives responses | ~1 week |
+| **3** | Staging Queue | 🟡 Important for trust/control | ~1 week |
+| **4** | AI Personalization | 🟡 Improves response rates | ~3-4 days |
+| **5** | Response Monitoring | 🟡 Creates opportunities | ~1 week |
+| **6** | Auto-Approval Rules | 🟠 Nice to have | ~3-4 days |
+| **7** | Sequences | 🟠 Future expansion | ~2 weeks |
+
+**MVP = Phase 1 + Phase 2** (~2 weeks)
+
+This gives users the core loop:
+1. Create survey ✅ (existing)
+2. Send to contacts ✅ (Phase 1)
+3. Track who responded ✅ (Phase 2)
+4. Auto-remind non-responders ✅ (Phase 2)
+5. Get responses → See value ✅
 
 ---
 
@@ -772,14 +1010,31 @@ function DraftOutreachEmail(context: EmailContext) -> EmailDraft {
 
 ## Success Metrics
 
+### Activation Metrics (Primary)
+
+| Metric | Current | Target | Why It Matters |
+|--------|---------|--------|----------------|
+| **Survey completion rate** | ~15% (manual sends) | >30% | Auto-nudge should double responses |
+| **Users who get ≥5 responses** | Unknown | >70% of survey creators | This is the activation threshold |
+| **Time from survey create → first response** | Days (manual) | <24 hours | Speed to value |
+| **Survey abandonment rate** | High (no send) | <20% | Users complete the journey |
+
+### Feature Adoption Metrics
+
 | Metric | Target | Measurement |
 |--------|--------|-------------|
-| **Survey response rate** | >25% (vs 15% baseline) | Surveys completed / invites sent |
-| **Reply detection accuracy** | >95% | Manual audit of sample |
-| **Time to follow-up** | <24 hrs (vs 3+ days) | Time from signal to email sent |
-| **Opportunity conversion from email** | +20% | Opps created from email replies |
-| **Queue approval time** | <1 hour median | Time from draft to approved |
-| **User adoption** | >50% of accounts | Accounts with Gmail connected |
+| **Gmail connection rate** | >60% of active accounts | Accounts with Gmail connected |
+| **Survey send adoption** | >80% of surveys | Surveys distributed via UpSight |
+| **Auto-nudge enabled** | >70% of sends | Sends with reminders configured |
+| **Nudge → Completion rate** | >15% | Recipients who complete after reminder |
+
+### Quality Metrics
+
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| **Email delivery rate** | >98% | Sent without bounce |
+| **Spam complaint rate** | <0.1% | Complaints / sends |
+| **Unsubscribe rate** | <2% | Unsubscribes / sends |
 
 ---
 
