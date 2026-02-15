@@ -4,6 +4,7 @@ import { createUIMessageStream, createUIMessageStreamResponse, generateObject } 
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { z } from "zod";
+import { getPostHogServerClient } from "~/lib/posthog.server";
 import {
 	buildHowtoContractPatchText,
 	buildHowtoFallbackResponse,
@@ -361,6 +362,8 @@ function augmentStreamForReliability(
 		lastUserText: string;
 		routingSource: RoutingSource;
 		routingConfidence: number | null;
+		userId: string;
+		threadId: string;
 	}
 ) {
 	if (!stream || typeof (stream as { pipeThrough?: unknown }).pipeThrough !== "function") {
@@ -495,6 +498,35 @@ function augmentStreamForReliability(
 				maybeLogHowtoStreamTelemetry();
 				if (!sawFinishChunk) {
 					controller.enqueue({ type: "finish", finishReason: "stop" });
+				}
+
+				// Track agent message completion in PostHog
+				if (options.userId && sawTextDelta) {
+					const posthog = getPostHogServerClient();
+					if (posthog) {
+						const uniqueTools = Array.from(new Set(toolCalls));
+						// Fire and forget - don't block stream completion
+						posthog
+							.capture({
+								distinctId: options.userId,
+								event: "agent_message_sent",
+								properties: {
+									agent_id: options.targetAgentId,
+									agent_name: options.targetAgentId,
+									account_id: options.accountId,
+									project_id: options.projectId,
+									thread_id: options.threadId,
+									message_type: "assistant",
+									response_mode: options.responseMode,
+									tool_calls: uniqueTools.length,
+									tools_used: uniqueTools,
+									timestamp: new Date().toISOString(),
+								},
+							})
+							.catch((error) => {
+								consola.error("[PostHog] Failed to track agent_message_sent", error);
+							});
+					}
 				}
 			},
 		})
@@ -1434,6 +1466,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		lastUserText,
 		routingSource,
 		routingConfidence: routeDecision?.confidence ?? null,
+		userId,
+		threadId,
 	});
 
 	return createUIMessageStreamResponse({ stream: reliableStream });

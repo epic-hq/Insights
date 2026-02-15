@@ -13,7 +13,8 @@
  * - PostHog cohort definitions for PLG automation
  * - Brevo contact attributes for email personalization
  *
- * See: docs/60-ops-observability/plg-instrumentation-plan.md
+ * See: docs/70-PLG/strategy/instrumentation-plan.md
+ * See: docs/features/analytics/posthog-server-implementation-guide.md
  * See: docs/70-PLG/nurture/email-sequences.md
  */
 

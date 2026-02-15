@@ -2,9 +2,9 @@
 
 > **Purpose**: Automated email sequences to activate, convert, and retain users through the PLG funnel
 >
-> **Email Platform**: Brevo (see [Email Campaigns Setup](../../60-ops-observability/email-campaigns-setup.md))
+> **Email Platform**: Brevo (see [Brevo Setup](./brevo-setup.md))
 >
-> **Tracking**: PostHog cohorts trigger sequences (see [PLG Instrumentation](../../60-ops-observability/plg-instrumentation-plan.md))
+> **Tracking**: PostHog cohorts trigger sequences (see [PLG Instrumentation](../strategy/instrumentation-plan.md))
 
 ---
 
@@ -1195,9 +1195,10 @@ Your data is safe — nothing is deleted.</p>
 
 ## Related Documentation
 
-- [Email Campaigns Setup](../../60-ops-observability/email-campaigns-setup.md) — Brevo configuration
-- [Activation Strategy](../../60-ops-observability/activation-strategy.md) — Reverse trial design
-- [PLG Instrumentation](../../60-ops-observability/plg-instrumentation-plan.md) — Event tracking
+- [Brevo Setup](./brevo-setup.md) — Brevo configuration
+- [Activation Strategy](../strategy/activation-strategy.md) — Reverse trial design
+- [PLG Instrumentation](../strategy/instrumentation-plan.md) — Event tracking
+- [PostHog Implementation Guide](../../features/analytics/posthog-server-implementation-guide.md) — Server-side event catalog
 
 ---
 
