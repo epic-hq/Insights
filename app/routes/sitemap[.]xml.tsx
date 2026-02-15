@@ -20,7 +20,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		{ path: "/", priority: 1.0, changefreq: "weekly" },
 
 		// Marketing pages - High priority for SEO
-		{ path: "/customer-interviews", priority: 0.9, changefreq: "weekly" },
+		{ path: "/customer-discovery", priority: 1.0, changefreq: "weekly" },
 
 		// Blog index
 		{ path: "/blog", priority: 0.8, changefreq: "daily" },

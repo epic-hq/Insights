@@ -6,6 +6,7 @@ export default [
 	route("/privacy", "./features/marketing/pages/privacy.tsx"),
 	route("/terms", "./features/marketing/pages/terms.tsx"),
 	route("index2", "./features/marketing/pages/index2.tsx"),
+	route("customer-discovery", "./features/marketing/pages/customer-discovery.tsx"),
 	route("customer-interviews", "./features/marketing/pages/customer-interviews.tsx"),
 
 	// Blog, Case Studies, and Pricing with shared layout
