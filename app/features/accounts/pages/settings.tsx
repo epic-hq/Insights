@@ -5,9 +5,11 @@ import {
   GripVertical,
   Loader2,
   Mail,
+  MessageSquare,
   Sparkles,
   Trash2,
   X,
+  Zap,
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
@@ -743,153 +745,131 @@ function CompanyContextSection({
 }
 
 /**
- * Calendar Integration Section - Connect Google Calendar (Pro plan)
+ * Unified Integrations Hub - Grid of integration cards
  */
-function CalendarIntegrationSection({
+function IntegrationsHub({
   accountId,
   userId,
-  connection,
-  hasFeature,
+  calendarConnection,
+  gmailConnection,
+  hasCalendarFeature,
 }: {
   accountId: string;
   userId: string;
-  connection: LoaderData["calendarConnection"];
-  hasFeature: boolean;
+  calendarConnection: LoaderData["calendarConnection"];
+  gmailConnection: LoaderData["gmailConnection"];
+  hasCalendarFeature: boolean;
 }) {
-  const disconnectFetcher = useFetcher();
-  const isDisconnecting = disconnectFetcher.state === "submitting";
-
-  // Handle disconnect response
-  useEffect(() => {
-    if (disconnectFetcher.state === "idle" && disconnectFetcher.data) {
-      const result = disconnectFetcher.data as {
-        success?: boolean;
-        error?: string;
-      };
-      if (result.success) {
-        toast.success("Calendar disconnected");
-        // Reload page to update state
-        window.location.reload();
-      } else if (result.error) {
-        toast.error(result.error);
-      }
-    }
-  }, [disconnectFetcher.state, disconnectFetcher.data]);
-
-  const handleDisconnect = () => {
-    const formData = new FormData();
-    formData.append("provider", "google");
-    disconnectFetcher.submit(formData, {
-      method: "POST",
-      action: "/api/calendar/disconnect",
-    });
-  };
-
   return (
     <div>
       <div className="mb-4 flex items-center gap-2">
-        <Calendar className="h-5 w-5" />
-        <h2 className="font-semibold text-xl">Calendar Integration</h2>
-        <Badge variant="secondary" className="text-xs">
-          Pro
-        </Badge>
+        <Zap className="h-5 w-5" />
+        <h2 className="font-semibold text-xl">Integrations</h2>
       </div>
-      <Card className="border-border/60">
-        <CardHeader>
-          <CardDescription>
-            Connect your Google Calendar to enable Meeting Intelligence -
-            auto-generated meeting briefs and follow-up drafts.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!hasFeature ? (
-            <div className="rounded-md border border-muted bg-muted/20 p-4 text-center">
-              <p className="mb-2 text-muted-foreground text-sm">
-                Calendar integration requires the Pro plan.
-              </p>
-              <Button asChild variant="outline" size="sm">
-                <a href="/pricing">Upgrade to Pro</a>
-              </Button>
-            </div>
-          ) : connection?.connected ? (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-                  <Calendar className="h-5 w-5 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">
-                    Google Calendar Connected
-                  </p>
-                  {connection.email && (
-                    <p className="text-muted-foreground text-xs">
-                      {connection.email}
-                    </p>
-                  )}
-                  {connection.lastSyncedAt && (
-                    <p className="text-muted-foreground text-xs">
-                      Last synced:{" "}
-                      {new Date(connection.lastSyncedAt).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDisconnect}
-                disabled={isDisconnecting}
-              >
-                {isDisconnecting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Disconnecting...
-                  </>
-                ) : (
-                  "Disconnect"
-                )}
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-sm">Connect Google Calendar</p>
-                <p className="text-muted-foreground text-xs">
-                  We&apos;ll only read your calendar events (not modify them).
-                </p>
-              </div>
-              <PicaConnectButton
-                userId={userId}
-                accountId={accountId}
-                platform="google-calendar"
-                onSuccess={() => {
-                  toast.success("Google Calendar connected");
-                  window.location.reload();
-                }}
-                onError={(err) => toast.error(err)}
-                size="sm"
-              >
-                Connect Calendar
-              </PicaConnectButton>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <p className="mb-4 text-muted-foreground text-sm">
+        Connect your workflow tools to unlock survey distribution, meeting
+        intelligence, and more.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* Gmail */}
+        <IntegrationCard
+          icon={<Mail className="h-5 w-5" />}
+          name="Gmail"
+          description="Send survey invites from your email"
+          connected={gmailConnection?.connected ?? false}
+          email={gmailConnection?.email ?? null}
+          connectButton={
+            <PicaConnectButton
+              userId={userId}
+              accountId={accountId}
+              platform="gmail"
+              saveAction="/api/gmail/save-connection"
+              icon={Mail}
+              onSuccess={() => {
+                toast.success("Gmail connected");
+                window.location.reload();
+              }}
+              onError={(err) => toast.error(err)}
+              size="sm"
+            >
+              Connect
+            </PicaConnectButton>
+          }
+          disconnectAction="/api/gmail/disconnect"
+          disconnectPayload={{ accountId }}
+        />
+
+        {/* Google Calendar */}
+        <IntegrationCard
+          icon={<Calendar className="h-5 w-5" />}
+          name="Google Calendar"
+          description="Auto meeting briefs & follow-ups"
+          connected={calendarConnection?.connected ?? false}
+          email={calendarConnection?.email ?? null}
+          lastSynced={calendarConnection?.lastSyncedAt ?? null}
+          requiresFeature={!hasCalendarFeature}
+          featureLabel="Pro"
+          connectButton={
+            <PicaConnectButton
+              userId={userId}
+              accountId={accountId}
+              platform="google-calendar"
+              onSuccess={() => {
+                toast.success("Google Calendar connected");
+                window.location.reload();
+              }}
+              onError={(err) => toast.error(err)}
+              size="sm"
+            >
+              Connect
+            </PicaConnectButton>
+          }
+          disconnectAction="/api/calendar/disconnect"
+          disconnectPayload={{ provider: "google" }}
+        />
+
+        {/* Coming soon: Outlook */}
+        <ComingSoonCard
+          icon={<Mail className="h-5 w-5" />}
+          name="Outlook"
+          description="Send surveys via Microsoft 365"
+        />
+
+        {/* Coming soon: Slack */}
+        <ComingSoonCard
+          icon={<MessageSquare className="h-5 w-5" />}
+          name="Slack"
+          description="Share insights to channels"
+        />
+      </div>
     </div>
   );
 }
 
-/**
- * Gmail Integration Section - Connect Gmail for survey distribution
- */
-function GmailIntegrationSection({
-  accountId,
-  userId,
-  connection,
+function IntegrationCard({
+  icon,
+  name,
+  description,
+  connected,
+  email,
+  lastSynced,
+  requiresFeature,
+  featureLabel,
+  connectButton,
+  disconnectAction,
+  disconnectPayload,
 }: {
-  accountId: string;
-  userId: string;
-  connection: LoaderData["gmailConnection"];
+  icon: React.ReactNode;
+  name: string;
+  description: string;
+  connected: boolean;
+  email: string | null;
+  lastSynced?: string | null;
+  requiresFeature?: boolean;
+  featureLabel?: string;
+  connectButton: React.ReactNode;
+  disconnectAction: string;
+  disconnectPayload: Record<string, string>;
 }) {
   const disconnectFetcher = useFetcher();
   const isDisconnecting = disconnectFetcher.state === "submitting";
@@ -901,96 +881,117 @@ function GmailIntegrationSection({
         error?: string;
       };
       if (result.success) {
-        toast.success("Gmail disconnected");
+        toast.success(`${name} disconnected`);
         window.location.reload();
       } else if (result.error) {
         toast.error(result.error);
       }
     }
-  }, [disconnectFetcher.state, disconnectFetcher.data]);
+  }, [disconnectFetcher.state, disconnectFetcher.data, name]);
 
   const handleDisconnect = () => {
     const formData = new FormData();
-    formData.append("accountId", accountId);
+    for (const [key, value] of Object.entries(disconnectPayload)) {
+      formData.append(key, value);
+    }
     disconnectFetcher.submit(formData, {
       method: "POST",
-      action: "/api/gmail/disconnect",
+      action: disconnectAction,
     });
   };
 
   return (
-    <div>
-      <div className="mb-4 flex items-center gap-2">
-        <Mail className="h-5 w-5" />
-        <h2 className="font-semibold text-xl">Gmail Integration</h2>
-      </div>
-      <Card className="border-border/60">
-        <CardHeader>
-          <CardDescription>
-            Connect your Gmail to send survey invites directly from your email
-            address. Recipients see emails from you, not a generic sender.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {connection?.connected ? (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-                  <Mail className="h-5 w-5 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Gmail Connected</p>
-                  {connection.email && (
-                    <p className="text-muted-foreground text-xs">
-                      {connection.email}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <Button
+    <Card className="border-border/60">
+      <CardContent className="pt-5">
+        <div className="mb-3 flex items-center gap-2">
+          <div
+            className={`flex h-8 w-8 items-center justify-center rounded-lg ${connected ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}
+          >
+            {icon}
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-sm">{name}</p>
+              {featureLabel && (
+                <Badge variant="secondary" className="text-[10px]">
+                  {featureLabel}
+                </Badge>
+              )}
+            </div>
+            <p className="text-muted-foreground text-xs">{description}</p>
+          </div>
+        </div>
+
+        {requiresFeature ? (
+          <Button asChild variant="outline" size="sm" className="w-full">
+            <a href="/pricing">Upgrade to {featureLabel}</a>
+          </Button>
+        ) : connected ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Badge
                 variant="outline"
-                size="sm"
-                onClick={handleDisconnect}
-                disabled={isDisconnecting}
+                className="border-green-200 bg-green-50 text-green-700 text-xs dark:border-green-800 dark:bg-green-900/20 dark:text-green-400"
               >
-                {isDisconnecting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Disconnecting...
-                  </>
-                ) : (
-                  "Disconnect"
-                )}
-              </Button>
+                Connected
+              </Badge>
+              {email && (
+                <span className="truncate text-muted-foreground text-xs">
+                  {email}
+                </span>
+              )}
             </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-sm">Connect Gmail</p>
-                <p className="text-muted-foreground text-xs">
-                  Send survey invites from your own email address.
-                </p>
-              </div>
-              <PicaConnectButton
-                userId={userId}
-                accountId={accountId}
-                platform="gmail"
-                saveAction="/api/gmail/save-connection"
-                icon={Mail}
-                onSuccess={() => {
-                  toast.success("Gmail connected");
-                  window.location.reload();
-                }}
-                onError={(err) => toast.error(err)}
-                size="sm"
-              >
-                Connect Gmail
-              </PicaConnectButton>
+            {lastSynced && (
+              <p className="text-muted-foreground text-[10px]">
+                Last synced: {new Date(lastSynced).toLocaleDateString()}
+              </p>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDisconnect}
+              disabled={isDisconnecting}
+              className="h-7 px-2 text-muted-foreground text-xs hover:text-destructive"
+            >
+              {isDisconnecting ? "Disconnecting..." : "Disconnect"}
+            </Button>
+          </div>
+        ) : (
+          connectButton
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ComingSoonCard({
+  icon,
+  name,
+  description,
+}: {
+  icon: React.ReactNode;
+  name: string;
+  description: string;
+}) {
+  return (
+    <Card className="border-dashed border-border/40 opacity-60">
+      <CardContent className="pt-5">
+        <div className="mb-3 flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+            {icon}
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-sm">{name}</p>
+              <Badge variant="outline" className="text-[10px]">
+                Coming soon
+              </Badge>
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+            <p className="text-muted-foreground text-xs">{description}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1663,19 +1664,13 @@ export default function AccountSettingsPage() {
           isResearching={isResearching}
         />
 
-        {/* Calendar Integration - Pro feature */}
-        <CalendarIntegrationSection
+        {/* Integrations Hub */}
+        <IntegrationsHub
           accountId={accountId}
           userId={userId}
-          connection={calendarConnection}
-          hasFeature={hasCalendarFeature}
-        />
-
-        {/* Gmail Integration - Survey distribution */}
-        <GmailIntegrationSection
-          accountId={accountId}
-          userId={userId}
-          connection={gmailConnection}
+          calendarConnection={calendarConnection}
+          gmailConnection={gmailConnection}
+          hasCalendarFeature={hasCalendarFeature}
         />
 
         <Separator className="my-8" />
