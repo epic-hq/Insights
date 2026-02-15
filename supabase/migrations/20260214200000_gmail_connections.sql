@@ -88,23 +88,28 @@ ALTER TABLE public.gmail_connections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.survey_sends ENABLE ROW LEVEL SECURITY;
 
 -- Gmail connections: Users can only manage their own
+DROP POLICY IF EXISTS "Users can view own gmail connections" ON public.gmail_connections;
 CREATE POLICY "Users can view own gmail connections"
     ON public.gmail_connections FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own gmail connections" ON public.gmail_connections;
 CREATE POLICY "Users can insert own gmail connections"
     ON public.gmail_connections FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own gmail connections" ON public.gmail_connections;
 CREATE POLICY "Users can update own gmail connections"
     ON public.gmail_connections FOR UPDATE
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own gmail connections" ON public.gmail_connections;
 CREATE POLICY "Users can delete own gmail connections"
     ON public.gmail_connections FOR DELETE
     USING (auth.uid() = user_id);
 
 -- Survey sends: Account members can view, connection owner can manage
+DROP POLICY IF EXISTS "Account members can view survey sends" ON public.survey_sends;
 CREATE POLICY "Account members can view survey sends"
     ON public.survey_sends FOR SELECT
     USING (
@@ -115,6 +120,7 @@ CREATE POLICY "Account members can view survey sends"
         )
     );
 
+DROP POLICY IF EXISTS "Account members can insert survey sends" ON public.survey_sends;
 CREATE POLICY "Account members can insert survey sends"
     ON public.survey_sends FOR INSERT
     WITH CHECK (
@@ -125,6 +131,7 @@ CREATE POLICY "Account members can insert survey sends"
         )
     );
 
+DROP POLICY IF EXISTS "Account members can update survey sends" ON public.survey_sends;
 CREATE POLICY "Account members can update survey sends"
     ON public.survey_sends FOR UPDATE
     USING (
@@ -136,11 +143,13 @@ CREATE POLICY "Account members can update survey sends"
     );
 
 -- Updated_at triggers
+DROP TRIGGER IF EXISTS gmail_connections_updated_at ON public.gmail_connections;
 CREATE TRIGGER gmail_connections_updated_at
     BEFORE UPDATE ON public.gmail_connections
     FOR EACH ROW
     EXECUTE FUNCTION update_calendar_updated_at();
 
+DROP TRIGGER IF EXISTS survey_sends_updated_at ON public.survey_sends;
 CREATE TRIGGER survey_sends_updated_at
     BEFORE UPDATE ON public.survey_sends
     FOR EACH ROW
