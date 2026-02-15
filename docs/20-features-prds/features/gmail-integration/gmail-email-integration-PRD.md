@@ -174,6 +174,34 @@ All outbound emails flow through a **staging queue** where humans can review/app
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Mermaid
+
+```mermaid
+sequenceDiagram
+  participant U as User (Browser)
+  participant App as Your App
+  participant Pica as PicaOS
+  participant Gmail as Gmail API
+
+  Note over U,Gmail: Step 1: Connect Gmail (WORKS ✅)
+  U->>Pica: OAuth popup → sign in with Google
+  Pica->>Pica: Store OAuth tokens (access_token, refresh_token)
+  Pica->>App: Here's connection key + id
+  App->>App: Save to gmail_connections table
+
+  Note over U,Gmail: Step 2: Send Email via Passthrough (FAILS ❌)
+  App->>Pica: POST /v1/passthrough/users/me/messages/send
+  Note right of App: Headers: x-pica-secret, x-pica-connection-key, x-pica-action-id
+  Pica--x App: 400 "Invalid request" (code 2014)
+  Note over Pica: Pica SHOULD use stored OAuth token<br/>to call Gmail API on your behalf,<br/>but returns 400 instead
+
+  Note over Pica,Gmail: What SHOULD happen:
+  Pica->>Gmail: POST gmail.googleapis.com/users/me/messages/send
+  Note right of Pica: Authorization: Bearer {stored_oauth_token}
+  Gmail->>Pica: 200 OK {messageId, threadId}
+  Pica->>App: 200 OK (forwarded response)
+```
+
 ### Component Breakdown
 
 #### 1. Gmail OAuth Connection (Pica AuthKit)

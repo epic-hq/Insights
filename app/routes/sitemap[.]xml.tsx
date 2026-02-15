@@ -21,6 +21,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 		// Marketing pages - High priority for SEO
 		{ path: "/customer-discovery", priority: 1.0, changefreq: "weekly" },
+		{ path: "/customer-discovery-for-consultants", priority: 0.9, changefreq: "weekly" },
 
 		// Blog index
 		{ path: "/blog", priority: 0.8, changefreq: "daily" },

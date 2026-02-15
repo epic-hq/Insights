@@ -1,5 +1,8 @@
 # Critical Analysis: UpSight for Consulting Practices
 
+> Superseded by `persona-market-assessment-and-positioning.md` for active positioning decisions.
+> Keep this file as historical analysis and source context.
+
 *Created: 2025-01-02*
 *Updated: 2025-01-02 (incorporated external critique)*
 *Status: Revised strategic analysis*

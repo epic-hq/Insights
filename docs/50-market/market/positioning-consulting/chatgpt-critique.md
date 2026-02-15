@@ -1,5 +1,8 @@
 Below is a **hard-nosed strategic critique** of the proposed shift toward **consulting services**, grounded in the assessment doc . I’ll flag **gaps, incorrect assumptions, weak conclusions**, then **tighten and enhance** the strategy.
 
+> Superseded by `persona-market-assessment-and-positioning.md` for active positioning decisions.
+> Keep this file as historical critique and source context.
+
 ---
 
 ## 1. Big Picture: Is This a “Shift” or a “Wedge”?

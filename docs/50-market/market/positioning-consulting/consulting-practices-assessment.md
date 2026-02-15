@@ -1,5 +1,8 @@
 # Positioning Assessment: Consulting Practices
 
+> Superseded by `persona-market-assessment-and-positioning.md` for active positioning decisions.
+> Keep this file as historical assessment and source context.
+
 *Created: 2026-01-02*
 *Status: Strategic evaluation for market positioning*
 
