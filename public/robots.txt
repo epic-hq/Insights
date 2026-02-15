@@ -9,10 +9,9 @@ Disallow: /a/
 Disallow: /api/
 Disallow: /auth/
 
-# Allow public pages
-Allow: /auth/login
-Allow: /auth/register
+# Explicitly allow key public entry points
 Allow: /sign-up
+Allow: /login
 
 # Sitemap location
 Sitemap: https://getupsight.com/sitemap.xml
