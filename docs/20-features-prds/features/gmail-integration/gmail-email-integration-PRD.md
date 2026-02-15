@@ -1,7 +1,8 @@
 # Gmail Email Integration PRD
 
-> **Status**: Draft
-> **Last Updated**: 2025-01-24
+> **Status**: Implemented (branch: `claude/gmail-email-integration-fJzb6`)
+> **Last Updated**: 2026-02-14
+> **Setup Guide**: [setup-and-testing.md](./setup-and-testing.md)
 > **Owner**: Product/Engineering
 > **Dependencies**: Pica AuthKit (existing), Pica Passthrough API (existing)
 
