@@ -9,7 +9,7 @@
 	--lp-bg2: #0a0a10;
 	--lp-text: #eeeef2;
 	--lp-dim: rgba(238, 238, 242, 0.7);
-	--lp-dim2: rgba(238, 238, 242, 0.45);
+	--lp-dim2: rgba(238, 238, 242, 0.6);
 	--lp-amber: #f59e0b;
 	--lp-amber-glow: rgba(245, 158, 11, 0.3);
 	--lp-sky: #38bdf8;
@@ -250,10 +250,19 @@
 	border: 1.5px solid rgba(255, 255, 255, 0.25);
 	background: transparent;
 	cursor: pointer;
+	padding: 0;
+	box-sizing: content-box;
+	/* Expand touch target to 48x48 while keeping visual dot small */
+	position: relative;
 	transition:
 		background 0.3s,
 		border-color 0.3s,
 		transform 0.3s;
+}
+.lp-carousel-pip::before {
+	content: "";
+	position: absolute;
+	inset: -20px;
 }
 .lp-carousel-pip.active {
 	background: var(--lp-amber);

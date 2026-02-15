@@ -141,7 +141,7 @@ export default defineConfig({
     devtoolsJson(),
   ],
   build: {
-    minify: false,
+    minify: "esbuild",
     sourcemap: false,
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
