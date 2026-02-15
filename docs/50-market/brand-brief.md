@@ -680,6 +680,7 @@ These documents extend this brand brief with operational detail:
 
 | Document | Purpose | Location |
 |----------|---------|----------|
+| **Brand Style Guide** | Canonical colors + usage rules for marketing + product UI | `./brand-style-guide.md` |
 | **User Success Journeys** | Critical user flows per persona, activation metrics, stall points | `./user-success-journeys.md` |
 | **Market & ICP Analysis** | Market sizing, segment prioritization, competitive dynamics | `./market/customers.md` |
 | **Activation Strategy** | PLG conversion strategy, reverse trial design, feature gates | `../70-PLG/strategy/activation-strategy.md` |
