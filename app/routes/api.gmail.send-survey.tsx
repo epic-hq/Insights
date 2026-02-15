@@ -14,7 +14,6 @@ import {
   sendGmailEmail,
 } from "~/lib/integrations/gmail.server";
 import { userContext } from "~/server/user-context";
-import { createDomain } from "~/utils/http";
 
 /** Max emails per batch to stay within Google rate limits */
 const BATCH_SIZE = 10;
@@ -126,7 +125,9 @@ export async function action({ context, request }: ActionFunctionArgs) {
   }
 
   const fromEmail = connection.email || "me";
-  const domain = createDomain(request);
+  // Always use production URL for email links — even from local dev, recipients
+  // need publicly routable URLs.
+  const domain = "https://getupsight.com";
 
   // Send in batches
   const results: Array<{

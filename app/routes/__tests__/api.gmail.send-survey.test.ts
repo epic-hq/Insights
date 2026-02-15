@@ -19,10 +19,6 @@ vi.mock("~/lib/integrations/gmail.server", () => ({
   createSurveySends: (...args: unknown[]) => mockCreateSurveySends(...args),
 }));
 
-vi.mock("~/utils/http", () => ({
-  createDomain: () => "https://app.test",
-}));
-
 const mockUserContext = {
   claims: { sub: "user-123" },
   supabase: {},

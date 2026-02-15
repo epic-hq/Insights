@@ -109,6 +109,9 @@ importers:
       '@picahq/authkit-token':
         specifier: 1.0.4
         version: 1.0.4
+      '@picahq/toolkit':
+        specifier: 1.0.3
+        version: 1.0.3(@ai-sdk/openai@2.0.86(zod@3.25.76))(ai@5.0.113(zod@3.25.76))(zod@3.25.76)
       '@polar-sh/hono':
         specifier: 0.5.3
         version: 0.5.3(hono@4.9.9)
@@ -3238,6 +3241,14 @@ packages:
 
   '@picahq/authkit@1.0.5':
     resolution: {integrity: sha512-2GOiAgmOU9Guud+mki6bKiKVoEdPvbWtjfPdBsTZhoN31O5Kfw0P8WF+FdQ4a5GT6Fgcz1CisdZjG5cBPQmiWg==}
+
+  '@picahq/toolkit@1.0.3':
+    resolution: {integrity: sha512-XTYpl6LHHDG7EhKk/5L81dS2ujjisyHVLZHsdpwIXztB57qCvmO6hIk/kHFxm0H9HCE4hfXmi+hFesWEFpJE7g==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@ai-sdk/openai': ^2.0.30
+      ai: ^5.0.0
+      zod: ^4.0.0
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
@@ -16150,6 +16161,17 @@ snapshots:
       - debug
 
   '@picahq/authkit@1.0.5': {}
+
+  '@picahq/toolkit@1.0.3(@ai-sdk/openai@2.0.86(zod@3.25.76))(ai@5.0.113(zod@3.25.76))(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/openai': 2.0.86(zod@3.25.76)
+      ai: 5.0.113(zod@3.25.76)
+      axios: 1.13.2
+      chalk: 4.1.2
+      form-data: 4.0.5
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - debug
 
   '@pinojs/redact@0.4.0': {}
 

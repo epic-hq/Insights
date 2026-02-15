@@ -8,19 +8,22 @@
 
 import { useAuthKit } from "@picahq/authkit";
 import { Calendar, Loader2, Mail, type LucideIcon } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
 
-/** Pica connection record returned from AuthKit */
+/** Pica connection record returned from AuthKit
+ * Note: Pica SDK types say `_id` but actual API returns `id` — handle both */
 interface ConnectionRecord {
-  _id: string;
+  _id?: string;
+  id?: string;
   key: string;
   platform: string;
   name: string;
   environment: string;
   identity?: string;
   identityType?: "user" | "team" | "organization" | "project";
+  [key: string]: unknown;
 }
 
 interface PicaConnectButtonProps {
@@ -66,20 +69,28 @@ export function PicaConnectButton({
 }: PicaConnectButtonProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const saveFetcher = useFetcher();
+  const hasSavedRef = useRef(false);
 
   // Handle successful connection - save to our database
   const handleSuccess = useCallback(
     (connection: ConnectionRecord) => {
       setIsConnecting(false);
 
+      // Guard against duplicate onSuccess calls from AuthKit
+      if (hasSavedRef.current) return;
+      hasSavedRef.current = true;
+
+      // Pica SDK types say _id but actual API returns id — handle both
+      const picaId = connection.id || connection._id || "";
+
       // Save connection to our database via API
+      // Email is fetched server-side via Pica connection API, not from connection.identity
       saveFetcher.submit(
         {
-          connectionId: connection._id,
+          connectionId: picaId,
           connectionKey: connection.key,
           platform: connection.platform,
           accountId,
-          ...(connection.identity ? { email: connection.identity } : {}),
         },
         {
           method: "POST",
@@ -121,6 +132,7 @@ export function PicaConnectButton({
   });
 
   const handleClick = () => {
+    hasSavedRef.current = false;
     setIsConnecting(true);
     open();
   };

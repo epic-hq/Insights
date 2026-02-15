@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gmail Integration Mockups — UpSight</title>
+<style>
+  /* UpSight Design Tokens */
+  :root {
+    --radius: 0.625rem;
+    --brand: #0284c7;
+    --brand-light: #e0f2fe;
+    --brand-dark: #0369a1;
+    --background: #fdfdfc;
+    --foreground: #18181b;
+    --card: #ffffff;
+    --card-foreground: #18181b;
+    --muted: #f4f4f5;
+    --muted-foreground: #71717a;
+    --border: #e4e4e7;
+    --input: #f4f4f5;
+    --destructive: #dc2626;
+    --green-100: #dcfce7;
+    --green-600: #16a34a;
+    --amber-100: #fef3c7;
+    --amber-600: #d97706;
+    --violet-100: #ede9fe;
+    --violet-600: #7c3aed;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #f8f9fa; color: var(--foreground); line-height: 1.5; }
+
+  .page { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+  .mockup-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); margin-bottom: 8px; }
+  .mockup-title { font-size: 22px; font-weight: 700; color: var(--foreground); margin-bottom: 6px; }
+  .mockup-desc { font-size: 14px; color: var(--muted-foreground); margin-bottom: 24px; }
+  .mockup-section { margin-bottom: 56px; }
+
+  /* Card */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: calc(var(--radius) + 4px); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .card-header { padding: 16px 16px 0; }
+  .card-content { padding: 16px; }
+  .card-title { font-size: 14px; font-weight: 600; }
+  .card-desc { font-size: 13px; color: var(--muted-foreground); margin-top: 2px; }
+
+  /* Button */
+  .btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: var(--radius); border: 1px solid transparent; cursor: pointer; transition: all 0.15s; line-height: 1.4; }
+  .btn-primary { background: var(--brand); color: white; border-color: var(--brand); }
+  .btn-primary:hover { background: var(--brand-dark); }
+  .btn-outline { background: white; color: var(--foreground); border-color: var(--border); }
+  .btn-outline:hover { background: var(--muted); }
+  .btn-ghost { background: transparent; color: var(--muted-foreground); }
+  .btn-ghost:hover { background: var(--muted); color: var(--foreground); }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-lg { padding: 10px 20px; font-size: 14px; }
+
+  /* Badge */
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 9999px; line-height: 1.4; }
+  .badge-secondary { background: var(--muted); color: var(--muted-foreground); }
+  .badge-green { background: var(--green-100); color: var(--green-600); }
+  .badge-amber { background: var(--amber-100); color: var(--amber-600); }
+  .badge-blue { background: var(--brand-light); color: var(--brand); }
+  .badge-violet { background: var(--violet-100); color: var(--violet-600); }
+
+  /* Utility */
+  .flex { display: flex; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 12px; }
+  .gap-4 { gap: 16px; }
+  .gap-6 { gap: 24px; }
+  .text-xs { font-size: 12px; }
+  .text-sm { font-size: 13px; }
+  .text-muted { color: var(--muted-foreground); }
+  .font-medium { font-weight: 500; }
+  .font-semibold { font-weight: 600; }
+  .mt-1 { margin-top: 4px; }
+  .mt-2 { margin-top: 8px; }
+  .mt-3 { margin-top: 12px; }
+  .mt-4 { margin-top: 16px; }
+  .mb-2 { margin-bottom: 8px; }
+  .mb-4 { margin-bottom: 16px; }
+  .mb-6 { margin-bottom: 24px; }
+  .w-full { width: 100%; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .rounded-full { border-radius: 9999px; }
+  .icon-circle { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 9999px; flex-shrink: 0; }
+
+  /* Separator */
+  .separator { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  .separator-sm { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+  /* Progress Bar */
+  .progress-bar { background: var(--muted); border-radius: 9999px; height: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 9999px; transition: width 0.5s ease; }
+  .progress-fill-green { background: var(--green-600); }
+  .progress-fill-blue { background: var(--brand); }
+  .progress-fill-amber { background: var(--amber-600); }
+
+  /* Inline banner */
+  .inline-banner { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: calc(var(--radius) + 2px); border: 1px solid; }
+  .inline-banner-blue { background: #eff6ff; border-color: #bfdbfe; }
+  .inline-banner-amber { background: #fffbeb; border-color: #fde68a; }
+
+  /* Stat card */
+  .stat { text-align: center; padding: 12px 8px; }
+  .stat-value { font-size: 24px; font-weight: 700; line-height: 1.2; }
+  .stat-label { font-size: 11px; color: var(--muted-foreground); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  /* Table */
+  .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .table th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-foreground); border-bottom: 1px solid var(--border); }
+  .table td { padding: 10px 12px; border-bottom: 1px solid var(--muted); vertical-align: middle; }
+  .table tr:last-child td { border-bottom: none; }
+
+  /* SVG Icon placeholders */
+  .icon { width: 16px; height: 16px; display: inline-block; flex-shrink: 0; }
+  .icon-20 { width: 20px; height: 20px; }
+
+  /* Mockup container */
+  .mockup-frame { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--background); }
+  .mockup-frame-inner { padding: 24px; }
+
+  hr.divider { border: none; border-top: 2px dashed var(--border); margin: 48px 0; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ==================== MOCKUP 1 ==================== -->
+<div class="mockup-section">
+  <p class="mockup-label">Mockup 1 — Inline Connection Prompt</p>
+  <h2 class="mockup-title">Survey Send: Gmail Not Connected</h2>
+  <p class="mockup-desc">Appears when user clicks "Send Survey" but Gmail isn't connected yet. This is the moment-of-need prompt that replaces a redirect to settings.</p>
+
+  <div class="mockup-frame">
+    <div class="mockup-frame-inner">
+      <!-- Simulated survey page header -->
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-muted" style="font-size:13px;">← Surveys</span>
+          </div>
+          <h3 style="font-size:18px; font-weight:600;">Customer Feedback Q1</h3>
+          <p class="text-xs text-muted mt-1">5 questions · 12 responses</p>
+        </div>
+        <div class="flex gap-2">
+          <button class="btn btn-outline btn-sm">Edit</button>
+          <button class="btn btn-primary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            Send Survey
+          </button>
+        </div>
+      </div>
+
+      <hr class="separator-sm">
+
+      <!-- THIS IS THE INLINE CONNECTION PROMPT -->
+      <div class="inline-banner inline-banner-blue" style="margin-top: 16px;">
+        <div style="flex-shrink:0; width:40px; height:40px; background: white; border-radius: 10px; display:flex; align-items:center; justify-content:center; border: 1px solid #bfdbfe;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M22 6L13.5 12.5C12.6 13.1 11.4 13.1 10.5 12.5L2 6" stroke="#0284c7" stroke-width="1.8" stroke-linecap="round"/><rect x="2" y="4" width="20" height="16" rx="3" stroke="#0284c7" stroke-width="1.8"/></svg>
+        </div>
+        <div style="flex:1; min-width:0;">
+          <p class="font-semibold text-sm" style="color: #1e3a5f;">Connect Gmail to send surveys from your email</p>
+          <p class="text-xs mt-1" style="color: #4b7399;">
+            Surveys sent from your address get 2-3x more responses than generic senders. One-time setup, takes 30 seconds.
+          </p>
+          <div class="flex items-center gap-3 mt-3">
+            <button class="btn btn-primary btn-sm">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" fill="none"/><path d="M21.35 11.1H12.18V13.83H17.44C17.16 15.23 15.74 16.4 12.18 16.4C9.26 16.4 6.89 14.02 6.89 11.1C6.89 8.18 9.26 5.8 12.18 5.8C13.48 5.8 14.67 6.28 15.57 7.07L17.62 5.02C16.11 3.62 14.25 2.8 12.18 2.8C7.59 2.8 3.89 6.5 3.89 11.09C3.89 15.68 7.59 19.38 12.18 19.38C16.77 19.38 20.47 15.68 20.47 11.09" fill="currentColor" opacity="0.15"/></svg>
+              Connect with Google
+            </button>
+            <span class="text-xs text-muted">or <a href="#" style="color: var(--brand); text-decoration: underline;">copy survey link instead</a></span>
+          </div>
+          <p class="text-xs mt-2" style="color: #94a3b8;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline; vertical-align:-2px; margin-right:3px;"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            We only send emails you approve. We never read your inbox.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ==================== MOCKUP 2 ==================== -->
+<div class="mockup-section">
+  <p class="mockup-label">Mockup 2 — Settings: Integrations Hub</p>
+  <h2 class="mockup-title">Settings Page — Integrations Section</h2>
+  <p class="mockup-desc">Unified integrations section in account settings. Gmail connected, Calendar connected. "Connect your workflow" framing.</p>
+
+  <div class="mockup-frame">
+    <div class="mockup-frame-inner">
+      <div class="flex items-center gap-2 mb-4">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        <h2 style="font-size:18px; font-weight:600;">Integrations</h2>
+        <span class="badge badge-secondary">Pro</span>
+      </div>
+      <p class="text-sm text-muted mb-4">Connect your tools to unlock the full UpSight experience.</p>
+
+      <div class="grid-2">
+        <!-- Gmail Card — Connected -->
+        <div class="card">
+          <div class="card-content" style="padding: 16px;">
+            <div class="flex items-center gap-3">
+              <div class="icon-circle" style="background: var(--green-100);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              </div>
+              <div style="flex:1; min-width:0;">
+                <div class="flex items-center gap-2">
+                  <p class="font-medium text-sm">Gmail</p>
+                  <span class="badge badge-green" style="font-size:10px;">Connected</span>
+                </div>
+                <p class="text-xs text-muted">richard@getupsight.com</p>
+              </div>
+            </div>
+            <hr class="separator-sm">
+            <p class="text-xs text-muted">Send surveys, auto-reminders, and follow-ups from your email.</p>
+            <div class="flex justify-between items-center mt-3">
+              <p class="text-xs text-muted">3 surveys sent this week</p>
+              <button class="btn btn-ghost btn-sm" style="color: var(--destructive); font-size:11px;">Disconnect</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Calendar Card — Connected -->
+        <div class="card">
+          <div class="card-content" style="padding: 16px;">
+            <div class="flex items-center gap-3">
+              <div class="icon-circle" style="background: var(--green-100);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+              </div>
+              <div style="flex:1; min-width:0;">
+                <div class="flex items-center gap-2">
+                  <p class="font-medium text-sm">Google Calendar</p>
+                  <span class="badge badge-green" style="font-size:10px;">Connected</span>
+                </div>
+                <p class="text-xs text-muted">richard@getupsight.com</p>
+              </div>
+            </div>
+            <hr class="separator-sm">
+            <p class="text-xs text-muted">See upcoming customer meetings and get auto-generated prep briefs.</p>
+            <div class="flex justify-between items-center mt-3">
+              <p class="text-xs text-muted">Last synced: 3 min ago</p>
+              <button class="btn btn-ghost btn-sm" style="color: var(--destructive); font-size:11px;">Disconnect</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Coming soon row -->
+      <div class="flex items-center gap-3 mt-4" style="padding: 10px 14px; background: var(--muted); border-radius: var(--radius);">
+        <p class="text-xs text-muted">Coming soon: Outlook, Slack, Notion</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ==================== MOCKUP 3 ==================== -->
+<div class="mockup-section">
+  <p class="mockup-label">Mockup 3 — Survey Send Flow</p>
+  <h2 class="mockup-title">Send Survey: Recipient Selection + Preview</h2>
+  <p class="mockup-desc">After Gmail is connected. User selects recipients, previews the email, and sends. Default: send now. Minimal UI, maximum confidence.</p>
+
+  <div class="mockup-frame">
+    <div class="mockup-frame-inner">
+      <div class="flex items-center justify-between mb-4">
+        <h3 style="font-size:16px; font-weight:600;">Send: Customer Feedback Q1</h3>
+        <button class="btn btn-ghost btn-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+          Close
+        </button>
+      </div>
+
+      <!-- From field -->
+      <div style="margin-bottom: 16px;">
+        <label class="text-xs text-muted font-medium" style="display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.04em;">From</label>
+        <div class="flex items-center gap-2" style="padding:8px 12px; background:var(--muted); border-radius: var(--radius);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+          <span class="text-sm font-medium">richard@getupsight.com</span>
+          <span class="badge badge-green" style="font-size:10px;">Gmail connected</span>
+        </div>
+      </div>
+
+      <!-- Recipients -->
+      <div style="margin-bottom: 16px;">
+        <label class="text-xs text-muted font-medium" style="display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.04em;">Recipients</label>
+        <div style="padding:8px 12px; border:1px solid var(--border); border-radius: var(--radius); min-height:38px;">
+          <div class="flex items-center gap-2" style="flex-wrap:wrap;">
+            <span class="badge badge-blue" style="font-size:11px;">sarah@acme.com ×</span>
+            <span class="badge badge-blue" style="font-size:11px;">john@bigcorp.com ×</span>
+            <span class="badge badge-blue" style="font-size:11px;">mike@startup.io ×</span>
+            <span class="badge badge-secondary" style="font-size:11px;">+12 more from "Beta Users"</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 mt-2">
+          <button class="btn btn-ghost btn-sm">+ Add from People</button>
+          <button class="btn btn-ghost btn-sm">+ Paste emails</button>
+        </div>
+      </div>
+
+      <hr class="separator-sm">
+
+      <!-- Email Preview -->
+      <div style="margin-top: 16px;">
+        <label class="text-xs text-muted font-medium" style="display:block; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.04em;">Email Preview</label>
+        <div class="card" style="border: 1px solid var(--border);">
+          <div class="card-content" style="padding: 16px;">
+            <p class="text-xs text-muted mb-2">Subject:</p>
+            <p class="font-medium text-sm mb-4">Quick feedback request from Richard</p>
+            <div style="padding:12px; background: var(--muted); border-radius: var(--radius); font-size:13px; line-height:1.6; color: #374151;">
+              <p>Hi {first_name},</p>
+              <br>
+              <p>I'd love to get your input on a quick survey about your experience. It takes about 2 minutes.</p>
+              <br>
+              <p style="text-align:center; margin: 12px 0;">
+                <span style="display:inline-block; background: var(--brand); color:white; padding:8px 20px; border-radius:6px; font-weight:500; font-size:13px;">Take the Survey →</span>
+              </p>
+              <br>
+              <p>Thanks!</p>
+              <p>Richard</p>
+            </div>
+            <button class="btn btn-ghost btn-sm mt-3" style="font-size:11px;">Edit template</button>
+          </div>
+        </div>
+      </div>
+
+      <hr class="separator-sm" style="margin: 16px 0;">
+
+      <!-- Send action -->
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs text-muted">15 recipients · Sending from your Gmail</p>
+          <p class="text-xs text-muted mt-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline; vertical-align:-2px; margin-right:2px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Auto-remind non-respondents after 3 days
+          </p>
+        </div>
+        <div class="flex gap-2">
+          <button class="btn btn-outline">Cancel</button>
+          <button class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Send Now
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ==================== MOCKUP 4 ==================== -->
+<div class="mockup-section">
+  <p class="mockup-label">Mockup 4 — Survey Distribution Stats</p>
+  <h2 class="mockup-title">Survey Detail: Distribution Dashboard</h2>
+  <p class="mockup-desc">After sending, user sees distribution stats on the survey detail page. Clear funnel: Sent → Opened → Completed. Shows auto-nudge status.</p>
+
+  <div class="mockup-frame">
+    <div class="mockup-frame-inner">
+      <!-- Survey header -->
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 style="font-size:18px; font-weight:600;">Customer Feedback Q1</h3>
+            <span class="badge badge-green">Live</span>
+          </div>
+          <p class="text-xs text-muted mt-1">5 questions · Created Jan 28</p>
+        </div>
+        <div class="flex gap-2">
+          <button class="btn btn-outline btn-sm">Edit</button>
+          <button class="btn btn-primary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            Send to More
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="card mb-4">
+        <div class="card-content" style="padding: 4px 0;">
+          <div style="display:grid; grid-template-columns: repeat(4, 1fr); text-align:center;">
+            <div class="stat">
+              <p class="stat-value" style="color: var(--brand);">50</p>
+              <p class="stat-label">Sent</p>
+            </div>
+            <div class="stat" style="border-left:1px solid var(--border);">
+              <p class="stat-value" style="color: var(--brand);">38</p>
+              <p class="stat-label">Opened</p>
+            </div>
+            <div class="stat" style="border-left:1px solid var(--border);">
+              <p class="stat-value" style="color: var(--green-600);">27</p>
+              <p class="stat-label">Completed</p>
+            </div>
+            <div class="stat" style="border-left:1px solid var(--border);">
+              <p class="stat-value" style="color: var(--amber-600);">8</p>
+              <p class="stat-label">Pending Nudge</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Funnel progress bars -->
+      <div class="card mb-4">
+        <div class="card-content">
+          <p class="text-xs text-muted font-medium mb-3" style="text-transform:uppercase; letter-spacing:0.04em;">Distribution Funnel</p>
+          <div style="margin-bottom:12px;">
+            <div class="flex justify-between text-xs mb-1">
+              <span>Sent</span><span class="text-muted">50 / 50</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill progress-fill-blue" style="width:100%;"></div></div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <div class="flex justify-between text-xs mb-1">
+              <span>Opened survey link</span><span class="text-muted">38 / 50 (76%)</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill progress-fill-blue" style="width:76%;"></div></div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <div class="flex justify-between text-xs mb-1">
+              <span>Completed</span><span class="text-muted">27 / 50 (54%)</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill progress-fill-green" style="width:54%;"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span>Awaiting reminder</span><span class="text-muted">8 recipients (Day 3 nudge pending)</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill progress-fill-amber" style="width:16%;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto-nudge status -->
+      <div class="inline-banner inline-banner-amber" style="margin-bottom: 16px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <div>
+          <p class="font-medium text-sm" style="color:#92400e;">Auto-nudge scheduled</p>
+          <p class="text-xs" style="color:#a16207;">8 non-respondents will receive a reminder on Feb 17 (Day 3). 15 who haven't opened will get a final reminder on Feb 21 (Day 7).</p>
+        </div>
+      </div>
+
+      <!-- Recipient table -->
+      <div class="card">
+        <div class="card-header">
+          <p class="card-title">Recipients</p>
+        </div>
+        <div class="card-content" style="padding: 0 0 4px;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Recipient</th>
+                <th>Status</th>
+                <th>Sent</th>
+                <th>Nudge</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <p class="font-medium text-sm">Sarah Chen</p>
+                  <p class="text-xs text-muted">sarah@acme.com</p>
+                </td>
+                <td><span class="badge badge-green">Completed</span></td>
+                <td class="text-xs text-muted">Feb 14, 10:32am</td>
+                <td class="text-xs text-muted">—</td>
+              </tr>
+              <tr>
+                <td>
+                  <p class="font-medium text-sm">John Park</p>
+                  <p class="text-xs text-muted">john@bigcorp.com</p>
+                </td>
+                <td><span class="badge badge-blue">Opened</span></td>
+                <td class="text-xs text-muted">Feb 14, 10:32am</td>
+                <td class="text-xs text-muted">Feb 17 (auto)</td>
+              </tr>
+              <tr>
+                <td>
+                  <p class="font-medium text-sm">Mike Rivera</p>
+                  <p class="text-xs text-muted">mike@startup.io</p>
+                </td>
+                <td><span class="badge badge-secondary">Sent</span></td>
+                <td class="text-xs text-muted">Feb 14, 10:33am</td>
+                <td class="text-xs text-muted">Feb 17 (auto)</td>
+              </tr>
+              <tr>
+                <td>
+                  <p class="font-medium text-sm">Lisa Wong</p>
+                  <p class="text-xs text-muted">lisa@techco.com</p>
+                </td>
+                <td><span class="badge badge-green">Completed</span></td>
+                <td class="text-xs text-muted">Feb 14, 10:33am</td>
+                <td class="text-xs text-muted">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ==================== MOCKUP 5 ==================== -->
+<div class="mockup-section">
+  <p class="mockup-label">Mockup 5 — Survey Card (List View)</p>
+  <h2 class="mockup-title">Survey Index: Distribution Stats on Cards</h2>
+  <p class="mockup-desc">The survey list/cards view showing distribution stats inline so users can see campaign health at a glance without clicking into each survey.</p>
+
+  <div class="mockup-frame">
+    <div class="mockup-frame-inner">
+      <div class="flex items-center justify-between mb-4">
+        <h3 style="font-size:18px; font-weight:600;">Surveys</h3>
+        <button class="btn btn-primary btn-sm">+ New Survey</button>
+      </div>
+
+      <div class="grid-2">
+        <!-- Survey card WITH distribution -->
+        <div class="card" style="cursor:pointer;">
+          <div class="card-content" style="padding:16px;">
+            <div class="flex items-center justify-between mb-2">
+              <p class="font-semibold text-sm">Customer Feedback Q1</p>
+              <span class="badge badge-green">Live</span>
+            </div>
+            <p class="text-xs text-muted" style="display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+              5 questions about product experience and feature priorities
+            </p>
+
+            <!-- Distribution mini-stats -->
+            <div style="margin-top:12px; padding:8px 10px; background:var(--muted); border-radius: var(--radius);">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-medium">Distribution</span>
+                <span class="text-xs text-muted">54% completed</span>
+              </div>
+              <div class="progress-bar" style="height:4px;">
+                <div class="progress-fill progress-fill-green" style="width:54%;"></div>
+              </div>
+              <div class="flex items-center justify-between mt-2">
+                <span class="text-xs text-muted">50 sent · 27 completed</span>
+                <span class="badge badge-amber" style="font-size:9px;">8 nudging</span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-3">
+              <p class="text-xs text-muted">Updated 2 hours ago</p>
+              <button class="btn btn-ghost btn-sm" style="font-size:11px;">View →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Survey card WITHOUT distribution (not yet sent) -->
+        <div class="card" style="cursor:pointer;">
+          <div class="card-content" style="padding:16px;">
+            <div class="flex items-center justify-between mb-2">
+              <p class="font-semibold text-sm">Onboarding Experience</p>
+              <span class="badge badge-secondary">Draft</span>
+            </div>
+            <p class="text-xs text-muted" style="display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+              3 questions about the first-time user experience
+            </p>
+
+            <!-- No distribution yet -->
+            <div style="margin-top:12px; padding:10px; border:1px dashed var(--border); border-radius: var(--radius); text-align:center;">
+              <p class="text-xs text-muted">Not yet distributed</p>
+              <button class="btn btn-primary btn-sm mt-2" style="font-size:11px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                Send via Gmail
+              </button>
+            </div>
+
+            <div class="flex items-center justify-between mt-3">
+              <p class="text-xs text-muted">Updated yesterday</p>
+              <button class="btn btn-ghost btn-sm" style="font-size:11px;">Edit →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

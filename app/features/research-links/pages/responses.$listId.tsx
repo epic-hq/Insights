@@ -985,7 +985,7 @@ export default function ResearchLinkResponsesPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Mail className="h-4 w-4" />
-                  Email Distribution
+                  Response Statistics
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -1008,7 +1008,7 @@ export default function ResearchLinkResponsesPage() {
                       {emailStats.completed}
                     </div>
                     <div className="text-muted-foreground text-xs">
-                      Completed
+                      Responded
                     </div>
                   </div>
                   <div className="rounded-md border p-3 text-center">
@@ -1025,7 +1025,7 @@ export default function ResearchLinkResponsesPage() {
                 {emailStats.total > 0 && (
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Completion rate</span>
+                      <span>Response rate</span>
                       <span>
                         {Math.round(
                           (emailStats.completed / emailStats.total) * 100,

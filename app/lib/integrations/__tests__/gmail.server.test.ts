@@ -13,6 +13,11 @@ const mockPicaPassthrough = vi.fn();
 
 vi.mock("~/lib/integrations/pica.server", () => ({
   picaPassthrough: (...args: unknown[]) => mockPicaPassthrough(...args),
+  GMAIL_ACTIONS: {
+    GET_PROFILE: "conn_mod_def::F_JeCYGuzvg::yAM6bqGdRdm91ZbYejlbEA",
+    SEND_EMAIL: "conn_mod_def::GGXAjWkZO8U::uMc1LQIHTTKzeMm3rLL5gQ",
+    LIST_MESSAGES: "conn_mod_def::F_JeJ3qaLEg::v9ICSQZxR0un5_ketxbCAQ",
+  },
 }));
 
 // Chainable Supabase mock
@@ -211,12 +216,14 @@ describe("gmail.server", () => {
   });
 
   describe("sendGmailEmail", () => {
-    it("sends email via Pica passthrough and returns messageId/threadId", async () => {
+    it("sends email via Pica wrapper and returns messageId/threadId", async () => {
       const { sendGmailEmail } =
         await import("~/lib/integrations/gmail.server");
 
       mockPicaPassthrough.mockResolvedValue({
-        data: { id: "msg-123", threadId: "thread-456" },
+        data: {
+          email: { messageId: "msg-123", threadId: "thread-456", sent: true },
+        },
       });
 
       const result = await sendGmailEmail({
@@ -232,23 +239,32 @@ describe("gmail.server", () => {
         threadId: "thread-456",
       });
 
-      // Verify Pica was called with correct platform and path
+      // Verify Pica was called with wrapper path and conn_mod_def action ID
       expect(mockPicaPassthrough).toHaveBeenCalledWith(
         "key-1",
         "gmail",
         expect.objectContaining({
           method: "POST",
-          path: "/gmail/v1/users/me/messages/send",
+          path: "/gmail/send-email",
+          actionId: expect.stringContaining("conn_mod_def"),
+          body: expect.objectContaining({
+            connectionKey: "key-1",
+            to: "recipient@example.com",
+            subject: "Test subject",
+            isHtml: true,
+          }),
         }),
       );
     });
 
-    it("includes threading headers for reply emails", async () => {
+    it("includes threading fields for reply emails", async () => {
       const { sendGmailEmail } =
         await import("~/lib/integrations/gmail.server");
 
       mockPicaPassthrough.mockResolvedValue({
-        data: { id: "msg-456", threadId: "thread-789" },
+        data: {
+          email: { messageId: "msg-456", threadId: "thread-789", sent: true },
+        },
       });
 
       await sendGmailEmail({
@@ -261,27 +277,21 @@ describe("gmail.server", () => {
         threadId: "thread-789",
       });
 
-      // The raw email body should contain In-Reply-To header
       const callArgs = mockPicaPassthrough.mock.calls[0];
       const body = callArgs[2].body;
-      expect(body.raw).toBeDefined();
       expect(body.threadId).toBe("thread-789");
-
-      // Decode the raw message to verify headers
-      const decoded = Buffer.from(
-        body.raw.replace(/-/g, "+").replace(/_/g, "/"),
-        "base64",
-      ).toString();
-      expect(decoded).toContain("In-Reply-To: original-msg-id");
-      expect(decoded).toContain("References: original-msg-id");
+      expect(body.inReplyTo).toBe("original-msg-id");
+      expect(body.references).toBe("original-msg-id");
     });
 
-    it("base64url encodes the email correctly", async () => {
+    it("sends HTML email body via Pica wrapper", async () => {
       const { sendGmailEmail } =
         await import("~/lib/integrations/gmail.server");
 
       mockPicaPassthrough.mockResolvedValue({
-        data: { id: "msg-1", threadId: "thread-1" },
+        data: {
+          email: { messageId: "msg-1", threadId: "thread-1", sent: true },
+        },
       });
 
       await sendGmailEmail({
@@ -293,9 +303,10 @@ describe("gmail.server", () => {
         bodyHtml: "<p>Take the survey</p>",
       });
 
-      const raw = mockPicaPassthrough.mock.calls[0][2].body.raw;
-      // base64url should NOT contain +, /, or =
-      expect(raw).not.toMatch(/[+/=]/);
+      const body = mockPicaPassthrough.mock.calls[0][2].body;
+      expect(body.body).toBe("<p>Take the survey</p>");
+      expect(body.isHtml).toBe(true);
+      expect(body.from).toBe("sender@gmail.com");
     });
   });
 

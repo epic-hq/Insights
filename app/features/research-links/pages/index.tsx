@@ -250,7 +250,7 @@ function AskLinkCard({
               <div className="flex items-center gap-2 text-xs">
                 <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-muted-foreground">
-                  {emailStats.completed}/{emailStats.total} completed
+                  {emailStats.completed}/{emailStats.total} responded
                 </span>
                 {emailStats.sent > 0 && (
                   <span className="text-muted-foreground">

@@ -8,7 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import type { Database } from "~/types";
-import { picaPassthrough } from "./pica.server";
+import { GMAIL_ACTIONS, picaPassthrough } from "./pica.server";
 
 // -----------------------------------------------------------------------------
 // Types
@@ -171,85 +171,53 @@ interface SendEmailResult {
 }
 
 /**
- * Send an email via Gmail using Pica Passthrough API
+ * Send an email via Gmail using Pica's wrapper endpoint.
+ * Uses /gmail/send-email which accepts simple JSON (to, subject, body, isHtml).
  */
 export async function sendGmailEmail(
   params: SendEmailParams,
 ): Promise<SendEmailResult> {
-  // Build RFC 2822 email
-  const boundary = `boundary_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  // Build request body for Pica's /gmail/send-email wrapper
+  const body: Record<string, unknown> = {
+    connectionKey: params.connectionKey,
+    to: params.to,
+    subject: params.subject,
+    body: params.bodyHtml,
+    isHtml: true,
+    from: params.from,
+  };
 
-  const toHeader = params.toName
-    ? `"${params.toName}" <${params.to}>`
-    : params.to;
-  const fromHeader = params.fromName
-    ? `"${params.fromName}" <${params.from}>`
-    : params.from;
-  const plainText = params.bodyText || stripHtml(params.bodyHtml);
-
-  const headers = [
-    `From: ${fromHeader}`,
-    `To: ${toHeader}`,
-    `Subject: ${params.subject}`,
-    `MIME-Version: 1.0`,
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-  ];
-
-  // Add threading headers for follow-ups/nudges
-  if (params.replyToMessageId) {
-    headers.push(`In-Reply-To: ${params.replyToMessageId}`);
-    headers.push(`References: ${params.replyToMessageId}`);
-  }
-
-  const body = [
-    ...headers,
-    "",
-    `--${boundary}`,
-    "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: 7bit",
-    "",
-    plainText,
-    "",
-    `--${boundary}`,
-    "Content-Type: text/html; charset=UTF-8",
-    "Content-Transfer-Encoding: 7bit",
-    "",
-    params.bodyHtml,
-    "",
-    `--${boundary}--`,
-  ].join("\r\n");
-
-  // Base64url encode per Gmail API spec
-  const encodedMessage = Buffer.from(body)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-
-  const requestBody: Record<string, string> = { raw: encodedMessage };
+  // Threading support for nudge/follow-up emails
   if (params.threadId) {
-    requestBody.threadId = params.threadId;
+    body.threadId = params.threadId;
+  }
+  if (params.replyToMessageId) {
+    body.inReplyTo = params.replyToMessageId;
+    body.references = params.replyToMessageId;
   }
 
-  const response = await picaPassthrough<{ id: string; threadId: string }>(
-    params.connectionKey,
-    "gmail",
-    {
-      method: "POST",
-      path: "/gmail/v1/users/me/messages/send",
-      body: requestBody,
-    },
-  );
+  const response = await picaPassthrough<{
+    email: {
+      messageId: string;
+      threadId: string;
+      sent: boolean;
+    };
+  }>(params.connectionKey, "gmail", {
+    method: "POST",
+    path: "/gmail/send-email",
+    actionId: GMAIL_ACTIONS.SEND_EMAIL,
+    body,
+  });
 
   consola.info("[gmail] Email sent", {
     to: params.to,
     subject: params.subject,
-    messageId: response.data.id,
+    messageId: response.data.email.messageId,
   });
 
   return {
-    messageId: response.data.id,
-    threadId: response.data.threadId,
+    messageId: response.data.email.messageId,
+    threadId: response.data.email.threadId,
   };
 }
 
@@ -441,26 +409,4 @@ export async function markSurveySendCompleted(
   if (error && error.code !== "PGRST116") {
     consola.error("[gmail] Failed to mark send completed:", error);
   }
-}
-
-// -----------------------------------------------------------------------------
-// Helpers
-// -----------------------------------------------------------------------------
-
-/**
- * Strip HTML tags for plain text email fallback
- */
-function stripHtml(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
 }
