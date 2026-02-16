@@ -7,7 +7,14 @@ let client: PostHog | null = null;
 export function getPostHogServerClient(): PostHog | null {
 	if (client) return client;
 
-	const { POSTHOG_KEY, POSTHOG_HOST } = getServerEnv();
+	let POSTHOG_KEY: string | undefined;
+	let POSTHOG_HOST: string | undefined;
+	try {
+		({ POSTHOG_KEY, POSTHOG_HOST } = getServerEnv());
+	} catch (error) {
+		consola.warn("[PostHog] Failed to load server env; server analytics disabled", error);
+		return null;
+	}
 	if (!POSTHOG_KEY) {
 		consola.warn("[PostHog] POSTHOG_KEY missing; server analytics disabled");
 		return null;

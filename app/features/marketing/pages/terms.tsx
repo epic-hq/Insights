@@ -18,7 +18,7 @@ export const meta: MetaFunction = () => {
 };
 
 export default function TermsOfServicePage() {
-	const lastUpdated = "January 2025";
+	const lastUpdated = "January 2026";
 	const effectiveDate = "January 2025";
 
 	return (

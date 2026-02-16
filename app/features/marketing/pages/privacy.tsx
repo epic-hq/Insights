@@ -17,7 +17,7 @@ export const meta: MetaFunction = () => {
 };
 
 export default function PrivacyPolicyPage() {
-	const lastUpdated = "January 2025";
+	const lastUpdated = "January 2026";
 
 	return (
 		<div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900">
