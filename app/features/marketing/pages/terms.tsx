@@ -4,7 +4,7 @@
  */
 
 import { Link, type MetaFunction } from "react-router";
-import MainNav from "~/components/navigation/MainNav";
+import MarketingNav from "~/components/navigation/MarketingNav";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -23,7 +23,7 @@ export default function TermsOfServicePage() {
 
 	return (
 		<div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900">
-			<MainNav />
+			<MarketingNav />
 			<main className="flex-1">
 				<div className="container mx-auto max-w-4xl px-4 py-12 md:py-16">
 					<div className="mb-8">

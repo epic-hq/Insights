@@ -8,16 +8,16 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, type LinksFunction, type MetaFunction } from "react-router";
-import MainNav from "~/components/navigation/MainNav";
+import MarketingNav from "~/components/navigation/MarketingNav";
 import { PATHS } from "~/paths";
 import "./landing.css";
 
 export const links: LinksFunction = () => [
 	{
 		rel: "preload",
-		href: "/images/hero/crowd.webp",
+		href: "/images/hero/crowd-1280.avif",
 		as: "image",
-		type: "image/webp",
+		type: "image/avif",
 	},
 	{
 		rel: "preconnect",
@@ -53,6 +53,7 @@ interface PersonData {
 	name: string;
 	role: string;
 	imgSrc: string;
+	imgSrcSet: string;
 	tilt: string;
 	annotations: {
 		label: string;
@@ -67,7 +68,8 @@ const PEOPLE: PersonData[] = [
 	{
 		name: "Sarah",
 		role: "Product Lead, Series A",
-		imgSrc: "/images/hero/sarah.webp",
+		imgSrc: "/images/hero/sarah-320.webp",
+		imgSrcSet: "/images/hero/sarah-240.webp 240w, /images/hero/sarah-320.webp 320w, /images/hero/sarah-480.webp 480w",
 		tilt: "rotate(-2.5deg)",
 		annotations: [
 			{
@@ -96,7 +98,9 @@ const PEOPLE: PersonData[] = [
 	{
 		name: "Marcus",
 		role: "Founder & CEO",
-		imgSrc: "/images/hero/marcus.webp",
+		imgSrc: "/images/hero/marcus-320.webp",
+		imgSrcSet:
+			"/images/hero/marcus-240.webp 240w, /images/hero/marcus-320.webp 320w, /images/hero/marcus-480.webp 480w",
 		tilt: "rotate(1.8deg)",
 		annotations: [
 			{
@@ -125,7 +129,8 @@ const PEOPLE: PersonData[] = [
 	{
 		name: "Priya",
 		role: "Customer Success Lead",
-		imgSrc: "/images/hero/priya.webp",
+		imgSrc: "/images/hero/priya-320.webp",
+		imgSrcSet: "/images/hero/priya-240.webp 240w, /images/hero/priya-320.webp 320w, /images/hero/priya-480.webp 480w",
 		tilt: "rotate(-1.2deg)",
 		annotations: [
 			{
@@ -352,7 +357,7 @@ export default function LandingPage() {
 				fontFamily: "'Inter', system-ui, sans-serif",
 			}}
 		>
-			<MainNav />
+			<MarketingNav />
 
 			{/* ===== HERO ===== */}
 			<section
@@ -368,7 +373,24 @@ export default function LandingPage() {
 			>
 				{/* Crowd bg */}
 				<div className="lp-hero-crowd">
-					<img src="/images/hero/crowd.webp" alt="Team meeting" loading="eager" fetchPriority="high" />
+					<picture>
+						<source
+							sizes="100vw"
+							srcSet="/images/hero/crowd-640.avif 640w, /images/hero/crowd-960.avif 960w, /images/hero/crowd-1280.avif 1280w, /images/hero/crowd-1600.avif 1600w, /images/hero/crowd-1920.avif 1920w"
+							type="image/avif"
+						/>
+						<img
+							alt="Team meeting"
+							decoding="async"
+							fetchPriority="high"
+							height={1280}
+							loading="eager"
+							sizes="100vw"
+							src="/images/hero/crowd-1280.webp"
+							srcSet="/images/hero/crowd-640.webp 640w, /images/hero/crowd-960.webp 960w, /images/hero/crowd-1280.webp 1280w, /images/hero/crowd-1600.webp 1600w, /images/hero/crowd-1920.webp 1920w"
+							width={1920}
+						/>
+					</picture>
 				</div>
 
 				{/* Headline */}
@@ -423,7 +445,17 @@ export default function LandingPage() {
 							<div className="lp-polaroid-wrap relative shrink-0">
 								<div className="lp-polaroid" style={{ transform: person.tilt }}>
 									<div className="lp-polaroid-img">
-										<img src={person.imgSrc} alt={`${person.name}, ${person.role}`} loading="eager" />
+										<img
+											alt={`${person.name}, ${person.role}`}
+											decoding="async"
+											fetchPriority={pIdx === 0 ? "high" : "low"}
+											height={640}
+											loading={pIdx === 0 ? "eager" : "lazy"}
+											sizes="(max-width: 768px) 50vw, 280px"
+											src={person.imgSrc}
+											srcSet={person.imgSrcSet}
+											width={480}
+										/>
 									</div>
 									<div className="pt-[clamp(4px,0.5vw,8px)] text-center text-[#2a2520]">
 										<div

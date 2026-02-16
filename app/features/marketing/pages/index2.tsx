@@ -1,6 +1,6 @@
 import { ArrowRight, Clock, Lightbulb, Shield, Users } from "lucide-react";
 import { Link, type MetaFunction } from "react-router";
-import MainNav from "~/components/navigation/MainNav";
+import MarketingNav from "~/components/navigation/MarketingNav";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 
@@ -20,7 +20,7 @@ export const meta: MetaFunction = () => {
 export default function LandingPage() {
 	return (
 		<div className="flex min-h-screen flex-col bg-gray-50 text-gray-900">
-			<MainNav />
+			<MarketingNav />
 			<main className="flex-1">
 				{/* Hero Section */}
 				<section className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 py-12 text-white md:py-24 lg:py-32 xl:py-48">
