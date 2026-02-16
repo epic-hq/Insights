@@ -31,7 +31,20 @@ export const meta: MetaFunction = () => {
 function formatPostForClient(post: any) {
 	// Use heroImage field from CMS
 	const image = post.heroImage;
-	const imageUrl = image?.url ? `https://upsight-cms.vercel.app${image.url}` : null;
+	const preferredImagePath = image?.sizes?.small?.url || image?.sizes?.thumbnail?.url || image?.url || null;
+	const imageUrl = preferredImagePath ? `https://upsight-cms.vercel.app${preferredImagePath}` : null;
+	const imageWidth = image?.sizes?.small?.width || image?.sizes?.thumbnail?.width || image?.width || undefined;
+	const imageHeight = image?.sizes?.small?.height || image?.sizes?.thumbnail?.height || image?.height || undefined;
+
+	const srcSetCandidates = [
+		image?.sizes?.thumbnail?.url
+			? `https://upsight-cms.vercel.app${image.sizes.thumbnail.url} ${image.sizes.thumbnail.width || 300}w`
+			: null,
+		image?.sizes?.small?.url
+			? `https://upsight-cms.vercel.app${image.sizes.small.url} ${image.sizes.small.width || 600}w`
+			: null,
+		image?.url ? `https://upsight-cms.vercel.app${image.url} ${image.width || 1024}w` : null,
+	].filter(Boolean) as string[];
 
 	return {
 		id: post.id,
@@ -39,6 +52,9 @@ function formatPostForClient(post: any) {
 		slug: post.slug,
 		excerpt: post.meta?.description || post.excerpt,
 		imageUrl,
+		imageSrcSet: srcSetCandidates.length > 0 ? srcSetCandidates.join(", ") : null,
+		imageWidth,
+		imageHeight,
 		imageAlt: image?.alt || post.title,
 		publishedDate: formatDate(post.publishedAt),
 		publishedDateISO: post.publishedAt,
@@ -144,8 +160,8 @@ export default function BlogIndex() {
 						<>
 							{/* Blog Grid - Show all posts in grid */}
 							<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-								{posts.map((post) => (
-									<BlogCard key={post.id} post={post} />
+								{posts.map((post, index) => (
+									<BlogCard key={post.id} post={post} prioritizeImage={index === 0} />
 								))}
 							</div>
 
@@ -190,7 +206,7 @@ export default function BlogIndex() {
 type FormattedPost = ReturnType<typeof formatPostForClient>;
 
 // Blog Card
-function BlogCard({ post }: { post: FormattedPost }) {
+function BlogCard({ post, prioritizeImage }: { post: FormattedPost; prioritizeImage: boolean }) {
 	return (
 		<Link to={`/blog/${post.slug}`} className="group">
 			<article className="hover:-translate-y-1 flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:shadow-xl">
@@ -199,7 +215,14 @@ function BlogCard({ post }: { post: FormattedPost }) {
 					{post.imageUrl ? (
 						<img
 							src={post.imageUrl}
+							srcSet={post.imageSrcSet || undefined}
+							sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
 							alt={post.imageAlt}
+							width={post.imageWidth}
+							height={post.imageHeight}
+							loading={prioritizeImage ? "eager" : "lazy"}
+							fetchPriority={prioritizeImage ? "high" : "auto"}
+							decoding="async"
 							className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
 						/>
 					) : (

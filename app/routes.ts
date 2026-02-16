@@ -482,6 +482,8 @@ const routes = [
   route("/link", "./routes/link.tsx"),
   route("s/:token", "./routes/s.$token.tsx"), // Public share links
   route("/resource/locales", "./routes/resource.locales.ts"),
+  route("llms.txt", "./routes/llms[.]txt.ts"),
+  route("llms-full.txt", "./routes/llms-full[.]txt.ts"),
   route("healthcheck", "./routes/healthcheck.ts"),
   route("apple-touch-icon.png", "./routes/apple-touch-icon[.]png.ts"),
   route(
