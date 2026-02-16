@@ -3,7 +3,7 @@
  * Comprehensive terms covering account usage, acceptable use, IP, liability, and more
  */
 
-import { Link, type MetaFunction } from "react-router";
+import { Link, type LinksFunction, type MetaFunction } from "react-router";
 import MarketingNav from "~/components/navigation/MarketingNav";
 
 export const meta: MetaFunction = () => {
@@ -16,6 +16,13 @@ export const meta: MetaFunction = () => {
 		},
 	];
 };
+
+export const links: LinksFunction = () => [
+	{
+		rel: "canonical",
+		href: "https://getupsight.com/terms",
+	},
+];
 
 export default function TermsOfServicePage() {
 	const lastUpdated = "January 2026";

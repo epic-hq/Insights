@@ -1,6 +1,7 @@
 import { ArrowRight, Clock, MessageSquare, Sparkles, User } from "lucide-react";
-import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import type { LinksFunction, LoaderFunctionArgs, MetaFunction } from "react-router";
 import { Link, useLoaderData } from "react-router";
+import type { PayloadPost } from "~/lib/cms/payload.server";
 import { getPosts } from "~/lib/cms/payload.server";
 import { formatDate, getReadingTime } from "~/lib/cms/utils";
 
@@ -27,24 +28,64 @@ export const meta: MetaFunction = () => {
 	];
 };
 
-// Format post data on the server
-function formatPostForClient(post: any) {
-	// Use heroImage field from CMS
-	const image = post.heroImage;
-	const preferredImagePath = image?.sizes?.small?.url || image?.sizes?.thumbnail?.url || image?.url || null;
-	const imageUrl = preferredImagePath ? `https://upsight-cms.vercel.app${preferredImagePath}` : null;
-	const imageWidth = image?.sizes?.small?.width || image?.sizes?.thumbnail?.width || image?.width || undefined;
-	const imageHeight = image?.sizes?.small?.height || image?.sizes?.thumbnail?.height || image?.height || undefined;
+export const links: LinksFunction = () => [
+	{
+		rel: "canonical",
+		href: "https://getupsight.com/blog",
+	},
+];
 
-	const srcSetCandidates = [
-		image?.sizes?.thumbnail?.url
-			? `https://upsight-cms.vercel.app${image.sizes.thumbnail.url} ${image.sizes.thumbnail.width || 300}w`
-			: null,
-		image?.sizes?.small?.url
-			? `https://upsight-cms.vercel.app${image.sizes.small.url} ${image.sizes.small.width || 600}w`
-			: null,
-		image?.url ? `https://upsight-cms.vercel.app${image.url} ${image.width || 1024}w` : null,
-	].filter(Boolean) as string[];
+// Format post data on the server
+interface PayloadImageVariant {
+	url?: string | null;
+	width?: number | null;
+	height?: number | null;
+	mimeType?: string | null;
+}
+
+interface PayloadImageWithSizes {
+	url?: string | null;
+	width?: number | null;
+	height?: number | null;
+	alt?: string | null;
+	mimeType?: string | null;
+	sizes?: Record<string, PayloadImageVariant | null> | null;
+}
+
+function toAbsoluteCmsUrl(path?: string | null) {
+	return path ? `https://upsight-cms.vercel.app${path}` : null;
+}
+
+// Format post data on the server
+function formatPostForClient(post: PayloadPost) {
+	// Use heroImage field from CMS
+	const image = (post.heroImage || null) as PayloadImageWithSizes | null;
+	const sizes = image?.sizes || {};
+	const variantEntries = Object.values(sizes).filter((variant): variant is PayloadImageVariant =>
+		Boolean(variant?.url && typeof variant.width === "number" && variant.width > 0)
+	);
+	const sortedVariants = variantEntries.sort((a, b) => (a.width || 0) - (b.width || 0));
+	const isPng = image?.mimeType === "image/png";
+	const maxResponsiveWidth = isPng ? 500 : 900;
+	const boundedVariants = sortedVariants.filter((variant) => (variant.width || 0) <= maxResponsiveWidth);
+	const candidates = boundedVariants.length > 0 ? boundedVariants : sortedVariants;
+
+	const thumbnailVariant = sizes.thumbnail;
+	const imageMobileUrl = toAbsoluteCmsUrl(
+		thumbnailVariant?.url || candidates[0]?.url || sortedVariants[0]?.url || image?.url
+	);
+
+	const preferredVariant = candidates[candidates.length - 1] || sortedVariants[sortedVariants.length - 1] || null;
+	const imageUrl = toAbsoluteCmsUrl(preferredVariant?.url || image?.url);
+	const imageWidth = preferredVariant?.width || image?.width || undefined;
+	const imageHeight = preferredVariant?.height || image?.height || undefined;
+
+	const srcSetCandidates = candidates
+		.map((variant) => {
+			const variantUrl = toAbsoluteCmsUrl(variant.url);
+			return variantUrl && variant.width ? `${variantUrl} ${variant.width}w` : null;
+		})
+		.filter(Boolean) as string[];
 
 	return {
 		id: post.id,
@@ -52,10 +93,11 @@ function formatPostForClient(post: any) {
 		slug: post.slug,
 		excerpt: post.meta?.description || post.excerpt,
 		imageUrl,
+		imageMobileUrl,
 		imageSrcSet: srcSetCandidates.length > 0 ? srcSetCandidates.join(", ") : null,
 		imageWidth,
 		imageHeight,
-		imageAlt: image?.alt || post.title,
+		imageAlt: image?.alt || post.title || "",
 		publishedDate: formatDate(post.publishedAt),
 		publishedDateISO: post.publishedAt,
 		readingTime: getReadingTime(post.content),
@@ -213,18 +255,21 @@ function BlogCard({ post, prioritizeImage }: { post: FormattedPost; prioritizeIm
 				{/* Image */}
 				<div className="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
 					{post.imageUrl ? (
-						<img
-							src={post.imageUrl}
-							srcSet={post.imageSrcSet || undefined}
-							sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-							alt={post.imageAlt}
-							width={post.imageWidth}
-							height={post.imageHeight}
-							loading={prioritizeImage ? "eager" : "lazy"}
-							fetchPriority={prioritizeImage ? "high" : "auto"}
-							decoding="async"
-							className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-						/>
+						<picture>
+							{post.imageMobileUrl && <source media="(max-width: 768px)" srcSet={post.imageMobileUrl} />}
+							<img
+								src={post.imageUrl}
+								srcSet={post.imageSrcSet || undefined}
+								sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+								alt={post.imageAlt}
+								width={post.imageWidth}
+								height={post.imageHeight}
+								loading={prioritizeImage ? "eager" : "lazy"}
+								fetchPriority="auto"
+								decoding="async"
+								className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+							/>
+						</picture>
 					) : (
 						<div className="flex h-full items-center justify-center">
 							<MessageSquare className="h-16 w-16 text-slate-300" />

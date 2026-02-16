@@ -23,6 +23,12 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 		{ property: "og:title", content: seoTitle },
 		{ property: "og:description", content: seoDescription },
 		{ property: "og:type", content: "article" },
+		{ property: "og:url", content: `https://getupsight.com/case-studies/${caseStudy.slug}` },
+		{
+			tagName: "link",
+			rel: "canonical",
+			href: `https://getupsight.com/case-studies/${caseStudy.slug}`,
+		},
 		...(seoImage ? [{ property: "og:image", content: getImageUrl(seoImage) }] : []),
 	];
 };

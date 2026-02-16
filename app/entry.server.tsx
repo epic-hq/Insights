@@ -51,6 +51,12 @@ export default async function handleRequest(
 					const body = new PassThrough();
 					const stream = createReadableStreamFromReadable(body);
 					responseHeaders.set("Content-Type", "text/html");
+					// Prevent edge HTML caching from serving stale asset hashes after deploys.
+					if (!responseHeaders.has("Cache-Control")) {
+						responseHeaders.set("Cache-Control", "public, max-age=0, must-revalidate");
+						responseHeaders.set("CDN-Cache-Control", "no-store");
+						responseHeaders.set("Cloudflare-CDN-Cache-Control", "no-store");
+					}
 
 					resolve(
 						new Response(stream, {

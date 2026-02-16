@@ -1,5 +1,5 @@
 import { ArrowRight, Clock, Lightbulb, Shield, Users } from "lucide-react";
-import { Link, type MetaFunction } from "react-router";
+import { Link, type LinksFunction, type MetaFunction } from "react-router";
 import MarketingNav from "~/components/navigation/MarketingNav";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
@@ -16,6 +16,13 @@ export const meta: MetaFunction = () => {
 		},
 	];
 };
+
+export const links: LinksFunction = () => [
+	{
+		rel: "canonical",
+		href: "https://getupsight.com/index2",
+	},
+];
 
 export default function LandingPage() {
 	return (

@@ -3,7 +3,7 @@
  * Comprehensive privacy policy covering data collection, usage, rights, and compliance
  */
 
-import { Link, type MetaFunction } from "react-router";
+import { Link, type LinksFunction, type MetaFunction } from "react-router";
 import MarketingNav from "~/components/navigation/MarketingNav";
 
 export const meta: MetaFunction = () => {
@@ -15,6 +15,13 @@ export const meta: MetaFunction = () => {
 		},
 	];
 };
+
+export const links: LinksFunction = () => [
+	{
+		rel: "canonical",
+		href: "https://getupsight.com/privacy",
+	},
+];
 
 export default function PrivacyPolicyPage() {
 	const lastUpdated = "January 2026";

@@ -1,3 +1,12 @@
+import type { LinksFunction } from "react-router";
+
+export const links: LinksFunction = () => [
+	{
+		rel: "canonical",
+		href: "https://getupsight.com/about",
+	},
+];
+
 export default function AboutPage() {
 	// const { user, loading } = useAuth()
 	// const navigate = useNavigate()

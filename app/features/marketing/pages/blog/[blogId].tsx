@@ -26,6 +26,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 		{ property: "og:description", content: seoDescription },
 		{ property: "og:type", content: "article" },
 		{ property: "og:url", content: `https://getupsight.com/blog/${post.slug}` },
+		{ tagName: "link", rel: "canonical", href: `https://getupsight.com/blog/${post.slug}` },
 		...(seoImage ? [{ property: "og:image", content: seoImage }] : []),
 		{ property: "article:published_time", content: post.publishedAt },
 		{ property: "article:modified_time", content: post.updatedAt },
@@ -260,13 +261,13 @@ export default function BlogPost() {
 }
 
 function RecentPostCard({ post }: { post: PayloadPost }) {
-	const imageUrl = getImageUrl(post.featured_image);
+	const imageUrl = getImageUrl(post.featured_image) ?? undefined;
 	const _publishedDate = formatDate(post.publishedAt);
 
 	return (
 		<Link to={`/blog/${post.slug}`} className="group">
 			<article className="h-full overflow-hidden rounded-lg border bg-card transition-all hover:shadow-lg">
-				{post.featured_image && (
+				{post.featured_image && imageUrl && (
 					<div className="aspect-video overflow-hidden bg-muted">
 						<img
 							src={imageUrl}

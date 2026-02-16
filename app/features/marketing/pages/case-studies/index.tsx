@@ -1,5 +1,5 @@
 import { ArrowRight, Award, Building2, Clock, Sparkles, TrendingUp } from "lucide-react";
-import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import type { LinksFunction, LoaderFunctionArgs, MetaFunction } from "react-router";
 import { Link, useLoaderData } from "react-router";
 import { getServerEnv } from "~/env.server";
 import { formatDate, getReadingTime } from "~/lib/cms/utils";
@@ -26,6 +26,13 @@ export const meta: MetaFunction = () => {
 		{ property: "og:url", content: "https://getupsight.com/case-studies" },
 	];
 };
+
+export const links: LinksFunction = () => [
+	{
+		rel: "canonical",
+		href: "https://getupsight.com/case-studies",
+	},
+];
 
 // Format case study data on the server
 function formatCaseStudyForClient(post: any) {

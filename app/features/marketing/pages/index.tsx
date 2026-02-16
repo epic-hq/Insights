@@ -14,6 +14,10 @@ import "./landing.css";
 
 export const links: LinksFunction = () => [
 	{
+		rel: "canonical",
+		href: "https://getupsight.com",
+	},
+	{
 		rel: "preload",
 		href: "/images/hero/crowd-1280.avif",
 		as: "image",
