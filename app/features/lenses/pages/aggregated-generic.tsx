@@ -446,6 +446,33 @@ function normalizeSynthesisForTemplate(
 }
 
 function mergeFieldValues(values: unknown[]): unknown {
+	const objectArrayCandidates = values.filter(
+		(value) =>
+			Array.isArray(value) && value.length > 0 && value.some((item) => typeof item === "object" && item !== null)
+	) as unknown[][];
+	if (objectArrayCandidates.length > 0) {
+		const serializedFrequency = new Map<string, number>();
+		for (const candidate of objectArrayCandidates) {
+			const serialized = JSON.stringify(candidate);
+			serializedFrequency.set(serialized, (serializedFrequency.get(serialized) || 0) + 1);
+		}
+		const topSerialized =
+			[...serializedFrequency.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ||
+			JSON.stringify(objectArrayCandidates[0]);
+		try {
+			return JSON.parse(topSerialized);
+		} catch {
+			return objectArrayCandidates[0];
+		}
+	}
+
+	const objectCandidates = values.filter(
+		(value) => typeof value === "object" && value !== null && !Array.isArray(value)
+	) as Record<string, unknown>[];
+	if (objectCandidates.length > 0) {
+		return objectCandidates[0];
+	}
+
 	const asLists = values.map((value) => parseStringArrayValue(value));
 	const flat = asLists.flat();
 	const deduped = dedupeStrings(flat);
@@ -475,38 +502,18 @@ function buildMergedAnalysisData(
 	analyses: AggregatedAnalysis[],
 	synthesis: LensSynthesis | null
 ): Record<string, unknown> {
-	const synthesisSections = Array.isArray((synthesis?.synthesis_data as any)?.sections)
-		? ((synthesis?.synthesis_data as any).sections as any[]) || []
-		: [];
-
-	if (synthesisSections.length > 0) {
-		return {
-			executive_summary: synthesis?.executive_summary || null,
-			sections: synthesisSections.map((section: any) => ({
-				section_key: section.section_key,
-				summary: section.summary ?? null,
-				fields: Array.isArray(section.fields)
-					? section.fields.map((field: any) => ({
-							field_key: field.field_key,
-							value:
-								field.consensus_value ??
-								field.value_range ??
-								(Array.isArray(field.discrepancies) && field.discrepancies.length > 0
-									? `Disagreement: ${field.discrepancies[0]?.value || "review required"}`
-									: null),
-							confidence: null,
-							evidence_ids: [],
-						}))
-					: [],
-			})),
-		};
-	}
-
 	const sectionMap = new Map<
 		string,
 		{
-			summaries: string[];
-			fields: Map<string, unknown[]>;
+			summary: string | null;
+			fields: Map<
+				string,
+				{
+					value: unknown;
+					confidence: null;
+					evidence_ids: string[];
+				}
+			>;
 		}
 	>();
 
@@ -515,23 +522,80 @@ function buildMergedAnalysisData(
 			? ((analysis.analysis_data as any).sections as any[]) || []
 			: [];
 		for (const section of sections) {
-			const key = section?.section_key;
-			if (!key || typeof key !== "string") continue;
-			if (!sectionMap.has(key)) {
-				sectionMap.set(key, { summaries: [], fields: new Map() });
+			const sectionKey = section?.section_key;
+			if (!sectionKey || typeof sectionKey !== "string") continue;
+			if (!sectionMap.has(sectionKey)) {
+				sectionMap.set(sectionKey, {
+					summary: null,
+					fields: new Map(),
+				});
 			}
-			const entry = sectionMap.get(key);
-			if (!entry) continue;
-			if (typeof section.summary === "string" && section.summary.trim()) {
-				entry.summaries.push(section.summary.trim());
+			const existingSection = sectionMap.get(sectionKey);
+			if (!existingSection) continue;
+
+			const nextSummary = typeof section.summary === "string" && section.summary.trim() ? section.summary.trim() : null;
+			if (nextSummary && !existingSection.summary) {
+				existingSection.summary = nextSummary;
 			}
+
 			const fields = Array.isArray(section.fields) ? section.fields : [];
+			const collectedFieldValues = new Map<string, unknown[]>();
 			for (const field of fields) {
 				const fieldKey = field?.field_key;
 				if (!fieldKey || typeof fieldKey !== "string") continue;
-				if (!entry.fields.has(fieldKey)) entry.fields.set(fieldKey, []);
-				entry.fields.get(fieldKey)?.push(field?.value);
+				const existingValues = collectedFieldValues.get(fieldKey) || [];
+				collectedFieldValues.set(fieldKey, [...existingValues, field?.value]);
 			}
+			for (const [fieldKey, fieldValues] of collectedFieldValues.entries()) {
+				const existingField = existingSection.fields.get(fieldKey);
+				const mergedValue = mergeFieldValues(existingField ? [existingField.value, ...fieldValues] : fieldValues);
+				existingSection.fields.set(fieldKey, {
+					value: mergedValue,
+					confidence: null,
+					evidence_ids: [],
+				});
+			}
+		}
+	}
+
+	const synthesisSections = Array.isArray((synthesis?.synthesis_data as any)?.sections)
+		? ((synthesis?.synthesis_data as any).sections as any[]) || []
+		: [];
+
+	for (const section of synthesisSections) {
+		const sectionKey = section?.section_key;
+		if (!sectionKey || typeof sectionKey !== "string") continue;
+		if (!sectionMap.has(sectionKey)) {
+			sectionMap.set(sectionKey, {
+				summary: null,
+				fields: new Map(),
+			});
+		}
+		const existingSection = sectionMap.get(sectionKey);
+		if (!existingSection) continue;
+
+		const synthesisSummary =
+			typeof section.summary === "string" && section.summary.trim() ? section.summary.trim() : null;
+		if (synthesisSummary) {
+			existingSection.summary = synthesisSummary;
+		}
+
+		const fields = Array.isArray(section.fields) ? section.fields : [];
+		for (const field of fields) {
+			const fieldKey = field?.field_key;
+			if (!fieldKey || typeof fieldKey !== "string") continue;
+			const synthesizedValue =
+				field.consensus_value ??
+				field.value_range ??
+				(Array.isArray(field.discrepancies) && field.discrepancies.length > 0
+					? `Disagreement: ${field.discrepancies[0]?.value || "review required"}`
+					: null);
+			if (synthesizedValue === null || synthesizedValue === undefined) continue;
+			existingSection.fields.set(fieldKey, {
+				value: synthesizedValue,
+				confidence: null,
+				evidence_ids: [],
+			});
 		}
 	}
 
@@ -539,12 +603,12 @@ function buildMergedAnalysisData(
 		executive_summary: synthesis?.executive_summary || null,
 		sections: Array.from(sectionMap.entries()).map(([sectionKey, section]) => ({
 			section_key: sectionKey,
-			summary: dedupeStrings(section.summaries)[0] || null,
-			fields: Array.from(section.fields.entries()).map(([fieldKey, values]) => ({
+			summary: section.summary,
+			fields: Array.from(section.fields.entries()).map(([fieldKey, field]) => ({
 				field_key: fieldKey,
-				value: mergeFieldValues(values),
-				confidence: null,
-				evidence_ids: [],
+				value: field.value,
+				confidence: field.confidence,
+				evidence_ids: field.evidence_ids,
 			})),
 		})),
 	};
