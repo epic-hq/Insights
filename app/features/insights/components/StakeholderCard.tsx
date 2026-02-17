@@ -5,6 +5,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
@@ -56,9 +57,14 @@ export function StakeholderCard({
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           {/* Avatar */}
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
-            {person.initials}
-          </div>
+          <Avatar className="h-8 w-8 shrink-0">
+            {person.image_url && (
+              <AvatarImage src={person.image_url} alt={person.name} />
+            )}
+            <AvatarFallback className="text-xs font-semibold text-foreground">
+              {person.initials}
+            </AvatarFallback>
+          </Avatar>
           <div className="min-w-0">
             <Link
               to={routes.people.detail(person.id)}
@@ -82,6 +88,13 @@ export function StakeholderCard({
           Follow Up
         </Button>
       </div>
+
+      {/* Representative quote */}
+      {representative_quote && (
+        <p className="mt-3 text-sm text-foreground/90 italic font-medium leading-relaxed line-clamp-3">
+          &ldquo;{representative_quote}&rdquo;
+        </p>
+      )}
 
       {/* Theme pills */}
       {themes.length > 0 && (
@@ -113,13 +126,6 @@ export function StakeholderCard({
             </Badge>
           )}
         </div>
-      )}
-
-      {/* Representative quote */}
-      {representative_quote && (
-        <p className="mt-3 text-xs text-muted-foreground italic leading-relaxed line-clamp-2">
-          &ldquo;{representative_quote}&rdquo;
-        </p>
       )}
     </Card>
   );

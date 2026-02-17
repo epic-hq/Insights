@@ -16,16 +16,25 @@ import {
 	Clock,
 	Info,
 	Loader2,
+	Maximize2,
 	Mail,
 	MessageSquare,
 	User,
 	Users,
 	XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useFetcher } from "react-router";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "~/components/ui/dialog";
 import InlineEdit from "~/components/ui/inline-edit";
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
@@ -89,6 +98,29 @@ const DEFAULT_JTBD_VISUALIZATIONS: LensVisualizationDef[] = [
 		explainers: {
 			steps: "Each step represents a stable part of the customer's process.",
 			bottleneck_step: "The highest-friction step with the biggest improvement opportunity.",
+		},
+	},
+	{
+		viz_key: "job_map_journey_matrix",
+		type: "job_map_matrix",
+		title: "JTBD Journey Matrix",
+		description:
+			"Maps job stages across Experience, Insights, Opportunities, and Solutions for decision-ready planning.",
+		section_key: "job_map",
+		mapping: {
+			steps: "job_map.job_steps_summary",
+			bottleneck_step: "job_map.bottleneck_step",
+			workarounds: "job_map.workarounds_by_step",
+			metrics: "job_map.metrics_by_step",
+			insights: "outcomes.desired_outcomes",
+			opportunities: "opportunity_board.opportunity_candidates",
+			solutions: "guidance.post_interview_actions",
+		},
+		explainers: {
+			steps: "Ordered customer workflow stages.",
+			insights: "Signals and desired outcomes tied to each stage.",
+			opportunities: "Prioritized opportunities mapped to where they matter most.",
+			solutions: "Recommended actions or interventions for each stage.",
 		},
 	},
 ];
@@ -177,6 +209,22 @@ function normalizeStringArray(value: unknown): string[] {
 
 function getSectionField(sectionDataMap: SectionDataMap, sectionKey: string, fieldKey: string): any | undefined {
 	return sectionDataMap[sectionKey]?.fields?.find((field) => field?.field_key === fieldKey);
+}
+
+function getSectionFieldFromPath(
+	sectionDataMap: SectionDataMap,
+	defaultSectionKey: string,
+	pathOrField: string | undefined,
+	fallbackFieldKey: string
+): any | undefined {
+	const target = pathOrField || fallbackFieldKey;
+	if (!target) return undefined;
+	if (target.includes(".")) {
+		const [sectionKey, fieldKey] = target.split(".", 2);
+		if (!sectionKey || !fieldKey) return undefined;
+		return getSectionField(sectionDataMap, sectionKey, fieldKey);
+	}
+	return getSectionField(sectionDataMap, defaultSectionKey, target);
 }
 
 type EvidenceRefForField = {
@@ -1146,21 +1194,29 @@ function FourForcesQuadrant({
 }) {
 	const sectionKey = visualization.section_key;
 	const quadrants = [
-		{ key: "push", fallbackLabel: "Push", tone: "border-red-200 bg-red-50/60 dark:border-red-900 dark:bg-red-950/20" },
+		{
+			key: "push",
+			fallbackLabel: "Push",
+			tone: "border-red-200 bg-red-50/60 dark:border-red-900 dark:bg-red-950/20",
+			icon: <ArrowUpRight className="h-3.5 w-3.5 rotate-180 text-red-500" />,
+		},
 		{
 			key: "pull",
 			fallbackLabel: "Pull",
 			tone: "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/20",
+			icon: <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />,
 		},
 		{
 			key: "anxiety",
 			fallbackLabel: "Anxieties",
 			tone: "border-amber-200 bg-amber-50/60 dark:border-amber-900 dark:bg-amber-950/20",
+			icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />,
 		},
 		{
 			key: "habit",
 			fallbackLabel: "Habits / Inertia",
 			tone: "border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40",
+			icon: <Clock className="h-3.5 w-3.5 text-slate-500" />,
 		},
 	] as const;
 
@@ -1185,6 +1241,9 @@ function FourForcesQuadrant({
 							<div key={quadrant.key} className={cn("rounded-lg border p-3", quadrant.tone)}>
 								<div className="mb-2 flex items-center justify-between gap-2">
 									<div className="flex items-center gap-1.5">
+										<span className="inline-flex h-6 w-6 items-center justify-center rounded-md border bg-background/80">
+											{quadrant.icon}
+										</span>
 										<h4 className="font-medium text-sm">{quadrant.fallbackLabel}</h4>
 										{visualization.explainers?.[quadrant.key] && (
 											<SchemaExplainerPopover text={visualization.explainers[quadrant.key]} />
@@ -1325,6 +1384,366 @@ function JobMapTimeline({
 	);
 }
 
+type JourneyMatrixRow = {
+	key: string;
+	label: string;
+	icon: ReactNode;
+	toneClassName: string;
+	cells: string[][];
+	scores?: number[];
+	signalMask?: boolean[];
+};
+
+function dedupeItems(items: string[]): string[] {
+	return Array.from(new Set(items.map((item) => item.trim()).filter(Boolean)));
+}
+
+function synthesizeCellText(items: string[]): string | null {
+	const unique = dedupeItems(items);
+	if (unique.length === 0) return null;
+	if (unique.length === 1) return unique[0];
+	if (unique.length === 2) return `Mixed signals: ${unique[0]} | ${unique[1]}`;
+	return `Mostly aligned on: ${unique[0]}`;
+}
+
+function distributeItemsByStep(steps: JobMapStep[], items: string[]): string[][] {
+	const buckets = steps.map(() => [] as string[]);
+	if (steps.length === 0 || items.length === 0) return buckets;
+
+	const normalizedSteps = steps.map((step) =>
+		`${step.step_name} ${step.summary || ""}`
+			.toLowerCase()
+			.replace(/[^a-z0-9\s]+/g, " ")
+			.replace(/\s+/g, " ")
+			.trim()
+	);
+	const leftovers: string[] = [];
+
+	for (const item of items) {
+		const normalizedItem = item
+			.toLowerCase()
+			.replace(/[^a-z0-9\s]+/g, " ")
+			.replace(/\s+/g, " ")
+			.trim();
+		const matchedIndex = normalizedSteps.findIndex(
+			(stepName) => stepName.length > 2 && normalizedItem.includes(stepName)
+		);
+		if (matchedIndex >= 0) {
+			buckets[matchedIndex].push(item);
+		} else {
+			leftovers.push(item);
+		}
+	}
+
+	leftovers.forEach((item, index) => {
+		buckets[index % steps.length].push(item);
+	});
+
+	return buckets;
+}
+
+function JourneyMatrixCanvas({
+	steps,
+	rows,
+	bottleneck,
+	compact = false,
+}: {
+	steps: JobMapStep[];
+	rows: JourneyMatrixRow[];
+	bottleneck: string;
+	compact?: boolean;
+}) {
+	const stickyColumnWidth = compact ? 210 : 230;
+	const stageColumnMinWidth = compact ? 160 : 220;
+	const matrixMinWidth = stickyColumnWidth + stageColumnMinWidth * Math.max(steps.length, 1);
+	const cellTextClassName = compact
+		? "line-clamp-2 text-[12px] leading-relaxed"
+		: "line-clamp-3 text-sm leading-relaxed";
+
+	return (
+		<div className="overflow-x-auto pb-2">
+			<div
+				className="grid gap-0"
+				style={{
+					minWidth: `${matrixMinWidth}px`,
+					gridTemplateColumns: `${stickyColumnWidth}px repeat(${steps.length}, minmax(${stageColumnMinWidth}px, 1fr))`,
+				}}
+			>
+				<div className="sticky left-0 z-20 border-b bg-card px-4 py-3">
+					<p className="font-semibold text-foreground text-sm uppercase tracking-wide">Customer Journey</p>
+				</div>
+				{steps.map((step, index) => {
+					const isBottleneck =
+						!!bottleneck &&
+						(step.step_name.toLowerCase().includes(bottleneck.toLowerCase()) ||
+							bottleneck.toLowerCase().includes(step.step_name.toLowerCase()));
+					return (
+						<div
+							key={`${step.step_key || step.step_name}-${index}`}
+							className="min-h-[70px] border-b border-l bg-gradient-to-b from-muted/30 to-background px-4 py-3"
+						>
+							<p className="font-semibold text-foreground text-sm">{step.step_name}</p>
+							{!compact && step.summary ? (
+								<p className="mt-1 line-clamp-2 text-muted-foreground text-xs leading-relaxed">{step.summary}</p>
+							) : null}
+							{isBottleneck ? (
+								<Badge variant="destructive" className="mt-2 text-[10px]">
+									Bottleneck
+								</Badge>
+							) : null}
+						</div>
+					);
+				})}
+
+				{rows.map((row) => (
+					<div key={row.key} className="contents">
+						<div className="sticky left-0 z-10 border-b bg-card px-4 py-4">
+							<div className="flex items-center gap-2">
+								<span className="text-muted-foreground">{row.icon}</span>
+								<span className="font-semibold text-foreground text-sm">{row.label}</span>
+							</div>
+						</div>
+						{steps.map((step, index) => {
+							const cellItems = row.cells[index] || [];
+							const cellText = synthesizeCellText(cellItems);
+							const isExperienceRow = row.key === "experience";
+							const hasScore = typeof row.scores?.[index] === "number";
+							const score = hasScore ? Math.max(1, Math.min(5, row.scores?.[index] || 3)) : 3;
+							const hasSignal = row.signalMask?.[index] ?? cellItems.length > 0;
+							const showScore = hasScore && (!isExperienceRow || hasSignal);
+
+							return (
+								<div
+									key={`${row.key}-${step.step_key || step.step_name}-${index}`}
+									className="min-h-[78px] border-b border-l px-3 py-3"
+								>
+									<div className={cn("h-full rounded-md border px-2.5 py-2", row.toneClassName)}>
+										{showScore ? (
+											<div className="mb-2 flex items-center gap-1.5">
+												{Array.from({ length: 5 }).map((_, dot) => (
+													<span
+														key={dot}
+														className={cn("h-2.5 w-2.5 rounded-full", dot < score ? "bg-emerald-500" : "bg-muted")}
+													/>
+												))}
+												<span className="ml-1 text-muted-foreground text-xs">{score}/5</span>
+											</div>
+										) : null}
+										{cellText ? <p className={cn("text-foreground", cellTextClassName)}>{cellText}</p> : null}
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				))}
+			</div>
+		</div>
+	);
+}
+
+function JobMapJourneyMatrix({
+	visualization,
+	sectionDataMap,
+}: {
+	visualization: LensVisualizationDef;
+	sectionDataMap: SectionDataMap;
+}) {
+	const [isCanvasOpen, setIsCanvasOpen] = useState(false);
+	const sectionKey = visualization.section_key;
+	const stepsField = getSectionFieldFromPath(
+		sectionDataMap,
+		sectionKey,
+		visualization.mapping?.steps,
+		"job_steps_summary"
+	);
+	const steps = parseJobMapSteps(stepsField?.value);
+	const bottleneckField = getSectionFieldFromPath(
+		sectionDataMap,
+		sectionKey,
+		visualization.mapping?.bottleneck_step,
+		"bottleneck_step"
+	);
+	const bottleneck = typeof bottleneckField?.value === "string" ? bottleneckField.value.trim() : "";
+
+	if (steps.length === 0) {
+		return (
+			<Card>
+				<CardHeader className="pb-3">
+					<CardTitle className="text-lg">{visualization.title || "JTBD Journey Matrix"}</CardTitle>
+					{visualization.description && <CardDescription>{visualization.description}</CardDescription>}
+				</CardHeader>
+				<CardContent>
+					<p className="text-muted-foreground text-sm italic">No job steps available for matrix rendering yet.</p>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	const workarounds = dedupeItems(
+		normalizeStringArray(
+			getSectionFieldFromPath(sectionDataMap, sectionKey, visualization.mapping?.workarounds, "workarounds_by_step")
+				?.value
+		)
+	);
+	const metrics = dedupeItems(
+		normalizeStringArray(
+			getSectionFieldFromPath(sectionDataMap, sectionKey, visualization.mapping?.metrics, "metrics_by_step")?.value
+		)
+	);
+	const insights = dedupeItems([
+		...normalizeStringArray(
+			getSectionFieldFromPath(sectionDataMap, sectionKey, visualization.mapping?.insights, "outcomes.desired_outcomes")
+				?.value
+		),
+		...normalizeStringArray(getSectionField(sectionDataMap, "outcomes", "unmet_outcomes")?.value),
+		...normalizeStringArray(getSectionField(sectionDataMap, "job_context", "desired_progress")?.value),
+	]);
+	const opportunities = dedupeItems([
+		...normalizeStringArray(
+			getSectionFieldFromPath(
+				sectionDataMap,
+				sectionKey,
+				visualization.mapping?.opportunities,
+				"opportunity_board.opportunity_candidates"
+			)?.value
+		),
+		...normalizeStringArray(
+			getSectionField(sectionDataMap, "opportunity_board", "highest_priority_opportunity")?.value
+		),
+	]);
+	const solutions = dedupeItems([
+		...normalizeStringArray(
+			getSectionFieldFromPath(
+				sectionDataMap,
+				sectionKey,
+				visualization.mapping?.solutions,
+				"guidance.post_interview_actions"
+			)?.value
+		),
+		...normalizeStringArray(getSectionField(sectionDataMap, "guidance", "in_interview_prompts")?.value),
+	]);
+	const strongestForceSummary = dedupeItems(
+		normalizeStringArray(
+			getSectionFieldFromPath(
+				sectionDataMap,
+				sectionKey,
+				visualization.mapping?.experience,
+				"forces_of_progress.strongest_force_summary"
+			)?.value
+		)
+	);
+
+	const workaroundByStep = distributeItemsByStep(steps, workarounds);
+	const metricsByStep = distributeItemsByStep(steps, metrics);
+	const insightsByStep = distributeItemsByStep(steps, insights);
+	const opportunitiesByStep = distributeItemsByStep(steps, opportunities);
+	const solutionsByStep = distributeItemsByStep(steps, solutions);
+	const forceByStep = distributeItemsByStep(steps, strongestForceSummary);
+
+	const experienceScores = steps.map((step, index) => {
+		let score = 3;
+		const isBottleneck =
+			!!bottleneck &&
+			(step.step_name.toLowerCase().includes(bottleneck.toLowerCase()) ||
+				bottleneck.toLowerCase().includes(step.step_name.toLowerCase()));
+		if (isBottleneck) score -= 2;
+		if (workaroundByStep[index].length > 0) score -= 1;
+		if (metricsByStep[index].length > 0) score += 1;
+		return Math.max(1, Math.min(5, score));
+	});
+	const experienceSignalMask = steps.map((step, index) => {
+		const isBottleneck =
+			!!bottleneck &&
+			(step.step_name.toLowerCase().includes(bottleneck.toLowerCase()) ||
+				(step.summary || "").toLowerCase().includes(bottleneck.toLowerCase()) ||
+				bottleneck.toLowerCase().includes(step.step_name.toLowerCase()));
+		return (
+			forceByStep[index].length > 0 ||
+			workaroundByStep[index].length > 0 ||
+			metricsByStep[index].length > 0 ||
+			isBottleneck
+		);
+	});
+
+	const rows: JourneyMatrixRow[] = [
+		{
+			key: "experience",
+			label: "Experience Rating",
+			icon: <Calendar className="h-4 w-4" />,
+			toneClassName: "border-blue-200 bg-blue-50/70 dark:border-blue-900 dark:bg-blue-950/20",
+			cells: steps.map((_, index) => forceByStep[index]),
+			scores: experienceScores,
+			signalMask: experienceSignalMask,
+		},
+		{
+			key: "insights",
+			label: "Insights",
+			icon: <MessageSquare className="h-4 w-4" />,
+			toneClassName: "border-violet-200 bg-violet-50/70 dark:border-violet-900 dark:bg-violet-950/20",
+			cells: insightsByStep,
+		},
+		{
+			key: "opportunities",
+			label: "Opportunities",
+			icon: <ClipboardList className="h-4 w-4" />,
+			toneClassName: "border-amber-200 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/20",
+			cells: opportunitiesByStep,
+		},
+		{
+			key: "solutions",
+			label: "Solutions",
+			icon: <CheckCircle2 className="h-4 w-4" />,
+			toneClassName: "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/20",
+			cells: solutionsByStep,
+		},
+	];
+
+	return (
+		<Dialog open={isCanvasOpen} onOpenChange={setIsCanvasOpen}>
+			<Card>
+				<CardHeader className="pb-3">
+					<div className="flex items-start justify-between gap-3">
+						<div>
+							<CardTitle className="text-lg">{visualization.title || "JTBD Journey Matrix"}</CardTitle>
+							{visualization.description && <CardDescription>{visualization.description}</CardDescription>}
+						</div>
+						<DialogTrigger asChild>
+							<button
+								type="button"
+								className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 font-medium text-xs transition-colors hover:bg-muted"
+							>
+								<Maximize2 className="h-3.5 w-3.5" />
+								Expand Canvas
+							</button>
+						</DialogTrigger>
+					</div>
+				</CardHeader>
+				<CardContent>
+					<p className="mb-3 text-muted-foreground text-xs">
+						Columns are based on extracted job steps. Empty cells indicate missing signal.
+					</p>
+					<JourneyMatrixCanvas steps={steps} rows={rows} bottleneck={bottleneck} compact />
+				</CardContent>
+			</Card>
+
+			<DialogContent
+				className="max-h-[92vh] overflow-auto p-0 sm:max-w-none"
+				style={{ width: "90vw", maxWidth: "90vw" }}
+			>
+				<DialogHeader className="border-b px-6 py-4">
+					<DialogTitle>{visualization.title || "JTBD Journey Matrix"}</DialogTitle>
+					<DialogDescription>
+						Cross-stage view of experience, insights, opportunities, and solutions for this job map.
+					</DialogDescription>
+				</DialogHeader>
+				<div className="p-6">
+					<JourneyMatrixCanvas steps={steps} rows={rows} bottleneck={bottleneck} />
+				</div>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
 function LensVisualizations({
 	visualizations,
 	sectionDataMap,
@@ -1356,6 +1775,15 @@ function LensVisualizations({
 							visualization={visualization}
 							sectionDataMap={sectionDataMap}
 							evidenceMap={evidenceMap}
+						/>
+					);
+				}
+				if (visualization.type === "job_map_matrix") {
+					return (
+						<JobMapJourneyMatrix
+							key={visualization.viz_key}
+							visualization={visualization}
+							sectionDataMap={sectionDataMap}
 						/>
 					);
 				}
@@ -1419,7 +1847,17 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 	const templateVisualizations = Array.isArray(templateDef.visualizations) ? templateDef.visualizations : [];
 	const isJtbdTemplate = templateKey === "jtbd-conversation-pipeline";
 	const usingFallbackJtbdVisualizations = isJtbdTemplate && templateVisualizations.length === 0;
-	const visualizationsToRender = usingFallbackJtbdVisualizations ? DEFAULT_JTBD_VISUALIZATIONS : templateVisualizations;
+	const baseVisualizations = usingFallbackJtbdVisualizations ? DEFAULT_JTBD_VISUALIZATIONS : templateVisualizations;
+	const jtbdMatrixFallback = DEFAULT_JTBD_VISUALIZATIONS.find((viz) => viz.type === "job_map_matrix");
+	const hasJobMapMatrix = baseVisualizations.some((viz) => viz.type === "job_map_matrix");
+	const withJtbdMatrix =
+		isJtbdTemplate && jtbdMatrixFallback && !hasJobMapMatrix
+			? [...baseVisualizations, jtbdMatrixFallback]
+			: baseVisualizations;
+	const visualizationsToRender =
+		isJtbdTemplate && withJtbdMatrix.some((viz) => viz.type === "job_map_matrix")
+			? withJtbdMatrix.filter((viz) => viz.type !== "job_map_timeline")
+			: withJtbdMatrix;
 
 	// Dedicated presentation for Q&A lens (qa-summary) focused on readable Q/A pairs
 	if (templateKey === "qa-summary") {

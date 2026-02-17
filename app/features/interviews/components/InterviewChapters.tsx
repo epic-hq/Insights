@@ -161,7 +161,7 @@ export function InterviewChapters({ evidence, onChapterClick, className }: Inter
 			</div>
 
 			{/* Chapter cards — windowed */}
-			<div className="max-h-[280px] space-y-1.5 overflow-y-auto">
+			<div className="max-h-[280px] space-y-1.5 overflow-y-auto pr-2 [scrollbar-gutter:stable]">
 				{visibleChapters.map((chapter, localIndex) => {
 					const globalIndex = pageStart + localIndex;
 					const isActive = activeIndex === globalIndex;

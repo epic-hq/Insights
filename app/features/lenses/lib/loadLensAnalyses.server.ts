@@ -27,7 +27,7 @@ export type LensTemplate = {
 		}>;
 		visualizations?: Array<{
 			viz_key: string;
-			type: "forces_quadrant" | "job_map_timeline";
+			type: "forces_quadrant" | "job_map_timeline" | "job_map_matrix";
 			title?: string;
 			description?: string;
 			section_key: string;

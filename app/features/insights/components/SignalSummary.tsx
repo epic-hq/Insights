@@ -70,7 +70,7 @@ export function SignalSummary({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="pt-4">
+      <CardContent className="px-0 pt-4">
         <div className="divide-y divide-border">
           {top.map((theme) => {
             const displayName = theme.name || theme.title || "Untitled";
@@ -86,7 +86,7 @@ export function SignalSummary({
               <Link
                 key={theme.id}
                 to={routes.insights.detail(theme.id)}
-                className="flex w-full items-start gap-3 py-3.5 text-left no-underline transition-colors hover:bg-muted/50 -mx-6 px-6 first:pt-0 last:pb-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="flex w-full items-start gap-3 px-6 py-3.5 text-left no-underline transition-colors hover:bg-muted/50 first:pt-0 last:pb-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 {/* Signal dot */}
                 <div

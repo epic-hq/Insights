@@ -655,12 +655,12 @@ export default function EvidenceIndex() {
 		? (() => {
 				const seenIds = new Set(keywordMatches.map((e) => e.id));
 				const semanticOnly = semanticResults.filter((e) => !seenIds.has(e.id));
-				console.log("[Evidence Filter] Merging results:", {
-					keywordMatches: keywordMatches.length,
-					semanticResults: semanticResults.length,
-					semanticOnly: semanticOnly.length,
-					total: keywordMatches.length + semanticOnly.length,
-				});
+				// console.log("[Evidence Filter] Merging results:", {
+				// 	keywordMatches: keywordMatches.length,
+				// 	semanticResults: semanticResults.length,
+				// 	semanticOnly: semanticOnly.length,
+				// 	total: keywordMatches.length + semanticOnly.length,
+				// });
 				return [...keywordMatches, ...semanticOnly];
 			})()
 		: evidence;

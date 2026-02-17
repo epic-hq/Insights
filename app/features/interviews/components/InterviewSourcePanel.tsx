@@ -213,7 +213,10 @@ export function InterviewSourcePanel({
 			{evidence.length > 0 && onEvidenceSelect && (
 				<div className="space-y-3">
 					<h3 className="font-semibold text-base text-foreground">Evidence ({evidence.length})</h3>
-					<div className="max-h-[400px] space-y-2 overflow-y-auto pr-1" id={evidenceScrollContainerId}>
+					<div
+						className="max-h-[400px] space-y-2 overflow-y-auto pr-2 [scrollbar-gutter:stable]"
+						id={evidenceScrollContainerId}
+					>
 						{evidence.map((item) => {
 							const seconds = extractAnchorSeconds(item.anchors);
 							const votes = evidenceVoteCounts?.[item.id];

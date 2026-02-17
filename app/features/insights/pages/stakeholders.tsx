@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router-dom";
 import { Separator } from "~/components/ui/separator";
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
 import { getInsights, getStakeholderSummaries } from "~/features/insights/db";
 import type {
   StakeholderSummary,
@@ -56,20 +57,28 @@ export default function StakeholdersPage() {
   const { stakeholders, commonGround, sharedConcern, themes } =
     useLoaderData<typeof loader>();
 
+  const [groupBy, setGroupBy] = useState<
+    "job_function" | "seniority" | "top_theme"
+  >("job_function");
   const [highlightPersonId, setHighlightPersonId] = useState<string | null>(
     null,
   );
 
-  // Group stakeholders by job_function
+  // Group stakeholders using selected dimension
   const roleGroups = useMemo(() => {
     const groups: Record<string, StakeholderSummary[]> = {};
     for (const s of stakeholders) {
-      const role = s.person.job_function || "Other";
+      const role =
+        groupBy === "seniority"
+          ? getSeniorityBucket(s.person.title, s.person.job_function)
+          : groupBy === "top_theme"
+            ? s.themes[0]?.name || "No Strong Theme Yet"
+            : normalizeJobFunctionLabel(s.person.job_function);
       if (!groups[role]) groups[role] = [];
       groups[role].push(s);
     }
     return groups;
-  }, [stakeholders]);
+  }, [stakeholders, groupBy]);
 
   // Compute weak signals from themes (same criteria as themes page)
   const weakSignals = useMemo<WeakSignal[]>(() => {
@@ -146,7 +155,11 @@ export default function StakeholdersPage() {
     setTimeout(() => setHighlightPersonId(null), 2500);
   };
 
-  const sortedRoles = Object.keys(roleGroups).sort();
+  const sortedRoles = Object.keys(roleGroups).sort((a, b) => {
+    const bySize = roleGroups[b].length - roleGroups[a].length;
+    if (bySize !== 0) return bySize;
+    return a.localeCompare(b);
+  });
 
   return (
     <div className="space-y-6">
@@ -157,7 +170,7 @@ export default function StakeholdersPage() {
           {/* Layer 1: Stakeholder Landscape */}
           <StakeholderLandscape
             roleGroups={roleGroups}
-            sharedConcern={sharedConcern}
+            sharedConcern={groupBy === "job_function" ? sharedConcern : null}
             onPersonClick={handlePersonClick}
           />
 
@@ -165,10 +178,32 @@ export default function StakeholdersPage() {
 
           {/* Layer 2: Stakeholder Perspectives */}
           <div>
-            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-              <Users className="h-3.5 w-3.5" />
-              Stakeholder Perspectives
-            </h2>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <Users className="h-3.5 w-3.5" />
+                Stakeholder Perspectives
+              </h2>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Group by</span>
+                <ToggleGroup
+                  type="single"
+                  value={groupBy}
+                  onValueChange={(value) =>
+                    value &&
+                    setGroupBy(
+                      value as "job_function" | "seniority" | "top_theme",
+                    )
+                  }
+                  size="sm"
+                >
+                  <ToggleGroupItem value="job_function">
+                    Function
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="seniority">Seniority</ToggleGroupItem>
+                  <ToggleGroupItem value="top_theme">Top Concern</ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            </div>
             <div className="space-y-6">
               {sortedRoles.map((role) => (
                 <div key={role}>
@@ -222,4 +257,57 @@ export default function StakeholdersPage() {
       )}
     </div>
   );
+}
+
+function normalizeJobFunctionLabel(raw: string | null | undefined): string {
+  if (!raw || !raw.trim()) return "Other";
+  const cleaned = raw.trim().replace(/\s+/g, " ");
+  const normalized = cleaned.toLowerCase();
+
+  const aliasToRole: Record<string, string> = {
+    executive: "Executive",
+    exec: "Executive",
+    "c-suite": "Executive",
+    "c suite": "Executive",
+    leadership: "Executive",
+    "senior leadership": "Executive",
+    founder: "Executive",
+    "co-founder": "Executive",
+    ceo: "Executive",
+    cfo: "Executive",
+    coo: "Executive",
+    cto: "Executive",
+    cmo: "Executive",
+    cio: "Executive",
+  };
+
+  if (aliasToRole[normalized]) return aliasToRole[normalized];
+
+  return cleaned
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function getSeniorityBucket(
+  title: string | null | undefined,
+  jobFunction: string | null | undefined,
+): string {
+  const source = `${title || ""} ${jobFunction || ""}`.toLowerCase();
+  if (!source.trim()) return "Unknown";
+
+  if (
+    /\b(ceo|cto|cfo|coo|cio|cmo|chief|founder|co-founder|owner|president|partner|principal|executive)\b/.test(
+      source,
+    )
+  ) {
+    return "Executive";
+  }
+  if (/\b(vp|vice president|head|director|lead)\b/.test(source)) {
+    return "Director / VP";
+  }
+  if (/\b(manager|supervisor)\b/.test(source)) {
+    return "Manager";
+  }
+  return "Individual Contributor";
 }

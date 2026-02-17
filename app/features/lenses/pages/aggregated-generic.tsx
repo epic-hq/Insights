@@ -20,7 +20,7 @@ import {
 	RefreshCw,
 	Sparkles,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
 	type ActionFunctionArgs,
 	Link,
@@ -74,6 +74,7 @@ type LensSynthesis = {
 	key_takeaways: KeyTakeaway[];
 	recommendations: string[];
 	conflicts_to_review: string[];
+	synthesis_data?: Record<string, unknown> | null;
 	overall_confidence: number | null;
 	interview_count: number;
 	processed_at: string | null;
@@ -166,7 +167,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const { data: summaryData } = await supabase
 		.from("conversation_lens_summaries")
 		.select(
-			"id, status, executive_summary, key_takeaways, recommendations, conflicts_to_review, overall_confidence, interview_count, processed_at, error_message"
+			"id, status, executive_summary, key_takeaways, recommendations, conflicts_to_review, synthesis_data, overall_confidence, interview_count, processed_at, error_message"
 		)
 		.eq("project_id", projectId)
 		.eq("template_key", templateKey)
@@ -180,6 +181,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			key_takeaways: (summaryData.key_takeaways as KeyTakeaway[]) || [],
 			recommendations: (summaryData.recommendations as string[]) || [],
 			conflicts_to_review: (summaryData.conflicts_to_review as string[]) || [],
+			synthesis_data: (summaryData.synthesis_data as Record<string, unknown>) || null,
 			overall_confidence: summaryData.overall_confidence,
 			interview_count: summaryData.interview_count,
 			processed_at: summaryData.processed_at,
@@ -307,6 +309,245 @@ function getCategoryBadgeVariant(category: KeyTakeaway["category"]) {
 		default:
 			return "secondary";
 	}
+}
+
+function parseStringArrayValue(value: unknown): string[] {
+	if (Array.isArray(value)) {
+		return value
+			.map((item) => `${item}`)
+			.map((item) => item.trim())
+			.filter(Boolean);
+	}
+	if (typeof value === "string") {
+		const trimmed = value.trim();
+		if (!trimmed) return [];
+		if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+			try {
+				const parsed = JSON.parse(trimmed);
+				if (Array.isArray(parsed)) {
+					return parsed
+						.map((item) => `${item}`)
+						.map((item) => item.trim())
+						.filter(Boolean);
+				}
+			} catch {
+				// noop
+			}
+		}
+		return [trimmed];
+	}
+	if (typeof value === "number" && Number.isFinite(value)) {
+		return [String(value)];
+	}
+	return [];
+}
+
+function dedupeStrings(items: string[]): string[] {
+	return Array.from(new Set(items.map((item) => item.trim()).filter(Boolean)));
+}
+
+const JTBD_TEMPLATE_KEY = "jtbd-conversation-pipeline";
+const BANT_STYLE_TOKENS = ["budget", "authority", "timeline", "decision maker", "champion", "procurement", "bant"];
+
+function hasBantStyleLanguage(text: string): boolean {
+	const normalized = text.toLowerCase();
+	return BANT_STYLE_TOKENS.some((token) => normalized.includes(token));
+}
+
+function collectSectionSummariesFromSynthesisData(
+	synthesisData?: Record<string, unknown> | null
+): Map<string, string[]> {
+	const map = new Map<string, string[]>();
+	const sections = Array.isArray((synthesisData as any)?.sections)
+		? ((synthesisData as any).sections as any[]) || []
+		: [];
+	for (const section of sections) {
+		const sectionKey = section?.section_key;
+		const summary = typeof section?.summary === "string" ? section.summary.trim() : "";
+		if (!sectionKey || typeof sectionKey !== "string" || !summary) continue;
+		const existing = map.get(sectionKey) || [];
+		existing.push(summary);
+		map.set(sectionKey, existing);
+	}
+	return map;
+}
+
+function collectSectionSummariesFromAnalyses(analyses: AggregatedAnalysis[]): Map<string, string[]> {
+	const map = new Map<string, string[]>();
+	for (const analysis of analyses) {
+		const sections = Array.isArray((analysis.analysis_data as any)?.sections)
+			? ((analysis.analysis_data as any).sections as any[]) || []
+			: [];
+		for (const section of sections) {
+			const sectionKey = section?.section_key;
+			const summary = typeof section?.summary === "string" ? section.summary.trim() : "";
+			if (!sectionKey || typeof sectionKey !== "string" || !summary) continue;
+			const existing = map.get(sectionKey) || [];
+			existing.push(summary);
+			map.set(sectionKey, existing);
+		}
+	}
+	return map;
+}
+
+function pickMostCommon(values: string[]): string | null {
+	const cleaned = dedupeStrings(values);
+	if (cleaned.length === 0) return null;
+	const frequency = new Map<string, number>();
+	for (const value of values.map((item) => item.trim()).filter(Boolean)) {
+		frequency.set(value, (frequency.get(value) || 0) + 1);
+	}
+	return [...cleaned].sort((a, b) => (frequency.get(b) || 0) - (frequency.get(a) || 0))[0] || null;
+}
+
+function buildJtbdExecutiveSummary(sectionSummaryMap: Map<string, string[]>): string | null {
+	const jobContext = pickMostCommon(sectionSummaryMap.get("job_context") || []);
+	const forces = pickMostCommon(sectionSummaryMap.get("forces_of_progress") || []);
+	const outcomes = pickMostCommon(sectionSummaryMap.get("outcomes") || []);
+	const opportunities = pickMostCommon(sectionSummaryMap.get("opportunity_board") || []);
+
+	const parts: string[] = [];
+	if (jobContext) parts.push(jobContext);
+	if (forces) parts.push(`Switching forces: ${forces}`);
+	if (outcomes) parts.push(`Desired outcomes: ${outcomes}`);
+	if (opportunities) parts.push(`Priority opportunity: ${opportunities}`);
+
+	if (parts.length === 0) return null;
+	return parts.join(" ");
+}
+
+function normalizeSynthesisForTemplate(
+	templateKey: string,
+	synthesis: LensSynthesis | null,
+	analyses: AggregatedAnalysis[]
+): LensSynthesis | null {
+	if (!synthesis) return null;
+	if (templateKey !== JTBD_TEMPLATE_KEY) return synthesis;
+
+	const summary = synthesis.executive_summary?.trim() || null;
+	if (summary && !hasBantStyleLanguage(summary)) return synthesis;
+
+	const synthesisSectionMap = collectSectionSummariesFromSynthesisData(synthesis.synthesis_data);
+	const analysisSectionMap = collectSectionSummariesFromAnalyses(analyses);
+	const combinedSectionMap = new Map<string, string[]>();
+	for (const [sectionKey, values] of synthesisSectionMap.entries()) {
+		combinedSectionMap.set(sectionKey, [...values]);
+	}
+	for (const [sectionKey, values] of analysisSectionMap.entries()) {
+		const existing = combinedSectionMap.get(sectionKey) || [];
+		combinedSectionMap.set(sectionKey, [...existing, ...values]);
+	}
+
+	const jtbdSummary = buildJtbdExecutiveSummary(combinedSectionMap);
+	return {
+		...synthesis,
+		executive_summary: jtbdSummary,
+	};
+}
+
+function mergeFieldValues(values: unknown[]): unknown {
+	const asLists = values.map((value) => parseStringArrayValue(value));
+	const flat = asLists.flat();
+	const deduped = dedupeStrings(flat);
+	if (deduped.length === 0) return null;
+
+	const frequencies = new Map<string, number>();
+	for (const item of flat) {
+		frequencies.set(item, (frequencies.get(item) || 0) + 1);
+	}
+	const ranked = [...deduped].sort((a, b) => (frequencies.get(b) || 0) - (frequencies.get(a) || 0));
+
+	const numeric = flat.map((item) => Number.parseFloat(item)).filter((value) => Number.isFinite(value));
+	if (numeric.length >= 2 && numeric.length === flat.length) {
+		const avg = numeric.reduce((sum, value) => sum + value, 0) / numeric.length;
+		return avg.toFixed(1);
+	}
+
+	if (Array.isArray(values.find((value) => Array.isArray(value)))) {
+		return ranked.slice(0, 4);
+	}
+	if (ranked.length === 1) return ranked[0];
+	if (ranked.length === 2) return `Mixed: ${ranked[0]} | ${ranked[1]}`;
+	return `Mostly aligned on: ${ranked[0]}`;
+}
+
+function buildMergedAnalysisData(
+	analyses: AggregatedAnalysis[],
+	synthesis: LensSynthesis | null
+): Record<string, unknown> {
+	const synthesisSections = Array.isArray((synthesis?.synthesis_data as any)?.sections)
+		? ((synthesis?.synthesis_data as any).sections as any[]) || []
+		: [];
+
+	if (synthesisSections.length > 0) {
+		return {
+			executive_summary: synthesis?.executive_summary || null,
+			sections: synthesisSections.map((section: any) => ({
+				section_key: section.section_key,
+				summary: section.summary ?? null,
+				fields: Array.isArray(section.fields)
+					? section.fields.map((field: any) => ({
+							field_key: field.field_key,
+							value:
+								field.consensus_value ??
+								field.value_range ??
+								(Array.isArray(field.discrepancies) && field.discrepancies.length > 0
+									? `Disagreement: ${field.discrepancies[0]?.value || "review required"}`
+									: null),
+							confidence: null,
+							evidence_ids: [],
+						}))
+					: [],
+			})),
+		};
+	}
+
+	const sectionMap = new Map<
+		string,
+		{
+			summaries: string[];
+			fields: Map<string, unknown[]>;
+		}
+	>();
+
+	for (const analysis of analyses) {
+		const sections = Array.isArray((analysis.analysis_data as any)?.sections)
+			? ((analysis.analysis_data as any).sections as any[]) || []
+			: [];
+		for (const section of sections) {
+			const key = section?.section_key;
+			if (!key || typeof key !== "string") continue;
+			if (!sectionMap.has(key)) {
+				sectionMap.set(key, { summaries: [], fields: new Map() });
+			}
+			const entry = sectionMap.get(key);
+			if (!entry) continue;
+			if (typeof section.summary === "string" && section.summary.trim()) {
+				entry.summaries.push(section.summary.trim());
+			}
+			const fields = Array.isArray(section.fields) ? section.fields : [];
+			for (const field of fields) {
+				const fieldKey = field?.field_key;
+				if (!fieldKey || typeof fieldKey !== "string") continue;
+				if (!entry.fields.has(fieldKey)) entry.fields.set(fieldKey, []);
+				entry.fields.get(fieldKey)?.push(field?.value);
+			}
+		}
+	}
+
+	return {
+		executive_summary: synthesis?.executive_summary || null,
+		sections: Array.from(sectionMap.entries()).map(([sectionKey, section]) => ({
+			section_key: sectionKey,
+			summary: dedupeStrings(section.summaries)[0] || null,
+			fields: Array.from(section.fields.entries()).map(([fieldKey, values]) => ({
+				field_key: fieldKey,
+				value: mergeFieldValues(values),
+				confidence: null,
+				evidence_ids: [],
+			})),
+		})),
+	};
 }
 
 function SynthesisHeroSection({
@@ -486,7 +727,6 @@ function SynthesisHeroSection({
 					<p className="text-muted-foreground text-xs">
 						Last synthesized {new Date(synthesis.processed_at).toLocaleDateString()} at{" "}
 						{new Date(synthesis.processed_at).toLocaleTimeString()}
-						{synthesis.overall_confidence && ` • ${Math.round(synthesis.overall_confidence * 100)}% confidence`}
 					</p>
 				)}
 			</CardContent>
@@ -504,6 +744,15 @@ export default function AggregatedGenericPage() {
 	const revalidator = useRevalidator();
 	const fetcher = useFetcher<typeof action>();
 	const [editDialogOpen, setEditDialogOpen] = useState(false);
+	const isJtbdTemplate = template.template_key === "jtbd-conversation-pipeline";
+	const normalizedSynthesis = useMemo(
+		() => normalizeSynthesisForTemplate(template.template_key, synthesis, analyses),
+		[template.template_key, synthesis, analyses]
+	);
+	const mergedAnalysisData = useMemo(
+		() => buildMergedAnalysisData(analyses, normalizedSynthesis),
+		[analyses, normalizedSynthesis]
+	);
 
 	const isCustom = !template.is_system;
 	const isOwner = template.created_by === userId;
@@ -621,11 +870,35 @@ export default function AggregatedGenericPage() {
 
 			{/* AI Synthesis Hero Section */}
 			<SynthesisHeroSection
-				synthesis={synthesis}
+				synthesis={normalizedSynthesis}
 				analysisCount={analyses.length}
 				isSubmitting={isSubmitting}
 				onRefresh={handleRefreshSynthesis}
 			/>
+
+			<Card>
+				<CardHeader>
+					<CardTitle>Synthesized Lens View</CardTitle>
+					<CardDescription>Merged structure across participants with consensus and divergence signals.</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<GenericLensView
+						analysis={{
+							id: `merged-${template.template_key}`,
+							interview_id: "merged",
+							template_key: template.template_key,
+							analysis_data: mergedAnalysisData,
+							confidence_score: normalizedSynthesis?.overall_confidence ?? null,
+							status: "completed",
+							error_message: null,
+							processed_at: normalizedSynthesis?.processed_at || analyses[0]?.processed_at,
+							created_at: normalizedSynthesis?.processed_at || analyses[0]?.processed_at || new Date().toISOString(),
+							template,
+						}}
+						template={template}
+					/>
+				</CardContent>
+			</Card>
 
 			{/* Summary Stats + Recent Interviews */}
 			<div className="grid gap-6 lg:grid-cols-3">
@@ -654,51 +927,57 @@ export default function AggregatedGenericPage() {
 
 			{/* Individual Analyses */}
 			<div className="space-y-6">
-				<h2 className="font-semibold text-lg">Conversation Analyses</h2>
-				{analyses.map((analysis) => (
-					<Card key={analysis.interview_id}>
-						<CardHeader className="pb-3">
-							<div className="flex items-center justify-between">
-								<div>
-									<CardTitle className="text-base">
-										<Link
-											to={routes.interviews.detail(analysis.interview_id)}
-											className="hover:text-primary hover:underline"
-										>
-											{analysis.interview_title}
+				<details className="rounded-lg border bg-card/40 p-4" open={!isJtbdTemplate}>
+					<summary className="cursor-pointer font-semibold text-lg">
+						{isJtbdTemplate ? "Individual Participant Analyses (Raw)" : "Conversation Analyses"}
+					</summary>
+					<div className="mt-4 space-y-6">
+						{analyses.map((analysis) => (
+							<Card key={analysis.interview_id}>
+								<CardHeader className="pb-3">
+									<div className="flex items-center justify-between">
+										<div>
+											<CardTitle className="text-base">
+												<Link
+													to={routes.interviews.detail(analysis.interview_id)}
+													className="hover:text-primary hover:underline"
+												>
+													{analysis.interview_title}
+												</Link>
+											</CardTitle>
+											{analysis.participant_pseudonym && (
+												<CardDescription>{analysis.participant_pseudonym}</CardDescription>
+											)}
+										</div>
+										<Link to={routes.interviews.detail(analysis.interview_id)}>
+											<Button variant="ghost" size="sm">
+												View Interview
+												<ChevronRight className="ml-1 h-4 w-4" />
+											</Button>
 										</Link>
-									</CardTitle>
-									{analysis.participant_pseudonym && (
-										<CardDescription>{analysis.participant_pseudonym}</CardDescription>
-									)}
-								</div>
-								<Link to={routes.interviews.detail(analysis.interview_id)}>
-									<Button variant="ghost" size="sm">
-										View Interview
-										<ChevronRight className="ml-1 h-4 w-4" />
-									</Button>
-								</Link>
-							</div>
-						</CardHeader>
-						<CardContent>
-							<GenericLensView
-								analysis={{
-									id: analysis.interview_id,
-									interview_id: analysis.interview_id,
-									template_key: template.template_key,
-									analysis_data: analysis.analysis_data,
-									confidence_score: analysis.confidence_score,
-									status: "completed",
-									error_message: null,
-									processed_at: analysis.processed_at,
-									created_at: analysis.processed_at || new Date().toISOString(),
-									template,
-								}}
-								template={template}
-							/>
-						</CardContent>
-					</Card>
-				))}
+									</div>
+								</CardHeader>
+								<CardContent>
+									<GenericLensView
+										analysis={{
+											id: analysis.interview_id,
+											interview_id: analysis.interview_id,
+											template_key: template.template_key,
+											analysis_data: analysis.analysis_data,
+											confidence_score: analysis.confidence_score,
+											status: "completed",
+											error_message: null,
+											processed_at: analysis.processed_at,
+											created_at: analysis.processed_at || new Date().toISOString(),
+											template,
+										}}
+										template={template}
+									/>
+								</CardContent>
+							</Card>
+						))}
+					</div>
+				</details>
 			</div>
 
 			{/* Source Interviews Summary */}

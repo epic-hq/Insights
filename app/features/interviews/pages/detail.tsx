@@ -1785,7 +1785,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					</div>
 
 					{/* Right column: Sources (sticky) */}
-					<div className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+					<div className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-2 lg:[scrollbar-gutter:stable]">
 						<InterviewSourcePanel
 							interview={interview}
 							evidence={evidence}

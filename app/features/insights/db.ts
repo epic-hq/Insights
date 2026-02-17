@@ -958,7 +958,7 @@ export const getStakeholderSummaries = async ({
     }
 
     // Track person in theme→person and theme→role maps
-    const role = person.job_function || "Other";
+    const role = normalizeStakeholderRole(person.job_function);
     for (const tid of themeEvidenceCounts.keys()) {
       if (!themePersonMap.has(tid)) themePersonMap.set(tid, new Set());
       themePersonMap.get(tid)!.add(person.id);
@@ -1012,7 +1012,7 @@ export const getStakeholderSummaries = async ({
   // 7. Compute common ground — themes that span multiple job_function roles
   const allRoles = new Set<string>();
   for (const person of people) {
-    allRoles.add(person.job_function || "Other");
+    allRoles.add(normalizeStakeholderRole(person.job_function));
   }
   const totalRoles = allRoles.size;
 
@@ -1043,6 +1043,57 @@ export const getStakeholderSummaries = async ({
 
   return { stakeholders, commonGround, sharedConcern };
 };
+
+function normalizeStakeholderRole(jobFunction: string | null | undefined): string {
+  if (!jobFunction || !jobFunction.trim()) return "Other";
+
+  const cleaned = jobFunction.trim().replace(/\s+/g, " ");
+  const normalized = cleaned.toLowerCase();
+
+  const aliasToRole: Record<string, string> = {
+    executive: "Executive",
+    exec: "Executive",
+    "c-suite": "Executive",
+    "c suite": "Executive",
+    leadership: "Executive",
+    "senior leadership": "Executive",
+    founder: "Executive",
+    "co-founder": "Executive",
+    ceo: "Executive",
+    cfo: "Executive",
+    coo: "Executive",
+    cto: "Executive",
+    cmo: "Executive",
+    cio: "Executive",
+    "vp marketing": "Marketing",
+    marketing: "Marketing",
+    "product marketing": "Marketing",
+    "growth marketing": "Marketing",
+    engineering: "Engineering",
+    "software engineering": "Engineering",
+    "product manager": "Product",
+    product: "Product",
+    design: "Design",
+    ux: "Design",
+    "user research": "Research",
+    research: "Research",
+    sales: "Sales",
+    "customer success": "Customer Success",
+    support: "Customer Success",
+    finance: "Finance",
+    hr: "Human Resources",
+    "human resources": "Human Resources",
+    operations: "Operations",
+    ops: "Operations",
+  };
+
+  if (aliasToRole[normalized]) return aliasToRole[normalized];
+
+  return cleaned
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
 
 /** Helper: compute initials from name parts */
 function getInitials(

@@ -7,7 +7,6 @@
 
 import type { LucideIcon } from "lucide-react";
 import {
-	BookOpen,
 	Briefcase,
 	Building2,
 	CheckSquare,
@@ -16,11 +15,10 @@ import {
 	FolderOpen,
 	Glasses,
 	Lightbulb,
-	Map,
+	Map as MapIcon,
 	MessageSquare,
 	ScrollText,
 	Settings,
-	Sparkles,
 	Tag,
 	Target,
 	Upload,
@@ -90,7 +88,7 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
 				key: "journey",
 				title: "Your Journey",
 				description: "Track your research progress",
-				icon: Map,
+				icon: MapIcon,
 				to: (routes) => routes.journey(),
 				featureFlag: "ffYourJourney",
 			},
@@ -138,7 +136,8 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
 				title: "Top Themes",
 				description: "Patterns emerging from your research",
 				icon: Lightbulb,
-				to: (routes) => routes.insights.table(),
+				to: () =>
+					"https://getupsight.com/a/d7b69d5e-a952-41a6-931f-e2fed1d82e85/6dbcbb68-0662-4ebc-9f84-dd13b8ff758d/insights/themes",
 				countKey: "themes",
 			},
 			{

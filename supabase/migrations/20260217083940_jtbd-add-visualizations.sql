@@ -40,6 +40,28 @@ SET template_definition = jsonb_set(
               "steps": "Each step represents a stable part of the customer''s process.",
               "bottleneck_step": "The highest-friction step with the biggest improvement opportunity."
             }
+          },
+          {
+            "viz_key": "job_map_journey_matrix",
+            "type": "job_map_matrix",
+            "title": "JTBD Journey Matrix",
+            "description": "Cross-stage matrix of experience, insights, opportunities, and solutions.",
+            "section_key": "job_map",
+            "mapping": {
+              "steps": "job_map.job_steps_summary",
+              "bottleneck_step": "job_map.bottleneck_step",
+              "workarounds": "job_map.workarounds_by_step",
+              "metrics": "job_map.metrics_by_step",
+              "insights": "outcomes.desired_outcomes",
+              "opportunities": "opportunity_board.opportunity_candidates",
+              "solutions": "guidance.post_interview_actions"
+            },
+            "explainers": {
+              "steps": "Ordered customer workflow stages.",
+              "insights": "Signals and desired outcomes mapped to each stage.",
+              "opportunities": "Priority opportunities linked to each stage.",
+              "solutions": "Proposed actions that reduce friction or improve outcomes."
+            }
           }
         ]'::jsonb
       ),

@@ -4,7 +4,8 @@
  * Click dot → smooth-scroll to matching StakeholderCard with amber glow.
  * Bottom: shared concern callout (theme with broadest role coverage).
  */
-import { Link2, Users } from "lucide-react";
+import { Link2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
   Tooltip,
@@ -68,11 +69,21 @@ export function StakeholderLandscape({
                           onClick={() => onPersonClick(s.person.id)}
                           className={cn(
                             "flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold transition-all",
-                            "bg-muted text-foreground hover:ring-2 hover:ring-amber-400 hover:ring-offset-1",
+                            "text-foreground hover:ring-2 hover:ring-amber-400 hover:ring-offset-1",
                             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                           )}
                         >
-                          {s.person.initials}
+                          <Avatar className="h-7 w-7">
+                            {s.person.image_url && (
+                              <AvatarImage
+                                src={s.person.image_url}
+                                alt={s.person.name}
+                              />
+                            )}
+                            <AvatarFallback className="text-[10px] font-semibold">
+                              {s.person.initials}
+                            </AvatarFallback>
+                          </Avatar>
                         </button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="text-xs">
