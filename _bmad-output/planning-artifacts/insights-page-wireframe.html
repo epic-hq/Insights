@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSight Insights Page — UX Wireframe v2</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface-2: #1a1a25;
+    --surface-3: #22222f;
+    --border: #2a2a3a;
+    --border-hover: #3a3a4f;
+    --text: #e8e8f0;
+    --text-muted: #8888a0;
+    --text-dim: #555566;
+    --accent: #6366f1;
+    --accent-soft: #6366f120;
+    --red: #ef4444;
+    --red-soft: #ef444420;
+    --yellow: #eab308;
+    --yellow-soft: #eab30820;
+    --green: #22c55e;
+    --green-soft: #22c55e20;
+    --amber: #f59e0b;
+    --amber-soft: #f59e0b15;
+    --blue: #3b82f6;
+    --blue-soft: #3b82f620;
+    --orange: #f97316;
+    --orange-soft: #f9731620;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  .page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header h1 {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    background: var(--surface);
+  }
+  .header-right { display: flex; gap: 8px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .btn:hover {
+    border-color: var(--border-hover);
+    color: var(--text);
+    background: var(--surface-2);
+  }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-sm {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+  .btn-ghost {
+    border-color: transparent;
+    background: transparent;
+  }
+  .btn-ghost:hover {
+    background: var(--surface-2);
+    border-color: var(--border);
+  }
+
+  /* Lens Toggle */
+  .lens-toggle {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 28px;
+    width: fit-content;
+  }
+  .lens-btn {
+    padding: 7px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .lens-btn:hover { color: var(--text); background: var(--surface-2); }
+  .lens-btn.active {
+    background: var(--surface-3);
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  /* Section Labels */
+  .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  /* === SIGNAL SUMMARY with breadth grid === */
+  .signal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .signal-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .signal-row {
+    display: flex;
+    align-items: flex-start;
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+    gap: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin: 0 -20px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .signal-row:hover { background: var(--surface-2); }
+  .signal-row:first-of-type { border-top: none; }
+  .signal-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  .signal-dot.red { background: var(--red); box-shadow: 0 0 8px var(--red-soft); }
+  .signal-dot.yellow { background: var(--yellow); box-shadow: 0 0 8px var(--yellow-soft); }
+  .signal-dot.green { background: var(--green); box-shadow: 0 0 8px var(--green-soft); }
+  .signal-content { flex: 1; }
+  .signal-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .signal-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; display: flex; align-items: center; gap: 12px; }
+  .signal-quote { font-size: 12px; color: var(--text-muted); font-style: italic; }
+  .signal-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .signal-trend {
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .trend-up { color: var(--red); background: var(--red-soft); }
+  .trend-stable { color: var(--green); background: var(--green-soft); }
+
+  /* Breadth Grid — GitHub-style activity dots */
+  .breadth-grid {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+  }
+  .breadth-cell {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    transition: all 0.15s;
+    position: relative;
+  }
+  .breadth-cell.filled {
+    background: var(--accent);
+    border-color: var(--accent);
+    opacity: 0.9;
+  }
+  .breadth-cell.filled.high { background: var(--red); border-color: var(--red); }
+  .breadth-cell.filled.med { background: var(--yellow); border-color: var(--yellow); }
+  .breadth-cell.filled.low { background: var(--green); border-color: var(--green); }
+  .breadth-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-left: 6px;
+    white-space: nowrap;
+  }
+
+  /* Theme Cards Grid */
+  .theme-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 700px) { .theme-grid { grid-template-columns: 1fr; } }
+  .theme-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    transition: all 0.2s;
+  }
+  .theme-card:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  }
+  .theme-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+  .signal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .signal-badge.high { color: var(--red); background: var(--red-soft); }
+  .signal-badge.med { color: var(--yellow); background: var(--yellow-soft); }
+  .signal-badge.low { color: var(--green); background: var(--green-soft); }
+  .theme-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .theme-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    align-items: center;
+  }
+  .theme-breadth-mini {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+  }
+  .breadth-mini-cell {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+  }
+  .breadth-mini-cell.filled { background: var(--accent); border-color: var(--accent); }
+  .theme-voices { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+  .theme-voices strong { color: var(--text); font-weight: 500; }
+  .theme-quote {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+  .theme-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* Gaps Panel */
+  .gaps-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .gaps-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .gap-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+  }
+  .gap-item:first-of-type { border-top: none; }
+  .gap-icon { font-size: 14px; margin-top: 1px; }
+  .gap-content { flex: 1; }
+  .gap-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .gap-reason { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+  .gap-actions { display: flex; gap: 6px; }
+
+  /* Actions Panel */
+  .action-cards { display: flex; flex-direction: column; gap: 10px; }
+  .action-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    transition: all 0.15s;
+  }
+  .action-card:hover { border-color: var(--border-hover); }
+  .action-left { display: flex; align-items: center; gap: 10px; }
+  .action-emoji { font-size: 18px; }
+  .action-name { font-size: 13px; font-weight: 600; }
+  .action-desc { font-size: 11px; color: var(--text-muted); }
+  .action-right { display: flex; align-items: center; gap: 10px; }
+  .confidence {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .conf-high { color: var(--red); background: var(--red-soft); }
+  .conf-med { color: var(--yellow); background: var(--yellow-soft); }
+
+  /* === STAKEHOLDER LENS === */
+
+  .landscape {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .landscape-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .landscape-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .role-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 500px) { .role-grid { grid-template-columns: 1fr; } }
+  .role-cluster { display: flex; flex-direction: column; gap: 6px; }
+  .role-label {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .role-dots { display: flex; gap: 6px; }
+  .person-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--surface-3);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .person-dot:hover {
+    border-color: var(--accent);
+    color: var(--text);
+    transform: scale(1.1);
+  }
+  .tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+  }
+  .person-dot:hover .tooltip { opacity: 1; }
+  .shared-concern {
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .shared-concern .link-icon { color: var(--accent); }
+  .shared-concern strong { color: var(--text); }
+  .shared-concern .breadth { color: var(--text-muted); font-size: 12px; }
+
+  /* Stakeholder Cards */
+  .stakeholder-group-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    font-weight: 600;
+    margin-bottom: 10px;
+    margin-top: 24px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .stakeholder-group-label:first-of-type { margin-top: 0; }
+  .stakeholder-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 10px;
+    transition: all 0.2s;
+  }
+  .stakeholder-card:hover { border-color: var(--border-hover); }
+  .stakeholder-card.highlighted {
+    border-color: var(--amber);
+    box-shadow: 0 0 20px var(--amber-soft);
+    animation: fadeGlow 2s ease-out forwards;
+  }
+  @keyframes fadeGlow {
+    0% { border-color: var(--amber); box-shadow: 0 0 20px var(--amber-soft); }
+    100% { border-color: var(--border); box-shadow: none; }
+  }
+  .stakeholder-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .stakeholder-identity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .stakeholder-identity:hover .stakeholder-name {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .stakeholder-name { font-size: 14px; font-weight: 600; transition: color 0.15s; }
+  .stakeholder-title { font-size: 12px; color: var(--text-muted); }
+  .theme-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .theme-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .theme-pill:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .theme-pill .count { font-size: 10px; color: var(--text-muted); font-weight: 400; }
+  .theme-pill .shared { font-size: 10px; color: var(--accent); }
+  .stakeholder-quote {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    line-height: 1.4;
+  }
+
+  /* Intersection Chart */
+  .intersection-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+  }
+  .intersection-item:first-of-type { border-top: none; }
+  .intersection-name { font-size: 13px; font-weight: 500; width: 160px; flex-shrink: 0; }
+  .intersection-bar-container { flex: 1; display: flex; align-items: center; gap: 10px; }
+  .intersection-bar { height: 8px; border-radius: 4px; background: var(--accent); }
+  .intersection-roles { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+  .intersection-breadth {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+    width: 60px;
+    text-align: right;
+  }
+
+  /* Divergence items */
+  .divergence-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+  }
+  .divergence-item:first-of-type { border-top: none; }
+  .divergence-icon { font-size: 14px; margin-top: 1px; }
+  .divergence-content { flex: 1; }
+  .divergence-name { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .divergence-positions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .divergence-position {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 6px 10px;
+    background: var(--surface-2);
+    border-radius: 6px;
+    border-left: 3px solid var(--border);
+  }
+  .divergence-position .who {
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    min-width: 100px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 28px 0; }
+  .hidden { display: none !important; }
+  .mb-2 { margin-bottom: 8px; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+
+  .lens-content { animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <h1>Insights</h1>
+      <span class="badge">25 themes</span>
+      <span class="badge">70 evidence</span>
+    </div>
+    <div class="header-right">
+      <button class="btn">Actions</button>
+      <button class="btn">Settings</button>
+    </div>
+  </div>
+
+  <!-- LENS TOGGLE -->
+  <div class="lens-toggle">
+    <button class="lens-btn active" id="lens-theme" onclick="switchLens('theme')">
+      <span>🏷</span> By Theme
+    </button>
+    <button class="lens-btn" id="lens-stakeholder" onclick="switchLens('stakeholder')">
+      <span>👤</span> By Stakeholder
+    </button>
+  </div>
+
+  <!-- ============ LENS 1: BY THEME ============ -->
+  <div id="theme-lens" class="lens-content">
+
+    <!-- Layer 1: Signal Summary with breadth grid -->
+    <div class="card">
+      <div class="signal-header">
+        <h2>📊 Signal Summary</h2>
+        <span class="badge">12 conversations</span>
+      </div>
+
+      <div class="signal-row">
+        <div class="signal-dot red"></div>
+        <div class="signal-content">
+          <div class="signal-name">Onboarding Confusion</div>
+          <div class="signal-meta">
+            <span>📎 28 evidence · 5 sources</span>
+          </div>
+          <div class="signal-quote">"Users consistently struggle with initial setup flow..."</div>
+        </div>
+        <div class="signal-right">
+          <span class="signal-trend trend-up">↑ Growing</span>
+          <div class="breadth-grid" title="9 of 12 people mentioned this">
+            <div class="breadth-cell filled high"></div>
+            <div class="breadth-cell filled high"></div>
+            <div class="breadth-cell filled high"></div>
+            <div class="breadth-cell filled high"></div>
+            <div class="breadth-cell filled high"></div>
+            <div class="breadth-cell filled high"></div>
+            <div class="breadth-cell filled high"></div>
+            <div class="breadth-cell filled high"></div>
+            <div class="breadth-cell filled high"></div>
+            <div class="breadth-cell"></div>
+            <div class="breadth-cell"></div>
+            <div class="breadth-cell"></div>
+            <span class="breadth-label">9/12</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="signal-row">
+        <div class="signal-dot yellow"></div>
+        <div class="signal-content">
+          <div class="signal-name">Pricing Clarity</div>
+          <div class="signal-meta">
+            <span>📎 18 evidence · 3 sources</span>
+          </div>
+          <div class="signal-quote">"Enterprise prospects find the pricing page confusing..."</div>
+        </div>
+        <div class="signal-right">
+          <span class="signal-trend trend-up">↑ Growing</span>
+          <div class="breadth-grid" title="7 of 12 people mentioned this">
+            <div class="breadth-cell filled med"></div>
+            <div class="breadth-cell filled med"></div>
+            <div class="breadth-cell filled med"></div>
+            <div class="breadth-cell filled med"></div>
+            <div class="breadth-cell filled med"></div>
+            <div class="breadth-cell filled med"></div>
+            <div class="breadth-cell filled med"></div>
+            <div class="breadth-cell"></div>
+            <div class="breadth-cell"></div>
+            <div class="breadth-cell"></div>
+            <div class="breadth-cell"></div>
+            <div class="breadth-cell"></div>
+            <span class="breadth-label">7/12</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="signal-row">
+        <div class="signal-dot green"></div>
+        <div class="signal-content">
+          <div class="signal-name">Slack Integration Requests</div>
+          <div class="signal-meta">
+            <span>📎 14 evidence · 4 sources</span>
+          </div>
+          <div class="signal-quote">"Consistent demand, not accelerating"</div>
+        </div>
+        <div class="signal-right">
+          <span class="signal-trend trend-stable">→ Stable</span>
+          <div class="breadth-grid" title="6 of 12 people mentioned this">
+            <div class="breadth-cell filled low"></div>
+            <div class="breadth-cell filled low"></div>
+            <div class="breadth-cell filled low"></div>
+            <div class="breadth-cell filled low"></div>
+            <div class="breadth-cell filled low"></div>
+            <div class="breadth-cell filled low"></div>
+            <div class="breadth-cell"></div>
+            <div class="breadth-cell"></div>
+            <div class="breadth-cell"></div>
+            <div class="breadth-cell"></div>
+            <div class="breadth-cell"></div>
+            <div class="breadth-cell"></div>
+            <span class="breadth-label">6/12</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Layer 2: Theme Cards -->
+    <div class="flex-between mb-2">
+      <div class="section-label">All Themes</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-sm">Cards</button>
+        <button class="btn btn-sm btn-ghost">Table</button>
+      </div>
+    </div>
+
+    <div class="theme-grid">
+      <div class="theme-card">
+        <div class="theme-card-header">
+          <span class="signal-badge high">● High Signal ↑</span>
+          <div class="theme-breadth-mini" title="9 of 12 people">
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+          </div>
+        </div>
+        <h3>Onboarding Confusion</h3>
+        <div class="theme-stats">
+          <span>👤 9</span>
+          <span>📎 28</span>
+          <span>💬 5 sources</span>
+        </div>
+        <div class="theme-voices">Top voices: <strong>Sarah K.</strong> (CTO), <strong>Mike R.</strong> (Eng Lead)</div>
+        <div class="theme-quote">"Users consistently report confusion during the initial setup flow, especially around workspace configuration..."</div>
+        <div class="theme-actions">
+          <button class="btn btn-sm">View Evidence</button>
+          <button class="btn btn-sm">Create Task</button>
+          <button class="btn btn-sm">Send Survey</button>
+        </div>
+      </div>
+
+      <div class="theme-card">
+        <div class="theme-card-header">
+          <span class="signal-badge med">● Investigate ↑</span>
+          <div class="theme-breadth-mini" title="7 of 12 people">
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+          </div>
+        </div>
+        <h3>Pricing Clarity</h3>
+        <div class="theme-stats">
+          <span>👤 7</span>
+          <span>📎 18</span>
+          <span>💬 3 sources</span>
+        </div>
+        <div class="theme-voices">Top voices: <strong>James M.</strong> (CFO), <strong>Ana P.</strong> (Founder)</div>
+        <div class="theme-quote">"Enterprise prospects find the pricing page confusing, especially around seat-based vs usage-based..."</div>
+        <div class="theme-actions">
+          <button class="btn btn-sm">View Evidence</button>
+          <button class="btn btn-sm">Create Task</button>
+          <button class="btn btn-sm">Send Survey</button>
+        </div>
+      </div>
+
+      <div class="theme-card">
+        <div class="theme-card-header">
+          <span class="signal-badge low">● Monitor →</span>
+          <div class="theme-breadth-mini" title="6 of 12 people">
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+          </div>
+        </div>
+        <h3>Slack Integration</h3>
+        <div class="theme-stats">
+          <span>👤 6</span>
+          <span>📎 14</span>
+          <span>💬 4 sources</span>
+        </div>
+        <div class="theme-voices">Top voices: <strong>Lisa T.</strong> (PM), <strong>David P.</strong> (Eng)</div>
+        <div class="theme-quote">"Would love insights delivered to our Slack channels..."</div>
+        <div class="theme-actions">
+          <button class="btn btn-sm">View Evidence</button>
+          <button class="btn btn-sm">Add to Backlog</button>
+        </div>
+      </div>
+
+      <div class="theme-card">
+        <div class="theme-card-header">
+          <span class="signal-badge low">● Monitor →</span>
+          <div class="theme-breadth-mini" title="5 of 12 people">
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell filled"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+            <div class="breadth-mini-cell"></div>
+          </div>
+        </div>
+        <h3>Evidence View Love</h3>
+        <div class="theme-stats">
+          <span>👤 5</span>
+          <span>📎 12</span>
+          <span>💬 3 sources</span>
+        </div>
+        <div class="theme-voices">Top voices: <strong>Ana P.</strong> (Founder), <strong>Sarah K.</strong> (CTO)</div>
+        <div class="theme-quote">"Being able to click through to the exact moment someone said something is incredible..."</div>
+        <div class="theme-actions">
+          <button class="btn btn-sm">View Evidence</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Layer 3: Gaps -->
+    <div class="gaps-card">
+      <h3>💡 Blind Spots & Weak Signals</h3>
+      <div class="gap-item">
+        <span class="gap-icon">⚠️</span>
+        <div class="gap-content">
+          <div class="gap-name">Security Concerns</div>
+          <div class="gap-reason">Only 3 people mentioned this — but all are C-level executives.</div>
+          <div class="gap-actions">
+            <button class="btn btn-sm">Investigate</button>
+            <button class="btn btn-sm btn-ghost">Dismiss</button>
+          </div>
+        </div>
+      </div>
+      <div class="gap-item">
+        <span class="gap-icon">⚠️</span>
+        <div class="gap-content">
+          <div class="gap-name">Mobile Experience</div>
+          <div class="gap-reason">2 mentions, both in the last week. Emerging signal?</div>
+          <div class="gap-actions">
+            <button class="btn btn-sm">Investigate</button>
+            <button class="btn btn-sm btn-ghost">Dismiss</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Layer 4: Actions -->
+    <div class="section-label">⚡ Suggested Next Steps</div>
+    <div class="action-cards">
+      <div class="action-card">
+        <div class="action-left">
+          <span class="action-emoji">🔴</span>
+          <div>
+            <div class="action-name">Fix onboarding flow</div>
+            <div class="action-desc">9/12 people mentioned it · 3 churned citing this</div>
+          </div>
+        </div>
+        <div class="action-right">
+          <span class="confidence conf-high">High confidence</span>
+          <button class="btn btn-primary btn-sm">Create Task →</button>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-left">
+          <span class="action-emoji">🟡</span>
+          <div>
+            <div class="action-name">Investigate pricing confusion</div>
+            <div class="action-desc">Growing signal · 7 enterprise prospects</div>
+          </div>
+        </div>
+        <div class="action-right">
+          <span class="confidence conf-med">Medium</span>
+          <button class="btn btn-primary btn-sm">Run Survey →</button>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-left">
+          <span class="action-emoji">📋</span>
+          <div>
+            <div class="action-name">Share Discovery Brief</div>
+            <div class="action-desc">Compile themes, evidence, and gaps into a shareable view</div>
+          </div>
+        </div>
+        <div class="action-right">
+          <button class="btn btn-primary btn-sm">Generate Link →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ LENS 2: BY STAKEHOLDER ============ -->
+  <div id="stakeholder-lens" class="lens-content hidden">
+
+    <!-- Layer 1: Stakeholder Landscape (cleaned up) -->
+    <div class="landscape">
+      <div class="landscape-header">
+        <h2>👥 Stakeholder Landscape</h2>
+      </div>
+
+      <div class="role-grid">
+        <div class="role-cluster">
+          <div class="role-label">Engineering</div>
+          <div class="role-dots">
+            <div class="person-dot" onclick="scrollToStakeholder('sarah')">SK<div class="tooltip">Sarah Kim · CTO</div></div>
+            <div class="person-dot" onclick="scrollToStakeholder('david')">DP<div class="tooltip">David Park · Solutions Architect</div></div>
+            <div class="person-dot">AC<div class="tooltip">Alex Chen · Senior Dev</div></div>
+          </div>
+        </div>
+        <div class="role-cluster">
+          <div class="role-label">Finance</div>
+          <div class="role-dots">
+            <div class="person-dot">JM<div class="tooltip">James Morton · CFO</div></div>
+            <div class="person-dot">RW<div class="tooltip">Rachel Wu · Controller</div></div>
+          </div>
+        </div>
+        <div class="role-cluster">
+          <div class="role-label">HR</div>
+          <div class="role-dots">
+            <div class="person-dot">LT<div class="tooltip">Lisa Torres · VP People</div></div>
+            <div class="person-dot">KN<div class="tooltip">Kevin Ng · HR Manager</div></div>
+          </div>
+        </div>
+        <div class="role-cluster">
+          <div class="role-label">Product</div>
+          <div class="role-dots">
+            <div class="person-dot">MR<div class="tooltip">Mike Rivera · VP Product</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="shared-concern">
+        <span class="link-icon">🔗</span>
+        <span>Shared concern: <strong>"Timeline pressure"</strong></span>
+        <span class="breadth">— raised by 3 of 4 functions</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Layer 2: Stakeholder Perspectives (cleaned up) -->
+    <div class="section-label">Stakeholder Perspectives</div>
+
+    <div class="stakeholder-group-label">ENGINEERING</div>
+
+    <div class="stakeholder-card" id="stakeholder-sarah">
+      <div class="stakeholder-header">
+        <div class="stakeholder-identity">
+          <div class="avatar">SK</div>
+          <div>
+            <div class="stakeholder-name">Sarah Kim</div>
+            <div class="stakeholder-title">CTO</div>
+          </div>
+        </div>
+        <button class="btn btn-sm">Follow Up</button>
+      </div>
+      <div class="theme-pills">
+        <span class="theme-pill">Legacy migration <span class="count">📎 8</span></span>
+        <span class="theme-pill">API stability <span class="count">📎 5</span> <span class="shared">🔗</span></span>
+        <span class="theme-pill">Team capacity <span class="count">📎 3</span> <span class="shared">🔗</span></span>
+      </div>
+      <div class="stakeholder-quote">"The migration risk is the single biggest threat to our timeline. We need a phased approach."</div>
+    </div>
+
+    <div class="stakeholder-card" id="stakeholder-david">
+      <div class="stakeholder-header">
+        <div class="stakeholder-identity">
+          <div class="avatar">DP</div>
+          <div>
+            <div class="stakeholder-name">David Park</div>
+            <div class="stakeholder-title">Solutions Architect</div>
+          </div>
+        </div>
+        <button class="btn btn-sm">Follow Up</button>
+      </div>
+      <div class="theme-pills">
+        <span class="theme-pill">API contracts <span class="count">📎 4</span> <span class="shared">🔗</span></span>
+        <span class="theme-pill">Integration testing <span class="count">📎 3</span></span>
+      </div>
+      <div class="stakeholder-quote">"We need contract guarantees before any integration work begins. The current APIs are undocumented."</div>
+    </div>
+
+    <div class="stakeholder-card">
+      <div class="stakeholder-header">
+        <div class="stakeholder-identity">
+          <div class="avatar">AC</div>
+          <div>
+            <div class="stakeholder-name">Alex Chen</div>
+            <div class="stakeholder-title">Senior Developer</div>
+          </div>
+        </div>
+        <button class="btn btn-sm">Follow Up</button>
+      </div>
+      <div class="theme-pills">
+        <span class="theme-pill">Testing burden <span class="count">📎 5</span></span>
+        <span class="theme-pill">Team capacity <span class="count">📎 2</span> <span class="shared">🔗</span></span>
+      </div>
+      <div class="stakeholder-quote">"We're already behind on test coverage. Adding migration work means something else slips."</div>
+    </div>
+
+    <div class="stakeholder-group-label">FINANCE</div>
+
+    <div class="stakeholder-card">
+      <div class="stakeholder-header">
+        <div class="stakeholder-identity">
+          <div class="avatar">JM</div>
+          <div>
+            <div class="stakeholder-name">James Morton</div>
+            <div class="stakeholder-title">CFO</div>
+          </div>
+        </div>
+        <button class="btn btn-sm">Follow Up</button>
+      </div>
+      <div class="theme-pills">
+        <span class="theme-pill">Budget phasing <span class="count">📎 6</span></span>
+        <span class="theme-pill">ROI timeline <span class="count">📎 4</span> <span class="shared">🔗</span></span>
+        <span class="theme-pill">Vendor risk <span class="count">📎 2</span></span>
+      </div>
+      <div class="stakeholder-quote">"We can't commit the full budget in Q1. We need milestones tied to spend."</div>
+    </div>
+
+    <div class="stakeholder-card">
+      <div class="stakeholder-header">
+        <div class="stakeholder-identity">
+          <div class="avatar">RW</div>
+          <div>
+            <div class="stakeholder-name">Rachel Wu</div>
+            <div class="stakeholder-title">Controller</div>
+          </div>
+        </div>
+        <button class="btn btn-sm">Follow Up</button>
+      </div>
+      <div class="theme-pills">
+        <span class="theme-pill">Budget phasing <span class="count">📎 3</span> <span class="shared">🔗</span></span>
+        <span class="theme-pill">Compliance <span class="count">📎 2</span></span>
+      </div>
+      <div class="stakeholder-quote">"Audit trail is critical. Every spend decision needs documentation."</div>
+    </div>
+
+    <div class="stakeholder-group-label">HR</div>
+
+    <div class="stakeholder-card">
+      <div class="stakeholder-header">
+        <div class="stakeholder-identity">
+          <div class="avatar">LT</div>
+          <div>
+            <div class="stakeholder-name">Lisa Torres</div>
+            <div class="stakeholder-title">VP People</div>
+          </div>
+        </div>
+        <button class="btn btn-sm">Follow Up</button>
+      </div>
+      <div class="theme-pills">
+        <span class="theme-pill">Change management <span class="count">📎 5</span></span>
+        <span class="theme-pill">Training needs <span class="count">📎 4</span></span>
+        <span class="theme-pill">Retention risk <span class="count">📎 3</span> <span class="shared">🔗</span></span>
+      </div>
+      <div class="stakeholder-quote">"If we don't plan the change management properly, we'll lose key people during transition."</div>
+    </div>
+
+    <div class="stakeholder-card">
+      <div class="stakeholder-header">
+        <div class="stakeholder-identity">
+          <div class="avatar">KN</div>
+          <div>
+            <div class="stakeholder-name">Kevin Ng</div>
+            <div class="stakeholder-title">HR Manager</div>
+          </div>
+        </div>
+        <button class="btn btn-sm">Follow Up</button>
+      </div>
+      <div class="theme-pills">
+        <span class="theme-pill">Role evolution <span class="count">📎 3</span></span>
+        <span class="theme-pill">Training needs <span class="count">📎 2</span> <span class="shared">🔗</span></span>
+      </div>
+      <div class="stakeholder-quote">"Several roles will change significantly. People need clarity on what their job becomes."</div>
+    </div>
+
+    <div class="stakeholder-group-label">PRODUCT</div>
+
+    <div class="stakeholder-card">
+      <div class="stakeholder-header">
+        <div class="stakeholder-identity">
+          <div class="avatar">MR</div>
+          <div>
+            <div class="stakeholder-name">Mike Rivera</div>
+            <div class="stakeholder-title">VP Product</div>
+          </div>
+        </div>
+        <button class="btn btn-sm">Follow Up</button>
+      </div>
+      <div class="theme-pills">
+        <span class="theme-pill">Customer impact <span class="count">📎 6</span></span>
+        <span class="theme-pill">Feature parity <span class="count">📎 4</span></span>
+        <span class="theme-pill">Timeline pressure <span class="count">📎 3</span> <span class="shared">🔗</span></span>
+      </div>
+      <div class="stakeholder-quote">"We cannot ship a migration that reduces functionality. Feature parity is non-negotiable."</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Layer 3: Intersections, Divergences & Blind Spots -->
+    <div class="gaps-card">
+      <h3>🔗 Intersections, Divergences & Blind Spots</h3>
+
+      <div class="section-label" style="margin-top:4px;">COMMON GROUND — themes shared across functions</div>
+
+      <div class="intersection-item">
+        <div class="intersection-name">Timeline pressure</div>
+        <div class="intersection-bar-container">
+          <div class="intersection-bar" style="width:75%;"></div>
+          <span class="intersection-roles">Eng · Finance · Product</span>
+        </div>
+        <span class="intersection-breadth">3/4</span>
+      </div>
+      <div class="intersection-item">
+        <div class="intersection-name">Team capacity</div>
+        <div class="intersection-bar-container">
+          <div class="intersection-bar" style="width:50%; opacity:0.8;"></div>
+          <span class="intersection-roles">Eng · HR</span>
+        </div>
+        <span class="intersection-breadth">2/4</span>
+      </div>
+      <div class="intersection-item">
+        <div class="intersection-name">Budget constraints</div>
+        <div class="intersection-bar-container">
+          <div class="intersection-bar" style="width:50%; opacity:0.8;"></div>
+          <span class="intersection-roles">Finance · Product</span>
+        </div>
+        <span class="intersection-breadth">2/4</span>
+      </div>
+
+      <div style="margin-top:24px;"></div>
+      <div class="section-label">⚡ DIVERGENCES — conflicting positions on the same topic</div>
+
+      <div class="divergence-item">
+        <span class="divergence-icon">↔️</span>
+        <div class="divergence-content">
+          <div class="divergence-name">Migration approach: phased vs. big-bang</div>
+          <div class="divergence-positions">
+            <div class="divergence-position">
+              <span class="who">Sarah (CTO)</span>
+              <span>"Phased migration is the only safe path. We can't risk a full cutover."</span>
+            </div>
+            <div class="divergence-position">
+              <span class="who">Mike (Product)</span>
+              <span>"A phased approach means 6 months of maintaining two systems. Big-bang is faster."</span>
+            </div>
+          </div>
+          <div class="gap-actions">
+            <button class="btn btn-sm">Flag for Discussion</button>
+            <button class="btn btn-sm btn-ghost">Dismiss</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="divergence-item">
+        <span class="divergence-icon">↔️</span>
+        <div class="divergence-content">
+          <div class="divergence-name">Timeline: Q2 vs. Q3 completion</div>
+          <div class="divergence-positions">
+            <div class="divergence-position">
+              <span class="who">James (CFO)</span>
+              <span>"Budget is structured for Q2 delivery. Q3 means re-approval."</span>
+            </div>
+            <div class="divergence-position">
+              <span class="who">Alex (Dev)</span>
+              <span>"Q2 is unrealistic given current test coverage gaps."</span>
+            </div>
+          </div>
+          <div class="gap-actions">
+            <button class="btn btn-sm">Flag for Discussion</button>
+            <button class="btn btn-sm btn-ghost">Dismiss</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;"></div>
+      <div class="section-label">⚠️ BLIND SPOTS — expected concerns with no signal</div>
+
+      <div class="gap-item">
+        <span class="gap-icon">⚠️</span>
+        <div class="gap-content">
+          <div class="gap-name">End-user adoption readiness</div>
+          <div class="gap-reason">No stakeholder mentioned this. Common concern in digital transformation projects.</div>
+          <div class="gap-actions">
+            <button class="btn btn-sm">Add to Survey</button>
+            <button class="btn btn-sm btn-ghost">Not Relevant</button>
+          </div>
+        </div>
+      </div>
+      <div class="gap-item">
+        <span class="gap-icon">⚠️</span>
+        <div class="gap-content">
+          <div class="gap-name">Change management ownership</div>
+          <div class="gap-reason">HR discussed training needs but not who owns the change process end-to-end.</div>
+          <div class="gap-actions">
+            <button class="btn btn-sm">Add to Survey</button>
+            <button class="btn btn-sm btn-ghost">Not Relevant</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Layer 4: Actions (cleaned up) -->
+    <div class="section-label">⚡ Next Steps</div>
+    <div class="action-cards">
+      <div class="action-card">
+        <div class="action-left">
+          <span class="action-emoji">📩</span>
+          <div>
+            <div class="action-name">Follow Up: End-user adoption</div>
+            <div class="action-desc">Blind spot — needs validation from stakeholders</div>
+          </div>
+        </div>
+        <div class="action-right">
+          <button class="btn btn-primary btn-sm">Send Survey →</button>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-left">
+          <span class="action-emoji">⚡</span>
+          <div>
+            <div class="action-name">Resolve: Migration approach</div>
+            <div class="action-desc">CTO and VP Product have conflicting positions</div>
+          </div>
+        </div>
+        <div class="action-right">
+          <button class="btn btn-primary btn-sm">Schedule Discussion →</button>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-left">
+          <span class="action-emoji">🔗</span>
+          <div>
+            <div class="action-name">Share Stakeholder Map</div>
+            <div class="action-desc">Send landscape view to client or team</div>
+          </div>
+        </div>
+        <div class="action-right">
+          <button class="btn btn-primary btn-sm">Copy Link →</button>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-left">
+          <span class="action-emoji">📋</span>
+          <div>
+            <div class="action-name">Share Discovery Summary</div>
+            <div class="action-desc">All perspectives, intersections, divergences, and blind spots</div>
+          </div>
+        </div>
+        <div class="action-right">
+          <button class="btn btn-primary btn-sm">Generate Link →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function switchLens(lens) {
+  document.getElementById('lens-theme').classList.toggle('active', lens === 'theme');
+  document.getElementById('lens-stakeholder').classList.toggle('active', lens === 'stakeholder');
+  document.getElementById('theme-lens').classList.toggle('hidden', lens !== 'theme');
+  document.getElementById('stakeholder-lens').classList.toggle('hidden', lens !== 'stakeholder');
+  const active = document.getElementById(lens === 'theme' ? 'theme-lens' : 'stakeholder-lens');
+  active.style.animation = 'none';
+  active.offsetHeight;
+  active.style.animation = '';
+}
+function scrollToStakeholder(id) {
+  const el = document.getElementById('stakeholder-' + id);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('highlighted');
+    setTimeout(() => el.classList.remove('highlighted'), 2000);
+  }
+}
+</script>
+
+</body>
+</html>
