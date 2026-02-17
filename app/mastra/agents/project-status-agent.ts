@@ -13,6 +13,9 @@ import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache";
 import { fetchProjectGoalsTool } from "../tools/fetch-project-goals";
 import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context";
 import { fetchSegmentsTool } from "../tools/fetch-segments";
+import { fetchSegmentThemesTool } from "../tools/fetch-segment-themes";
+import { fetchStakeholderDemographicsTool } from "../tools/fetch-stakeholder-demographics";
+import { fetchThemeStakeholdersTool } from "../tools/fetch-theme-stakeholders";
 import { fetchThemesTool } from "../tools/fetch-themes";
 import { fetchTopThemesWithPeopleTool } from "../tools/fetch-top-themes-with-people";
 import { generateDocumentLinkTool } from "../tools/generate-document-link";
@@ -33,97 +36,105 @@ import { researchAgent } from "./research-agent";
 import { taskAgent } from "./task-agent";
 
 function auditToolSchemas(agent_name: string, tools: Record<string, unknown>) {
-	try {
-		const tool_entries = Object.entries(tools);
-		const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> = [];
+  try {
+    const tool_entries = Object.entries(tools);
+    const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> =
+      [];
 
-		for (const [tool_name, tool] of tool_entries) {
-			if (!tool || typeof tool !== "object") {
-				issues.push({
-					tool: tool_name,
-					issue: `tool is not an object (${typeof tool})`,
-				});
-				continue;
-			}
+    for (const [tool_name, tool] of tool_entries) {
+      if (!tool || typeof tool !== "object") {
+        issues.push({
+          tool: tool_name,
+          issue: `tool is not an object (${typeof tool})`,
+        });
+        continue;
+      }
 
-			const own_props = Object.getOwnPropertyNames(tool);
-			const has_input_schema = own_props.includes("inputSchema");
-			const has_output_schema = own_props.includes("outputSchema");
+      const own_props = Object.getOwnPropertyNames(tool);
+      const has_input_schema = own_props.includes("inputSchema");
+      const has_output_schema = own_props.includes("outputSchema");
 
-			const input_schema = (tool as any).inputSchema;
-			const output_schema = (tool as any).outputSchema;
-			const input_is_zod =
-				!!input_schema && typeof input_schema === "object" && typeof input_schema.safeParse === "function";
-			const output_is_zod =
-				!!output_schema && typeof output_schema === "object" && typeof output_schema.safeParse === "function";
+      const input_schema = (tool as any).inputSchema;
+      const output_schema = (tool as any).outputSchema;
+      const input_is_zod =
+        !!input_schema &&
+        typeof input_schema === "object" &&
+        typeof input_schema.safeParse === "function";
+      const output_is_zod =
+        !!output_schema &&
+        typeof output_schema === "object" &&
+        typeof output_schema.safeParse === "function";
 
-			if (!has_input_schema || !input_is_zod) {
-				issues.push({
-					tool: tool_name,
-					issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
-					ownProps: own_props,
-				});
-			}
-			if (!has_output_schema || !output_is_zod) {
-				issues.push({
-					tool: tool_name,
-					issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
-					ownProps: own_props,
-				});
-			}
-		}
+      if (!has_input_schema || !input_is_zod) {
+        issues.push({
+          tool: tool_name,
+          issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
+          ownProps: own_props,
+        });
+      }
+      if (!has_output_schema || !output_is_zod) {
+        issues.push({
+          tool: tool_name,
+          issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
+          ownProps: own_props,
+        });
+      }
+    }
 
-		if (issues.length > 0) {
-			consola.warn("[mastra-schema-audit] tool schema issues", {
-				agent: agent_name,
-				issueCount: issues.length,
-				issues,
-			});
-		} else {
-			consola.info("[mastra-schema-audit] all tool schemas look valid", {
-				agent: agent_name,
-				toolCount: tool_entries.length,
-			});
-		}
-	} catch (error) {
-		consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
-	}
+    if (issues.length > 0) {
+      consola.warn("[mastra-schema-audit] tool schema issues", {
+        agent: agent_name,
+        issueCount: issues.length,
+        issues,
+      });
+    } else {
+      consola.info("[mastra-schema-audit] all tool schemas look valid", {
+        agent: agent_name,
+        toolCount: tool_entries.length,
+      });
+    }
+  } catch (error) {
+    consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
+  }
 }
 
 const project_status_agent_tools = {
-	getCurrentDate: getCurrentDateTool,
-	fetchProjectStatusContext: fetchProjectStatusContextTool,
-	fetchEvidence: fetchEvidenceTool,
-	semanticSearchEvidence: semanticSearchEvidenceTool,
-	semanticSearchAssets: semanticSearchAssetsTool,
-	fetchProjectGoals: fetchProjectGoalsTool,
-	fetchThemes: fetchThemesTool,
-	fetchTopThemesWithPeople: fetchTopThemesWithPeopleTool,
-	fetchPainMatrixCache: fetchPainMatrixCacheTool,
-	fetchSegments: fetchSegmentsTool,
-	fetchConversationLenses: fetchConversationLensesTool,
-	generateProjectRoutes: generateProjectRoutesTool,
-	generateDocumentLink: generateDocumentLinkTool,
-	capabilityLookup: capabilityLookupTool,
-	suggestNextSteps: suggestionTool,
-	recommendNextActions: recommendNextActionsTool,
-	// Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
-	"recommend-next-actions": recommendNextActionsTool,
-	generateResearchRecommendations: generateResearchRecommendationsTool,
-	"generate-research-recommendations": generateResearchRecommendationsTool,
+  getCurrentDate: getCurrentDateTool,
+  fetchProjectStatusContext: fetchProjectStatusContextTool,
+  fetchEvidence: fetchEvidenceTool,
+  semanticSearchEvidence: semanticSearchEvidenceTool,
+  semanticSearchAssets: semanticSearchAssetsTool,
+  fetchProjectGoals: fetchProjectGoalsTool,
+  fetchThemes: fetchThemesTool,
+  fetchTopThemesWithPeople: fetchTopThemesWithPeopleTool,
+  fetchPainMatrixCache: fetchPainMatrixCacheTool,
+  fetchSegments: fetchSegmentsTool,
+  fetchSegmentThemes: fetchSegmentThemesTool,
+  fetchThemeStakeholders: fetchThemeStakeholdersTool,
+  fetchStakeholderDemographics: fetchStakeholderDemographicsTool,
+  fetchConversationLenses: fetchConversationLensesTool,
+  generateProjectRoutes: generateProjectRoutesTool,
+  generateDocumentLink: generateDocumentLinkTool,
+  capabilityLookup: capabilityLookupTool,
+  suggestNextSteps: suggestionTool,
+  recommendNextActions: recommendNextActionsTool,
+  // Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
+  "recommend-next-actions": recommendNextActionsTool,
+  generateResearchRecommendations: generateResearchRecommendationsTool,
+  "generate-research-recommendations": generateResearchRecommendationsTool,
 };
 
 auditToolSchemas("projectStatusAgent", project_status_agent_tools);
 
 export const projectStatusAgent = new Agent({
-	id: "project-status-agent",
-	name: "projectStatusAgent",
-	instructions: async ({ requestContext }) => {
-		try {
-			const projectId = requestContext.get("project_id");
-			const accountId = requestContext.get("account_id");
-			const userId = requestContext.get("user_id");
-			return `
+  id: "project-status-agent",
+  name: "projectStatusAgent",
+  instructions: async ({ requestContext }) => {
+    try {
+      const projectId = requestContext.get("project_id");
+      const accountId = requestContext.get("account_id");
+      const userId = requestContext.get("user_id");
+      return `
 You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
 
 project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}, user_id=${userId || "<unknown>"}
@@ -187,6 +198,9 @@ Call "getCurrentDate" first for any date/time questions.
 - People requests are handled by the PeopleAgent sub-agent (search, updates, org links, deletes)
 - For comparison questions about specific people (e.g., "what do X and Y have in common?", "how are these contacts different?"), delegate to PeopleAgent first, then synthesize concise findings.
 - "fetchSegments" for bullseye scores showing which segments are most likely to buy
+- **Segment × Theme Analysis**: "fetchSegmentThemes" to find what a specific segment cares about most (e.g., "What do Product Managers care about?" or "What are the top concerns for VP-level stakeholders?"). Specify segmentKind (job_function, seniority_level, industry, etc.) and optional segmentLabel.
+- **Theme → Stakeholder Drill-Down**: "fetchThemeStakeholders" to see WHO is behind a theme with their demographic profiles. Use when asked "Who mentioned this pain?" or "What do people who care about X have in common?"
+- **Demographic Distributions**: "fetchStakeholderDemographics" to get breakdowns of job functions, seniority, industries, etc. across all participants or a filtered subset. Supports filtering by themeId or personIds. Use for questions like "What's the seniority breakdown?" or "What industries are represented among people who mentioned Theme X?"
 
 **ICP Match Data**:
 - People data from "fetchProjectStatusContext" includes icpMatch (band, score, confidence) per person
@@ -271,32 +285,32 @@ For strategic planning, task prioritization, or "what should I do next?", delega
 ## How-To Guidance
 For "how do I", "where do I", "best way to", and "teach me" guidance requests, delegate to the howtoAgent sub-agent.
 `;
-		} catch (error) {
-			consola.error("Error in project status agent instructions:", error);
-			return `
+    } catch (error) {
+      consola.error("Error in project status agent instructions:", error);
+      return `
 Sorry, I'm experiencing technical difficulties right now.
 
 Please try:
 
 1. Refreshing the page and trying again
 2. Contacting support if the issue persists`;
-		}
-	},
-	model: openai("gpt-4.1"),
-	tools: wrapToolsWithStatusEvents(project_status_agent_tools),
-	agents: {
-		taskAgent,
-		peopleAgent,
-		researchAgent,
-		opsAgent,
-		feedbackAgent,
-		chiefOfStaffAgent,
-		howtoAgent,
-	},
-	memory: new Memory({
-		storage: getSharedPostgresStore(),
-	}),
-	// TokenLimiterProcessor prevents context window overflow
-	// Note: Using number format for Zod v4 compatibility
-	outputProcessors: [new TokenLimiterProcessor(45_000)],
+    }
+  },
+  model: openai("gpt-4.1"),
+  tools: wrapToolsWithStatusEvents(project_status_agent_tools),
+  agents: {
+    taskAgent,
+    peopleAgent,
+    researchAgent,
+    opsAgent,
+    feedbackAgent,
+    chiefOfStaffAgent,
+    howtoAgent,
+  },
+  memory: new Memory({
+    storage: getSharedPostgresStore(),
+  }),
+  // TokenLimiterProcessor prevents context window overflow
+  // Note: Using number format for Zod v4 compatibility
+  outputProcessors: [new TokenLimiterProcessor(45_000)],
 });
