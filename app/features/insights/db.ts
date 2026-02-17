@@ -876,16 +876,30 @@ export const getStakeholderSummaries = async ({
   }
 
   // 3. Get theme_evidence links for all evidence IDs → theme mapping
-  const { data: themeEvidenceLinks } = await supabase
-    .from("theme_evidence")
-    .select("theme_id, evidence_id")
-    .eq("project_id", projectId)
-    .in("evidence_id", Array.from(allEvidenceIds));
+  // Note: Don't filter by project_id here — some rows have NULL project_id
+  // (e.g. survey extraction path). The evidence IDs are already project-scoped.
+  const evidenceIdArray = Array.from(allEvidenceIds);
+  const themeEvidenceLinks: Array<{
+    theme_id: string;
+    evidence_id: string;
+  }>[] = [];
+
+  // Batch .in() calls to avoid PostgREST URL length limits (max ~300 UUIDs per batch)
+  const BATCH_SIZE = 300;
+  for (let i = 0; i < evidenceIdArray.length; i += BATCH_SIZE) {
+    const batch = evidenceIdArray.slice(i, i + BATCH_SIZE);
+    const { data } = await supabase
+      .from("theme_evidence")
+      .select("theme_id, evidence_id")
+      .in("evidence_id", batch);
+    if (data) themeEvidenceLinks.push(data);
+  }
+  const allThemeEvidenceLinks = themeEvidenceLinks.flat();
 
   // Build evidence → theme IDs map
   const evidenceThemeMap = new Map<string, Set<string>>();
   const allThemeIds = new Set<string>();
-  for (const link of themeEvidenceLinks ?? []) {
+  for (const link of allThemeEvidenceLinks) {
     if (!evidenceThemeMap.has(link.evidence_id)) {
       evidenceThemeMap.set(link.evidence_id, new Set());
     }

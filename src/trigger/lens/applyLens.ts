@@ -133,6 +133,105 @@ function buildInterviewContext(interview: {
   return parts.join("\n") || "No context available";
 }
 
+function normalizeKey(value: string | null | undefined): string {
+  if (!value) return "";
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function normalizeExtractionSections(
+  templateDefinition: any,
+  extraction: any,
+): any {
+  const templateSections = Array.isArray(templateDefinition?.sections)
+    ? templateDefinition.sections
+    : [];
+  if (templateSections.length === 0 || !extraction || typeof extraction !== "object") {
+    return extraction;
+  }
+
+  const sourceSections = Array.isArray(extraction.sections) ? extraction.sections : [];
+  const templateSectionByNormalized = new Map<string, any>();
+  const templateSectionByField = new Map<string, string>();
+  const mergedSections = new Map<string, { section_key: string; summary?: string; fields: any[] }>();
+  const unmatchedSections: any[] = [];
+
+  for (const sectionDef of templateSections) {
+    if (!sectionDef?.section_key) continue;
+    templateSectionByNormalized.set(normalizeKey(sectionDef.section_key), sectionDef);
+    for (const fieldDef of sectionDef.fields || []) {
+      if (fieldDef?.field_key) {
+        templateSectionByField.set(fieldDef.field_key, sectionDef.section_key);
+      }
+    }
+    mergedSections.set(sectionDef.section_key, {
+      section_key: sectionDef.section_key,
+      fields: (sectionDef.fields || []).map((fieldDef: any) => ({
+        field_key: fieldDef.field_key,
+        value: null,
+        confidence: null,
+        evidence_ids: [],
+      })),
+    });
+  }
+
+  for (const section of sourceSections) {
+    const target =
+      templateSectionByNormalized.get(normalizeKey(section?.section_key)) || null;
+    if (!target) {
+      unmatchedSections.push(section);
+      continue;
+    }
+    const existing = mergedSections.get(target.section_key) || {
+      section_key: target.section_key,
+      fields: [],
+    };
+    const fieldMap = new Map((existing.fields || []).map((field: any) => [field.field_key, field]));
+    for (const field of section?.fields || []) {
+      if (!field?.field_key) continue;
+      fieldMap.set(field.field_key, field);
+    }
+    mergedSections.set(target.section_key, {
+      section_key: target.section_key,
+      summary:
+        typeof section?.summary === "string" && section.summary.trim()
+          ? section.summary
+          : existing.summary,
+      fields: Array.from(fieldMap.values()),
+    });
+  }
+
+  for (const section of unmatchedSections) {
+    for (const field of section?.fields || []) {
+      const ownerKey = templateSectionByField.get(field?.field_key);
+      if (!ownerKey) continue;
+      const existing = mergedSections.get(ownerKey);
+      if (!existing) continue;
+      const fieldMap = new Map((existing.fields || []).map((f: any) => [f.field_key, f]));
+      fieldMap.set(field.field_key, field);
+      mergedSections.set(ownerKey, {
+        ...existing,
+        fields: Array.from(fieldMap.values()),
+      });
+    }
+  }
+
+  return {
+    ...extraction,
+    sections: templateSections.map((sectionDef: any) => {
+      const merged = mergedSections.get(sectionDef.section_key);
+      return (
+        merged || {
+          section_key: sectionDef.section_key,
+          fields: [],
+        }
+      );
+    }),
+  };
+}
+
 /**
  * Find the best matching task using keyword similarity
  * Returns the task if a good match is found (>= 2 key words match)
@@ -652,7 +751,14 @@ export const applyLensTask = task({
 
     // 6. Enrich entities with person matching
     setLensProgress("enriching", template.template_name);
-    const enrichedResult = enrichEntitiesWithPeople(extraction, participants);
+    const normalizedExtraction = normalizeExtractionSections(
+      template.template_definition,
+      extraction,
+    );
+    const enrichedResult = enrichEntitiesWithPeople(
+      normalizedExtraction,
+      participants,
+    );
 
     // 6.5 Resolve stakeholders to People records (CRM-style)
     const effectiveProjectId = projectId || interview.project_id;

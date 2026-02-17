@@ -83,6 +83,7 @@ export interface RouteDefinitions {
     salesBant: () => string;
     customerDiscovery: () => string;
     consultingProject: () => string;
+    jtbdConversationPipeline: () => string;
     /** Generic lens view for any template_key (including custom lenses) */
     byTemplateKey: (templateKey: string) => string;
   };
@@ -304,6 +305,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
       salesBant: () => `${base}/lenses/sales-bant`,
       customerDiscovery: () => `${base}/lenses/customer-discovery`,
       consultingProject: () => `${base}/lenses/consulting-project`,
+      jtbdConversationPipeline: () => `${base}/lenses/jtbd-conversation-pipeline`,
       byTemplateKey: (templateKey: string) => `${base}/lenses/${templateKey}`,
     },
     // @deprecated - use lenses.library() instead

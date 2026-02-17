@@ -97,23 +97,35 @@ export default function JourneyMapPage() {
 	const { counts, loading: countsLoading } = useSidebarCounts(accountId, projectId);
 	const { progress } = useJourneyProgress(projectId);
 	const { wowSettings } = useLoaderData<typeof loader>();
-	const skipFetcher = useFetcher();
+	const settingsFetcher = useFetcher();
 
 	// Local override for instant response when user clicks "Full Setup" or "Skip"
 	const [forceJourneyMap, setForceJourneyMap] = useState(false);
+	const [optimisticWowPath, setOptimisticWowPath] = useState<WowPath | null>(null);
+
+	const effectiveWowPath = optimisticWowPath ?? wowSettings.wow_path;
+	const effectiveWowSettings: WowSettings = {
+		...wowSettings,
+		wow_path: effectiveWowPath,
+	};
 
 	// Show journey map if: user chose "full_setup", or completed all 3 wow steps
 	const wowComplete =
-		wowSettings.wow_path === "full_setup" ||
-		(wowSettings.wow_path && wowSettings.wow_steps_completed && wowSettings.wow_steps_completed.length >= 3);
+		effectiveWowPath === "full_setup" ||
+		(effectiveWowPath && wowSettings.wow_steps_completed && wowSettings.wow_steps_completed.length >= 3);
 
 	const showWow = !forceJourneyMap && !wowComplete;
+
+	const handleSelectWowPath = (path: WowPath) => {
+		setOptimisticWowPath(path);
+		settingsFetcher.submit({ _action: "set_wow_path", wow_path: path }, { method: "POST" });
+	};
 
 	const handleShowJourneyMap = () => {
 		setForceJourneyMap(true);
 		// Persist the decision so it survives page refresh
 		if (!wowComplete) {
-			skipFetcher.submit({ _action: "set_wow_path", wow_path: "full_setup" }, { method: "POST" });
+			settingsFetcher.submit({ _action: "set_wow_path", wow_path: "full_setup" }, { method: "POST" });
 		}
 	};
 
@@ -123,8 +135,10 @@ export default function JourneyMapPage() {
 				routes={routes}
 				counts={counts}
 				countsLoading={countsLoading}
-				wowSettings={wowSettings}
+				wowSettings={effectiveWowSettings}
 				onShowJourneyMap={handleShowJourneyMap}
+				onSelectPath={handleSelectWowPath}
+				isSubmittingPath={settingsFetcher.state !== "idle"}
 			/>
 		);
 	}

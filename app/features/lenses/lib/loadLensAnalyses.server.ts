@@ -16,12 +16,23 @@ export type LensTemplate = {
 			section_key: string;
 			section_name: string;
 			description?: string;
+			explainer?: string;
 			fields: Array<{
 				field_key: string;
 				field_name: string;
 				field_type: "text" | "text_array" | "numeric" | "date" | "boolean";
 				description?: string;
+				explainer?: string;
 			}>;
+		}>;
+		visualizations?: Array<{
+			viz_key: string;
+			type: "forces_quadrant" | "job_map_timeline";
+			title?: string;
+			description?: string;
+			section_key: string;
+			mapping: Record<string, string>;
+			explainers?: Record<string, string>;
 		}>;
 		entities?: string[];
 		recommendations_enabled?: boolean;

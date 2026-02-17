@@ -27,6 +27,7 @@ import { Link, useFetcher } from "react-router";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import InlineEdit from "~/components/ui/inline-edit";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 import { useCurrentProject } from "~/contexts/current-project-context";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
@@ -50,6 +51,66 @@ type Props = {
 	/** Map of evidence ID to evidence record for hydrating timestamps */
 	evidenceMap?: Map<string, EvidenceRecord>;
 };
+
+type SectionData = { fields: any[]; summary?: string };
+type SectionDataMap = Record<string, SectionData>;
+type LensVisualizationDef = NonNullable<LensTemplate["template_definition"]["visualizations"]>[number];
+
+const DEFAULT_JTBD_VISUALIZATIONS: LensVisualizationDef[] = [
+	{
+		viz_key: "four_forces_graphic",
+		type: "forces_quadrant",
+		title: "Forces of Progress Graphic",
+		description: "Visualizes push, pull, anxieties, and habits from extracted evidence.",
+		section_key: "forces_of_progress",
+		mapping: {
+			push: "push_forces",
+			pull: "pull_forces",
+			anxiety: "anxieties",
+			habit: "habits_inertia",
+		},
+		explainers: {
+			push: "Pain and frustration pushing the customer away from the current state.",
+			pull: "Attraction to a new solution and expected gains.",
+			anxiety: "Uncertainty and risk that make switching feel unsafe.",
+			habit: "Existing routines and sunk costs that keep the status quo.",
+		},
+	},
+	{
+		viz_key: "job_map_graphic",
+		type: "job_map_timeline",
+		title: "Job Map Timeline",
+		description: "Shows workflow steps and bottleneck signals in sequence.",
+		section_key: "job_map",
+		mapping: {
+			steps: "job_steps_summary",
+			bottleneck_step: "bottleneck_step",
+		},
+		explainers: {
+			steps: "Each step represents a stable part of the customer's process.",
+			bottleneck_step: "The highest-friction step with the biggest improvement opportunity.",
+		},
+	},
+];
+
+function SchemaExplainerPopover({ text }: { text: string }) {
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
+					aria-label="Show term explainer"
+				>
+					<Info className="h-3.5 w-3.5" />
+				</button>
+			</PopoverTrigger>
+			<PopoverContent className="w-80 p-3 text-xs leading-relaxed" align="start" sideOffset={8}>
+				{text}
+			</PopoverContent>
+		</Popover>
+	);
+}
 
 /**
  * Parse a text_array value that might be stored as a string
@@ -94,6 +155,28 @@ function parseTextArrayValue(value: any): string[] | null {
 	}
 
 	return null;
+}
+
+function parseJSONValue<T>(value: unknown): T | null {
+	if (typeof value !== "string") return null;
+	try {
+		return JSON.parse(value) as T;
+	} catch {
+		return null;
+	}
+}
+
+function normalizeStringArray(value: unknown): string[] {
+	const parsed = parseTextArrayValue(value);
+	if (!parsed) return [];
+	return parsed
+		.map((item) => `${item}`)
+		.map((item) => item.trim())
+		.filter(Boolean);
+}
+
+function getSectionField(sectionDataMap: SectionDataMap, sectionKey: string, fieldKey: string): any | undefined {
+	return sectionDataMap[sectionKey]?.fields?.find((field) => field?.field_key === fieldKey);
 }
 
 type EvidenceRefForField = {
@@ -181,7 +264,6 @@ function QALensView({
 		: [];
 	const keyTakeaways = Array.isArray(analysisData?.key_takeaways) ? analysisData.key_takeaways.filter(Boolean) : [];
 	const topics = Array.isArray(analysisData?.topics_covered) ? analysisData.topics_covered.filter(Boolean) : [];
-	const confidence = analysis?.confidence_score ?? analysisData?.overall_confidence ?? null;
 
 	// Collect follow-ups: combine unanswered items + flagged pairs
 	const followUps: Array<{ question: string; reason: string }> = [];
@@ -225,7 +307,6 @@ function QALensView({
 					))}
 				</div>
 				<div className="flex items-center gap-2 text-muted-foreground text-sm">
-					{confidence !== null && confidence !== undefined && <ConfidenceIndicator confidence={confidence} />}
 					{analysis?.processed_at ? <span>Analyzed {new Date(analysis.processed_at).toLocaleDateString()}</span> : null}
 				</div>
 			</div>
@@ -513,8 +594,11 @@ function SectionView({
 					<div key={fieldDef.field_key} className="flex items-start gap-3">
 						<StatusIcon className={cn("mt-0.5 h-4 w-4 flex-shrink-0", statusIconColor)} />
 						<div className="min-w-0 flex-1">
-							<div className="mb-1">
+							<div className="mb-1 flex items-center gap-1.5">
 								<span className="font-medium text-muted-foreground text-sm">{fieldDef.field_name}</span>
+								{(fieldDef.explainer || fieldDef.description) && (
+									<SchemaExplainerPopover text={fieldDef.explainer || fieldDef.description || ""} />
+								)}
 							</div>
 							<div className="text-sm">
 								{effectivelyHasValue ? (
@@ -979,6 +1063,308 @@ function StatusIndicator({ status, errorMessage }: { status: string; errorMessag
 	}
 }
 
+type JobMapStep = {
+	step_key?: string;
+	step_name: string;
+	summary?: string;
+	pains?: string[];
+	workarounds?: string[];
+	metrics?: string[];
+	evidence_ids?: string[];
+};
+
+function parseJobMapSteps(value: unknown): JobMapStep[] {
+	const fromObjectList = (items: unknown[]): JobMapStep[] =>
+		items
+			.map((item, index) => {
+				if (!item || typeof item !== "object") return null;
+				const candidate = item as Record<string, unknown>;
+				const stepName =
+					typeof candidate.step_name === "string"
+						? candidate.step_name
+						: typeof candidate.name === "string"
+							? candidate.name
+							: typeof candidate.step === "string"
+								? candidate.step
+								: `Step ${index + 1}`;
+				return {
+					step_key: typeof candidate.step_key === "string" ? candidate.step_key : undefined,
+					step_name: stepName.trim(),
+					summary:
+						typeof candidate.summary === "string"
+							? candidate.summary
+							: typeof candidate.detail === "string"
+								? candidate.detail
+								: undefined,
+					pains: normalizeStringArray(candidate.pains),
+					workarounds: normalizeStringArray(candidate.workarounds),
+					metrics: normalizeStringArray(candidate.metrics),
+					evidence_ids: normalizeStringArray(candidate.evidence_ids),
+				};
+			})
+			.filter((step): step is JobMapStep => !!step && !!step.step_name);
+
+	if (Array.isArray(value)) {
+		if (value.length > 0 && typeof value[0] === "object" && value[0] !== null) {
+			return fromObjectList(value);
+		}
+		return normalizeStringArray(value).map((line, index) => {
+			const [head, ...rest] = line.split(":");
+			const detail = rest.join(":").trim();
+			return {
+				step_key: `step_${index + 1}`,
+				step_name: head?.trim() || `Step ${index + 1}`,
+				summary: detail || line,
+			};
+		});
+	}
+
+	const parsedJson = parseJSONValue<unknown>(value);
+	if (Array.isArray(parsedJson)) {
+		return parseJobMapSteps(parsedJson);
+	}
+
+	return normalizeStringArray(value).map((line, index) => {
+		const [head, ...rest] = line.split(":");
+		const detail = rest.join(":").trim();
+		return {
+			step_key: `step_${index + 1}`,
+			step_name: head?.trim() || `Step ${index + 1}`,
+			summary: detail || line,
+		};
+	});
+}
+
+function FourForcesQuadrant({
+	visualization,
+	sectionDataMap,
+	evidenceMap,
+}: {
+	visualization: LensVisualizationDef;
+	sectionDataMap: SectionDataMap;
+	evidenceMap?: Map<string, EvidenceRecord>;
+}) {
+	const sectionKey = visualization.section_key;
+	const quadrants = [
+		{ key: "push", fallbackLabel: "Push", tone: "border-red-200 bg-red-50/60 dark:border-red-900 dark:bg-red-950/20" },
+		{
+			key: "pull",
+			fallbackLabel: "Pull",
+			tone: "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/20",
+		},
+		{
+			key: "anxiety",
+			fallbackLabel: "Anxieties",
+			tone: "border-amber-200 bg-amber-50/60 dark:border-amber-900 dark:bg-amber-950/20",
+		},
+		{
+			key: "habit",
+			fallbackLabel: "Habits / Inertia",
+			tone: "border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40",
+		},
+	] as const;
+
+	return (
+		<Card>
+			<CardHeader className="pb-3">
+				<CardTitle className="text-lg">{visualization.title || "Four Forces"}</CardTitle>
+				{visualization.description && <CardDescription>{visualization.description}</CardDescription>}
+			</CardHeader>
+			<CardContent>
+				<div className="grid gap-3 md:grid-cols-2">
+					{quadrants.map((quadrant) => {
+						const fieldKey = visualization.mapping?.[quadrant.key];
+						if (!fieldKey) return null;
+						const field = getSectionField(sectionDataMap, sectionKey, fieldKey);
+						const items = normalizeStringArray(field?.value);
+						const evidenceRefs =
+							field?.evidence_ids?.length > 0 && evidenceMap
+								? hydrateEvidenceRefs(field.evidence_ids, evidenceMap)
+								: undefined;
+						return (
+							<div key={quadrant.key} className={cn("rounded-lg border p-3", quadrant.tone)}>
+								<div className="mb-2 flex items-center justify-between gap-2">
+									<div className="flex items-center gap-1.5">
+										<h4 className="font-medium text-sm">{quadrant.fallbackLabel}</h4>
+										{visualization.explainers?.[quadrant.key] && (
+											<SchemaExplainerPopover text={visualization.explainers[quadrant.key]} />
+										)}
+									</div>
+									<Badge variant="outline" className="text-xs">
+										{items.length}
+									</Badge>
+								</div>
+								{items.length > 0 ? (
+									<ul className="space-y-1">
+										{items.slice(0, 3).map((item) => (
+											<li key={item} className="text-sm leading-relaxed">
+												{item}
+											</li>
+										))}
+										{items.length > 3 ? (
+											<li className="text-muted-foreground text-xs">+{items.length - 3} more signals</li>
+										) : null}
+									</ul>
+								) : (
+									<p className="text-muted-foreground text-sm italic">No evidence captured</p>
+								)}
+								{field?.evidence_ids?.length > 0 && (
+									<EvidenceTimestampBadges
+										className="mt-2"
+										evidenceRefs={evidenceRefs}
+										evidenceIds={evidenceRefs ? undefined : field.evidence_ids}
+									/>
+								)}
+							</div>
+						);
+					})}
+				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
+function JobMapTimeline({
+	visualization,
+	sectionDataMap,
+	evidenceMap,
+}: {
+	visualization: LensVisualizationDef;
+	sectionDataMap: SectionDataMap;
+	evidenceMap?: Map<string, EvidenceRecord>;
+}) {
+	const sectionKey = visualization.section_key;
+	const stepsField = getSectionField(sectionDataMap, sectionKey, visualization.mapping?.steps || "job_steps_summary");
+	const steps = parseJobMapSteps(stepsField?.value);
+	const bottleneckField = getSectionField(
+		sectionDataMap,
+		sectionKey,
+		visualization.mapping?.bottleneck_step || "bottleneck_step"
+	);
+	const bottleneck = typeof bottleneckField?.value === "string" ? bottleneckField.value.trim() : "";
+
+	return (
+		<Card>
+			<CardHeader className="pb-3">
+				<CardTitle className="text-lg">{visualization.title || "Job Map"}</CardTitle>
+				{visualization.description && <CardDescription>{visualization.description}</CardDescription>}
+			</CardHeader>
+			<CardContent className="space-y-3">
+				{steps.length > 0 ? (
+					<div className="overflow-x-auto pb-1">
+						<div className="flex min-w-max items-stretch gap-3 pr-1">
+							{steps.map((step, index) => {
+								const isBottleneck =
+									!!bottleneck &&
+									(step.step_name.toLowerCase().includes(bottleneck.toLowerCase()) ||
+										bottleneck.toLowerCase().includes(step.step_name.toLowerCase()));
+								const evidenceRefs =
+									step.evidence_ids?.length && evidenceMap
+										? hydrateEvidenceRefs(step.evidence_ids, evidenceMap)
+										: undefined;
+								return (
+									<div key={`${step.step_key || step.step_name}-${index}`} className="flex items-center gap-3">
+										<div className="w-72 rounded-lg border bg-card p-3">
+											<div className="mb-2 flex items-center justify-between gap-2">
+												<div className="flex items-center gap-2">
+													<span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 font-medium text-primary text-xs">
+														{index + 1}
+													</span>
+													<p className="font-medium text-sm">{step.step_name}</p>
+												</div>
+												{isBottleneck ? (
+													<Badge variant="destructive" className="text-[10px]">
+														Bottleneck
+													</Badge>
+												) : null}
+											</div>
+											{step.summary ? <p className="text-muted-foreground text-sm">{step.summary}</p> : null}
+											<div className="mt-3 flex flex-wrap gap-1">
+												{step.pains?.length ? (
+													<Badge variant="outline" className="text-xs">
+														Pains: {step.pains.length}
+													</Badge>
+												) : null}
+												{step.workarounds?.length ? (
+													<Badge variant="outline" className="text-xs">
+														Workarounds: {step.workarounds.length}
+													</Badge>
+												) : null}
+												{step.metrics?.length ? (
+													<Badge variant="outline" className="text-xs">
+														Metrics: {step.metrics.length}
+													</Badge>
+												) : null}
+											</div>
+											{step.evidence_ids?.length ? (
+												<EvidenceTimestampBadges
+													className="mt-2"
+													evidenceRefs={evidenceRefs}
+													evidenceIds={evidenceRefs ? undefined : step.evidence_ids}
+												/>
+											) : null}
+										</div>
+										{index < steps.length - 1 ? (
+											<ArrowUpRight className="h-4 w-4 rotate-45 text-muted-foreground" />
+										) : null}
+									</div>
+								);
+							})}
+						</div>
+					</div>
+				) : (
+					<p className="text-muted-foreground text-sm italic">No job steps captured yet</p>
+				)}
+				{bottleneck ? (
+					<p className="text-muted-foreground text-xs">
+						Bottleneck signal: <span className="font-medium text-foreground">{bottleneck}</span>
+					</p>
+				) : null}
+			</CardContent>
+		</Card>
+	);
+}
+
+function LensVisualizations({
+	visualizations,
+	sectionDataMap,
+	evidenceMap,
+}: {
+	visualizations: LensVisualizationDef[];
+	sectionDataMap: SectionDataMap;
+	evidenceMap?: Map<string, EvidenceRecord>;
+}) {
+	if (!visualizations.length) return null;
+
+	return (
+		<div className="space-y-4">
+			{visualizations.map((visualization) => {
+				if (visualization.type === "forces_quadrant") {
+					return (
+						<FourForcesQuadrant
+							key={visualization.viz_key}
+							visualization={visualization}
+							sectionDataMap={sectionDataMap}
+							evidenceMap={evidenceMap}
+						/>
+					);
+				}
+				if (visualization.type === "job_map_timeline") {
+					return (
+						<JobMapTimeline
+							key={visualization.viz_key}
+							visualization={visualization}
+							sectionDataMap={sectionDataMap}
+							evidenceMap={evidenceMap}
+						/>
+					);
+				}
+				return null;
+			})}
+		</div>
+	);
+}
+
 export function GenericLensView({ analysis, template, isLoading, editable = false, evidenceMap }: Props) {
 	const fetcher = useFetcher();
 	const { projectPath } = useCurrentProject();
@@ -1022,6 +1408,18 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 	const analysisData = analysis?.analysis_data || {};
 	const sections = analysisData.sections || [];
 	const templateKey = template?.template_key || analysis?.template_key;
+	const extractedSectionKeys = Array.isArray(sections)
+		? sections
+				.map((section: any) => section?.section_key)
+				.filter((sectionKey: unknown): sectionKey is string => typeof sectionKey === "string")
+		: [];
+	const missingSectionKeys = templateDef.sections
+		.map((section) => section.section_key)
+		.filter((sectionKey) => !extractedSectionKeys.includes(sectionKey));
+	const templateVisualizations = Array.isArray(templateDef.visualizations) ? templateDef.visualizations : [];
+	const isJtbdTemplate = templateKey === "jtbd-conversation-pipeline";
+	const usingFallbackJtbdVisualizations = isJtbdTemplate && templateVisualizations.length === 0;
+	const visualizationsToRender = usingFallbackJtbdVisualizations ? DEFAULT_JTBD_VISUALIZATIONS : templateVisualizations;
 
 	// Dedicated presentation for Q&A lens (qa-summary) focused on readable Q/A pairs
 	if (templateKey === "qa-summary") {
@@ -1031,14 +1429,34 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 	// Build a map of section data by section_key
 	// Format: sections[].fields = [{field_key, value, confidence, evidence_ids}]
 	// Also includes summary for each section
-	const sectionDataMap: Record<string, { fields: any[]; summary?: string }> = {};
+	const sectionDataMap: SectionDataMap = {};
+	for (const sectionDef of templateDef.sections) {
+		sectionDataMap[sectionDef.section_key] = {
+			fields: (sectionDef.fields || []).map((fieldDef) => ({
+				field_key: fieldDef.field_key,
+				value: Object.prototype.hasOwnProperty.call(analysisData, fieldDef.field_key)
+					? analysisData[fieldDef.field_key]
+					: null,
+				confidence: null,
+				evidence_ids: [],
+			})),
+		};
+	}
 	for (const section of sections) {
-		if (section.section_key) {
-			sectionDataMap[section.section_key] = {
-				fields: section.fields || [],
-				summary: section.summary,
-			};
+		if (!section.section_key) continue;
+		const existing = sectionDataMap[section.section_key] || { fields: [], summary: undefined };
+		const incomingFields = Array.isArray(section.fields) ? section.fields : [];
+		const fieldMap = new Map(
+			(Array.isArray(existing.fields) ? existing.fields : []).map((field: any) => [field.field_key, field])
+		);
+		for (const field of incomingFields) {
+			if (!field?.field_key) continue;
+			fieldMap.set(field.field_key, field);
 		}
+		sectionDataMap[section.section_key] = {
+			fields: Array.from(fieldMap.values()),
+			summary: typeof section.summary === "string" && section.summary.trim() ? section.summary : existing.summary,
+		};
 	}
 
 	// Handler for field updates via inline edit
@@ -1090,14 +1508,49 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 				</div>
 			)}
 
-			{/* Header with confidence and date */}
+			{/* Header with analyzed date */}
 			{analysis && (
 				<div className="flex items-center justify-end gap-3">
-					{analysis.confidence_score !== null && <ConfidenceIndicator confidence={analysis.confidence_score} />}
 					<span className="text-muted-foreground text-sm">
 						Analyzed {analysis.processed_at ? new Date(analysis.processed_at).toLocaleDateString() : "recently"}
 					</span>
 				</div>
+			)}
+
+			{/* Lens debug hints for JTBD extraction coverage */}
+			{isJtbdTemplate && (missingSectionKeys.length > 0 || usingFallbackJtbdVisualizations) && (
+				<Card className="border-amber-200 bg-amber-50/40 dark:border-amber-900 dark:bg-amber-950/20">
+					<CardHeader className="pb-2">
+						<CardTitle className="text-sm">JTBD Debug</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-2 text-xs">
+						<p className="text-muted-foreground">
+							Extracted sections: {extractedSectionKeys.length} / expected {templateDef.sections.length}
+						</p>
+						{usingFallbackJtbdVisualizations && (
+							<p className="text-muted-foreground">
+								Template has no `visualizations` config in DB, so fallback JTBD graphics are being used.
+							</p>
+						)}
+						{missingSectionKeys.length > 0 && (
+							<p className="text-muted-foreground">
+								Analysis omitted {missingSectionKeys.length} section(s): {missingSectionKeys.join(", ")}.
+							</p>
+						)}
+						{extractedSectionKeys.length > 0 && (
+							<p className="text-muted-foreground">Returned keys: {extractedSectionKeys.join(", ")}.</p>
+						)}
+					</CardContent>
+				</Card>
+			)}
+
+			{/* Declarative visualizations from template schema */}
+			{visualizationsToRender.length > 0 && (
+				<LensVisualizations
+					visualizations={visualizationsToRender}
+					sectionDataMap={sectionDataMap}
+					evidenceMap={evidenceMap}
+				/>
 			)}
 
 			{/* Render each section */}
@@ -1109,7 +1562,10 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 				return (
 					<Card key={sectionDef.section_key}>
 						<CardHeader className="pb-3">
-							<CardTitle className="text-lg">{sectionDef.section_name}</CardTitle>
+							<CardTitle className="flex items-center gap-1.5 text-lg">
+								<span>{sectionDef.section_name}</span>
+								{sectionDef.explainer && <SchemaExplainerPopover text={sectionDef.explainer} />}
+							</CardTitle>
 							{sectionDef.description && <CardDescription>{sectionDef.description}</CardDescription>}
 						</CardHeader>
 						<CardContent className="space-y-3">

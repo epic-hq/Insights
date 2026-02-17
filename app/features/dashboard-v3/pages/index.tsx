@@ -305,6 +305,9 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
 				case "consulting-project":
 					href = routes.lenses.consultingProject();
 					break;
+				case "jtbd-conversation-pipeline":
+					href = routes.lenses.jtbdConversationPipeline();
+					break;
 				default:
 					href = routes.lenses.byTemplateKey(template.template_key);
 					break;

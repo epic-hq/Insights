@@ -4,13 +4,14 @@
  */
 
 import { motion } from "framer-motion";
-import { ArrowRight, Map, Mic, Send } from "lucide-react";
-import { useFetcher } from "react-router";
+import { ArrowRight, Map as MapIcon, Mic, Send } from "lucide-react";
 import { cn } from "~/lib/utils";
 import type { WowPath } from "../journey-config";
 
 interface WowRoutePickerProps {
 	onFullSetup: () => void;
+	onSelectPath: (path: WowPath) => void;
+	isSubmitting?: boolean;
 }
 
 const ROUTE_CARDS: Array<{
@@ -47,7 +48,7 @@ const ROUTE_CARDS: Array<{
 		path: "full_setup",
 		label: "Full Setup",
 		tagline: "See the complete journey map and go at your own pace",
-		icon: Map,
+		icon: MapIcon,
 		accent: "text-muted-foreground",
 		border: "border-border hover:border-muted-foreground/50",
 		bg: "hover:bg-muted/30",
@@ -73,15 +74,13 @@ const cardVariants = {
 	},
 };
 
-export function WowRoutePicker({ onFullSetup }: WowRoutePickerProps) {
-	const fetcher = useFetcher();
-
+export function WowRoutePicker({ onFullSetup, onSelectPath, isSubmitting = false }: WowRoutePickerProps) {
 	function handlePick(path: WowPath | "full_setup") {
 		if (path === "full_setup") {
 			onFullSetup();
 			return;
 		}
-		fetcher.submit({ _action: "set_wow_path", wow_path: path }, { method: "POST" });
+		onSelectPath(path);
 	}
 
 	return (
@@ -108,12 +107,12 @@ export function WowRoutePicker({ onFullSetup }: WowRoutePickerProps) {
 								variants={cardVariants}
 								type="button"
 								onClick={() => handlePick(card.path)}
-								disabled={fetcher.state !== "idle"}
+								disabled={isSubmitting}
 								className={cn(
 									"group relative flex items-center gap-4 rounded-xl border-2 p-5 text-left transition-all duration-200",
 									card.border,
 									card.bg,
-									fetcher.state !== "idle" && "pointer-events-none opacity-60"
+									isSubmitting && "pointer-events-none opacity-60"
 								)}
 							>
 								<div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-lg", card.iconBg)}>

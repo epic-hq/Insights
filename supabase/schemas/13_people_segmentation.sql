@@ -18,10 +18,8 @@ COMMENT ON COLUMN people.life_stage IS 'Life stage: Student, New Grad, New Paren
 
 -- Update existing column comments for clarity
 COMMENT ON COLUMN people.title IS 'Job title (B2B): VP of Engineering, Senior Product Manager, etc.';
-COMMENT ON COLUMN people.industry IS 'Person industry background: SaaS, FinTech, Healthcare, etc.';
 COMMENT ON COLUMN people.role IS 'DEPRECATED: Use job_function for job role. This field will be removed. Interview role is in interview_people.role.';
 COMMENT ON COLUMN people.segment IS 'DEPRECATED: Migrated to persona facets. This field will be removed.';
-COMMENT ON COLUMN people.occupation IS 'DEPRECATED: Use job_function instead. This field will be removed.';
 
 -- Add target_segments field to projects for ICP hypothesis tracking
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS target_segments JSONB DEFAULT '{}'::jsonb;

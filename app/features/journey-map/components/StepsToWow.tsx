@@ -14,9 +14,19 @@ interface StepsToWowProps {
 	countsLoading: boolean;
 	wowSettings: WowSettings;
 	onShowJourneyMap: () => void;
+	onSelectPath: (path: "discover" | "reach_out") => void;
+	isSubmittingPath?: boolean;
 }
 
-export function StepsToWow({ routes, counts, countsLoading, wowSettings, onShowJourneyMap }: StepsToWowProps) {
+export function StepsToWow({
+	routes,
+	counts,
+	countsLoading,
+	wowSettings,
+	onShowJourneyMap,
+	onSelectPath,
+	isSubmittingPath = false,
+}: StepsToWowProps) {
 	// If a wow_path has been chosen, show the step guide
 	if (wowSettings.wow_path) {
 		return (
@@ -32,5 +42,5 @@ export function StepsToWow({ routes, counts, countsLoading, wowSettings, onShowJ
 	}
 
 	// Otherwise, show the route picker
-	return <WowRoutePicker onFullSetup={onShowJourneyMap} />;
+	return <WowRoutePicker onFullSetup={onShowJourneyMap} onSelectPath={onSelectPath} isSubmitting={isSubmittingPath} />;
 }
