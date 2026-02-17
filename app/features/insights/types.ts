@@ -49,3 +49,30 @@ export interface SuggestedAction {
   cta: string;
   href?: string;
 }
+
+/** ── Stakeholder lens types ── */
+
+export interface StakeholderSummary {
+  person: {
+    id: string;
+    name: string;
+    title: string | null;
+    job_function: string | null;
+    initials: string;
+    image_url: string | null;
+  };
+  themes: Array<{
+    id: string;
+    name: string;
+    evidence_count: number;
+    is_shared: boolean;
+  }>;
+  representative_quote: string | null;
+}
+
+export interface CommonGround {
+  theme: { id: string; name: string };
+  role_count: number;
+  total_roles: number;
+  roles: string[];
+}

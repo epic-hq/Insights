@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import { resolvePosthogHost } from "~/lib/posthog/config";
 
 const envSchema = z.object({
 	NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -138,7 +139,7 @@ export function getClientEnv() {
 		SUPABASE_ANON_KEY: serverEnv.SUPABASE_ANON_KEY,
 		// PostHog (client-side consumption)
 		POSTHOG_KEY: serverEnv.POSTHOG_KEY,
-		POSTHOG_HOST: serverEnv.POSTHOG_HOST,
+		POSTHOG_HOST: resolvePosthogHost(serverEnv.POSTHOG_HOST),
 		SIGNUP_CHAT_REQUIRED: serverEnv.SIGNUP_CHAT_REQUIRED,
 		// Sales/Demo scheduling
 		SALES_SCHEDULER_URL: serverEnv.SALES_SCHEDULER_URL,

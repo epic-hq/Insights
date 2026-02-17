@@ -6,7 +6,7 @@
  */
 
 import type { LoaderFunctionArgs } from "react-router";
-import { userContext } from "~/server/user-context";
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server";
 
 /** Generate embedding for a text query using OpenAI */
 async function generateQueryEmbedding(queryText: string): Promise<number[]> {
@@ -36,20 +36,19 @@ async function generateQueryEmbedding(queryText: string): Promise<number[]> {
 	return data.data[0].embedding;
 }
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
-
-	if (!supabase) {
-		return Response.json({ error: "Unauthorized" }, { status: 401 });
+export async function loader({ request }: LoaderFunctionArgs) {
+	const { user, headers } = await getAuthenticatedUser(request);
+	if (!user) {
+		return Response.json({ error: "Unauthorized" }, { status: 401, headers });
 	}
+	const { client: supabase } = getServerClient(request);
 
 	const url = new URL(request.url);
 	const insightId = url.searchParams.get("insightId");
 	const projectId = url.searchParams.get("projectId");
 
 	if (!insightId || !projectId) {
-		return Response.json({ error: "Missing insightId or projectId" }, { status: 400 });
+		return Response.json({ error: "Missing insightId or projectId" }, { status: 400, headers });
 	}
 
 	try {
@@ -61,13 +60,13 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 			.single();
 
 		if (insightError || !insight) {
-			return Response.json({ error: "Insight not found" }, { status: 404 });
+			return Response.json({ error: "Insight not found" }, { status: 404, headers });
 		}
 
 		// Use statement or name as the query
 		const queryText = insight.statement || insight.name;
 		if (!queryText) {
-			return Response.json({ evidence: [] });
+			return Response.json({ evidence: [] }, { headers });
 		}
 
 		// 2. Get already-linked evidence IDs to exclude
@@ -91,14 +90,14 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 		if (searchError) {
 			console.error("[similar-evidence] Search error:", searchError);
-			return Response.json({ error: "Search failed" }, { status: 500 });
+			return Response.json({ error: "Search failed" }, { status: 500, headers });
 		}
 
 		// 5. Filter out already-linked evidence and limit to 8
 		const filtered = (similarEvidence ?? []).filter((ev: any) => !excludeIds.has(ev.id)).slice(0, 8);
 
 		if (filtered.length === 0) {
-			return Response.json({ evidence: [] });
+			return Response.json({ evidence: [] }, { headers });
 		}
 
 		// 6. Fetch full evidence data for display
@@ -166,9 +165,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 		// Sort by similarity descending
 		evidence.sort((a: any, b: any) => (b.similarity ?? 0) - (a.similarity ?? 0));
 
-		return Response.json({ evidence });
+		return Response.json({ evidence }, { headers });
 	} catch (error) {
 		console.error("[similar-evidence] Error:", error);
-		return Response.json({ error: "Internal error" }, { status: 500 });
+		return Response.json({ error: "Internal error" }, { status: 500, headers });
 	}
 }

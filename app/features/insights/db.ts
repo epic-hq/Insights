@@ -1,5 +1,9 @@
 import type { QueryData, SupabaseClient } from "@supabase/supabase-js";
 import type { Database, InsightInsert } from "~/types";
+import type {
+  StakeholderSummary,
+  CommonGround,
+} from "~/features/insights/types";
 
 // This is our pattern for defining typed queries and returning results.
 // in particular, we should create variables that describe the results
@@ -736,3 +740,311 @@ export const getTopVoicesForThemes = async ({
 
   return result;
 };
+
+/**
+ * Get stakeholder summaries for the "By Stakeholder" lens.
+ * Batch-loads people → themes → evidence counts to avoid N+1.
+ * Returns per-person theme arrays + common ground analysis.
+ */
+export const getStakeholderSummaries = async ({
+  supabase,
+  projectId,
+}: {
+  supabase: SupabaseClient<Database>;
+  projectId: string;
+}): Promise<{
+  stakeholders: StakeholderSummary[];
+  commonGround: CommonGround[];
+  sharedConcern: {
+    themeId: string;
+    themeName: string;
+    roleCount: number;
+  } | null;
+}> => {
+  // 1. Fetch all external people in the project
+  const { data: people } = await supabase
+    .from("people")
+    .select("id, name, firstname, lastname, title, job_function, image_url")
+    .eq("project_id", projectId)
+    .is("user_id", null)
+    .order("name");
+
+  if (!people || people.length === 0) {
+    return { stakeholders: [], commonGround: [], sharedConcern: null };
+  }
+
+  const personIds = people.map((p) => p.id);
+  const personIdSet = new Set(personIds);
+
+  // 2. Get person→evidence links from ALL three sources (matching getInsights pattern)
+  // Source 1: evidence_facet (primary — BAML extraction)
+  // Source 2: evidence_people (direct link)
+  // Source 3: interview_people (via interview)
+  const [facetResult, evidencePeopleResult, interviewPeopleResult] =
+    await Promise.all([
+      supabase
+        .from("evidence_facet")
+        .select("evidence_id, person_id")
+        .eq("project_id", projectId)
+        .not("person_id", "is", null),
+      supabase
+        .from("evidence_people")
+        .select("evidence_id, person_id")
+        .eq("project_id", projectId),
+      supabase
+        .from("interview_people")
+        .select("interview_id, person_id")
+        .in("person_id", personIds),
+    ]);
+
+  // Build person → evidence IDs map from all sources
+  const personEvidenceMap = new Map<string, Set<string>>();
+  const addLink = (personId: string | null, evidenceId: string) => {
+    if (!personId || !personIdSet.has(personId)) return;
+    if (!personEvidenceMap.has(personId)) {
+      personEvidenceMap.set(personId, new Set());
+    }
+    personEvidenceMap.get(personId)!.add(evidenceId);
+  };
+
+  // Source 1: evidence_facet
+  for (const row of facetResult.data ?? []) {
+    addLink(row.person_id, row.evidence_id);
+  }
+
+  // Source 2: evidence_people
+  for (const row of evidencePeopleResult.data ?? []) {
+    addLink(row.person_id, row.evidence_id);
+  }
+
+  // Source 3: interview_people → need to map interview → evidence
+  const interviewPersonMap = new Map<string, Set<string>>();
+  for (const row of interviewPeopleResult.data ?? []) {
+    if (!row.person_id || !personIdSet.has(row.person_id)) continue;
+    if (!interviewPersonMap.has(row.interview_id)) {
+      interviewPersonMap.set(row.interview_id, new Set());
+    }
+    interviewPersonMap.get(row.interview_id)!.add(row.person_id);
+  }
+
+  // If we have interview_people links, fetch evidence for those interviews
+  if (interviewPersonMap.size > 0) {
+    const { data: interviewEvidence } = await supabase
+      .from("evidence")
+      .select("id, interview_id")
+      .eq("project_id", projectId)
+      .in("interview_id", Array.from(interviewPersonMap.keys()));
+
+    for (const ev of interviewEvidence ?? []) {
+      if (!ev.interview_id) continue;
+      const persons = interviewPersonMap.get(ev.interview_id);
+      if (persons) {
+        for (const pid of persons) {
+          addLink(pid, ev.id);
+        }
+      }
+    }
+  }
+
+  const allEvidenceIds = new Set<string>();
+  for (const evSet of personEvidenceMap.values()) {
+    for (const evId of evSet) allEvidenceIds.add(evId);
+  }
+
+  if (allEvidenceIds.size === 0) {
+    // People exist but no evidence linked — return empty stakeholders with person info
+    const emptyStakeholders: StakeholderSummary[] = people.map((p) => ({
+      person: {
+        id: p.id,
+        name:
+          p.name ||
+          [p.firstname, p.lastname].filter(Boolean).join(" ") ||
+          "Unknown",
+        title: p.title,
+        job_function: p.job_function,
+        initials: getInitials(p.name, p.firstname, p.lastname),
+        image_url: p.image_url,
+      },
+      themes: [],
+      representative_quote: null,
+    }));
+    return {
+      stakeholders: emptyStakeholders,
+      commonGround: [],
+      sharedConcern: null,
+    };
+  }
+
+  // 3. Get theme_evidence links for all evidence IDs → theme mapping
+  const { data: themeEvidenceLinks } = await supabase
+    .from("theme_evidence")
+    .select("theme_id, evidence_id")
+    .eq("project_id", projectId)
+    .in("evidence_id", Array.from(allEvidenceIds));
+
+  // Build evidence → theme IDs map
+  const evidenceThemeMap = new Map<string, Set<string>>();
+  const allThemeIds = new Set<string>();
+  for (const link of themeEvidenceLinks ?? []) {
+    if (!evidenceThemeMap.has(link.evidence_id)) {
+      evidenceThemeMap.set(link.evidence_id, new Set());
+    }
+    evidenceThemeMap.get(link.evidence_id)!.add(link.theme_id);
+    allThemeIds.add(link.theme_id);
+  }
+
+  // 4. Fetch theme names
+  const { data: themes } =
+    allThemeIds.size > 0
+      ? await supabase
+          .from("themes")
+          .select("id, name, statement")
+          .eq("project_id", projectId)
+          .in("id", Array.from(allThemeIds))
+      : {
+          data: [] as Array<{
+            id: string;
+            name: string | null;
+            statement: string | null;
+          }>,
+        };
+
+  const themeMap = new Map<
+    string,
+    { id: string; name: string; statement: string | null }
+  >();
+  for (const t of themes ?? []) {
+    themeMap.set(t.id, {
+      id: t.id,
+      name: t.name || "Untitled",
+      statement: t.statement,
+    });
+  }
+
+  // 5. Compute per-person theme arrays with evidence counts
+  // Also track theme → person set for shared detection and common ground
+  const themePersonMap = new Map<string, Set<string>>();
+  // Track theme → job_function roles for common ground
+  const themeRoleMap = new Map<string, Set<string>>();
+
+  const stakeholders: StakeholderSummary[] = [];
+
+  for (const person of people) {
+    const evidenceIds = personEvidenceMap.get(person.id);
+    if (!evidenceIds || evidenceIds.size === 0) continue;
+
+    // Count evidence per theme for this person
+    const themeEvidenceCounts = new Map<string, number>();
+    for (const evId of evidenceIds) {
+      const themeIds = evidenceThemeMap.get(evId);
+      if (!themeIds) continue;
+      for (const tid of themeIds) {
+        themeEvidenceCounts.set(tid, (themeEvidenceCounts.get(tid) ?? 0) + 1);
+      }
+    }
+
+    // Track person in theme→person and theme→role maps
+    const role = person.job_function || "Other";
+    for (const tid of themeEvidenceCounts.keys()) {
+      if (!themePersonMap.has(tid)) themePersonMap.set(tid, new Set());
+      themePersonMap.get(tid)!.add(person.id);
+      if (!themeRoleMap.has(tid)) themeRoleMap.set(tid, new Set());
+      themeRoleMap.get(tid)!.add(role);
+    }
+
+    const personName =
+      person.name ||
+      [person.firstname, person.lastname].filter(Boolean).join(" ") ||
+      "Unknown";
+
+    // Build theme list sorted by evidence count desc
+    const personThemes = Array.from(themeEvidenceCounts.entries())
+      .map(([tid, count]) => ({
+        id: tid,
+        name: themeMap.get(tid)?.name ?? "Untitled",
+        evidence_count: count,
+        is_shared: false, // will be set after we know all person counts
+      }))
+      .sort((a, b) => b.evidence_count - a.evidence_count);
+
+    // Pick representative quote from the top theme's statement
+    const topThemeId = personThemes[0]?.id;
+    const repQuote = topThemeId
+      ? (themeMap.get(topThemeId)?.statement ?? null)
+      : null;
+
+    stakeholders.push({
+      person: {
+        id: person.id,
+        name: personName,
+        title: person.title,
+        job_function: person.job_function,
+        initials: getInitials(person.name, person.firstname, person.lastname),
+        image_url: person.image_url,
+      },
+      themes: personThemes,
+      representative_quote: repQuote,
+    });
+  }
+
+  // 6. Mark is_shared on theme pills (theme appears for >1 person)
+  for (const stakeholder of stakeholders) {
+    for (const theme of stakeholder.themes) {
+      const personCount = themePersonMap.get(theme.id)?.size ?? 0;
+      theme.is_shared = personCount > 1;
+    }
+  }
+
+  // 7. Compute common ground — themes that span multiple job_function roles
+  const allRoles = new Set<string>();
+  for (const person of people) {
+    allRoles.add(person.job_function || "Other");
+  }
+  const totalRoles = allRoles.size;
+
+  const commonGround: CommonGround[] = [];
+  for (const [tid, roles] of themeRoleMap) {
+    if (roles.size > 1) {
+      const theme = themeMap.get(tid);
+      if (!theme) continue;
+      commonGround.push({
+        theme: { id: theme.id, name: theme.name },
+        role_count: roles.size,
+        total_roles: totalRoles,
+        roles: Array.from(roles),
+      });
+    }
+  }
+  commonGround.sort((a, b) => b.role_count - a.role_count);
+
+  // 8. Shared concern = theme with most role breadth
+  const sharedConcern =
+    commonGround.length > 0
+      ? {
+          themeId: commonGround[0].theme.id,
+          themeName: commonGround[0].theme.name,
+          roleCount: commonGround[0].role_count,
+        }
+      : null;
+
+  return { stakeholders, commonGround, sharedConcern };
+};
+
+/** Helper: compute initials from name parts */
+function getInitials(
+  name: string | null,
+  firstname: string | null,
+  lastname: string | null,
+): string {
+  if (firstname && lastname) {
+    return `${firstname[0]}${lastname[0]}`.toUpperCase();
+  }
+  if (name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+    return (parts[0]?.[0] ?? "?").toUpperCase();
+  }
+  return "?";
+}

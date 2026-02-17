@@ -1,6 +1,7 @@
 import consola from "consola";
 import { PostHog } from "posthog-node";
 import { getServerEnv } from "~/env.server";
+import { resolvePosthogHost } from "~/lib/posthog/config";
 
 let client: PostHog | null = null;
 
@@ -20,7 +21,7 @@ export function getPostHogServerClient(): PostHog | null {
 		return null;
 	}
 
-	const host = POSTHOG_HOST ?? "https://us.i.posthog.com";
+	const host = resolvePosthogHost(POSTHOG_HOST);
 	client = new PostHog(POSTHOG_KEY, {
 		host,
 		flushAt: 1,

@@ -11,6 +11,7 @@ export default [
     index("./features/insights/pages/index.tsx"),
     layout("./features/insights/pages/_layout.tsx", [
       route("themes", "./features/insights/pages/themes.tsx"),
+      route("stakeholders", "./features/insights/pages/stakeholders.tsx"),
       route("table", "./features/insights/pages/table.tsx"),
       route("cards", "./features/insights/pages/cards.tsx"),
       route("map", "./features/insights/pages/map.tsx"),

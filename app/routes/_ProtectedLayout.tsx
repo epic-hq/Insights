@@ -15,17 +15,10 @@ import { getProjects } from "~/features/projects/db";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { provisionTrial } from "~/lib/billing/polar.server";
 import { buildFeatureGateContext, checkLimitAccess } from "~/lib/feature-gate/check-limit.server";
+import { resolvePosthogHost } from "~/lib/posthog/config";
 import { getAuthenticatedUser, getRlsClient, supabaseAdmin } from "~/lib/supabase/client.server";
 import { userContext } from "~/server/user-context";
 import type { Route } from "../+types/root";
-
-function normalizePosthogHost(value: unknown) {
-	if (typeof value !== "string") return undefined;
-	const trimmed = value.trim();
-	if (!trimmed) return undefined;
-	const withProtocol = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
-	return withProtocol.replace(/\/+$/, "");
-}
 
 // Server-side Authentication Middleware
 // This middleware runs before every loader in protected routes
@@ -427,8 +420,8 @@ export default function ProtectedLayout() {
 			: null;
 	const posthogHost =
 		typeof window !== "undefined"
-			? (normalizePosthogHost(window.env?.POSTHOG_HOST) ?? "https://us.i.posthog.com")
-			: "https://us.i.posthog.com";
+			? resolvePosthogHost(window.env?.POSTHOG_HOST)
+			: resolvePosthogHost(undefined);
 
 	// Lazy-load client analytics only inside protected app shell.
 	useEffect(() => {

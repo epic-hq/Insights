@@ -55,6 +55,7 @@ export interface RouteDefinitions {
     table: () => string;
     cards: () => string;
     themes: () => string;
+    stakeholders: () => string;
     matrix: () => string;
     map: () => string;
     autoInsights: () => string;
@@ -274,6 +275,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
       table: () => `${base}/insights/table`,
       cards: () => `${base}/insights/cards`,
       themes: () => `${base}/insights/themes`,
+      stakeholders: () => `${base}/insights/stakeholders`,
       matrix: () => `${base}/insights/matrix`,
       map: () => `${base}/insights/map`,
       autoInsights: () => `${base}/insights/auto-insights`,
