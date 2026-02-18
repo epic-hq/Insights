@@ -8,7 +8,7 @@
  * - Current interaction patterns
  */
 
-import { componentRegistry } from "./component-registry"
+import { componentRegistry } from "./component-registry";
 
 /**
  * Generate the gen-ui context block for agent system prompts.
@@ -19,8 +19,8 @@ import { componentRegistry } from "./component-registry"
  * 3. Behavioral guidelines for interactive UX
  */
 export function buildGenUISystemContext(): string {
-	const capabilities = componentRegistry.getCapabilitySummary()
-	const componentTypes = componentRegistry.getAll().map((c) => c.type)
+	const capabilities = componentRegistry.getCapabilitySummary();
+	const componentTypes = componentRegistry.getAll().map((c) => c.type);
 
 	return `
 # Generative UI (Canvas)
@@ -64,5 +64,5 @@ Example: If the canvas shows interview prompts and you ask "Want me to improve Q
 - Click an action on the canvas (you'll see a \`[Canvas]\` message)
 - Type "yes, make it more open-ended" in chat
 Both are valid — handle them the same way.
-`.trim()
+`.trim();
 }

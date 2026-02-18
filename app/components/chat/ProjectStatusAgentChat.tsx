@@ -12,14 +12,17 @@ import { FileUploadButton } from "~/components/chat/FileUploadButton";
 import { MessagePlayButton } from "~/components/chat/MessagePlayButton";
 import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat";
 import { TTSToggle } from "~/components/chat/TTSToggle";
+import { A2UIRenderer } from "~/components/gen-ui/A2UIRenderer";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Textarea } from "~/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button";
+import { useA2UISurfaceOptional } from "~/contexts/a2ui-surface-context";
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
 import { useTTS } from "~/hooks/useTTS";
+import { isA2UIToolPayload } from "~/lib/gen-ui/tool-helpers";
 import { cn } from "~/lib/utils";
 import type { UpsightMessage } from "~/mastra/message-types";
 import { HOST, PRODUCTION_HOST } from "~/paths";
@@ -479,6 +482,9 @@ export function ProjectStatusAgentChat({
 	// TTS: text-to-speech for assistant responses
 	const tts = useTTS({ voiceChatActive: false });
 
+	// A2UI: detect gen-ui payloads in tool results and apply to surface
+	const a2uiSurface = useA2UISurfaceOptional();
+
 	// Expose TTS state to parent (AIAssistantPanel) for header toggle
 	useEffect(() => {
 		onTTSStateRef?.({
@@ -494,7 +500,11 @@ export function ProjectStatusAgentChat({
 	// The history is loaded for UI display only - when sending new messages,
 	// we only send the new message. Mastra's memory system handles including
 	// historical context server-side, so we don't send history to avoid duplicates.
-	const historyFetcher = useFetcher<{ threadId?: string; messages?: UpsightMessage[]; error?: string }>();
+	const historyFetcher = useFetcher<{
+		threadId?: string;
+		messages?: UpsightMessage[];
+		error?: string;
+	}>();
 	const historyLoadedRef = useRef(false);
 	const historyAppliedRef = useRef(false);
 	const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
@@ -551,7 +561,11 @@ export function ProjectStatusAgentChat({
 	const { messages, sendMessage, status, addToolResult, stop, setMessages } = useChat<UpsightMessage>({
 		transport: new DefaultChatTransport({
 			api: `/a/${accountId}/${projectId}/api/chat/project-status`,
-			body: { system: mergedSystemContext, userTimezone, threadId: activeThreadId },
+			body: {
+				system: mergedSystemContext,
+				userTimezone,
+				threadId: activeThreadId,
+			},
 		}),
 		// Note: Mastra's memory system on the server handles historical context.
 		// We load history for display but don't need to send it back since the server
@@ -627,6 +641,42 @@ export function ProjectStatusAgentChat({
 			}
 		},
 	});
+
+	// A2UI: Scan messages for tool results containing A2UI payloads
+	const lastA2UIMessageIdRef = useRef<string | null>(null);
+	useEffect(() => {
+		if (!a2uiSurface) return;
+		// Walk messages in reverse to find the latest tool result with a2ui payload
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const msg = messages[i];
+			if (msg.id === lastA2UIMessageIdRef.current) break;
+			if (!msg.parts) continue;
+			for (const part of msg.parts) {
+				const anyPart = part as {
+					type: string;
+					result?: Record<string, unknown>;
+					toolResult?: Record<string, unknown>;
+				};
+				if (anyPart.type === "tool-result") {
+					const result = anyPart.result ?? anyPart.toolResult;
+					if (result && isA2UIToolPayload(result)) {
+						a2uiSurface.applyMessages(
+							(
+								result as {
+									a2ui: {
+										messages: Parameters<typeof a2uiSurface.applyMessages>[0];
+									};
+								}
+							).a2ui.messages
+						);
+					}
+				}
+			}
+		}
+		if (messages.length > 0) {
+			lastA2UIMessageIdRef.current = messages[messages.length - 1].id;
+		}
+	}, [messages, a2uiSurface]);
 
 	// Reset thread state when the project context changes.
 	useEffect(() => {
@@ -1112,6 +1162,12 @@ export function ProjectStatusAgentChat({
 	// Shared chat content renderer (used by both embedded and card modes)
 	const chatContent = (
 		<>
+			{/* A2UI: Render gen-ui widget when a surface is active */}
+			{a2uiSurface?.isActive && a2uiSurface.surface && (
+				<div className="mb-3 flex-shrink-0">
+					<A2UIRenderer surface={a2uiSurface.surface} onDismiss={() => a2uiSurface.dismiss()} isStreaming={isBusy} />
+				</div>
+			)}
 			<div className="min-h-0 flex-1 overflow-hidden">
 				{visibleMessages.length === 0 ? (
 					<div
