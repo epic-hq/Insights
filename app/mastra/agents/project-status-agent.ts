@@ -39,107 +39,112 @@ import { researchAgent } from "./research-agent";
 import { taskAgent } from "./task-agent";
 
 function auditToolSchemas(agent_name: string, tools: Record<string, unknown>) {
-	try {
-		const tool_entries = Object.entries(tools);
-		const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> = [];
+  try {
+    const tool_entries = Object.entries(tools);
+    const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> =
+      [];
 
-		for (const [tool_name, tool] of tool_entries) {
-			if (!tool || typeof tool !== "object") {
-				issues.push({
-					tool: tool_name,
-					issue: `tool is not an object (${typeof tool})`,
-				});
-				continue;
-			}
+    for (const [tool_name, tool] of tool_entries) {
+      if (!tool || typeof tool !== "object") {
+        issues.push({
+          tool: tool_name,
+          issue: `tool is not an object (${typeof tool})`,
+        });
+        continue;
+      }
 
-			const own_props = Object.getOwnPropertyNames(tool);
-			const has_input_schema = own_props.includes("inputSchema");
-			const has_output_schema = own_props.includes("outputSchema");
+      const own_props = Object.getOwnPropertyNames(tool);
+      const has_input_schema = own_props.includes("inputSchema");
+      const has_output_schema = own_props.includes("outputSchema");
 
-			const input_schema = (tool as any).inputSchema;
-			const output_schema = (tool as any).outputSchema;
-			const input_is_zod =
-				!!input_schema && typeof input_schema === "object" && typeof input_schema.safeParse === "function";
-			const output_is_zod =
-				!!output_schema && typeof output_schema === "object" && typeof output_schema.safeParse === "function";
+      const input_schema = (tool as any).inputSchema;
+      const output_schema = (tool as any).outputSchema;
+      const input_is_zod =
+        !!input_schema &&
+        typeof input_schema === "object" &&
+        typeof input_schema.safeParse === "function";
+      const output_is_zod =
+        !!output_schema &&
+        typeof output_schema === "object" &&
+        typeof output_schema.safeParse === "function";
 
-			if (!has_input_schema || !input_is_zod) {
-				issues.push({
-					tool: tool_name,
-					issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
-					ownProps: own_props,
-				});
-			}
-			if (!has_output_schema || !output_is_zod) {
-				issues.push({
-					tool: tool_name,
-					issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
-					ownProps: own_props,
-				});
-			}
-		}
+      if (!has_input_schema || !input_is_zod) {
+        issues.push({
+          tool: tool_name,
+          issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
+          ownProps: own_props,
+        });
+      }
+      if (!has_output_schema || !output_is_zod) {
+        issues.push({
+          tool: tool_name,
+          issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
+          ownProps: own_props,
+        });
+      }
+    }
 
-		if (issues.length > 0) {
-			consola.warn("[mastra-schema-audit] tool schema issues", {
-				agent: agent_name,
-				issueCount: issues.length,
-				issues,
-			});
-		} else {
-			consola.info("[mastra-schema-audit] all tool schemas look valid", {
-				agent: agent_name,
-				toolCount: tool_entries.length,
-			});
-		}
-	} catch (error) {
-		consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
-	}
+    if (issues.length > 0) {
+      consola.warn("[mastra-schema-audit] tool schema issues", {
+        agent: agent_name,
+        issueCount: issues.length,
+        issues,
+      });
+    } else {
+      consola.info("[mastra-schema-audit] all tool schemas look valid", {
+        agent: agent_name,
+        toolCount: tool_entries.length,
+      });
+    }
+  } catch (error) {
+    consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
+  }
 }
 
 const project_status_agent_tools = {
-	getCurrentDate: getCurrentDateTool,
-	fetchProjectStatusContext: fetchProjectStatusContextTool,
-	fetchEvidence: fetchEvidenceTool,
-	semanticSearchEvidence: semanticSearchEvidenceTool,
-	semanticSearchAssets: semanticSearchAssetsTool,
-	fetchProjectGoals: fetchProjectGoalsTool,
-	fetchThemes: fetchThemesTool,
-	fetchTopThemesWithPeople: fetchTopThemesWithPeopleTool,
-	fetchPainMatrixCache: fetchPainMatrixCacheTool,
-	fetchSegments: fetchSegmentsTool,
-	fetchSegmentThemes: fetchSegmentThemesTool,
-	"fetch-segment-themes": fetchSegmentThemesTool,
-	fetchThemeStakeholders: fetchThemeStakeholdersTool,
-	"fetch-theme-stakeholders": fetchThemeStakeholdersTool,
-	fetchStakeholderDemographics: fetchStakeholderDemographicsTool,
-	"fetch-stakeholder-demographics": fetchStakeholderDemographicsTool,
-	fetchConversationLenses: fetchConversationLensesTool,
-	generateProjectRoutes: generateProjectRoutesTool,
-	generateDocumentLink: generateDocumentLinkTool,
-	capabilityLookup: capabilityLookupTool,
-	suggestNextSteps: suggestionTool,
-	recommendNextActions: recommendNextActionsTool,
-	// Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
-	"recommend-next-actions": recommendNextActionsTool,
-	generateResearchRecommendations: generateResearchRecommendationsTool,
-	"generate-research-recommendations": generateResearchRecommendationsTool,
-	displayComponent: displayComponentTool,
-	"display-component": displayComponentTool,
-	fetchResearchPulse: fetchResearchPulseTool,
-	"fetch-research-pulse": fetchResearchPulseTool,
+  getCurrentDate: getCurrentDateTool,
+  fetchProjectStatusContext: fetchProjectStatusContextTool,
+  fetchEvidence: fetchEvidenceTool,
+  semanticSearchEvidence: semanticSearchEvidenceTool,
+  semanticSearchAssets: semanticSearchAssetsTool,
+  fetchProjectGoals: fetchProjectGoalsTool,
+  fetchThemes: fetchThemesTool,
+  fetchTopThemesWithPeople: fetchTopThemesWithPeopleTool,
+  fetchPainMatrixCache: fetchPainMatrixCacheTool,
+  fetchSegments: fetchSegmentsTool,
+  fetchSegmentThemes: fetchSegmentThemesTool,
+  "fetch-segment-themes": fetchSegmentThemesTool,
+  fetchThemeStakeholders: fetchThemeStakeholdersTool,
+  "fetch-theme-stakeholders": fetchThemeStakeholdersTool,
+  fetchStakeholderDemographics: fetchStakeholderDemographicsTool,
+  "fetch-stakeholder-demographics": fetchStakeholderDemographicsTool,
+  fetchConversationLenses: fetchConversationLensesTool,
+  generateProjectRoutes: generateProjectRoutesTool,
+  generateDocumentLink: generateDocumentLinkTool,
+  capabilityLookup: capabilityLookupTool,
+  suggestNextSteps: suggestionTool,
+  recommendNextActions: recommendNextActionsTool,
+  // Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
+  "recommend-next-actions": recommendNextActionsTool,
+  generateResearchRecommendations: generateResearchRecommendationsTool,
+  "generate-research-recommendations": generateResearchRecommendationsTool,
+  displayComponent: displayComponentTool,
+  "display-component": displayComponentTool,
+  fetchResearchPulse: fetchResearchPulseTool,
+  "fetch-research-pulse": fetchResearchPulseTool,
 };
 
 auditToolSchemas("projectStatusAgent", project_status_agent_tools);
 
 export const projectStatusAgent = new Agent({
-	id: "project-status-agent",
-	name: "projectStatusAgent",
-	instructions: async ({ requestContext }) => {
-		try {
-			const projectId = requestContext.get("project_id");
-			const accountId = requestContext.get("account_id");
-			const userId = requestContext.get("user_id");
-			return `
+  id: "project-status-agent",
+  name: "projectStatusAgent",
+  instructions: async ({ requestContext }) => {
+    try {
+      const projectId = requestContext.get("project_id");
+      const accountId = requestContext.get("account_id");
+      const userId = requestContext.get("user_id");
+      return `
 You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
 
 project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}, user_id=${userId || "<unknown>"}
@@ -158,26 +163,35 @@ First call "fetchProjectStatusContext" with scopes=["sections","status"] and inc
 - If sections are missing goals but the project HAS interviews or evidence: acknowledge the existing data first, then suggest completing setup. For example: "I see you have 10 interviews already! To give you better guidance, it would help to define your research goals. Want me to help with that?"
 - NEVER tell a user with existing research data that their project "isn't set up yet" -- that dismisses their work.
 
-## Proactive Recommendations
-When the user asks research-related questions like:
-- "Who should I talk to next?"
-- "What insights need validation?"
-- "Where are my research gaps?"
-- "Which contacts are getting stale?"
-- "What should I do next?" (research context)
+## Visual Widgets (PRIMARY response for structured data)
 
-Call "generateResearchRecommendations" with projectId=${projectId} to get cross-lens synthesized recommendations:
-- Combines data from Research Coverage + ICP Match + Value Priorities
-- Returns 1-3 prioritized recommendations with full evidence traceability
-- Each recommendation includes:
-  - Priority (1=critical, 2=important, 3=opportunity)
-  - Category (research_coverage, icp_validation, insight_validation, follow_up)
-  - Current confidence → Target confidence scores
-  - Action type (schedule_interview, validate_theme, follow_up_contact, etc.)
-  - navigateTo path for direct navigation
-- Present recommendations with their reasoning and confidence levels
-- Use navigateTo to create clickable links: **[Validate "Theme Name"](/a/{accountId}/{projectId}/themes/{themeId})**
-- Example output: "Your 'Instill Confidence with Reliable Tools' theme has LOW confidence (45%) with only 2 mentions. Interview 3 more people to reach HIGH confidence (85%+)."
+**IMPORTANT: When the user asks a question that matches one of these patterns, you MUST render a widget using \`displayComponent\` instead of giving a plain text answer.**
+
+| User question pattern | Widget to render | Data tools to call first |
+|---|---|---|
+| Research gaps / coverage / "do I have enough data?" | \`IntakeHealth\` | fetchProjectStatusContext(scopes=["status","interviews"]) + fetchStakeholderDemographics |
+| Evidence / quotes / "what did people say?" | \`EvidenceWall\` | fetchEvidence or semanticSearchEvidence |
+| Patterns / themes / "what are the key themes?" | \`PatternSynthesis\` | fetchTopThemesWithPeople |
+| What should I do / next actions / decisions | \`DecisionForcing\` | generateResearchRecommendations |
+| Who mentioned this / stakeholder analysis | \`StakeholderMap\` | fetchThemeStakeholders + fetchStakeholderDemographics |
+| Project progress / where am I? | \`ProgressRail\` | recommendNextActions (get projectState.stage) |
+| Weekly review / what changed? | \`ResearchPulse\` | fetchResearchPulse |
+
+**Workflow:**
+1. Call the data tool(s) FIRST to gather real data
+2. Shape the data into the widget's expected format
+3. Call \`displayComponent\` with componentType and data
+4. Add a brief chat message summarizing the key insight (1-2 sentences max — the widget does the heavy lifting)
+
+Do NOT render widgets with empty/placeholder data. If a tool returns no data, explain what's missing and suggest how to get started.
+
+## Proactive Recommendations
+When the user asks research-related questions like "who should I talk to next?", "what insights need validation?", "where are my research gaps?", or "which contacts are getting stale?":
+
+Call "generateResearchRecommendations" with projectId=${projectId} to get cross-lens synthesized recommendations, then render the \`DecisionForcing\` widget with the results.
+
+The recommendations data includes priority (1-3), category, confidence scores, action types, and navigateTo paths.
+Use navigateTo to create clickable links in the brief chat summary.
 
 For general project guidance (non-research): use "recommendNextActions" as fallback
 
@@ -291,48 +305,35 @@ For strategic planning, task prioritization, or "what should I do next?", delega
 ## How-To Guidance
 For "how do I", "where do I", "best way to", and "teach me" guidance requests, delegate to the howtoAgent sub-agent.
 
-## JTBD Widget Rendering
-
-When answering these types of questions, render the appropriate widget on the canvas using \`displayComponent\`:
-
-- **Research gaps / coverage / "do I have enough data?"** → \`IntakeHealth\` (call fetchProjectStatusContext with scopes=["status","interviews"] + fetchStakeholderDemographics, then render)
-- **Evidence / quotes / "what did people say?"** → \`EvidenceWall\` (call fetchEvidence or semanticSearchEvidence, group by type, then render)
-- **Patterns / themes synthesis / "what are the key themes?"** → \`PatternSynthesis\` (call fetchTopThemesWithPeople, then render)
-- **What should I do / next actions / decisions** → \`DecisionForcing\` (call generateResearchRecommendations, then render)
-- **Who mentioned this / stakeholder analysis** → \`StakeholderMap\` (call fetchThemeStakeholders + fetchStakeholderDemographics, then render)
-- **Project progress / where am I?** → \`ProgressRail\` (call recommendNextActions to get projectState.stage, then render)
-- **Weekly review / what changed?** → \`ResearchPulse\` (call fetchResearchPulse if available, or fetchProjectStatusContext + recommendNextActions, then render)
-
-Always call the data tool FIRST, then use displayComponent to render. Don't render widgets with empty/placeholder data.
 
 ${buildGenUISystemContext()}
 `;
-		} catch (error) {
-			consola.error("Error in project status agent instructions:", error);
-			return `
+    } catch (error) {
+      consola.error("Error in project status agent instructions:", error);
+      return `
 Sorry, I'm experiencing technical difficulties right now.
 
 Please try:
 
 1. Refreshing the page and trying again
 2. Contacting support if the issue persists`;
-		}
-	},
-	model: openai("gpt-4.1"),
-	tools: wrapToolsWithStatusEvents(project_status_agent_tools),
-	agents: {
-		taskAgent,
-		peopleAgent,
-		researchAgent,
-		opsAgent,
-		feedbackAgent,
-		chiefOfStaffAgent,
-		howtoAgent,
-	},
-	memory: new Memory({
-		storage: getSharedPostgresStore(),
-	}),
-	// TokenLimiterProcessor prevents context window overflow
-	// Note: Using number format for Zod v4 compatibility
-	outputProcessors: [new TokenLimiterProcessor(45_000)],
+    }
+  },
+  model: openai("gpt-4.1"),
+  tools: wrapToolsWithStatusEvents(project_status_agent_tools),
+  agents: {
+    taskAgent,
+    peopleAgent,
+    researchAgent,
+    opsAgent,
+    feedbackAgent,
+    chiefOfStaffAgent,
+    howtoAgent,
+  },
+  memory: new Memory({
+    storage: getSharedPostgresStore(),
+  }),
+  // TokenLimiterProcessor prevents context window overflow
+  // Note: Using number format for Zod v4 compatibility
+  outputProcessors: [new TokenLimiterProcessor(45_000)],
 });
