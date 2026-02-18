@@ -21,6 +21,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import { A2UISurfaceProvider } from "~/contexts/a2ui-surface-context";
 import { useCurrentProject } from "~/contexts/current-project-context";
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context";
 import { getCompletedCardCount, getTotalCards } from "~/features/journey-map/journey-config";
@@ -541,19 +542,21 @@ export function AIAssistantPanel({
 				</div>
 			)}
 
-			{/* Chat — fills remaining space */}
+			{/* Chat — fills remaining space, wrapped in A2UISurfaceProvider for gen-ui widgets */}
 			{accountId && projectId && (
-				<div className="min-h-0 flex-1">
-					<ProjectStatusAgentChat
-						accountId={accountId}
-						projectId={projectId}
-						systemContext={systemContext}
-						embedded
-						onClearChatRef={handleClearChatRef}
-						onLoadThreadRef={handleLoadThreadRef}
-						onTTSStateRef={handleTTSStateRef}
-					/>
-				</div>
+				<A2UISurfaceProvider>
+					<div className="min-h-0 flex-1">
+						<ProjectStatusAgentChat
+							accountId={accountId}
+							projectId={projectId}
+							systemContext={systemContext}
+							embedded
+							onClearChatRef={handleClearChatRef}
+							onLoadThreadRef={handleLoadThreadRef}
+							onTTSStateRef={handleTTSStateRef}
+						/>
+					</div>
+				</A2UISurfaceProvider>
 			)}
 		</div>
 	);
