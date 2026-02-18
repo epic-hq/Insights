@@ -39,6 +39,16 @@ const FinalizeRequestSchema = z.object({
 			})
 		)
 		.optional(),
+	// Manual notes entered from desktop panel
+	notes: z
+		.array(
+			z.object({
+				text: z.string(),
+				timestamp: z.string().nullish(),
+				source: z.string().nullish(),
+			})
+		)
+		.optional(),
 	// People mentioned during the meeting
 	people: z
 		.array(
@@ -103,6 +113,28 @@ const parseDueDate = (dueText: string | null | undefined): string | null => {
 		const daysUntilFriday = (5 - now.getDay() + 7) % 7 || 7;
 		now.setDate(now.getDate() + daysUntilFriday);
 		return now.toISOString().split("T")[0];
+	}
+
+	const weekdayMatch = dueLower.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
+	if (weekdayMatch) {
+		const weekdayMap: Record<string, number> = {
+			sunday: 0,
+			monday: 1,
+			tuesday: 2,
+			wednesday: 3,
+			thursday: 4,
+			friday: 5,
+			saturday: 6,
+		};
+		const targetDay = weekdayMap[weekdayMatch[1]];
+		if (typeof targetDay === "number") {
+			const candidate = new Date();
+			const currentDay = candidate.getDay();
+			let daysUntil = (targetDay - currentDay + 7) % 7;
+			if (daysUntil === 0) daysUntil = 7; // "Monday" means next Monday, not today.
+			candidate.setDate(candidate.getDate() + daysUntil);
+			return candidate.toISOString().split("T")[0];
+		}
 	}
 
 	const parsed = new Date(dueText);
@@ -215,13 +247,15 @@ export async function action({ request }: ActionFunctionArgs) {
 			return Response.json({ error: "Invalid request body", details: parsed.error.issues }, { status: 400 });
 		}
 
-		const { interview_id, transcript, tasks, people, people_map, duration_seconds, platform } = parsed.data;
+		const { interview_id, transcript, tasks, notes, people, people_map, duration_seconds, platform } = parsed.data;
 
 		consola.info(`[desktop-finalize] Finalizing interview ${interview_id}`);
 
 		const { data: interview, error: interviewError } = await supabase
 			.from("interviews")
-			.select("id, account_id, project_id, title, processing_metadata, duration_sec, meeting_platform, created_by")
+			.select(
+				"id, account_id, project_id, title, processing_metadata, duration_sec, meeting_platform, created_by, observations_and_notes"
+			)
 			.eq("id", interview_id)
 			.single();
 
@@ -238,12 +272,14 @@ export async function action({ request }: ActionFunctionArgs) {
 			people_resolved: number;
 			status_updated: boolean;
 			evidence_people_linked: number;
+			notes_saved: number;
 		} = {
 			transcript_saved: false,
 			tasks_created: 0,
 			people_resolved: 0,
 			status_updated: false,
 			evidence_people_linked: 0,
+			notes_saved: 0,
 		};
 
 		// 1. Save transcript in sanitized AssemblyAI-like shape
@@ -276,6 +312,51 @@ export async function action({ request }: ActionFunctionArgs) {
 			} else {
 				results.transcript_saved = true;
 				consola.info(`[desktop-finalize] Saved transcript with ${transcript.length} turns`);
+			}
+		}
+
+		// 1b. Persist manual panel notes into observations_and_notes (idempotent append)
+		if (notes?.length) {
+			const existingNotes = (interview as { observations_and_notes?: string | null }).observations_and_notes || "";
+			const existingLines = new Set(
+				existingNotes
+					.split("\n")
+					.map((line) => line.trim())
+					.filter(Boolean)
+			);
+
+			const noteLines = notes
+				.map((note) => {
+					const text = note.text?.trim();
+					if (!text) return null;
+					const ts = note.timestamp ? new Date(note.timestamp) : null;
+					const tsLabel =
+						ts && !Number.isNaN(ts.getTime())
+							? ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+							: null;
+					return tsLabel ? `- [${tsLabel}] ${text}` : `- ${text}`;
+				})
+				.filter((line): line is string => Boolean(line && !existingLines.has(line)));
+
+			if (noteLines.length > 0) {
+				const header = "## Desktop Notes";
+				const hasHeader = existingNotes.includes(header);
+				const nextNotesBody = hasHeader
+					? [existingNotes.trim(), ...noteLines].filter(Boolean).join("\n")
+					: [existingNotes.trim(), [header, ...noteLines].join("\n")].filter(Boolean).join("\n\n");
+
+				const { error: notesError } = await supabase
+					.from("interviews")
+					.update({
+						observations_and_notes: nextNotesBody,
+					})
+					.eq("id", interview_id);
+
+				if (notesError) {
+					consola.warn("[desktop-finalize] Failed to save manual notes:", notesError.message);
+				} else {
+					results.notes_saved = noteLines.length;
+				}
 			}
 		}
 

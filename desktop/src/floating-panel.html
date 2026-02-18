@@ -1732,7 +1732,11 @@
             timestamp: new Date().toISOString()
           });
         }
-        window.electronAPI?.submitNote(text);
+        window.electronAPI?.submitNote({
+          text,
+          mode: inputMode,
+          timestamp: new Date().toISOString(),
+        });
 
         noteInput.value = '';
         // Reset to note mode after submitting a task

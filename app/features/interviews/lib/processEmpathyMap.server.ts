@@ -21,7 +21,7 @@ export type EmpathyMap = {
 	gains: EmpathyMapItem[];
 };
 
-type EvidenceRow = {
+export type EvidenceRow = {
 	id: string;
 	anchors?: unknown;
 	says?: unknown;

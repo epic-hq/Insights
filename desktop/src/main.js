@@ -6,6 +6,7 @@ const {
   Notification,
   shell,
   Menu,
+  screen,
 } = require("electron");
 const path = require("node:path");
 const url = require("url");
@@ -144,9 +145,13 @@ let detectedMeeting = null;
 // Track stable meeting fingerprints to avoid duplicate notifications.
 // This is intentionally session-scoped (reset on app restart).
 const notifiedMeetingFingerprints = new Set();
+const notifiedMeetingWindowFingerprints = new Map();
 
 let mainWindow;
 let floatingPanelWindow = null;
+// Track if we're currently recording in floating panel mode
+let floatingPanelRecordingActive = false;
+let floatingPanelRecordingInProgress = false; // Guard against rapid clicks
 
 const platformNames = {
   zoom: "Zoom",
@@ -197,7 +202,21 @@ function extractMeetingFingerprint(windowInfo) {
 
 function notifyMeetingDetected(windowInfo) {
   const platformName = getPlatformName(windowInfo?.platform);
+  const windowId = windowInfo?.id ? String(windowInfo.id) : null;
   const fingerprint = extractMeetingFingerprint(windowInfo);
+
+  // Once a specific window+meeting fingerprint has been notified, suppress repeats.
+  // This prevents extra "meeting detected" notifications after stop/start within the same meeting.
+  if (
+    windowId &&
+    fingerprint &&
+    notifiedMeetingWindowFingerprints.get(windowId) === fingerprint
+  ) {
+    console.log(
+      `[meeting-detected] Suppressing duplicate window notification for ${windowId}:${fingerprint}`,
+    );
+    return false;
+  }
 
   if (!fingerprint) {
     console.log(
@@ -207,6 +226,9 @@ function notifyMeetingDetected(windowInfo) {
   }
 
   if (notifiedMeetingFingerprints.has(fingerprint)) {
+    if (windowId) {
+      notifiedMeetingWindowFingerprints.set(windowId, fingerprint);
+    }
     console.log(
       `[meeting-detected] Suppressing duplicate notification for ${fingerprint}`,
     );
@@ -214,6 +236,9 @@ function notifyMeetingDetected(windowInfo) {
   }
 
   notifiedMeetingFingerprints.add(fingerprint);
+  if (windowId) {
+    notifiedMeetingWindowFingerprints.set(windowId, fingerprint);
+  }
 
   const notification = new Notification({
     title: `${platformName} Meeting Detected`,
@@ -258,6 +283,18 @@ function createFloatingPanelWindow() {
     },
   });
 
+  try {
+    floatingPanelWindow.setVisibleOnAllWorkspaces(true, {
+      visibleOnFullScreen: true,
+    });
+    floatingPanelWindow.setAlwaysOnTop(true, "screen-saver");
+  } catch (error) {
+    console.warn(
+      "[floating-panel] Failed to set all-workspaces visibility:",
+      error?.message || error,
+    );
+  }
+
   // Load the floating panel using webpack entry
   console.log(
     "FLOATING_PANEL_WEBPACK_ENTRY:",
@@ -278,10 +315,49 @@ function createFloatingPanelWindow() {
   }
 
   floatingPanelWindow.on("closed", () => {
+    const shouldReopen = floatingPanelRecordingActive;
     floatingPanelWindow = null;
+    if (shouldReopen) {
+      console.warn(
+        "[floating-panel] Panel closed during active recording; reopening.",
+      );
+      setTimeout(() => {
+        try {
+          showFloatingPanel();
+          sendRecordingStateToPanel(true, null);
+        } catch (error) {
+          console.error(
+            "[floating-panel] Failed to reopen during recording:",
+            error,
+          );
+        }
+      }, 250);
+    }
   });
 
   return floatingPanelWindow;
+}
+
+function positionFloatingPanel(panel, options = {}) {
+  if (!panel || panel.isDestroyed()) return;
+
+  const minimized = options.minimized === true;
+  const width = minimized ? 48 : 320;
+  const height = minimized ? 48 : 400;
+  const topMargin = 80;
+  const edgeMargin = 20;
+
+  const cursorPoint = screen.getCursorScreenPoint();
+  const display = screen.getDisplayNearestPoint(cursorPoint);
+  const { x, y, width: workWidth, height: workHeight } = display.workArea;
+
+  const targetX = x + workWidth - width - edgeMargin;
+  const targetY = minimized
+    ? y + workHeight - height - edgeMargin
+    : y + topMargin;
+
+  panel.setSize(width, height);
+  panel.setPosition(targetX, targetY);
 }
 
 /**
@@ -291,8 +367,12 @@ function showFloatingPanel() {
   console.log("showFloatingPanel called");
   try {
     const panel = createFloatingPanelWindow();
+    positionFloatingPanel(panel, { minimized: false });
     panel.show();
+    panel.moveTop();
+    panel.focus();
     console.log("Floating panel shown successfully");
+    console.log("[floating-panel] Bounds:", panel.getBounds());
     // Optionally hide main window
     if (mainWindow) {
       mainWindow.hide();
@@ -998,6 +1078,42 @@ function shouldRetryAxiosError(error) {
   return status === 408 || status === 429 || (status >= 500 && status <= 599);
 }
 
+async function withDesktopAuth(requestWithToken, options = {}) {
+  const { label = "request", allowRefresh = true } = options;
+  let refreshAttempted = false;
+
+  for (;;) {
+    const accessToken = await auth.getAccessToken();
+    if (!accessToken) {
+      if (allowRefresh && !refreshAttempted) {
+        refreshAttempted = true;
+        const refreshed = await auth.refreshSession();
+        if (refreshed) {
+          continue;
+        }
+      }
+      throw new Error(`[auth] ${label}: no access token available`);
+    }
+
+    try {
+      return await requestWithToken(accessToken);
+    } catch (error) {
+      const status = error?.response?.status;
+      if (status === 401 && allowRefresh && !refreshAttempted) {
+        console.warn(
+          `[auth] ${label} received 401. Refreshing session and retrying once...`,
+        );
+        refreshAttempted = true;
+        const refreshed = await auth.refreshSession();
+        if (refreshed) {
+          continue;
+        }
+      }
+      throw error;
+    }
+  }
+}
+
 async function withAxiosRetry(requestFn, options = {}) {
   const {
     attempts = 3,
@@ -1065,8 +1181,8 @@ async function ensureAuthForRecording() {
 async function getUserContext() {
   if (userContext) return userContext;
 
-  const accessToken = await auth.getAccessToken();
-  if (!accessToken) {
+  const hasToken = await auth.getAccessToken();
+  if (!hasToken) {
     console.log("No access token available for user context");
     return null;
   }
@@ -1074,12 +1190,16 @@ async function getUserContext() {
   const candidates = getDesktopApiBaseCandidates();
   for (const baseUrl of candidates) {
     try {
-      const response = await axios.get(`${baseUrl}/api/desktop/context`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        timeout: 10000,
-      });
+      const response = await withDesktopAuth(
+        (accessToken) =>
+          axios.get(`${baseUrl}/api/desktop/context`, {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+            timeout: 10000,
+          }),
+        { label: "desktop-context" },
+      );
 
       userContext = response.data;
       activeUpsightApiUrl = baseUrl;
@@ -1492,6 +1612,9 @@ function initSDK() {
     );
 
     detectedMeeting = null;
+    if (evt.window?.id) {
+      notifiedMeetingWindowFingerprints.delete(String(evt.window.id));
+    }
 
     // Send the meeting closed status to the renderer process
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -1583,9 +1706,15 @@ function initSDK() {
         await flushEvidenceExtraction(noteId);
       }
 
-      // Finalize the interview in the backend (create tasks, save transcript)
-      if (noteId && interviewId && meeting && meeting.transcript) {
-        const formattedTranscript = meeting.transcript.map((t) => ({
+      const postRecordingWork = [];
+
+      // Finalize interview at recording end so notes/tasks/status persist
+      // even if transcript chunks are partial or delayed.
+      if (noteId && interviewId && meeting) {
+        const transcriptTurns = Array.isArray(meeting.transcript)
+          ? meeting.transcript
+          : [];
+        const formattedTranscript = transcriptTurns.map((t) => ({
           speaker: t.speaker,
           text: t.text,
           timestamp_ms:
@@ -1602,23 +1731,23 @@ function initSDK() {
           durationSeconds = Math.round((Date.now() - startTime) / 1000);
         }
 
-        finalizeInterview(
-          noteId,
-          interviewId,
-          formattedTranscript,
-          durationSeconds,
-          meeting.platform || null,
-        )
-          .then((result) => {
+        postRecordingWork.push(
+          (async () => {
+            const result = await finalizeInterview(
+              noteId,
+              interviewId,
+              formattedTranscript,
+              state.manualNotes || [],
+              durationSeconds,
+              meeting.platform || null,
+            );
             if (result) {
               console.log(
                 `[recording-ended] Finalized interview: ${result.results?.tasks_created || 0} tasks created`,
               );
             }
-          })
-          .catch((err) =>
-            console.error("[recording-ended] Finalization error:", err),
-          );
+          })(),
+        );
       }
 
       // Upload recording file to our Cloudflare R2 storage
@@ -1632,15 +1761,27 @@ function initSDK() {
           );
         }
 
-        setTimeout(async () => {
-          try {
+        postRecordingWork.push(
+          (async () => {
+            // Wait briefly for file system flush before opening file stream.
+            await new Promise((resolve) => setTimeout(resolve, 3000));
             await uploadRecordingToR2(recordingFileId, interviewId);
-          } catch (uploadError) {
-            console.error("[recording-ended] R2 upload error:", uploadError);
-          }
-        }, 3000); // Wait 3 seconds for file system to settle
+          })(),
+        );
       } else {
         console.log("[recording-ended] No interviewId, skipping R2 upload");
+      }
+
+      if (postRecordingWork.length > 0) {
+        const results = await Promise.allSettled(postRecordingWork);
+        for (const [index, result] of results.entries()) {
+          if (result.status === "rejected") {
+            console.error(
+              `[recording-ended] Post-recording job ${index + 1} failed:`,
+              result.reason,
+            );
+          }
+        }
       }
     } catch (error) {
       console.error("Error handling recording ended:", error);
@@ -1736,6 +1877,7 @@ function initSDK() {
 
       // Also notify floating panel
       const isRecording = code === "recording";
+      floatingPanelRecordingActive = isRecording;
       sendRecordingStateToPanel(isRecording, isRecording ? Date.now() : null);
     }
   });
@@ -2777,6 +2919,7 @@ const evidenceExtractionState = {
         pendingUtterances: [],
         evidence: [],
         tasks: [],
+        manualNotes: [],
         people: [],
         interviewId: null, // Database interview ID for persistence
       };
@@ -2804,12 +2947,6 @@ async function extractRealtimeEvidence(
   existingEvidence,
 ) {
   try {
-    const accessToken = await auth.getAccessToken();
-    if (!accessToken) {
-      console.log("[realtime-evidence] No access token, skipping extraction");
-      return null;
-    }
-
     const startTime = Date.now();
     console.log(
       `[realtime-evidence] Extracting from ${utterances.length} utterances (batch ${batchIndex}), ${existingEvidence?.length || 0} existing gists`,
@@ -2818,22 +2955,34 @@ async function extractRealtimeEvidence(
         : "[no persistence]",
     );
 
-    const response = await axios.post(
-      `${activeUpsightApiUrl}/api/desktop/realtime-evidence`,
-      {
-        utterances,
-        existingEvidence,
-        sessionId: noteId,
-        batchIndex,
-        interviewId, // Pass for server-side DB persistence
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 15000, // 15 second timeout - should be <3s with gpt-4o-mini
-      },
+    const response = await withDesktopAuth(
+      (accessToken) =>
+        withAxiosRetry(
+          () =>
+            axios.post(
+              `${activeUpsightApiUrl}/api/desktop/realtime-evidence`,
+              {
+                utterances,
+                existingEvidence,
+                sessionId: noteId,
+                batchIndex,
+                interviewId, // Pass for server-side DB persistence
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Content-Type": "application/json",
+                },
+                timeout: 15000, // 15 second timeout - should be <3s with gpt-4o-mini
+              },
+            ),
+          {
+            attempts: 2,
+            initialDelayMs: 800,
+            label: "realtime-evidence",
+          },
+        ),
+      { label: "realtime-evidence" },
     );
 
     const elapsed = Date.now() - startTime;
@@ -2962,6 +3111,7 @@ async function finalizeInterview(
   noteId,
   interviewId,
   transcript,
+  notes = [],
   durationSeconds = null,
   platform = null,
 ) {
@@ -2971,12 +3121,6 @@ async function finalizeInterview(
   }
 
   try {
-    const accessToken = await auth.getAccessToken();
-    if (!accessToken) {
-      console.log("[finalize] No access token, skipping finalization");
-      return null;
-    }
-
     // Get accumulated state
     const state = evidenceExtractionState.getState(noteId);
 
@@ -3026,28 +3170,32 @@ async function finalizeInterview(
             "[finalize] Missing accountId or projectId, skipping person resolution",
           );
         } else {
-          const resolveResponse = await withAxiosRetry(
-            () =>
-              axios.post(
-                `${activeUpsightApiUrl}/api/desktop/people/resolve`,
+          const resolveResponse = await withDesktopAuth(
+            (accessToken) =>
+              withAxiosRetry(
+                () =>
+                  axios.post(
+                    `${activeUpsightApiUrl}/api/desktop/people/resolve`,
+                    {
+                      accountId: accountId,
+                      projectId: projectId,
+                      people: enrichedPeople,
+                    },
+                    {
+                      headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        "Content-Type": "application/json",
+                      },
+                      timeout: 15000,
+                    },
+                  ),
                 {
-                  accountId: accountId,
-                  projectId: projectId,
-                  people: enrichedPeople,
-                },
-                {
-                  headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    "Content-Type": "application/json",
-                  },
-                  timeout: 30000,
+                  attempts: 2,
+                  initialDelayMs: 1000,
+                  label: "people-resolve",
                 },
               ),
-            {
-              attempts: 3,
-              initialDelayMs: 1000,
-              label: "people-resolve",
-            },
+            { label: "people-resolve" },
           );
 
           const { resolved, errors } = resolveResponse.data;
@@ -3077,35 +3225,40 @@ async function finalizeInterview(
     }
 
     // Step 2: Finalize interview with enriched data
-    const response = await withAxiosRetry(
-      () =>
-        axios.post(
-          `${activeUpsightApiUrl}/api/desktop/interviews/finalize`,
+    const response = await withDesktopAuth(
+      (accessToken) =>
+        withAxiosRetry(
+          () =>
+            axios.post(
+              `${activeUpsightApiUrl}/api/desktop/interviews/finalize`,
+              {
+                interview_id: interviewId,
+                transcript: transcript || [],
+                tasks: state.tasks || [],
+                notes: notes || [],
+                people: enrichedPeople,
+                people_map: Array.from(peopleMap.entries()).map(([key, id]) => ({
+                  person_key: key,
+                  person_id: id,
+                })),
+                duration_seconds: durationSeconds,
+                platform: platform,
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Content-Type": "application/json",
+                },
+                timeout: 90000,
+              },
+            ),
           {
-            interview_id: interviewId,
-            transcript: transcript || [],
-            tasks: state.tasks || [],
-            people: enrichedPeople,
-            people_map: Array.from(peopleMap.entries()).map(([key, id]) => ({
-              person_key: key,
-              person_id: id,
-            })),
-            duration_seconds: durationSeconds,
-            platform: platform,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-            timeout: 90000,
+            attempts: 3,
+            initialDelayMs: 1500,
+            label: "interview-finalize",
           },
         ),
-      {
-        attempts: 3,
-        initialDelayMs: 1500,
-        label: "interview-finalize",
-      },
+      { label: "interview-finalize" },
     );
 
     console.log("[finalize] Interview finalized:", response.data);
@@ -3128,12 +3281,6 @@ async function finalizeInterview(
 // ══════════════════════════════════════════════════════════════════════════════
 async function uploadRecordingToR2(recordingId, interviewId) {
   try {
-    const accessToken = await auth.getAccessToken();
-    if (!accessToken) {
-      console.log("[r2-upload] No access token, skipping upload");
-      return null;
-    }
-
     // Find the recording file on disk
     const possiblePaths = [
       path.join(RECORDING_PATH, `${recordingId}.mp4`),
@@ -3167,29 +3314,33 @@ async function uploadRecordingToR2(recordingId, interviewId) {
     console.log(
       `[r2-upload] Requesting presigned URL for interview ${interviewId}`,
     );
-    const presignedResponse = await withAxiosRetry(
-      () =>
-        axios.post(
-          `${activeUpsightApiUrl}/api/desktop/interviews/upload-media`,
+    const presignedResponse = await withDesktopAuth(
+      (accessToken) =>
+        withAxiosRetry(
+          () =>
+            axios.post(
+              `${activeUpsightApiUrl}/api/desktop/interviews/upload-media`,
+              {
+                interview_id: interviewId,
+                file_name: fileName,
+                file_type: "video/mp4",
+                file_size: fileStats.size,
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Content-Type": "application/json",
+                },
+                timeout: 60000,
+              },
+            ),
           {
-            interview_id: interviewId,
-            file_name: fileName,
-            file_type: "video/mp4",
-            file_size: fileStats.size,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-            timeout: 60000,
+            attempts: 3,
+            initialDelayMs: 1000,
+            label: "upload-media-presign",
           },
         ),
-      {
-        attempts: 3,
-        initialDelayMs: 1000,
-        label: "upload-media-presign",
-      },
+      { label: "upload-media-presign" },
     );
 
     const { upload_url, r2_key } = presignedResponse.data;
@@ -3228,22 +3379,34 @@ async function uploadRecordingToR2(recordingId, interviewId) {
 
     // Step 3: Confirm upload - update the interview record with media_url
     try {
-      await axios.post(
-        `${activeUpsightApiUrl}/api/desktop/interviews/upload-media`,
-        {
-          action: "confirm",
-          interview_id: interviewId,
-          r2_key: r2_key,
-          file_size: fileStats.size,
-          file_type: "video/mp4",
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          timeout: 10000,
-        },
+      await withDesktopAuth(
+        (accessToken) =>
+          withAxiosRetry(
+            () =>
+              axios.post(
+                `${activeUpsightApiUrl}/api/desktop/interviews/upload-media`,
+                {
+                  action: "confirm",
+                  interview_id: interviewId,
+                  r2_key: r2_key,
+                  file_size: fileStats.size,
+                  file_type: "video/mp4",
+                },
+                {
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+                  },
+                  timeout: 10000,
+                },
+              ),
+            {
+              attempts: 2,
+              initialDelayMs: 1000,
+              label: "upload-media-confirm",
+            },
+          ),
+        { label: "upload-media-confirm" },
       );
       console.log(
         `[r2-upload] Confirmed upload for interview ${interviewId}: ${r2_key}`,
@@ -4031,6 +4194,32 @@ ipcMain.handle("joinDetectedMeeting", async () => {
   return joinDetectedMeeting();
 });
 
+function getActiveMeetingContextForPanel() {
+  const activeMeetingMap = global.activeMeetingIds || {};
+
+  if (detectedMeeting?.window?.id) {
+    const detectedWindowId = String(detectedMeeting.window.id);
+    const detectedInfo = activeMeetingMap[detectedWindowId];
+    if (detectedInfo?.noteId) {
+      return {
+        windowId: detectedWindowId,
+        ...detectedInfo,
+      };
+    }
+  }
+
+  for (const [windowId, info] of Object.entries(activeMeetingMap)) {
+    if (info && info.noteId) {
+      return {
+        windowId,
+        ...info,
+      };
+    }
+  }
+
+  return null;
+}
+
 // Function to handle joining a detected meeting
 async function joinDetectedMeeting() {
   try {
@@ -4125,33 +4314,39 @@ ipcMain.handle("resizePanel", async (event, size) => {
 // Minimize panel to small circle in lower right corner
 ipcMain.handle("minimizePanel", async () => {
   if (floatingPanelWindow) {
-    const { screen } = require("electron");
-    const display = screen.getPrimaryDisplay();
-    const { width: screenWidth, height: screenHeight } = display.workAreaSize;
-
-    // Position in lower right corner with some padding
-    floatingPanelWindow.setSize(48, 48);
-    floatingPanelWindow.setPosition(screenWidth - 68, screenHeight - 68);
+    positionFloatingPanel(floatingPanelWindow, { minimized: true });
+    floatingPanelWindow.moveTop();
   }
 });
 
 // Restore panel from minimized state
 ipcMain.handle("restorePanel", async () => {
   if (floatingPanelWindow) {
-    floatingPanelWindow.setSize(320, 400);
-    // Move back to a reasonable position
-    floatingPanelWindow.setPosition(100, 100);
+    positionFloatingPanel(floatingPanelWindow, { minimized: false });
+    floatingPanelWindow.moveTop();
+    floatingPanelWindow.focus();
   }
 });
 
 // Close the floating panel
 ipcMain.handle("closePanel", async () => {
+  if (floatingPanelRecordingActive) {
+    console.log(
+      "[floating-panel] Ignoring close while recording; minimizing instead.",
+    );
+    if (floatingPanelWindow && !floatingPanelWindow.isDestroyed()) {
+      positionFloatingPanel(floatingPanelWindow, { minimized: true });
+      floatingPanelWindow.moveTop();
+    }
+    return { success: true, action: "minimized_while_recording" };
+  }
   hideFloatingPanel();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+    mainWindow.focus();
+  }
+  return { success: true, action: "closed" };
 });
-
-// Track if we're currently recording in floating panel mode
-let floatingPanelRecordingActive = false;
-let floatingPanelRecordingInProgress = false; // Guard against rapid clicks
 
 // Toggle recording from floating panel
 ipcMain.handle("toggleRecordingFromPanel", async () => {
@@ -4245,10 +4440,66 @@ ipcMain.handle("toggleRecordingFromPanel", async () => {
   }
 });
 
-// Submit a note from floating panel
-ipcMain.handle("submitNoteFromPanel", async (event, text) => {
-  console.log("Note submitted from floating panel:", text);
-  // TODO: Save the note to the current meeting
+// Submit a note or manual task from floating panel
+ipcMain.handle("submitNoteFromPanel", async (event, payload) => {
+  const normalizedPayload =
+    typeof payload === "string" ? { text: payload, mode: "note" } : payload || {};
+  const text = String(normalizedPayload.text || "").trim();
+  const mode = normalizedPayload.mode === "task" ? "task" : "note";
+  const timestamp =
+    typeof normalizedPayload.timestamp === "string" &&
+    normalizedPayload.timestamp.trim().length > 0
+      ? normalizedPayload.timestamp
+      : new Date().toISOString();
+
+  if (!text) {
+    return { success: false, error: "empty_text" };
+  }
+
+  const meetingContext = getActiveMeetingContextForPanel();
+  if (!meetingContext?.noteId) {
+    console.warn("[panel-input] No active meeting note available");
+    return { success: false, error: "no_active_meeting" };
+  }
+
+  const state = evidenceExtractionState.getState(meetingContext.noteId);
+
+  if (mode === "task") {
+    const taskEntry = {
+      text,
+      assignee: null,
+      due: text, // finalize route parses relative/explicit date hints from this text.
+      source: "manual_panel",
+      created_at: timestamp,
+    };
+
+    const hasTask = state.tasks.some((task) => task.text === taskEntry.text);
+    if (!hasTask) {
+      state.tasks.push(taskEntry);
+    }
+
+    console.log(
+      `[panel-input] Added manual task for ${meetingContext.noteId}: ${text}`,
+    );
+    return { success: true, mode: "task" };
+  }
+
+  const noteEntry = {
+    text,
+    timestamp,
+    source: "manual_panel",
+  };
+  const hasNote = state.manualNotes.some(
+    (note) => note.text === noteEntry.text && note.timestamp === noteEntry.timestamp,
+  );
+  if (!hasNote) {
+    state.manualNotes.push(noteEntry);
+  }
+
+  console.log(
+    `[panel-input] Added manual note for ${meetingContext.noteId}: ${text}`,
+  );
+  return { success: true, mode: "note" };
 });
 
 // Show floating panel (can be called from main window)
@@ -4263,11 +4514,27 @@ ipcMain.handle("hideFloatingPanel", async () => {
 
 // Send recording state to floating panel
 function sendRecordingStateToPanel(isRecording, startTime) {
+  if (
+    isRecording &&
+    (!floatingPanelWindow || floatingPanelWindow.isDestroyed())
+  ) {
+    console.warn(
+      "[floating-panel] Missing while recording; recreating panel window.",
+    );
+    showFloatingPanel();
+  }
+
   if (floatingPanelWindow && !floatingPanelWindow.isDestroyed()) {
-    floatingPanelWindow.webContents.send("recording-state", {
-      isRecording,
-      startTime,
-    });
+    const payload = { isRecording, startTime };
+    if (floatingPanelWindow.webContents.isLoading()) {
+      floatingPanelWindow.webContents.once("did-finish-load", () => {
+        if (floatingPanelWindow && !floatingPanelWindow.isDestroyed()) {
+          floatingPanelWindow.webContents.send("recording-state", payload);
+        }
+      });
+    } else {
+      floatingPanelWindow.webContents.send("recording-state", payload);
+    }
   }
 }
 

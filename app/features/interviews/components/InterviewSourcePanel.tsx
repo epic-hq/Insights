@@ -95,6 +95,28 @@ function getEvidenceSpeakerNames(item: Evidence): string[] {
 	return Array.from(new Set(anchorSpeakers));
 }
 
+function getEvidenceFacetLabels(item: Evidence): Array<{ kind_slug: string; label: string }> {
+	const record = item as {
+		facets?: Array<{ kind_slug?: string | null; label?: string | null }>;
+	};
+	const facets = Array.isArray(record.facets) ? record.facets : [];
+	const labels = facets
+		.map((facet) => {
+			const kind_slug = facet?.kind_slug?.trim();
+			const label = facet?.label?.trim();
+			if (!kind_slug || !label) return null;
+			return { kind_slug, label };
+		})
+		.filter((facet): facet is { kind_slug: string; label: string } => Boolean(facet));
+
+	return labels.filter(
+		(itemFacet, idx, arr) =>
+			arr.findIndex(
+				(candidate) => candidate.kind_slug === itemFacet.kind_slug && candidate.label === itemFacet.label
+			) === idx
+	);
+}
+
 interface Participant {
 	id: number;
 	role: string | null;
@@ -223,6 +245,7 @@ export function InterviewSourcePanel({
 							const hasVotes = votes && (votes.upvotes > 0 || votes.downvotes > 0);
 							const isHighlighted = highlightedEvidenceId === item.id;
 							const speakerNames = getEvidenceSpeakerNames(item);
+							const facetLabels = getEvidenceFacetLabels(item);
 
 							return (
 								<div
@@ -248,6 +271,15 @@ export function InterviewSourcePanel({
 									{/* Footer: topic, timestamp, votes, verify link */}
 									<div className="flex items-center justify-between gap-2">
 										<div className="flex items-center gap-2">
+											{facetLabels.slice(0, 2).map((facet) => (
+												<Badge
+													key={`${item.id}-${facet.kind_slug}-${facet.label}`}
+													variant="outline"
+													className="text-[10px] leading-tight"
+												>
+													{facet.label}
+												</Badge>
+											))}
 											{speakerNames.length > 0 && (
 												<Badge variant="secondary" className="text-[10px] leading-tight">
 													{speakerNames.join(", ")}

@@ -107,7 +107,7 @@ import {
 	parseConversationAnalysisLegacy,
 	parseConversationOverviewLens,
 } from "../lib/parseConversationAnalysis.server";
-import { processEmpathyMap } from "../lib/processEmpathyMap.server";
+import { type EvidenceRow, processEmpathyMap } from "../lib/processEmpathyMap.server";
 
 // parseFullName imported from ../lib/interviewDetailHelpers
 
@@ -906,9 +906,65 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			consola.warn("Could not fetch evidence:", evidenceError.message);
 		}
 
+		const evidenceRows = (evidence || []) as Array<
+			EvidenceRecord & {
+				id: string;
+			}
+		>;
+		const facetsByEvidenceId = new Map<
+			string,
+			Array<{
+				kind_slug: string;
+				label: string;
+				facet_account_id: number;
+			}>
+		>();
+
+		if (evidenceRows.length > 0) {
+			const evidenceIdsForFacets = evidenceRows.map((row) => row.id);
+			const { data: facetRows, error: facetError } = await supabase
+				.from("evidence_facet")
+				.select("evidence_id, kind_slug, label, facet_account_id")
+				.eq("project_id", projectId)
+				.in("evidence_id", evidenceIdsForFacets);
+
+			if (facetError) {
+				consola.warn("Could not fetch evidence facets:", facetError.message);
+			} else {
+				for (const row of (facetRows || []) as Array<{
+					evidence_id: string | null;
+					kind_slug: string | null;
+					label: string | null;
+					facet_account_id: number | null;
+				}>) {
+					if (!row.evidence_id || !row.kind_slug || !row.label || !row.facet_account_id) continue;
+					const list = facetsByEvidenceId.get(row.evidence_id) || [];
+					const hasFacet = list.some(
+						(item) =>
+							item.kind_slug === row.kind_slug &&
+							item.label === row.label &&
+							item.facet_account_id === row.facet_account_id
+					);
+					if (!hasFacet) {
+						list.push({
+							kind_slug: row.kind_slug,
+							label: row.label,
+							facet_account_id: row.facet_account_id,
+						});
+					}
+					facetsByEvidenceId.set(row.evidence_id, list);
+				}
+			}
+		}
+
+		const evidenceWithFacets = evidenceRows.map((row) => ({
+			...row,
+			facets: facetsByEvidenceId.get(row.id) || [],
+		}));
+
 		// Batch-fetch vote counts for all evidence in one query
 		// Filter out any evidence items without valid IDs
-		const evidenceIds = (evidence || [])
+		const evidenceIds = evidenceWithFacets
 			.map((e) => e.id)
 			.filter((id): id is string => typeof id === "string" && id.length > 0);
 		const { data: evidenceVoteCounts } = evidenceIds.length
@@ -921,7 +977,48 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				})
 			: { data: {} };
 
-		const empathyMap = processEmpathyMap(evidence as any);
+		const empathyMap = processEmpathyMap(evidenceWithFacets as EvidenceRow[]);
+
+		// Load tasks linked to this interview for quick visibility in the detail UI.
+		const { data: linkedTaskRows, error: linkedTaskError } = await supabase
+			.from("task_links")
+			.select("task_id, tasks!inner(id, title, status, due_date, priority)")
+			.eq("entity_type", "interview")
+			.eq("entity_id", interviewId)
+			.order("created_at", { ascending: false })
+			.limit(25);
+
+		if (linkedTaskError) {
+			consola.warn("Could not fetch linked tasks for interview:", linkedTaskError.message);
+		}
+
+		const linkedTasks = (
+			(linkedTaskRows || []) as Array<{
+				task_id: string;
+				tasks:
+					| {
+							id: string;
+							title: string;
+							status: string;
+							due_date: string | null;
+							priority: number | null;
+					  }
+					| Array<{
+							id: string;
+							title: string;
+							status: string;
+							due_date: string | null;
+							priority: number | null;
+					  }>
+					| null;
+			}>
+		)
+			.flatMap((row) => {
+				if (!row.tasks) return [];
+				return Array.isArray(row.tasks) ? row.tasks : [row.tasks];
+			})
+			.filter((task) => !!task?.id)
+			.filter((task, idx, arr) => arr.findIndex((candidate) => candidate.id === task.id) === idx);
 
 		// Fetch creator's name from user_settings
 		let creatorName = "Unknown";
@@ -967,7 +1064,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 		// Match key takeaway evidence snippets to actual evidence records
 		if (conversationAnalysis?.keyTakeaways && evidence?.length) {
-			matchTakeawaysToEvidence(conversationAnalysis.keyTakeaways, evidence as EvidenceRecord[]);
+			matchTakeawaysToEvidence(conversationAnalysis.keyTakeaways, evidenceWithFacets as EvidenceRecord[]);
 		}
 
 		const loaderResult = {
@@ -975,9 +1072,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			projectId,
 			interview,
 			insights,
-			evidence: evidence || [],
+			evidence: evidenceWithFacets,
 			evidenceVoteCounts: evidenceVoteCounts || {},
 			empathyMap,
+			linkedTasks,
 			peopleOptions: peopleOptions || [],
 			creatorName,
 			analysisJob,
@@ -1061,6 +1159,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		evidence,
 		evidenceVoteCounts,
 		empathyMap,
+		linkedTasks,
 		peopleOptions,
 		creatorName,
 		analysisJob,
@@ -1781,6 +1880,52 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									}
 								}}
 							/>
+						</div>
+
+						<div className="space-y-3 rounded-xl border bg-card p-5 shadow-sm">
+							<div className="flex items-center justify-between gap-2">
+								<div className="flex items-center gap-2">
+									<Briefcase className="h-5 w-5 text-amber-500" />
+									<h3 className="font-semibold text-base text-foreground">Tasks</h3>
+								</div>
+								<Badge variant="secondary">{linkedTasks.length}</Badge>
+							</div>
+							{linkedTasks.length > 0 ? (
+								<div className="space-y-2">
+									{linkedTasks.slice(0, 6).map((task) => (
+										<div
+											key={task.id}
+											className="flex items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/20 px-3 py-2"
+										>
+											<div className="min-w-0">
+												<Link
+													to={routes.tasks.detail(task.id)}
+													className="line-clamp-1 font-medium text-foreground text-sm hover:text-primary"
+												>
+													{task.title}
+												</Link>
+												<div className="mt-1 flex items-center gap-2 text-muted-foreground text-xs">
+													<span className="uppercase tracking-wide">{task.status.replaceAll("_", " ")}</span>
+													{task.due_date ? (
+														<span>Due {new Date(task.due_date).toLocaleDateString()}</span>
+													) : (
+														<span>No due date</span>
+													)}
+												</div>
+											</div>
+										</div>
+									))}
+									{linkedTasks.length > 6 && (
+										<Link to={routes.tasks.index()} className="text-primary text-xs hover:underline">
+											View all tasks
+										</Link>
+									)}
+								</div>
+							) : (
+								<p className="text-muted-foreground text-sm">
+									No linked tasks yet. Tasks from desktop recording will appear here after finalize.
+								</p>
+							)}
 						</div>
 					</div>
 

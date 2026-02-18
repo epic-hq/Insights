@@ -22,6 +22,22 @@ export async function action({ request }: ActionFunctionArgs) {
 	const { supabase } = auth;
 
 	try {
+		const triggerThumbnailGeneration = async (interviewId: string) => {
+			try {
+				const { tasks } = await import("@trigger.dev/sdk");
+				type GenEvThumb = typeof import("~/../../src/trigger/generate-evidence-thumbnails").generateEvidenceThumbnails;
+				await tasks.trigger<GenEvThumb>("generate-evidence-thumbnails", {
+					interviewId,
+					force: false,
+				});
+			} catch (thumbnailError: unknown) {
+				consola.warn(
+					"[desktop-upload-media] Thumbnail generation trigger failed (non-blocking):",
+					thumbnailError instanceof Error ? thumbnailError.message : String(thumbnailError)
+				);
+			}
+		};
+
 		const contentType = request.headers.get("content-type") || "";
 
 		// Handle JSON requests: presigned URL generation or upload confirmation
@@ -68,6 +84,8 @@ export async function action({ request }: ActionFunctionArgs) {
 					consola.error("[desktop-upload-media] Failed to confirm upload:", updateError.message);
 					return Response.json({ error: "Failed to confirm upload" }, { status: 500 });
 				}
+
+				await triggerThumbnailGeneration(interview_id);
 
 				consola.info(`[desktop-upload-media] Confirmed upload for interview ${interview_id}: ${r2_key}`);
 				return Response.json({ success: true, r2_key });
@@ -175,6 +193,8 @@ export async function action({ request }: ActionFunctionArgs) {
 				consola.error("[desktop-upload-media] Failed to update interview:", updateError.message);
 			}
 
+			await triggerThumbnailGeneration(interviewId);
+
 			consola.info(
 				`[desktop-upload-media] Uploaded ${(buffer.length / 1024 / 1024).toFixed(2)}MB for interview ${interviewId}`
 			);
@@ -187,8 +207,8 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		return Response.json({ error: "Unsupported content type" }, { status: 415 });
-	} catch (error: any) {
+	} catch (error: unknown) {
 		consola.error("[desktop-upload-media] Error:", error);
-		return Response.json({ error: error?.message || "Upload failed" }, { status: 500 });
+		return Response.json({ error: error instanceof Error ? error.message : "Upload failed" }, { status: 500 });
 	}
 }

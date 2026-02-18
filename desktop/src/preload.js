@@ -81,7 +81,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   minimizePanel: () => ipcRenderer.invoke("minimizePanel"),
   restorePanel: () => ipcRenderer.invoke("restorePanel"),
   toggleRecording: () => ipcRenderer.invoke("toggleRecordingFromPanel"),
-  submitNote: (text) => ipcRenderer.invoke("submitNoteFromPanel", text),
+  submitNote: (payload) => ipcRenderer.invoke("submitNoteFromPanel", payload),
   showFloatingPanel: () => ipcRenderer.invoke("showFloatingPanel"),
   hideFloatingPanel: () => ipcRenderer.invoke("hideFloatingPanel"),
 
