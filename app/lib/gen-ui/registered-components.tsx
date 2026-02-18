@@ -1705,5 +1705,35 @@ defineComponent<SurveyResultsSummaryData>({
   ],
 });
 
+/**
+ * Upload Recording - Inline file upload for audio/video/text/PDF
+ */
+import {
+  UploadRecording,
+  type UploadRecordingData,
+} from "~/features/generative-ui/components/UploadRecording";
+import { uploadRecordingDataSchema } from "./component-registry";
+
+defineComponent<UploadRecordingData>({
+  type: "UploadRecording",
+  description:
+    "Inline file upload widget for adding recordings, transcripts, or documents. Supports drag-and-drop of audio, video, text, and PDF files.",
+  schema: uploadRecordingDataSchema,
+  component: UploadRecording as React.ComponentType<{
+    data: UploadRecordingData;
+    isStreaming?: boolean;
+  }>,
+  actions: ["upload", "cancel"],
+  useWhen:
+    "User wants to upload a recording, add a transcript, import an interview, or ingest a document into the project.",
+  triggerExamples: [
+    "upload a recording",
+    "add an interview",
+    "import a transcript",
+    "upload audio",
+    "add a document",
+  ],
+});
+
 // Re-export registry for convenience
 export { componentRegistry } from "./component-registry";

@@ -334,6 +334,24 @@ export const surveyResultsSummaryDataSchema = z.object({
 });
 
 /**
+ * Schema for UploadRecording widget data
+ */
+export const uploadRecordingDataSchema = z.object({
+  projectId: z.string(),
+  accountId: z.string(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  /** Pre-fill participant name */
+  participantName: z.string().optional(),
+  /** Pre-fill participant org */
+  participantOrganization: z.string().optional(),
+  /** Accepted file categories */
+  acceptTypes: z.array(z.enum(["audio", "video", "text", "pdf"])).optional(),
+  /** URL to navigate after successful upload */
+  interviewListUrl: z.string().optional(),
+});
+
+/**
  * Component definition with metadata
  */
 export interface ComponentDefinition<TData = unknown> {
