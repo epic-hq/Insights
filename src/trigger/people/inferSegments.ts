@@ -13,6 +13,8 @@ import {
   runBamlWithBilling,
   systemBillingContext,
 } from "~/lib/billing/instrumented-baml.server";
+import { syncPeopleFieldsToFacets } from "~/features/people/syncPeopleFieldsToFacets.server";
+import { syncOrgDataToPersonFacets } from "~/features/people/syncOrgDataToPersonFacets.server";
 
 const payloadSchema = z.object({
   projectId: z.string(),
@@ -111,8 +113,9 @@ export const inferSegmentsTask = schemaTask({
     const peopleTable = db.from("people");
 
     // Include people_organizations to get job_title from primary org link as fallback
+    // Also fetch org industry/size_range for facet sync
     const selectFields =
-      "id, name, title, job_function, seniority_level, default_organization:organizations!default_organization_id(name), people_organizations(job_title, is_primary)";
+      "id, name, title, job_function, seniority_level, default_organization:organizations!default_organization_id(name, industry, size_range), people_organizations(job_title, is_primary)";
 
     let queryResult: { data: PersonRow[] | null; error: Error | null };
 
@@ -180,8 +183,11 @@ export const inferSegmentsTask = schemaTask({
         const primaryOrg = person.people_organizations.find(
           (o) => o.is_primary && o.job_title,
         );
-        const anyOrgWithTitle = person.people_organizations.find((o) => o.job_title);
-        const orgJobTitle = primaryOrg?.job_title || anyOrgWithTitle?.job_title || null;
+        const anyOrgWithTitle = person.people_organizations.find(
+          (o) => o.job_title,
+        );
+        const orgJobTitle =
+          primaryOrg?.job_title || anyOrgWithTitle?.job_title || null;
 
         if (orgJobTitle) {
           effectiveTitle = orgJobTitle;
@@ -318,6 +324,33 @@ export const inferSegmentsTask = schemaTask({
           seniority: seniority,
           status: "updated",
         });
+
+        // Sync inferred fields to person_facet
+        await syncPeopleFieldsToFacets({
+          supabase: client as any,
+          personId: person.id,
+          accountId,
+          projectId,
+          fields: {
+            job_function: updates.job_function ?? person.job_function,
+            seniority_level: updates.seniority_level ?? person.seniority_level,
+          },
+        });
+
+        // Sync org data (industry, size_range) to person_facet if available
+        const orgData = (person as any).default_organization;
+        if (orgData?.industry || orgData?.size_range) {
+          await syncOrgDataToPersonFacets({
+            supabase: client as any,
+            personId: person.id,
+            accountId,
+            projectId,
+            orgData: {
+              industry: orgData.industry,
+              size_range: orgData.size_range,
+            },
+          });
+        }
 
         consola.success(
           `[inferSegments] Updated ${person.name}: ${jobFunction} / ${seniority}`,
