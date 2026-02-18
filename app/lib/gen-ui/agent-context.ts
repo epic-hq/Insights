@@ -9,6 +9,8 @@
  */
 
 import { componentRegistry } from "./component-registry";
+// Side-effect: ensure all gen-ui components are registered (server-safe, no React component imports)
+import "./registered-components-server";
 
 /**
  * Generate the gen-ui context block for agent system prompts.
@@ -19,10 +21,10 @@ import { componentRegistry } from "./component-registry";
  * 3. Behavioral guidelines for interactive UX
  */
 export function buildGenUISystemContext(): string {
-	const capabilities = componentRegistry.getCapabilitySummary();
-	const componentTypes = componentRegistry.getAll().map((c) => c.type);
+  const capabilities = componentRegistry.getCapabilitySummary();
+  const componentTypes = componentRegistry.getAll().map((c) => c.type);
 
-	return `
+  return `
 # Generative UI (Canvas)
 
 You can render rich UI components on the user's canvas using the \`displayComponent\` tool.
