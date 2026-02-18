@@ -47,6 +47,14 @@ export const getServerClient = (request: Request) => {
 	return { client: supabase, headers };
 };
 
+function extractBearerToken(request: Request): string | null {
+	const authHeader = request.headers.get("authorization") || request.headers.get("Authorization");
+	if (!authHeader) return null;
+	if (!authHeader.toLowerCase().startsWith("bearer ")) return null;
+	const token = authHeader.slice(7).trim();
+	return token.length > 0 ? token : null;
+}
+
 export function createSupabaseAdminClient() {
 	return createServerClient<Database>(SUPABASE_URL, _SUPABASE_SERVICE_ROLE_KEY, {
 		cookies: {
@@ -66,6 +74,45 @@ export function createSupabaseAdminClient() {
  * Also returns headers that should be included in the response (for token refresh)
  */
 export async function getAuthenticatedUser(request: Request) {
+	const bearerToken = extractBearerToken(request);
+	if (bearerToken) {
+		try {
+			const supabaseBearer = getRlsClient(bearerToken);
+			const { data: claimsData, error: claimsError } = await supabaseBearer.auth.getClaims();
+			if (claimsData?.claims && !claimsError) {
+				const claimRecord = claimsData.claims as Record<string, unknown>;
+				return {
+					user: {
+						...claimRecord,
+						jwt: bearerToken,
+						access_token: bearerToken,
+					},
+					headers: new Headers(),
+				};
+			}
+
+			const {
+				data: { user: bearerUser },
+				error: userError,
+			} = await supabaseBearer.auth.getUser();
+			if (!userError && bearerUser) {
+				return {
+					user: {
+						sub: bearerUser.id,
+						email: bearerUser.email,
+						user_metadata: bearerUser.user_metadata,
+						app_metadata: bearerUser.app_metadata,
+						jwt: bearerToken,
+						access_token: bearerToken,
+					},
+					headers: new Headers(),
+				};
+			}
+		} catch {
+			// Fall through to cookie-based auth
+		}
+	}
+
 	const { client: supabase, headers } = getServerClient(request);
 
 	try {
@@ -73,7 +120,7 @@ export async function getAuthenticatedUser(request: Request) {
 		const { data: claims, error } = await supabase.auth.getClaims();
 		// consola.log("getAuthenticatedUser claims", claims)
 		if (claims?.claims && !error) {
-			return { user: claims.claims as any, headers };
+			return { user: claims.claims as Record<string, unknown>, headers };
 		}
 		// Fallback to user/session for broader compatibility
 		const { data: sessionData } = await supabase.auth.getSession();

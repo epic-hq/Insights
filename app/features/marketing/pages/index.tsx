@@ -78,22 +78,22 @@ const PEOPLE: PersonData[] = [
 		annotations: [
 			{
 				label: "Thinks",
-				value: "\u201CThe roadmap is ",
-				highlight: "guesswork",
+				value: '"Summaries can ',
+				highlight: "blur the nuances",
 				side: "left",
 				zone: "head",
 			},
 			{
 				label: "Feels",
-				value: "Evidence-backed ",
-				highlight: "priorities",
+				value: "Anxious about ",
+				highlight: "hallucinations",
 				side: "right",
 				zone: "heart",
 			},
 			{
 				label: "Uses",
 				value: "",
-				highlight: "Notion",
+				highlight: "Spreadsheets",
 				side: "right",
 				zone: "hand",
 			},
@@ -109,22 +109,22 @@ const PEOPLE: PersonData[] = [
 		annotations: [
 			{
 				label: "Thinks",
-				value: "\u201CI heard this ",
-				highlight: "3 months ago",
+				value: '"I want the ',
+				highlight: "speed of AI",
 				side: "left",
 				zone: "head",
 			},
 			{
 				label: "Feels",
-				value: "Team aligned on ",
-				highlight: "what to build",
+				value: "I need ",
+				highlight: "receipts",
 				side: "right",
 				zone: "heart",
 			},
 			{
 				label: "Uses",
 				value: "",
-				highlight: "Zoom",
+				highlight: "Highlighters",
 				side: "right",
 				zone: "hand",
 			},
@@ -139,22 +139,22 @@ const PEOPLE: PersonData[] = [
 		annotations: [
 			{
 				label: "Thinks",
-				value: "\u201C",
-				highlight: "Nobody",
+				value: '"I need to see the ',
+				highlight: "exact quote",
 				side: "left",
 				zone: "head",
 			},
 			{
 				label: "Feels",
-				value: "Early warning with ",
-				highlight: "receipts",
+				value: "",
+				highlight: "Traceability",
 				side: "right",
 				zone: "heart",
 			},
 			{
 				label: "Uses",
 				value: "",
-				highlight: "Intercom",
+				highlight: "2019 tools",
 				side: "right",
 				zone: "hand",
 			},
@@ -164,9 +164,17 @@ const PEOPLE: PersonData[] = [
 
 // Extra text after highlight for each annotation
 const ANNO_SUFFIX: Record<string, Record<number, string>> = {
-	"0": { 0: "\u201D", 1: "", 2: ", Linear, Slack" },
-	"1": { 0: "\u201D", 1: "", 2: ", spreadsheets, memory" },
-	"2": { 0: " listens to CS\u201D", 1: "", 2: ", HubSpot, hope" },
+	"0": {
+		0: "",
+		1: " — can I trust AI?",
+		2: ", manual tags, hope",
+	},
+	"1": {
+		0: " without the hallucination",
+		1: " — verifiable evidence.",
+		2: ", sticky notes, memory",
+	},
+	"2": { 0: " — to believe it.", 1: " builds confidence.", 2: " that don't talk to each other" },
 };
 
 const BODY_ZONES = { head: 0.18, heart: 0.5, hand: 0.75 } as const;
@@ -376,7 +384,7 @@ export default function LandingPage() {
 				}}
 			>
 				{/* Crowd bg */}
-				<div className="lp-hero-crowd">
+				<div className="lp-hero-crowd opacity-25">
 					<picture>
 						<source
 							sizes="100vw"
@@ -498,11 +506,11 @@ export default function LandingPage() {
 										className="block"
 										style={{
 											fontFamily: "'JetBrains Mono', monospace",
-											fontSize: "clamp(0.6rem, 0.85vw, 0.72rem)",
+											fontSize: "clamp(0.75rem, 1.05vw, 0.9rem)",
 											textTransform: "uppercase",
 											letterSpacing: "0.18em",
 											color: "var(--lp-amber)",
-											marginBottom: "1px",
+											marginBottom: "2px",
 											fontWeight: 500,
 										}}
 									>
@@ -671,7 +679,7 @@ export default function LandingPage() {
 						{
 							mono: "Feels",
 							h: "What they\nfeel",
-							p: "Understand desires and motivations with evidence you can verify. Click any insight\u2014see exactly who said it, when.",
+							p: "Understand desires and motivations with evidence you can verify. Click any insight—see exactly who said it, when.",
 						},
 						{
 							mono: "Uses",
@@ -686,7 +694,7 @@ export default function LandingPage() {
 								padding: "clamp(1.5rem, 3vw, 3rem) clamp(1rem, 2vw, 2rem)",
 							}}
 						>
-							<p
+							<span
 								className="mb-[clamp(0.75rem,1.5vw,1.5rem)] uppercase tracking-[0.25em]"
 								style={{
 									fontFamily: "'JetBrains Mono', monospace",
@@ -696,7 +704,7 @@ export default function LandingPage() {
 								}}
 							>
 								// {item.mono}
-							</p>
+							</span>
 							<h3
 								style={{
 									fontSize: "clamp(1.4rem, 2.8vw, 2.2rem)",

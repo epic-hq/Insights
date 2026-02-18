@@ -4,9 +4,11 @@ import consola from "consola";
 import { Bot, ChevronRight, Mic, Plus, Send, Square } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useFetcher, useLocation, useNavigate, useRevalidator } from "react-router";
+import { toast } from "sonner";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { Response as AiResponse } from "~/components/ai-elements/response";
 import { Suggestion, Suggestions } from "~/components/ai-elements/suggestion";
+import { FileUploadButton } from "~/components/chat/FileUploadButton";
 import { MessagePlayButton } from "~/components/chat/MessagePlayButton";
 import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat";
 import { TTSToggle } from "~/components/chat/TTSToggle";
@@ -59,6 +61,22 @@ interface ToolProgressData {
 	status: string;
 	message: string;
 	progress?: number;
+}
+
+interface PeopleImportApiResponse {
+	success?: boolean;
+	requestId?: string;
+	error?: string;
+	message?: string;
+	import?: {
+		imported?: {
+			people?: number;
+			organizations?: number;
+			facets?: number;
+			skipped?: number;
+			updated?: number;
+		};
+	};
 }
 
 const ROTATING_STATUS_MESSAGES = [
@@ -340,6 +358,15 @@ function extractActiveToolCall(message: UpsightMessage): string | null {
 		}
 	}
 	return null;
+}
+
+function estimateDataRows(content: string): number {
+	const nonEmptyLines = content
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean);
+	if (nonEmptyLines.length === 0) return 0;
+	return Math.max(nonEmptyLines.length - 1, 0);
 }
 
 /** TTS state exposed to parent components via callback ref */
@@ -673,6 +700,87 @@ export function ProjectStatusAgentChat({
 			setInput("");
 		},
 		[sendMessage]
+	);
+
+	const handleFileUpload = useCallback(
+		async (content: string, fileName: string, fileType: string) => {
+			const estimatedRows = estimateDataRows(content);
+			const rowLabel = `${estimatedRows.toLocaleString()} row${estimatedRows === 1 ? "" : "s"} estimated`;
+
+			toast.success(`Uploaded ${fileName}`, {
+				description: `${rowLabel}. Importing to People + Organizations...`,
+			});
+			consola.info("Chat CSV upload queued", {
+				accountId,
+				projectId,
+				fileName,
+				fileType,
+				estimatedRows,
+				contentLength: content.length,
+			});
+
+			const payload = {
+				projectId,
+				title: fileName,
+				csvContent: content,
+				mode: "upsert" as const,
+				skipDuplicates: true,
+				createOrganizations: true,
+				verify: true,
+			};
+
+			const endpoints = [`/a/${accountId}/${projectId}/api/people/import-csv`, "/api/people/import-csv"];
+			let lastError: string | null = null;
+			for (const endpoint of endpoints) {
+				try {
+					const response = await fetch(endpoint, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify(payload),
+					});
+					const result = (await response.json().catch(() => ({}))) as PeopleImportApiResponse;
+					consola.info("CSV import API response", {
+						endpoint,
+						status: response.status,
+						ok: response.ok,
+						requestId: result.requestId,
+						success: result.success,
+						error: result.error,
+						message: result.message,
+						imported: result.import?.imported,
+					});
+
+					if (response.ok && result.success) {
+						const imported = result.import?.imported;
+						const people = imported?.people ?? 0;
+						const organizations = imported?.organizations ?? 0;
+						const facets = imported?.facets ?? 0;
+						const skipped = imported?.skipped ?? 0;
+						const updated = imported?.updated ?? 0;
+
+						toast.success("Import complete", {
+							description: `${people} people, ${organizations} orgs, ${facets} facets${updated ? `, ${updated} updated` : ""}${skipped ? `, ${skipped} skipped` : ""}.`,
+						});
+						revalidator.revalidate();
+						return;
+					}
+
+					lastError = result.error || result.message || `HTTP ${response.status}`;
+				} catch (error) {
+					lastError = error instanceof Error ? error.message : String(error);
+				}
+			}
+
+			toast.error("Direct import failed", {
+				description: lastError || "Falling back to assistant parsing.",
+			});
+
+			const message = `I'm uploading a ${fileType.toUpperCase()} file named "${fileName}" with contact data. Please parse it and help me import the contacts:\n\n\`\`\`${fileType}\n${content}\n\`\`\``;
+			sendMessage({ text: message });
+		},
+		[accountId, projectId, revalidator, sendMessage]
 	);
 
 	const createNewThread = useCallback(async () => {
@@ -1133,11 +1241,16 @@ export function ProjectStatusAgentChat({
 							rows={2}
 							disabled={isBusy}
 							className={cn(
-								"min-h-[60px] resize-none rounded-xl pr-20 shadow-sm focus-visible:ring-1",
+								"min-h-[60px] resize-none rounded-xl pr-20 pl-10 shadow-sm focus-visible:ring-1",
 								embedded
 									? "border border-white/10 bg-slate-700/60 text-slate-100 placeholder:text-slate-400 focus-visible:border-blue-500/50 focus-visible:ring-blue-500/20"
 									: "border-2 border-border bg-white focus-visible:border-primary focus-visible:ring-primary/30 dark:bg-zinc-900"
 							)}
+						/>
+						<FileUploadButton
+							onFileContent={handleFileUpload}
+							disabled={isBusy}
+							className="absolute bottom-2 left-2 h-7 w-7"
 						/>
 						<div className="absolute right-2 bottom-2 flex items-center gap-1">
 							{isVoiceSupported && (

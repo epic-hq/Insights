@@ -95,6 +95,7 @@ const routes = [
     ),
     route("api/share/enable", "./routes/api.share.enable.tsx"),
     route("api/share/disable", "./routes/api.share.disable.tsx"),
+    route("api/people/import-csv", "./routes/api.people.import-csv.root.tsx"),
 
     // Account-scoped routes
     route("a/:accountId", "./routes/_protected/accounts.tsx", [
@@ -196,6 +197,7 @@ const routes = [
         route("api/score-icp-matches", "./routes/api.score-icp-matches.tsx"),
         route("api/icp-criteria", "./routes/api.icp-criteria.tsx"),
         route("api/enrich-people", "./routes/api.enrich-people.tsx"),
+        route("api/people/import-csv", "./routes/api.people.import-csv.tsx"),
 
         // Realtime interviews APIs (project-scoped)
         route(

@@ -13,6 +13,7 @@ import { fetchInterviewContextTool } from "../tools/fetch-interview-context";
 import { fetchSurveysTool } from "../tools/fetch-surveys";
 import { fetchWebContentTool } from "../tools/fetch-web-content";
 import { generateProjectRoutesTool } from "../tools/generate-project-routes";
+import { importPeopleFromTableTool } from "../tools/import-people-from-table";
 import { importVideoFromUrlTool } from "../tools/import-video-from-url";
 import { manageDocumentsTool } from "../tools/manage-documents";
 import {
@@ -90,6 +91,7 @@ For FEEDBACK:
 - URL ingestion/research: fetchWebContent, importVideoFromUrl, webResearch, findSimilarPages
 - Documents: manageDocuments for meeting notes/strategy docs
 - Tables: parseSpreadsheet, saveTableToAssets, updateTableAsset
+- CSV contacts: parseSpreadsheet, then importPeopleFromTable when the user asks to import contacts
 
 # Interview-Specific Guidance (Critical)
 
@@ -138,6 +140,7 @@ When the user asks about interview prep, open questions, follow-ups, or "how do 
 		findSimilarPages: findSimilarPagesTool,
 		manageDocuments: manageDocumentsTool,
 		parseSpreadsheet: parseSpreadsheetTool,
+		importPeopleFromTable: importPeopleFromTableTool,
 		saveTableToAssets: saveTableToAssetsTool,
 		updateTableAsset: updateTableAssetTool,
 		navigateToPage: navigateToPageTool,

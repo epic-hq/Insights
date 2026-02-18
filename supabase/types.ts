@@ -2367,6 +2367,42 @@ export type Database = {
         }
         Relationships: []
       }
+      gmail_connections: {
+        Row: {
+          account_id: string
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          pica_connection_id: string
+          pica_connection_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          pica_connection_id: string
+          pica_connection_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          pica_connection_id?: string
+          pica_connection_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       icp_recommendations: {
         Row: {
           created_at: string
@@ -3198,9 +3234,12 @@ export type Database = {
           },
         ]
       }
-      mastra_agents: {
+      mastra_agent_versions: {
         Row: {
+          agentId: string
           agents: Json | null
+          changedFields: Json | null
+          changeMessage: string | null
           createdAt: string
           createdAtZ: string | null
           defaultOptions: Json | null
@@ -3208,19 +3247,23 @@ export type Database = {
           id: string
           inputProcessors: Json | null
           instructions: string
+          integrationTools: Json | null
+          mcpClients: Json | null
           memory: Json | null
-          metadata: Json | null
           model: Json
           name: string
           outputProcessors: Json | null
+          requestContextSchema: Json | null
           scorers: Json | null
           tools: Json | null
-          updatedAt: string
-          updatedAtZ: string | null
+          versionNumber: number
           workflows: Json | null
         }
         Insert: {
+          agentId: string
           agents?: Json | null
+          changedFields?: Json | null
+          changeMessage?: string | null
           createdAt: string
           createdAtZ?: string | null
           defaultOptions?: Json | null
@@ -3228,19 +3271,23 @@ export type Database = {
           id: string
           inputProcessors?: Json | null
           instructions: string
+          integrationTools?: Json | null
+          mcpClients?: Json | null
           memory?: Json | null
-          metadata?: Json | null
           model: Json
           name: string
           outputProcessors?: Json | null
+          requestContextSchema?: Json | null
           scorers?: Json | null
           tools?: Json | null
-          updatedAt: string
-          updatedAtZ?: string | null
+          versionNumber: number
           workflows?: Json | null
         }
         Update: {
+          agentId?: string
           agents?: Json | null
+          changedFields?: Json | null
+          changeMessage?: string | null
           createdAt?: string
           createdAtZ?: string | null
           defaultOptions?: Json | null
@@ -3248,16 +3295,53 @@ export type Database = {
           id?: string
           inputProcessors?: Json | null
           instructions?: string
+          integrationTools?: Json | null
+          mcpClients?: Json | null
           memory?: Json | null
-          metadata?: Json | null
           model?: Json
           name?: string
           outputProcessors?: Json | null
+          requestContextSchema?: Json | null
           scorers?: Json | null
           tools?: Json | null
+          versionNumber?: number
+          workflows?: Json | null
+        }
+        Relationships: []
+      }
+      mastra_agents: {
+        Row: {
+          activeVersionId: string | null
+          authorId: string | null
+          createdAt: string
+          createdAtZ: string | null
+          id: string
+          metadata: Json | null
+          status: string
+          updatedAt: string
+          updatedAtZ: string | null
+        }
+        Insert: {
+          activeVersionId?: string | null
+          authorId?: string | null
+          createdAt: string
+          createdAtZ?: string | null
+          id: string
+          metadata?: Json | null
+          status: string
+          updatedAt: string
+          updatedAtZ?: string | null
+        }
+        Update: {
+          activeVersionId?: string | null
+          authorId?: string | null
+          createdAt?: string
+          createdAtZ?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: string
           updatedAt?: string
           updatedAtZ?: string | null
-          workflows?: Json | null
         }
         Relationships: []
       }
@@ -3375,6 +3459,117 @@ export type Database = {
         }
         Relationships: []
       }
+      mastra_dataset_items: {
+        Row: {
+          createdAt: string
+          createdAtZ: string | null
+          datasetId: string
+          datasetVersion: number
+          groundTruth: Json | null
+          id: string
+          input: Json
+          isDeleted: boolean
+          metadata: Json | null
+          updatedAt: string
+          updatedAtZ: string | null
+          validTo: number | null
+        }
+        Insert: {
+          createdAt: string
+          createdAtZ?: string | null
+          datasetId: string
+          datasetVersion: number
+          groundTruth?: Json | null
+          id: string
+          input: Json
+          isDeleted: boolean
+          metadata?: Json | null
+          updatedAt: string
+          updatedAtZ?: string | null
+          validTo?: number | null
+        }
+        Update: {
+          createdAt?: string
+          createdAtZ?: string | null
+          datasetId?: string
+          datasetVersion?: number
+          groundTruth?: Json | null
+          id?: string
+          input?: Json
+          isDeleted?: boolean
+          metadata?: Json | null
+          updatedAt?: string
+          updatedAtZ?: string | null
+          validTo?: number | null
+        }
+        Relationships: []
+      }
+      mastra_dataset_versions: {
+        Row: {
+          createdAt: string
+          createdAtZ: string | null
+          datasetId: string
+          id: string
+          version: number
+        }
+        Insert: {
+          createdAt: string
+          createdAtZ?: string | null
+          datasetId: string
+          id: string
+          version: number
+        }
+        Update: {
+          createdAt?: string
+          createdAtZ?: string | null
+          datasetId?: string
+          id?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      mastra_datasets: {
+        Row: {
+          createdAt: string
+          createdAtZ: string | null
+          description: string | null
+          groundTruthSchema: Json | null
+          id: string
+          inputSchema: Json | null
+          metadata: Json | null
+          name: string
+          updatedAt: string
+          updatedAtZ: string | null
+          version: number
+        }
+        Insert: {
+          createdAt: string
+          createdAtZ?: string | null
+          description?: string | null
+          groundTruthSchema?: Json | null
+          id: string
+          inputSchema?: Json | null
+          metadata?: Json | null
+          name: string
+          updatedAt: string
+          updatedAtZ?: string | null
+          version: number
+        }
+        Update: {
+          createdAt?: string
+          createdAtZ?: string | null
+          description?: string | null
+          groundTruthSchema?: Json | null
+          id?: string
+          inputSchema?: Json | null
+          metadata?: Json | null
+          name?: string
+          updatedAt?: string
+          updatedAtZ?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
       mastra_evals: {
         Row: {
           agent_name: string
@@ -3423,6 +3618,210 @@ export type Database = {
         }
         Relationships: []
       }
+      mastra_experiment_results: {
+        Row: {
+          completedAt: string
+          completedAtZ: string | null
+          createdAt: string
+          createdAtZ: string | null
+          error: Json | null
+          experimentId: string
+          groundTruth: Json | null
+          id: string
+          input: Json
+          itemDatasetVersion: number | null
+          itemId: string
+          output: Json | null
+          retryCount: number
+          startedAt: string
+          startedAtZ: string | null
+          traceId: string | null
+        }
+        Insert: {
+          completedAt: string
+          completedAtZ?: string | null
+          createdAt: string
+          createdAtZ?: string | null
+          error?: Json | null
+          experimentId: string
+          groundTruth?: Json | null
+          id: string
+          input: Json
+          itemDatasetVersion?: number | null
+          itemId: string
+          output?: Json | null
+          retryCount: number
+          startedAt: string
+          startedAtZ?: string | null
+          traceId?: string | null
+        }
+        Update: {
+          completedAt?: string
+          completedAtZ?: string | null
+          createdAt?: string
+          createdAtZ?: string | null
+          error?: Json | null
+          experimentId?: string
+          groundTruth?: Json | null
+          id?: string
+          input?: Json
+          itemDatasetVersion?: number | null
+          itemId?: string
+          output?: Json | null
+          retryCount?: number
+          startedAt?: string
+          startedAtZ?: string | null
+          traceId?: string | null
+        }
+        Relationships: []
+      }
+      mastra_experiments: {
+        Row: {
+          completedAt: string | null
+          completedAtZ: string | null
+          createdAt: string
+          createdAtZ: string | null
+          datasetId: string | null
+          datasetVersion: number | null
+          description: string | null
+          failedCount: number
+          id: string
+          metadata: Json | null
+          name: string | null
+          skippedCount: number
+          startedAt: string | null
+          startedAtZ: string | null
+          status: string
+          succeededCount: number
+          targetId: string
+          targetType: string
+          totalItems: number
+          updatedAt: string
+          updatedAtZ: string | null
+        }
+        Insert: {
+          completedAt?: string | null
+          completedAtZ?: string | null
+          createdAt: string
+          createdAtZ?: string | null
+          datasetId?: string | null
+          datasetVersion?: number | null
+          description?: string | null
+          failedCount: number
+          id: string
+          metadata?: Json | null
+          name?: string | null
+          skippedCount: number
+          startedAt?: string | null
+          startedAtZ?: string | null
+          status: string
+          succeededCount: number
+          targetId: string
+          targetType: string
+          totalItems: number
+          updatedAt: string
+          updatedAtZ?: string | null
+        }
+        Update: {
+          completedAt?: string | null
+          completedAtZ?: string | null
+          createdAt?: string
+          createdAtZ?: string | null
+          datasetId?: string | null
+          datasetVersion?: number | null
+          description?: string | null
+          failedCount?: number
+          id?: string
+          metadata?: Json | null
+          name?: string | null
+          skippedCount?: number
+          startedAt?: string | null
+          startedAtZ?: string | null
+          status?: string
+          succeededCount?: number
+          targetId?: string
+          targetType?: string
+          totalItems?: number
+          updatedAt?: string
+          updatedAtZ?: string | null
+        }
+        Relationships: []
+      }
+      mastra_mcp_client_versions: {
+        Row: {
+          changedFields: Json | null
+          changeMessage: string | null
+          createdAt: string
+          createdAtZ: string | null
+          description: string | null
+          id: string
+          mcpClientId: string
+          name: string
+          servers: Json
+          versionNumber: number
+        }
+        Insert: {
+          changedFields?: Json | null
+          changeMessage?: string | null
+          createdAt: string
+          createdAtZ?: string | null
+          description?: string | null
+          id: string
+          mcpClientId: string
+          name: string
+          servers: Json
+          versionNumber: number
+        }
+        Update: {
+          changedFields?: Json | null
+          changeMessage?: string | null
+          createdAt?: string
+          createdAtZ?: string | null
+          description?: string | null
+          id?: string
+          mcpClientId?: string
+          name?: string
+          servers?: Json
+          versionNumber?: number
+        }
+        Relationships: []
+      }
+      mastra_mcp_clients: {
+        Row: {
+          activeVersionId: string | null
+          authorId: string | null
+          createdAt: string
+          createdAtZ: string | null
+          id: string
+          metadata: Json | null
+          status: string
+          updatedAt: string
+          updatedAtZ: string | null
+        }
+        Insert: {
+          activeVersionId?: string | null
+          authorId?: string | null
+          createdAt: string
+          createdAtZ?: string | null
+          id: string
+          metadata?: Json | null
+          status: string
+          updatedAt: string
+          updatedAtZ?: string | null
+        }
+        Update: {
+          activeVersionId?: string | null
+          authorId?: string | null
+          createdAt?: string
+          createdAtZ?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: string
+          updatedAt?: string
+          updatedAtZ?: string | null
+        }
+        Relationships: []
+      }
       mastra_messages: {
         Row: {
           content: string
@@ -3456,6 +3855,207 @@ export type Database = {
         }
         Relationships: []
       }
+      mastra_observational_memory: {
+        Row: {
+          activeObservations: string
+          activeObservationsPendingUpdate: string | null
+          bufferedMessageIds: Json | null
+          bufferedObservationChunks: Json | null
+          bufferedObservations: string | null
+          bufferedObservationTokens: number | null
+          bufferedReflection: string | null
+          bufferedReflectionInputTokens: number | null
+          bufferedReflectionTokens: number | null
+          config: string
+          createdAt: string
+          createdAtZ: string | null
+          generationCount: number
+          id: string
+          isBufferingObservation: boolean
+          isBufferingReflection: boolean
+          isObserving: boolean
+          isReflecting: boolean
+          lastBufferedAtTime: string | null
+          lastBufferedAtTimeZ: string | null
+          lastBufferedAtTokens: number
+          lastObservedAt: string | null
+          lastObservedAtZ: string | null
+          lastReflectionAt: string | null
+          lastReflectionAtZ: string | null
+          lookupKey: string
+          observationTokenCount: number
+          observedMessageIds: Json | null
+          observedTimezone: string | null
+          originType: string
+          pendingMessageTokens: number
+          reflectedObservationLineCount: number | null
+          resourceId: string | null
+          scope: string
+          threadId: string | null
+          totalTokensObserved: number
+          updatedAt: string
+          updatedAtZ: string | null
+        }
+        Insert: {
+          activeObservations: string
+          activeObservationsPendingUpdate?: string | null
+          bufferedMessageIds?: Json | null
+          bufferedObservationChunks?: Json | null
+          bufferedObservations?: string | null
+          bufferedObservationTokens?: number | null
+          bufferedReflection?: string | null
+          bufferedReflectionInputTokens?: number | null
+          bufferedReflectionTokens?: number | null
+          config: string
+          createdAt: string
+          createdAtZ?: string | null
+          generationCount: number
+          id: string
+          isBufferingObservation: boolean
+          isBufferingReflection: boolean
+          isObserving: boolean
+          isReflecting: boolean
+          lastBufferedAtTime?: string | null
+          lastBufferedAtTimeZ?: string | null
+          lastBufferedAtTokens: number
+          lastObservedAt?: string | null
+          lastObservedAtZ?: string | null
+          lastReflectionAt?: string | null
+          lastReflectionAtZ?: string | null
+          lookupKey: string
+          observationTokenCount: number
+          observedMessageIds?: Json | null
+          observedTimezone?: string | null
+          originType: string
+          pendingMessageTokens: number
+          reflectedObservationLineCount?: number | null
+          resourceId?: string | null
+          scope: string
+          threadId?: string | null
+          totalTokensObserved: number
+          updatedAt: string
+          updatedAtZ?: string | null
+        }
+        Update: {
+          activeObservations?: string
+          activeObservationsPendingUpdate?: string | null
+          bufferedMessageIds?: Json | null
+          bufferedObservationChunks?: Json | null
+          bufferedObservations?: string | null
+          bufferedObservationTokens?: number | null
+          bufferedReflection?: string | null
+          bufferedReflectionInputTokens?: number | null
+          bufferedReflectionTokens?: number | null
+          config?: string
+          createdAt?: string
+          createdAtZ?: string | null
+          generationCount?: number
+          id?: string
+          isBufferingObservation?: boolean
+          isBufferingReflection?: boolean
+          isObserving?: boolean
+          isReflecting?: boolean
+          lastBufferedAtTime?: string | null
+          lastBufferedAtTimeZ?: string | null
+          lastBufferedAtTokens?: number
+          lastObservedAt?: string | null
+          lastObservedAtZ?: string | null
+          lastReflectionAt?: string | null
+          lastReflectionAtZ?: string | null
+          lookupKey?: string
+          observationTokenCount?: number
+          observedMessageIds?: Json | null
+          observedTimezone?: string | null
+          originType?: string
+          pendingMessageTokens?: number
+          reflectedObservationLineCount?: number | null
+          resourceId?: string | null
+          scope?: string
+          threadId?: string | null
+          totalTokensObserved?: number
+          updatedAt?: string
+          updatedAtZ?: string | null
+        }
+        Relationships: []
+      }
+      mastra_prompt_block_versions: {
+        Row: {
+          blockId: string
+          changedFields: Json | null
+          changeMessage: string | null
+          content: string
+          createdAt: string
+          createdAtZ: string | null
+          description: string | null
+          id: string
+          name: string
+          rules: Json | null
+          versionNumber: number
+        }
+        Insert: {
+          blockId: string
+          changedFields?: Json | null
+          changeMessage?: string | null
+          content: string
+          createdAt: string
+          createdAtZ?: string | null
+          description?: string | null
+          id: string
+          name: string
+          rules?: Json | null
+          versionNumber: number
+        }
+        Update: {
+          blockId?: string
+          changedFields?: Json | null
+          changeMessage?: string | null
+          content?: string
+          createdAt?: string
+          createdAtZ?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          rules?: Json | null
+          versionNumber?: number
+        }
+        Relationships: []
+      }
+      mastra_prompt_blocks: {
+        Row: {
+          activeVersionId: string | null
+          authorId: string | null
+          createdAt: string
+          createdAtZ: string | null
+          id: string
+          metadata: Json | null
+          status: string
+          updatedAt: string
+          updatedAtZ: string | null
+        }
+        Insert: {
+          activeVersionId?: string | null
+          authorId?: string | null
+          createdAt: string
+          createdAtZ?: string | null
+          id: string
+          metadata?: Json | null
+          status: string
+          updatedAt: string
+          updatedAtZ?: string | null
+        }
+        Update: {
+          activeVersionId?: string | null
+          authorId?: string | null
+          createdAt?: string
+          createdAtZ?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: string
+          updatedAt?: string
+          updatedAtZ?: string | null
+        }
+        Relationships: []
+      }
       mastra_resources: {
         Row: {
           createdAt: string
@@ -3483,6 +4083,96 @@ export type Database = {
           updatedAt?: string
           updatedAtZ?: string | null
           workingMemory?: string | null
+        }
+        Relationships: []
+      }
+      mastra_scorer_definition_versions: {
+        Row: {
+          changedFields: Json | null
+          changeMessage: string | null
+          createdAt: string
+          createdAtZ: string | null
+          defaultSampling: Json | null
+          description: string | null
+          id: string
+          instructions: string | null
+          model: Json | null
+          name: string
+          presetConfig: Json | null
+          scoreRange: Json | null
+          scorerDefinitionId: string
+          type: string
+          versionNumber: number
+        }
+        Insert: {
+          changedFields?: Json | null
+          changeMessage?: string | null
+          createdAt: string
+          createdAtZ?: string | null
+          defaultSampling?: Json | null
+          description?: string | null
+          id: string
+          instructions?: string | null
+          model?: Json | null
+          name: string
+          presetConfig?: Json | null
+          scoreRange?: Json | null
+          scorerDefinitionId: string
+          type: string
+          versionNumber: number
+        }
+        Update: {
+          changedFields?: Json | null
+          changeMessage?: string | null
+          createdAt?: string
+          createdAtZ?: string | null
+          defaultSampling?: Json | null
+          description?: string | null
+          id?: string
+          instructions?: string | null
+          model?: Json | null
+          name?: string
+          presetConfig?: Json | null
+          scoreRange?: Json | null
+          scorerDefinitionId?: string
+          type?: string
+          versionNumber?: number
+        }
+        Relationships: []
+      }
+      mastra_scorer_definitions: {
+        Row: {
+          activeVersionId: string | null
+          authorId: string | null
+          createdAt: string
+          createdAtZ: string | null
+          id: string
+          metadata: Json | null
+          status: string
+          updatedAt: string
+          updatedAtZ: string | null
+        }
+        Insert: {
+          activeVersionId?: string | null
+          authorId?: string | null
+          createdAt: string
+          createdAtZ?: string | null
+          id: string
+          metadata?: Json | null
+          status: string
+          updatedAt: string
+          updatedAtZ?: string | null
+        }
+        Update: {
+          activeVersionId?: string | null
+          authorId?: string | null
+          createdAt?: string
+          createdAtZ?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: string
+          updatedAt?: string
+          updatedAtZ?: string | null
         }
         Relationships: []
       }
@@ -6280,6 +6970,116 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      survey_sends: {
+        Row: {
+          account_id: string
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          from_email: string
+          gmail_connection_id: string
+          gmail_message_id: string | null
+          gmail_thread_id: string | null
+          id: string
+          last_nudged_at: string | null
+          next_nudge_at: string | null
+          nudge_count: number
+          nudge_enabled: boolean
+          opened_at: string | null
+          person_id: string | null
+          personalized_link: string | null
+          project_id: string
+          sent_at: string
+          status: string
+          subject: string
+          survey_id: string
+          to_email: string
+          to_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          from_email: string
+          gmail_connection_id: string
+          gmail_message_id?: string | null
+          gmail_thread_id?: string | null
+          id?: string
+          last_nudged_at?: string | null
+          next_nudge_at?: string | null
+          nudge_count?: number
+          nudge_enabled?: boolean
+          opened_at?: string | null
+          person_id?: string | null
+          personalized_link?: string | null
+          project_id: string
+          sent_at?: string
+          status?: string
+          subject: string
+          survey_id: string
+          to_email: string
+          to_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          from_email?: string
+          gmail_connection_id?: string
+          gmail_message_id?: string | null
+          gmail_thread_id?: string | null
+          id?: string
+          last_nudged_at?: string | null
+          next_nudge_at?: string | null
+          nudge_count?: number
+          nudge_enabled?: boolean
+          opened_at?: string | null
+          person_id?: string | null
+          personalized_link?: string | null
+          project_id?: string
+          sent_at?: string
+          status?: string
+          subject?: string
+          survey_id?: string
+          to_email?: string
+          to_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_sends_gmail_connection_id_fkey"
+            columns: ["gmail_connection_id"]
+            isOneToOne: false
+            referencedRelation: "gmail_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_sends_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_sends_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_sends_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "research_links"
             referencedColumns: ["id"]
           },
         ]
