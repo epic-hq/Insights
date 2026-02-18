@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product Teams - Time-to-Aha JTBD Flow</title>
+  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&f[]=satoshi@400,500,700&display=swap" />
+  <style>
+    html, body { height: 100%; overflow-x: hidden; }
+    html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+    :root {
+      --bg-primary: #0a1222;
+      --bg-secondary: #111d34;
+      --surface: #172742;
+      --accent: #13e8c2;
+      --accent-2: #7fd8ff;
+      --accent-amber: #f5a623;
+      --accent-rose: #f472b6;
+      --text-primary: #f4f8ff;
+      --text-secondary: #b6c3de;
+      --text-tertiary: #7a8baa;
+      --title-size: clamp(1.6rem, 5vw, 4rem);
+      --h2-size: clamp(1.2rem, 3.5vw, 2.4rem);
+      --h3-size: clamp(0.92rem, 1.4vw, 1.15rem);
+      --body-size: clamp(0.76rem, 1.35vw, 1.05rem);
+      --small-size: clamp(0.68rem, 1vw, 0.86rem);
+      --tiny-size: clamp(0.6rem, 0.85vw, 0.76rem);
+      --slide-padding: clamp(1rem, 4vw, 3rem);
+      --content-gap: clamp(0.5rem, 1.8vw, 1.3rem);
+      --element-gap: clamp(0.3rem, 1vw, 0.9rem);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Satoshi", sans-serif;
+      color: var(--text-primary);
+      background:
+        radial-gradient(circle at 12% 15%, rgba(19, 232, 194, 0.15), transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(127, 216, 255, 0.14), transparent 36%),
+        var(--bg-primary);
+    }
+
+    /* ---------- Slide shell ---------- */
+    .slide {
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      scroll-snap-align: start;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      padding: var(--slide-padding);
+      gap: var(--content-gap);
+      border-bottom: 1px solid rgba(180, 200, 255, 0.08);
+    }
+
+    .slide-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      max-height: 100%;
+      overflow: hidden;
+      gap: var(--content-gap);
+    }
+
+    /* ---------- Typography ---------- */
+    .kicker {
+      font-size: var(--small-size);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    h1, h2 {
+      font-family: "Clash Display", sans-serif;
+      line-height: 1.04;
+      max-width: min(92vw, 1050px);
+    }
+
+    h1 { font-size: var(--title-size); }
+    h2 { font-size: var(--h2-size); }
+
+    p { font-size: var(--body-size); line-height: 1.42; color: var(--text-secondary); max-width: min(92vw, 980px); }
+
+    .subtitle { font-size: clamp(0.84rem, 1.5vw, 1.12rem); color: var(--text-secondary); max-width: min(92vw, 720px); }
+
+    /* ---------- User voice callout ---------- */
+    .user-voice {
+      font-size: clamp(0.88rem, 1.6vw, 1.2rem);
+      font-style: italic;
+      color: var(--accent-2);
+      padding-left: clamp(0.6rem, 1.2vw, 1rem);
+      border-left: 3px solid var(--accent-2);
+      line-height: 1.36;
+      max-width: min(92vw, 700px);
+    }
+
+    /* ---------- Progress Rail ---------- */
+    .progress-rail {
+      display: flex;
+      align-items: center;
+      gap: clamp(0.2rem, 0.6vw, 0.5rem);
+      max-width: min(94vw, 900px);
+      flex-wrap: wrap;
+    }
+
+    .rail-node {
+      font-size: var(--tiny-size);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: clamp(0.25rem, 0.5vw, 0.4rem) clamp(0.5rem, 1vw, 0.8rem);
+      border-radius: 100px;
+      background: rgba(19, 232, 194, 0.1);
+      border: 1px solid rgba(19, 232, 194, 0.3);
+      color: var(--accent);
+      white-space: nowrap;
+      transition: background 0.4s ease, border-color 0.4s ease;
+    }
+
+    .rail-node.active {
+      background: rgba(19, 232, 194, 0.22);
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(19, 232, 194, 0.25);
+    }
+
+    .rail-arrow {
+      color: var(--text-tertiary);
+      font-size: var(--tiny-size);
+      user-select: none;
+    }
+
+    /* Animated rail on close slide */
+    .rail-animated .rail-node {
+      animation: rail-pulse 4s ease-in-out infinite;
+    }
+    .rail-animated .rail-node:nth-child(1) { animation-delay: 0s; }
+    .rail-animated .rail-node:nth-child(3) { animation-delay: 0.8s; }
+    .rail-animated .rail-node:nth-child(5) { animation-delay: 1.6s; }
+    .rail-animated .rail-node:nth-child(7) { animation-delay: 2.4s; }
+    .rail-animated .rail-node:nth-child(9) { animation-delay: 3.2s; }
+
+    @keyframes rail-pulse {
+      0%, 100% { background: rgba(19, 232, 194, 0.1); box-shadow: none; }
+      30%, 50% { background: rgba(19, 232, 194, 0.28); box-shadow: 0 0 16px rgba(19, 232, 194, 0.3); }
+    }
+
+    /* ---------- Cards ---------- */
+    .card {
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+      border: 1px solid rgba(157, 186, 255, 0.2);
+      border-radius: 16px;
+      padding: clamp(0.6rem, 1.6vw, 1.1rem);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      overflow: hidden;
+    }
+
+    .card h3 {
+      font-size: var(--h3-size);
+      font-family: "Clash Display", sans-serif;
+      margin-bottom: clamp(0.15rem, 0.4vw, 0.3rem);
+      color: var(--accent-2);
+    }
+
+    .card p, .card li { font-size: var(--body-size); }
+
+    .card .label {
+      font-size: var(--tiny-size);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      font-weight: 700;
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .card .meta {
+      font-size: var(--tiny-size);
+      color: var(--text-tertiary);
+      margin-top: clamp(0.2rem, 0.4vw, 0.35rem);
+    }
+
+    /* ---------- Grids ---------- */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(0.45rem, 1.2vw, 0.9rem);
+      max-width: min(94vw, 1100px);
+      width: 100%;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: clamp(0.45rem, 1.2vw, 0.9rem);
+      max-width: min(94vw, 1100px);
+      width: 100%;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: clamp(0.4rem, 1vw, 0.8rem);
+      max-width: min(94vw, 1100px);
+      width: 100%;
+    }
+
+    /* ---------- Lists ---------- */
+    ul { list-style: none; display: flex; flex-direction: column; gap: var(--element-gap); max-width: min(92vw, 1000px); }
+
+    li {
+      padding-left: 0.9rem;
+      position: relative;
+      color: var(--text-secondary);
+      font-size: var(--body-size);
+      line-height: 1.35;
+    }
+
+    li::before {
+      content: "";
+      width: 0.45rem;
+      height: 0.45rem;
+      border-radius: 50%;
+      background: var(--accent);
+      position: absolute;
+      left: 0;
+      top: 0.43em;
+    }
+
+    /* ---------- Badges / Tags ---------- */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: var(--tiny-size);
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      border-radius: 100px;
+    }
+
+    .badge--ready {
+      background: rgba(19, 232, 194, 0.15);
+      border: 1px solid rgba(19, 232, 194, 0.4);
+      color: var(--accent);
+    }
+
+    .badge--warn {
+      background: rgba(245, 166, 35, 0.15);
+      border: 1px solid rgba(245, 166, 35, 0.4);
+      color: var(--accent-amber);
+    }
+
+    .badge--source {
+      background: rgba(127, 216, 255, 0.12);
+      border: 1px solid rgba(127, 216, 255, 0.3);
+      color: var(--accent-2);
+    }
+
+    /* ---------- Confidence bar ---------- */
+    .confidence-bar {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      margin-top: 0.3rem;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s ease;
+    }
+
+    .confidence-fill--high { background: var(--accent); width: 85%; }
+    .confidence-fill--medium { background: var(--accent-amber); width: 55%; }
+    .confidence-fill--low { background: var(--accent-rose); width: 25%; }
+
+    /* ---------- CTA button mock ---------- */
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: var(--small-size);
+      font-weight: 700;
+      padding: clamp(0.3rem, 0.6vw, 0.45rem) clamp(0.7rem, 1.2vw, 1rem);
+      border-radius: 10px;
+      background: var(--accent);
+      color: var(--bg-primary);
+      border: none;
+      letter-spacing: 0.02em;
+      width: fit-content;
+    }
+
+    .cta--secondary {
+      background: transparent;
+      border: 1px solid rgba(19, 232, 194, 0.4);
+      color: var(--accent);
+    }
+
+    /* ---------- Split layout ---------- */
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(0.6rem, 1.5vw, 1.2rem);
+      max-width: min(94vw, 1100px);
+      width: 100%;
+    }
+
+    .split-pane {
+      display: flex;
+      flex-direction: column;
+      gap: var(--element-gap);
+    }
+
+    .split-pane .pane-title {
+      font-family: "Clash Display", sans-serif;
+      font-size: var(--h3-size);
+      color: var(--text-primary);
+      margin-bottom: 0.1rem;
+    }
+
+    .split-pane .pane-subtitle {
+      font-size: var(--small-size);
+      color: var(--text-tertiary);
+      font-style: italic;
+      margin-bottom: 0.2rem;
+    }
+
+    /* ---------- Quote block ---------- */
+    .quote-block {
+      font-size: var(--small-size);
+      color: var(--text-secondary);
+      padding: clamp(0.3rem, 0.6vw, 0.5rem) clamp(0.5rem, 0.8vw, 0.7rem);
+      background: rgba(255, 255, 255, 0.03);
+      border-left: 2px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      line-height: 1.36;
+    }
+
+    .quote-block .source {
+      font-size: var(--tiny-size);
+      color: var(--text-tertiary);
+      margin-top: 0.15rem;
+    }
+
+    /* ---------- Theme row ---------- */
+    .theme-row {
+      display: flex;
+      align-items: center;
+      gap: clamp(0.3rem, 0.6vw, 0.5rem);
+      font-size: var(--small-size);
+      padding: clamp(0.25rem, 0.5vw, 0.4rem) 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .theme-row .theme-name { color: var(--text-primary); font-weight: 500; flex: 1; }
+    .theme-row .theme-count { color: var(--text-tertiary); font-size: var(--tiny-size); }
+
+    /* ---------- Timeline row (close slide) ---------- */
+    .timeline-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: clamp(0.4rem, 1vw, 0.8rem);
+      max-width: min(94vw, 900px);
+      width: 100%;
+    }
+
+    .timeline-cell {
+      text-align: center;
+      padding: clamp(0.35rem, 0.7vw, 0.55rem);
+      border-radius: 12px;
+      background: rgba(23, 39, 66, 0.7);
+      border: 1px solid rgba(19, 232, 194, 0.2);
+    }
+
+    .timeline-cell strong {
+      display: block;
+      font-size: var(--small-size);
+      color: var(--accent);
+      margin-bottom: 0.15rem;
+    }
+
+    .timeline-cell span {
+      font-size: var(--tiny-size);
+      color: var(--text-secondary);
+      line-height: 1.3;
+    }
+
+    /* ---------- Inline status ---------- */
+    .status-line {
+      font-size: var(--tiny-size);
+      color: var(--text-tertiary);
+      padding: 0.2rem 0.5rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 6px;
+      width: fit-content;
+    }
+
+    /* ---------- Action card ---------- */
+    .action-card {
+      background: linear-gradient(160deg, rgba(19, 232, 194, 0.08), rgba(19, 232, 194, 0.02));
+      border: 1px solid rgba(19, 232, 194, 0.3);
+      border-radius: 16px;
+      padding: clamp(0.6rem, 1.4vw, 1rem);
+      max-width: min(94vw, 700px);
+      display: flex;
+      flex-direction: column;
+      gap: var(--element-gap);
+    }
+
+    .action-card h3 {
+      font-family: "Clash Display", sans-serif;
+      font-size: var(--h3-size);
+      color: var(--text-primary);
+    }
+
+    .action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      font-size: var(--small-size);
+      padding: clamp(0.2rem, 0.4vw, 0.3rem) 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .action-row .action-label { color: var(--text-secondary); flex: 1; }
+    .action-row .action-value { color: var(--text-primary); font-weight: 500; text-align: right; }
+
+    /* ---------- Loop arrow ---------- */
+    .loop-indicator {
+      font-size: var(--tiny-size);
+      color: var(--text-tertiary);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .loop-indicator svg {
+      width: 14px;
+      height: 14px;
+      stroke: var(--accent);
+      fill: none;
+      stroke-width: 2;
+    }
+
+    /* ---------- Reveal animation ---------- */
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .reveal-d1 { transition-delay: 0.08s; }
+    .reveal-d2 { transition-delay: 0.16s; }
+    .reveal-d3 { transition-delay: 0.24s; }
+    .reveal-d4 { transition-delay: 0.32s; }
+
+    .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { transition: none; opacity: 1; transform: none; }
+      .rail-animated .rail-node { animation: none; }
+    }
+
+    /* ---------- Nav dots ---------- */
+    .nav-dots {
+      position: fixed;
+      right: clamp(0.45rem, 1vw, 0.8rem);
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 0.32rem;
+      z-index: 30;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      background: transparent;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .dot.active { background: var(--accent); border-color: var(--accent); }
+
+    /* ---------- Responsive ---------- */
+    @media (max-height: 700px) {
+      :root { --slide-padding: clamp(0.75rem, 3vw, 1.6rem); --title-size: clamp(1.3rem, 4.7vw, 2.6rem); }
+      .nav-dots { display: none; }
+    }
+
+    @media (max-height: 600px) {
+      :root { --slide-padding: clamp(0.55rem, 2.5vw, 1.2rem); --body-size: clamp(0.68rem, 1.1vw, 0.9rem); }
+      .card { min-height: auto; max-height: none; }
+    }
+
+    @media (max-width: 820px) {
+      .grid-2, .split { grid-template-columns: 1fr; }
+      .grid-3 { grid-template-columns: 1fr 1fr; }
+      .grid-4 { grid-template-columns: 1fr 1fr; }
+      .timeline-row { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 520px) {
+      .grid-3, .grid-4, .timeline-row { grid-template-columns: 1fr; }
+      .progress-rail { gap: 0.2rem; }
+      .rail-node { font-size: 0.58rem; padding: 0.2rem 0.4rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav-dots" aria-label="Slide navigation"></nav>
+
+  <!-- ========== SLIDE 1: Title ========== -->
+  <section class="slide" aria-label="Title">
+    <div class="slide-content">
+      <div class="kicker reveal">Product Teams &mdash; Time-to-Aha</div>
+      <h1 class="reveal reveal-d1">From noisy signal to shipped decisions. In 48&nbsp;hours.</h1>
+      <p class="subtitle reveal reveal-d2">Nine moments that turn customer chaos into confident action.</p>
+      <div class="progress-rail reveal reveal-d3" aria-label="Decision loop phases">
+        <span class="rail-node">Frame Decision</span>
+        <span class="rail-arrow" aria-hidden="true">&rarr;</span>
+        <span class="rail-node">Collect Signal</span>
+        <span class="rail-arrow" aria-hidden="true">&rarr;</span>
+        <span class="rail-node">Validate Pattern</span>
+        <span class="rail-arrow" aria-hidden="true">&rarr;</span>
+        <span class="rail-node">Commit Actions</span>
+        <span class="rail-arrow" aria-hidden="true">&rarr;</span>
+        <span class="rail-node">Measure</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SLIDE 2: Frame the Decision ========== -->
+  <section class="slide" aria-label="Frame the Decision">
+    <div class="slide-content">
+      <div class="kicker reveal">Moment 1</div>
+      <h2 class="reveal reveal-d1">Frame the Decision</h2>
+      <div class="user-voice reveal reveal-d2">"What decision am I trying to make this sprint?"</div>
+      <div class="grid-2 reveal reveal-d3">
+        <article class="card">
+          <span class="label">What they see</span>
+          <p>A single decision prompt: target customer segment, deadline, and the success metric that will tell them they got it right.</p>
+          <div class="meta">One screen. No configuration maze.</div>
+        </article>
+        <article class="card">
+          <span class="label">What confirms progress</span>
+          <p><span class="badge badge--ready">Decision Brief complete</span></p>
+          <p style="margin-top: 0.4rem;">The brief captures the bet, the audience, and the timeline. Next step CTA lights up: "Choose your intake path."</p>
+          <div class="meta">Product team emphasis: this sprint's decision, not a backlog of research.</div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SLIDE 3: Choose Intake Path ========== -->
+  <section class="slide" aria-label="Choose Intake Path">
+    <div class="slide-content">
+      <div class="kicker reveal">Moment 2</div>
+      <h2 class="reveal reveal-d1">Choose Intake Path</h2>
+      <div class="user-voice reveal reveal-d2">"How do I get signal in fastest?"</div>
+      <div class="grid-3 reveal reveal-d3">
+        <article class="card">
+          <span class="label">Upload interviews</span>
+          <h3>Existing recordings</h3>
+          <p>Drag in audio, video, or transcript files. Multi-file batch supported.</p>
+          <div class="meta">Needs: recorded files</div>
+          <div class="meta">Time-to-first-signal: ~10 min</div>
+        </article>
+        <article class="card">
+          <span class="label">Start live recording</span>
+          <h3>New conversations</h3>
+          <p>Record directly in-browser with live waveform and speaker identification.</p>
+          <div class="meta">Needs: participant on call</div>
+          <div class="meta">Time-to-first-signal: ~5 min after save</div>
+        </article>
+        <article class="card">
+          <span class="label">Send survey links</span>
+          <h3>Async signal</h3>
+          <p>Generate and distribute survey links. Collect open-ended responses at scale.</p>
+          <div class="meta">Needs: email list or share link</div>
+          <div class="meta">Time-to-first-signal: ~1&ndash;24 hrs</div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SLIDE 4: Collect Signal ========== -->
+  <section class="slide" aria-label="Collect Signal">
+    <div class="slide-content">
+      <div class="kicker reveal">Moment 3</div>
+      <h2 class="reveal reveal-d1">Collect Signal</h2>
+      <div class="grid-3 reveal reveal-d2">
+        <article class="card">
+          <span class="label">Upload</span>
+          <h3>Drag, drop, process</h3>
+          <ul>
+            <li>Multi-file drag and drop</li>
+            <li>Automatic transcription</li>
+            <li>Speaker diarization</li>
+            <li>Processing ETA per file</li>
+          </ul>
+          <div class="status-line" style="margin-top: 0.35rem;">2 recordings still processing</div>
+        </article>
+        <article class="card">
+          <span class="label">Record</span>
+          <h3>Live capture</h3>
+          <ul>
+            <li>In-browser waveform</li>
+            <li>Participant identity tagging</li>
+            <li>Pause / resume / finalize</li>
+            <li>Auto-save on connection loss</li>
+          </ul>
+          <div class="status-line" style="margin-top: 0.35rem;">Recording: 14m 32s</div>
+        </article>
+        <article class="card">
+          <span class="label">Survey</span>
+          <h3>Async collection</h3>
+          <ul>
+            <li>Recipient selector</li>
+            <li>Custom question builder</li>
+            <li>Response funnel tracking</li>
+            <li>Auto-follow-up reminders</li>
+          </ul>
+          <div class="status-line" style="margin-top: 0.35rem;">14 invites sent, 5 responses received</div>
+        </article>
+      </div>
+      <p class="reveal reveal-d3" style="font-size: var(--small-size); color: var(--text-tertiary);">All three paths feed the same evidence pipeline. Mix and match freely.</p>
+    </div>
+  </section>
+
+  <!-- ========== SLIDE 5: Intake Health (Coverage Gate) ========== -->
+  <section class="slide" aria-label="Intake Health">
+    <div class="slide-content">
+      <div class="kicker reveal">Moment 4</div>
+      <h2 class="reveal reveal-d1">Intake Health</h2>
+      <div class="user-voice reveal reveal-d2">"Do I have enough signal yet?"</div>
+      <div class="grid-2 reveal reveal-d3">
+        <article class="card">
+          <span class="label">Coverage by source</span>
+          <div class="theme-row">
+            <span class="theme-name">Uploaded interviews</span>
+            <span class="theme-count">6 processed</span>
+          </div>
+          <div class="theme-row">
+            <span class="theme-name">Live recordings</span>
+            <span class="theme-count">2 finalized</span>
+          </div>
+          <div class="theme-row">
+            <span class="theme-name">Survey responses</span>
+            <span class="theme-count">14 received</span>
+          </div>
+          <div style="margin-top: 0.4rem;">
+            <span class="label">Coverage by persona</span>
+            <div class="theme-row">
+              <span class="theme-name">VP Engineering</span>
+              <span class="badge badge--warn">1 of 3 needed</span>
+            </div>
+            <div class="theme-row">
+              <span class="theme-name">IC Developer</span>
+              <span class="badge badge--ready">5 of 3 needed</span>
+            </div>
+            <div class="theme-row">
+              <span class="theme-name">Product Manager</span>
+              <span class="badge badge--ready">4 of 3 needed</span>
+            </div>
+          </div>
+        </article>
+        <article class="card">
+          <span class="label">Sample-size confidence</span>
+          <p style="margin-bottom: 0.35rem;">Overall signal strength</p>
+          <div class="confidence-bar"><div class="confidence-fill confidence-fill--medium"></div></div>
+          <div class="meta">55% confidence &mdash; trending toward decision-ready</div>
+          <div style="margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.35rem;">
+            <span class="badge badge--warn">Collect 2 more VP Engineering interviews</span>
+            <span class="badge badge--ready" style="opacity: 0.5;">Enough data for first synthesis</span>
+          </div>
+          <p style="margin-top: 0.5rem; font-size: var(--tiny-size); color: var(--text-tertiary);">This is the key differentiator: confidence gates, not dashboards. The system tells you what's missing before you over-invest.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SLIDE 6: Evidence + Patterns ========== -->
+  <section class="slide" aria-label="Evidence and Patterns">
+    <div class="slide-content">
+      <div class="kicker reveal">Moment 5</div>
+      <h2 class="reveal reveal-d1">Evidence + Patterns</h2>
+      <div class="split reveal reveal-d2">
+        <div class="split-pane">
+          <span class="pane-title">Evidence Grounding</span>
+          <span class="pane-subtitle">"Show me the real voice, not a summary."</span>
+          <div class="quote-block">
+            "We spend two hours every sprint debating what to build, and nobody has data to back up their opinion."
+            <div class="source">Sarah K., VP Eng &mdash; Interview #3 <span class="badge badge--source">02:14</span></div>
+          </div>
+          <div class="quote-block">
+            "I just need to know which pain is most common so I can justify the investment to leadership."
+            <div class="source">Marcus T., PM &mdash; Survey response <span class="badge badge--source">Q2</span></div>
+          </div>
+          <div class="quote-block">
+            "The biggest risk isn't building the wrong thing, it's building the right thing too late."
+            <div class="source">Priya R., IC Dev &mdash; Interview #7 <span class="badge badge--source">18:42</span></div>
+          </div>
+          <div class="meta">Every quote links back to the raw source. Click through to verify.</div>
+        </div>
+        <div class="split-pane">
+          <span class="pane-title">Pattern Synthesis</span>
+          <span class="pane-subtitle">"What repeats and what matters?"</span>
+          <div class="theme-row">
+            <span class="theme-name">Decision paralysis in sprint planning</span>
+            <div style="display: flex; gap: 0.3rem; align-items: center;">
+              <div class="confidence-bar" style="width: 60px;"><div class="confidence-fill confidence-fill--high"></div></div>
+              <span class="theme-count">12 mentions</span>
+            </div>
+          </div>
+          <div class="theme-row">
+            <span class="theme-name">No single source of truth for customer signal</span>
+            <div style="display: flex; gap: 0.3rem; align-items: center;">
+              <div class="confidence-bar" style="width: 60px;"><div class="confidence-fill confidence-fill--high"></div></div>
+              <span class="theme-count">9 mentions</span>
+            </div>
+          </div>
+          <div class="theme-row">
+            <span class="theme-name">Leadership asks for proof before committing</span>
+            <div style="display: flex; gap: 0.3rem; align-items: center;">
+              <div class="confidence-bar" style="width: 60px;"><div class="confidence-fill confidence-fill--medium"></div></div>
+              <span class="theme-count">6 mentions</span>
+            </div>
+          </div>
+          <div class="theme-row">
+            <span class="theme-name">Latency fear: right thing, wrong timing</span>
+            <div style="display: flex; gap: 0.3rem; align-items: center;">
+              <div class="confidence-bar" style="width: 60px;"><div class="confidence-fill confidence-fill--low"></div></div>
+              <span class="theme-count">3 mentions</span>
+            </div>
+          </div>
+          <div class="meta">Every theme links to constituent evidence. No black boxes.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SLIDE 7: Decision Forcing ========== -->
+  <section class="slide" aria-label="Decision Forcing">
+    <div class="slide-content">
+      <div class="kicker reveal">Moment 6</div>
+      <h2 class="reveal reveal-d1">Decision Forcing</h2>
+      <div class="user-voice reveal reveal-d2">"What should we do this week?"</div>
+      <div class="action-card reveal reveal-d3">
+        <h3>Recommended Action Set</h3>
+        <div class="action-row">
+          <span class="action-label">Primary action</span>
+          <span class="action-value">Ship "evidence dashboard" to internal beta</span>
+        </div>
+        <div class="action-row">
+          <span class="action-label">Tradeoff</span>
+          <span class="action-value">Delays API v2 by one sprint</span>
+        </div>
+        <div class="action-row">
+          <span class="action-label">Effort</span>
+          <span class="action-value">Medium (3&ndash;5 days)</span>
+        </div>
+        <div class="action-row">
+          <span class="action-label">Impact</span>
+          <span class="action-value">High &mdash; addresses top 2 themes</span>
+        </div>
+        <div class="action-row">
+          <span class="action-label">Risk</span>
+          <span class="action-value">Low &mdash; internal users, reversible</span>
+        </div>
+        <div class="action-row">
+          <span class="action-label">Owner</span>
+          <span class="action-value">Sarah K.</span>
+        </div>
+        <div class="action-row" style="border: none;">
+          <span class="action-label">Due</span>
+          <span class="action-value">Friday EOD</span>
+        </div>
+        <div class="cta">Commit this plan</div>
+      </div>
+      <p class="reveal reveal-d4" style="font-size: var(--small-size); color: var(--text-tertiary); max-width: 600px;">One recommended action set. One CTA. The user commits selected actions with owners and dates &mdash; no ambiguity, no endless deliberation.</p>
+    </div>
+  </section>
+
+  <!-- ========== SLIDE 8: Activate + Close the Loop ========== -->
+  <section class="slide" aria-label="Activate and Close the Loop">
+    <div class="slide-content">
+      <div class="kicker reveal">Moment 7</div>
+      <h2 class="reveal reveal-d1">Activate + Close the Loop</h2>
+      <div class="split reveal reveal-d2">
+        <div class="split-pane">
+          <span class="pane-title">CRM Activation</span>
+          <p>People and organizations linked directly to evidence and themes &mdash; not siloed from insights.</p>
+          <article class="card" style="margin-top: 0.2rem;">
+            <div class="theme-row">
+              <span class="theme-name">Sarah K. &mdash; VP Eng, Acme</span>
+              <span class="badge badge--source">3 quotes</span>
+            </div>
+            <div class="theme-row">
+              <span class="theme-name">Marcus T. &mdash; PM, Bolt</span>
+              <span class="badge badge--source">2 quotes</span>
+            </div>
+            <div class="theme-row">
+              <span class="theme-name">Priya R. &mdash; IC Dev, Nova</span>
+              <span class="badge badge--source">4 quotes</span>
+            </div>
+            <div class="meta">Every person record traces to the evidence they contributed.</div>
+          </article>
+        </div>
+        <div class="split-pane">
+          <span class="pane-title">Weekly Delta</span>
+          <p>What changed since last decision cycle.</p>
+          <article class="card" style="margin-top: 0.2rem;">
+            <div class="action-row">
+              <span class="action-label">Actions completed</span>
+              <span class="action-value">2 of 3</span>
+            </div>
+            <div class="action-row">
+              <span class="action-label">New signal collected</span>
+              <span class="action-value">+4 interviews</span>
+            </div>
+            <div class="action-row">
+              <span class="action-label">Confidence change</span>
+              <span class="action-value" style="color: var(--accent);">55% &rarr; 78%</span>
+            </div>
+            <div class="action-row" style="border: none;">
+              <span class="action-label">Next recommended step</span>
+              <span class="action-value">Run 2 VP Eng interviews</span>
+            </div>
+          </article>
+          <div class="loop-indicator">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            <span>Loop back to Collect Signal</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SLIDE 9: Close ========== -->
+  <section class="slide" aria-label="Close">
+    <div class="slide-content">
+      <div class="kicker reveal">The Loop</div>
+      <h2 class="reveal reveal-d1">One project. One decision ritual. Continuous&nbsp;confidence.</h2>
+      <div class="progress-rail rail-animated reveal reveal-d2" aria-label="Decision loop phases, animated">
+        <span class="rail-node">Frame Decision</span>
+        <span class="rail-arrow" aria-hidden="true">&rarr;</span>
+        <span class="rail-node">Collect Signal</span>
+        <span class="rail-arrow" aria-hidden="true">&rarr;</span>
+        <span class="rail-node">Validate Pattern</span>
+        <span class="rail-arrow" aria-hidden="true">&rarr;</span>
+        <span class="rail-node">Commit Actions</span>
+        <span class="rail-arrow" aria-hidden="true">&rarr;</span>
+        <span class="rail-node">Measure</span>
+      </div>
+      <div class="timeline-row reveal reveal-d3">
+        <div class="timeline-cell">
+          <strong>Day 1</strong>
+          <span>Frame decision + first source ingestion</span>
+        </div>
+        <div class="timeline-cell">
+          <strong>Day 2</strong>
+          <span>Evidence, patterns, and committed actions</span>
+        </div>
+        <div class="timeline-cell">
+          <strong>Week 1</strong>
+          <span>People and orgs linked, confidence rising</span>
+        </div>
+        <div class="timeline-cell">
+          <strong>Ongoing</strong>
+          <span>Weekly delta, continuous signal loop</span>
+        </div>
+      </div>
+      <p class="reveal reveal-d4">The product value is not just analysis. It is confidence at decision time.</p>
+    </div>
+  </section>
+
+  <script>
+    const slides = [...document.querySelectorAll('.slide')];
+    const nav = document.querySelector('.nav-dots');
+
+    slides.forEach((_, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'dot';
+      btn.type = 'button';
+      btn.setAttribute('aria-label', `Go to slide ${idx + 1}`);
+      btn.addEventListener('click', () => slides[idx].scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      nav.appendChild(btn);
+    });
+
+    const dots = [...document.querySelectorAll('.dot')];
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          slides.forEach((s, i) => {
+            if (s === entry.target) {
+              s.classList.add('visible');
+              dots[i].classList.add('active');
+            } else {
+              dots[i].classList.remove('active');
+            }
+          });
+        }
+      });
+    }, { threshold: 0.55 });
+
+    slides.forEach((slide) => observer.observe(slide));
+
+    window.addEventListener('keydown', (event) => {
+      const idx = slides.findIndex((slide) => slide.classList.contains('visible'));
+      if ((event.key === 'ArrowDown' || event.key === 'PageDown' || event.key === ' ') && idx < slides.length - 1) {
+        event.preventDefault();
+        slides[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      if ((event.key === 'ArrowUp' || event.key === 'PageUp') && idx > 0) {
+        event.preventDefault();
+        slides[idx - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  </script>
+</body>
+</html>

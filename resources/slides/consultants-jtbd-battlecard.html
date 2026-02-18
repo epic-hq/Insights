@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Consultants — Time-to-Aha</title>
+  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800&f[]=sentient@400,500&display=swap" />
+  <style>
+    html, body { height: 100%; overflow-x: hidden; }
+    html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+    :root {
+      --bg: #f7f3e9;
+      --paper: #fffdf7;
+      --ink: #1f1f1f;
+      --muted: #575347;
+      --tab-1: #ff8f6a;
+      --tab-2: #83a9ff;
+      --tab-3: #8ccf97;
+      --tab-4: #e3b6ff;
+      --tab-5: #f7c97e;
+      --title-size: clamp(1.55rem, 4.8vw, 3.8rem);
+      --h2-size: clamp(1.2rem, 3.3vw, 2.2rem);
+      --body-size: clamp(0.76rem, 1.25vw, 1rem);
+      --small-size: clamp(0.66rem, 0.95vw, 0.82rem);
+      --slide-padding: clamp(1rem, 3.8vw, 2.8rem);
+      --content-gap: clamp(0.45rem, 1.6vw, 1.15rem);
+      --element-gap: clamp(0.28rem, 0.8vw, 0.72rem);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Sentient", serif;
+      color: var(--ink);
+      background:
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.022), rgba(0,0,0,0.022) 1px, transparent 1px, transparent 22px),
+        var(--bg);
+    }
+
+    .slide {
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      scroll-snap-align: start;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      padding: var(--slide-padding);
+      gap: var(--content-gap);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      background: transparent;
+    }
+
+    .slide-content {
+      flex: 1;
+      max-height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: var(--content-gap);
+    }
+
+    h1, h2, h3 {
+      font-family: "Cabinet Grotesk", sans-serif;
+      line-height: 1.05;
+      max-width: min(92vw, 1080px);
+      color: #121212;
+    }
+
+    h1 { font-size: var(--title-size); }
+    h2 { font-size: var(--h2-size); }
+    h3 { font-size: clamp(0.9rem, 1.3vw, 1.1rem); }
+
+    p { font-size: var(--body-size); line-height: 1.44; color: var(--muted); max-width: min(92vw, 980px); }
+
+    .kicker {
+      font-size: var(--small-size);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-family: "Cabinet Grotesk", sans-serif;
+      font-weight: 800;
+      color: #303030;
+    }
+
+    .subtitle {
+      font-size: clamp(0.82rem, 1.35vw, 1.08rem);
+      line-height: 1.4;
+      color: var(--muted);
+      font-style: italic;
+      max-width: min(92vw, 820px);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      max-width: min(94vw, 1020px);
+    }
+
+    .tab {
+      border-radius: 999px;
+      padding: 0.2rem 0.65rem;
+      font-family: "Cabinet Grotesk", sans-serif;
+      font-size: var(--small-size);
+      font-weight: 700;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .tab:nth-child(1) { background: var(--tab-1); }
+    .tab:nth-child(2) { background: var(--tab-2); }
+    .tab:nth-child(3) { background: var(--tab-3); }
+    .tab:nth-child(4) { background: var(--tab-4); }
+    .tab:nth-child(5) { background: var(--tab-5); }
+
+    /* Progress rail */
+    .progress-rail {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      max-width: min(94vw, 820px);
+      margin-top: 0.25rem;
+    }
+
+    .rail-node {
+      width: clamp(6px, 0.7vw, 9px);
+      height: clamp(6px, 0.7vw, 9px);
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.18);
+      flex-shrink: 0;
+    }
+
+    .rail-node.filled { background: var(--ink); }
+
+    .rail-line {
+      flex: 1;
+      height: 2px;
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(0.4rem, 1vw, 0.78rem);
+      max-width: min(94vw, 1120px);
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: clamp(0.4rem, 1vw, 0.78rem);
+      max-width: min(94vw, 1120px);
+    }
+
+    .card {
+      border: 1px solid rgba(0, 0, 0, 0.14);
+      background: var(--paper);
+      border-radius: 14px;
+      padding: clamp(0.55rem, 1.2vw, 0.95rem);
+      min-height: min(18vh, 150px);
+      overflow: hidden;
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.07);
+    }
+
+    .card p { margin-top: 0.24rem; }
+
+    .card-accent {
+      border-left: 3px solid;
+    }
+
+    .card-accent-1 { border-left-color: var(--tab-1); }
+    .card-accent-2 { border-left-color: var(--tab-2); }
+    .card-accent-3 { border-left-color: var(--tab-3); }
+    .card-accent-4 { border-left-color: var(--tab-4); }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: clamp(0.35rem, 0.9vw, 0.7rem);
+      max-width: min(94vw, 1120px);
+    }
+
+    .matrix .cell {
+      border: 1px solid rgba(0, 0, 0, 0.16);
+      border-radius: 10px;
+      background: #fff;
+      padding: clamp(0.42rem, 0.9vw, 0.7rem);
+      min-height: min(16vh, 125px);
+      overflow: hidden;
+    }
+
+    .cell strong {
+      display: block;
+      font-family: "Cabinet Grotesk", sans-serif;
+      font-size: var(--small-size);
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      margin-bottom: 0.24rem;
+    }
+
+    .cell span {
+      font-size: var(--body-size);
+      color: var(--muted);
+      line-height: 1.34;
+      display: block;
+    }
+
+    ul { list-style: none; display: flex; flex-direction: column; gap: var(--element-gap); max-width: min(92vw, 1020px); }
+
+    li {
+      font-size: var(--body-size);
+      color: var(--muted);
+      position: relative;
+      padding-left: 1rem;
+      line-height: 1.36;
+    }
+
+    li::before {
+      content: "";
+      width: 0.48rem;
+      height: 0.48rem;
+      border-radius: 2px;
+      background: #171717;
+      position: absolute;
+      left: 0;
+      top: 0.45em;
+    }
+
+    .user-voice {
+      font-family: "Sentient", serif;
+      font-style: italic;
+      font-size: clamp(0.88rem, 1.5vw, 1.15rem);
+      color: var(--ink);
+      max-width: min(92vw, 860px);
+      padding-left: 0.85rem;
+      border-left: 3px solid rgba(0, 0, 0, 0.15);
+      line-height: 1.4;
+    }
+
+    .emphasis-block {
+      font-family: "Cabinet Grotesk", sans-serif;
+      font-weight: 700;
+      font-size: var(--small-size);
+      letter-spacing: 0.04em;
+      background: rgba(0, 0, 0, 0.04);
+      border-radius: 8px;
+      padding: 0.35rem 0.7rem;
+      display: inline-block;
+      max-width: min(92vw, 720px);
+      color: var(--ink);
+    }
+
+    .progress-note {
+      font-family: "Cabinet Grotesk", sans-serif;
+      font-size: var(--small-size);
+      font-weight: 500;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .progress-note .arrow {
+      display: inline-block;
+      width: 1.2rem;
+      height: 1px;
+      background: var(--muted);
+      position: relative;
+    }
+
+    .progress-note .arrow::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: -3px;
+      border: 3px solid transparent;
+      border-left-color: var(--muted);
+    }
+
+    /* Half-split layout */
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(0.6rem, 1.5vw, 1.2rem);
+      max-width: min(94vw, 1120px);
+    }
+
+    .split-pane {
+      display: flex;
+      flex-direction: column;
+      gap: var(--element-gap);
+    }
+
+    .split-pane h3 {
+      font-size: clamp(0.88rem, 1.2vw, 1.05rem);
+      margin-bottom: 0.15rem;
+    }
+
+    /* Coverage bar */
+    .coverage-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: var(--small-size);
+      font-family: "Cabinet Grotesk", sans-serif;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .coverage-bar {
+      flex: 1;
+      height: 6px;
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+      max-width: 140px;
+    }
+
+    .coverage-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--tab-3);
+    }
+
+    .coverage-fill.low { background: var(--tab-1); }
+    .coverage-fill.mid { background: var(--tab-5); }
+
+    .gate-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-family: "Cabinet Grotesk", sans-serif;
+      font-size: var(--small-size);
+      font-weight: 700;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .gate-badge.pass { background: #e0f5e5; color: #1a5c2a; }
+    .gate-badge.needs { background: #fff0e0; color: #7a4a00; }
+
+    /* CTA button */
+    .cta-btn {
+      display: inline-block;
+      font-family: "Cabinet Grotesk", sans-serif;
+      font-weight: 700;
+      font-size: var(--body-size);
+      background: var(--ink);
+      color: var(--paper);
+      padding: 0.45rem 1.1rem;
+      border-radius: 10px;
+      border: none;
+      letter-spacing: 0.02em;
+      cursor: default;
+    }
+
+    /* Timeline for closing slide */
+    .timeline-compact {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(0.35rem, 0.9vw, 0.65rem);
+      max-width: min(92vw, 860px);
+    }
+
+    .timeline-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.7rem;
+    }
+
+    .timeline-marker {
+      flex-shrink: 0;
+      width: clamp(2.6rem, 4.5vw, 4rem);
+      font-family: "Cabinet Grotesk", sans-serif;
+      font-weight: 800;
+      font-size: var(--small-size);
+      color: var(--ink);
+      padding-top: 0.15rem;
+    }
+
+    .timeline-body {
+      flex: 1;
+      font-size: var(--body-size);
+      color: var(--muted);
+      line-height: 1.4;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+    }
+
+    .timeline-body b {
+      font-family: "Cabinet Grotesk", sans-serif;
+      color: var(--ink);
+    }
+
+    /* Status pill */
+    .status-pill {
+      display: inline-block;
+      font-family: "Cabinet Grotesk", sans-serif;
+      font-size: clamp(0.6rem, 0.85vw, 0.74rem);
+      font-weight: 700;
+      padding: 0.12rem 0.45rem;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.06);
+      color: var(--muted);
+    }
+
+    .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
+    .reveal-d1 { transition-delay: 0.08s; }
+    .reveal-d2 { transition-delay: 0.16s; }
+    .reveal-d3 { transition-delay: 0.24s; }
+    .reveal-d4 { transition-delay: 0.32s; }
+    .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+
+    .nav-dots {
+      position: fixed;
+      right: clamp(0.45rem, 1vw, 0.8rem);
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 0.32rem;
+      z-index: 22;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.35);
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .dot.active { background: #121212; border-color: #121212; }
+
+    @media (max-height: 700px) {
+      :root { --slide-padding: clamp(0.7rem, 3vw, 1.5rem); --title-size: clamp(1.25rem, 4.3vw, 2.3rem); }
+      .nav-dots { display: none; }
+    }
+
+    @media (max-height: 600px) {
+      :root { --slide-padding: clamp(0.5rem, 2.4vw, 1.1rem); --body-size: clamp(0.68rem, 1vw, 0.87rem); }
+      .card, .matrix .cell { min-height: auto; max-height: none; }
+    }
+
+    @media (max-width: 860px) {
+      .grid, .split { grid-template-columns: 1fr; }
+      .grid-3 { grid-template-columns: 1fr; }
+      .matrix { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav-dots" aria-label="Slide navigation"></nav>
+
+  <!-- Slide 1 — Title -->
+  <section class="slide" aria-label="Title">
+    <div class="slide-content">
+      <div class="kicker reveal">Consultants — Time-to-Aha</div>
+      <h1 class="reveal reveal-d1">Turn fragmented client signal into a decision-ready plan before trust decays.</h1>
+      <p class="subtitle reveal reveal-d2">Nine moments that turn scattered conversations into billable clarity.</p>
+      <div class="tabs reveal reveal-d3">
+        <span class="tab">Frame</span>
+        <span class="tab">Collect</span>
+        <span class="tab">Validate</span>
+        <span class="tab">Commit</span>
+        <span class="tab">Measure</span>
+      </div>
+      <div class="progress-rail reveal reveal-d4" aria-label="Progress rail showing nine steps">
+        <div class="rail-node filled"></div>
+        <div class="rail-line"></div>
+        <div class="rail-node"></div>
+        <div class="rail-line"></div>
+        <div class="rail-node"></div>
+        <div class="rail-line"></div>
+        <div class="rail-node"></div>
+        <div class="rail-line"></div>
+        <div class="rail-node"></div>
+        <div class="rail-line"></div>
+        <div class="rail-node"></div>
+        <div class="rail-line"></div>
+        <div class="rail-node"></div>
+        <div class="rail-line"></div>
+        <div class="rail-node"></div>
+        <div class="rail-line"></div>
+        <div class="rail-node"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 2 — Frame the Decision -->
+  <section class="slide" aria-label="Frame the Decision">
+    <div class="slide-content">
+      <div class="kicker reveal">Moment 1 — Frame</div>
+      <h2 class="reveal reveal-d1">Frame the Decision</h2>
+      <div class="user-voice reveal reveal-d2">"What decision is the client trying to make?"</div>
+      <div class="grid reveal reveal-d3">
+        <article class="card card-accent card-accent-1">
+          <h3>Client decision prompt</h3>
+          <p>Name the core decision the engagement must resolve. Lock the question before the first interview.</p>
+        </article>
+        <article class="card card-accent card-accent-2">
+          <h3>Stakeholders + unknowns</h3>
+          <p>Map the people who own or influence the decision. Surface the open questions that must be answered.</p>
+        </article>
+        <article class="card card-accent card-accent-3">
+          <h3>Engagement deadline</h3>
+          <p>Set the date by which the client needs a defensible recommendation. Everything flows backward from here.</p>
+        </article>
+        <article class="card card-accent card-accent-4">
+          <h3>Success metric</h3>
+          <p>Define how both you and the client will know the engagement delivered value. Make it measurable.</p>
+        </article>
+      </div>
+      <div class="emphasis-block reveal reveal-d4">Lock the client decision and unknowns before the first interview.</div>
+      <div class="progress-note reveal reveal-d4">
+        <span class="status-pill">Decision Brief complete</span>
+        <span class="arrow"></span>
+        ready for data collection
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 3 — Choose Intake Path -->
+  <section class="slide" aria-label="Choose Intake Path">
+    <div class="slide-content">
+      <div class="kicker reveal">Moment 2 — Intake</div>
+      <h2 class="reveal reveal-d1">Choose Your Intake Path</h2>
+      <div class="user-voice reveal reveal-d2">"Where's the fastest signal for this engagement?"</div>
+      <div class="grid-3 reveal reveal-d3">
+        <article class="card card-accent card-accent-1">
+          <h3>Upload existing artifacts</h3>
+          <p>Call recordings, meeting notes, prior research PDFs. Start with what you already have from the SOW kickoff.</p>
+          <div class="status-pill" style="margin-top: 0.4rem;">Fastest start</div>
+        </article>
+        <article class="card card-accent card-accent-2">
+          <h3>Run live sessions</h3>
+          <p>Stakeholder interviews with real-time recording and automatic attribution. Fresh signal, directly sourced.</p>
+          <div class="status-pill" style="margin-top: 0.4rem;">Highest fidelity</div>
+        </article>
+        <article class="card card-accent card-accent-3">
+          <h3>Deploy targeted surveys</h3>
+          <p>Client team pulse surveys and customer outreach. Scale signal collection without scheduling every conversation.</p>
+          <div class="status-pill" style="margin-top: 0.4rem;">Widest reach</div>
+        </article>
+      </div>
+      <div class="emphasis-block reveal reveal-d4">Start with artifacts you already have from the SOW kickoff.</div>
+    </div>
+  </section>
+
+  <!-- Slide 4 — Collect Signal -->
+  <section class="slide" aria-label="Collect Signal">
+    <div class="slide-content">
+      <div class="kicker reveal">Moment 3 — Collect</div>
+      <h2 class="reveal reveal-d1">Collect Signal</h2>
+      <div class="grid-3 reveal reveal-d2">
+        <article class="card">
+          <h3>Upload</h3>
+          <ul>
+            <li>Client call recordings</li>
+            <li>Meeting notes and transcripts</li>
+            <li>Prior research PDFs</li>
+          </ul>
+          <div class="status-pill" style="margin-top: 0.5rem;">3 files processed</div>
+        </article>
+        <article class="card">
+          <h3>Record</h3>
+          <ul>
+            <li>Live stakeholder interviews</li>
+            <li>Automatic speaker attribution</li>
+            <li>Role and seniority tagging</li>
+          </ul>
+          <div class="status-pill" style="margin-top: 0.5rem;">3 stakeholder recordings</div>
+        </article>
+        <article class="card">
+          <h3>Survey</h3>
+          <ul>
+            <li>Client team pulse surveys</li>
+            <li>Customer outreach forms</li>
+            <li>Scaled response collection</li>
+          </ul>
+          <div class="status-pill" style="margin-top: 0.5rem;">8 survey responses</div>
+        </article>
+      </div>
+      <p class="reveal reveal-d3">All three paths feed the same evidence engine. Mix and match based on what the engagement needs and what artifacts already exist.</p>
+    </div>
+  </section>
+
+  <!-- Slide 5 — Intake Health (Coverage Gate) -->
+  <section class="slide" aria-label="Intake Health">
+    <div class="slide-content">
+      <div class="kicker reveal">Moment 4 — Validate</div>
+      <h2 class="reveal reveal-d1">Intake Health</h2>
+      <div class="user-voice reveal reveal-d2">"Do I have enough stakeholder coverage?"</div>
+      <div class="grid reveal reveal-d3">
+        <article class="card">
+          <h3>Coverage by stakeholder type</h3>
+          <div style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.4rem;">
+            <div class="coverage-row"><span style="min-width: 5.5rem;">C-suite</span><div class="coverage-bar"><div class="coverage-fill low" style="width: 35%;"></div></div><span>1 of 3</span></div>
+            <div class="coverage-row"><span style="min-width: 5.5rem;">Directors</span><div class="coverage-bar"><div class="coverage-fill mid" style="width: 60%;"></div></div><span>3 of 5</span></div>
+            <div class="coverage-row"><span style="min-width: 5.5rem;">Managers</span><div class="coverage-bar"><div class="coverage-fill" style="width: 85%;"></div></div><span>6 of 7</span></div>
+            <div class="coverage-row"><span style="min-width: 5.5rem;">ICs</span><div class="coverage-bar"><div class="coverage-fill" style="width: 100%;"></div></div><span>4 of 4</span></div>
+          </div>
+        </article>
+        <article class="card">
+          <h3>Confidence per lens</h3>
+          <div style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.4rem;">
+            <div class="coverage-row"><span style="min-width: 6.5rem;">Strategic goals</span><div class="coverage-bar"><div class="coverage-fill low" style="width: 40%;"></div></div><span>Low</span></div>
+            <div class="coverage-row"><span style="min-width: 6.5rem;">Pain points</span><div class="coverage-bar"><div class="coverage-fill" style="width: 90%;"></div></div><span>High</span></div>
+            <div class="coverage-row"><span style="min-width: 6.5rem;">Process gaps</span><div class="coverage-bar"><div class="coverage-fill mid" style="width: 65%;"></div></div><span>Medium</span></div>
+            <div class="coverage-row"><span style="min-width: 6.5rem;">Buy-in risks</span><div class="coverage-bar"><div class="coverage-fill low" style="width: 30%;"></div></div><span>Low</span></div>
+          </div>
+        </article>
+      </div>
+      <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;" class="reveal reveal-d4">
+        <span class="gate-badge needs">Needs 2 more C-suite voices</span>
+        <span class="gate-badge pass">Enough for initial pattern readout</span>
+      </div>
+      <div class="emphasis-block reveal reveal-d4">Coverage equals credibility. The gate tells you when you have enough for an executive readout.</div>
+    </div>
+  </section>
+
+  <!-- Slide 6 — Evidence + Patterns -->
+  <section class="slide" aria-label="Evidence and Patterns">
+    <div class="slide-content">
+      <div class="kicker reveal">Moment 5 — Synthesize</div>
+      <h2 class="reveal reveal-d1">Evidence + Patterns</h2>
+      <div class="split reveal reveal-d2">
+        <div class="split-pane">
+          <h3>Evidence grounding</h3>
+          <p>Walk from recommendation back to exact stakeholder quotes. Every claim links to source with role and seniority attribution.</p>
+          <div class="card" style="min-height: auto;">
+            <p style="font-style: italic; color: var(--ink); font-size: var(--small-size);">"We lose three weeks every quarter to manual reconciliation."</p>
+            <div class="status-pill" style="margin-top: 0.3rem;">VP Finance, recorded session 2</div>
+          </div>
+          <div class="card" style="min-height: auto;">
+            <p style="font-style: italic; color: var(--ink); font-size: var(--small-size);">"The team has no single view of what matters this quarter."</p>
+            <div class="status-pill" style="margin-top: 0.3rem;">COO, uploaded transcript</div>
+          </div>
+        </div>
+        <div class="split-pane">
+          <h3>Pattern synthesis</h3>
+          <p>What themes cut across stakeholder groups? Cross-functional comparison reveals where consensus already exists and where it breaks.</p>
+          <div class="card" style="min-height: auto;">
+            <h3 style="font-size: var(--small-size);">Theme: Manual process overhead</h3>
+            <p>Mentioned by 7 of 12 stakeholders across Finance, Ops, and Product. Strongest signal in the dataset.</p>
+          </div>
+          <div class="card" style="min-height: auto;">
+            <h3 style="font-size: var(--small-size);">Theme: Strategic misalignment</h3>
+            <p>C-suite and Directors diverge. Leadership sees growth; middle management sees operational debt.</p>
+          </div>
+        </div>
+      </div>
+      <div class="emphasis-block reveal reveal-d3">Every recommendation is audit-trail ready.</div>
+    </div>
+  </section>
+
+  <!-- Slide 7 — Decision Forcing -->
+  <section class="slide" aria-label="Decision Forcing">
+    <div class="slide-content">
+      <div class="kicker reveal">Moment 6 — Commit</div>
+      <h2 class="reveal reveal-d1">Decision Forcing</h2>
+      <div class="user-voice reveal reveal-d2">"What should the client do this week?"</div>
+      <div class="grid reveal reveal-d3">
+        <article class="card card-accent card-accent-1">
+          <h3>Recommended actions</h3>
+          <p>Ranked moves with client-facing framing. Each recommendation ties directly to evidence patterns and stakeholder consensus.</p>
+        </article>
+        <article class="card card-accent card-accent-2">
+          <h3>Tradeoffs + effort/impact</h3>
+          <p>What you gain, what you defer, and what it costs. Transparent framing so the client makes an informed call.</p>
+        </article>
+        <article class="card card-accent card-accent-3">
+          <h3>Risk assessment</h3>
+          <p>Flag where stakeholder buy-in is thin, where data is weak, and where execution risk is highest.</p>
+        </article>
+        <article class="card card-accent card-accent-4">
+          <h3>Client decision pack</h3>
+          <p>One deliverable that combines the recommendation, evidence, tradeoffs, and next steps. Ready for the executive room.</p>
+        </article>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;" class="reveal reveal-d4">
+        <span class="cta-btn">Generate client decision pack</span>
+        <div class="emphasis-block">A billable deliverable, not just an insight.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 8 — Activate + Close the Loop -->
+  <section class="slide" aria-label="Activate and Close the Loop">
+    <div class="slide-content">
+      <div class="kicker reveal">Moment 7 + 8 — Activate</div>
+      <h2 class="reveal reveal-d1">Activate + Close the Loop</h2>
+      <div class="split reveal reveal-d2">
+        <div class="split-pane">
+          <h3>CRM context</h3>
+          <article class="card" style="min-height: auto;">
+            <p><strong>Contacts and accounts</strong> linked to evidence. Every stakeholder mapped to their quotes, concerns, and influence level.</p>
+          </article>
+          <article class="card" style="min-height: auto;">
+            <p><strong>Stakeholder map with coverage.</strong> See at a glance who has been heard, who has not, and where blind spots remain.</p>
+          </article>
+        </div>
+        <div class="split-pane">
+          <h3>Engagement cadence</h3>
+          <article class="card" style="min-height: auto;">
+            <p><strong>Actions completed</strong> tracked against the decision pack. Owners, dates, and status visible in one view.</p>
+          </article>
+          <article class="card" style="min-height: auto;">
+            <p><strong>New signal from follow-up sessions</strong> feeds back into the evidence engine. Confidence trends over time.</p>
+          </article>
+        </div>
+      </div>
+      <p class="reveal reveal-d3">The engagement becomes a loop: collect, synthesize, act, measure. Each cycle deepens trust and extends the relationship.</p>
+    </div>
+  </section>
+
+  <!-- Slide 9 — Close -->
+  <section class="slide" aria-label="Close">
+    <div class="slide-content">
+      <div class="kicker reveal">The Engagement Loop</div>
+      <h2 class="reveal reveal-d1">Earn trust with speed, then scale the engagement.</h2>
+      <div class="timeline-compact reveal reveal-d2">
+        <div class="timeline-row">
+          <div class="timeline-marker">S1</div>
+          <div class="timeline-body"><b>Decision framing + ingestion + first pattern readout.</b> The client sees structure where there was noise. First deliverable in a single session.</div>
+        </div>
+        <div class="timeline-row">
+          <div class="timeline-marker">S2</div>
+          <div class="timeline-body"><b>Recommendations + ownership + execution checkpoints.</b> The decision pack lands with evidence, tradeoffs, and next steps assigned.</div>
+        </div>
+        <div class="timeline-row">
+          <div class="timeline-marker">W2+</div>
+          <div class="timeline-body"><b>Repeatable insight-to-action cadence across stakeholders.</b> Each cycle adds signal, sharpens recommendations, and builds the case for expanding the engagement.</div>
+        </div>
+      </div>
+      <p class="reveal reveal-d3" style="margin-top: 0.4rem; font-style: italic; max-width: min(92vw, 780px);">The consultant value is not just analysis. It is confidence at decision time.</p>
+    </div>
+  </section>
+
+  <script>
+    const slides = [...document.querySelectorAll('.slide')];
+    const nav = document.querySelector('.nav-dots');
+
+    slides.forEach((_, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'dot';
+      btn.type = 'button';
+      btn.setAttribute('aria-label', `Go to slide ${idx + 1}`);
+      btn.addEventListener('click', () => slides[idx].scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      nav.appendChild(btn);
+    });
+
+    const dots = [...document.querySelectorAll('.dot')];
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          slides.forEach((s, i) => {
+            if (s === entry.target) {
+              s.classList.add('visible');
+              dots[i].classList.add('active');
+            } else {
+              dots[i].classList.remove('active');
+            }
+          });
+        }
+      });
+    }, { threshold: 0.55 });
+
+    slides.forEach((slide) => observer.observe(slide));
+
+    window.addEventListener('keydown', (event) => {
+      const idx = slides.findIndex((slide) => slide.classList.contains('visible'));
+      if ((event.key === 'ArrowDown' || event.key === 'PageDown' || event.key === ' ') && idx < slides.length - 1) {
+        event.preventDefault();
+        slides[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      if ((event.key === 'ArrowUp' || event.key === 'PageUp') && idx > 0) {
+        event.preventDefault();
+        slides[idx - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  </script>
+</body>
+</html>
