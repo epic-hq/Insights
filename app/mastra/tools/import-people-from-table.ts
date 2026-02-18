@@ -80,6 +80,58 @@ interface ImportResult {
 	rowIndex: number;
 }
 
+async function ensurePersonOrganizationLink(params: {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	supabase: any;
+	personId: string;
+	organizationId: string;
+	accountId: string;
+	projectId: string;
+	jobTitle: string | null;
+}) {
+	const { supabase, personId, organizationId, accountId, projectId, jobTitle } = params;
+
+	const { data: existingLink, error: linkLookupError } = await (supabase as any)
+		.from("people_organizations")
+		.select("id, is_primary, job_title")
+		.eq("person_id", personId)
+		.eq("organization_id", organizationId)
+		.limit(1)
+		.maybeSingle();
+
+	if (linkLookupError) {
+		consola.warn("[import-people] Failed checking people_organizations link:", linkLookupError);
+		return;
+	}
+
+	if (existingLink?.id) {
+		const updates: Record<string, unknown> = {};
+		if (existingLink.is_primary !== true) updates.is_primary = true;
+		if (!existingLink.job_title && jobTitle) updates.job_title = jobTitle;
+
+		if (Object.keys(updates).length > 0) {
+			const { error: linkUpdateError } = await (supabase as any).from("people_organizations").update(updates).eq("id", existingLink.id);
+			if (linkUpdateError) {
+				consola.warn("[import-people] Failed updating people_organizations link:", linkUpdateError);
+			}
+		}
+		return;
+	}
+
+	const { error: linkInsertError } = await (supabase as any).from("people_organizations").insert({
+		account_id: accountId,
+		project_id: projectId,
+		person_id: personId,
+		organization_id: organizationId,
+		job_title: jobTitle,
+		is_primary: true,
+	});
+
+	if (linkInsertError) {
+		consola.warn("[import-people] Failed creating people_organizations link:", linkInsertError);
+	}
+}
+
 /**
  * Normalize column name for matching (lowercase, trim, remove special chars)
  */
@@ -515,6 +567,7 @@ The tool will:
 			let orgsCreated = 0;
 			let peopleCreated = 0;
 			let peopleUpdated = 0;
+			let failedRows = 0;
 			let skipped = 0;
 			const importedDetails: ImportResult[] = [];
 			const skipReasons: {
@@ -614,6 +667,7 @@ The tool will:
 							const { data: newOrg, error: orgError } = (await (supabase as any)
 								.from("organizations")
 								.insert({
+									account_id: accountId,
 									project_id: projectId,
 									name: companyName,
 									industry: getValue(row, mapping.industry),
@@ -759,8 +813,10 @@ The tool will:
 						const title = getValue(row, mapping.title);
 						if (title) updateFields.title = title;
 					}
-					// Note: people.role is deprecated. Role data from imports flows to
-					// people_organizations.job_title (junction table) and role facets instead.
+					if (mapping.role) {
+						const jobFunction = getValue(row, mapping.role);
+						if (jobFunction) updateFields.job_function = jobFunction;
+					}
 					if (mapping.location) {
 						const location = getValue(row, mapping.location);
 						if (location) updateFields.location = location;
@@ -830,8 +886,7 @@ The tool will:
 							linkedin_url: getValue(row, mapping.linkedin),
 							title: getValue(row, mapping.title),
 							// Phase 3: company column dropped, use default_organization_id FK instead
-							// role: DEPRECATED - role data flows to people_organizations.job_title instead
-							industry: getValue(row, mapping.industry),
+							job_function: getValue(row, mapping.role),
 							location: getValue(row, mapping.location),
 							segment: getValue(row, mapping.segment),
 							lifecycle_stage: getValue(row, mapping.lifecycle_stage),
@@ -853,25 +908,27 @@ The tool will:
 							reason,
 							data: { displayName, firstname, lastname, email },
 						});
+						failedRows++;
 						skipped++;
 						continue;
 					}
 
 					personId = newPerson.id;
 					peopleCreated++;
-
-					// Link person to organization (only for new people)
-					if (organizationId) {
-						await (supabase as any).from("people_organizations").insert({
-							person_id: personId,
-							organization_id: organizationId,
-							job_title: getValue(row, mapping.title) || getValue(row, mapping.role),
-							is_primary: true,
-						});
-					}
 				}
 
 				if (personId) {
+					if (organizationId) {
+						await ensurePersonOrganizationLink({
+							supabase,
+							personId,
+							organizationId,
+							accountId,
+							projectId,
+							jobTitle: getValue(row, mapping.title) || getValue(row, mapping.role),
+						});
+					}
+
 					if (email) {
 						existingEmails.add(email.toLowerCase());
 					}
@@ -1309,6 +1366,7 @@ The tool will:
 
 			const assetTitle = (asset as { title?: string }).title || "spreadsheet";
 			const message = `Imported ${peopleCreated} people${peopleUpdated > 0 ? `, updated ${peopleUpdated}` : ""} and ${orgsCreated} organizations from "${assetTitle}".${facetsCreated > 0 ? ` Created ${facetsCreated} facets.` : ""}${surveyResponsesCreated > 0 ? ` Created ${surveyResponsesCreated} survey responses.` : ""} ${skipped > 0 ? `Skipped ${skipped} rows.` : ""}`;
+			const isTotalFailure = peopleCreated === 0 && peopleUpdated === 0 && failedRows > 0;
 
 			consola.info(`[import-people] ${message}`);
 			if (skipReasons.length > 0) {
@@ -1316,8 +1374,8 @@ The tool will:
 			}
 
 			return {
-				success: true,
-				message,
+				success: !isTotalFailure,
+				message: isTotalFailure ? `Import failed: all rows were skipped. ${message}` : message,
 				imported: {
 					people: peopleCreated,
 					updated: peopleUpdated,
@@ -1329,6 +1387,7 @@ The tool will:
 				details: importedDetails.slice(0, 20), // Limit details to first 20
 				detectedMapping: mapping as Record<string, string>,
 				skipReasons: skipReasons.slice(0, 10), // Include first 10 skip reasons for debugging
+				error: isTotalFailure ? (skipReasons[0]?.reason ?? "All rows failed during import") : undefined,
 			};
 		} catch (error) {
 			consola.error("[import-people] Error:", error);
