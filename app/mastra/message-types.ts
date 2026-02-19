@@ -6,6 +6,7 @@ import { displayUserQuestionsTool } from "./tools/display-user-questions";
 import { fetchInterviewContextTool } from "./tools/fetch-interview-context";
 import { fetchProjectStatusContextTool } from "./tools/fetch-project-status-context";
 import { navigateToPageTool } from "./tools/navigate-to-page";
+import { recommendNextActionsTool } from "./tools/recommend-next-actions";
 import { requestUserInputTool } from "./tools/request-user-input";
 import { saveProjectSectionsDataTool } from "./tools/save-project-sections-data";
 import { saveUserSettingsDataTool } from "./tools/save-usersettings-data";
@@ -31,6 +32,7 @@ export const tools = {
   fetchProjectStatusContext: fetchProjectStatusContextTool,
   fetchInterviewContext: fetchInterviewContextTool,
   navigateToPage: navigateToPageTool,
+  recommendNextActions: recommendNextActionsTool,
   requestUserInput: requestUserInputTool,
   saveUserSettingsData: saveUserSettingsDataTool,
   saveProjectSectionsData: saveProjectSectionsDataTool,

@@ -112,7 +112,7 @@ function buildToolDescription(): string {
   const lines = [
     "Render a rich UI component on the user's canvas. Use this when the response benefits from a visual display rather than plain text.",
     "",
-    "IMPORTANT: You MUST pass 'data' that conforms to each component's expected schema. See component details below.",
+    "IMPORTANT: You MUST pass a 'data' object that conforms to each component's expected schema. The tool call has THREE parameters: componentType (string), data (object with the fields below), and title (optional string).",
     "",
   ];
 
@@ -125,6 +125,25 @@ function buildToolDescription(): string {
       lines.push(`  Use when: ${comp.useWhen}`);
       if (comp.triggerExamples?.length) {
         lines.push(`  Triggers: ${comp.triggerExamples.join(", ")}`);
+      }
+      // Include required schema fields so agents know what data to pass
+      if (comp.schema instanceof z.ZodObject) {
+        const shape = comp.schema.shape as Record<string, z.ZodTypeAny>;
+        const required: string[] = [];
+        const optional: string[] = [];
+        for (const [key, field] of Object.entries(shape)) {
+          if (field.isOptional()) {
+            optional.push(key);
+          } else {
+            required.push(key);
+          }
+        }
+        if (required.length > 0) {
+          lines.push(`  Required data fields: ${required.join(", ")}`);
+        }
+        if (optional.length > 0) {
+          lines.push(`  Optional data fields: ${optional.join(", ")}`);
+        }
       }
       lines.push("");
     }
