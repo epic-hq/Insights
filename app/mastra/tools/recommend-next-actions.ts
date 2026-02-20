@@ -192,7 +192,7 @@ The recommendations are based on:
         recommendationIds: recommendations.map((r) => r.id),
       });
 
-      // Map recommendations to DecisionForcing actions
+      // Map recommendations to DecisionSupport actions
       const effortMap: Record<string, "low" | "medium" | "high"> = {
         setup: "low",
         analyze: "low",
@@ -233,7 +233,7 @@ The recommendations are based on:
         resolvedRecommendations.length > 0
           ? buildSingleComponentSurface({
               surfaceId,
-              componentType: "DecisionForcing",
+              componentType: "DecisionSupport",
               data: {
                 projectId,
                 headline: `${projectContext.interviewCount} interviews, ${projectContext.themes.length} themes — ${stageLabels[stage] ?? stage}`,

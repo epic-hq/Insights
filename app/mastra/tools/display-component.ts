@@ -75,21 +75,25 @@ export const displayComponentTool = createTool({
       };
     }
 
-    // Validate data against the component's schema
+    // Validate data against the component's schema.
+    // On failure, still render with the raw data — components should handle
+    // missing/null fields gracefully. LLMs frequently return null for optional
+    // fields or omit required ones; rejecting the whole widget is too brittle.
     const validation = componentRegistry.validateProps(componentType, data);
     if (!validation.success) {
-      consola.warn("[gen-ui] displayComponent data validation failed", {
-        componentType,
-        errors: validation.errors,
-      });
-      return {
-        success: false,
-        message: `Data validation failed for "${componentType}": ${String(validation.errors)}`,
-        componentType,
-      };
+      consola.warn(
+        "[gen-ui] displayComponent data validation issues (rendering anyway)",
+        {
+          componentType,
+          errors: validation.errors,
+        },
+      );
     }
 
     const surfaceId = thread_id ?? project_id ?? `surface-${Date.now()}`;
+    const renderedData = validation.success
+      ? (validation.data as Record<string, unknown>)
+      : data;
 
     return {
       success: true,
@@ -98,7 +102,7 @@ export const displayComponentTool = createTool({
       a2ui: buildSingleComponentSurface({
         surfaceId,
         componentType,
-        data: validation.data as Record<string, unknown>,
+        data: renderedData,
       }),
     };
   },

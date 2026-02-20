@@ -22,9 +22,17 @@
  * - Mobile: AI panel hidden, hamburger menu for nav
  */
 
-import { useCallback, useEffect, useState } from "react";
-import { Outlet, useRouteLoaderData, useSearchParams } from "react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Outlet,
+  useLocation,
+  useRouteLoaderData,
+  useSearchParams,
+} from "react-router";
 import { SidebarProvider } from "~/components/ui/sidebar";
+import { CanvasPanel } from "~/components/gen-ui/CanvasPanel";
+import { A2UISurfaceProvider } from "~/contexts/a2ui-surface-context";
+import { useA2UISurfaceOptional } from "~/contexts/a2ui-surface-context";
 import { useCurrentProject } from "~/contexts/current-project-context";
 import { ProjectStatusAgentProvider } from "~/contexts/project-status-agent-context";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
@@ -122,50 +130,113 @@ export function SplitPaneLayout({
   return (
     <SidebarProvider>
       <ProjectStatusAgentProvider>
-        <div className="flex min-h-0 w-full flex-1 flex-col">
-          {/* Top Navigation - shown on both desktop and mobile */}
-          {showMainNav && <TopNavigation accounts={accounts} />}
+        <A2UISurfaceProvider>
+          <div className="flex min-h-0 w-full flex-1 flex-col">
+            {/* Top Navigation - shown on both desktop and mobile */}
+            {showMainNav && <TopNavigation accounts={accounts} />}
 
-          {/* Main content - shifts right when AI panel is expanded */}
-          <main
-            className={cn(
-              "flex min-h-0 flex-1 flex-col overflow-auto transition-[padding] duration-200",
-              showMobileNav ? "pb-[72px]" : "",
+            {/* Main content - shifts right when AI panel is expanded */}
+            <MainContent
+              isMobile={isMobile}
+              showMobileNav={showMobileNav}
+              showAIPanel={showAIPanel}
+              isAIPanelOpen={isAIPanelOpen}
+              aiPanelWidth={aiPanelWidth}
+            />
+
+            {/* Floating AI Assistant (outside layout flow) */}
+            {showAIPanel && (
+              <AIAssistantPanel
+                isOpen={isAIPanelOpen}
+                onOpenChange={handleAIPanelOpenChange}
+                onWidthChange={handleAIPanelWidthChange}
+                accounts={accounts}
+                systemContext={combinedSystemContext}
+                suppressPersistence={isWelcomeFlow}
+              />
             )}
-            style={
-              showAIPanel && isAIPanelOpen
-                ? { paddingLeft: aiPanelWidth + 20 }
-                : undefined
-            }
-          >
-            <Outlet />
-          </main>
 
-          {/* Floating AI Assistant (outside layout flow) */}
-          {showAIPanel && (
-            <AIAssistantPanel
-              isOpen={isAIPanelOpen}
-              onOpenChange={handleAIPanelOpenChange}
-              onWidthChange={handleAIPanelWidthChange}
-              accounts={accounts}
-              systemContext={combinedSystemContext}
-              suppressPersistence={isWelcomeFlow}
-            />
-          )}
-
-          {/* Mobile Bottom Tab Bar */}
-          {showMobileNav && (
-            <BottomTabBar
-              routes={{
-                chat: routes.projects.assistant(),
-                upload: routes.interviews.upload(),
-                people: routes.people.index(),
-              }}
-            />
-          )}
-        </div>
+            {/* Mobile Bottom Tab Bar */}
+            {showMobileNav && (
+              <BottomTabBar
+                routes={{
+                  chat: routes.projects.assistant(),
+                  upload: routes.interviews.upload(),
+                  people: routes.people.index(),
+                }}
+              />
+            )}
+          </div>
+        </A2UISurfaceProvider>
       </ProjectStatusAgentProvider>
     </SidebarProvider>
+  );
+}
+
+/**
+ * MainContent - Handles display context switching between canvas and outlet.
+ *
+ * When the agent has an active surface AND the user hasn't navigated away,
+ * the canvas replaces the outlet. Navigating via sidebar/nav restores the
+ * outlet and preserves canvas state for "return to canvas" in chat.
+ */
+function MainContent({
+  isMobile,
+  showMobileNav,
+  showAIPanel,
+  isAIPanelOpen,
+  aiPanelWidth,
+}: {
+  isMobile: boolean;
+  showMobileNav: boolean;
+  showAIPanel: boolean;
+  isAIPanelOpen: boolean;
+  aiPanelWidth: number;
+}) {
+  const a2ui = useA2UISurfaceOptional();
+  const location = useLocation();
+  const [userNavigatedAway, setUserNavigatedAway] = useState(false);
+  const surfaceIdWhenShown = useRef<string | null>(null);
+
+  // When route changes while canvas is active, user navigated away
+  useEffect(() => {
+    if (a2ui?.isActive && surfaceIdWhenShown.current) {
+      setUserNavigatedAway(true);
+    }
+  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When a new surface arrives (or first surface), show canvas
+  useEffect(() => {
+    if (a2ui?.isActive && a2ui.surface) {
+      const currentId = a2ui.surface.surfaceId;
+      if (currentId !== surfaceIdWhenShown.current) {
+        surfaceIdWhenShown.current = currentId;
+        setUserNavigatedAway(false);
+      }
+    }
+    if (!a2ui?.isActive) {
+      surfaceIdWhenShown.current = null;
+      setUserNavigatedAway(false);
+    }
+  }, [a2ui?.isActive, a2ui?.surface, a2ui?.surface?.surfaceId]);
+
+  // Desktop: show canvas when active and user hasn't navigated away
+  const showCanvas = !isMobile && a2ui?.isActive && !userNavigatedAway;
+
+  return (
+    <main
+      className={cn(
+        "flex min-h-0 flex-1 flex-col overflow-auto transition-[padding] duration-200",
+        showMobileNav ? "pb-[72px]" : "",
+      )}
+      style={
+        showAIPanel && isAIPanelOpen
+          ? { paddingLeft: aiPanelWidth + 20 }
+          : undefined
+      }
+    >
+      {showCanvas ? <CanvasPanel /> : <Outlet />}
+    </main>
   );
 }
 

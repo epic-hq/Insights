@@ -368,12 +368,32 @@ export function buildQuickLinksMarkdown(options: {
   const mentionsThemes = /\b(theme|insight|insights|evidence)\b/.test(
     normalizedPrompt,
   );
+  const mentionsLens =
+    /\b(lens|lenses|jtbd|jobs.to.be.done|bant|empathy.map|customer.discovery|analysis)\b/.test(
+      normalizedPrompt,
+    );
 
   const links: string[] = [];
   if (mentionsPeople)
     links.push(`[People](${withHost(routes.people.index())})`);
   if (mentionsSurvey || targetAgentId === "researchAgent")
     links.push(`[Ask](${withHost(routes.ask.index())})`);
+  if (mentionsLens) {
+    // Link to specific lens if we can detect which one
+    if (/\b(jtbd|jobs.to.be.done)\b/.test(normalizedPrompt)) {
+      links.push(
+        `[JTBD Lens](${withHost(routes.lenses.jtbdConversationPipeline())})`,
+      );
+    } else if (/\b(bant)\b/.test(normalizedPrompt)) {
+      links.push(`[Sales BANT](${withHost(routes.lenses.salesBant())})`);
+    } else if (/\b(customer.discovery)\b/.test(normalizedPrompt)) {
+      links.push(
+        `[Customer Discovery](${withHost(routes.lenses.customerDiscovery())})`,
+      );
+    } else {
+      links.push(`[Lenses](${withHost(routes.lenses.library())})`);
+    }
+  }
   if (mentionsThemes || targetAgentId === "projectStatusAgent")
     links.push(`[Insights](${withHost(routes.insights.table())})`);
 

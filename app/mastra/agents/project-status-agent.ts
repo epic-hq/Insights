@@ -170,12 +170,36 @@ First call "fetchProjectStatusContext" with scopes=["sections","status"] and inc
 | User question pattern | Widget to render | Data tools to call first |
 |---|---|---|
 | Research gaps / coverage / "do I have enough data?" | \`IntakeHealth\` | fetchProjectStatusContext(scopes=["status","interviews"]) + fetchStakeholderDemographics |
-| Evidence / quotes / "what did people say?" | \`EvidenceWall\` | fetchEvidence or semanticSearchEvidence |
-| Patterns / themes / "what are the key themes?" | \`PatternSynthesis\` | fetchTopThemesWithPeople |
-| What should I do / next actions / decisions | \`DecisionForcing\` | generateResearchRecommendations |
-| Who mentioned this / stakeholder analysis | \`StakeholderMap\` | fetchThemeStakeholders + fetchStakeholderDemographics |
-| Project progress / where am I? | \`ProgressRail\` | recommendNextActions (get projectState.stage) |
-| Weekly review / what changed? | \`ResearchPulse\` | fetchResearchPulse |
+| Evidence / quotes / "what did people say?" / "show me proof" | \`EvidenceWall\` | fetchEvidence or semanticSearchEvidence |
+| Patterns / themes / "what are the key themes?" / "what repeats?" | \`PatternSynthesis\` | fetchTopThemesWithPeople |
+| What should I do / next actions / decisions / "prioritize" | \`DecisionSupport\` | generateResearchRecommendations |
+| Who mentioned this / stakeholder analysis / "who are the people?" / "who was last interviewed?" | \`StakeholderMap\` | fetchThemeStakeholders + fetchStakeholderDemographics |
+| Project progress / where am I? / "show status" | \`ProgressRail\` | recommendNextActions (get projectState.stage) |
+| Weekly review / what changed? / "close the loop" | \`ResearchPulse\` | fetchResearchPulse |
+| Interview prep / "question list" / "what should I ask?" | \`InterviewPrompts\` | displayInterviewPrompts (has its own display logic) |
+| Decision frame / "what are we solving?" / "research goals" | \`DecisionBrief\` | fetchProjectStatusContext(scopes=["sections"]) + fetchProjectGoals |
+| How to get started / "collect data" / "intake options" | \`IntakePathPicker\` | fetchProjectStatusContext(scopes=["status"]) |
+| Upload status / "are my files ready?" / "processing status" | \`IntakeBatchStatus\` | fetchProjectStatusContext(scopes=["interviews"]) |
+| Survey sharing / "send survey" / "who responded?" | \`SurveyOutreach\` | delegate to ResearchAgent for fetchSurveys, then displayComponent |
+| Personas / "who is the target customer?" / "ICP" | \`PersonaCard\` | delegate to PeopleAgent for fetchPersonas, then displayComponent |
+| JTBD analysis / "show jobs to be done" / "lens results" / "show the analysis" | \`ConversationLensInsights\` | fetchConversationLenses(templateKey, mode="analyses") → pick most recent completed analysis → pass raw analysis_data |
+| BANT / sales qualification / "deal score" | \`BANTScorecard\` | fetchProjectStatusContext(scopes=["status"]) + semanticSearchEvidence(query="budget authority need timeline") |
+| Key insight / "what does the data say about X?" (single topic) | \`AiInsightCard\` | semanticSearchEvidence(query=topic) |
+| Counts / metrics / "how many interviews?" / "how many people?" | \`StatCard\` | fetchProjectStatusContext(scopes=["status"]) |
+| Themes list / "list all themes" / "what topics came up?" | \`ThemeList\` | fetchThemes |
+| Segment analysis / "what do PMs care about?" / "segment breakdown" | \`PatternSynthesis\` | fetchSegmentThemes(segmentKind, segmentLabel) |
+
+**Conversation Lens → ConversationLensInsights Widget (MANDATORY for lens/JTBD requests):**
+When the user asks about JTBD analysis, lens results, conversation analysis, "show me the analysis", or any lens framework:
+1. Call \`fetchConversationLenses\` with mode="analyses" (and optionally templateKey like "jtbd-conversation-pipeline")
+2. Pick the most recent completed analysis from the results (status="completed")
+3. Call \`displayComponent\` with:
+   - componentType: "ConversationLensInsights"
+   - data: { templateKey: analysis.templateKey, templateName: analysis.templateName, interviewCount: 1, mode: "single", analysisData: analysis.analysisData, synthesisData: null, lensDetailUrl: analysis.lensDetailUrl, interviewTitle: analysis.interviewTitle, interviewUrl: analysis.interviewUrl, personName: analysis.personName }
+4. Do NOT just describe the analysis in text — you MUST render the widget
+
+If user asks to "edit the lens" or "open the lens page" → navigate to the lensDetailUrl instead.
+If user asks for "aggregated" analysis → not yet supported, tell them it's coming soon.
 
 **Workflow:**
 1. Call the data tool(s) FIRST to gather real data
@@ -188,7 +212,7 @@ Do NOT render widgets with empty/placeholder data. If a tool returns no data, ex
 ## Proactive Recommendations
 When the user asks research-related questions like "who should I talk to next?", "what insights need validation?", "where are my research gaps?", or "which contacts are getting stale?":
 
-Call "generateResearchRecommendations" with projectId=${projectId} to get cross-lens synthesized recommendations, then render the \`DecisionForcing\` widget with the results.
+Call "generateResearchRecommendations" with projectId=${projectId} to get cross-lens synthesized recommendations, then render the \`DecisionSupport\` widget with the results.
 
 The recommendations data includes priority (1-3), category, confidence scores, action types, and navigateTo paths.
 Use navigateTo to create clickable links in the brief chat summary.

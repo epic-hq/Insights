@@ -14,7 +14,7 @@ import {
   componentRegistry,
   // JTBD widget schemas
   decisionBriefDataSchema,
-  decisionForcingDataSchema,
+  decisionSupportDataSchema,
   evidenceWallDataSchema,
   intakeBatchStatusDataSchema,
   intakeHealthDataSchema,
@@ -25,6 +25,7 @@ import {
   stakeholderMapDataSchema,
   surveyOutreachDataSchema,
   // Existing widget schemas
+  conversationLensInsightsDataSchema,
   interviewPromptsDataSchema,
   simpleBANTDataSchema,
   aiInsightCardDataSchema,
@@ -107,6 +108,24 @@ componentRegistry.register({
   component: NULL_COMPONENT,
   useWhen: "After successfully creating a survey.",
   triggerExamples: [],
+});
+
+componentRegistry.register({
+  type: "ConversationLensInsights",
+  description:
+    "Rich conversation lens analysis widget. For JTBD lenses: shows job statement, forces of progress quadrant, journey matrix, and recommendations. For other lenses: shows section cards with key/value fields. Accepts raw analysis_data from conversation_lens_analyses.",
+  schema: conversationLensInsightsDataSchema,
+  component: NULL_COMPONENT,
+  actions: ["viewFullAnalysis", "filterByStep", "askAbout"],
+  useWhen:
+    "Showing JTBD analysis, conversation lens results, structured analysis frameworks (empathy maps, customer discovery, BANT lens), or when user asks to 'show me the analysis'.",
+  triggerExamples: [
+    "show me the JTBD analysis",
+    "jobs to be done",
+    "lens results",
+    "conversation analysis",
+    "show the analysis for this interview",
+  ],
 });
 
 // ── JTBD Time-to-Aha widgets ──
@@ -252,10 +271,10 @@ componentRegistry.register({
 });
 
 componentRegistry.register({
-  type: "DecisionForcing",
+  type: "DecisionSupport",
   description:
     "Decision forcing widget showing recommended actions ranked by impact, with effort/impact assessment, tradeoffs, evidence links, and ability to commit with owners and dates.",
-  schema: decisionForcingDataSchema,
+  schema: decisionSupportDataSchema,
   component: NULL_COMPONENT,
   actions: ["commitActions", "viewEvidence"],
   useWhen:

@@ -4,7 +4,16 @@ import {
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 import consola from "consola";
-import { Bot, ChevronRight, Mic, Plus, Send, Square } from "lucide-react";
+import {
+  Bot,
+  ChevronRight,
+  LayoutDashboard,
+  Mic,
+  Plus,
+  Send,
+  Square,
+  X,
+} from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -42,6 +51,7 @@ import {
 } from "~/components/ui/voice-button";
 import { useA2UISurfaceOptional } from "~/contexts/a2ui-surface-context";
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context";
+import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
 import { useTTS } from "~/hooks/useTTS";
@@ -533,6 +543,7 @@ export function ProjectStatusAgentChat({
   onLoadThreadRef,
   onTTSStateRef,
 }: ProjectStatusAgentChatProps) {
+  const { isMobile } = useDeviceDetection();
   const [input, setInput] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -1342,16 +1353,34 @@ export function ProjectStatusAgentChat({
   // Shared chat content renderer (used by both embedded and card modes)
   const chatContent = (
     <>
-      {/* A2UI: Render gen-ui widget when a surface is active */}
+      {/* A2UI: On desktop, canvas panel handles rendering — show compact indicator.
+           On mobile, render the full widget inline since there's no canvas. */}
       {a2uiSurface?.isActive && a2uiSurface.surface && (
         <div className="mb-3 flex-shrink-0">
-          <A2UIRenderer
-            surface={a2uiSurface.surface}
-            onDismiss={() => a2uiSurface.dismiss()}
-            onToggleCollapse={() => a2uiSurface.toggleCollapse()}
-            isCollapsed={a2uiSurface.isCollapsed}
-            isStreaming={isBusy}
-          />
+          {isMobile ? (
+            <A2UIRenderer
+              surface={a2uiSurface.surface}
+              onDismiss={() => a2uiSurface.dismiss()}
+              onToggleCollapse={() => a2uiSurface.toggleCollapse()}
+              isCollapsed={a2uiSurface.isCollapsed}
+              isStreaming={isBusy}
+            />
+          ) : (
+            <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-xs ring-1 ring-primary/20">
+              <LayoutDashboard className="h-3.5 w-3.5 text-primary" />
+              <span className="flex-1 font-medium text-primary">
+                Showing on canvas
+              </span>
+              <button
+                type="button"
+                onClick={() => a2uiSurface.dismiss()}
+                className="rounded p-0.5 text-primary/60 hover:text-primary"
+                title="Dismiss widget"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       )}
       <div className="min-h-0 flex-1 overflow-hidden">
