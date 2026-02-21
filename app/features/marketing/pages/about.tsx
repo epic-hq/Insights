@@ -1,4 +1,4 @@
-import type { LinksFunction } from "react-router";
+import { Link, type LinksFunction } from "react-router";
 
 export const links: LinksFunction = () => [
   {
@@ -51,23 +51,23 @@ export default function AboutPage() {
         </p>
         <p className="mt-4 max-w-xl text-[clamp(1rem,1.3vw,1.15rem)] text-[rgba(238,238,242,0.65)] leading-relaxed">
           We're building the system that closes that gap — so every decision
-          shows its receipts.
+          shows its <span className="text-amber-400/90">receipts</span>.
         </p>
       </section>
 
       {/* ── Values ── */}
       <section className="mx-auto w-full max-w-5xl px-6 pb-20 md:pb-28">
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
-            <p className="font-medium text-[0.7rem] text-[rgba(238,238,242,0.45)] tracking-[0.18em]">
+          <div className="rounded-xl border border-white/10 border-l-amber-500/40 bg-white/[0.03] p-6">
+            <p className="font-medium text-[0.7rem] text-amber-400/80 tracking-[0.18em]">
               PRODUCT
             </p>
             <p className="mt-3 text-[rgba(238,238,242,0.72)] text-sm leading-relaxed">
               Workflows that feel obvious on day one. Human + AI, never AI-only.
             </p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
-            <p className="font-medium text-[0.7rem] text-[rgba(238,238,242,0.45)] tracking-[0.18em]">
+          <div className="rounded-xl border border-white/10 border-l-sky-400/40 bg-white/[0.03] p-6">
+            <p className="font-medium text-[0.7rem] text-sky-400/80 tracking-[0.18em]">
               EVIDENCE
             </p>
             <p className="mt-3 text-[rgba(238,238,242,0.72)] text-sm leading-relaxed">
@@ -75,14 +75,73 @@ export default function AboutPage() {
               Grounded, not generated.
             </p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
-            <p className="font-medium text-[0.7rem] text-[rgba(238,238,242,0.45)] tracking-[0.18em]">
+          <div className="rounded-xl border border-white/10 border-l-emerald-400/40 bg-white/[0.03] p-6">
+            <p className="font-medium text-[0.7rem] text-emerald-400/80 tracking-[0.18em]">
               ACTION
             </p>
             <p className="mt-3 text-[rgba(238,238,242,0.72)] text-sm leading-relaxed">
               Research that ships. Insights become tasks with owners, not slides
               that collect dust.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Leadership ── */}
+      <section className="mx-auto w-full max-w-5xl px-6 pb-20 md:pb-28">
+        <div className="border-t border-white/[0.06] pt-16">
+          <p className="font-medium text-[0.7rem] text-[rgba(238,238,242,0.45)] tracking-[0.22em] mb-10">
+            LEADERSHIP
+          </p>
+          <div className="flex flex-col gap-10 md:flex-row md:gap-14">
+            <div className="flex-shrink-0">
+              <img
+                src="/images/rick-moy.jpg"
+                alt="Rick Moy, Founder & CEO"
+                className="w-48 h-60 object-cover rounded-lg grayscale brightness-110 contrast-105"
+              />
+            </div>
+            <div className="max-w-2xl">
+              <h2 className="font-semibold text-2xl tracking-[-0.02em]">
+                Rick Moy
+              </h2>
+              <p className="mt-1.5 text-sm font-medium text-[rgba(238,238,242,0.5)]">
+                Founder & CEO
+              </p>
+              <p className="mt-6 text-[clamp(0.9rem,1.15vw,1.05rem)] text-[rgba(238,238,242,0.72)] leading-[1.7]">
+                Multi-exit founder, CEO, CPO, and CMO with over two decades
+                building and scaling B2B SaaS companies in cybersecurity, AI,
+                and cloud networking.
+              </p>
+              <p className="mt-4 text-[clamp(0.9rem,1.15vw,1.05rem)] text-[rgba(238,238,242,0.72)] leading-[1.7]">
+                As co-founder and CEO of NSS Labs, Rick created an entirely new
+                market category by talking to hundreds of IT security
+                professionals and discovering they were making million-dollar
+                purchasing decisions with zero empirical data. That
+                insight-driven approach to customer discovery has been the
+                through-line of his career.
+              </p>
+              <p className="mt-4 text-[clamp(0.9rem,1.15vw,1.05rem)] text-[rgba(238,238,242,0.72)] leading-[1.7]">
+                Rick has held executive roles at ESET, Accuknox, Acalvio,
+                Tempered Networks, and Websense, and is currently building{" "}
+                <Link
+                  to="https://getupsight.com"
+                  target="_blank"
+                  className="text-amber-400/90 hover:text-amber-300 transition-colors"
+                >
+                  UpSight
+                </Link>
+                , an AI-powered customer intelligence platform to help teams get
+                their customer. He is an active startup advisor and investor in
+                the San Diego ecosystem, and a regular speaker on AI, product
+                strategy and go-to-market.
+              </p>
+              <p className="mt-4 text-[clamp(0.9rem,1.15vw,1.05rem)] text-[rgba(238,238,242,0.72)] leading-[1.7]">
+                As a Techstars mentor, Rick brings a founder's instinct for
+                finding the real problem behind the stated problem — and helping
+                teams build conviction through evidence, not assumptions.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -124,7 +183,7 @@ export default function AboutPage() {
         <div className="mt-10">
           <a
             href="mailto:careers@getupsight.com?subject=Joining%20the%20team"
-            className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 font-medium text-sm text-[#050508] transition-opacity hover:opacity-90"
+            className="inline-flex items-center gap-2 rounded-lg bg-amber-400 px-5 py-2.5 font-medium text-sm text-[#050508] transition-colors hover:bg-amber-300"
           >
             Join the team
             <span aria-hidden="true">&rarr;</span>
