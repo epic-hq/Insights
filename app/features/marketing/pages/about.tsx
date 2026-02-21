@@ -39,19 +39,23 @@ export default function AboutPage() {
           ABOUT UPSIGHT
         </p>
         <h1 className="mt-5 max-w-3xl font-semibold text-[clamp(2rem,5vw,3.25rem)] leading-[1.08] tracking-[-0.025em]">
-          Conversations happen.{" "}
+          Know your customers.{" "}
           <span className="text-[rgba(238,238,242,0.45)]">
-            Insights shouldn't have to disappear.
+            Serve them better.
           </span>
         </h1>
         <p className="mt-8 max-w-xl text-[clamp(1rem,1.3vw,1.15rem)] text-[rgba(238,238,242,0.65)] leading-relaxed">
           We started UpSight because we kept watching the same thing: teams talk
-          to customers constantly, then make decisions on opinions anyway.
-          Evidence gets lost across five tools and someone's memory.
+          to customers, but they're not always reaching the right people or
+          asking the right questions. And whatever they do learn scatters across
+          five tools and someone's memory.
         </p>
         <p className="mt-4 max-w-xl text-[clamp(1rem,1.3vw,1.15rem)] text-[rgba(238,238,242,0.65)] leading-relaxed">
-          We're building the system that closes that gap — so every decision
-          shows its <span className="text-amber-400/90">receipts</span>.
+          We're building the system that helps you{" "}
+          <span className="text-amber-400/90">engage</span> the right people,{" "}
+          <span className="text-sky-400/90">understand</span> what matters, and
+          make decisions you can{" "}
+          <span className="text-emerald-400/90">defend</span>.
         </p>
       </section>
 
@@ -60,28 +64,29 @@ export default function AboutPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-xl border border-white/10 border-l-amber-500/40 bg-white/[0.03] p-6">
             <p className="font-medium text-[0.7rem] text-amber-400/80 tracking-[0.18em]">
-              PRODUCT
+              ENGAGE
             </p>
             <p className="mt-3 text-[rgba(238,238,242,0.72)] text-sm leading-relaxed">
-              Workflows that feel obvious on day one. Human + AI, never AI-only.
+              Know who to talk to, what to ask, and what you've already learned.
+              Reach the right people on the right topics.
             </p>
           </div>
           <div className="rounded-xl border border-white/10 border-l-sky-400/40 bg-white/[0.03] p-6">
             <p className="font-medium text-[0.7rem] text-sky-400/80 tracking-[0.18em]">
-              EVIDENCE
+              UNDERSTAND
             </p>
             <p className="mt-3 text-[rgba(238,238,242,0.72)] text-sm leading-relaxed">
               Every insight links to who said it, when, and why it matters.
-              Grounded, not generated.
+              Grounded, not generated. Cross-source, not siloed.
             </p>
           </div>
           <div className="rounded-xl border border-white/10 border-l-emerald-400/40 bg-white/[0.03] p-6">
             <p className="font-medium text-[0.7rem] text-emerald-400/80 tracking-[0.18em]">
-              ACTION
+              DEFEND
             </p>
             <p className="mt-3 text-[rgba(238,238,242,0.72)] text-sm leading-relaxed">
-              Research that ships. Insights become tasks with owners, not slides
-              that collect dust.
+              Research that ships. Insights become tasks with owners, and every
+              decision shows its receipts.
             </p>
           </div>
         </div>
