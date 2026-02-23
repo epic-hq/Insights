@@ -201,7 +201,7 @@ const CAPABILITIES = [
   {
     tag: "For Sales",
     title: "Win with proof.",
-    desc: "Know what prospects care about before the call. Every recommendation backed by what real customers said.",
+    desc: "Turn customer evidence into your playbook. Know what prospects care about before the call — backed by proof, not hunches.",
   },
   {
     tag: "For CS",
@@ -780,7 +780,7 @@ export default function LandingPage() {
               color: "var(--lp-amber)",
             }}
           >
-            One platform. Every role.
+            Customer truth, connected.
           </p>
           <h2
             className="lp-rv"
@@ -802,8 +802,8 @@ export default function LandingPage() {
               marginTop: "clamp(0.5rem, 1vw, 1rem)",
             }}
           >
-            From founder to frontline — every team gets the signal they need,
-            grounded in what customers actually said.
+            Customer truth that flows across your whole team — grounded in real
+            customer evidence.
           </p>
         </div>
         <div
