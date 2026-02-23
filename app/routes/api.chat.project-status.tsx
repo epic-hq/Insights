@@ -8,18 +8,17 @@ import {
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { z } from "zod";
-import { getPostHogServerClient } from "~/lib/posthog.server";
 import {
   buildHowtoContractPatchText,
   buildHowtoFallbackResponse,
   evaluateHowtoResponseContract,
 } from "~/features/project-chat/howto-contract";
+import { detectHowtoPromptMode } from "~/features/project-chat/howto-routing";
 import {
   buildShortThreadTitle,
   findProjectStatusThread,
   getPrimaryProjectStatusResourceId,
 } from "~/features/project-chat/project-status-threads.server";
-import { detectHowtoPromptMode } from "~/features/project-chat/howto-routing";
 import {
   clearActiveBillingContext,
   estimateOpenAICost,
@@ -29,6 +28,7 @@ import {
 } from "~/lib/billing/instrumented-openai.server";
 import { recordUsageOnly } from "~/lib/billing/usage.server";
 import { getLangfuseClient } from "~/lib/langfuse.server";
+import { getPostHogServerClient } from "~/lib/posthog.server";
 import { mastra } from "~/mastra";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
@@ -100,14 +100,14 @@ const ROUTING_CLASSIFIER_INSTRUCTIONS = `Route the user message to one agent and
 
 Agents:
 - projectSetupAgent: onboarding, setup, research goals, company context.
-- chiefOfStaffAgent: strategic prioritization / "what should I do next".
-- researchAgent: create/manage surveys, interview prompts, interview operations.
+- chiefOfStaffAgent: strategic prioritization, next actions, "what should I do", "what now", "what next", "where should I start". Always use mode="normal" for this agent.
+- researchAgent: create/manage surveys, interview prompts, interview operations (NOT analysis/gaps/coverage questions).
 - feedbackAgent: classify feedback/bug/feature requests and submit to PostHog.
-- howtoAgent: procedural guidance ("how do I", "best way", "teach me", "where do I").
-- projectStatusAgent: factual status/data lookup (themes, ICP, people, evidence, interviews).
+- howtoAgent: procedural guidance ("how do I [specific task]", "best way to [do X]", "teach me"). NOT for "where should I start" or "what should I do" — those go to chiefOfStaffAgent.
+- projectStatusAgent: factual status/data lookup (themes, ICP, people, evidence, interviews, research gaps, coverage analysis, what's missing).
 
 Modes:
-- fast_standardized: only broad strategic guidance.
+- fast_standardized: DEPRECATED, do not use. Always use normal mode.
 - theme_people_snapshot: top/common themes + who has them.
 - survey_quick_create: explicit create/build/generate survey/waitlist requests.
 - gtm_mode: howtoAgent prompts about positioning, launch, distribution, sales.
@@ -189,7 +189,7 @@ function mapCostDetailsToLangfuse(totalCostUsd: number | null | undefined) {
 
 const MAX_STEPS_BY_AGENT: Record<RoutingTargetAgent, number> = {
   projectStatusAgent: 6,
-  chiefOfStaffAgent: 4,
+  chiefOfStaffAgent: 6,
   researchAgent: 4,
   feedbackAgent: 3,
   projectSetupAgent: 5,
@@ -198,7 +198,7 @@ const MAX_STEPS_BY_AGENT: Record<RoutingTargetAgent, number> = {
 
 const BILLING_MODEL_BY_AGENT: Record<RoutingTargetAgent, string> = {
   projectStatusAgent: "gpt-4.1",
-  chiefOfStaffAgent: "gpt-4o-mini",
+  chiefOfStaffAgent: "gpt-4o",
   researchAgent: "gpt-4o",
   feedbackAgent: "gpt-4o-mini",
   projectSetupAgent: "gpt-5.1",
@@ -368,12 +368,32 @@ export function buildQuickLinksMarkdown(options: {
   const mentionsThemes = /\b(theme|insight|insights|evidence)\b/.test(
     normalizedPrompt,
   );
+  const mentionsLens =
+    /\b(lens|lenses|jtbd|jobs.to.be.done|bant|empathy.map|customer.discovery|analysis)\b/.test(
+      normalizedPrompt,
+    );
 
   const links: string[] = [];
   if (mentionsPeople)
     links.push(`[People](${withHost(routes.people.index())})`);
   if (mentionsSurvey || targetAgentId === "researchAgent")
     links.push(`[Ask](${withHost(routes.ask.index())})`);
+  if (mentionsLens) {
+    // Link to specific lens if we can detect which one
+    if (/\b(jtbd|jobs.to.be.done)\b/.test(normalizedPrompt)) {
+      links.push(
+        `[JTBD Lens](${withHost(routes.lenses.jtbdConversationPipeline())})`,
+      );
+    } else if (/\b(bant)\b/.test(normalizedPrompt)) {
+      links.push(`[Sales BANT](${withHost(routes.lenses.salesBant())})`);
+    } else if (/\b(customer.discovery)\b/.test(normalizedPrompt)) {
+      links.push(
+        `[Customer Discovery](${withHost(routes.lenses.customerDiscovery())})`,
+      );
+    } else {
+      links.push(`[Lenses](${withHost(routes.lenses.library())})`);
+    }
+  }
   if (mentionsThemes || targetAgentId === "projectStatusAgent")
     links.push(`[Insights](${withHost(routes.insights.table())})`);
 
@@ -537,6 +557,20 @@ function augmentStreamForReliability(
           toolCalls.push(chunk.toolName);
         }
 
+        // A2UI tool results count as valid output — don't show "Sorry" fallback.
+        // handleChatStream emits tool-result chunks; handleNetworkStream may emit tool-output-available.
+        if (
+          chunk?.type === "tool-output-available" ||
+          chunk?.type === "tool-result"
+        ) {
+          const payload = (chunk.output ?? chunk.result) as
+            | Record<string, unknown>
+            | undefined;
+          if (typeof payload === "object" && payload && "a2ui" in payload) {
+            sawTextDelta = true;
+          }
+        }
+
         if (chunk?.type === "error") {
           maybeEnqueueSafetyMessage(controller);
         }
@@ -638,8 +672,16 @@ function routeByDeterministicPrompt(
     };
   }
 
+  // "where do i start" / "where should i start" are next-step guidance, not howto.
+  // Let the LLM classifier handle those — it knows to route to chiefOfStaffAgent.
+  const isNextStepIntent = hasAny(
+    "where should i start",
+    "where do i start",
+    "what should i do",
+    "what do i do",
+  );
   const howtoRouting = detectHowtoPromptMode(prompt);
-  if (howtoRouting.isHowto) {
+  if (howtoRouting.isHowto && !isNextStepIntent) {
     return {
       targetAgentId: "howtoAgent",
       confidence: 1,
@@ -753,6 +795,19 @@ function routeByDeterministicPrompt(
     };
   }
 
+  const asksForResearchAnalysis =
+    hasAny("gap", "gaps", "coverage", "blind spot", "blind spots") ||
+    (hasAny("missing", "what am i missing", "what's missing") &&
+      hasAny("research", "data", "evidence", "interview", "insight"));
+  if (asksForResearchAnalysis) {
+    return {
+      targetAgentId: "projectStatusAgent",
+      confidence: 1,
+      responseMode: "normal",
+      rationale: "deterministic routing for research gap/coverage analysis",
+    };
+  }
+
   const asksForPeopleOrTaskOps =
     (hasAny("people", "person", "contacts") &&
       hasAny("missing", "update", "find", "show", "list")) ||
@@ -765,20 +820,6 @@ function routeByDeterministicPrompt(
       responseMode: "normal",
       rationale:
         "deterministic routing for people/task operations via project status network",
-    };
-  }
-
-  const asksForStandardNextStep =
-    prompt === "what should i do next" ||
-    prompt === "what should i do next?" ||
-    prompt === "what do i do next" ||
-    prompt === "what do i do next?";
-  if (asksForStandardNextStep) {
-    return {
-      targetAgentId: "chiefOfStaffAgent",
-      confidence: 1,
-      responseMode: "fast_standardized",
-      rationale: "deterministic routing for canonical next-step prompt",
     };
   }
 
@@ -1170,6 +1211,25 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
     if (threads?.total && threads.total > 0) {
       threadId = threads.threads[0].id;
+      // Update title if it's still the default (e.g., thread created by "New Chat" button)
+      const existingTitle = threads.threads[0].title;
+      if (
+        !existingTitle ||
+        existingTitle === "New Chat" ||
+        existingTitle === "Chat Session"
+      ) {
+        const betterTitle = buildShortThreadTitle(lastUserText);
+        if (betterTitle !== "New Chat") {
+          memory
+            .updateThread({ id: threadId, title: betterTitle })
+            .catch((err: unknown) =>
+              consola.warn(
+                "project-status: failed to update thread title",
+                err,
+              ),
+            );
+        }
+      }
     } else {
       const newThread = await memory.createThread({
         resourceId: defaultThreadResourceId,

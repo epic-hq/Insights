@@ -4,24 +4,25 @@ tags:
 ---
 # UpSight Positioning Brief
 
-*Version: 1.0 | Created: 2026-01-17*
+*Version: 1.2 | Updated: 2026-02-23 | Created: 2026-01-17*
 *Purpose: Battle-tested positioning for GTM*
 
 ---
 
 ## The One-Liner
 
-> **Turn customer conversations into defensible decisions—fast.**
+> **Engage the right people, understand what matters, serve them better.**
 
 ---
 
 ## The Big Problem
 
-**Teams talk to customers constantly. Decisions still ride on opinions.**
+**Teams talk to customers constantly. But they're not always talking to the right people about the right things — and the insights still don't stick.**
 
-Every week, your team runs discovery calls, support tickets, sales conversations, and user interviews. The conversations happen. The insights don't stick.
+The problem isn't just scattered notes. It starts earlier: teams don't have a clear picture of who to engage, what to ask, or how conversations from different sources connect. Then whatever they do learn gets lost.
 
 **What actually happens:**
+- No system for knowing who to talk to next or what to ask them
 - Notes live in 5 different tools (Notion, Slack, Zoom, email, someone's head)
 - AI summaries are ungrounded text—no receipts, no trust
 - "We heard from customers that..." becomes a political weapon
@@ -29,6 +30,7 @@ Every week, your team runs discovery calls, support tickets, sales conversations
 - Decisions get made on whoever speaks loudest, not what customers actually said
 
 **The cost:**
+- Teams talk to the same 5 friendly users and miss the voices that matter
 - Product builds the wrong thing (again)
 - Sales loses deals they should've won
 - CS misses churn signals until it's too late
@@ -72,19 +74,23 @@ Every week, your team runs discovery calls, support tickets, sales conversations
 | Faster note-taking | **Shared reality across teams** |
 | Research repository | **Evidence you can act on** |
 | Call recording | **Traceability to source** |
+| Contact lists | **Knowing who to engage and why** |
 
 ### The Core Value Props
 
-**1. Grounded, Not Generated**
+**1. Engage the Right People**
+Know who you should be talking to, what to ask them, and what you've already learned. UpSight connects people, personas, and conversation history so your next outreach is informed, not random.
+
+**2. Grounded, Not Generated**
 Every insight links back to who said it, when, and in what context. Click any theme → see the exact quotes. No more "AI said so."
 
-**2. One Place, Not Five Tools**
+**3. One Place, Not Five Tools**
 Calls, notes, tickets, surveys—all synthesized together. Stop hunting across Notion, Slack, and someone's memory.
 
-**3. Decisions, Not Decks**
+**4. Decisions, Not Decks**
 Insights roll into tasks with owners and deadlines. Evidence stays attached. Research doesn't die in a slide deck.
 
-**4. Human + AI, Not AI-Only**
+**5. Human + AI, Not AI-Only**
 AI assists; humans lead. Choose voice agent, guided interview, or just upload recordings. Your workflow, not ours.
 
 ---
@@ -93,7 +99,7 @@ AI assists; humans lead. Choose voice agent, guided interview, or just upload re
 
 ### The Defensibility Moat
 
-> "Anyone can summarize. Almost no one can prove."
+> "Anyone can summarize. Almost no one helps you engage the right people — or prove what you learned."
 
 **What's easy to copy:**
 - Transcription (commodity)
@@ -101,6 +107,7 @@ AI assists; humans lead. Choose voice agent, guided interview, or just upload re
 - Pretty dashboards
 
 **What's hard to copy:**
+- **People intelligence** (know who to engage, what they care about, what you've already discussed)
 - **Evidence traceability** (click theme → see exactly who said it)
 - **Cross-source synthesis** (calls + tickets + notes, not just one interview)
 - **Role-aware analysis** (CEO vs. end user perspectives)
@@ -306,11 +313,11 @@ With UpSight:
 
 **Who:** Small teams who talk to customers (founders, consultants, product leads, fractional execs)
 
-**Problem:** Conversations happen, insights scatter, decisions ride on opinions
+**Problem:** Teams don't know who to engage or what to ask, insights scatter, decisions ride on opinions
 
-**Solution:** Turn customer conversations into defensible decisions—fast
+**Solution:** Engage the right people, understand what matters, serve them better
 
-**Differentiation:** Evidence traceability + cross-source synthesis + action integration
+**Differentiation:** People intelligence + evidence traceability + cross-source synthesis + action integration
 
 **Proof:** Time saved, decisions grounded, research that actually ships
 

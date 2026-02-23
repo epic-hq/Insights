@@ -1,7 +1,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import consola from "consola";
-import { Bot, ChevronRight, Mic, Plus, Send, Square } from "lucide-react";
+import { Bot, ChevronRight, LayoutDashboard, Mic, Plus, Send, Square, X } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useFetcher, useLocation, useNavigate, useRevalidator } from "react-router";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button
 import { useA2UISurfaceOptional } from "~/contexts/a2ui-surface-context";
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
+import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
 import { useTTS } from "~/hooks/useTTS";
 import { isA2UIToolPayload } from "~/lib/gen-ui/tool-helpers";
@@ -459,6 +460,7 @@ export function ProjectStatusAgentChat({
 	onLoadThreadRef,
 	onTTSStateRef,
 }: ProjectStatusAgentChatProps) {
+	const { isMobile } = useDeviceDetection();
 	const [input, setInput] = useState("");
 	const [isCollapsed, setIsCollapsed] = useState(() => {
 		if (typeof window === "undefined") return false;
@@ -502,7 +504,9 @@ export function ProjectStatusAgentChat({
 	// historical context server-side, so we don't send history to avoid duplicates.
 	const historyFetcher = useFetcher<{
 		threadId?: string;
+
 		messages?: UpsightMessage[];
+
 		error?: string;
 	}>();
 	const historyLoadedRef = useRef(false);
@@ -652,13 +656,19 @@ export function ProjectStatusAgentChat({
 			if (msg.id === lastA2UIMessageIdRef.current) break;
 			if (!msg.parts) continue;
 			for (const part of msg.parts) {
-				const anyPart = part as {
-					type: string;
-					result?: Record<string, unknown>;
-					toolResult?: Record<string, unknown>;
-				};
-				if (anyPart.type === "tool-result") {
-					const result = anyPart.result ?? anyPart.toolResult;
+				const anyPart = part as Record<string, unknown>;
+				const partType = anyPart.type as string | undefined;
+				const partState = anyPart.state as string | undefined;
+
+				// Match tool parts that have output available
+				const isToolWithOutput =
+					partState === "output-available" &&
+					(partType === "tool-result" || partType === "dynamic-tool" || (partType?.startsWith("tool-") ?? false));
+
+				if (isToolWithOutput) {
+					const result = (anyPart.output ?? anyPart.result ?? anyPart.toolResult) as
+						| Record<string, unknown>
+						| undefined;
 					if (result && isA2UIToolPayload(result)) {
 						a2uiSurface.applyMessages(
 							(
@@ -839,7 +849,7 @@ export function ProjectStatusAgentChat({
 			const response = await fetch(createUrl, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ title: "New Chat" }),
+				body: JSON.stringify({}),
 			});
 			const data = (await response.json()) as {
 				thread?: { id?: string };
@@ -1162,12 +1172,6 @@ export function ProjectStatusAgentChat({
 	// Shared chat content renderer (used by both embedded and card modes)
 	const chatContent = (
 		<>
-			{/* A2UI: Render gen-ui widget when a surface is active */}
-			{a2uiSurface?.isActive && a2uiSurface.surface && (
-				<div className="mb-3 flex-shrink-0">
-					<A2UIRenderer surface={a2uiSurface.surface} onDismiss={() => a2uiSurface.dismiss()} isStreaming={isBusy} />
-				</div>
-			)}
 			<div className="min-h-0 flex-1 overflow-hidden">
 				{visibleMessages.length === 0 ? (
 					<div

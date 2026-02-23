@@ -159,14 +159,17 @@ export default function StakeholdersPage() {
 
 			{stakeholders.length > 0 ? (
 				<>
-					{/* Layer 1: Stakeholder Landscape */}**
+					{/* Layer 1: Stakeholder Landscape */}
 					<StakeholderLandscape
 						roleGroups={roleGroups}
 						sharedConcern={groupBy === "job_function" ? sharedConcern : null}
 						onPersonClick={handlePersonClick}
 					/>
 					<Separator />
-					{/* Layer 2: Stakeholder Perspectives */}
+					{/* Layer 2: Intersections */}
+					<IntersectionsPanel commonGround={commonGround as CommonGround[]} weakSignals={weakSignals} />
+					<Separator />
+					{/* Layer 3: Stakeholder Perspectives */}
 					<div>
 						<div className="mb-4 flex flex-wrap items-center justify-between gap-3">
 							<h2 className="flex items-center gap-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
@@ -202,9 +205,6 @@ export default function StakeholdersPage() {
 							))}
 						</div>
 					</div>
-					<Separator />
-					{/* Layer 3: Intersections */}
-					<IntersectionsPanel commonGround={commonGround as CommonGround[]} weakSignals={weakSignals} />
 					{/* Layer 4: Suggested Next Steps */}
 					{suggestedActions.length > 0 && (
 						<>

@@ -3,6 +3,8 @@ public/build
 build
 dist
 out
+desktop/out*/
+beads-graph.html
 coverage
 .history
 .react-router/

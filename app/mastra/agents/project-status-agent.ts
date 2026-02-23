@@ -39,112 +39,112 @@ import { researchAgent } from "./research-agent";
 import { taskAgent } from "./task-agent";
 
 function auditToolSchemas(agent_name: string, tools: Record<string, unknown>) {
-  try {
-    const tool_entries = Object.entries(tools);
-    const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> =
-      [];
+	try {
+		const tool_entries = Object.entries(tools);
+		const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> =
+			[];
 
-    for (const [tool_name, tool] of tool_entries) {
-      if (!tool || typeof tool !== "object") {
-        issues.push({
-          tool: tool_name,
-          issue: `tool is not an object (${typeof tool})`,
-        });
-        continue;
-      }
+		for (const [tool_name, tool] of tool_entries) {
+			if (!tool || typeof tool !== "object") {
+				issues.push({
+					tool: tool_name,
+					issue: `tool is not an object (${typeof tool})`,
+				});
+				continue;
+			}
 
-      const own_props = Object.getOwnPropertyNames(tool);
-      const has_input_schema = own_props.includes("inputSchema");
-      const has_output_schema = own_props.includes("outputSchema");
+			const own_props = Object.getOwnPropertyNames(tool);
+			const has_input_schema = own_props.includes("inputSchema");
+			const has_output_schema = own_props.includes("outputSchema");
 
-      const input_schema = (tool as any).inputSchema;
-      const output_schema = (tool as any).outputSchema;
-      const input_is_zod =
-        !!input_schema &&
-        typeof input_schema === "object" &&
-        typeof input_schema.safeParse === "function";
-      const output_is_zod =
-        !!output_schema &&
-        typeof output_schema === "object" &&
-        typeof output_schema.safeParse === "function";
+			const input_schema = (tool as any).inputSchema;
+			const output_schema = (tool as any).outputSchema;
+			const input_is_zod =
+				!!input_schema &&
+				typeof input_schema === "object" &&
+				typeof input_schema.safeParse === "function";
+			const output_is_zod =
+				!!output_schema &&
+				typeof output_schema === "object" &&
+				typeof output_schema.safeParse === "function";
 
-      if (!has_input_schema || !input_is_zod) {
-        issues.push({
-          tool: tool_name,
-          issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
-          ownProps: own_props,
-        });
-      }
-      if (!has_output_schema || !output_is_zod) {
-        issues.push({
-          tool: tool_name,
-          issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
-          ownProps: own_props,
-        });
-      }
-    }
+			if (!has_input_schema || !input_is_zod) {
+				issues.push({
+					tool: tool_name,
+					issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
+					ownProps: own_props,
+				});
+			}
+			if (!has_output_schema || !output_is_zod) {
+				issues.push({
+					tool: tool_name,
+					issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
+					ownProps: own_props,
+				});
+			}
+		}
 
-    if (issues.length > 0) {
-      consola.warn("[mastra-schema-audit] tool schema issues", {
-        agent: agent_name,
-        issueCount: issues.length,
-        issues,
-      });
-    } else {
-      consola.info("[mastra-schema-audit] all tool schemas look valid", {
-        agent: agent_name,
-        toolCount: tool_entries.length,
-      });
-    }
-  } catch (error) {
-    consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
-  }
+		if (issues.length > 0) {
+			consola.warn("[mastra-schema-audit] tool schema issues", {
+				agent: agent_name,
+				issueCount: issues.length,
+				issues,
+			});
+		} else {
+			consola.info("[mastra-schema-audit] all tool schemas look valid", {
+				agent: agent_name,
+				toolCount: tool_entries.length,
+			});
+		}
+	} catch (error) {
+		consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
+	}
 }
 
 const project_status_agent_tools = {
-  getCurrentDate: getCurrentDateTool,
-  fetchProjectStatusContext: fetchProjectStatusContextTool,
-  fetchEvidence: fetchEvidenceTool,
-  semanticSearchEvidence: semanticSearchEvidenceTool,
-  semanticSearchAssets: semanticSearchAssetsTool,
-  fetchProjectGoals: fetchProjectGoalsTool,
-  fetchThemes: fetchThemesTool,
-  fetchTopThemesWithPeople: fetchTopThemesWithPeopleTool,
-  fetchPainMatrixCache: fetchPainMatrixCacheTool,
-  fetchSegments: fetchSegmentsTool,
-  fetchSegmentThemes: fetchSegmentThemesTool,
-  "fetch-segment-themes": fetchSegmentThemesTool,
-  fetchThemeStakeholders: fetchThemeStakeholdersTool,
-  "fetch-theme-stakeholders": fetchThemeStakeholdersTool,
-  fetchStakeholderDemographics: fetchStakeholderDemographicsTool,
-  "fetch-stakeholder-demographics": fetchStakeholderDemographicsTool,
-  fetchConversationLenses: fetchConversationLensesTool,
-  generateProjectRoutes: generateProjectRoutesTool,
-  generateDocumentLink: generateDocumentLinkTool,
-  capabilityLookup: capabilityLookupTool,
-  suggestNextSteps: suggestionTool,
-  recommendNextActions: recommendNextActionsTool,
-  // Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
-  "recommend-next-actions": recommendNextActionsTool,
-  generateResearchRecommendations: generateResearchRecommendationsTool,
-  "generate-research-recommendations": generateResearchRecommendationsTool,
-  displayComponent: displayComponentTool,
-  "display-component": displayComponentTool,
-  fetchResearchPulse: fetchResearchPulseTool,
-  "fetch-research-pulse": fetchResearchPulseTool,
+	getCurrentDate: getCurrentDateTool,
+	fetchProjectStatusContext: fetchProjectStatusContextTool,
+	fetchEvidence: fetchEvidenceTool,
+	semanticSearchEvidence: semanticSearchEvidenceTool,
+	semanticSearchAssets: semanticSearchAssetsTool,
+	fetchProjectGoals: fetchProjectGoalsTool,
+	fetchThemes: fetchThemesTool,
+	fetchTopThemesWithPeople: fetchTopThemesWithPeopleTool,
+	fetchPainMatrixCache: fetchPainMatrixCacheTool,
+	fetchSegments: fetchSegmentsTool,
+	fetchSegmentThemes: fetchSegmentThemesTool,
+	"fetch-segment-themes": fetchSegmentThemesTool,
+	fetchThemeStakeholders: fetchThemeStakeholdersTool,
+	"fetch-theme-stakeholders": fetchThemeStakeholdersTool,
+	fetchStakeholderDemographics: fetchStakeholderDemographicsTool,
+	"fetch-stakeholder-demographics": fetchStakeholderDemographicsTool,
+	fetchConversationLenses: fetchConversationLensesTool,
+	generateProjectRoutes: generateProjectRoutesTool,
+	generateDocumentLink: generateDocumentLinkTool,
+	capabilityLookup: capabilityLookupTool,
+	suggestNextSteps: suggestionTool,
+	recommendNextActions: recommendNextActionsTool,
+	// Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
+	"recommend-next-actions": recommendNextActionsTool,
+	generateResearchRecommendations: generateResearchRecommendationsTool,
+	"generate-research-recommendations": generateResearchRecommendationsTool,
+	displayComponent: displayComponentTool,
+	"display-component": displayComponentTool,
+	fetchResearchPulse: fetchResearchPulseTool,
+	"fetch-research-pulse": fetchResearchPulseTool,
 };
 
 auditToolSchemas("projectStatusAgent", project_status_agent_tools);
 
 export const projectStatusAgent = new Agent({
-  id: "project-status-agent",
-  name: "projectStatusAgent",
-  instructions: async ({ requestContext }) => {
-    try {
-      const projectId = requestContext.get("project_id");
-      const accountId = requestContext.get("account_id");
-      const userId = requestContext.get("user_id");
-      return `
+	id: "project-status-agent",
+	name: "projectStatusAgent",
+	instructions: async ({ requestContext }) => {
+		try {
+			const projectId = requestContext.get("project_id");
+			const accountId = requestContext.get("account_id");
+			const userId = requestContext.get("user_id");
+			return `
 You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
 
 project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}, user_id=${userId || "<unknown>"}
@@ -170,12 +170,36 @@ First call "fetchProjectStatusContext" with scopes=["sections","status"] and inc
 | User question pattern | Widget to render | Data tools to call first |
 |---|---|---|
 | Research gaps / coverage / "do I have enough data?" | \`IntakeHealth\` | fetchProjectStatusContext(scopes=["status","interviews"]) + fetchStakeholderDemographics |
-| Evidence / quotes / "what did people say?" | \`EvidenceWall\` | fetchEvidence or semanticSearchEvidence |
-| Patterns / themes / "what are the key themes?" | \`PatternSynthesis\` | fetchTopThemesWithPeople |
-| What should I do / next actions / decisions | \`DecisionForcing\` | generateResearchRecommendations |
-| Who mentioned this / stakeholder analysis | \`StakeholderMap\` | fetchThemeStakeholders + fetchStakeholderDemographics |
-| Project progress / where am I? | \`ProgressRail\` | recommendNextActions (get projectState.stage) |
-| Weekly review / what changed? | \`ResearchPulse\` | fetchResearchPulse |
+| Evidence / quotes / "what did people say?" / "show me proof" | \`EvidenceWall\` | fetchEvidence or semanticSearchEvidence |
+| Patterns / themes / "what are the key themes?" / "what repeats?" | \`PatternSynthesis\` | fetchTopThemesWithPeople |
+| What should I do / next actions / decisions / "prioritize" | \`DecisionSupport\` | generateResearchRecommendations |
+| Who mentioned this / stakeholder analysis / "who are the people?" / "who was last interviewed?" | \`StakeholderMap\` | fetchThemeStakeholders + fetchStakeholderDemographics |
+| Project progress / where am I? / "show status" | \`ProgressRail\` | recommendNextActions (get projectState.stage) |
+| Weekly review / what changed? / "close the loop" | \`ResearchPulse\` | fetchResearchPulse |
+| Interview prep / "question list" / "what should I ask?" | \`InterviewPrompts\` | displayInterviewPrompts (has its own display logic) |
+| Decision frame / "what are we solving?" / "research goals" | \`DecisionBrief\` | fetchProjectStatusContext(scopes=["sections"]) + fetchProjectGoals |
+| How to get started / "collect data" / "intake options" | \`IntakePathPicker\` | fetchProjectStatusContext(scopes=["status"]) |
+| Upload status / "are my files ready?" / "processing status" | \`IntakeBatchStatus\` | fetchProjectStatusContext(scopes=["interviews"]) |
+| Survey sharing / "send survey" / "who responded?" | \`SurveyOutreach\` | delegate to ResearchAgent for fetchSurveys, then displayComponent |
+| Personas / "who is the target customer?" / "ICP" | \`PersonaCard\` | delegate to PeopleAgent for fetchPersonas, then displayComponent |
+| JTBD analysis / "show jobs to be done" / "lens results" / "show the analysis" | \`ConversationLensInsights\` | fetchConversationLenses(templateKey, mode="analyses") → pick most recent completed analysis → pass raw analysis_data |
+| BANT / sales qualification / "deal score" | \`BANTScorecard\` | fetchProjectStatusContext(scopes=["status"]) + semanticSearchEvidence(query="budget authority need timeline") |
+| Key insight / "what does the data say about X?" (single topic) | \`AiInsightCard\` | semanticSearchEvidence(query=topic) |
+| Counts / metrics / "how many interviews?" / "how many people?" | \`StatCard\` | fetchProjectStatusContext(scopes=["status"]) |
+| Themes list / "list all themes" / "what topics came up?" | \`ThemeList\` | fetchThemes |
+| Segment analysis / "what do PMs care about?" / "segment breakdown" | \`PatternSynthesis\` | fetchSegmentThemes(segmentKind, segmentLabel) |
+
+**Conversation Lens → ConversationLensInsights Widget (MANDATORY for lens/JTBD requests):**
+When the user asks about JTBD analysis, lens results, conversation analysis, "show me the analysis", or any lens framework:
+1. Call \`fetchConversationLenses\` with mode="analyses" (and optionally templateKey like "jtbd-conversation-pipeline")
+2. Pick the most recent completed analysis from the results (status="completed")
+3. Call \`displayComponent\` with:
+   - componentType: "ConversationLensInsights"
+   - data: { templateKey: analysis.templateKey, templateName: analysis.templateName, interviewCount: 1, mode: "single", analysisData: analysis.analysisData, synthesisData: null, lensDetailUrl: analysis.lensDetailUrl, interviewTitle: analysis.interviewTitle, interviewUrl: analysis.interviewUrl, personName: analysis.personName }
+4. Do NOT just describe the analysis in text — you MUST render the widget
+
+If user asks to "edit the lens" or "open the lens page" → navigate to the lensDetailUrl instead.
+If user asks for "aggregated" analysis → not yet supported, tell them it's coming soon.
 
 **Workflow:**
 1. Call the data tool(s) FIRST to gather real data
@@ -188,7 +212,7 @@ Do NOT render widgets with empty/placeholder data. If a tool returns no data, ex
 ## Proactive Recommendations
 When the user asks research-related questions like "who should I talk to next?", "what insights need validation?", "where are my research gaps?", or "which contacts are getting stale?":
 
-Call "generateResearchRecommendations" with projectId=${projectId} to get cross-lens synthesized recommendations, then render the \`DecisionForcing\` widget with the results.
+Call "generateResearchRecommendations" with projectId=${projectId} to get cross-lens synthesized recommendations, then render the \`DecisionSupport\` widget with the results.
 
 The recommendations data includes priority (1-3), category, confidence scores, action types, and navigateTo paths.
 Use navigateTo to create clickable links in the brief chat summary.
@@ -308,32 +332,32 @@ For "how do I", "where do I", "best way to", and "teach me" guidance requests, d
 
 ${buildGenUISystemContext()}
 `;
-    } catch (error) {
-      consola.error("Error in project status agent instructions:", error);
-      return `
+		} catch (error) {
+			consola.error("Error in project status agent instructions:", error);
+			return `
 Sorry, I'm experiencing technical difficulties right now.
 
 Please try:
 
 1. Refreshing the page and trying again
 2. Contacting support if the issue persists`;
-    }
-  },
-  model: openai("gpt-4.1"),
-  tools: wrapToolsWithStatusEvents(project_status_agent_tools),
-  agents: {
-    taskAgent,
-    peopleAgent,
-    researchAgent,
-    opsAgent,
-    feedbackAgent,
-    chiefOfStaffAgent,
-    howtoAgent,
-  },
-  memory: new Memory({
-    storage: getSharedPostgresStore(),
-  }),
-  // TokenLimiterProcessor prevents context window overflow
-  // Note: Using number format for Zod v4 compatibility
-  outputProcessors: [new TokenLimiterProcessor(45_000)],
+		}
+	},
+	model: openai("gpt-4.1"),
+	tools: wrapToolsWithStatusEvents(project_status_agent_tools),
+	agents: {
+		taskAgent,
+		peopleAgent,
+		researchAgent,
+		opsAgent,
+		feedbackAgent,
+		chiefOfStaffAgent,
+		howtoAgent,
+	},
+	memory: new Memory({
+		storage: getSharedPostgresStore(),
+	}),
+	// TokenLimiterProcessor prevents context window overflow
+	// Note: Using number format for Zod v4 compatibility
+	outputProcessors: [new TokenLimiterProcessor(45_000)],
 });

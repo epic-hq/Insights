@@ -155,6 +155,47 @@ create policy "Account members can view annotations"
         )
         or auth.role() = 'service_role'
     );
+
+-- Policy: Allow account members to view flags in their account
+create policy "Account members can view flags"
+    on public.entity_flags
+    for select
+    using (
+        exists (
+            select 1 from accounts.account_user
+            where account_user.user_id = auth.uid()
+              and account_user.account_id = entity_flags.account_id
+        )
+        or auth.role() = 'service_role'
+    );
+
+-- Policy: Allow users to insert flags with their own user_id
+create policy "Users can insert their own flags"
+    on public.entity_flags
+    for insert
+    with check (
+        auth.uid() = user_id
+        or auth.role() = 'service_role'
+    );
+
+-- Policy: Allow users to update their own flags
+create policy "Users can update their own flags"
+    on public.entity_flags
+    for update
+    using (
+        auth.uid() = user_id
+        or auth.role() = 'service_role'
+    );
+
+-- Policy: Allow users to delete their own flags
+create policy "Users can delete their own flags"
+    on public.entity_flags
+    for delete
+    using (
+        auth.uid() = user_id
+        or auth.role() = 'service_role'
+    );
+
 -- HELPER FUNCTIONS
 
 -- Function to get annotation counts for an entity

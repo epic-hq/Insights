@@ -212,10 +212,13 @@ interface TopTasksProps {
 }
 
 function TopTasks({ routes, counts, projectId }: TopTasksProps) {
-	const [dismissed, setDismissed] = useState(() => {
-		if (typeof window === "undefined") return false;
-		return localStorage.getItem("ai-panel-tasks-dismissed") === "true";
-	});
+	const [dismissed, setDismissed] = useState(false);
+
+	useEffect(() => {
+		if (localStorage.getItem("ai-panel-tasks-dismissed") === "true") {
+			setDismissed(true);
+		}
+	}, []);
 
 	const handleDismiss = useCallback(() => {
 		setDismissed(true);
@@ -340,18 +343,18 @@ export function AIAssistantPanel({
 		}
 	}, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-	// Panel width state with localStorage persistence
-	const [panelWidth, setPanelWidth] = useState(() => {
-		if (typeof window === "undefined") return PANEL_WIDTH_DEFAULT;
+	// Panel width state — always start with default to match SSR, sync from localStorage in useEffect
+	const [panelWidth, setPanelWidth] = useState(PANEL_WIDTH_DEFAULT);
+
+	useEffect(() => {
 		const stored = localStorage.getItem(PANEL_WIDTH_KEY);
 		if (stored) {
 			const parsed = Number.parseInt(stored, 10);
 			if (!Number.isNaN(parsed) && parsed >= PANEL_WIDTH_MIN && parsed <= PANEL_WIDTH_MAX) {
-				return parsed;
+				setPanelWidth(parsed);
 			}
 		}
-		return PANEL_WIDTH_DEFAULT;
-	});
+	}, []);
 
 	// Emit width on mount and when it changes
 	useEffect(() => {
