@@ -161,7 +161,7 @@ export default function AboutPage() {
           CAREERS
         </p>
         <h2 className="mt-5 max-w-2xl font-semibold text-[clamp(1.5rem,3.5vw,2.25rem)] leading-[1.12] tracking-[-0.02em]">
-          Help teams make decisions they can defend.
+          Help teams know their customers and serve them better.
         </h2>
         <p className="mt-5 max-w-lg text-[rgba(238,238,242,0.55)] text-[clamp(0.95rem,1.2vw,1.05rem)] leading-relaxed">
           Small team, real ownership, customers who care. We're hiring people
