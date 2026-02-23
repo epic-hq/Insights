@@ -6,6 +6,7 @@ export default defineConfig({
   test: {
     globals: true,
     css: true,
+    exclude: ["**/node_modules/**", "**/dist/**", "**/.claude/worktrees/**"],
     env: {
       // Load test environment variables from .env file
       // Vitest doesn't automatically load .env files, so we need to ensure
