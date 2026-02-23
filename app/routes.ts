@@ -486,6 +486,9 @@ const routes = [
   // Resource routes
   route("/link", "./routes/link.tsx"),
   route("s/:token", "./routes/s.$token.tsx"), // Public share links
+  route("deck/:token", "./routes/deck.$token.tsx"), // Public deck share links
+  route("deck/:token/assets/*", "./routes/deck.$token.assets.$.tsx"), // Deck asset proxy
+  route("api/deck/upload", "./routes/api.deck.upload.tsx"),
   route("/resource/locales", "./routes/resource.locales.ts"),
   route("llms.txt", "./routes/llms[.]txt.ts"),
   route("llms-full.txt", "./routes/llms-full[.]txt.ts"),

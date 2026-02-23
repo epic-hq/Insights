@@ -1806,6 +1806,53 @@ export type Database = {
           },
         ]
       }
+      decks: {
+        Row: {
+          account_id: string | null
+          created_at: string | null
+          created_by: string | null
+          html_content: string
+          id: string
+          project_id: string | null
+          share_enabled: boolean | null
+          title: string | null
+          token: string
+          updated_at: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          html_content: string
+          id?: string
+          project_id?: string | null
+          share_enabled?: boolean | null
+          title?: string | null
+          token: string
+          updated_at?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          html_content?: string
+          id?: string
+          project_id?: string | null
+          share_enabled?: boolean | null
+          title?: string | null
+          token?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entity_flags: {
         Row: {
           account_id: string
