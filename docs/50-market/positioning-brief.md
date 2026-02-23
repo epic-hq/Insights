@@ -4,14 +4,14 @@ tags:
 ---
 # UpSight Positioning Brief
 
-*Version: 1.1 | Updated: 2026-02-21 | Created: 2026-01-17*
+*Version: 1.2 | Updated: 2026-02-23 | Created: 2026-01-17*
 *Purpose: Battle-tested positioning for GTM*
 
 ---
 
 ## The One-Liner
 
-> **Engage the right people, understand what matters, and make decisions you can defend.**
+> **Engage the right people, understand what matters, serve them better.**
 
 ---
 
@@ -315,7 +315,7 @@ With UpSight:
 
 **Problem:** Teams don't know who to engage or what to ask, insights scatter, decisions ride on opinions
 
-**Solution:** Engage the right people, understand what matters, and make decisions you can defend
+**Solution:** Engage the right people, understand what matters, serve them better
 
 **Differentiation:** People intelligence + evidence traceability + cross-source synthesis + action integration
 
