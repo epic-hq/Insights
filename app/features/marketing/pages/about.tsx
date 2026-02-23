@@ -40,9 +40,9 @@ export default function AboutPage() {
         </p>
         <h1 className="mt-5 max-w-3xl font-semibold text-[clamp(2rem,5vw,3.25rem)] leading-[1.08] tracking-[-0.025em]">
           Know your customers.{" "}
-          <h1 className="text-amber-400/90 text-[rgba(238,238,242,0.45)]">
+          <span className="text-[rgba(238,238,242,0.45)]">
             Serve them better.
-          </h1>
+          </span>
         </h1>
         <p className="mt-8 max-w-xl text-[clamp(1rem,1.3vw,1.15rem)] text-[rgba(238,238,242,0.65)] leading-relaxed">
           We started UpSight because we kept watching the same thing: teams talk
@@ -54,8 +54,7 @@ export default function AboutPage() {
           We're building the system that helps you{" "}
           <span className="text-amber-400/90">engage</span> the right people,{" "}
           <span className="text-sky-400/90">understand</span> what matters, and
-          make decisions you can{" "}
-          <span className="text-emerald-400/90">defend</span>.
+          <span className="text-emerald-400/90">serve</span> them better.
         </p>
       </section>
 
@@ -82,11 +81,11 @@ export default function AboutPage() {
           </div>
           <div className="rounded-xl border border-white/10 border-l-emerald-400/40 bg-white/[0.03] p-6">
             <p className="font-medium text-[0.7rem] text-emerald-400/80 tracking-[0.18em]">
-              DEFEND
+              SERVE
             </p>
             <p className="mt-3 text-[rgba(238,238,242,0.72)] text-sm leading-relaxed">
-              Research that ships. Insights become tasks with owners, and every
-              decision shows its receipts.
+              Turn what you learn into how you deliver. Build the right thing,
+              close the right deals, retain the right customers.
             </p>
           </div>
         </div>
