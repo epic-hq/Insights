@@ -15,10 +15,7 @@ import { z } from "zod";
 import { componentRegistry } from "~/lib/gen-ui/component-registry";
 // Side-effect: ensure all gen-ui components are registered (server-safe, no React imports)
 import "~/lib/gen-ui/registered-components-server";
-import {
-	buildSingleComponentSurface,
-	withA2UI,
-} from "~/lib/gen-ui/tool-helpers";
+import { buildSingleComponentSurface, withA2UI } from "~/lib/gen-ui/tool-helpers";
 
 const baseOutputSchema = z.object({
 	success: z.boolean(),
@@ -33,28 +30,18 @@ export const displayComponentTool = createTool({
 		componentType: z
 			.string()
 			.describe(
-				"The registered component type to render. Must exactly match one of the available component types listed in the tool description.",
+				"The registered component type to render. Must exactly match one of the available component types listed in the tool description."
 			),
-		data: z
-			.record(z.unknown())
-			.describe(
-				"The data to pass to the component. Must conform to the component's schema.",
-			),
+		data: z.record(z.unknown()).describe("The data to pass to the component. Must conform to the component's schema."),
 		title: z
 			.string()
 			.optional()
-			.describe(
-				"Optional title for the surface — used in UI chrome around the rendered component.",
-			),
+			.describe("Optional title for the surface — used in UI chrome around the rendered component."),
 	}),
 	outputSchema: withA2UI(baseOutputSchema),
 	execute: async (input, context?) => {
-		const project_id = context?.requestContext?.get?.("project_id") as
-			| string
-			| undefined;
-		const thread_id = context?.requestContext?.get?.("thread_id") as
-			| string
-			| undefined;
+		const project_id = context?.requestContext?.get?.("project_id") as string | undefined;
+		const thread_id = context?.requestContext?.get?.("thread_id") as string | undefined;
 
 		const { componentType, data, title } = input;
 
@@ -81,19 +68,14 @@ export const displayComponentTool = createTool({
 		// fields or omit required ones; rejecting the whole widget is too brittle.
 		const validation = componentRegistry.validateProps(componentType, data);
 		if (!validation.success) {
-			consola.warn(
-				"[gen-ui] displayComponent data validation issues (rendering anyway)",
-				{
-					componentType,
-					errors: validation.errors,
-				},
-			);
+			consola.warn("[gen-ui] displayComponent data validation issues (rendering anyway)", {
+				componentType,
+				errors: validation.errors,
+			});
 		}
 
 		const surfaceId = thread_id ?? project_id ?? `surface-${Date.now()}`;
-		const renderedData = validation.success
-			? (validation.data as Record<string, unknown>)
-			: data;
+		const renderedData = validation.success ? (validation.data as Record<string, unknown>) : data;
 
 		return {
 			success: true,

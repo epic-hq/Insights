@@ -48,7 +48,9 @@ export default function MarketingNav() {
 						<Link
 							className={[
 								"rounded-md px-3 py-2 font-medium text-sm transition-colors",
-								isDarkHeroPage ? "text-zinc-200 hover:bg-white/10 hover:text-white" : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950",
+								isDarkHeroPage
+									? "text-zinc-200 hover:bg-white/10 hover:text-white"
+									: "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950",
 							].join(" ")}
 							to="/login"
 						>
@@ -78,7 +80,9 @@ export default function MarketingNav() {
 			</div>
 
 			{mobileMenuOpen && (
-				<div className={["border-t px-4 pb-4 md:hidden", isDarkHeroPage ? "border-white/10" : "border-zinc-200"].join(" ")}>
+				<div
+					className={["border-t px-4 pb-4 md:hidden", isDarkHeroPage ? "border-white/10" : "border-zinc-200"].join(" ")}
+				>
 					<div className="flex flex-col gap-1 pt-3">
 						{MARKETING_LINKS.map((link) => (
 							<NavLink
@@ -96,7 +100,9 @@ export default function MarketingNav() {
 						<Link
 							className={[
 								"rounded-md px-3 py-2 text-center font-medium text-sm transition-colors",
-								isDarkHeroPage ? "border border-white/15 text-zinc-200 hover:bg-white/10" : "border border-zinc-300 text-zinc-800 hover:bg-zinc-100",
+								isDarkHeroPage
+									? "border border-white/15 text-zinc-200 hover:bg-white/10"
+									: "border border-zinc-300 text-zinc-800 hover:bg-zinc-100",
 							].join(" ")}
 							onClick={() => setMobileMenuOpen(false)}
 							to="/login"

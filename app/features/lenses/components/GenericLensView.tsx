@@ -16,14 +16,14 @@ import {
 	Clock,
 	Info,
 	Loader2,
-	Maximize2,
 	Mail,
+	Maximize2,
 	MessageSquare,
 	User,
 	Users,
 	XCircle,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -1872,9 +1872,7 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 		sectionDataMap[sectionDef.section_key] = {
 			fields: (sectionDef.fields || []).map((fieldDef) => ({
 				field_key: fieldDef.field_key,
-				value: Object.prototype.hasOwnProperty.call(analysisData, fieldDef.field_key)
-					? analysisData[fieldDef.field_key]
-					: null,
+				value: Object.hasOwn(analysisData, fieldDef.field_key) ? analysisData[fieldDef.field_key] : null,
 				confidence: null,
 				evidence_ids: [],
 			})),
