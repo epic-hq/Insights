@@ -81,7 +81,9 @@ posthog.identify(userId, {
 ---
 
 ### 3. `interview_added`
-**Location**: `/app/utils/processInterview.server.ts`
+**Locations**:
+- `/src/trigger/interview/v2/finalizeInterview.ts` — fires at end of v2 orchestrator pipeline (upload, realtime, recall paths)
+- `/app/routes/api.desktop.interviews.finalize.ts` — fires during desktop meeting finalization
 
 **Trigger**: When interview processing completes successfully
 
@@ -91,21 +93,21 @@ posthog.identify(userId, {
   interview_id: string
   project_id: string
   account_id: string
-  source: "upload" | "record" | "paste"
+  source: "upload" | "record" | "paste" | "desktop"
   duration_s: number
   file_type?: "audio" | "video" | "text"
   has_transcript: boolean
   evidence_count: number
   insights_count: number
+  $insert_id: string  // idempotency key
+  $groups: { account: account_id }
 }
 ```
 
-**Person Properties Updated** (if early in journey):
+**Person Properties Updated** (if early in journey, v2 orchestrator path only):
 ```typescript
 posthog.identify(userId, {
-  $set: {
-    interview_count: number
-  }
+  interview_count: number
 })
 ```
 
@@ -502,9 +504,9 @@ All events are captured server-side for:
    - Added `project_created` event
    - Added lifecycle stage update for first project
 
-3. **`/app/utils/processInterview.server.ts`**
-   - Added `interview_added` event
-   - Added interview count tracking
+3. **`/src/trigger/interview/v2/finalizeInterview.ts`** + **`/app/routes/api.desktop.interviews.finalize.ts`**
+   - `interview_added` event fires from both the v2 orchestrator pipeline and the desktop finalize path
+   - Interview count tracking (v2 orchestrator path)
 
 4. **`/app/features/teams/pages/manage-members.tsx`**
    - Added `invite_sent` event in action

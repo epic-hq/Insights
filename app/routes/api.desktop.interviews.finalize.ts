@@ -14,6 +14,7 @@ import { z } from "zod";
 import { createTask, createTaskLink } from "~/features/tasks/db";
 import { authenticateDesktopRequest } from "~/lib/auth/desktop-auth.server";
 import { validateAttributionParity } from "~/lib/evidence/personAttribution.server";
+import { getPostHogServerClient } from "~/lib/posthog.server";
 import { resolveOrCreatePerson } from "~/lib/people/resolution.server";
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
@@ -630,7 +631,38 @@ export async function action({ request }: ActionFunctionArgs) {
 			results.status_updated = true;
 		}
 
-		// 6. Validate person attribution parity (TrustCore check)
+		// 6. Track interview_added analytics event
+		try {
+			const posthog = getPostHogServerClient();
+			if (posthog && user?.id) {
+				const { count: evidenceCount } = await supabase
+					.from("evidence")
+					.select("id", { count: "exact", head: true })
+					.eq("interview_id", interview_id);
+
+				posthog.capture({
+					distinctId: user.id,
+					event: "interview_added",
+					properties: {
+						interview_id,
+						project_id,
+						account_id,
+						source: "desktop",
+						duration_s: duration_seconds || interview.duration_sec || 0,
+						file_type: "audio",
+						has_transcript: results.transcript_saved || Boolean(interview.observations_and_notes),
+						evidence_count: evidenceCount || 0,
+						insights_count: 0,
+						$insert_id: `interview:${interview_id}:desktop-finalize`,
+						$groups: { account: account_id },
+					},
+				});
+			}
+		} catch (trackingError) {
+			consola.warn("[desktop-finalize] PostHog tracking failed:", trackingError);
+		}
+
+		// 7. Validate person attribution parity (TrustCore check)
 		try {
 			const parityResult = await validateAttributionParity(supabase, interview_id, "desktop-finalize");
 			if (!parityResult.passed) {
