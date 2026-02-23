@@ -37,6 +37,7 @@ export interface DecisionSupportData {
 interface DecisionSupportProps {
   data: DecisionSupportData;
   isStreaming?: boolean;
+  onAction?: (actionName: string, payload?: Record<string, unknown>) => void;
 }
 
 const EFFORT_STYLES = {
@@ -53,7 +54,11 @@ const IMPACT_STYLES = {
   low: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
 } as const;
 
-export function DecisionSupport({ data, isStreaming }: DecisionSupportProps) {
+export function DecisionSupport({
+  data,
+  isStreaming,
+  onAction,
+}: DecisionSupportProps) {
   return (
     <div
       className={cn(
@@ -150,6 +155,13 @@ export function DecisionSupport({ data, isStreaming }: DecisionSupportProps) {
                       {action.evidenceUrl ? (
                         <Link
                           to={action.evidenceUrl}
+                          onClick={() =>
+                            onAction?.("viewEvidence", {
+                              actionId: action.id,
+                              action: action.action,
+                              evidenceUrl: action.evidenceUrl,
+                            })
+                          }
                           className="flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
                         >
                           <Flame className="h-3 w-3" />
@@ -200,6 +212,34 @@ export function DecisionSupport({ data, isStreaming }: DecisionSupportProps) {
                     )}
                   </div>
                 )}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className="rounded-md border px-2.5 py-1 font-medium text-xs transition-colors hover:bg-muted"
+                    onClick={() =>
+                      onAction?.("selectAction", {
+                        actionId: action.id,
+                        action: action.action,
+                        priority: index + 1,
+                        evidenceUrl: action.evidenceUrl ?? null,
+                      })
+                    }
+                  >
+                    Do this next
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-emerald-500/30 px-2.5 py-1 font-medium text-emerald-600 text-xs transition-colors hover:bg-emerald-500/10"
+                    onClick={() =>
+                      onAction?.("markCommitted", {
+                        actionId: action.id,
+                        action: action.action,
+                      })
+                    }
+                  >
+                    Mark committed
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -223,6 +263,9 @@ export function DecisionSupport({ data, isStreaming }: DecisionSupportProps) {
           {data.actionsUrl && (
             <Link
               to={data.actionsUrl}
+              onClick={() =>
+                onAction?.("saveActions", { actionsUrl: data.actionsUrl })
+              }
               className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-foreground px-4 py-2 font-medium text-background text-sm transition-colors hover:bg-foreground/90"
             >
               Save committed actions

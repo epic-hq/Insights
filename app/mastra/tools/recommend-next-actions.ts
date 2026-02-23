@@ -17,6 +17,7 @@ import {
   buildSingleComponentSurface,
   withA2UI,
 } from "../../lib/gen-ui/tool-helpers";
+import { buildProgressRailData } from "../../lib/gen-ui/phase-detection";
 import { supabaseAdmin } from "../../lib/supabase/client.server";
 import type { Database } from "../../types";
 import { createRouteDefinitions } from "../../utils/route-definitions";
@@ -229,8 +230,39 @@ The recommendations are based on:
       };
 
       const surfaceId = accountId ?? projectId;
-      const a2ui =
-        resolvedRecommendations.length > 0
+      const reason = (input.reason ?? "").toLowerCase();
+      const wantsProgressRail =
+        reason.includes("progress") ||
+        reason.includes("status") ||
+        reason.includes("project state") ||
+        reason.includes("where am i") ||
+        reason.includes("phase");
+
+      const a2ui = wantsProgressRail
+        ? (() => {
+            const progressData = buildProgressRailData({
+              stage,
+              interviewCount: projectContext.interviewCount,
+              surveyCount: projectContext.surveyCount,
+              themeCount: projectContext.themes.length,
+              hasGoals: projectContext.hasGoals,
+            });
+
+            const topRecommendation = resolvedRecommendations[0];
+            if (topRecommendation?.title) {
+              progressData.nextAction = topRecommendation.title;
+            }
+            if (topRecommendation?.navigateTo) {
+              progressData.nextActionUrl = topRecommendation.navigateTo;
+            }
+
+            return buildSingleComponentSurface({
+              surfaceId,
+              componentType: "ProgressRail",
+              data: progressData as Record<string, unknown>,
+            });
+          })()
+        : resolvedRecommendations.length > 0
           ? buildSingleComponentSurface({
               surfaceId,
               componentType: "DecisionSupport",

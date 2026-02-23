@@ -1,6 +1,17 @@
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+	createContext,
+	type Dispatch,
+	type ReactNode,
+	type SetStateAction,
+	useCallback,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { useLocation } from "react-router";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
+import type { UiEvent } from "~/lib/gen-ui/ui-events";
 
 export interface PendingAssistantMessage {
 	id: string;
@@ -12,7 +23,10 @@ interface ProjectStatusAgentContextType {
 	setIsExpanded: (expanded: boolean) => void;
 	pendingInput: string | null;
 	setPendingInput: (input: string | null) => void;
+	pendingUiEvents: UiEvent[];
+	setPendingUiEvents: Dispatch<SetStateAction<UiEvent[]>>;
 	insertText: (text: string) => void;
+	sendUiEvent: (event: UiEvent) => void;
 	pendingAssistantMessage: PendingAssistantMessage | null;
 	setPendingAssistantMessage: (msg: PendingAssistantMessage | null) => void;
 	/** Opens sidebar and injects an assistant message */
@@ -34,6 +48,7 @@ export function ProjectStatusAgentProvider({ children }: { children: ReactNode }
 	const shouldDefaultCollapsed = isMobile && location.pathname.includes("/interviews");
 	const [isExpanded, setIsExpanded] = useState(!shouldDefaultCollapsed);
 	const [pendingInput, setPendingInput] = useState<string | null>(null);
+	const [pendingUiEvents, setPendingUiEvents] = useState<UiEvent[]>([]);
 	const [pendingAssistantMessage, setPendingAssistantMessage] = useState<PendingAssistantMessage | null>(null);
 	const [forceExpandChat, setForceExpandChat] = useState(false);
 
@@ -57,6 +72,13 @@ export function ProjectStatusAgentProvider({ children }: { children: ReactNode }
 		setIsExpanded(true);
 	};
 
+	const sendUiEvent = (event: UiEvent) => {
+		setPendingUiEvents((prev) => [...prev, event]);
+		forceExpandCallbackRef.current?.();
+		setForceExpandChat(true);
+		setIsExpanded(true);
+	};
+
 	const showAssistantMessage = (text: string) => {
 		setPendingAssistantMessage({
 			id: `assistant-${Date.now()}`,
@@ -74,7 +96,10 @@ export function ProjectStatusAgentProvider({ children }: { children: ReactNode }
 				setIsExpanded,
 				pendingInput,
 				setPendingInput,
+				pendingUiEvents,
+				setPendingUiEvents,
 				insertText,
+				sendUiEvent,
 				pendingAssistantMessage,
 				setPendingAssistantMessage,
 				showAssistantMessage,

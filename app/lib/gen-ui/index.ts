@@ -58,3 +58,12 @@ export {
 	jsonPatchSchema,
 	validateJsonPatch,
 } from "./json-patch";
+
+// Typed UI event channel
+export type { CanvasActionEvent, UiEvent, UserInputEvent } from "./ui-events";
+export {
+	canvasActionEventSchema,
+	uiEventBatchSchema,
+	uiEventSchema,
+	userInputEventSchema,
+} from "./ui-events";

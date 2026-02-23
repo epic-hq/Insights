@@ -382,10 +382,10 @@ export const progressRailPhaseSchema = z.object({
 
 export const progressRailDataSchema = z.object({
   phases: z.array(progressRailPhaseSchema).catch([]),
-  activeMoment: z.number().optional(),
+  activeMoment: z.number().nullish(),
   statusLine: z.string().catch(""),
-  nextAction: z.string().optional(),
-  nextActionUrl: z.string().optional(),
+  nextAction: z.string().nullish(),
+  nextActionUrl: z.string().nullish(),
 });
 
 /**
@@ -722,7 +722,11 @@ export interface ComponentDefinition<TData = unknown> {
   /** Zod schema for validating component props/data */
   schema: z.ZodType<TData>;
   /** React component to render */
-  component: ComponentType<{ data: TData; isStreaming?: boolean }>;
+  component: ComponentType<{
+    data: TData;
+    isStreaming?: boolean;
+    onAction?: (actionName: string, payload?: Record<string, unknown>) => void;
+  }>;
   /** Available actions the agent can perform on this component */
   actions?: string[];
   /** When should the agent use this component */

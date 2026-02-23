@@ -69,6 +69,7 @@ vi.mock("~/mastra/memory", () => ({
 	memory: {
 		listThreads: vi.fn(),
 		createThread: vi.fn(),
+		updateThread: vi.fn(),
 		deleteThread: vi.fn(),
 	},
 }));
@@ -115,6 +116,7 @@ const mockedCreateSurveyTool = vi.mocked(createSurveyTool);
 type MockedMemory = {
 	listThreads: ReturnType<typeof vi.fn>;
 	createThread: ReturnType<typeof vi.fn>;
+	updateThread: ReturnType<typeof vi.fn>;
 	deleteThread: ReturnType<typeof vi.fn>;
 };
 
@@ -126,6 +128,7 @@ function buildArgs(options?: {
 	userId?: string;
 	message?: string;
 	system?: string;
+	uiEvents?: unknown[];
 }) {
 	const payload = {
 		messages: [
@@ -135,6 +138,7 @@ function buildArgs(options?: {
 			},
 		],
 		system: options?.system,
+		uiEvents: options?.uiEvents,
 	};
 
 	const request = new Request("http://localhost/api/chat/project-status/project-1", {
@@ -225,6 +229,7 @@ describe("api.chat.project-status", () => {
 			threads: [{ id: "thread-1" }],
 		});
 		mockedMemory.createThread.mockResolvedValue({ id: "thread-created" });
+		mockedMemory.updateThread.mockResolvedValue({ id: "thread-1" });
 		mockedHandleChatStream.mockResolvedValue({
 			kind: "live-chat-stream",
 		} as any);
@@ -381,6 +386,66 @@ describe("api.chat.project-status", () => {
 		expect(mockedGenerateObject).not.toHaveBeenCalled();
 		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
 		expect(mockedHandleChatStream).not.toHaveBeenCalled();
+	});
+
+	it("routes 'show top theme' through deterministic theme snapshot mode", async () => {
+		const response = await action(
+			buildArgs({
+				message: "show top theme",
+				userId: "user-top-theme-shortcut",
+			})
+		);
+		expect(response.status).toBe(200);
+		expect(mockedGenerateObject).not.toHaveBeenCalled();
+		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
+		expect(mockedHandleChatStream).not.toHaveBeenCalled();
+		const call = mockedHandleNetworkStream.mock.calls[0][0] as any;
+		expect(call.agentId).toBe("projectStatusAgent");
+		expect(call.params.requestContext.get("response_mode")).toBe("theme_people_snapshot");
+	});
+
+	it("routes typed ui events to the sticky agent without classifier", async () => {
+		const userId = "user-structured-ui-events";
+		const setupResponse = await action(
+			buildArgs({
+				message: "help me set up project and define research goals",
+				userId,
+			})
+		);
+		expect(setupResponse.status).toBe(200);
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+		expect((mockedHandleChatStream.mock.calls[0][0] as any).agentId).toBe("projectSetupAgent");
+
+		const structuredResponse = await action(
+			buildArgs({
+				message: "[UIEventDispatch]",
+				userId,
+				uiEvents: [
+					{
+						type: "user_input",
+						prompt: "Which audience should we prioritize?",
+						promptKey: "persona-priority",
+						selectedIds: ["icp-high"],
+						freeText: null,
+						source: "chat-inline",
+						occurredAt: "2026-02-21T18:00:00.000Z",
+					},
+				],
+			})
+		);
+		expect(structuredResponse.status).toBe(200);
+		expect(mockedGenerateObject).not.toHaveBeenCalled();
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(2);
+		const typedCall = mockedHandleChatStream.mock.calls[1][0] as any;
+		expect(typedCall.agentId).toBe("projectSetupAgent");
+		expect(typedCall.params.requestContext.get("ui_events")).toEqual([
+			expect.objectContaining({
+				type: "user_input",
+				prompt: "Which audience should we prioritize?",
+				selectedIds: ["icp-high"],
+			}),
+		]);
+		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
 	});
 
 	it("routes people-comparison prompts through normal flow when classifier selects normal mode", async () => {

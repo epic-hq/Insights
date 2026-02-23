@@ -18,6 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import type { A2UIComponent, SurfaceState } from "~/lib/gen-ui/a2ui";
 import { componentRegistry } from "~/lib/gen-ui/component-registry";
 import { resolvePointer } from "~/lib/gen-ui/data-binding";
+import { buildRenderPlan } from "~/lib/gen-ui/render-plan";
+import { cn } from "~/lib/utils";
 
 // Ensure components are registered
 import "~/lib/gen-ui/registered-components";
@@ -47,11 +49,17 @@ function RenderNode({
   surface,
   onAction,
   isStreaming,
+  actionComponentId,
+  dataScopePath,
+  depth,
 }: {
   node: A2UIComponent;
   surface: SurfaceState;
   onAction?: (action: A2UIAction) => void;
   isStreaming?: boolean;
+  actionComponentId: string;
+  dataScopePath?: string;
+  depth?: number;
 }) {
   // The component type is the first key in the component record
   const componentType = Object.keys(node.component)[0];
@@ -75,12 +83,41 @@ function RenderNode({
   // If rawProps has a dataBinding path, resolve it from the data model
   let resolvedData: unknown = rawProps;
   if (rawProps?.dataBinding && typeof rawProps.dataBinding === "string") {
-    resolvedData = resolvePointer(
-      surface.dataModel,
-      rawProps.dataBinding as string,
-    );
+    const dataBinding = rawProps.dataBinding as string;
+    if (dataBinding === "@item" || dataBinding === "$item") {
+      resolvedData =
+        dataScopePath !== undefined
+          ? resolvePointer(surface.dataModel, dataScopePath)
+          : undefined;
+    } else if (
+      dataScopePath !== undefined &&
+      dataBinding.startsWith("./") &&
+      dataBinding.length > 2
+    ) {
+      resolvedData = resolvePointer(
+        surface.dataModel,
+        `${dataScopePath}/${dataBinding.slice(2)}`,
+      );
+    } else {
+      resolvedData = resolvePointer(surface.dataModel, dataBinding);
+    }
   } else if (rawProps?.path && typeof rawProps.path === "string") {
-    resolvedData = resolvePointer(surface.dataModel, rawProps.path as string);
+    const path = rawProps.path as string;
+    if (
+      dataScopePath !== undefined &&
+      path.startsWith("./") &&
+      path.length > 2
+    ) {
+      resolvedData = resolvePointer(
+        surface.dataModel,
+        `${dataScopePath}/${path.slice(2)}`,
+      );
+    } else {
+      resolvedData = resolvePointer(surface.dataModel, path);
+    }
+  } else if (dataScopePath !== undefined) {
+    // Template children without an explicit binding get the current item.
+    resolvedData = resolvePointer(surface.dataModel, dataScopePath);
   }
 
   // Validate against schema
@@ -103,16 +140,23 @@ function RenderNode({
   // Create a bound onAction that includes the component ID and type
   const handleAction = onAction
     ? (actionName: string, payload?: Record<string, unknown>) => {
-        onAction({ componentId: node.id, componentType, actionName, payload });
+        onAction({
+          componentId: actionComponentId,
+          componentType,
+          actionName,
+          payload,
+        });
       }
     : undefined;
 
   return (
-    <Component
-      data={validation.data}
-      isStreaming={isStreaming}
-      onAction={handleAction}
-    />
+    <div className={cn(depth && depth > 0 ? "ml-4 border-l pl-3" : "")}>
+      <Component
+        data={validation.data}
+        isStreaming={isStreaming}
+        onAction={handleAction}
+      />
+    </div>
   );
 }
 
@@ -128,15 +172,8 @@ export function A2UIRenderer({
   isCollapsed,
   isStreaming,
 }: A2UIRendererProps) {
-  // Find root component
-  const rootNode = useMemo(() => {
-    if (!surface.rootId) {
-      // If no rootId, render the first component
-      const first = surface.components.values().next();
-      return first.done ? null : first.value;
-    }
-    return surface.components.get(surface.rootId) ?? null;
-  }, [surface.rootId, surface.components]);
+  const renderPlan = useMemo(() => buildRenderPlan(surface), [surface]);
+  const rootNode = renderPlan[0]?.node ?? null;
 
   const handleDismiss = useCallback(() => {
     onDismiss?.();
@@ -146,7 +183,7 @@ export function A2UIRenderer({
     onToggleCollapse?.();
   }, [onToggleCollapse]);
 
-  if (!rootNode || surface.components.size === 0) {
+  if (!rootNode || renderPlan.length === 0) {
     return null;
   }
 
@@ -190,13 +227,16 @@ export function A2UIRenderer({
       </CardHeader>
       {!isCollapsed && (
         <CardContent className="space-y-3">
-          {Array.from(surface.components.values()).map((node) => (
+          {renderPlan.map((entry) => (
             <RenderNode
-              key={node.id}
-              node={node}
+              key={entry.key}
+              node={entry.node}
               surface={surface}
               onAction={onAction}
               isStreaming={isStreaming}
+              actionComponentId={entry.actionComponentId}
+              dataScopePath={entry.dataScopePath}
+              depth={entry.depth}
             />
           ))}
         </CardContent>

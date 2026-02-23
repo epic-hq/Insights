@@ -9,6 +9,11 @@ type ToolResult = {
 	message: string;
 	projectId: string | null;
 	totalThemes: number;
+	a2ui?: {
+		__a2ui: true;
+		surfaceId: string;
+		messages: Array<Record<string, unknown>>;
+	};
 	topThemes: Array<{
 		themeId: string;
 		name: string;
@@ -216,13 +221,18 @@ describe("fetchTopThemesWithPeopleTool", () => {
 			{ requestContext }
 		)) as ToolResult;
 
-		expect(result.success).toBe(true);
-		expect(result.totalThemes).toBe(2);
-		expect(result.topThemes).toHaveLength(2);
-		expect(result.topThemes[0].name).toBe("Automation Demand");
+			expect(result.success).toBe(true);
+			expect(result.totalThemes).toBe(2);
+			expect(result.topThemes).toHaveLength(2);
+			expect(result.topThemes[0].name).toBe("Automation Demand");
 		expect(result.topThemes[0].evidenceCount).toBe(2);
-		expect(result.topThemes[0].peopleCount).toBe(3);
-		expect(result.topThemes[0].people.map((person) => person.name)).toEqual(["Alice", "Carol", "Bob"]);
-		expect(result.topThemes[0].url).toBe("http://localhost:4280/a/account-1/project-1/insights/theme-1");
+			expect(result.topThemes[0].peopleCount).toBe(3);
+			expect(result.topThemes[0].people.map((person) => person.name)).toEqual(["Alice", "Carol", "Bob"]);
+			expect(result.topThemes[0].url).toBe("http://localhost:4280/a/account-1/project-1/insights/theme-1");
+			expect(result.a2ui?.__a2ui).toBe(true);
+			const surfaceUpdate = result.a2ui?.messages.find((message) => message.type === "surfaceUpdate");
+			const firstComponent = (surfaceUpdate as { components?: Array<{ component?: Record<string, unknown> }> } | undefined)
+				?.components?.[0];
+			expect(Object.keys(firstComponent?.component ?? {})).toContain("PatternSynthesis");
+		});
 	});
-});

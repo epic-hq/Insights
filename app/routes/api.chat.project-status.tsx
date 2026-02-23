@@ -29,6 +29,11 @@ import {
 import { recordUsageOnly } from "~/lib/billing/usage.server";
 import { getLangfuseClient } from "~/lib/langfuse.server";
 import { getPostHogServerClient } from "~/lib/posthog.server";
+import {
+  UI_EVENT_DISPATCH_TEXT,
+  uiEventBatchSchema,
+  type UiEvent,
+} from "~/lib/gen-ui/ui-events";
 import { mastra } from "~/mastra";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
@@ -54,6 +59,18 @@ function getLastUserText(
     }
   }
   return "";
+}
+
+function summarizeUiEventsForPrompt(uiEvents: UiEvent[]): string {
+  const first = uiEvents[0];
+  if (!first) return "";
+  if (first.type === "canvas_action") {
+    return `Canvas action: ${first.componentType}.${first.actionName}`;
+  }
+  const suffix = first.selectedIds.length
+    ? ` (${first.selectedIds.join(", ")})`
+    : "";
+  return `User input: ${first.prompt}${suffix}`;
 }
 
 const routingTargetAgents = [
@@ -690,17 +707,26 @@ function routeByDeterministicPrompt(
     };
   }
 
-  const asksForTopThemesWithPeople =
-    hasAny("theme", "themes") &&
-    hasAny("top", "most common") &&
-    hasAny("who", "people");
-  if (asksForTopThemesWithPeople) {
+  const asksForTopThemesSnapshot =
+    hasAny(
+      "show top theme",
+      "show top themes",
+      "top theme",
+      "top themes",
+      "most common theme",
+      "most common themes",
+      "strongest theme",
+      "strongest themes",
+      "strongest signal",
+    ) ||
+    (hasAny("theme", "themes") && hasAny("top", "most common", "strongest"));
+  if (asksForTopThemesSnapshot) {
     return {
       targetAgentId: "projectStatusAgent",
       confidence: 1,
       responseMode: "theme_people_snapshot",
       rationale:
-        "deterministic keyword routing for top themes with people attribution",
+        "deterministic keyword routing for top-theme snapshot requests",
     };
   }
 
@@ -829,12 +855,16 @@ function routeByDeterministicPrompt(
 async function routeAgentByIntent(
   lastUserText: string,
   resourceId?: string,
-  options?: { systemContext?: string },
+  options?: { systemContext?: string; uiEvents?: UiEvent[] },
 ): Promise<z.infer<typeof intentRoutingSchema> | null> {
   const prompt = lastUserText.trim();
-  if (!prompt) return null;
+  const hasTypedUiEvents = (options?.uiEvents?.length ?? 0) > 0;
+  if (!prompt && !hasTypedUiEvents) return null;
 
   const promptLower = prompt.toLowerCase();
+  const isStructuredUiEvent =
+    promptLower.startsWith("[canvasaction]") ||
+    promptLower.startsWith("[userinput]");
   const promptLooksLikeFollowupFeedbackDetail = [
     "did not",
     "didn't",
@@ -869,6 +899,32 @@ async function routeAgentByIntent(
           "sticky routing — continuing feedbackAgent clarification flow",
       };
     }
+  }
+
+  if (hasTypedUiEvents) {
+    const sticky = resourceId ? lastRoutedAgentMap.get(resourceId) : null;
+    const stickyIsFresh =
+      !!sticky && Date.now() - sticky.timestamp < STICKY_ROUTING_TTL_MS;
+    return {
+      targetAgentId: stickyIsFresh ? sticky.agentId : "projectStatusAgent",
+      confidence: 1,
+      responseMode: "normal",
+      rationale: "deterministic routing for typed ui events",
+    };
+  }
+
+  // Structured UI events should skip classifier routing.
+  // Keep the active/sticky agent when available so requestUserInput flows continue.
+  if (isStructuredUiEvent) {
+    const sticky = resourceId ? lastRoutedAgentMap.get(resourceId) : null;
+    const stickyIsFresh =
+      !!sticky && Date.now() - sticky.timestamp < STICKY_ROUTING_TTL_MS;
+    return {
+      targetAgentId: stickyIsFresh ? sticky.agentId : "projectStatusAgent",
+      confidence: 1,
+      responseMode: "normal",
+      rationale: "deterministic routing for structured ui event messages",
+    };
   }
 
   const deterministicRoute = routeByDeterministicPrompt(prompt, options);
@@ -1009,6 +1065,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     system?: unknown;
     userTimezone?: unknown;
     threadId?: unknown;
+    uiEvents?: unknown;
   };
   const messages = body.messages;
   const system = typeof body.system === "string" ? body.system : undefined;
@@ -1018,6 +1075,13 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     typeof body.threadId === "string" && body.threadId.trim()
       ? body.threadId.trim()
       : null;
+  const parsedUiEvents = uiEventBatchSchema.safeParse(body.uiEvents ?? []);
+  const typedUiEvents = parsedUiEvents.success ? parsedUiEvents.data : [];
+  if (!parsedUiEvents.success && body.uiEvents !== undefined) {
+    consola.warn("project-status: invalid uiEvents payload, ignoring", {
+      errorCount: parsedUiEvents.error.issues.length,
+    });
+  }
   const sanitizedMessages = Array.isArray(messages)
     ? messages.map((message) => {
         if (!message || typeof message !== "object") return message;
@@ -1062,16 +1126,24 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
   const lastUserText = debugRequested
     ? stripDebugPrefix(lastUserTextRaw)
     : lastUserTextRaw;
+  const lastUserTextForRouting =
+    typedUiEvents.length > 0 &&
+    (!lastUserText || lastUserText === UI_EVENT_DISPATCH_TEXT)
+      ? summarizeUiEventsForPrompt(typedUiEvents)
+      : lastUserText;
+  const threadTitleSeed =
+    lastUserText === UI_EVENT_DISPATCH_TEXT ? lastUserTextForRouting : lastUserText;
   const runtimeMessagesForExecution = normalizeMessagesForExecution(
     runtimeMessages,
     debugRequested,
   );
   const routingResourceId = `project-chat-${userId}-${projectId}`;
   const routeDecision = await routeAgentByIntent(
-    lastUserText,
+    lastUserTextForRouting,
     routingResourceId,
     {
       systemContext: typeof system === "string" ? system : "",
+      uiEvents: typedUiEvents,
     },
   );
   const resolvedResponseMode: RoutingResponseMode =
@@ -1110,7 +1182,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     userId: userId || undefined,
     sessionId: routingResourceId,
     input: {
-      lastUserText,
+      lastUserText: lastUserTextForRouting,
       systemContext,
       userTimezone: userTimezone || null,
     },
@@ -1125,6 +1197,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     model: BILLING_MODEL_BY_AGENT[targetAgentId] || "gpt-4o",
     input: {
       lastUserText,
+      lastUserTextForRouting,
       systemContext,
       userTimezone: userTimezone || null,
       targetAgentId,
@@ -1160,6 +1233,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     routingConfidence: routeDecision?.confidence ?? null,
     responseMode: resolvedResponseMode,
     rawResponseMode: routeDecision?.responseMode ?? "normal",
+    uiEventCount: typedUiEvents.length,
     rationale: routeDecision?.rationale ?? null,
   });
   requestTrace?.update?.({
@@ -1218,7 +1292,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
         existingTitle === "New Chat" ||
         existingTitle === "Chat Session"
       ) {
-        const betterTitle = buildShortThreadTitle(lastUserText);
+        const betterTitle = buildShortThreadTitle(threadTitleSeed);
         if (betterTitle !== "New Chat") {
           memory
             .updateThread({ id: threadId, title: betterTitle })
@@ -1233,7 +1307,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     } else {
       const newThread = await memory.createThread({
         resourceId: defaultThreadResourceId,
-        title: buildShortThreadTitle(lastUserText),
+        title: buildShortThreadTitle(threadTitleSeed),
         metadata: {
           user_id: userId,
           project_id: projectId,
@@ -1280,6 +1354,9 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
   requestContext.set("routing_source", routingSource);
   requestContext.set("thread_id", threadId);
   requestContext.set("thread_resource_id", threadResourceId);
+  if (typedUiEvents.length > 0) {
+    requestContext.set("ui_events", typedUiEvents);
+  }
   if (debugRequested) {
     requestContext.set("debug_mode", true);
   }
@@ -1462,7 +1539,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     // Create a fresh thread
     const freshThread = await memory.createThread({
       resourceId: threadResourceId,
-      title: buildShortThreadTitle(lastUserText),
+      title: buildShortThreadTitle(threadTitleSeed),
       metadata: {
         user_id: userId,
         project_id: projectId,
@@ -1491,6 +1568,15 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
             {
               role: "system" as const,
               content: `## Context from the client's UI:\n${systemContext}`,
+            },
+          ] as const)
+        : []),
+      ...(typedUiEvents.length > 0
+        ? ([
+            {
+              role: "system" as const,
+              content: `## Typed UI events from client
+${JSON.stringify(typedUiEvents, null, 2)}`,
             },
           ] as const)
         : []),

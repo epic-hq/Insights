@@ -26,6 +26,7 @@ import { generateProjectRoutesTool } from "../tools/generate-project-routes";
 import { generateResearchRecommendationsTool } from "../tools/generate-research-recommendations";
 import { getCurrentDateTool } from "../tools/get-current-date";
 import { recommendNextActionsTool } from "../tools/recommend-next-actions";
+import { requestUserInputTool } from "../tools/request-user-input";
 import { semanticSearchAssetsTool } from "../tools/semantic-search-assets";
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence";
 import { suggestionTool } from "../tools/suggestion-tool";
@@ -130,6 +131,8 @@ const project_status_agent_tools = {
   "generate-research-recommendations": generateResearchRecommendationsTool,
   displayComponent: displayComponentTool,
   "display-component": displayComponentTool,
+  requestUserInput: requestUserInputTool,
+  "request-user-input": requestUserInputTool,
   fetchResearchPulse: fetchResearchPulseTool,
   "fetch-research-pulse": fetchResearchPulseTool,
 };
@@ -144,10 +147,23 @@ export const projectStatusAgent = new Agent({
       const projectId = requestContext.get("project_id");
       const accountId = requestContext.get("account_id");
       const userId = requestContext.get("user_id");
+      const responseMode = String(requestContext.get("response_mode") || "normal");
+      const uiEvents = requestContext.get("ui_events");
+      const uiEventsSummary =
+        Array.isArray(uiEvents) && uiEvents.length > 0
+          ? JSON.stringify(uiEvents)
+          : "[]";
       return `
 You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
 
-project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}, user_id=${userId || "<unknown>"}
+project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}, user_id=${userId || "<unknown>"}, response_mode=${responseMode}, typed_ui_events=${uiEventsSummary}
+
+## Response Mode Overrides (MANDATORY)
+When \`response_mode=theme_people_snapshot\`:
+1. Call \`fetchTopThemesWithPeople\` first with limit=3 and peoplePerTheme=5.
+2. Provide a concise summary of the top theme(s) and the most-mentioned people.
+3. Keep the answer short and evidence-led; do not switch to generic recommendations.
+4. If the tool returns no themes, explicitly say that and suggest one next data-collection action.
 
 ## Your Differentiators
 You don't just retrieve data—you **interpret it**. When answering:
@@ -208,6 +224,17 @@ If user asks for "aggregated" analysis → not yet supported, tell them it's com
 4. Add a brief chat message summarizing the key insight (1-2 sentences max — the widget does the heavy lifting)
 
 Do NOT render widgets with empty/placeholder data. If a tool returns no data, explain what's missing and suggest how to get started.
+
+## Canvas Interaction Events
+When \`typed_ui_events\` is not empty, treat those events as the highest-priority user intent for this turn.
+- \`canvas_action\`: widget interaction emitted from canvas/chat-inline controls.
+- \`user_input\`: structured answer emitted from \`requestUserInput\`.
+- If a canvas action has \`persisted=false\`, acknowledge save failure briefly and still continue guidance.
+- Continue the same workflow that triggered the interaction; do not reset context.
+- For CRUD/filter interactions, provide concrete next actions and refresh relevant widgets when useful.
+- If both typed events and free-form user text exist, resolve conflicts explicitly and favor the most recent typed event.
+
+Backward compatibility: if older threads include \`[CanvasAction]\` or \`[UserInput]\` text envelopes, handle them the same way.
 
 ## Proactive Recommendations
 When the user asks research-related questions like "who should I talk to next?", "what insights need validation?", "where are my research gaps?", or "which contacts are getting stale?":

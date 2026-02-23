@@ -33,10 +33,11 @@ import { useStickToBottom } from "use-stick-to-bottom";
 import { Response as AiResponse } from "~/components/ai-elements/response";
 import { Suggestion, Suggestions } from "~/components/ai-elements/suggestion";
 import { FileUploadButton } from "~/components/chat/FileUploadButton";
+import { InlineUserInput } from "~/components/chat/InlineUserInput";
 import { MessagePlayButton } from "~/components/chat/MessagePlayButton";
 import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat";
 import { TTSToggle } from "~/components/chat/TTSToggle";
-import { A2UIRenderer } from "~/components/gen-ui/A2UIRenderer";
+import { A2UIRenderer, type A2UIAction } from "~/components/gen-ui/A2UIRenderer";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Textarea } from "~/components/ui/textarea";
 import {
@@ -55,7 +56,14 @@ import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
 import { useTTS } from "~/hooks/useTTS";
+import { persistCanvasAction } from "~/lib/gen-ui/canvas-persistence.client";
 import { isA2UIToolPayload } from "~/lib/gen-ui/tool-helpers";
+import {
+  UI_EVENT_DISPATCH_TEXT,
+  type CanvasActionEvent,
+  type UiEvent,
+  type UserInputEvent,
+} from "~/lib/gen-ui/ui-events";
 import { cn } from "~/lib/utils";
 import type { UpsightMessage } from "~/mastra/message-types";
 import { HOST, PRODUCTION_HOST } from "~/paths";
@@ -101,6 +109,32 @@ interface ToolProgressData {
   status: string;
   message: string;
   progress?: number;
+}
+
+interface UserInputOptionPayload {
+  id: string;
+  label: string;
+  description?: string;
+}
+
+interface UserInputPayload {
+  prompt: string;
+  options: UserInputOptionPayload[];
+  selectionMode: "single" | "multiple";
+  allowFreeText: boolean;
+}
+
+interface UserInputAnswer {
+  selectedIds: string[];
+  freeText?: string;
+}
+
+const USER_INPUT_MESSAGE_PREFIX = "[UserInput]";
+
+function buildUserInputPayloadKey(payload: UserInputPayload): string {
+  return `${payload.prompt}::${payload.selectionMode}::${payload.options
+    .map((option) => option.id)
+    .join(",")}`;
 }
 
 interface PeopleImportApiResponse {
@@ -442,6 +476,180 @@ function extractActiveToolCall(message: UpsightMessage): string | null {
   return null;
 }
 
+function normalizeToolName(value: string | undefined): string {
+  if (!value) return "";
+  return value.replace(/[-_]/g, "").toLowerCase();
+}
+
+function normalizeUserInputPayload(raw: unknown): UserInputPayload | null {
+  if (!raw || typeof raw !== "object") return null;
+  const candidate = raw as Record<string, unknown>;
+  const payload =
+    candidate.userInput && typeof candidate.userInput === "object"
+      ? (candidate.userInput as Record<string, unknown>)
+      : candidate;
+
+  if (payload.__userInput !== true) return null;
+  const prompt = payload.prompt;
+  const options = payload.options;
+  const selectionMode = payload.selectionMode;
+
+  if (
+    typeof prompt !== "string" ||
+    !Array.isArray(options) ||
+    (selectionMode !== "single" && selectionMode !== "multiple")
+  ) {
+    return null;
+  }
+
+  const normalizedOptions: UserInputOptionPayload[] = [];
+  for (const option of options) {
+    if (!option || typeof option !== "object") continue;
+    const opt = option as Record<string, unknown>;
+    if (typeof opt.id !== "string" || typeof opt.label !== "string") {
+      continue;
+    }
+    normalizedOptions.push({
+      id: opt.id,
+      label: opt.label,
+      ...(typeof opt.description === "string"
+        ? { description: opt.description }
+        : {}),
+    });
+  }
+
+  if (normalizedOptions.length === 0) return null;
+
+  return {
+    prompt,
+    options: normalizedOptions,
+    selectionMode,
+    allowFreeText: payload.allowFreeText !== false,
+  };
+}
+
+function extractUserInputPayloads(message: UpsightMessage): UserInputPayload[] {
+  if (!message.parts) return [];
+
+  const payloads: UserInputPayload[] = [];
+  const seen = new Set<string>();
+
+  for (const part of message.parts) {
+    const anyPart = part as Record<string, unknown>;
+    const partType =
+      typeof anyPart.type === "string" ? anyPart.type : undefined;
+    const toolInvocation =
+      anyPart.toolInvocation && typeof anyPart.toolInvocation === "object"
+        ? (anyPart.toolInvocation as Record<string, unknown>)
+        : undefined;
+
+    const partToolName =
+      typeof anyPart.toolName === "string" ? anyPart.toolName : undefined;
+    const invocationToolName =
+      typeof toolInvocation?.toolName === "string"
+        ? (toolInvocation.toolName as string)
+        : undefined;
+    const inferredToolName = partType?.startsWith("tool-")
+      ? partType.replace(/^tool-/, "")
+      : undefined;
+    const normalizedToolName = normalizeToolName(
+      partToolName ?? invocationToolName ?? inferredToolName,
+    );
+
+    if (normalizedToolName !== "requestuserinput") continue;
+
+    const candidates = [
+      anyPart.output,
+      anyPart.result,
+      anyPart.toolResult,
+      anyPart.data,
+      toolInvocation?.output,
+      anyPart.args,
+      anyPart.input,
+      toolInvocation?.args,
+      toolInvocation?.input,
+    ];
+
+    for (const candidate of candidates) {
+      const payload = normalizeUserInputPayload(candidate);
+      if (!payload) continue;
+      const key = buildUserInputPayloadKey(payload);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      payloads.push(payload);
+    }
+  }
+
+  return payloads;
+}
+
+function parseUserInputResponseText(text: string): {
+  promptKey?: string;
+  prompt: string;
+  selectedIds: string[];
+  freeText?: string;
+} | null {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith(USER_INPUT_MESSAGE_PREFIX)) return null;
+
+  const rawPayload = trimmed.slice(USER_INPUT_MESSAGE_PREFIX.length).trim();
+  if (!rawPayload) return null;
+
+  try {
+    const parsed = JSON.parse(rawPayload) as Record<string, unknown>;
+    if (typeof parsed.prompt !== "string") return null;
+    const promptKey =
+      typeof parsed.promptKey === "string" ? parsed.promptKey : undefined;
+    const selectedIds = Array.isArray(parsed.selectedIds)
+      ? parsed.selectedIds.filter(
+          (value): value is string => typeof value === "string",
+        )
+      : [];
+    const freeText =
+      typeof parsed.freeText === "string" ? parsed.freeText : undefined;
+    return {
+      promptKey,
+      prompt: parsed.prompt,
+      selectedIds,
+      freeText,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function extractUserInputAnswers(
+  messages: UpsightMessage[],
+): Record<string, UserInputAnswer> {
+  const answers: Record<string, UserInputAnswer> = {};
+
+  for (const message of messages) {
+    if (message.role !== "user" || !message.parts) continue;
+
+    for (const part of message.parts) {
+      if (part.type !== "text" || typeof part.text !== "string") continue;
+      const parsed = parseUserInputResponseText(part.text);
+      if (!parsed) continue;
+      const answer = {
+        selectedIds: parsed.selectedIds,
+        freeText: parsed.freeText,
+      };
+      if (parsed.promptKey) {
+        answers[parsed.promptKey] = answer;
+      }
+      answers[parsed.prompt] = answer;
+    }
+  }
+
+  return answers;
+}
+
+function isInternalUiDispatchMessage(message: UpsightMessage): boolean {
+  if (message.role !== "user" || !message.parts) return false;
+  const textPart = message.parts.find((part) => part.type === "text");
+  return textPart?.type === "text" && textPart.text === UI_EVENT_DISPATCH_TEXT;
+}
+
 function estimateDataRows(content: string): number {
   const nonEmptyLines = content
     .split(/\r?\n/)
@@ -526,6 +734,35 @@ const ensureProjectScopedPath = (
   }
 
   const projectBase = `/a/${accountId}/${projectId}`;
+
+  // Treat short internal routes as project-relative links.
+  // This prevents full-page navigations from markdown links like "/people" or "/setup".
+  const projectRelativePrefixes = [
+    "/setup",
+    "/ask",
+    "/insights",
+    "/themes",
+    "/people",
+    "/organizations",
+    "/personas",
+    "/crm",
+    "/plan",
+    "/sources",
+    "/interviews",
+    "/opportunities",
+    "/lenses",
+  ];
+  if (normalized === "/") {
+    return { resolved: projectBase };
+  }
+  if (
+    projectRelativePrefixes.some(
+      (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
+    )
+  ) {
+    return { resolved: `${projectBase}${normalized}` };
+  }
+
   if (normalized === projectBase || normalized.startsWith(`${projectBase}/`)) {
     return { resolved: normalized };
   }
@@ -557,6 +794,9 @@ export function ProjectStatusAgentChat({
   const {
     pendingInput,
     setPendingInput,
+    pendingUiEvents,
+    setPendingUiEvents,
+    sendUiEvent,
     pendingAssistantMessage,
     setPendingAssistantMessage,
     forceExpandChat,
@@ -740,6 +980,83 @@ export function ProjectStatusAgentChat({
       },
     });
 
+  const [localUserInputAnswers, setLocalUserInputAnswers] = useState<
+    Record<string, UserInputAnswer>
+  >({});
+  const persistedUserInputAnswers = useMemo(
+    () => extractUserInputAnswers(messages),
+    [messages],
+  );
+  const userInputAnswers = useMemo(
+    () => ({ ...persistedUserInputAnswers, ...localUserInputAnswers }),
+    [persistedUserInputAnswers, localUserInputAnswers],
+  );
+  const queueDispatchInFlightRef = useRef(false);
+  const handleInlineUserInputSubmit = useCallback(
+    (
+      payload: UserInputPayload,
+      payloadKey: string,
+      selectedIds: string[],
+      freeText?: string,
+    ) => {
+      const trimmedFreeText = freeText?.trim();
+      const answer: UserInputAnswer = {
+        selectedIds,
+        freeText: trimmedFreeText || undefined,
+      };
+
+      setLocalUserInputAnswers((prev) => ({
+        ...prev,
+        [payloadKey]: answer,
+        [payload.prompt]: answer,
+      }));
+
+      if (answer.freeText) {
+        toast.success("Response sent", {
+          description: answer.freeText,
+        });
+      } else {
+        const selectedLabels = payload.options
+          .filter((option) => selectedIds.includes(option.id))
+          .map((option) => option.label);
+        toast.success("Response sent", {
+          description:
+            selectedLabels.join(", ") || "Your selection was sent to Uppy.",
+        });
+      }
+
+      const responseEvent: UserInputEvent = {
+        type: "user_input",
+        promptKey: payloadKey,
+        prompt: payload.prompt,
+        selectedIds,
+        freeText: answer.freeText ?? null,
+        source: "chat-inline",
+        occurredAt: new Date().toISOString(),
+      };
+      sendUiEvent(responseEvent);
+    },
+    [sendUiEvent],
+  );
+  const handleA2UIAction = useCallback(
+    async (action: A2UIAction) => {
+      const persistResult = await persistCanvasAction(action, projectId);
+      const event: CanvasActionEvent = {
+        type: "canvas_action",
+        componentType: action.componentType,
+        componentId: action.componentId,
+        actionName: action.actionName,
+        payload: action.payload ?? null,
+        persisted: persistResult.saved,
+        persistError: persistResult.error ?? null,
+        source: "canvas",
+        occurredAt: new Date().toISOString(),
+      };
+      sendUiEvent(event);
+    },
+    [projectId, sendUiEvent],
+  );
+
   // A2UI: Scan messages for tool results containing A2UI payloads
   const lastA2UIMessageIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -789,8 +1106,10 @@ export function ProjectStatusAgentChat({
     historyLoadedRef.current = false;
     historyAppliedRef.current = false;
     setActiveThreadId(null);
+    setLocalUserInputAnswers({});
+    setPendingUiEvents([]);
     setMessages([]);
-  }, [accountId, projectId, setMessages]);
+  }, [accountId, projectId, setMessages, setPendingUiEvents]);
 
   // Load history once on mount
   useEffect(() => {
@@ -836,6 +1155,24 @@ export function ProjectStatusAgentChat({
       });
     }
   }, [historyFetcher.data, setMessages, scrollToBottom]);
+
+  // Handle pending typed UI events from external UI actions (canvas, inline choices).
+  useEffect(() => {
+    if (status !== "ready") {
+      queueDispatchInFlightRef.current = false;
+      return;
+    }
+    if (queueDispatchInFlightRef.current) return;
+    if (pendingUiEvents.length === 0) return;
+
+    queueDispatchInFlightRef.current = true;
+    const nextEvent: UiEvent = pendingUiEvents[0];
+    sendMessage(
+      { text: UI_EVENT_DISPATCH_TEXT },
+      { body: { uiEvents: [nextEvent] } },
+    );
+    setPendingUiEvents((prev) => prev.slice(1));
+  }, [pendingUiEvents, sendMessage, setPendingUiEvents, status]);
 
   // Handle pendingAssistantMessage from context (injected AI messages from other components)
   useEffect(() => {
@@ -966,10 +1303,12 @@ export function ProjectStatusAgentChat({
           "Failed to create new thread, falling back to UI clear:",
           data?.error || response.statusText,
         );
+        setLocalUserInputAnswers({});
         setMessages([]);
         setActiveThreadId(null);
         return;
       }
+      setLocalUserInputAnswers({});
       setMessages([]);
       setActiveThreadId(data.thread.id);
       requestAnimationFrame(() => {
@@ -978,6 +1317,7 @@ export function ProjectStatusAgentChat({
       });
     } catch (err) {
       consola.error("Failed to create new thread:", err);
+      setLocalUserInputAnswers({});
       setMessages([]);
       setActiveThreadId(null);
     }
@@ -1010,6 +1350,7 @@ export function ProjectStatusAgentChat({
               consola.warn("Failed to load thread:", data.error);
               return;
             }
+            setLocalUserInputAnswers({});
             setActiveThreadId(data.threadId || threadId);
             if (data.messages) {
               setMessages(data.messages);
@@ -1067,6 +1408,7 @@ export function ProjectStatusAgentChat({
     if (!messages) return [];
     const lastMessage = messages[messages.length - 1];
     return messages.filter((message) => {
+      if (isInternalUiDispatchMessage(message)) return false;
       if (message.role === "tool") {
         return Boolean(extractToolResultText(message));
       }
@@ -1336,16 +1678,21 @@ export function ProjectStatusAgentChat({
     const anchor = (event.target as HTMLElement | null)?.closest?.("a");
     if (!anchor) return;
 
+    const normalized = normalizeInternalPath(anchor.getAttribute("href"));
+    if (!normalized) {
+      // External links should keep default browser behavior.
+      return;
+    }
+
+    event.preventDefault();
     const { resolved: normalizedPath } = ensureProjectScopedPath(
-      anchor.getAttribute("href"),
+      normalized,
       accountId,
       projectId,
     );
     if (!normalizedPath) {
       return;
     }
-
-    event.preventDefault();
     // Use { preventScrollReset: true } to avoid scroll jumps and unnecessary re-renders
     navigate(normalizedPath, { preventScrollReset: true });
   };
@@ -1360,6 +1707,7 @@ export function ProjectStatusAgentChat({
           {isMobile ? (
             <A2UIRenderer
               surface={a2uiSurface.surface}
+              onAction={handleA2UIAction}
               onDismiss={() => a2uiSurface.dismiss()}
               onToggleCollapse={() => a2uiSurface.toggleCollapse()}
               isCollapsed={a2uiSurface.isCollapsed}
@@ -1415,6 +1763,7 @@ export function ProjectStatusAgentChat({
                 const messageText =
                   (isTool ? extractToolResultText(message) : null) ||
                   filteredTextParts.filter(Boolean).join("\n").trim();
+                const userInputPayloads = extractUserInputPayloads(message);
                 const networkSteps = extractNetworkSteps(message);
                 const isAssistant = !isUser && !isTool;
                 const isThisMessagePlaying =
@@ -1466,7 +1815,7 @@ export function ProjectStatusAgentChat({
                             />
                             {networkSteps.length > 0 && (
                               <div className="rounded-md bg-muted/40 px-2 py-1 text-[11px] text-foreground/70">
-                                {networkSteps.map((step, index) => {
+                                {networkSteps.map((step) => {
                                   const label = formatNetworkStepLabel(
                                     step.name,
                                   );
@@ -1475,7 +1824,7 @@ export function ProjectStatusAgentChat({
                                     status === "running" ? "running" : "done";
                                   return (
                                     <div
-                                      key={`${label}-${index}`}
+                                      key={`${step.name ?? label}-${status}`}
                                       className="flex items-center gap-2"
                                     >
                                       <span className="font-medium">
@@ -1494,6 +1843,49 @@ export function ProjectStatusAgentChat({
                           <span className="text-foreground/70">
                             (No text response)
                           </span>
+                        )}
+                        {!isUser && userInputPayloads.length > 0 && (
+                          <div className="mt-2 space-y-2">
+                            {userInputPayloads.map((payload) => {
+                              const payloadKey =
+                                buildUserInputPayloadKey(payload);
+                              const answer =
+                                userInputAnswers[payloadKey] ??
+                                userInputAnswers[payload.prompt];
+                              const answerHasSelection =
+                                answer &&
+                                (answer.selectedIds.length > 0 ||
+                                  Boolean(answer.freeText));
+                              return (
+                                <div
+                                  key={`${key}-user-input-${payloadKey}`}
+                                  className="rounded-md border border-border/60 bg-muted/20 p-2"
+                                >
+                                  <InlineUserInput
+                                    prompt={payload.prompt}
+                                    options={payload.options}
+                                    selectionMode={payload.selectionMode}
+                                    allowFreeText={payload.allowFreeText}
+                                    answered={Boolean(answerHasSelection)}
+                                    answeredIds={answer?.selectedIds ?? []}
+                                    onSubmit={(selectedIds, freeText) =>
+                                      handleInlineUserInputSubmit(
+                                        payload,
+                                        payloadKey,
+                                        selectedIds,
+                                        freeText,
+                                      )
+                                    }
+                                  />
+                                  {answer?.freeText && (
+                                    <p className="mt-2 text-muted-foreground text-xs">
+                                      Response: {answer.freeText}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
                     </div>
