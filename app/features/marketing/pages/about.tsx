@@ -40,9 +40,9 @@ export default function AboutPage() {
         </p>
         <h1 className="mt-5 max-w-3xl font-semibold text-[clamp(2rem,5vw,3.25rem)] leading-[1.08] tracking-[-0.025em]">
           Know your customers.{" "}
-          <span className="text-[rgba(238,238,242,0.45)]">
+          <h1 className="text-amber-400/90 text-[rgba(238,238,242,0.45)]">
             Serve them better.
-          </span>
+          </h1>
         </h1>
         <p className="mt-8 max-w-xl text-[clamp(1rem,1.3vw,1.15rem)] text-[rgba(238,238,242,0.65)] leading-relaxed">
           We started UpSight because we kept watching the same thing: teams talk
