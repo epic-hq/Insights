@@ -110,8 +110,8 @@ const PEOPLE: PersonData[] = [
     annotations: [
       {
         label: "Engage",
-        value: '"Who should I be ',
-        highlight: "talking to?",
+        value: '"I know exactly ',
+        highlight: "who to talk to",
         side: "left",
         zone: "head",
       },
@@ -172,7 +172,7 @@ const ANNO_SUFFIX: Record<string, Record<number, string>> = {
     2: ", not just features.",
   },
   "1": {
-    0: '"',
+    0: '."',
     1: ", not guesses.",
     2: " fast.",
   },
@@ -201,7 +201,7 @@ const CAPABILITIES = [
   {
     tag: "For Sales",
     title: "Win with proof.",
-    desc: "Turn customer evidence into your playbook. Know what prospects care about before the call — backed by proof, not hunches.",
+    desc: "Turn customer evidence into your playbook. Walk into every deal knowing what matters — backed by proof, not hunches.",
   },
   {
     tag: "For CS",
