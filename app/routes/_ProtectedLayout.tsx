@@ -465,11 +465,6 @@ export default function ProtectedLayout() {
 			ph.config.disable_surveys = true;
 		}
 
-		// Disable session replay for now (keep perf costs out of the critical path)
-		if (ph.config) {
-			ph.config.disable_session_recording = true;
-		}
-
 		// Identify user with person properties
 		const identifyProps: Record<string, unknown> = {
 			email: auth.user.email,
@@ -568,8 +563,17 @@ export default function ProtectedLayout() {
 				defaults: "2025-05-24",
 				debug: false,
 				capture_exceptions: true,
-				disable_session_recording: true,
+				disable_session_recording: false,
 				disable_surveys: true,
+				session_recording: {
+					// Mask all text inputs to avoid capturing passwords/PII in replays
+					maskAllInputs: true,
+					// Mask all text content by default for privacy — can relax later
+					maskTextSelector: "[data-ph-mask]",
+					// Capture network requests for debugging (headers/bodies excluded)
+					recordHeaders: false,
+					recordBody: false,
+				},
 			}}
 		>
 			{content}
