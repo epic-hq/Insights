@@ -3,6 +3,8 @@ public/build
 build
 dist
 out
+desktop/out*/
+beads-graph.html
 coverage
 .history
 .react-router/
@@ -117,6 +119,7 @@ cadre-devkit-claude/
 .opencode/
 .claude-design/
 .claude/skills/
+.claude/worktrees/
 
 # Obsidian local workspace (user-specific)
 .obsidian/

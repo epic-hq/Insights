@@ -419,9 +419,7 @@ export default function ProtectedLayout() {
 			? window.env.POSTHOG_KEY.trim()
 			: null;
 	const posthogHost =
-		typeof window !== "undefined"
-			? resolvePosthogHost(window.env?.POSTHOG_HOST)
-			: resolvePosthogHost(undefined);
+		typeof window !== "undefined" ? resolvePosthogHost(window.env?.POSTHOG_HOST) : resolvePosthogHost(undefined);
 
 	// Lazy-load client analytics only inside protected app shell.
 	useEffect(() => {

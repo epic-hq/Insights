@@ -26,16 +26,16 @@ import { saveUserSettingsDataTool } from "./tools/save-usersettings-data";
 // type MyDataPart = z.infer<typeof dataPartSchema>;
 
 export const tools = {
-  displayComponent: displayComponentTool,
-  displayInterviewPrompts: displayInterviewPromptsTool,
-  displayUserQuestions: displayUserQuestionsTool,
-  fetchProjectStatusContext: fetchProjectStatusContextTool,
-  fetchInterviewContext: fetchInterviewContextTool,
-  navigateToPage: navigateToPageTool,
-  recommendNextActions: recommendNextActionsTool,
-  requestUserInput: requestUserInputTool,
-  saveUserSettingsData: saveUserSettingsDataTool,
-  saveProjectSectionsData: saveProjectSectionsDataTool,
+	displayComponent: displayComponentTool,
+	displayInterviewPrompts: displayInterviewPromptsTool,
+	displayUserQuestions: displayUserQuestionsTool,
+	fetchProjectStatusContext: fetchProjectStatusContextTool,
+	fetchInterviewContext: fetchInterviewContextTool,
+	navigateToPage: navigateToPageTool,
+	recommendNextActions: recommendNextActionsTool,
+	requestUserInput: requestUserInputTool,
+	saveUserSettingsData: saveUserSettingsDataTool,
+	saveProjectSectionsData: saveProjectSectionsDataTool,
 };
 
 type UpsightTools = InferMastraUITools<typeof tools>;

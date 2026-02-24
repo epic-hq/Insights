@@ -2,8 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { ResearchLinkResponseSaveSchema } from "~/features/research-links/schemas";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { getPostHogServerClient } from "~/lib/posthog.server";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import type { Database } from "~/types";
 
 export const loader = () => Response.json({ message: "Method not allowed" }, { status: 405 });

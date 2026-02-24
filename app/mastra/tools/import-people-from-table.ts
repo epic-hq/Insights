@@ -110,7 +110,10 @@ async function ensurePersonOrganizationLink(params: {
 		if (!existingLink.job_title && jobTitle) updates.job_title = jobTitle;
 
 		if (Object.keys(updates).length > 0) {
-			const { error: linkUpdateError } = await (supabase as any).from("people_organizations").update(updates).eq("id", existingLink.id);
+			const { error: linkUpdateError } = await (supabase as any)
+				.from("people_organizations")
+				.update(updates)
+				.eq("id", existingLink.id);
 			if (linkUpdateError) {
 				consola.warn("[import-people] Failed updating people_organizations link:", linkUpdateError);
 			}

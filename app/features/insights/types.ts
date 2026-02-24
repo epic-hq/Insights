@@ -21,58 +21,58 @@
 import type { InsightView } from "~/types";
 
 export interface ThemeSignal {
-  /** evidence_count × person_count */
-  signal_strength: number;
-  /** Top 33% = "high", middle = "medium", bottom = "low" */
-  signal_level: "high" | "medium" | "low";
-  /** 14-day window comparison: "growing" | "stable" | "fading" */
-  trend: "growing" | "stable" | "fading";
-  breadth: { covered: number; total: number };
-  top_voices: Array<{ id: string; name: string; title: string | null }>;
+	/** evidence_count × person_count */
+	signal_strength: number;
+	/** Top 33% = "high", middle = "medium", bottom = "low" */
+	signal_level: "high" | "medium" | "low";
+	/** 14-day window comparison: "growing" | "stable" | "fading" */
+	trend: "growing" | "stable" | "fading";
+	breadth: { covered: number; total: number };
+	top_voices: Array<{ id: string; name: string; title: string | null }>;
 }
 
 export type ThemeWithSignal = InsightView &
-  ThemeSignal & {
-    evidence_count: number;
-    person_count: number;
-  };
+	ThemeSignal & {
+		evidence_count: number;
+		person_count: number;
+	};
 
 export interface WeakSignal {
-  theme: ThemeWithSignal;
-  reason: string;
+	theme: ThemeWithSignal;
+	reason: string;
 }
 
 export interface SuggestedAction {
-  title: string;
-  description: string;
-  confidence: "high" | "medium" | "low";
-  cta: string;
-  href?: string;
+	title: string;
+	description: string;
+	confidence: "high" | "medium" | "low";
+	cta: string;
+	href?: string;
 }
 
 /** ── Stakeholder lens types ── */
 
 export interface StakeholderSummary {
-  person: {
-    id: string;
-    name: string;
-    title: string | null;
-    job_function: string | null;
-    initials: string;
-    image_url: string | null;
-  };
-  themes: Array<{
-    id: string;
-    name: string;
-    evidence_count: number;
-    is_shared: boolean;
-  }>;
-  representative_quote: string | null;
+	person: {
+		id: string;
+		name: string;
+		title: string | null;
+		job_function: string | null;
+		initials: string;
+		image_url: string | null;
+	};
+	themes: Array<{
+		id: string;
+		name: string;
+		evidence_count: number;
+		is_shared: boolean;
+	}>;
+	representative_quote: string | null;
 }
 
 export interface CommonGround {
-  theme: { id: string; name: string };
-  role_count: number;
-  total_roles: number;
-  roles: string[];
+	theme: { id: string; name: string };
+	role_count: number;
+	total_roles: number;
+	roles: string[];
 }

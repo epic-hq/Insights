@@ -42,7 +42,13 @@ interface InterviewPromptsProps {
 	onAction?: (actionName: string, payload?: Record<string, unknown>) => void;
 }
 
-export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsChange, onAction }: InterviewPromptsProps) {
+export function InterviewPrompts({
+	data,
+	isStreaming,
+	mode = "edit",
+	onPromptsChange,
+	onAction,
+}: InterviewPromptsProps) {
 	const [prompts, setPrompts] = useState<InterviewPrompt[]>(data.prompts || []);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [editText, setEditText] = useState("");
@@ -75,7 +81,11 @@ export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsCh
 		}
 	}, [editingId]);
 
-	const updatePrompts = (newPrompts: InterviewPrompt[], actionName: string, actionPayload?: Record<string, unknown>) => {
+	const updatePrompts = (
+		newPrompts: InterviewPrompt[],
+		actionName: string,
+		actionPayload?: Record<string, unknown>
+	) => {
 		setPrompts(newPrompts);
 		onPromptsChange?.(newPrompts);
 		onAction?.(actionName, { ...actionPayload, promptCount: newPrompts.length });
@@ -139,11 +149,7 @@ export function InterviewPrompts({ data, isStreaming, mode = "edit", onPromptsCh
 			status: "planned",
 			isMustHave: false,
 		};
-		updatePrompts(
-			[...prompts, newPrompt],
-			"addQuestion",
-			{ promptText: newQuestionText.trim().slice(0, 80) }
-		);
+		updatePrompts([...prompts, newPrompt], "addQuestion", { promptText: newQuestionText.trim().slice(0, 80) });
 		setNewQuestionText("");
 	};
 

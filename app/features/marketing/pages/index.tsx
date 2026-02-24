@@ -45,7 +45,7 @@ export const meta: MetaFunction = () => [
 	{
 		name: "description",
 		content:
-			"Voice of Customer platform with AI-powered surveys, interview guides, UX research synthesis, and evidence-backed customer intelligence. Turn conversations into decisions you can defend.",
+			"Customer intelligence platform that helps teams engage the right people, understand what matters, and serve customers better. Turn conversations into evidence your whole team can act on.",
 	},
 ];
 
@@ -77,23 +77,23 @@ const PEOPLE: PersonData[] = [
 		tilt: "rotate(-2.5deg)",
 		annotations: [
 			{
-				label: "Thinks",
-				value: '"Summaries can ',
-				highlight: "blur the nuances",
+				label: "Engage",
+				value: '"We keep talking to the ',
+				highlight: "same 5 users",
 				side: "left",
 				zone: "head",
 			},
 			{
-				label: "Feels",
-				value: "Anxious about ",
-				highlight: "hallucinations",
+				label: "Understand",
+				value: "Needs ",
+				highlight: "evidence, not opinions",
 				side: "right",
 				zone: "heart",
 			},
 			{
-				label: "Uses",
-				value: "",
-				highlight: "Spreadsheets",
+				label: "Serve",
+				value: "Ship what ",
+				highlight: "customers asked for",
 				side: "right",
 				zone: "hand",
 			},
@@ -108,23 +108,23 @@ const PEOPLE: PersonData[] = [
 		tilt: "rotate(1.8deg)",
 		annotations: [
 			{
-				label: "Thinks",
-				value: '"I want the ',
-				highlight: "speed of AI",
+				label: "Engage",
+				value: '"I know exactly ',
+				highlight: "who to talk to",
 				side: "left",
 				zone: "head",
 			},
 			{
-				label: "Feels",
-				value: "I need ",
-				highlight: "receipts",
+				label: "Understand",
+				value: "Wants ",
+				highlight: "signal, not noise",
 				side: "right",
 				zone: "heart",
 			},
 			{
-				label: "Uses",
-				value: "",
-				highlight: "Highlighters",
+				label: "Serve",
+				value: "Build ",
+				highlight: "conviction to act",
 				side: "right",
 				zone: "hand",
 			},
@@ -138,23 +138,23 @@ const PEOPLE: PersonData[] = [
 		tilt: "rotate(-1.2deg)",
 		annotations: [
 			{
-				label: "Thinks",
-				value: '"I need to see the ',
-				highlight: "exact quote",
+				label: "Engage",
+				value: '"I need to hear from ',
+				highlight: "at-risk accounts",
 				side: "left",
 				zone: "head",
 			},
 			{
-				label: "Feels",
-				value: "",
-				highlight: "Traceability",
+				label: "Understand",
+				value: "Spots ",
+				highlight: "churn signals early",
 				side: "right",
 				zone: "heart",
 			},
 			{
-				label: "Uses",
-				value: "",
-				highlight: "2019 tools",
+				label: "Serve",
+				value: "Retain the ",
+				highlight: "right customers",
 				side: "right",
 				zone: "hand",
 			},
@@ -165,16 +165,20 @@ const PEOPLE: PersonData[] = [
 // Extra text after highlight for each annotation
 const ANNO_SUFFIX: Record<string, Record<number, string>> = {
 	"0": {
-		0: "",
-		1: " — can I trust AI?",
-		2: ", manual tags, hope",
+		0: " — who else matters?",
+		1: " to prioritize.",
+		2: ", not just features.",
 	},
 	"1": {
-		0: " without the hallucination",
-		1: " — verifiable evidence.",
-		2: ", sticky notes, memory",
+		0: '."',
+		1: ", not guesses.",
+		2: " fast.",
 	},
-	"2": { 0: " — to believe it.", 1: " builds confidence.", 2: " that don't talk to each other" },
+	"2": {
+		0: " — before it's too late.",
+		1: ", across every signal.",
+		2: ".",
+	},
 };
 
 const BODY_ZONES = { head: 0.18, heart: 0.5, hand: 0.75 } as const;
@@ -183,34 +187,34 @@ const LABEL_GAP = 48;
 
 const CAPABILITIES = [
 	{
-		tag: "Capture",
-		title: "Voice of Customer",
-		desc: "Ingest conversations from calls, meetings, support tickets, and field notes. Every customer touchpoint in one place.",
+		tag: "For Founders",
+		title: "Stop debating. Start knowing.",
+		desc: "One place where every customer conversation becomes evidence you can act on. No more opinions — just signal.",
 	},
 	{
-		tag: "Engage",
-		title: "AI-Powered Surveys",
-		desc: "Smart surveys with intelligent follow-up questions. Collect text, audio, and video responses. AI analyzes themes automatically.",
+		tag: "For Product",
+		title: "Build the right thing.",
+		desc: "See patterns across calls, tickets, and interviews. Prioritize with evidence, not whoever speaks loudest.",
 	},
 	{
-		tag: "Guide",
-		title: "Interview Guides & Recording",
-		desc: "Plan interview prompts, record live or upload recordings. Auto-transcribe with speaker identification and timestamps.",
+		tag: "For Sales",
+		title: "Win with proof.",
+		desc: "Turn customer evidence into your playbook. Walk into every deal knowing what matters — backed by proof, not hunches.",
 	},
 	{
-		tag: "Analyze",
-		title: "UX Research Synthesis",
-		desc: "AI extracts themes, personas, and evidence across conversations. Click any insight to see the exact source\u2014the receipts.",
+		tag: "For CS",
+		title: "See churn before it happens.",
+		desc: "Surface risk signals from conversations. Act before the renewal call — not after the cancellation email.",
 	},
 	{
-		tag: "Connect",
-		title: "AI-Native CRM",
-		desc: "Customer intelligence that flows to your whole team. Not another database\u2014a shared reality where every insight is traceable.",
+		tag: "For Consultants",
+		title: "From interviews to deliverables in hours.",
+		desc: "Stakeholder synthesis that used to take weeks. Every recommendation traceable to a voice.",
 	},
 	{
-		tag: "Act",
-		title: "Evidence-Linked Actions",
-		desc: "Turn insights into tasks with evidence attached. Every decision stays grounded in what customers actually said.",
+		tag: "For Research",
+		title: "Research that actually ships.",
+		desc: "Insights with receipts. Click any theme — see who said it, when, and why it matters. Evidence that drives decisions.",
 	},
 ];
 
@@ -649,13 +653,13 @@ export default function LandingPage() {
 						maxWidth: "22ch",
 					}}
 				>
-					They&rsquo;re telling you.
+					Every team talks to customers.
 					<br />
-					<span style={{ color: "var(--lp-amber)" }}>Are you getting it?</span>
+					<span style={{ color: "var(--lp-amber)" }}>Few truly know them.</span>
 				</h2>
 			</section>
 
-			{/* ===== THINKS / FEELS / USES ===== */}
+			{/* ===== ENGAGE / UNDERSTAND / SERVE ===== */}
 			<section
 				className="lp-promises"
 				style={{
@@ -672,19 +676,22 @@ export default function LandingPage() {
 				>
 					{[
 						{
-							mono: "Thinks",
-							h: "What they\nthink",
-							p: "Surface frustrations, beliefs, and objections from real conversations. Not surveys. Not guesses. Their words.",
+							mono: "Engage",
+							color: "rgb(251,191,36)",
+							h: "Know who\nto reach",
+							p: "See who to talk to, what to ask, and what you've already learned. Your next outreach is informed, not random.",
 						},
 						{
-							mono: "Feels",
-							h: "What they\nfeel",
-							p: "Understand desires and motivations with evidence you can verify. Click any insight—see exactly who said it, when.",
+							mono: "Understand",
+							color: "rgb(56,189,248)",
+							h: "See what\nmatters",
+							p: "Every insight links to who said it and why it matters. Cross-source, grounded, and verifiable. Not just AI summaries.",
 						},
 						{
-							mono: "Uses",
-							h: "What they\nuse",
-							p: "Map tools, workflows, and behaviors across your entire customer base. Patterns emerge in minutes, not weeks of synthesis.",
+							mono: "Serve",
+							color: "rgb(52,211,153)",
+							h: "Deliver what\nthey need",
+							p: "Turn evidence into action. Build the right product, close the right deals, retain the right customers.",
 						},
 					].map((item) => (
 						<div
@@ -699,7 +706,7 @@ export default function LandingPage() {
 								style={{
 									fontFamily: "'JetBrains Mono', monospace",
 									fontSize: "clamp(0.65rem, 0.95vw, 0.8rem)",
-									color: "var(--lp-amber)",
+									color: item.color,
 									fontWeight: 500,
 								}}
 							>
@@ -754,7 +761,7 @@ export default function LandingPage() {
 							color: "var(--lp-amber)",
 						}}
 					>
-						One platform. Every touchpoint.
+						Customer truth, connected.
 					</p>
 					<h2
 						className="lp-rv"
@@ -764,7 +771,7 @@ export default function LandingPage() {
 							letterSpacing: "-0.02em",
 						}}
 					>
-						From conversation to conviction.
+						Customer truth your whole team can use.
 					</h2>
 					<p
 						className="lp-rv mx-auto"
@@ -776,7 +783,7 @@ export default function LandingPage() {
 							marginTop: "clamp(0.5rem, 1vw, 1rem)",
 						}}
 					>
-						Capture customer intelligence from every channel. Turn it into decisions your whole team can defend.
+						Customer truth that flows across your whole team — grounded in real customer evidence.
 					</p>
 				</div>
 				<div
@@ -850,9 +857,9 @@ export default function LandingPage() {
 						marginBottom: "clamp(0.5rem, 1vw, 1rem)",
 					}}
 				>
-					Start with a smart survey
+					Start with one project.
 					<br />
-					<span style={{ color: "var(--lp-amber)" }}>(personalized by AI)</span> or a conversation.
+					<span style={{ color: "var(--lp-amber)" }}>Five conversations.</span>
 				</h2>
 				<p
 					className="lp-rv mx-auto"
@@ -864,7 +871,7 @@ export default function LandingPage() {
 						marginBottom: "clamp(1.5rem, 3vw, 2.5rem)",
 					}}
 				>
-					See what conviction feels like when it&rsquo;s backed by evidence.
+					See what happens when your whole team shares the same customer truth.
 				</p>
 				<div className="lp-rv flex flex-wrap items-center justify-center gap-[clamp(0.75rem,1.5vw,1.25rem)]">
 					<Link
@@ -905,7 +912,7 @@ export default function LandingPage() {
 						letterSpacing: "0.04em",
 					}}
 				>
-					Customer truth, connected.
+					Engage. Understand. Serve.
 				</p>
 			</section>
 

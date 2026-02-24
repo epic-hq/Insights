@@ -227,7 +227,7 @@ export async function uploadMultipartWithProgress({
 					const backoffMs = INITIAL_RETRY_DELAY_MS * 2 ** (attempt - 1);
 					console.warn(
 						`[Upload] Part ${partNumber}/${totalParts} attempt ${attempt} failed, retrying in ${backoffMs}ms...`,
-						partError instanceof Error ? partError.message : partError,
+						partError instanceof Error ? partError.message : partError
 					);
 					await new Promise((resolve) => setTimeout(resolve, backoffMs));
 				}
