@@ -62,7 +62,7 @@ To test the full flow with the agent:
 2. Trigger a workflow where the agent calls `requestUserInput` (e.g., ask "help me choose which persona to focus on" if the agent is configured to use it)
 3. Verify:
    - [ ] InlineUserInput renders below the assistant's text message
-   - [ ] Selecting + confirming sends a `[UserInput]` message in the chat
+   - [ ] Selecting + confirming dispatches a typed `user_input` event (no raw `[UserInput]` envelope required)
    - [ ] Toast confirms the selection
    - [ ] Agent receives the response and continues the workflow
    - [ ] Re-rendering the chat (scroll away/back) keeps the answered state
@@ -80,9 +80,11 @@ extractUserInputPayloads() detects __userInput marker
   ↓
 User clicks option(s) + Confirm
   ↓
-sendMessage("[UserInput] prompt: '...', selected: ['opt-1']")
+sendMessage("[UIEventDispatch]", { body: { uiEvents: [{ type: "user_input", ... }] } })
   ↓
-Agent receives as next user message, continues workflow
+API validates uiEvents and injects typed event context for the agent
+  ↓
+Agent continues workflow from typed user_input event
 ```
 
 ## Files

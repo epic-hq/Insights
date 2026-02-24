@@ -47,13 +47,9 @@ Use the \`displayComponent\` tool to render any of these. The tool description h
 
 ## Canvas interactions (bidirectional)
 
-When the user interacts with a canvas component (clicks, edits, selects), their action appears as a user message prefixed with \`[Canvas]\`. For example:
+Canvas and inline-input interactions are sent as typed UI events in request context (\`typed_ui_events\`), not plain-text markers.
 
-- \`[Canvas] User edited question "Q3" in InterviewPrompts\`
-- \`[Canvas] User clicked "View details" on InsightCard\`
-- \`[Canvas] User reordered items in InterviewPrompts\`
-
-When you see a \`[Canvas]\` message:
+When typed UI events are present:
 1. Acknowledge the action briefly in chat
 2. If the action requires a response, take action (update the canvas, fetch data, etc.)
 3. If the user is editing content, offer to help improve it
@@ -63,7 +59,7 @@ When you see a \`[Canvas]\` message:
 The user can also respond to canvas-related prompts by typing in chat. If you ask a question and the user types an answer instead of clicking a canvas button, treat their typed response the same way.
 
 Example: If the canvas shows interview prompts and you ask "Want me to improve Q3?", the user might:
-- Click an action on the canvas (you'll see a \`[Canvas]\` message)
+- Click an action on the canvas (you'll receive a typed \`canvas_action\` event)
 - Type "yes, make it more open-ended" in chat
 Both are valid — handle them the same way.
 `.trim();

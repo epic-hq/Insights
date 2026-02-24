@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UpSight x International Women's Day — Hear What She Really Thinks</title>
+
+    <!-- Fonts: DM Sans for body, Clash Display for headings -->
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=satoshi@400,500,700&display=swap">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES — UpSight Brand
+           Pulled from getupsight.com brand palette
+           =========================================== */
+        :root {
+            /* UpSight brand colors */
+            --bg-primary: #050508;
+            --bg-secondary: #0a0a10;
+            --bg-card: rgba(255, 255, 255, 0.04);
+            --bg-card-hover: rgba(255, 255, 255, 0.07);
+            --text-primary: #eeeef2;
+            --text-dim: rgba(238, 238, 242, 0.7);
+            --text-dim2: rgba(238, 238, 242, 0.5);
+            --amber: #f59e0b;
+            --amber-glow: rgba(245, 158, 11, 0.25);
+            --amber-soft: rgba(245, 158, 11, 0.1);
+            --sky: #38bdf8;
+            --sky-glow: rgba(56, 189, 248, 0.2);
+            --rose: #f472b6;
+            --rose-glow: rgba(244, 114, 182, 0.2);
+            --violet: #a78bfa;
+            --violet-glow: rgba(167, 139, 250, 0.2);
+
+            /* Typography */
+            --font-display: 'Clash Display', sans-serif;
+            --font-body: 'Satoshi', sans-serif;
+            --title-size: clamp(2rem, 5.5vw, 4.5rem);
+            --h2-size: clamp(1.5rem, 4vw, 3rem);
+            --h3-size: clamp(1rem, 2vw, 1.5rem);
+            --body-size: clamp(0.8rem, 1.4vw, 1.125rem);
+            --small-size: clamp(0.7rem, 1vw, 0.875rem);
+            --tag-size: clamp(0.6rem, 0.9vw, 0.75rem);
+
+            /* Spacing */
+            --slide-padding: clamp(1.5rem, 5vw, 5rem);
+            --content-gap: clamp(1rem, 2.5vw, 2.5rem);
+            --element-gap: clamp(0.5rem, 1.2vw, 1rem);
+
+            /* Animation */
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration: 0.7s;
+        }
+
+        /* ===========================================
+           BASE STYLES
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html {
+            scroll-behavior: smooth;
+            scroll-snap-type: y mandatory;
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            height: 100%;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ===========================================
+           SLIDE CONTAINER
+           Each slide = exactly one viewport
+           =========================================== */
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            padding: var(--slide-padding);
+        }
+
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-height: 100%;
+            overflow: hidden;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ===========================================
+           TYPOGRAPHY
+           =========================================== */
+        h1, h2, h3 {
+            font-family: var(--font-display);
+            font-weight: 600;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+        }
+
+        h1 { font-size: var(--title-size); }
+        h2 { font-size: var(--h2-size); }
+        h3 { font-size: var(--h3-size); font-weight: 500; }
+
+        p, li {
+            font-size: var(--body-size);
+            line-height: 1.6;
+            color: var(--text-dim);
+        }
+
+        .accent { color: var(--amber); }
+        .sky { color: var(--sky); }
+        .rose { color: var(--rose); }
+
+        /* ===========================================
+           NAVIGATION DOTS
+           =========================================== */
+        .nav-dots {
+            position: fixed;
+            right: clamp(0.75rem, 2vw, 2rem);
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(238, 238, 242, 0.2);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s var(--ease-out-expo);
+            padding: 0;
+        }
+
+        .nav-dot.active {
+            background: var(--amber);
+            box-shadow: 0 0 12px var(--amber-glow);
+            transform: scale(1.3);
+        }
+
+        /* ===========================================
+           PROGRESS BAR
+           =========================================== */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: var(--amber);
+            box-shadow: 0 0 10px var(--amber-glow);
+            z-index: 100;
+            transition: width 0.3s var(--ease-out-expo);
+            width: 0%;
+        }
+
+        /* ===========================================
+           LOGO WATERMARK
+           =========================================== */
+        .logo-mark {
+            position: fixed;
+            top: clamp(1rem, 3vw, 2rem);
+            left: clamp(1.5rem, 4vw, 3rem);
+            z-index: 100;
+            font-family: var(--font-display);
+            font-size: clamp(0.9rem, 1.5vw, 1.2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.03em;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+
+        .logo-mark:hover { opacity: 1; }
+        .logo-mark span { color: var(--amber); }
+        .logo-mark .logo-icon {
+            width: clamp(18px, 2vw, 24px);
+            height: clamp(18px, 2vw, 24px);
+            stroke: var(--amber);
+            vertical-align: middle;
+            margin-right: 6px;
+            margin-top: -2px;
+            display: inline-block;
+        }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(25px);
+            transition: opacity var(--duration) var(--ease-out-expo),
+                        transform var(--duration) var(--ease-out-expo);
+        }
+
+        .slide.visible .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reveal:nth-child(1) { transition-delay: 0.05s; }
+        .reveal:nth-child(2) { transition-delay: 0.15s; }
+        .reveal:nth-child(3) { transition-delay: 0.25s; }
+        .reveal:nth-child(4) { transition-delay: 0.35s; }
+        .reveal:nth-child(5) { transition-delay: 0.45s; }
+        .reveal:nth-child(6) { transition-delay: 0.55s; }
+
+        .reveal-scale {
+            opacity: 0;
+            transform: scale(0.92);
+            transition: opacity var(--duration) var(--ease-out-expo),
+                        transform var(--duration) var(--ease-out-expo);
+        }
+
+        .slide.visible .reveal-scale {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* ===========================================
+           SLIDE 1: TITLE
+           =========================================== */
+        .title-slide {
+            background:
+                radial-gradient(ellipse at 30% 70%, var(--rose-glow) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 30%, var(--amber-soft) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(56, 189, 248, 0.05) 0%, transparent 60%),
+                var(--bg-primary);
+        }
+
+        .title-slide .slide-content {
+            align-items: flex-start;
+            gap: var(--content-gap);
+            max-width: 900px;
+        }
+
+        .title-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: var(--amber-soft);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 100px;
+            font-size: var(--tag-size);
+            font-weight: 500;
+            color: var(--amber);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .title-tag::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--amber);
+            animation: pulse-dot 2s ease infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .title-slide h1 {
+            max-width: 800px;
+        }
+
+        .title-slide h1 em {
+            font-style: normal;
+            color: var(--amber);
+            position: relative;
+        }
+
+        .title-subtitle {
+            font-size: clamp(1rem, 2vw, 1.4rem);
+            color: var(--text-dim);
+            max-width: 600px;
+            line-height: 1.5;
+        }
+
+        .title-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: clamp(0.25rem, 1vw, 0.5rem);
+            padding: 12px 28px;
+            background: var(--amber);
+            color: var(--bg-primary);
+            font-family: var(--font-body);
+            font-size: var(--body-size);
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s var(--ease-out-expo);
+            text-decoration: none;
+        }
+
+        .title-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px var(--amber-glow);
+        }
+
+        .title-cta svg {
+            width: 18px;
+            height: 18px;
+            transition: transform 0.3s;
+        }
+
+        .title-cta:hover svg {
+            transform: translateX(3px);
+        }
+
+        /* ===========================================
+           SLIDE 2: THE PROBLEM / OPPORTUNITY
+           =========================================== */
+        .problem-slide {
+            background:
+                radial-gradient(ellipse at 80% 80%, var(--violet-glow) 0%, transparent 45%),
+                var(--bg-primary);
+        }
+
+        .problem-slide .slide-content {
+            gap: var(--content-gap);
+            max-width: 1000px;
+        }
+
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+            gap: clamp(0.75rem, 1.5vw, 1.25rem);
+        }
+
+        .problem-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: clamp(1rem, 2vw, 1.75rem);
+            transition: all 0.3s var(--ease-out-expo);
+        }
+
+        .problem-card:hover {
+            background: var(--bg-card-hover);
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .problem-card .icon {
+            font-size: clamp(1.25rem, 2vw, 1.75rem);
+            margin-bottom: clamp(0.4rem, 1vw, 0.75rem);
+        }
+
+        .problem-card h3 {
+            margin-bottom: clamp(0.25rem, 0.5vw, 0.5rem);
+            color: var(--text-primary);
+        }
+
+        .problem-card p {
+            font-size: var(--small-size);
+            color: var(--text-dim2);
+            line-height: 1.5;
+        }
+
+        /* ===========================================
+           SLIDE 3: HOW IT WORKS
+           =========================================== */
+        .how-slide {
+            background:
+                radial-gradient(ellipse at 20% 30%, var(--sky-glow) 0%, transparent 45%),
+                var(--bg-primary);
+        }
+
+        .how-slide .slide-content {
+            gap: var(--content-gap);
+            align-items: center;
+            text-align: center;
+        }
+
+        .how-slide h2 {
+            max-width: 700px;
+        }
+
+        .steps-row {
+            display: flex;
+            gap: clamp(0.5rem, 2vw, 2rem);
+            align-items: stretch;
+            justify-content: center;
+            width: 100%;
+            max-width: 950px;
+            flex-wrap: nowrap;
+        }
+
+        .step-card {
+            flex: 1;
+            min-width: 0;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
+            padding: clamp(1rem, 2vw, 2rem) clamp(0.75rem, 1.5vw, 1.5rem);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: clamp(0.4rem, 1vw, 0.75rem);
+            position: relative;
+            transition: all 0.3s var(--ease-out-expo);
+        }
+
+        .step-card:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-3px);
+        }
+
+        .step-number {
+            width: clamp(28px, 3.5vw, 40px);
+            height: clamp(28px, 3.5vw, 40px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: var(--small-size);
+            flex-shrink: 0;
+        }
+
+        .step-card:nth-child(1) .step-number {
+            background: var(--amber-soft);
+            color: var(--amber);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .step-card:nth-child(2) .step-number {
+            background: var(--sky-glow);
+            color: var(--sky);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        .step-card:nth-child(3) .step-number {
+            background: var(--rose-glow);
+            color: var(--rose);
+            border: 1px solid rgba(244, 114, 182, 0.3);
+        }
+
+        .step-card h3 {
+            color: var(--text-primary);
+            font-size: clamp(0.85rem, 1.5vw, 1.15rem);
+        }
+
+        .step-card p {
+            font-size: var(--small-size);
+            color: var(--text-dim2);
+            line-height: 1.45;
+        }
+
+        .step-connector {
+            display: flex;
+            align-items: center;
+            color: var(--text-dim2);
+            font-size: clamp(1rem, 2vw, 1.5rem);
+            flex-shrink: 0;
+        }
+
+        /* ===========================================
+           SLIDE 4: WHAT WE WANT TO LEARN
+           =========================================== */
+        .learn-slide {
+            background:
+                radial-gradient(ellipse at 70% 60%, var(--rose-glow) 0%, transparent 45%),
+                radial-gradient(ellipse at 20% 40%, var(--amber-soft) 0%, transparent 40%),
+                var(--bg-primary);
+        }
+
+        .learn-slide .slide-content {
+            flex-direction: row;
+            gap: clamp(1.5rem, 3vw, 3rem);
+            align-items: center;
+        }
+
+        .learn-left {
+            flex: 1.1;
+            display: flex;
+            flex-direction: column;
+            gap: var(--element-gap);
+            min-width: 0;
+        }
+
+        .learn-right {
+            flex: 0.9;
+            display: flex;
+            flex-direction: column;
+            gap: clamp(0.5rem, 1vw, 0.75rem);
+            align-items: center;
+            min-width: 0;
+        }
+
+        .learn-right img {
+            width: 100%;
+            max-height: min(38vh, 320px);
+            object-fit: cover;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .slogan-strip {
+            width: 100%;
+            padding: clamp(6px, 1vw, 12px) clamp(10px, 1.5vw, 20px);
+            background: #f59e0b;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .slogan-strip p {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: clamp(0.7rem, 1.3vw, 1.05rem);
+            color: #050508;
+            line-height: 1.2;
+        }
+
+        .question-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: clamp(0.35rem, 0.8vw, 0.65rem);
+        }
+
+        .question-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: clamp(6px, 0.8vw, 10px);
+            font-size: var(--body-size);
+            color: var(--text-dim);
+            line-height: 1.45;
+        }
+
+        .question-list li .q-icon {
+            flex-shrink: 0;
+            margin-top: 2px;
+            color: var(--amber);
+            font-size: clamp(0.7rem, 1.1vw, 0.95rem);
+        }
+
+        .question-list li strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .question-list li .sub-note {
+            display: block;
+            font-size: var(--small-size);
+            color: var(--text-dim2);
+            margin-top: 2px;
+        }
+
+        @media (max-width: 768px) {
+            .learn-slide .slide-content {
+                flex-direction: column;
+            }
+            .learn-right {
+                flex-direction: row;
+                gap: clamp(0.4rem, 1vw, 0.75rem);
+            }
+            .learn-right img {
+                max-height: min(20vh, 160px);
+                width: auto;
+                flex: 1;
+            }
+            .slogan-strip { display: none; }
+        }
+
+        /* ===========================================
+           SLIDE 5: BENEFITS
+           =========================================== */
+        .benefits-slide {
+            background:
+                radial-gradient(ellipse at 60% 70%, var(--amber-soft) 0%, transparent 45%),
+                radial-gradient(ellipse at 20% 20%, var(--rose-glow) 0%, transparent 40%),
+                var(--bg-primary);
+        }
+
+        .benefits-slide .slide-content {
+            gap: var(--content-gap);
+            max-width: 1000px;
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: clamp(0.6rem, 1.2vw, 1rem);
+        }
+
+        .benefit-item {
+            display: flex;
+            align-items: flex-start;
+            gap: clamp(0.5rem, 1vw, 1rem);
+            padding: clamp(0.75rem, 1.5vw, 1.25rem);
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            transition: all 0.3s var(--ease-out-expo);
+        }
+
+        .benefit-item:hover {
+            background: var(--bg-card-hover);
+            border-color: rgba(245, 158, 11, 0.15);
+        }
+
+        .benefit-icon {
+            flex-shrink: 0;
+            width: clamp(32px, 3.5vw, 44px);
+            height: clamp(32px, 3.5vw, 44px);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(1rem, 1.8vw, 1.4rem);
+        }
+
+        .benefit-item:nth-child(1) .benefit-icon { background: var(--amber-soft); }
+        .benefit-item:nth-child(2) .benefit-icon { background: var(--sky-glow); }
+        .benefit-item:nth-child(3) .benefit-icon { background: var(--rose-glow); }
+        .benefit-item:nth-child(4) .benefit-icon { background: var(--violet-glow); }
+
+        .benefit-text h3 {
+            font-size: clamp(0.85rem, 1.4vw, 1.1rem);
+            margin-bottom: clamp(2px, 0.3vw, 6px);
+        }
+
+        .benefit-text p {
+            font-size: var(--small-size);
+            color: var(--text-dim2);
+            line-height: 1.45;
+        }
+
+        /* ===========================================
+           SLIDE 5: CTA / CLOSE
+           =========================================== */
+        .cta-slide {
+            background:
+                radial-gradient(ellipse at 50% 60%, var(--amber-glow) 0%, transparent 40%),
+                radial-gradient(ellipse at 30% 30%, var(--rose-glow) 0%, transparent 45%),
+                radial-gradient(ellipse at 70% 80%, var(--sky-glow) 0%, transparent 40%),
+                var(--bg-primary);
+        }
+
+        .cta-slide .slide-content {
+            align-items: center;
+            text-align: center;
+            gap: var(--content-gap);
+        }
+
+        .cta-slide h2 {
+            max-width: 700px;
+        }
+
+        .cta-slide h2 em {
+            font-style: normal;
+            color: var(--amber);
+        }
+
+        .cta-details {
+            display: flex;
+            gap: clamp(1rem, 3vw, 3rem);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .cta-detail {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: var(--body-size);
+            color: var(--text-dim);
+        }
+
+        .cta-detail .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--amber);
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: clamp(0.75rem, 1.5vw, 1rem);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .cta-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 32px;
+            background: var(--amber);
+            color: var(--bg-primary);
+            font-family: var(--font-body);
+            font-size: var(--body-size);
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s var(--ease-out-expo);
+            text-decoration: none;
+        }
+
+        .cta-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px var(--amber-glow);
+        }
+
+        .cta-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 32px;
+            background: transparent;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: var(--body-size);
+            font-weight: 500;
+            border: 1px solid rgba(238, 238, 242, 0.2);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s var(--ease-out-expo);
+            text-decoration: none;
+        }
+
+        .cta-secondary:hover {
+            border-color: var(--amber);
+            color: var(--amber);
+            transform: translateY(-2px);
+        }
+
+        .cta-url {
+            font-size: var(--small-size);
+            color: var(--text-dim2);
+            letter-spacing: 0.05em;
+        }
+
+        .cta-url a {
+            color: var(--amber);
+            text-decoration: none;
+        }
+
+        /* ===========================================
+           DECORATIVE ELEMENTS
+           =========================================== */
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            z-index: 0;
+            animation: float-orb 8s ease-in-out infinite;
+        }
+
+        @keyframes float-orb {
+            0%, 100% { transform: translate(0, 0); }
+            33% { transform: translate(15px, -10px); }
+            66% { transform: translate(-10px, 15px); }
+        }
+
+        /* Subtle grid overlay for depth */
+        .slide::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+            background-size: 60px 60px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* ===========================================
+           RESPONSIVE: SHORT VIEWPORTS
+           =========================================== */
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(1rem, 3vw, 2.5rem);
+                --content-gap: clamp(0.6rem, 1.5vw, 1.25rem);
+                --title-size: clamp(1.5rem, 5vw, 3rem);
+                --h2-size: clamp(1.25rem, 3.5vw, 2.25rem);
+            }
+        }
+
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 2.5vw, 1.5rem);
+                --content-gap: clamp(0.4rem, 1vw, 0.75rem);
+                --title-size: clamp(1.25rem, 4.5vw, 2.25rem);
+                --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
+            }
+            .nav-dots { display: none; }
+        }
+
+        @media (max-height: 500px) {
+            :root {
+                --slide-padding: clamp(0.5rem, 2vw, 1rem);
+                --title-size: clamp(1.1rem, 4vw, 1.75rem);
+                --h2-size: clamp(1rem, 3vw, 1.5rem);
+                --body-size: clamp(0.65rem, 1vw, 0.85rem);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .benefits-grid { grid-template-columns: 1fr; }
+            .steps-row {
+                flex-direction: column;
+                align-items: center;
+            }
+            .step-connector { transform: rotate(90deg); }
+            .cta-details { flex-direction: column; align-items: center; }
+        }
+
+        @media (max-width: 768px) {
+            :root {
+                --title-size: clamp(1.5rem, 8vw, 3rem);
+            }
+        }
+
+        /* ===========================================
+           REDUCED MOTION
+           =========================================== */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+            html { scroll-behavior: auto; }
+            .reveal, .reveal-scale {
+                opacity: 1;
+                transform: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Progress bar -->
+    <div class="progress-bar" id="progressBar"></div>
+
+    <!-- Logo watermark -->
+    <div class="logo-mark">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+            <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+            <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+            <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+            <circle cx="12" cy="12" r="1"/>
+            <path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0"/>
+        </svg>
+        Up<span>Sight</span>
+    </div>
+
+    <!-- Navigation dots -->
+    <nav class="nav-dots" id="navDots" aria-label="Slide navigation"></nav>
+
+    <!-- ===========================================
+         SLIDE 1: TITLE — Hook + Event Context
+         =========================================== -->
+    <section class="slide title-slide" data-slide="0">
+        <div class="slide-content">
+            <div class="title-tag reveal">International Women's Day 2026</div>
+            <h1 class="reveal">Hear what she <em>really</em> thinks.</h1>
+            <p class="title-subtitle reveal">
+                Quick, candid interviews outside your event — powered by AI that turns real voices into evidence you can act on.
+            </p>
+            <a href="https://getupsight.com" target="_blank" class="title-cta reveal">
+                Get a Demo
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </a>
+        </div>
+        <!-- Decorative -->
+        <div class="glow-orb" style="width: 300px; height: 300px; background: var(--rose-glow); bottom: 10%; right: 15%;"></div>
+    </section>
+
+    <!-- ===========================================
+         SLIDE 2: THE OPPORTUNITY
+         =========================================== -->
+    <section class="slide problem-slide" data-slide="1">
+        <div class="slide-content">
+            <h2 class="reveal">Your attendees have opinions. <br><span class="accent">Are you capturing them?</span></h2>
+            <div class="problem-grid">
+                <div class="problem-card reveal-scale" style="transition-delay: 0.15s;">
+                    <div class="icon">📋</div>
+                    <h3>Post-event surveys get 10-15% response</h3>
+                    <p>By the time the email lands, the moment has passed. You get polite answers, not honest ones.</p>
+                </div>
+                <div class="problem-card reveal-scale" style="transition-delay: 0.25s;">
+                    <div class="icon">🎤</div>
+                    <h3>In-person feedback is biased</h3>
+                    <p>Attendees tell organizers what they want to hear. A neutral 3rd party unlocks candor.</p>
+                </div>
+                <div class="problem-card reveal-scale" style="transition-delay: 0.35s;">
+                    <div class="icon">🔍</div>
+                    <h3>You're guessing what's missing</h3>
+                    <p>Without structured qualitative data, programming decisions are based on assumptions, not evidence.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         SLIDE 3: HOW IT WORKS
+         =========================================== -->
+    <section class="slide how-slide" data-slide="2">
+        <div class="slide-content">
+            <h2 class="reveal">From <span class="sky">conversation</span> to <span class="accent">conviction</span></h2>
+            <div class="steps-row">
+                <div class="step-card reveal-scale" style="transition-delay: 0.15s;">
+                    <div class="step-number">1</div>
+                    <h3>Capture</h3>
+                    <p>1-2 min interviews during breaks. A neutral interviewer asks smart, AI-guided questions. Audio or video recorded.</p>
+                </div>
+                <div class="step-connector reveal" style="transition-delay: 0.25s;">→</div>
+                <div class="step-card reveal-scale" style="transition-delay: 0.3s;">
+                    <div class="step-number">2</div>
+                    <h3>Analyze</h3>
+                    <p>UpSight transcribes, identifies speakers, and extracts evidence — quotes you can trace back to the source.</p>
+                </div>
+                <div class="step-connector reveal" style="transition-delay: 0.4s;">→</div>
+                <div class="step-card reveal-scale" style="transition-delay: 0.45s;">
+                    <div class="step-number">3</div>
+                    <h3>Act</h3>
+                    <p>Themes emerge across conversations. See exactly who said what, and use real voices to shape future programming.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         SLIDE 4: WHAT WE WANT TO LEARN
+         =========================================== -->
+    <section class="slide learn-slide" data-slide="3">
+        <div class="slide-content">
+            <div class="learn-left">
+                <h2 class="reveal">What we want to <span class="accent">learn</span></h2>
+                <ul class="question-list">
+                    <li class="reveal" style="transition-delay: 0.1s;">
+                        <span class="q-icon">&#10149;</span>
+                        <span>Do you feel <strong>included</strong>, seen in the room?</span>
+                    </li>
+                    <li class="reveal" style="transition-delay: 0.18s;">
+                        <span class="q-icon">&#10149;</span>
+                        <span>What's <strong>inspiring</strong> you today — if anything?</span>
+                    </li>
+                    <li class="reveal" style="transition-delay: 0.26s;">
+                        <span class="q-icon">&#10149;</span>
+                        <span>What moves you to <strong>action</strong> after this?
+                            <span class="sub-note">Measure talk vs. action with a post-event follow-up: what did you actually do?</span>
+                        </span>
+                    </li>
+                    <li class="reveal" style="transition-delay: 0.34s;">
+                        <span class="q-icon">&#10149;</span>
+                        <span>What's <strong>challenging</strong> you right now?</span>
+                    </li>
+                    <li class="reveal" style="transition-delay: 0.42s;">
+                        <span class="q-icon">&#10149;</span>
+                        <span>If you could <strong>change anything</strong> about today — add or subtract — what would it be?</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="learn-right reveal-scale" style="transition-delay: 0.2s;">
+                <img src="iwd-assets/interview.jpg" alt="Women being interviewed at an event" loading="lazy">
+                <div class="slogan-strip">
+                    <p>Come for the vibe. Leave with momentum.</p>
+                </div>
+                <div class="slogan-strip">
+                    <p>A Day of Party, Progress &amp; Purpose.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         SLIDE 5: BENEFITS
+         =========================================== -->
+    <section class="slide benefits-slide" data-slide="4">
+        <div class="slide-content">
+            <h2 class="reveal">Why UpSight for your <span class="rose">IWD</span> event</h2>
+            <div class="benefits-grid">
+                <div class="benefit-item reveal-scale" style="transition-delay: 0.1s;">
+                    <div class="benefit-icon">💬</div>
+                    <div class="benefit-text">
+                        <h3>Raw, honest feedback</h3>
+                        <p>A neutral 3rd-party interviewer captures candid perspectives your team would never hear directly.</p>
+                    </div>
+                </div>
+                <div class="benefit-item reveal-scale" style="transition-delay: 0.2s;">
+                    <div class="benefit-icon">🎥</div>
+                    <div class="benefit-text">
+                        <h3>Video testimonials built in</h3>
+                        <p>Every recorded interview doubles as potential programming testimonials and social content for future events.</p>
+                    </div>
+                </div>
+                <div class="benefit-item reveal-scale" style="transition-delay: 0.3s;">
+                    <div class="benefit-icon">🧩</div>
+                    <div class="benefit-text">
+                        <h3>See what's missing</h3>
+                        <p>AI clusters feedback into themes — quickly identify gaps in programming, inclusivity, or attendee experience.</p>
+                    </div>
+                </div>
+                <div class="benefit-item reveal-scale" style="transition-delay: 0.4s;">
+                    <div class="benefit-icon">📎</div>
+                    <div class="benefit-text">
+                        <h3>Receipts, not summaries</h3>
+                        <p>Click any insight and see the exact quote, speaker, and timestamp. Evidence your stakeholders can trust.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         SLIDE 5: CTA
+         =========================================== -->
+    <section class="slide cta-slide" data-slide="5">
+        <div class="slide-content">
+            <h2 class="reveal">Build conviction. <br><em>Before</em> the next event.</h2>
+            <div class="cta-details reveal" style="transition-delay: 0.15s;">
+                <div class="cta-detail"><span class="dot"></span> Quick setup, no integration needed</div>
+                <div class="cta-detail"><span class="dot"></span> Works with any event size</div>
+                <div class="cta-detail"><span class="dot"></span> Results within hours</div>
+            </div>
+            <div class="cta-buttons reveal" style="transition-delay: 0.25s;">
+                <a href="https://getupsight.com" target="_blank" class="cta-primary">
+                    Get a Demo
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </a>
+                <a href="mailto:hello@getupsight.com" class="cta-secondary">
+                    Contact Us
+                </a>
+            </div>
+            <p class="cta-url reveal" style="transition-delay: 0.35s;">
+                <a href="https://getupsight.com">getupsight.com</a> — From conversation to conviction.
+            </p>
+        </div>
+        <div class="glow-orb" style="width: 400px; height: 400px; background: var(--amber-glow); bottom: 20%; left: 50%; transform: translateX(-50%);"></div>
+    </section>
+
+    <!-- ===========================================
+       SLIDE PRESENTATION CONTROLLER
+       Handles keyboard nav, scroll, progress, dots
+       =========================================== -->
+    <script>
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.totalSlides = this.slides.length;
+                this.currentSlide = 0;
+                this.isScrolling = false;
+
+                this.createNavDots();
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.updateProgress();
+            }
+
+            /* Create navigation dots */
+            createNavDots() {
+                const nav = document.getElementById('navDots');
+                this.slides.forEach((_, i) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                    dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
+                    dot.addEventListener('click', () => this.goToSlide(i));
+                    nav.appendChild(dot);
+                });
+                this.dots = nav.querySelectorAll('.nav-dot');
+            }
+
+            /* Intersection Observer for scroll-triggered animations */
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            const idx = parseInt(entry.target.dataset.slide);
+                            if (!isNaN(idx)) {
+                                this.currentSlide = idx;
+                                this.updateDots();
+                                this.updateProgress();
+                            }
+                        }
+                    });
+                }, { threshold: 0.5 });
+
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            /* Keyboard navigation */
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') {
+                        e.preventDefault();
+                        this.goToSlide(Math.min(this.currentSlide + 1, this.totalSlides - 1));
+                    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        this.goToSlide(Math.max(this.currentSlide - 1, 0));
+                    }
+                });
+            }
+
+            /* Touch/swipe navigation */
+            setupTouchNav() {
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => {
+                    startY = e.touches[0].clientY;
+                }, { passive: true });
+
+                document.addEventListener('touchend', (e) => {
+                    const diff = startY - e.changedTouches[0].clientY;
+                    if (Math.abs(diff) > 50) {
+                        if (diff > 0) {
+                            this.goToSlide(Math.min(this.currentSlide + 1, this.totalSlides - 1));
+                        } else {
+                            this.goToSlide(Math.max(this.currentSlide - 1, 0));
+                        }
+                    }
+                }, { passive: true });
+            }
+
+            /* Navigate to a specific slide */
+            goToSlide(index) {
+                this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                this.currentSlide = index;
+                this.updateDots();
+                this.updateProgress();
+            }
+
+            /* Update active dot indicator */
+            updateDots() {
+                this.dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === this.currentSlide);
+                });
+            }
+
+            /* Update progress bar width */
+            updateProgress() {
+                const progress = ((this.currentSlide + 1) / this.totalSlides) * 100;
+                document.getElementById('progressBar').style.width = progress + '%';
+            }
+        }
+
+        /* Initialize on load */
+        new SlidePresentation();
+    </script>
+
+</body>
+</html>

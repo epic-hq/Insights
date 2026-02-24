@@ -26,6 +26,7 @@ import { generateProjectRoutesTool } from "../tools/generate-project-routes";
 import { generateResearchRecommendationsTool } from "../tools/generate-research-recommendations";
 import { getCurrentDateTool } from "../tools/get-current-date";
 import { recommendNextActionsTool } from "../tools/recommend-next-actions";
+import { requestUserInputTool } from "../tools/request-user-input";
 import { semanticSearchAssetsTool } from "../tools/semantic-search-assets";
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence";
 import { suggestionTool } from "../tools/suggestion-tool";
@@ -39,110 +40,130 @@ import { researchAgent } from "./research-agent";
 import { taskAgent } from "./task-agent";
 
 function auditToolSchemas(agent_name: string, tools: Record<string, unknown>) {
-	try {
-		const tool_entries = Object.entries(tools);
-		const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> = [];
+  try {
+    const tool_entries = Object.entries(tools);
+    const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> =
+      [];
 
-		for (const [tool_name, tool] of tool_entries) {
-			if (!tool || typeof tool !== "object") {
-				issues.push({
-					tool: tool_name,
-					issue: `tool is not an object (${typeof tool})`,
-				});
-				continue;
-			}
+    for (const [tool_name, tool] of tool_entries) {
+      if (!tool || typeof tool !== "object") {
+        issues.push({
+          tool: tool_name,
+          issue: `tool is not an object (${typeof tool})`,
+        });
+        continue;
+      }
 
-			const own_props = Object.getOwnPropertyNames(tool);
-			const has_input_schema = own_props.includes("inputSchema");
-			const has_output_schema = own_props.includes("outputSchema");
+      const own_props = Object.getOwnPropertyNames(tool);
+      const has_input_schema = own_props.includes("inputSchema");
+      const has_output_schema = own_props.includes("outputSchema");
 
-			const input_schema = (tool as any).inputSchema;
-			const output_schema = (tool as any).outputSchema;
-			const input_is_zod =
-				!!input_schema && typeof input_schema === "object" && typeof input_schema.safeParse === "function";
-			const output_is_zod =
-				!!output_schema && typeof output_schema === "object" && typeof output_schema.safeParse === "function";
+      const input_schema = (tool as any).inputSchema;
+      const output_schema = (tool as any).outputSchema;
+      const input_is_zod =
+        !!input_schema &&
+        typeof input_schema === "object" &&
+        typeof input_schema.safeParse === "function";
+      const output_is_zod =
+        !!output_schema &&
+        typeof output_schema === "object" &&
+        typeof output_schema.safeParse === "function";
 
-			if (!has_input_schema || !input_is_zod) {
-				issues.push({
-					tool: tool_name,
-					issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
-					ownProps: own_props,
-				});
-			}
-			if (!has_output_schema || !output_is_zod) {
-				issues.push({
-					tool: tool_name,
-					issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
-					ownProps: own_props,
-				});
-			}
-		}
+      if (!has_input_schema || !input_is_zod) {
+        issues.push({
+          tool: tool_name,
+          issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
+          ownProps: own_props,
+        });
+      }
+      if (!has_output_schema || !output_is_zod) {
+        issues.push({
+          tool: tool_name,
+          issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
+          ownProps: own_props,
+        });
+      }
+    }
 
-		if (issues.length > 0) {
-			consola.warn("[mastra-schema-audit] tool schema issues", {
-				agent: agent_name,
-				issueCount: issues.length,
-				issues,
-			});
-		} else {
-			consola.info("[mastra-schema-audit] all tool schemas look valid", {
-				agent: agent_name,
-				toolCount: tool_entries.length,
-			});
-		}
-	} catch (error) {
-		consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
-	}
+    if (issues.length > 0) {
+      consola.warn("[mastra-schema-audit] tool schema issues", {
+        agent: agent_name,
+        issueCount: issues.length,
+        issues,
+      });
+    } else {
+      consola.info("[mastra-schema-audit] all tool schemas look valid", {
+        agent: agent_name,
+        toolCount: tool_entries.length,
+      });
+    }
+  } catch (error) {
+    consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
+  }
 }
 
 const project_status_agent_tools = {
-	getCurrentDate: getCurrentDateTool,
-	fetchProjectStatusContext: fetchProjectStatusContextTool,
-	fetchEvidence: fetchEvidenceTool,
-	semanticSearchEvidence: semanticSearchEvidenceTool,
-	semanticSearchAssets: semanticSearchAssetsTool,
-	fetchProjectGoals: fetchProjectGoalsTool,
-	fetchThemes: fetchThemesTool,
-	fetchTopThemesWithPeople: fetchTopThemesWithPeopleTool,
-	fetchPainMatrixCache: fetchPainMatrixCacheTool,
-	fetchSegments: fetchSegmentsTool,
-	fetchSegmentThemes: fetchSegmentThemesTool,
-	"fetch-segment-themes": fetchSegmentThemesTool,
-	fetchThemeStakeholders: fetchThemeStakeholdersTool,
-	"fetch-theme-stakeholders": fetchThemeStakeholdersTool,
-	fetchStakeholderDemographics: fetchStakeholderDemographicsTool,
-	"fetch-stakeholder-demographics": fetchStakeholderDemographicsTool,
-	fetchConversationLenses: fetchConversationLensesTool,
-	generateProjectRoutes: generateProjectRoutesTool,
-	generateDocumentLink: generateDocumentLinkTool,
-	capabilityLookup: capabilityLookupTool,
-	suggestNextSteps: suggestionTool,
-	recommendNextActions: recommendNextActionsTool,
-	// Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
-	"recommend-next-actions": recommendNextActionsTool,
-	generateResearchRecommendations: generateResearchRecommendationsTool,
-	"generate-research-recommendations": generateResearchRecommendationsTool,
-	displayComponent: displayComponentTool,
-	"display-component": displayComponentTool,
-	fetchResearchPulse: fetchResearchPulseTool,
-	"fetch-research-pulse": fetchResearchPulseTool,
+  getCurrentDate: getCurrentDateTool,
+  fetchProjectStatusContext: fetchProjectStatusContextTool,
+  fetchEvidence: fetchEvidenceTool,
+  semanticSearchEvidence: semanticSearchEvidenceTool,
+  semanticSearchAssets: semanticSearchAssetsTool,
+  fetchProjectGoals: fetchProjectGoalsTool,
+  fetchThemes: fetchThemesTool,
+  fetchTopThemesWithPeople: fetchTopThemesWithPeopleTool,
+  fetchPainMatrixCache: fetchPainMatrixCacheTool,
+  fetchSegments: fetchSegmentsTool,
+  fetchSegmentThemes: fetchSegmentThemesTool,
+  "fetch-segment-themes": fetchSegmentThemesTool,
+  fetchThemeStakeholders: fetchThemeStakeholdersTool,
+  "fetch-theme-stakeholders": fetchThemeStakeholdersTool,
+  fetchStakeholderDemographics: fetchStakeholderDemographicsTool,
+  "fetch-stakeholder-demographics": fetchStakeholderDemographicsTool,
+  fetchConversationLenses: fetchConversationLensesTool,
+  generateProjectRoutes: generateProjectRoutesTool,
+  generateDocumentLink: generateDocumentLinkTool,
+  capabilityLookup: capabilityLookupTool,
+  suggestNextSteps: suggestionTool,
+  recommendNextActions: recommendNextActionsTool,
+  // Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
+  "recommend-next-actions": recommendNextActionsTool,
+  generateResearchRecommendations: generateResearchRecommendationsTool,
+  "generate-research-recommendations": generateResearchRecommendationsTool,
+  displayComponent: displayComponentTool,
+  "display-component": displayComponentTool,
+  requestUserInput: requestUserInputTool,
+  "request-user-input": requestUserInputTool,
+  fetchResearchPulse: fetchResearchPulseTool,
+  "fetch-research-pulse": fetchResearchPulseTool,
 };
 
 auditToolSchemas("projectStatusAgent", project_status_agent_tools);
 
 export const projectStatusAgent = new Agent({
-	id: "project-status-agent",
-	name: "projectStatusAgent",
-	instructions: async ({ requestContext }) => {
-		try {
-			const projectId = requestContext.get("project_id");
-			const accountId = requestContext.get("account_id");
-			const userId = requestContext.get("user_id");
-			return `
+  id: "project-status-agent",
+  name: "projectStatusAgent",
+  instructions: async ({ requestContext }) => {
+    try {
+      const projectId = requestContext.get("project_id");
+      const accountId = requestContext.get("account_id");
+      const userId = requestContext.get("user_id");
+      const responseMode = String(requestContext.get("response_mode") || "normal");
+      const uiEvents = requestContext.get("ui_events");
+      const uiEventsSummary =
+        Array.isArray(uiEvents) && uiEvents.length > 0
+          ? JSON.stringify(uiEvents)
+          : "[]";
+      return `
 You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
 
-project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}, user_id=${userId || "<unknown>"}
+project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}, user_id=${userId || "<unknown>"}, response_mode=${responseMode}, typed_ui_events=${uiEventsSummary}
+
+## Response Mode Overrides (MANDATORY)
+When \`response_mode=theme_people_snapshot\`:
+1. Call \`fetchTopThemesWithPeople\` first with limit=3 and peoplePerTheme=5.
+2. Provide a concise summary of the top theme(s) and the most-mentioned people.
+3. Keep the answer short and evidence-led; do not switch to generic recommendations.
+4. If the tool returns no themes, explicitly say that and suggest one next data-collection action.
 
 ## Your Differentiators
 You don't just retrieve data—you **interpret it**. When answering:
@@ -203,6 +224,17 @@ If user asks for "aggregated" analysis → not yet supported, tell them it's com
 4. Add a brief chat message summarizing the key insight (1-2 sentences max — the widget does the heavy lifting)
 
 Do NOT render widgets with empty/placeholder data. If a tool returns no data, explain what's missing and suggest how to get started.
+
+## Canvas Interaction Events
+When \`typed_ui_events\` is not empty, treat those events as the highest-priority user intent for this turn.
+- \`canvas_action\`: widget interaction emitted from canvas/chat-inline controls.
+- \`user_input\`: structured answer emitted from \`requestUserInput\`.
+- If a canvas action has \`persisted=false\`, acknowledge save failure briefly and still continue guidance.
+- Continue the same workflow that triggered the interaction; do not reset context.
+- For CRUD/filter interactions, provide concrete next actions and refresh relevant widgets when useful.
+- If both typed events and free-form user text exist, resolve conflicts explicitly and favor the most recent typed event.
+
+Backward compatibility: if older threads include \`[CanvasAction]\` or \`[UserInput]\` text envelopes, handle them the same way.
 
 ## Proactive Recommendations
 When the user asks research-related questions like "who should I talk to next?", "what insights need validation?", "where are my research gaps?", or "which contacts are getting stale?":
@@ -327,32 +359,32 @@ For "how do I", "where do I", "best way to", and "teach me" guidance requests, d
 
 ${buildGenUISystemContext()}
 `;
-		} catch (error) {
-			consola.error("Error in project status agent instructions:", error);
-			return `
+    } catch (error) {
+      consola.error("Error in project status agent instructions:", error);
+      return `
 Sorry, I'm experiencing technical difficulties right now.
 
 Please try:
 
 1. Refreshing the page and trying again
 2. Contacting support if the issue persists`;
-		}
-	},
-	model: openai("gpt-4.1"),
-	tools: wrapToolsWithStatusEvents(project_status_agent_tools),
-	agents: {
-		taskAgent,
-		peopleAgent,
-		researchAgent,
-		opsAgent,
-		feedbackAgent,
-		chiefOfStaffAgent,
-		howtoAgent,
-	},
-	memory: new Memory({
-		storage: getSharedPostgresStore(),
-	}),
-	// TokenLimiterProcessor prevents context window overflow
-	// Note: Using number format for Zod v4 compatibility
-	outputProcessors: [new TokenLimiterProcessor(45_000)],
+    }
+  },
+  model: openai("gpt-4.1"),
+  tools: wrapToolsWithStatusEvents(project_status_agent_tools),
+  agents: {
+    taskAgent,
+    peopleAgent,
+    researchAgent,
+    opsAgent,
+    feedbackAgent,
+    chiefOfStaffAgent,
+    howtoAgent,
+  },
+  memory: new Memory({
+    storage: getSharedPostgresStore(),
+  }),
+  // TokenLimiterProcessor prevents context window overflow
+  // Note: Using number format for Zod v4 compatibility
+  outputProcessors: [new TokenLimiterProcessor(45_000)],
 });
