@@ -115,6 +115,7 @@ cadre-devkit-claude/
 .opencode/
 .claude-design/
 .claude/skills/
+.claude/worktrees/
 
 # Obsidian local workspace (user-specific)
 .obsidian/
