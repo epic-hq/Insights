@@ -5,6 +5,7 @@
  * Used by both form mode (client-side) and chat mode (server-side agent).
  */
 
+import consola from "consola";
 import { z } from "zod";
 
 // ============================================================================
@@ -253,7 +254,10 @@ export function getNextQuestionId(
 			if (targetIndex > currentIndex) {
 				return branchResult.targetQuestionId;
 			}
-			// If target is before current or not found, fall through to default
+			// Target is before current or not found — log and fall through to default
+			consola.warn(
+				`[branching] skip_to rule "${branchResult.ruleId}" targets question "${branchResult.targetQuestionId}" which is ${targetIndex < 0 ? "not found" : "before current question"} (currentIndex=${currentIndex}, targetIndex=${targetIndex}). Falling through to linear order.`
+			);
 		}
 	}
 

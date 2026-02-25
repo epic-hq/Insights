@@ -32,11 +32,29 @@ const RequestSchema = z.object({
 		.default([]),
 });
 
-const ParsedRuleSchema = z.object({
-	triggerValue: z.string().describe("What response triggers this rule — exact option for select, keyword for text"),
+const ConditionItemSchema = z.object({
+	triggerValue: z
+		.string()
+		.describe("What response triggers this condition — exact option for select, keyword for text"),
 	operator: z
 		.enum(["equals", "not_equals", "contains", "not_contains", "selected", "not_selected", "answered", "not_answered"])
 		.describe("Condition operator"),
+});
+
+const ParsedRuleSchema = z.object({
+	triggerValue: z.string().describe("Primary trigger value (for single-condition rules or backwards compat)"),
+	operator: z
+		.enum(["equals", "not_equals", "contains", "not_contains", "selected", "not_selected", "answered", "not_answered"])
+		.describe("Primary condition operator"),
+	additionalConditions: z
+		.array(ConditionItemSchema)
+		.optional()
+		.describe("Additional conditions for compound rules. Each has its own triggerValue and operator."),
+	conditionLogic: z
+		.enum(["and", "or"])
+		.optional()
+		.default("and")
+		.describe("How to combine conditions: 'and' = all must match, 'or' = any can match"),
 	action: z.enum(["skip_to", "end_survey"]).describe("What to do when triggered"),
 	targetQuestionIndex: z.number().optional().describe("For skip_to: index of the target question in laterQuestions"),
 	summary: z.string().describe("Human-readable summary, e.g. 'When sponsors respond, skip to budget questions'"),
@@ -49,14 +67,14 @@ const ParsedRuleSchema = z.object({
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ error: "Method not allowed" }, { status: 405 });
+		return new Response("Method not allowed", { status: 405 });
 	}
 
 	try {
 		const body = await request.json();
 		const parsed = RequestSchema.safeParse(body);
 		if (!parsed.success) {
-			return Response.json({ error: "Invalid request", details: parsed.error.issues }, { status: 400 });
+			return { error: "Invalid request", details: parsed.error.issues };
 		}
 
 		const { input, questionId, questionPrompt, questionType, questionOptions, laterQuestions } = parsed.data;
@@ -93,6 +111,13 @@ ${
 }
 - Use "answered" / "not_answered" if the rule is about whether the question was answered at all.
 
+COMPOUND CONDITIONS:
+If the user describes multiple conditions (e.g. "If sponsor AND selected Enterprise"), use additionalConditions.
+- Put the primary condition in triggerValue/operator
+- Put extra conditions in additionalConditions array
+- Set conditionLogic to "and" (all must match) or "or" (any can match) based on the user's intent
+- Most rules are single-condition. Only use additionalConditions when the user explicitly describes multiple conditions.
+
 ACTION:
 - "skip_to": Jump to a later question. Set targetQuestionIndex to the index from the list above.
 - "end_survey": End the survey early.
@@ -116,19 +141,40 @@ CONFIDENCE:
 
 		// Build the BranchRule
 		const r = result.object;
-		const targetQuestion = r.targetQuestionIndex !== undefined ? laterQuestions[r.targetQuestionIndex] : null;
+
+		// Validate targetQuestionIndex is in bounds
+		let targetQuestion = null;
+		if (r.action === "skip_to") {
+			if (r.targetQuestionIndex === undefined || r.targetQuestionIndex === null) {
+				return {
+					error: "AI could not determine which question to skip to. Try being more specific.",
+					parsed: r,
+				};
+			}
+			if (r.targetQuestionIndex < 0 || r.targetQuestionIndex >= laterQuestions.length) {
+				return {
+					error: `AI referenced question index ${r.targetQuestionIndex} but only ${laterQuestions.length} later questions exist. Try rephrasing.`,
+					parsed: r,
+				};
+			}
+			targetQuestion = laterQuestions[r.targetQuestionIndex];
+		}
+
+		// Build conditions array (primary + any additional)
+		const allConditions = [
+			{ questionId, operator: r.operator, value: r.triggerValue },
+			...(r.additionalConditions ?? []).map((c) => ({
+				questionId,
+				operator: c.operator,
+				value: c.triggerValue,
+			})),
+		];
 
 		const rule = {
 			id: `nl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
 			conditions: {
-				logic: "and" as const,
-				conditions: [
-					{
-						questionId,
-						operator: r.operator,
-						value: r.triggerValue,
-					},
-				],
+				logic: (r.conditionLogic ?? "and") as "and" | "or",
+				conditions: allConditions,
 			},
 			action: r.action,
 			targetQuestionId: targetQuestion?.id,
@@ -139,9 +185,9 @@ CONFIDENCE:
 			confidence: r.confidence,
 		};
 
-		return Response.json({ rule, parsed: r });
+		return { rule, parsed: r };
 	} catch (error) {
 		console.error("Failed to parse branch rule:", error);
-		return Response.json({ error: "Failed to parse rule. Please try again." }, { status: 500 });
+		return { error: "Failed to parse rule. Please try again." };
 	}
 }

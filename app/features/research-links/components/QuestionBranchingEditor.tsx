@@ -79,6 +79,10 @@ export function QuestionBranchingEditor({
 			}
 
 			const data = await response.json();
+			if (data.error) {
+				setParseError(data.error);
+				return;
+			}
 			if (data.rule) {
 				onChange({ rules: [...rules, data.rule] });
 				setNlInput("");
@@ -278,6 +282,12 @@ export function QuestionBranchingEditor({
 												<SelectItem value="equals">equals</SelectItem>
 												<SelectItem value="not_equals">doesn't equal</SelectItem>
 												<SelectItem value="contains">contains</SelectItem>
+												{hasOptions && (
+													<>
+														<SelectItem value="selected">includes</SelectItem>
+														<SelectItem value="not_selected">excludes</SelectItem>
+													</>
+												)}
 												<SelectItem value="answered">is answered</SelectItem>
 												<SelectItem value="not_answered">is not answered</SelectItem>
 											</SelectContent>

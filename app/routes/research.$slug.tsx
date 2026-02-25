@@ -24,10 +24,8 @@ import type { LoaderFunctionArgs, MetaFunction } from "react-router";
 import { useLoaderData } from "react-router-dom";
 import { Streamdown } from "streamdown";
 import { z } from "zod";
-import { Logo } from "~/components/branding";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/components/ui/card";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -1191,363 +1189,355 @@ export default function ResearchLinkPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 py-8 md:py-16">
-			<div className="mx-auto max-w-2xl px-4">
-				<Card className="overflow-hidden border-white/10 bg-black/30 backdrop-blur">
-					<CardHeader className="space-y-2 pb-3">
-						<div className="space-y-1">
-							<h1 className="font-semibold text-white text-xl">
-								{list.hero_title || list.name || "Share your feedback"}
-							</h1>
-						</div>
-					</CardHeader>
+		<div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+			<div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center px-6 py-12 md:py-20">
+				<div className="space-y-8 text-white">
+					{error && (
+						<Alert variant="destructive" className="border-red-500/60 bg-red-500/10 text-red-100">
+							<AlertTitle>Error</AlertTitle>
+							<AlertDescription>{error}</AlertDescription>
+						</Alert>
+					)}
 
-					<CardContent className="space-y-4 bg-black/40 p-4 text-white md:p-6">
-						{error && (
-							<Alert variant="destructive" className="border-red-500/60 bg-red-500/10 text-red-100">
-								<AlertTitle>Error</AlertTitle>
-								<AlertDescription>{error}</AlertDescription>
-							</Alert>
-						)}
+					{/* Email stage */}
+					{stage === "email" && (
+						<motion.form
+							onSubmit={handleEmailSubmit}
+							initial={{ opacity: 0, y: 16 }}
+							animate={{ opacity: 1, y: 0 }}
+							className="space-y-4"
+						>
+							{/* Walkthrough video */}
+							{walkthroughSignedUrl && (
+								<div className="overflow-hidden rounded-xl">
+									<video src={walkthroughSignedUrl} className="aspect-video w-full bg-black" controls playsInline />
+								</div>
+							)}
 
-						{/* Email stage */}
-						{stage === "email" && (
-							<motion.form
-								onSubmit={handleEmailSubmit}
-								initial={{ opacity: 0, y: 16 }}
-								animate={{ opacity: 1, y: 0 }}
-								className="space-y-4"
-							>
-								{/* Walkthrough video */}
-								{walkthroughSignedUrl && (
-									<div className="overflow-hidden rounded-xl">
-										<video src={walkthroughSignedUrl} className="aspect-video w-full bg-black" controls playsInline />
-									</div>
-								)}
+							{/* Instructions for the respondent */}
+							{list.instructions && <p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>}
 
-								{/* Instructions for the respondent */}
-								{list.instructions && <p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>}
-
-								{/* Mode selector - show when multiple modes available */}
-								{(list.allow_chat || list.allow_voice || list.calendar_url) && (
-									<div className="space-y-2">
-										<p className="text-white/60 text-xs">How would you like to respond?</p>
-										<div className="flex gap-2">
+							{/* Mode selector - show when multiple modes available */}
+							{(list.allow_chat || list.allow_voice || list.calendar_url) && (
+								<div className="space-y-2">
+									<p className="text-white/60 text-xs">How would you like to respond?</p>
+									<div className="flex gap-2">
+										<button
+											type="button"
+											onClick={() => setMode("form")}
+											className={cn(
+												"flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
+												mode === "form"
+													? "border-white bg-white/10 text-white"
+													: "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
+											)}
+										>
+											<ClipboardList className="h-5 w-5" />
+											<span className="font-medium text-xs">Form</span>
+										</button>
+										{list.allow_chat && (
 											<button
 												type="button"
-												onClick={() => setMode("form")}
+												onClick={() => setMode("chat")}
 												className={cn(
 													"flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
-													mode === "form"
+													mode === "chat"
 														? "border-white bg-white/10 text-white"
 														: "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
 												)}
 											>
-												<ClipboardList className="h-5 w-5" />
-												<span className="font-medium text-xs">Form</span>
+												<MessageSquare className="h-5 w-5" />
+												<span className="font-medium text-xs">Chat</span>
 											</button>
-											{list.allow_chat && (
-												<button
-													type="button"
-													onClick={() => setMode("chat")}
-													className={cn(
-														"flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
-														mode === "chat"
-															? "border-white bg-white/10 text-white"
-															: "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
-													)}
-												>
-													<MessageSquare className="h-5 w-5" />
-													<span className="font-medium text-xs">Chat</span>
-												</button>
-											)}
-											{list.allow_voice && (
-												<button
-													type="button"
-													onClick={() => setMode("voice")}
-													className={cn(
-														"relative flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
-														mode === "voice"
-															? "border-violet-400 bg-violet-500/20 text-white"
-															: "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
-													)}
-												>
-													<Mic className="h-5 w-5" />
-													<span className="font-medium text-xs">Voice</span>
-													<span className="-top-1 -right-1 absolute rounded bg-violet-500 px-1 py-0.5 font-bold text-[8px] text-white">
-														NEW
-													</span>
-												</button>
-											)}
-											{list.calendar_url && (
-												<a
-													href={list.calendar_url}
-													target="_blank"
-													rel="noreferrer"
-													className="flex flex-1 flex-col items-center gap-1.5 rounded-lg border border-white/20 px-3 py-2.5 text-white/60 transition-all hover:border-white/40 hover:text-white/80"
-												>
-													<Calendar className="h-5 w-5" />
-													<span className="font-medium text-xs">Book Call / Meet</span>
-												</a>
-											)}
-										</div>
-									</div>
-								)}
-
-								{/* Email field */}
-								<div className="space-y-2">
-									<Label htmlFor={emailId} className="text-white/90">
-										Your Email
-									</Label>
-									<Input
-										id={emailId}
-										type="email"
-										value={email}
-										onChange={(e) => setEmail(e.target.value)}
-										placeholder="you@company.com"
-										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-										required
-									/>
-								</div>
-								<div className="flex justify-end">
-									<Button
-										type="submit"
-										disabled={isSaving || !isEmailValid}
-										size="sm"
-										className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
-									>
-										{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
-										<ArrowRight className="ml-1.5 h-4 w-4" />
-									</Button>
-								</div>
-							</motion.form>
-						)}
-
-						{/* Phone stage - for phone-identified surveys */}
-						{stage === "phone" && (
-							<motion.form
-								onSubmit={handlePhoneSubmit}
-								initial={{ opacity: 0, y: 16 }}
-								animate={{ opacity: 1, y: 0 }}
-								className="space-y-4"
-							>
-								{/* Walkthrough video */}
-								{walkthroughSignedUrl && (
-									<div className="overflow-hidden rounded-xl">
-										<video src={walkthroughSignedUrl} className="aspect-video w-full bg-black" controls playsInline />
-									</div>
-								)}
-
-								{/* Instructions for the respondent */}
-								{list.instructions && <p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>}
-
-								{/* Mode selector - show when multiple modes available */}
-								{(list.allow_chat || list.allow_voice || list.calendar_url) && (
-									<div className="space-y-2">
-										<p className="text-white/60 text-xs">How would you like to respond?</p>
-										<div className="flex gap-2">
+										)}
+										{list.allow_voice && (
 											<button
 												type="button"
-												onClick={() => setMode("form")}
+												onClick={() => setMode("voice")}
 												className={cn(
-													"flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
-													mode === "form"
-														? "border-white bg-white/10 text-white"
+													"relative flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
+													mode === "voice"
+														? "border-violet-400 bg-violet-500/20 text-white"
 														: "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
 												)}
 											>
-												<ClipboardList className="h-5 w-5" />
-												<span className="font-medium text-xs">Form</span>
+												<Mic className="h-5 w-5" />
+												<span className="font-medium text-xs">Voice</span>
+												<span className="-top-1 -right-1 absolute rounded bg-violet-500 px-1 py-0.5 font-bold text-[8px] text-white">
+													NEW
+												</span>
 											</button>
-											{list.allow_chat && (
-												<button
-													type="button"
-													onClick={() => setMode("chat")}
-													className={cn(
-														"flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
-														mode === "chat"
-															? "border-white bg-white/10 text-white"
-															: "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
-													)}
-												>
-													<MessageSquare className="h-5 w-5" />
-													<span className="font-medium text-xs">Chat</span>
-												</button>
-											)}
-											{list.allow_voice && (
-												<button
-													type="button"
-													onClick={() => setMode("voice")}
-													className={cn(
-														"relative flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
-														mode === "voice"
-															? "border-violet-400 bg-violet-500/20 text-white"
-															: "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
-													)}
-												>
-													<Mic className="h-5 w-5" />
-													<span className="font-medium text-xs">Voice</span>
-													<span className="-top-1 -right-1 absolute rounded bg-violet-500 px-1 py-0.5 font-bold text-[8px] text-white">
-														NEW
-													</span>
-												</button>
-											)}
-											{list.calendar_url && (
-												<a
-													href={list.calendar_url}
-													target="_blank"
-													rel="noreferrer"
-													className="flex flex-1 flex-col items-center gap-1.5 rounded-lg border border-white/20 px-3 py-2.5 text-white/60 transition-all hover:border-white/40 hover:text-white/80"
-												>
-													<Calendar className="h-5 w-5" />
-													<span className="font-medium text-xs">Book Call / Meet</span>
-												</a>
-											)}
-										</div>
-									</div>
-								)}
-
-								{/* Phone field */}
-								<div className="space-y-2">
-									<Label htmlFor={phoneId} className="text-white/90">
-										Your Phone Number
-									</Label>
-									<Input
-										id={phoneId}
-										type="tel"
-										value={phone}
-										onChange={(e) => setPhone(e.target.value)}
-										placeholder="+1 (555) 123-4567"
-										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-										required
-									/>
-								</div>
-								<div className="flex justify-end">
-									<Button
-										type="submit"
-										disabled={isSaving || !isPhoneValid}
-										size="sm"
-										className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
-									>
-										{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
-										<ArrowRight className="ml-1.5 h-4 w-4" />
-									</Button>
-								</div>
-							</motion.form>
-						)}
-
-						{/* Name stage - shown only when person not found by email */}
-						{stage === "name" && (
-							<motion.form
-								onSubmit={handleNameSubmit}
-								initial={{ opacity: 0, y: 16 }}
-								animate={{ opacity: 1, y: 0 }}
-								className="space-y-4"
-							>
-								<p className="text-sm text-white/80 leading-relaxed">
-									We don't recognize your email. Please enter your name to continue.
-								</p>
-
-								{/* Name fields */}
-								<div className="grid grid-cols-2 gap-3">
-									<div className="space-y-2">
-										<Label className="text-white/90">
-											First Name <span className="text-red-400">*</span>
-										</Label>
-										<Input
-											type="text"
-											value={firstName}
-											onChange={(e) => setFirstName(e.target.value)}
-											placeholder="Jane"
-											className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-											required
-											autoFocus
-										/>
-									</div>
-									<div className="space-y-2">
-										<Label className="text-white/90">Last Name</Label>
-										<Input
-											type="text"
-											value={lastName}
-											onChange={(e) => setLastName(e.target.value)}
-											placeholder="Doe"
-											className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-										/>
-									</div>
-								</div>
-
-								{/* Company field - optional */}
-								<div className="space-y-2">
-									<Label className="text-white/90">Company</Label>
-									<Input
-										type="text"
-										value={company}
-										onChange={(e) => setCompany(e.target.value)}
-										placeholder="Acme Inc"
-										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-									/>
-								</div>
-
-								<div className="flex items-center justify-between">
-									<Button
-										type="button"
-										variant="ghost"
-										size="sm"
-										onClick={() => setStage("email")}
-										className="text-white/50 hover:bg-white/10 hover:text-white"
-									>
-										<ArrowLeft className="mr-1.5 h-4 w-4" />
-										Back
-									</Button>
-									<Button type="submit" disabled={isSaving} size="sm" className="bg-white text-black hover:bg-white/90">
-										{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
-										<ArrowRight className="ml-1.5 h-4 w-4" />
-									</Button>
-								</div>
-							</motion.form>
-						)}
-
-						{/* Instructions stage - shown when coming from embed redirect */}
-						{stage === "instructions" && (
-							<motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-								<div className="flex flex-col items-center gap-4 rounded-xl border border-white/10 bg-white/5 p-6 text-center">
-									<CheckCircle2 className="h-10 w-10 text-emerald-400" />
-									<div className="space-y-2">
-										<h2 className="font-semibold text-lg text-white">You're signed up!</h2>
-										{list.instructions ? (
-											<div className="prose prose-sm prose-invert max-w-none text-left prose-li:text-sm prose-li:text-white/70 prose-p:text-sm prose-p:text-white/70 prose-ul:text-sm prose-ul:text-white/70 prose-p:leading-relaxed">
-												<Streamdown>{list.instructions}</Streamdown>
-											</div>
-										) : (
-											<p className="text-sm text-white/70">
-												Answer a few quick questions to help us understand your needs better.
-											</p>
+										)}
+										{list.calendar_url && (
+											<a
+												href={list.calendar_url}
+												target="_blank"
+												rel="noreferrer"
+												className="flex flex-1 flex-col items-center gap-1.5 rounded-lg border border-white/20 px-3 py-2.5 text-white/60 transition-all hover:border-white/40 hover:text-white/80"
+											>
+												<Calendar className="h-5 w-5" />
+												<span className="font-medium text-xs">Book Call / Meet</span>
+											</a>
 										)}
 									</div>
 								</div>
-								<div className="flex justify-center">
-									<Button onClick={() => setStage("survey")} className="bg-white text-black hover:bg-white/90">
-										Continue to questions
-										<ArrowRight className="ml-1.5 h-4 w-4" />
-									</Button>
-								</div>
-							</motion.div>
-						)}
+							)}
 
-						{/* Survey stage - Form mode */}
-						{stage === "survey" && resolvedMode === "form" && currentQuestion && (
-							<AnimatePresence mode="wait">
-								<motion.div
-									key={currentQuestion.id}
-									initial={{ opacity: 0, x: 20 }}
-									animate={{ opacity: 1, x: 0 }}
-									exit={{ opacity: 0, x: -20 }}
-									transition={{ duration: 0.2 }}
-									className="space-y-3"
+							{/* Email field */}
+							<div className="space-y-2">
+								<Label htmlFor={emailId} className="text-white/90">
+									Your Email
+								</Label>
+								<Input
+									id={emailId}
+									type="email"
+									value={email}
+									onChange={(e) => setEmail(e.target.value)}
+									placeholder="you@company.com"
+									className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+									required
+								/>
+							</div>
+							<div className="flex justify-end">
+								<Button
+									type="submit"
+									disabled={isSaving || !isEmailValid}
+									size="sm"
+									className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
 								>
-									<div className="rounded-xl bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-4 sm:p-5">
-										<h2 className="mb-1 flex items-start gap-2 font-medium text-base text-white sm:text-lg">
-											<span className="shrink-0 text-white/50">{currentIndex + 1}.</span>
+									{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
+									<ArrowRight className="ml-1.5 h-4 w-4" />
+								</Button>
+							</div>
+						</motion.form>
+					)}
+
+					{/* Phone stage - for phone-identified surveys */}
+					{stage === "phone" && (
+						<motion.form
+							onSubmit={handlePhoneSubmit}
+							initial={{ opacity: 0, y: 16 }}
+							animate={{ opacity: 1, y: 0 }}
+							className="space-y-4"
+						>
+							{/* Walkthrough video */}
+							{walkthroughSignedUrl && (
+								<div className="overflow-hidden rounded-xl">
+									<video src={walkthroughSignedUrl} className="aspect-video w-full bg-black" controls playsInline />
+								</div>
+							)}
+
+							{/* Instructions for the respondent */}
+							{list.instructions && <p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>}
+
+							{/* Mode selector - show when multiple modes available */}
+							{(list.allow_chat || list.allow_voice || list.calendar_url) && (
+								<div className="space-y-2">
+									<p className="text-white/60 text-xs">How would you like to respond?</p>
+									<div className="flex gap-2">
+										<button
+											type="button"
+											onClick={() => setMode("form")}
+											className={cn(
+												"flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
+												mode === "form"
+													? "border-white bg-white/10 text-white"
+													: "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
+											)}
+										>
+											<ClipboardList className="h-5 w-5" />
+											<span className="font-medium text-xs">Form</span>
+										</button>
+										{list.allow_chat && (
+											<button
+												type="button"
+												onClick={() => setMode("chat")}
+												className={cn(
+													"flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
+													mode === "chat"
+														? "border-white bg-white/10 text-white"
+														: "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
+												)}
+											>
+												<MessageSquare className="h-5 w-5" />
+												<span className="font-medium text-xs">Chat</span>
+											</button>
+										)}
+										{list.allow_voice && (
+											<button
+												type="button"
+												onClick={() => setMode("voice")}
+												className={cn(
+													"relative flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
+													mode === "voice"
+														? "border-violet-400 bg-violet-500/20 text-white"
+														: "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
+												)}
+											>
+												<Mic className="h-5 w-5" />
+												<span className="font-medium text-xs">Voice</span>
+												<span className="-top-1 -right-1 absolute rounded bg-violet-500 px-1 py-0.5 font-bold text-[8px] text-white">
+													NEW
+												</span>
+											</button>
+										)}
+										{list.calendar_url && (
+											<a
+												href={list.calendar_url}
+												target="_blank"
+												rel="noreferrer"
+												className="flex flex-1 flex-col items-center gap-1.5 rounded-lg border border-white/20 px-3 py-2.5 text-white/60 transition-all hover:border-white/40 hover:text-white/80"
+											>
+												<Calendar className="h-5 w-5" />
+												<span className="font-medium text-xs">Book Call / Meet</span>
+											</a>
+										)}
+									</div>
+								</div>
+							)}
+
+							{/* Phone field */}
+							<div className="space-y-2">
+								<Label htmlFor={phoneId} className="text-white/90">
+									Your Phone Number
+								</Label>
+								<Input
+									id={phoneId}
+									type="tel"
+									value={phone}
+									onChange={(e) => setPhone(e.target.value)}
+									placeholder="+1 (555) 123-4567"
+									className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+									required
+								/>
+							</div>
+							<div className="flex justify-end">
+								<Button
+									type="submit"
+									disabled={isSaving || !isPhoneValid}
+									size="sm"
+									className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
+								>
+									{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
+									<ArrowRight className="ml-1.5 h-4 w-4" />
+								</Button>
+							</div>
+						</motion.form>
+					)}
+
+					{/* Name stage - shown only when person not found by email */}
+					{stage === "name" && (
+						<motion.form
+							onSubmit={handleNameSubmit}
+							initial={{ opacity: 0, y: 16 }}
+							animate={{ opacity: 1, y: 0 }}
+							className="space-y-4"
+						>
+							<p className="text-sm text-white/80 leading-relaxed">
+								We don't recognize your email. Please enter your name to continue.
+							</p>
+
+							{/* Name fields */}
+							<div className="grid grid-cols-2 gap-3">
+								<div className="space-y-2">
+									<Label className="text-white/90">
+										First Name <span className="text-red-400">*</span>
+									</Label>
+									<Input
+										type="text"
+										value={firstName}
+										onChange={(e) => setFirstName(e.target.value)}
+										placeholder="Jane"
+										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+										required
+										autoFocus
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label className="text-white/90">Last Name</Label>
+									<Input
+										type="text"
+										value={lastName}
+										onChange={(e) => setLastName(e.target.value)}
+										placeholder="Doe"
+										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+									/>
+								</div>
+							</div>
+
+							{/* Company field - optional */}
+							<div className="space-y-2">
+								<Label className="text-white/90">Company</Label>
+								<Input
+									type="text"
+									value={company}
+									onChange={(e) => setCompany(e.target.value)}
+									placeholder="Acme Inc"
+									className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+								/>
+							</div>
+
+							<div className="flex items-center justify-between">
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									onClick={() => setStage("email")}
+									className="text-white/50 hover:bg-white/10 hover:text-white"
+								>
+									<ArrowLeft className="mr-1.5 h-4 w-4" />
+									Back
+								</Button>
+								<Button type="submit" disabled={isSaving} size="sm" className="bg-white text-black hover:bg-white/90">
+									{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
+									<ArrowRight className="ml-1.5 h-4 w-4" />
+								</Button>
+							</div>
+						</motion.form>
+					)}
+
+					{/* Instructions stage - shown when coming from embed redirect */}
+					{stage === "instructions" && (
+						<motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+							<div className="flex flex-col items-center gap-4 rounded-xl border border-white/10 bg-white/5 p-6 text-center">
+								<CheckCircle2 className="h-10 w-10 text-emerald-400" />
+								<div className="space-y-2">
+									<h2 className="font-semibold text-lg text-white">You're signed up!</h2>
+									{list.instructions ? (
+										<div className="prose prose-sm prose-invert max-w-none text-left prose-li:text-sm prose-li:text-white/70 prose-p:text-sm prose-p:text-white/70 prose-ul:text-sm prose-ul:text-white/70 prose-p:leading-relaxed">
+											<Streamdown>{list.instructions}</Streamdown>
+										</div>
+									) : (
+										<p className="text-sm text-white/70">
+											Answer a few quick questions to help us understand your needs better.
+										</p>
+									)}
+								</div>
+							</div>
+							<div className="flex justify-center">
+								<Button onClick={() => setStage("survey")} className="bg-white text-black hover:bg-white/90">
+									Continue to questions
+									<ArrowRight className="ml-1.5 h-4 w-4" />
+								</Button>
+							</div>
+						</motion.div>
+					)}
+
+					{/* Survey stage - Form mode */}
+					{stage === "survey" && resolvedMode === "form" && currentQuestion && (
+						<AnimatePresence mode="wait">
+							<motion.div
+								key={currentQuestion.id}
+								initial={{ opacity: 0, x: 20 }}
+								animate={{ opacity: 1, x: 0 }}
+								exit={{ opacity: 0, x: -20 }}
+								transition={{ duration: 0.2 }}
+								className="space-y-10"
+							>
+								<div className="space-y-6">
+									<div className="space-y-3">
+										<h2 className="flex items-start gap-3 font-medium text-xl text-white sm:text-2xl">
+											<span className="shrink-0 text-white/40">{currentIndex + 1}.</span>
 											<span>
 												{currentQuestion.prompt}
 												{currentQuestion.required && <span className="ml-1 text-red-400">*</span>}
@@ -1555,7 +1545,7 @@ export default function ResearchLinkPage() {
 										</h2>
 										{/* Question video prompt */}
 										{currentQuestion.videoUrl && (
-											<div className="my-3 overflow-hidden rounded-lg">
+											<div className="overflow-hidden rounded-lg">
 												<video
 													src={currentQuestion.videoUrl}
 													className="aspect-video w-full bg-black"
@@ -1565,285 +1555,254 @@ export default function ResearchLinkPage() {
 											</div>
 										)}
 										{currentQuestion.helperText && (
-											<p className="mb-4 text-sm text-white/50">{currentQuestion.helperText}</p>
+											<p className="text-base text-white/50">{currentQuestion.helperText}</p>
 										)}
-										<div
-											className={cn("space-y-6", !currentQuestion.helperText && !currentQuestion.videoUrl && "mt-4")}
-										>
-											{renderQuestionInput({
-												question: currentQuestion,
-												value: currentAnswer,
-												onChange: setCurrentAnswer,
-												voiceSupported: isVoiceSupported,
-												voiceButtonState: formVoiceButtonState,
-												toggleRecording: toggleFormRecording,
-											})}
-											<div className="flex items-center justify-between pt-4">
-												<Button
-													type="button"
-													variant="ghost"
-													size="sm"
-													onClick={handleBack}
-													disabled={currentIndex === 0}
-													className="-ml-2 text-white/50 hover:bg-white/10 hover:text-white"
-												>
-													<ArrowLeft className="mr-1 h-3.5 w-3.5" />
-													Back
-												</Button>
-												{isReviewing ? (
-													<Button
-														type="button"
-														size="sm"
-														onClick={() => {
-															if (currentIndex === questions.length - 1) {
-																setIsReviewing(false);
-																setStage("complete");
-															} else {
-																setCurrentIndex(currentIndex + 1);
-																setCurrentAnswer(responses[questions[currentIndex + 1]?.id] ?? "");
-															}
-														}}
-														className="bg-white text-black hover:bg-white/90"
-													>
-														{currentIndex === questions.length - 1 ? "Done" : "Next"}
-														<ArrowRight className="ml-1 h-3.5 w-3.5" />
-													</Button>
-												) : (
-													<Button
-														type="button"
-														size="sm"
-														onClick={() => void handleAnswerSubmit(currentAnswer)}
-														disabled={isSaving || (currentQuestion?.required && !hasResponseValue(currentAnswer))}
-														className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
-													>
-														{isSaving ? (
-															<Loader2 className="h-4 w-4 animate-spin" />
-														) : currentIndex === questions.length - 1 ? (
-															"Submit"
-														) : (
-															"Next"
-														)}
-														<ArrowRight className="ml-1 h-3.5 w-3.5" />
-													</Button>
-												)}
-											</div>
-										</div>
 									</div>
 
-									{/* Progress indicator - clickable numbers */}
-									<div className="flex items-center justify-center gap-1.5 pt-3">
-										{questions.map((q, idx) => {
-											const isAnswered = hasResponseValue(responses[q.id]);
-											const isCurrent = idx === currentIndex;
-											const canJump = isAnswered || isCurrent || idx < currentIndex;
-											return (
-												<button
-													key={q.id}
-													type="button"
-													onClick={() => handleJumpToQuestion(idx)}
-													disabled={!canJump}
-													className={cn(
-														"flex h-6 w-6 items-center justify-center rounded-full font-medium text-xs transition-all",
-														isCurrent
-															? "bg-white text-black ring-2 ring-white/30"
-															: isAnswered
-																? "bg-emerald-500/80 text-white hover:bg-emerald-500"
-																: "bg-white/10 text-white/40",
-														canJump && !isCurrent && "cursor-pointer",
-														!canJump && "cursor-not-allowed opacity-50"
-													)}
-													title={
-														isCurrent
-															? "Current question"
-															: isAnswered
-																? `Jump to question ${idx + 1}`
-																: `Question ${idx + 1} (not yet answered)`
-													}
-												>
-													{idx + 1}
-												</button>
-											);
+									<div className="space-y-8">
+										{renderQuestionInput({
+											question: currentQuestion,
+											value: currentAnswer,
+											onChange: setCurrentAnswer,
+											voiceSupported: isVoiceSupported,
+											voiceButtonState: formVoiceButtonState,
+											toggleRecording: toggleFormRecording,
 										})}
 									</div>
-									{/* Mode switcher */}
-									{renderModeSwitcher()}
-								</motion.div>
-							</AnimatePresence>
-						)}
+								</div>
 
-						{/* Survey stage - Chat mode */}
-						{stage === "survey" && resolvedMode === "chat" && responseId && (
-							<ChatSection
+								<div className="flex items-center justify-between">
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										onClick={handleBack}
+										disabled={currentIndex === 0}
+										className="text-white/50 hover:bg-white/10 hover:text-white"
+									>
+										<ArrowLeft className="mr-1 h-3.5 w-3.5" />
+										Back
+									</Button>
+									{isReviewing ? (
+										<Button
+											type="button"
+											onClick={() => {
+												if (currentIndex === questions.length - 1) {
+													setIsReviewing(false);
+													setStage("complete");
+												} else {
+													setCurrentIndex(currentIndex + 1);
+													setCurrentAnswer(responses[questions[currentIndex + 1]?.id] ?? "");
+												}
+											}}
+											className="bg-white text-black hover:bg-white/90"
+										>
+											{currentIndex === questions.length - 1 ? "Done" : "Next"}
+											<ArrowRight className="ml-1.5 h-4 w-4" />
+										</Button>
+									) : (
+										<Button
+											type="button"
+											onClick={() => void handleAnswerSubmit(currentAnswer)}
+											disabled={isSaving || (currentQuestion?.required && !hasResponseValue(currentAnswer))}
+											className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
+										>
+											{isSaving ? (
+												<Loader2 className="h-4 w-4 animate-spin" />
+											) : currentIndex === questions.length - 1 ? (
+												"Submit"
+											) : (
+												"Next"
+											)}
+											<ArrowRight className="ml-1.5 h-4 w-4" />
+										</Button>
+									)}
+								</div>
+
+								{/* Progress indicator - minimal dots */}
+								<div className="flex items-center justify-center gap-1.5">
+									{questions.map((q, idx) => {
+										const isAnswered = hasResponseValue(responses[q.id]);
+										const isCurrent = idx === currentIndex;
+										const canJump = isAnswered || isCurrent || idx < currentIndex;
+										return (
+											<button
+												key={q.id}
+												type="button"
+												onClick={() => handleJumpToQuestion(idx)}
+												disabled={!canJump}
+												className={cn(
+													"h-1.5 rounded-full transition-all",
+													isCurrent
+														? "w-6 bg-white"
+														: isAnswered
+															? "w-1.5 bg-emerald-500/80 hover:bg-emerald-500"
+															: "w-1.5 bg-white/20",
+													canJump && !isCurrent && "cursor-pointer",
+													!canJump && "cursor-not-allowed"
+												)}
+												title={
+													isCurrent
+														? "Current question"
+														: isAnswered
+															? `Jump to question ${idx + 1}`
+															: `Question ${idx + 1} (not yet answered)`
+												}
+											/>
+										);
+									})}
+								</div>
+								{/* Mode switcher */}
+								{renderModeSwitcher()}
+							</motion.div>
+						</AnimatePresence>
+					)}
+
+					{/* Survey stage - Chat mode */}
+					{stage === "survey" && resolvedMode === "chat" && responseId && (
+						<ChatSection
+							slug={slug}
+							responseId={responseId}
+							responses={responses}
+							questions={questions}
+							allowVideo={list.allow_video}
+							onComplete={() => {
+								setStage("complete");
+								if (list.redirect_url) {
+									setRedirectCountdown(7);
+								}
+							}}
+							onVideoStage={() => setStage("video")}
+							renderModeSwitcher={renderModeSwitcher}
+						/>
+					)}
+
+					{/* Video stage */}
+					{stage === "video" && responseId && (
+						<motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+							<div className="space-y-2">
+								<h2 className="font-medium text-white">Would you like to record a video?</h2>
+								<p className="text-sm text-white/60">Share your thoughts on camera for a more personal response.</p>
+							</div>
+							<VideoRecorder
 								slug={slug}
 								responseId={responseId}
-								responses={responses}
-								questions={questions}
-								allowVideo={list.allow_video}
 								onComplete={() => {
 									setStage("complete");
 									if (list.redirect_url) {
 										setRedirectCountdown(7);
 									}
 								}}
-								onVideoStage={() => setStage("video")}
-								renderModeSwitcher={renderModeSwitcher}
+								onSkip={() => {
+									setStage("complete");
+									if (list.redirect_url) {
+										setRedirectCountdown(7);
+									}
+								}}
 							/>
-						)}
+						</motion.div>
+					)}
 
-						{/* Video stage */}
-						{stage === "video" && responseId && (
-							<motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-								<div className="space-y-2">
-									<h2 className="font-medium text-white">Would you like to record a video?</h2>
-									<p className="text-sm text-white/60">Share your thoughts on camera for a more personal response.</p>
-								</div>
-								<VideoRecorder
-									slug={slug}
-									responseId={responseId}
-									onComplete={() => {
-										setStage("complete");
-										if (list.redirect_url) {
-											setRedirectCountdown(7);
-										}
-									}}
-									onSkip={() => {
-										setStage("complete");
-										if (list.redirect_url) {
-											setRedirectCountdown(7);
-										}
-									}}
-								/>
-							</motion.div>
-						)}
-
-						{/* Complete stage */}
-						{stage === "complete" && (
-							<motion.div
-								initial={{ opacity: 0, scale: 0.95 }}
-								animate={{ opacity: 1, scale: 1 }}
-								className="flex flex-col items-center gap-4 rounded-xl border border-white/10 bg-white/10 p-8 text-center"
-							>
-								<CheckCircle2 className="h-12 w-12 text-emerald-300" />
-								<div className="space-y-2">
-									<h2 className="font-semibold text-xl">Thanks for sharing!</h2>
-									{/* <p className="text-sm text-white/70">Your responses have been saved.</p> */}
-									<div className="flex items-center justify-center gap-2">
-										<Button
-											asChild
-											variant="outline"
-											className="border-white bg-transparent text-white hover:border-white/50 hover:bg-white/10 hover:text-white"
-										>
-											<a href="https://getupsight.com/sign-up" target="_blank" rel="noreferrer">
-												Create a free account to see your responses
-											</a>
-										</Button>
-									</div>
-								</div>
-
-								{/* Calendar booking */}
-								{list.calendar_url && (
-									<div className="w-full space-y-3 border-white/10 border-t pt-4">
-										<div className="flex items-center justify-center gap-2 text-sm text-white/60">
-											<Calendar className="h-4 w-4" />
-											Want to discuss your feedback?
-										</div>
-										<Button asChild className="w-full gap-2 bg-white text-black hover:bg-white/90">
-											<a href={list.calendar_url} target="_blank" rel="noreferrer">
-												<Calendar className="h-4 w-4" />
-												Book a call
-											</a>
-										</Button>
-									</div>
-								)}
-
-								{/* Share section */}
-								<div className="w-full space-y-3 border-white/10 border-t pt-4">
+					{/* Complete stage */}
+					{stage === "complete" && (
+						<motion.div
+							initial={{ opacity: 0, scale: 0.95 }}
+							animate={{ opacity: 1, scale: 1 }}
+							className="flex flex-col items-center gap-4 rounded-xl border border-white/10 bg-white/10 p-8 text-center"
+						>
+							<CheckCircle2 className="h-12 w-12 text-emerald-300" />
+							<div className="space-y-2">
+								<h2 className="font-semibold text-xl">Thanks for sharing!</h2>
+								{/* <p className="text-sm text-white/70">Your responses have been saved.</p> */}
+								<div className="flex items-center justify-center gap-2">
 									<Button
-										onClick={handleCopyLink}
+										asChild
 										variant="outline"
-										className="w-full gap-2 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+										className="border-white bg-transparent text-white hover:border-white/50 hover:bg-white/10 hover:text-white"
 									>
-										{copiedLink ? (
-											<>
-												<Check className="h-4 w-4 text-emerald-400" />
-												Link copied!
-											</>
-										) : (
-											<>
-												<Copy className="h-4 w-4" />
-												Copy link to share
-											</>
-										)}
+										<a href="https://getupsight.com/sign-up" target="_blank" rel="noreferrer">
+											Create a free account to see your responses
+										</a>
 									</Button>
 								</div>
+							</div>
 
-								{list.redirect_url && redirectCountdown !== null && (
-									<div className="flex items-center gap-3">
-										<p className="text-white/40 text-xs">Redirecting in {redirectCountdown}s...</p>
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={cancelRedirect}
-											className="h-6 px-2 text-white/40 text-xs hover:bg-white/10 hover:text-white"
-										>
-											Cancel
-										</Button>
+							{/* Calendar booking */}
+							{list.calendar_url && (
+								<div className="w-full space-y-3 border-white/10 border-t pt-4">
+									<div className="flex items-center justify-center gap-2 text-sm text-white/60">
+										<Calendar className="h-4 w-4" />
+										Want to discuss your feedback?
 									</div>
-								)}
+									<Button asChild className="w-full gap-2 bg-white text-black hover:bg-white/90">
+										<a href={list.calendar_url} target="_blank" rel="noreferrer">
+											<Calendar className="h-4 w-4" />
+											Book a call
+										</a>
+									</Button>
+								</div>
+							)}
 
-								{/* Review answers option */}
+							{/* Share section */}
+							<div className="w-full space-y-3 border-white/10 border-t pt-4">
 								<Button
-									variant="ghost"
-									onClick={() => {
-										setCurrentIndex(0);
-										setIsReviewing(true);
-										setStage("survey");
-									}}
-									className="w-full gap-2 text-white/60 hover:bg-white/10 hover:text-white"
+									onClick={handleCopyLink}
+									variant="outline"
+									className="w-full gap-2 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
 								>
-									<ClipboardList className="h-4 w-4" />
-									Review your answers
+									{copiedLink ? (
+										<>
+											<Check className="h-4 w-4 text-emerald-400" />
+											Link copied!
+										</>
+									) : (
+										<>
+											<Copy className="h-4 w-4" />
+											Copy link to share
+										</>
+									)}
 								</Button>
+							</div>
 
-								{/* Start over option */}
-								<button
-									type="button"
-									onClick={handleStartOver}
-									className="text-white/40 text-xs underline-offset-2 hover:text-white/60 hover:underline"
-								>
-									Start over with a different email
-								</button>
-							</motion.div>
-						)}
-					</CardContent>
-				</Card>
+							{list.redirect_url && redirectCountdown !== null && (
+								<div className="flex items-center gap-3">
+									<p className="text-white/40 text-xs">Redirecting in {redirectCountdown}s...</p>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={cancelRedirect}
+										className="h-6 px-2 text-white/40 text-xs hover:bg-white/10 hover:text-white"
+									>
+										Cancel
+									</Button>
+								</div>
+							)}
 
-				{/* Powered by badge */}
-				<div className="mt-6 flex justify-center">
-					<a
-						href="https://getUpSight.com"
-						target="_blank"
-						rel="noreferrer"
-						className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-white/40 text-xs transition hover:text-white/60"
-					>
-						<Logo size={5} />
-						Powered by UpSight
-					</a>
+							{/* Review answers option */}
+							<Button
+								variant="ghost"
+								onClick={() => {
+									setCurrentIndex(0);
+									setIsReviewing(true);
+									setStage("survey");
+								}}
+								className="w-full gap-2 text-white/60 hover:bg-white/10 hover:text-white"
+							>
+								<ClipboardList className="h-4 w-4" />
+								Review your answers
+							</Button>
+
+							{/* Start over option */}
+							<button
+								type="button"
+								onClick={handleStartOver}
+								className="text-white/40 text-xs underline-offset-2 hover:text-white/60 hover:underline"
+							>
+								Start over with a different email
+							</button>
+						</motion.div>
+					)}
 				</div>
-
-				{/* Growth CTA */}
-				<p className="mt-3 text-center text-sm">
-					{/* Need answers to your own questions?{" "} */}
-					<a
-						href="https://getupsight.com/sign-up"
-						target="_blank"
-						rel="noreferrer"
-						className="font-medium text-white/50 transition-colors hover:text-white/80"
-					>
-						Get answers to your questions
-						<span className="block">with a free account</span>
-					</a>
-				</p>
 			</div>
 		</div>
 	);
@@ -2015,8 +1974,10 @@ function renderQuestionInput({
 					value={typeof value === "string" ? value : ""}
 					onChange={(event) => onChange(event.target.value)}
 					placeholder="Share your thoughts..."
-					rows={4}
-					className="w-full border-white/10 bg-black/30 pr-12 text-white placeholder:text-white/40"
+					rows={10}
+					style={{ minHeight: "220px" }}
+					className="w-full resize-none border-white/10 bg-black/20 pr-14 text-lg text-white placeholder:text-white/30 focus:border-white/20 md:text-xl"
+					autoFocus
 				/>
 				{voiceSupported && toggleRecording && voiceButtonState && (
 					<div className="absolute top-2 right-2">
