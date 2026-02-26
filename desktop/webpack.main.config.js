@@ -2,8 +2,33 @@ const webpack = require("webpack");
 const dotenv = require("dotenv");
 const path = require("path");
 
-// Load .env file for build-time variable injection
-dotenv.config({ path: path.resolve(__dirname, ".env") });
+function loadDesktopEnv() {
+  const desktopEnvPath = path.resolve(__dirname, ".env");
+  const rootEnvPath = path.resolve(__dirname, "..", ".env");
+  const desktopResult = dotenv.config({ path: desktopEnvPath });
+  if (!desktopResult.error) return desktopEnvPath;
+
+  const rootResult = dotenv.config({ path: rootEnvPath });
+  if (!rootResult.error) return rootEnvPath;
+
+  return null;
+}
+
+function requireEnv(name, sourcePath) {
+  const value = process.env[name];
+  if (value && String(value).trim()) return value;
+  throw new Error(
+    `[desktop config] Missing required ${name}. Add it to desktop/.env or ${sourcePath || "project .env"}.`,
+  );
+}
+
+const loadedEnvPath = loadDesktopEnv();
+const supabaseUrl = requireEnv("SUPABASE_URL", loadedEnvPath);
+const supabaseAnonKey = requireEnv("SUPABASE_ANON_KEY", loadedEnvPath);
+const upsightApiUrl =
+  process.env.UPSIGHT_API_URL || "https://app.getupsight.com";
+const recallApiUrl =
+  process.env.RECALLAI_API_URL || "https://us-west-2.recall.ai";
 
 module.exports = {
   /**
@@ -18,20 +43,11 @@ module.exports = {
   plugins: [
     // Inject environment variables at build time
     new webpack.DefinePlugin({
-      "process.env.SUPABASE_URL": JSON.stringify(
-        process.env.SUPABASE_URL || "https://ywkqpsvfhjjxswjzqnnq.supabase.co",
-      ),
-      "process.env.SUPABASE_ANON_KEY": JSON.stringify(
-        process.env.SUPABASE_ANON_KEY ||
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3a3Fwc3ZmaGpqeHN3anpxbm5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjA0MDAzNzEsImV4cCI6MjAzNTk3NjM3MX0.vvAlwDCfKQo1gUEcYxJwLMZFubvYiwQb95c56rQ-i5g",
-      ),
-      "process.env.UPSIGHT_API_URL": JSON.stringify(
-        process.env.UPSIGHT_API_URL || "https://app.getupsight.com",
-      ),
+      "process.env.SUPABASE_URL": JSON.stringify(supabaseUrl),
+      "process.env.SUPABASE_ANON_KEY": JSON.stringify(supabaseAnonKey),
+      "process.env.UPSIGHT_API_URL": JSON.stringify(upsightApiUrl),
       // Recall.ai SDK API URL - required for meeting detection
-      "process.env.RECALLAI_API_URL": JSON.stringify(
-        process.env.RECALLAI_API_URL || "https://us-west-2.recall.ai",
-      ),
+      "process.env.RECALLAI_API_URL": JSON.stringify(recallApiUrl),
     }),
   ],
   externals: {
