@@ -1,10 +1,28 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
-import { ResearchLinkResponseSaveSchema } from "~/features/research-links/schemas";
+import {
+	type ResearchLinkQuestion,
+	ResearchLinkQuestionSchema,
+	type ResearchLinkResponsePayload,
+	ResearchLinkResponseSaveSchema,
+} from "~/features/research-links/schemas";
 import { getPostHogServerClient } from "~/lib/posthog.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
+import type { ResearchLink, ResearchLinkResponse } from "~/types";
+
+type ResearchLinkResponses = ResearchLinkResponsePayload["responses"];
+type ExistingResearchLinkResponse = Pick<
+	ResearchLinkResponse,
+	"id" | "email" | "evidence_id" | "responses" | "response_mode" | "completed"
+>;
+
+type ExistingResearchLink = Pick<ResearchLink, "id" | "name" | "account_id" | "project_id" | "questions">;
+
+type AdminSupabaseClient = ReturnType<typeof createSupabaseAdminClient>;
+
+function coerceSupabaseRow<T>(value: unknown): T {
+	return value as T;
+}
 
 export const loader = () => Response.json({ message: "Method not allowed" }, { status: 405 });
 
@@ -31,7 +49,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	}
 
 	const supabase = createSupabaseAdminClient();
-	const { data: list, error: listError } = await supabase
+	const { data: listRaw, error: listError } = await supabase
 		.from("research_links")
 		.select("id, name, account_id, project_id, questions")
 		.eq("slug", slug)
@@ -41,14 +59,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		return Response.json({ message: listError.message }, { status: 500 });
 	}
 
-	if (!list) {
+	if (!listRaw) {
 		return Response.json({ message: "Research link not found" }, { status: 404 });
 	}
+	const list = coerceSupabaseRow<ExistingResearchLink>(listRaw);
 
 	const { responseId, responses, completed, merge } = parsed.data;
-	const { data: existing, error: existingError } = await supabase
+	const { data: existingRaw, error: existingError } = await supabase
 		.from("research_link_responses")
-		.select("id, email, evidence_id, responses, response_mode")
+		.select("id, email, evidence_id, responses, response_mode, completed")
 		.eq("id", responseId)
 		.eq("research_link_id", list.id)
 		.maybeSingle();
@@ -57,14 +76,20 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		return Response.json({ message: existingError.message }, { status: 500 });
 	}
 
-	if (!existing) {
+	if (!existingRaw) {
 		return Response.json({ message: "Response not found" }, { status: 404 });
 	}
+	const existing = coerceSupabaseRow<ExistingResearchLinkResponse>(existingRaw);
 
 	// If merge is true, combine with existing responses instead of replacing
-	let nextResponses = responses ?? {};
+	let nextResponses: ResearchLinkResponses = responses;
 	if (merge && existing.responses) {
-		const existingResponses = (existing.responses as Record<string, unknown>) ?? {};
+		const existingParsed = ResearchLinkResponseSaveSchema.safeParse({
+			responseId,
+			responses: existing.responses,
+			merge: false,
+		});
+		const existingResponses: ResearchLinkResponses = existingParsed.success ? existingParsed.data.responses : {};
 		nextResponses = { ...existingResponses, ...responses };
 	}
 	const { error: updateError } = await supabase
@@ -95,7 +120,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			}
 		}
 
-		const questions = Array.isArray(list.questions) ? list.questions : [];
+		const questionsParse = ResearchLinkQuestionSchema.array().safeParse(list.questions);
+		const questions: ResearchLinkQuestion[] = questionsParse.success ? questionsParse.data : [];
 
 		// Extract evidence per text question for theme clustering
 		await extractTextQuestionEvidence({
@@ -135,6 +161,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 						response_mode: (existing.response_mode as string | undefined) ?? "form",
 						question_count: questions.length,
 						text_questions: textQuestionCount,
+						has_person: !!personId,
 						completion_time: new Date().toISOString(),
 					},
 				})
@@ -156,7 +183,7 @@ async function findOrCreatePerson({
 	projectId,
 	email,
 }: {
-	supabase: SupabaseClient<Database>;
+	supabase: AdminSupabaseClient;
 	accountId: string;
 	projectId: string | null;
 	email: string;
@@ -238,13 +265,13 @@ async function extractTextQuestionEvidence({
 	questions,
 	responses,
 }: {
-	supabase: SupabaseClient<Database>;
+	supabase: AdminSupabaseClient;
 	responseId: string;
 	accountId: string;
 	projectId: string | null;
 	personId: string | null;
-	questions: Array<{ id?: string; prompt?: string; type?: string }>;
-	responses: Record<string, unknown>;
+	questions: ResearchLinkQuestion[];
+	responses: ResearchLinkResponses;
 }): Promise<void> {
 	for (let i = 0; i < questions.length; i++) {
 		const question = questions[i];

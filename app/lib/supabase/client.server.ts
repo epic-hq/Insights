@@ -12,7 +12,8 @@ export const getServerClient = (request: Request) => {
 	const actualHost = request.headers.get("x-forwarded-host") || request.headers.get("host") || requestUrl.hostname;
 	const isProduction = actualHost === "getupsight.com" || actualHost.endsWith(".getupsight.com");
 
-	const supabase = createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+	const supabase = createServerClient<Database, "public">(SUPABASE_URL, SUPABASE_ANON_KEY, {
+		db: { schema: "public" },
 		cookies: {
 			getAll() {
 				return parseCookieHeader(request.headers.get("Cookie") ?? "") as {
@@ -56,10 +57,11 @@ function extractBearerToken(request: Request): string | null {
 }
 
 export function createSupabaseAdminClient() {
-	return createServerClient<Database>(SUPABASE_URL, _SUPABASE_SERVICE_ROLE_KEY, {
+	return createServerClient<Database, "public">(SUPABASE_URL, _SUPABASE_SERVICE_ROLE_KEY, {
+		db: { schema: "public" },
 		cookies: {
 			getAll: () => [],
-			setAll: () => {},
+			setAll: () => { },
 		},
 		auth: {
 			autoRefreshToken: false,
@@ -175,20 +177,22 @@ export async function getSession(request: Request) {
 }
 
 // Anonymous client (no cookies) for server-side actions without user context
-export const supabaseAnon = createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabaseAnon = createServerClient<Database, "public">(SUPABASE_URL, SUPABASE_ANON_KEY, {
+	db: { schema: "public" },
 	cookies: {
 		getAll: () => [],
-		setAll: () => {},
+		setAll: () => { },
 	},
 	auth: { persistSession: false },
 });
 
 // Per-request helper that returns a client with a user JWT set for RLS-protected queries
 export function getRlsClient(jwt: string) {
-	return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+	return createServerClient<Database, "public">(SUPABASE_URL, SUPABASE_ANON_KEY, {
+		db: { schema: "public" },
 		cookies: {
 			getAll: () => [],
-			setAll: () => {},
+			setAll: () => { },
 		},
 		auth: { persistSession: false },
 		global: {
