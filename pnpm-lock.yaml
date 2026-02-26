@@ -54,22 +54,22 @@ importers:
         version: 1.0.6(@hono/node-server@1.19.5(hono@4.9.9))(hono@4.9.9)
       '@livekit/agents':
         specifier: latest
-        version: 1.0.44(@livekit/rtc-node@0.13.24)(zod@3.25.76)
+        version: 1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       '@livekit/agents-plugin-deepgram':
         specifier: latest
-        version: 1.0.44(@livekit/agents@1.0.44(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)
+        version: 1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)
       '@livekit/agents-plugin-livekit':
         specifier: latest
-        version: 1.0.44(@livekit/agents@1.0.44(@livekit/rtc-node@0.13.24)(zod@3.25.76))
+        version: 1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))
       '@livekit/agents-plugin-openai':
         specifier: latest
-        version: 1.0.44(@livekit/agents@1.0.44(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)(zod@3.25.76)
+        version: 1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       '@livekit/agents-plugin-silero':
         specifier: latest
-        version: 1.0.44(@livekit/agents@1.0.44(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)
+        version: 1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)
       '@livekit/components-react':
         specifier: latest
-        version: 2.9.19(livekit-client@2.17.1(@types/dom-mediacapture-record@1.0.22))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(tslib@2.8.1)
+        version: 2.9.20(livekit-client@2.17.2(@types/dom-mediacapture-record@1.0.22))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(tslib@2.8.1)
       '@livekit/components-styles':
         specifier: latest
         version: 1.2.0
@@ -209,14 +209,14 @@ importers:
         specifier: 8.21.3
         version: 8.21.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@trigger.dev/build':
-        specifier: 4.3.3
-        version: 4.3.3(magicast@0.3.5)(typescript@5.8.3)
+        specifier: 4.4.1
+        version: 4.4.1(magicast@0.3.5)(typescript@5.8.3)
       '@trigger.dev/react-hooks':
-        specifier: 4.3.3
-        version: 4.3.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.8.3)
+        specifier: 4.4.1
+        version: 4.4.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.8.3)
       '@trigger.dev/sdk':
-        specifier: 4.3.3
-        version: 4.3.3(ai@5.0.113(zod@3.25.76))(typescript@5.8.3)(zod@3.25.76)
+        specifier: 4.4.1
+        version: 4.4.1(ai@5.0.113(zod@3.25.76))(typescript@5.8.3)(zod@3.25.76)
       '@types/jsdom':
         specifier: 27.0.0
         version: 27.0.0
@@ -288,7 +288,7 @@ importers:
         version: 3.38.5(ai@5.0.113(zod@3.25.76))
       livekit-client:
         specifier: latest
-        version: 2.17.1(@types/dom-mediacapture-record@1.0.22)
+        version: 2.17.2(@types/dom-mediacapture-record@1.0.22)
       livekit-server-sdk:
         specifier: latest
         version: 2.15.0
@@ -2480,48 +2480,48 @@ packages:
     peerDependencies:
       '@inquirer/prompts': '>= 3 < 8'
 
-  '@livekit/agents-plugin-deepgram@1.0.44':
-    resolution: {integrity: sha512-7MnwVJoPR20HY/vBZiOFD0HriqfuaR/7e/7lQ0UVWMWLzXst8/CW7JmyNjSizH6lpZivAmXdrV8xIN0vZxeHZw==}
+  '@livekit/agents-plugin-deepgram@1.0.47':
+    resolution: {integrity: sha512-b7aYQLNGw/+JUWJQdchCKr+InQV2MynJmp6HRT1jfKO/dr/uzpMWUQV+5tQGQuyfNo+u2WdAxgBnHS6pFEQqVw==}
     peerDependencies:
-      '@livekit/agents': 1.0.44
+      '@livekit/agents': 1.0.47
       '@livekit/rtc-node': ^0.13.24
 
-  '@livekit/agents-plugin-livekit@1.0.44':
-    resolution: {integrity: sha512-0Ryc5DrOi9AQ2xHX7I2OMABDVMKyBkE7kp4lTsBZm0lUhecPsU1eBSYJk1DoCtheSRFcixKUv0/rwa6esPuzPQ==}
+  '@livekit/agents-plugin-livekit@1.0.47':
+    resolution: {integrity: sha512-ZDSoF8Y2fhzwPCtWsQZ8kC1hnY+0tA2FenLrlTHrj0IbyUsjV9x/LG7i6gGjFboLHV1cTKaVTU3yoLLWq7UbqA==}
     peerDependencies:
-      '@livekit/agents': 1.0.44
+      '@livekit/agents': 1.0.47
 
-  '@livekit/agents-plugin-openai@1.0.44':
-    resolution: {integrity: sha512-jfIWZFjGZCBGarO/EmvzswaEGePnGQYPKMzU+R/nqa8SGCuaWROp63F7RxX6iAeUjhi3gyleueLg+5P6QV19VQ==}
+  '@livekit/agents-plugin-openai@1.0.47':
+    resolution: {integrity: sha512-LO5hZPPEI7jG1gKHe8RecWjSY42Khd5iCzalvepI3GDWWvKM+g9Ydc4Cr8gtTywwRHr59Kb3v4lzGkYSlHC5jA==}
     peerDependencies:
-      '@livekit/agents': 1.0.44
+      '@livekit/agents': 1.0.47
       '@livekit/rtc-node': ^0.13.24
 
-  '@livekit/agents-plugin-silero@1.0.44':
-    resolution: {integrity: sha512-Nw0d8my2+tOs+IfE8GMpw2OdSMPZD7Hx8m/cT4V5PloXe1Gd5xBiuP0K8jU9gdv9zLYe/OEaR5kJhZKEulUEcQ==}
+  '@livekit/agents-plugin-silero@1.0.47':
+    resolution: {integrity: sha512-u4kpFNX1q7su+myU0A6T1GrVEl9oQnXoKL1eGs+l3teS+F+psTi6feX4onnT3cpHOieY0CwzaPlNkV3T4UBvCA==}
     peerDependencies:
-      '@livekit/agents': 1.0.44
+      '@livekit/agents': 1.0.47
       '@livekit/rtc-node': ^0.13.24
 
-  '@livekit/agents@1.0.44':
-    resolution: {integrity: sha512-GHAoNrBBRsW7i0axjajG0QWeihypCWmU+JAbws/kfXNNA4V2AKrM8GDQPFKxfraSbqTa/UkkQ2F0aJFS/QixKQ==}
+  '@livekit/agents@1.0.47':
+    resolution: {integrity: sha512-Iy995PAdObU2niimqYNvJxLGAvrTktrJAMd+vFOmMRmB1IRafcwEBIcSBM1N5csT7Snu6mwS9/3SmjkHgysXyg==}
     peerDependencies:
       '@livekit/rtc-node': ^0.13.24
       zod: ^3.25.76 || ^4.1.8
 
-  '@livekit/components-core@0.12.12':
-    resolution: {integrity: sha512-DQ+lOAMPvum37Ta4lQLETxQe7ZxhivI78ZfE4nnWP0AcnwNByNR2vVLp9VGvw577HmvgHEkbjBbGBJBSZEBEZA==}
+  '@livekit/components-core@0.12.13':
+    resolution: {integrity: sha512-DQmi84afHoHjZ62wm8y+XPNIDHTwFHAltjd3lmyXj8UZHOY7wcza4vFt1xnghJOD5wLRY58L1dkAgAw59MgWvw==}
     engines: {node: '>=18'}
     peerDependencies:
-      livekit-client: ^2.15.14
+      livekit-client: ^2.17.2
       tslib: ^2.6.2
 
-  '@livekit/components-react@2.9.19':
-    resolution: {integrity: sha512-VEa4SsiwCHreuIdjxVPrqoWY+Ezq36fHc6swawDXcROPZMCPOeAovaxw83yZqqCKDpzT6oWoeBFDMbxbMytqRw==}
+  '@livekit/components-react@2.9.20':
+    resolution: {integrity: sha512-hjkYOsJj9Jbghb7wM5cI8HoVisKeL6Zcy1VnRWTLm0sqVbto8GJp/17T4Udx85mCPY6Jgh8I1Cv0yVzgz7CQtg==}
     engines: {node: '>=18'}
     peerDependencies:
       '@livekit/krisp-noise-filter': ^0.2.12 || ^0.3.0
-      livekit-client: ^2.16.0
+      livekit-client: ^2.17.2
       react: 19.2.3
       react-dom: 19.2.3
       tslib: ^2.6.2
@@ -2902,6 +2902,12 @@ packages:
     peerDependencies:
       '@opentelemetry/api': ^1.3.0
 
+  '@opentelemetry/exporter-metrics-otlp-http@0.203.0':
+    resolution: {integrity: sha512-HFSW10y8lY6BTZecGNpV3GpoSy7eaO0Z6GATwZasnT4bEsILp8UJXNG5OmEsz4SdwCSYvyCbTJdNbZP3/8LGCQ==}
+    engines: {node: ^18.19.0 || >=20.6.0}
+    peerDependencies:
+      '@opentelemetry/api': ^1.3.0
+
   '@opentelemetry/exporter-trace-otlp-http@0.203.0':
     resolution: {integrity: sha512-ZDiaswNYo0yq/cy1bBLJFe691izEJ6IgNmkjm4C6kE9ub/OMQqDXORx2D2j8fzTBTxONyzusbaZlqtfmyqURPw==}
     engines: {node: ^18.19.0 || >=20.6.0}
@@ -2911,6 +2917,12 @@ packages:
   '@opentelemetry/exporter-trace-otlp-proto@0.54.2':
     resolution: {integrity: sha512-XSmm1N2wAhoWDXP1q/N6kpLebWaxl6VIADv4WA5QWKHLRpF3gLz5NAWNJBR8ygsvv8jQcrwnXgwfnJ18H3v1fg==}
     engines: {node: '>=14'}
+    peerDependencies:
+      '@opentelemetry/api': ^1.3.0
+
+  '@opentelemetry/host-metrics@0.37.0':
+    resolution: {integrity: sha512-gf6nRFci0PTni9R1QQKjZ2uZE4Y6olLKhlwdM0qqLbbn3SBVKyP2jyBMiosBTHtRNLjY7s8hzQ44eLdK5wkGNQ==}
+    engines: {node: ^18.19.0 || >=20.6.0}
     peerDependencies:
       '@opentelemetry/api': ^1.3.0
 
@@ -5126,20 +5138,20 @@ packages:
     resolution: {integrity: sha512-MYr2+Sphd9Zeu44q5eLRp+jXj0Km5r9QGjtnmRKFDxK79MbGoL65M8yFXNmMkJmzsBQHcA5USSIJR3QJJnV7kQ==}
     engines: {node: '>=18.20.0'}
 
-  '@trigger.dev/build@4.3.3':
-    resolution: {integrity: sha512-57U2nb8n9RERqFktmamSqriAgK4+e3985fwYi0EHtQ1/WDmQ0KYdiK0FEGN1ls5/vcZxbyfH/cifIA2fW0vHEg==}
+  '@trigger.dev/build@4.4.1':
+    resolution: {integrity: sha512-xZou8zaaed2FlYlrze+7E5lcGCoOf6kbjvT8JoJkr/jsRgpndKb8wJ/iO6It4zRFSbrgJL7HvNRFxcj0UYqoJg==}
     engines: {node: '>=18.20.0'}
 
   '@trigger.dev/core@4.3.2':
     resolution: {integrity: sha512-CToEt1w1jOmpvwOh/gqgC3UKHw36nrHSxaMYRnv5csXFOMgH2BksD/fZ2M/R2Q8kNehlQGagFWoussGmItxZqw==}
     engines: {node: '>=18.20.0'}
 
-  '@trigger.dev/core@4.3.3':
-    resolution: {integrity: sha512-HPPxbesDiEEuA1U/Qi1RWXVMkQNDCNyB7zhd3cIYd6T0KUTIt6i7ZdaqSRDhkAxva2hpaWXQsQIYwr5Jnsyohw==}
+  '@trigger.dev/core@4.4.1':
+    resolution: {integrity: sha512-Or5JhI4NKWF/sXa2HEwi4/csYQmu9UiaOxNT6dxlG6YosIKwkGJOGfwtFf+63UZTpFrs7iyz6cNF0V4ZXRQbCQ==}
     engines: {node: '>=18.20.0'}
 
-  '@trigger.dev/react-hooks@4.3.3':
-    resolution: {integrity: sha512-SXAAfPIj8LTYRy9FbZmvD2PO3zcTlZk8zPJus0bqbuAhz7t/Ayf/3zF3vvAhfFynrXcx7l1g085DSpgXn27a2w==}
+  '@trigger.dev/react-hooks@4.4.1':
+    resolution: {integrity: sha512-9IQO4uqjqcsC/sph+8NFr8gqWRbBZyT517ACXKwJNLvPUYBIyIOCtHjQkuWeXLoeLbCzwBPX8SunaHGDjRHtgA==}
     engines: {node: '>=18.20.0'}
     peerDependencies:
       react: 19.2.3
@@ -5166,8 +5178,8 @@ packages:
       valibot:
         optional: true
 
-  '@trigger.dev/sdk@4.3.3':
-    resolution: {integrity: sha512-aNKbmn6O8XfAJsQ3j9A8tVUm6nr+5SktHxUs804i7S4BG//b0YX0yhrKwPUe8rUGmFCYxmb3B43OOtZ0MsPyfA==}
+  '@trigger.dev/sdk@4.4.1':
+    resolution: {integrity: sha512-AZs+vsE3Y1+UzNHEeGsuXx8vPZH4TP8qbyHYfJpTnmzXvNZFrTWGFYLgp4qgsHXgn58S630sNQT4+ZzL64Rb8A==}
     engines: {node: '>=18.20.0'}
     peerDependencies:
       ai: ^4.2.0 || ^5.0.0 || ^6.0.0
@@ -8917,8 +8929,8 @@ packages:
     resolution: {integrity: sha512-rJysbR9GKIalhTbVL2tYbF2hVyDnrf7pFUZBwjPaMIdadYHmeT+EVi/Bu3qd7ETQPahTotg2WRCatXwRBW554g==}
     engines: {node: '>=16.0.0'}
 
-  livekit-client@2.17.1:
-    resolution: {integrity: sha512-pbJOSRVzZOoe9fL3RWjVxrYjsPo9npIVKGSl2Jhm1x4GxC6uubPWktWPxNLOnrshgxwAKrs2VeLY7LxBOtU1NQ==}
+  livekit-client@2.17.2:
+    resolution: {integrity: sha512-+67y2EtAWZabARlY7kANl/VT1Uu1EJYR5a8qwpT2ub/uBCltsEgEDOxCIMwE9HFR5w+z41HR6GL9hyEvW/y6CQ==}
     peerDependencies:
       '@types/dom-mediacapture-record': ^1
 
@@ -11634,6 +11646,12 @@ packages:
 
   symbol-tree@3.2.4:
     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==}
+
+  systeminformation@5.23.8:
+    resolution: {integrity: sha512-Osd24mNKe6jr/YoXLLK3k8TMdzaxDffhpCxgkfgBHcapykIkd50HXThM3TCEuHO2pPuCsSx2ms/SunqhU5MmsQ==}
+    engines: {node: '>=8.0.0'}
+    os: [darwin, linux, win32, freebsd, openbsd, netbsd, sunos, android]
+    hasBin: true
 
   tabbable@6.3.0:
     resolution: {integrity: sha512-EIHvdY5bPLuWForiR/AN2Bxngzpuwn1is4asboytXtpTgsArc+WmSJKVLlhdh71u7jFcryDqB2A8lQvj78MkyQ==}
@@ -15238,25 +15256,25 @@ snapshots:
       '@inquirer/prompts': 6.0.1
       '@inquirer/type': 1.5.5
 
-  '@livekit/agents-plugin-deepgram@1.0.44(@livekit/agents@1.0.44(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)':
+  '@livekit/agents-plugin-deepgram@1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)':
     dependencies:
-      '@livekit/agents': 1.0.44(@livekit/rtc-node@0.13.24)(zod@3.25.76)
+      '@livekit/agents': 1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       '@livekit/rtc-node': 0.13.24
       ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@livekit/agents-plugin-livekit@1.0.44(@livekit/agents@1.0.44(@livekit/rtc-node@0.13.24)(zod@3.25.76))':
+  '@livekit/agents-plugin-livekit@1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))':
     dependencies:
       '@huggingface/hub': 2.4.1
       '@huggingface/transformers': 3.7.2
-      '@livekit/agents': 1.0.44(@livekit/rtc-node@0.13.24)(zod@3.25.76)
+      '@livekit/agents': 1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       onnxruntime-node: 1.21.0
 
-  '@livekit/agents-plugin-openai@1.0.44(@livekit/agents@1.0.44(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)(zod@3.25.76)':
+  '@livekit/agents-plugin-openai@1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)(zod@3.25.76)':
     dependencies:
-      '@livekit/agents': 1.0.44(@livekit/rtc-node@0.13.24)(zod@3.25.76)
+      '@livekit/agents': 1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       '@livekit/mutex': 1.1.1
       '@livekit/rtc-node': 0.13.24
       openai: 6.10.0(ws@8.18.3)(zod@3.25.76)
@@ -15266,9 +15284,9 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@livekit/agents-plugin-silero@1.0.44(@livekit/agents@1.0.44(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)':
+  '@livekit/agents-plugin-silero@1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)':
     dependencies:
-      '@livekit/agents': 1.0.44(@livekit/rtc-node@0.13.24)(zod@3.25.76)
+      '@livekit/agents': 1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       '@livekit/rtc-node': 0.13.24
       onnxruntime-node: 1.21.0
       ws: 8.18.3
@@ -15276,7 +15294,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@livekit/agents@1.0.44(@livekit/rtc-node@0.13.24)(zod@3.25.76)':
+  '@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76)':
     dependencies:
       '@ffmpeg-installer/ffmpeg': 1.1.0
       '@livekit/mutex': 1.1.1
@@ -15316,21 +15334,21 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@livekit/components-core@0.12.12(livekit-client@2.17.1(@types/dom-mediacapture-record@1.0.22))(tslib@2.8.1)':
+  '@livekit/components-core@0.12.13(livekit-client@2.17.2(@types/dom-mediacapture-record@1.0.22))(tslib@2.8.1)':
     dependencies:
       '@floating-ui/dom': 1.7.4
-      livekit-client: 2.17.1(@types/dom-mediacapture-record@1.0.22)
+      livekit-client: 2.17.2(@types/dom-mediacapture-record@1.0.22)
       loglevel: 1.9.1
       rxjs: 7.8.2
       tslib: 2.8.1
 
-  '@livekit/components-react@2.9.19(livekit-client@2.17.1(@types/dom-mediacapture-record@1.0.22))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(tslib@2.8.1)':
+  '@livekit/components-react@2.9.20(livekit-client@2.17.2(@types/dom-mediacapture-record@1.0.22))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(tslib@2.8.1)':
     dependencies:
-      '@livekit/components-core': 0.12.12(livekit-client@2.17.1(@types/dom-mediacapture-record@1.0.22))(tslib@2.8.1)
+      '@livekit/components-core': 0.12.13(livekit-client@2.17.2(@types/dom-mediacapture-record@1.0.22))(tslib@2.8.1)
       clsx: 2.1.1
       events: 3.3.0
       jose: 6.1.3
-      livekit-client: 2.17.1(@types/dom-mediacapture-record@1.0.22)
+      livekit-client: 2.17.2(@types/dom-mediacapture-record@1.0.22)
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
       tslib: 2.8.1
@@ -15816,6 +15834,15 @@ snapshots:
       '@opentelemetry/sdk-logs': 0.54.2(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 1.27.0(@opentelemetry/api@1.9.0)
 
+  '@opentelemetry/exporter-metrics-otlp-http@0.203.0(@opentelemetry/api@1.9.0)':
+    dependencies:
+      '@opentelemetry/api': 1.9.0
+      '@opentelemetry/core': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/otlp-exporter-base': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/otlp-transformer': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resources': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-metrics': 2.0.1(@opentelemetry/api@1.9.0)
+
   '@opentelemetry/exporter-trace-otlp-http@0.203.0(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
@@ -15833,6 +15860,11 @@ snapshots:
       '@opentelemetry/otlp-transformer': 0.54.2(@opentelemetry/api@1.9.0)
       '@opentelemetry/resources': 1.27.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 1.27.0(@opentelemetry/api@1.9.0)
+
+  '@opentelemetry/host-metrics@0.37.0(@opentelemetry/api@1.9.0)':
+    dependencies:
+      '@opentelemetry/api': 1.9.0
+      systeminformation: 5.23.8
 
   '@opentelemetry/instrumentation-fetch@0.203.0(@opentelemetry/api@1.9.0)(supports-color@10.2.2)':
     dependencies:
@@ -18134,10 +18166,10 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@trigger.dev/build@4.3.3(magicast@0.3.5)(typescript@5.8.3)':
+  '@trigger.dev/build@4.4.1(magicast@0.3.5)(typescript@5.8.3)':
     dependencies:
       '@prisma/config': 6.19.0(magicast@0.3.5)
-      '@trigger.dev/core': 4.3.3(typescript@5.8.3)
+      '@trigger.dev/core': 4.4.1(typescript@5.8.3)
       mlly: 1.8.0
       pkg-types: 1.3.1
       resolve: 1.22.11
@@ -18191,7 +18223,7 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@trigger.dev/core@4.3.3(typescript@5.8.3)':
+  '@trigger.dev/core@4.4.1(typescript@5.8.3)':
     dependencies:
       '@bugsnag/cuid': 3.2.1
       '@electric-sql/client': 1.0.14
@@ -18201,10 +18233,13 @@ snapshots:
       '@opentelemetry/api-logs': 0.203.0
       '@opentelemetry/core': 2.0.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/exporter-logs-otlp-http': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/exporter-metrics-otlp-http': 0.203.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/exporter-trace-otlp-http': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/host-metrics': 0.37.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.203.0(@opentelemetry/api@1.9.0)(supports-color@10.2.2)
       '@opentelemetry/resources': 2.0.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-logs': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-metrics': 2.0.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 2.0.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-node': 2.0.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.36.0
@@ -18220,7 +18255,6 @@ snapshots:
       socket.io: 4.7.4(supports-color@10.2.2)
       socket.io-client: 4.7.5(supports-color@10.2.2)
       std-env: 3.10.0
-      superjson: 2.2.6
       tinyexec: 0.3.2
       uncrypto: 0.1.3
       zod: 3.25.76
@@ -18232,9 +18266,9 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@trigger.dev/react-hooks@4.3.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.8.3)':
+  '@trigger.dev/react-hooks@4.4.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.8.3)':
     dependencies:
-      '@trigger.dev/core': 4.3.3(typescript@5.8.3)
+      '@trigger.dev/core': 4.4.1(typescript@5.8.3)
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
       swr: 2.3.7(react@19.2.3)
@@ -18259,11 +18293,11 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@trigger.dev/sdk@4.3.3(ai@5.0.113(zod@3.25.76))(typescript@5.8.3)(zod@3.25.76)':
+  '@trigger.dev/sdk@4.4.1(ai@5.0.113(zod@3.25.76))(typescript@5.8.3)(zod@3.25.76)':
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/semantic-conventions': 1.36.0
-      '@trigger.dev/core': 4.3.3(typescript@5.8.3)
+      '@trigger.dev/core': 4.4.1(typescript@5.8.3)
       chalk: 5.6.2
       cronstrue: 2.59.0
       debug: 4.4.3(supports-color@10.2.2)
@@ -22603,7 +22637,7 @@ snapshots:
       rfdc: 1.4.1
       wrap-ansi: 8.1.0
 
-  livekit-client@2.17.1(@types/dom-mediacapture-record@1.0.22):
+  livekit-client@2.17.2(@types/dom-mediacapture-record@1.0.22):
     dependencies:
       '@livekit/mutex': 1.1.1
       '@livekit/protocol': 1.44.0
@@ -26032,6 +26066,8 @@ snapshots:
       use-sync-external-store: 1.6.0(react@19.2.3)
 
   symbol-tree@3.2.4: {}
+
+  systeminformation@5.23.8: {}
 
   tabbable@6.3.0: {}
 

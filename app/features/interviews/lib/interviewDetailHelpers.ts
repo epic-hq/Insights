@@ -137,6 +137,32 @@ export interface EvidenceRecord {
 	gist: string | null;
 }
 
+/** Tokenize a string into lowercase words (3+ chars) for overlap matching */
+function tokenize(text: string): Set<string> {
+	return new Set(
+		text
+			.toLowerCase()
+			.split(/\W+/)
+			.filter((w) => w.length >= 3),
+	);
+}
+
+/** Compute Jaccard-like token overlap score (0–1) between two strings */
+function tokenOverlapScore(a: string, b: string): number {
+	const tokensA = tokenize(a);
+	const tokensB = tokenize(b);
+	if (tokensA.size === 0 || tokensB.size === 0) return 0;
+	let intersection = 0;
+	for (const t of tokensA) {
+		if (tokensB.has(t)) intersection++;
+	}
+	const union = new Set([...tokensA, ...tokensB]).size;
+	return union > 0 ? intersection / union : 0;
+}
+
+/** Minimum token overlap score to consider a match */
+const TOKEN_OVERLAP_THRESHOLD = 0.35;
+
 export function matchTakeawaysToEvidence(takeaways: KeyTakeaway[], evidence: EvidenceRecord[]): void {
 	const availableEvidenceIds = new Set(evidence.map((item) => item.id));
 
@@ -151,28 +177,61 @@ export function matchTakeawaysToEvidence(takeaways: KeyTakeaway[], evidence: Evi
 			}
 		}
 
-		if (!takeaway.evidenceSnippets?.length) continue;
-
 		let bestMatch: string | undefined;
 		let bestScore = 0;
-		for (const snippet of takeaway.evidenceSnippets) {
+
+		// Match evidenceSnippets against evidence verbatim/gist
+		for (const snippet of takeaway.evidenceSnippets ?? []) {
 			const snippetLower = snippet.toLowerCase();
 			for (const ev of evidence) {
 				const verbatim = (ev.verbatim || "").toLowerCase();
 				const gist = (ev.gist || "").toLowerCase();
-				const score = verbatim.includes(snippetLower)
-					? snippetLower.length
-					: snippetLower.includes(verbatim) && verbatim.length > 20
-						? verbatim.length
-						: gist.includes(snippetLower)
-							? snippetLower.length * 0.8
-							: 0;
+
+				let score = 0;
+
+				// Exact substring containment (highest confidence)
+				if (verbatim.includes(snippetLower)) {
+					score = snippetLower.length;
+				} else if (snippetLower.includes(verbatim) && verbatim.length > 10) {
+					// Reverse containment (lowered threshold from 20 to 10)
+					score = verbatim.length;
+				} else if (gist.includes(snippetLower)) {
+					score = snippetLower.length * 0.8;
+				} else if (snippetLower.includes(gist) && gist.length > 10) {
+					score = gist.length * 0.7;
+				} else {
+					// Token overlap fallback
+					const overlapVerbatim = tokenOverlapScore(snippet, ev.verbatim || "");
+					const overlapGist = tokenOverlapScore(snippet, ev.gist || "");
+					const overlap = Math.max(overlapVerbatim, overlapGist * 0.9);
+					if (overlap >= TOKEN_OVERLAP_THRESHOLD) {
+						// Scale to comparable range (max ~50 to not outrank substring matches)
+						score = overlap * 50;
+					}
+				}
+
 				if (score > bestScore) {
 					bestScore = score;
 					bestMatch = ev.id;
 				}
 			}
 		}
+
+		// Also match takeaway summary against evidence gist (secondary signal)
+		if (!bestMatch && takeaway.summary) {
+			for (const ev of evidence) {
+				if (!ev.gist) continue;
+				const overlap = tokenOverlapScore(takeaway.summary, ev.gist);
+				if (overlap >= TOKEN_OVERLAP_THRESHOLD) {
+					const score = overlap * 40; // slightly lower weight than snippet match
+					if (score > bestScore) {
+						bestScore = score;
+						bestMatch = ev.id;
+					}
+				}
+			}
+		}
+
 		if (bestMatch) {
 			takeaway.evidenceId = bestMatch;
 		}

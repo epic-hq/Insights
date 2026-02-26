@@ -121,8 +121,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			const distinctId = personId ?? existing.email ?? responseId;
 
 			// Fire and forget - don't block response
-			posthog
-				.capture({
+			void Promise.resolve(
+				posthog.capture({
 					distinctId,
 					event: "survey_response_received",
 					properties: {
@@ -135,13 +135,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
 						response_mode: (existing.response_mode as string | undefined) ?? "form",
 						question_count: questions.length,
 						text_questions: textQuestionCount,
-						has_person: !!personId,
 						completion_time: new Date().toISOString(),
 					},
 				})
-				.catch((error) => {
-					consola.error("[PostHog] Failed to track survey_response_received", error);
-				});
+			).catch((error) => {
+				consola.error("[PostHog] Failed to track survey_response_received", error);
+			});
 		}
 	}
 
