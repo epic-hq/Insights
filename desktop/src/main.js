@@ -160,6 +160,32 @@ const platformNames = {
   teams: "Microsoft Teams",
 };
 
+const MEETING_HINT_PATTERNS = [
+  { platform: "google-meet", regex: /meet\.google\.com/i },
+  { platform: "zoom", regex: /(?:^|\.)zoom\.us/i },
+  { platform: "teams", regex: /teams\.microsoft\.com/i },
+  { platform: "teams", regex: /teams\.live\.com/i },
+  { platform: "slack", regex: /slack.*huddle|app\.slack\.com\/huddle/i },
+  { platform: "google-meet", regex: /\bgoogle meet\b/i },
+  { platform: "zoom", regex: /\bzoom meeting\b/i },
+  { platform: "teams", regex: /\b(microsoft )?teams\b/i },
+];
+const AX_TREE_PROCESS_NAMES = [
+  "Google Chrome",
+  "Google Chrome Canary",
+  "Chromium",
+  "Arc",
+  "Brave Browser",
+  "Microsoft Edge",
+  "Firefox",
+  "zoom.us",
+  "Slack",
+  "Microsoft Teams",
+  "Teams",
+  "Safari",
+];
+let loggedUnsupportedDumpApi = false;
+
 function getPlatformName(platform) {
   return platformNames[platform] || platform || "Meeting";
 }
@@ -177,6 +203,219 @@ function normalizeMeetingUrl(value) {
     return `${parsed.origin}${normalizedPath}`;
   } catch {
     return value.trim().replace(/\/+$/, "");
+  }
+}
+
+function inferMeetingPlatform(rawValue) {
+  const value = String(rawValue || "");
+  for (const pattern of MEETING_HINT_PATTERNS) {
+    if (pattern.regex.test(value)) {
+      return pattern.platform;
+    }
+  }
+  return null;
+}
+
+function isLikelyMeetingText(rawValue) {
+  return inferMeetingPlatform(rawValue) !== null;
+}
+
+function normalizeMeetingDumpCandidate(rawCandidate) {
+  if (!rawCandidate || typeof rawCandidate !== "object") {
+    return null;
+  }
+
+  const id =
+    rawCandidate.id ??
+    rawCandidate.window_id ??
+    rawCandidate.windowId ??
+    rawCandidate.handle ??
+    rawCandidate.pid ??
+    null;
+  const rawUrl =
+    rawCandidate.url ??
+    rawCandidate.href ??
+    rawCandidate.meeting_url ??
+    rawCandidate.meetingUrl ??
+    null;
+  const rawTitle =
+    rawCandidate.title ??
+    rawCandidate.window_title ??
+    rawCandidate.windowTitle ??
+    rawCandidate.name ??
+    null;
+  const platform =
+    rawCandidate.platform ||
+    inferMeetingPlatform(rawUrl) ||
+    inferMeetingPlatform(rawTitle);
+
+  if (!platform) {
+    return null;
+  }
+
+  if (!id && !rawUrl && !rawTitle) {
+    return null;
+  }
+
+  return {
+    id: id ? String(id) : `${platform}:${normalizeMeetingUrl(rawUrl || rawTitle || "")}`,
+    platform,
+    title: rawTitle ? String(rawTitle) : `${getPlatformName(platform)} Meeting`,
+    url: rawUrl ? String(rawUrl) : null,
+  };
+}
+
+function collectMeetingCandidatesFromDump(payload) {
+  const candidates = [];
+  const seen = new Set();
+
+  const visitNode = (node) => {
+    if (!node) return;
+    if (Array.isArray(node)) {
+      for (const entry of node) {
+        visitNode(entry);
+      }
+      return;
+    }
+    if (typeof node !== "object") {
+      return;
+    }
+
+    const candidate = normalizeMeetingDumpCandidate(node);
+    if (candidate) {
+      const dedupeKey = `${candidate.id}|${candidate.platform}|${candidate.url || candidate.title}`;
+      if (!seen.has(dedupeKey)) {
+        seen.add(dedupeKey);
+        candidates.push(candidate);
+      }
+    }
+
+    for (const value of Object.values(node)) {
+      if (!value) continue;
+      if (typeof value === "string" && isLikelyMeetingText(value)) {
+        const inferred = normalizeMeetingDumpCandidate({
+          id: node.id || node.window_id || node.windowId || node.pid || null,
+          platform: inferMeetingPlatform(value),
+          title:
+            node.title ||
+            node.window_title ||
+            node.windowTitle ||
+            node.name ||
+            value,
+          url: value.includes("http") ? value : null,
+        });
+        if (inferred) {
+          const dedupeKey = `${inferred.id}|${inferred.platform}|${inferred.url || inferred.title}`;
+          if (!seen.has(dedupeKey)) {
+            seen.add(dedupeKey);
+            candidates.push(inferred);
+          }
+        }
+      } else if (typeof value === "object") {
+        visitNode(value);
+      }
+    }
+  };
+
+  visitNode(payload);
+  return candidates;
+}
+
+async function collectMeetingCandidatesFromSdkDump() {
+  if (typeof RecallAiSdk.dumpAllApplications === "function") {
+    const dumpedApplications = await Promise.race([
+      RecallAiSdk.dumpAllApplications(),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("dumpAllApplications timeout after 4000ms")),
+          4000,
+        ),
+      ),
+    ]);
+    return collectMeetingCandidatesFromDump(dumpedApplications);
+  }
+
+  if (typeof RecallAiSdk.dumpAXTree === "function") {
+    const merged = [];
+    const seen = new Set();
+
+    for (const procName of AX_TREE_PROCESS_NAMES) {
+      let axTree;
+      try {
+        axTree = await Promise.race([
+          RecallAiSdk.dumpAXTree(procName),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error(`dumpAXTree timeout for ${procName}`)),
+              2000,
+            ),
+          ),
+        ]);
+      } catch (error) {
+        const errorMessage = String(error?.message || error || "");
+        const likelyMissingProcess =
+          /not found|no such process|timeout/i.test(errorMessage);
+        if (!likelyMissingProcess) {
+          console.warn(
+            `[meeting-fallback] AX tree probe failed for ${procName}: ${errorMessage}`,
+          );
+        }
+        continue;
+      }
+
+      const candidates = collectMeetingCandidatesFromDump(axTree);
+      for (const candidate of candidates) {
+        const dedupeKey = `${candidate.id}|${candidate.platform}|${candidate.url || candidate.title}`;
+        if (!seen.has(dedupeKey)) {
+          seen.add(dedupeKey);
+          merged.push(candidate);
+        }
+      }
+
+      if (merged.length > 0) {
+        break;
+      }
+    }
+
+    return merged;
+  }
+
+  if (!loggedUnsupportedDumpApi) {
+    loggedUnsupportedDumpApi = true;
+    console.warn(
+      "[meeting-fallback] SDK does not expose dumpAllApplications or dumpAXTree; disabling fallback detection",
+    );
+  }
+  return [];
+}
+
+async function detectMeetingViaDump(reason = "fallback") {
+  try {
+    const candidates = await collectMeetingCandidatesFromSdkDump();
+    if (candidates.length === 0) {
+      console.warn(`[meeting-fallback] No active meeting found via ${reason}`);
+      return null;
+    }
+
+    const selected = candidates[0];
+    detectedMeeting = { window: selected };
+    console.log(
+      `[meeting-fallback] Attached via ${reason}: ${selected.platform} ${selected.id}`,
+    );
+    notifyMeetingDetected(selected);
+    showFloatingPanel();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("meeting-detection-status", {
+        detected: true,
+      });
+    }
+    return selected;
+  } catch (error) {
+    console.warn(
+      `[meeting-fallback] Failed via ${reason}:`,
+      error?.message || error,
+    );
+    return null;
   }
 }
 
@@ -577,6 +816,26 @@ app.whenReady().then(() => {
           accelerator: "CmdOrCtrl+M",
           click: () => {
             showMeetingsArchive();
+          },
+        },
+        {
+          label: "Show Recorder Panel",
+          accelerator: "CmdOrCtrl+Shift+P",
+          click: () => {
+            showFloatingPanel();
+          },
+        },
+        {
+          label: "Detect Active Meeting (Fallback)",
+          accelerator: "CmdOrCtrl+Shift+D",
+          click: async () => {
+            const recovered = await detectMeetingViaDump("menu");
+            if (!recovered) {
+              new Notification({
+                title: "No meeting detected",
+                body: "Open your meeting tab and try again.",
+              }).show();
+            }
           },
         },
         { type: "separator" },
@@ -1029,8 +1288,20 @@ function getDesktopApiBaseCandidates() {
       urls.push(normalized);
     }
   };
+  const configuredHostname = (() => {
+    try {
+      return new URL(configuredUpsightApiUrl).hostname;
+    } catch {
+      return "";
+    }
+  })();
+  const isLocalConfiguredHost =
+    configuredHostname === "localhost" ||
+    configuredHostname === "127.0.0.1" ||
+    configuredHostname === "::1";
   const shouldIncludeProdFallback =
     configuredUpsightApiUrl === DEFAULT_UPSIGHT_API_URL ||
+    isLocalConfiguredHost ||
     process.env.UPSIGHT_ALLOW_PROD_FALLBACK === "1";
 
   pushUnique(activeUpsightApiUrl);
@@ -1622,6 +1893,7 @@ function initSDK() {
         detected: false,
       });
     }
+
   });
 
   // Listen for recording ended events
@@ -1951,6 +2223,22 @@ function initSDK() {
     }
   });
 
+  // Surface SDK-internal warnings/errors to help diagnose missing meeting detection.
+  RecallAiSdk.addEventListener("log", (evt) => {
+    const level = String(evt?.level || "info").toLowerCase();
+    const message = String(evt?.message || "");
+    if (
+      level !== "debug" ||
+      /meeting|detect|zoom|teams|google meet|slack|url|accessibility|capture|permission/i.test(
+        message,
+      )
+    ) {
+      console.log(
+        `[RecallSDK:${level}] ${evt?.subsystem || "unknown"}/${evt?.category || "unknown"} ${message}`,
+      );
+    }
+  });
+
   console.log(
     "═══════════════════════════════════════════════════════════════",
   );
@@ -1988,9 +2276,41 @@ ipcMain.handle("debugGetHandlers", async () => {
 ipcMain.handle("debugDumpApplications", async () => {
   console.log("[DEBUG] Manual dump of visible applications requested...");
   try {
-    const apps = await RecallAiSdk.dumpAllApplications();
-    console.log("[DEBUG] Visible applications:", JSON.stringify(apps, null, 2));
-    return { success: true, applications: apps };
+    if (typeof RecallAiSdk.dumpAllApplications === "function") {
+      const apps = await RecallAiSdk.dumpAllApplications();
+      console.log("[DEBUG] Visible applications:", JSON.stringify(apps, null, 2));
+      return { success: true, mode: "dumpAllApplications", applications: apps };
+    }
+
+    if (typeof RecallAiSdk.dumpAXTree === "function") {
+      const trees = [];
+      for (const procName of AX_TREE_PROCESS_NAMES) {
+        try {
+          const tree = await Promise.race([
+            RecallAiSdk.dumpAXTree(procName),
+            new Promise((_, reject) =>
+              setTimeout(
+                () => reject(new Error(`dumpAXTree timeout for ${procName}`)),
+                2000,
+              ),
+            ),
+          ]);
+          trees.push({ procName, tree });
+        } catch (_) {
+          // Ignore missing processes in debug mode.
+        }
+      }
+      console.log(
+        "[DEBUG] AX tree dumps:",
+        JSON.stringify({ processCount: trees.length }, null, 2),
+      );
+      return { success: true, mode: "dumpAXTree", applications: trees };
+    }
+
+    return {
+      success: false,
+      error: "SDK does not expose dumpAllApplications or dumpAXTree",
+    };
   } catch (err) {
     console.error("[DEBUG] Failed to dump applications:", err.message);
     return { success: false, error: err.message };
@@ -4435,7 +4755,38 @@ ipcMain.handle("toggleRecordingFromPanel", async () => {
       floatingPanelRecordingInProgress = false;
     }
   } else {
-    console.log("No detected meeting to record");
+    console.log("No detected meeting to record, attempting fallback scan...");
+    const fallbackMeeting = await detectMeetingViaDump("panel-start");
+    if (fallbackMeeting) {
+      floatingPanelRecordingInProgress = true;
+      floatingPanelRecordingActive = true;
+      const recordingStartTime = Date.now();
+      sendRecordingStateToPanel(true, recordingStartTime);
+
+      try {
+        const result = await Promise.race([
+          joinDetectedMeeting(),
+          new Promise((resolve) =>
+            setTimeout(
+              () => resolve({ success: false, error: "timeout" }),
+              15000,
+            ),
+          ),
+        ]);
+        if (!result || !result.success) {
+          floatingPanelRecordingActive = false;
+          sendRecordingStateToPanel(false, null);
+        }
+        return result;
+      } catch (err) {
+        floatingPanelRecordingActive = false;
+        sendRecordingStateToPanel(false, null);
+        return { success: false, error: err.message };
+      } finally {
+        floatingPanelRecordingInProgress = false;
+      }
+    }
+
     return { success: false, error: "No meeting detected" };
   }
 });
