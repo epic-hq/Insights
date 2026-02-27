@@ -7,6 +7,7 @@ const {
   shell,
   Menu,
   screen,
+  dialog,
 } = require("electron");
 const path = require("node:path");
 const url = require("url");
@@ -152,6 +153,11 @@ let floatingPanelWindow = null;
 // Track if we're currently recording in floating panel mode
 let floatingPanelRecordingActive = false;
 let floatingPanelRecordingInProgress = false; // Guard against rapid clicks
+let screenCapturePermissionPrompted = false;
+const sdkNoisyLogLastSeen = new Map();
+const SDK_NOISY_LOG_THROTTLE_MS = 30000;
+const SCREEN_CAPTURE_SETTINGS_URL =
+  "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture";
 
 const platformNames = {
   zoom: "Zoom",
@@ -188,6 +194,62 @@ let loggedUnsupportedDumpApi = false;
 
 function getPlatformName(platform) {
   return platformNames[platform] || platform || "Meeting";
+}
+
+function shouldThrottleSdkLog(evt, level, message) {
+  const isNoisyScreenCapture = /screen capture granted:\s*false/i.test(message);
+  const isNoisyMeetPolling =
+    level === "debug" && /polling google meet for meeting/i.test(message);
+  if (!isNoisyScreenCapture && !isNoisyMeetPolling) {
+    return false;
+  }
+
+  const key = `${evt?.subsystem || "unknown"}/${evt?.category || "unknown"}:${message}`;
+  const now = Date.now();
+  const lastSeen = sdkNoisyLogLastSeen.get(key) || 0;
+  if (now - lastSeen < SDK_NOISY_LOG_THROTTLE_MS) {
+    return true;
+  }
+  sdkNoisyLogLastSeen.set(key, now);
+  return false;
+}
+
+function openScreenCaptureSettings() {
+  shell.openExternal(SCREEN_CAPTURE_SETTINGS_URL).catch((error) => {
+    console.error(
+      "[permissions] Failed to open Screen Recording settings:",
+      error?.message || error,
+    );
+  });
+}
+
+async function maybePromptForScreenCapturePermission(reason = "startup") {
+  const { systemPreferences } = require("electron");
+  const status = systemPreferences.getMediaAccessStatus("screen");
+  if (status === "granted" || screenCapturePermissionPrompted) {
+    return;
+  }
+
+  screenCapturePermissionPrompted = true;
+  console.warn(
+    `[permissions] Screen capture permission is ${status} (${reason})`,
+  );
+  const detail =
+    "To detect and record meetings, enable UpSight under System Settings -> Privacy & Security -> Screen Recording, then relaunch UpSight.";
+  const { response } = await dialog.showMessageBox({
+    type: "warning",
+    title: "Enable Screen Recording",
+    message:
+      "UpSight cannot detect active meetings until Screen Recording permission is granted.",
+    detail,
+    buttons: ["Open Settings", "Not now"],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  });
+  if (response === 0) {
+    openScreenCaptureSettings();
+  }
 }
 
 function normalizeMeetingUrl(value) {
@@ -1698,6 +1760,16 @@ function initSDK() {
         "Please grant Accessibility permission to UpSight in System Settings.",
     );
   }
+  const screenPermissionStatus = systemPreferences.getMediaAccessStatus("screen");
+  console.log("Screen capture permission status:", screenPermissionStatus);
+  if (screenPermissionStatus !== "granted") {
+    maybePromptForScreenCapturePermission("startup").catch((error) =>
+      console.error(
+        "[permissions] Failed to prompt for screen-capture access:",
+        error?.message || error,
+      ),
+    );
+  }
 
   console.log(
     "═══════════════════════════════════════════════════════════════",
@@ -2227,6 +2299,9 @@ function initSDK() {
   RecallAiSdk.addEventListener("log", (evt) => {
     const level = String(evt?.level || "info").toLowerCase();
     const message = String(evt?.message || "");
+    if (shouldThrottleSdkLog(evt, level, message)) {
+      return;
+    }
     if (
       level !== "debug" ||
       /meeting|detect|zoom|teams|google meet|slack|url|accessibility|capture|permission/i.test(
@@ -2237,6 +2312,22 @@ function initSDK() {
         `[RecallSDK:${level}] ${evt?.subsystem || "unknown"}/${evt?.category || "unknown"} ${message}`,
       );
     }
+  });
+
+  // Permission status events are emitted by the SDK process and provide direct
+  // signal when the OS is blocking meeting capture.
+  RecallAiSdk.addEventListener("permission-status", (evt) => {
+    const permission = String(evt?.permission || "");
+    const status = String(evt?.status || "unknown");
+    const granted = Boolean(evt?.granted);
+    if (permission !== "screen-capture") return;
+    if (granted || status === "granted") return;
+    maybePromptForScreenCapturePermission(`sdk:${status}`).catch((error) =>
+      console.error(
+        "[permissions] Failed to prompt after permission-status event:",
+        error?.message || error,
+      ),
+    );
   });
 
   console.log(
