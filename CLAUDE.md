@@ -236,6 +236,7 @@ execute: async (input, context?) => {
 - **Idempotent creation**: Try-insert-catch-find pattern with constraint violation (code 23505) handling — safe for retries
 - **Platform IDs**: Store in `contact_info` JSONB for cross-meeting identity — supports multiple platforms without migrations
 - **Declarative schema first**: Always create/update `supabase/schemas/*.sql` before generating migrations with `supabase db diff` — keeps schemas as source of truth
+- **URL import upfront records**: The `/api/upload-from-url` endpoint creates interview records before triggering the Trigger.dev task, returning `interviewId` so the frontend can track progress via Supabase realtime
 
 ### Patterns To Avoid
 
@@ -247,6 +248,7 @@ execute: async (input, context?) => {
 - **Never use `new URL(request.url).origin`** for webhook/callback URLs — returns HTTP behind proxy. Use `createDomain(request)` from `~/utils/http`
 - **Never sign Content-Type in R2 presigned upload URLs** — browsers may send subtly different Content-Type than signed, causing `SignatureDoesNotMatch`. Only sign `host`. See `createR2PresignedUploadUrl()` in `r2.server.ts`
 - **Never use `ReadableStream` body + `duplex:"half"` for browser uploads** — not cross-browser. Use `Blob` body directly
+- **Never use `ffmpeg-static`** in Trigger.dev tasks — crashes with SIGSEGV in cloud. Use system ffmpeg via `ffmpeg()` build extension in `trigger.config.ts`
 
 ### Package Quirks
 

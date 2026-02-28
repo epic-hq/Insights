@@ -98,6 +98,7 @@ Insights/
 │   │   ├── tasks/                      # Task management
 │   │   ├── voice/                      # Voice chat feature
 │   │   ├── home/                       # Dashboard/home page
+│   │   ├── marketing/                   # Public marketing pages & utilities
 │   │   ├── accounts/                   # Account settings
 │   │   ├── teams/                      # Team management
 │   │   └── [other features]/           # Additional feature modules
@@ -133,7 +134,9 @@ Insights/
 │       ├── lens/                       # Lens application tasks
 │       ├── persona/                    # Persona extraction tasks
 │       ├── sales/                      # Sales-related tasks
-│       └── survey/                     # Survey stats and evidence extraction
+│       ├── survey/                     # Survey stats and evidence extraction
+│       ├── generate-thumbnail.ts       # Video thumbnail extraction (system ffmpeg)
+│       └── generate-evidence-thumbnails.ts # Per-evidence timestamp thumbnails
 │
 ├── baml_src/                           # BAML prompt definitions
 │   ├── clients.baml                    # LLM client configurations
@@ -166,6 +169,8 @@ Insights/
 │   └── specs/                          # Technical specifications
 │
 ├── scripts/                            # Build and utility scripts
+│   ├── download-apollo-videos.ts       # Playwright-based Apollo.io video downloader
+│   └── apollo-bookmarklet.html         # Browser bookmarklet for Apollo video download
 ├── public/                             # Static assets
 └── .storybook/                         # Storybook configuration
 ```
