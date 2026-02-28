@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apollo Video Downloader — UpSight</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 40px 24px;
+      color: #1e293b;
+      line-height: 1.6;
+    }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    .subtitle { color: #64748b; margin-bottom: 32px; }
+    .bookmarklet-area {
+      background: #f8fafc;
+      border: 2px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .bookmarklet-link {
+      display: inline-block;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      color: white;
+      padding: 12px 28px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: grab;
+      user-select: none;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+    .bookmarklet-link:hover { opacity: 0.9; }
+    .drag-hint {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .steps { list-style: none; counter-reset: step; }
+    .steps li {
+      counter-increment: step;
+      padding: 12px 0 12px 48px;
+      position: relative;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .steps li:last-child { border-bottom: none; }
+    .steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 12px;
+      width: 32px;
+      height: 32px;
+      background: #ede9fe;
+      color: #7c3aed;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .steps li strong { color: #0f172a; }
+    code {
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 32px 0 16px;
+    }
+    .note {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 24px;
+      font-size: 14px;
+      color: #92400e;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Apollo Video Downloader</h1>
+  <p class="subtitle">Download call recordings from Apollo.io share links with one click.</p>
+
+  <div class="bookmarklet-area">
+    <!-- The bookmarklet code -->
+    <a class="bookmarklet-link" href="javascript:void(function(){try{var v=document.querySelector('video[src], video source[src], source[src]');if(!v){var vids=document.querySelectorAll('video');for(var i=0;i<vids.length;i++){var s=vids[i].querySelector('source[src]');if(s){v=s;break;}if(vids[i].src){v=vids[i];break;}}};if(!v){alert('No video found on this page. Make sure the recording has loaded.');return;}var url=v.src||v.getAttribute('src');if(!url||url.startsWith('blob:')){alert('Video uses a blob URL that cannot be downloaded directly. Try: right-click the video > Save Video As.');return;}var name='apollo-recording';try{var m=window.location.hash.match(/conversation[s-]*(?:shares)?\/([a-f0-9-]+)/i);if(m)name=m[1];}catch(e){};var ext=url.match(/\.(mp4|webm|mov)/i);ext=ext?ext[1]:'mp4';var a=document.createElement('a');a.href=url;a.download=name+'.'+ext;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);},1000);alert('Download started! Check your Downloads folder.');}catch(e){alert('Error: '+e.message);}})();">
+      Download Apollo Video
+    </a>
+    <p class="drag-hint">Drag this button to your bookmarks bar</p>
+  </div>
+
+  <h2 class="section-title">Setup (one time)</h2>
+  <ol class="steps">
+    <li>
+      <strong>Show your bookmarks bar</strong> if it's hidden.<br>
+      Chrome/Brave: <code>Cmd+Shift+B</code> (Mac) or <code>Ctrl+Shift+B</code> (Windows)
+    </li>
+    <li>
+      <strong>Drag the purple button above</strong> onto your bookmarks bar.<br>
+      You should see "Download Apollo Video" appear as a bookmark.
+    </li>
+  </ol>
+
+  <h2 class="section-title">To download a recording</h2>
+  <ol class="steps">
+    <li>
+      <strong>Open the Apollo share link</strong> in your browser.<br>
+      Make sure you're logged into Apollo and can see the video player.
+    </li>
+    <li>
+      <strong>Wait for the video to load</strong> — you should see the video player on the page.
+    </li>
+    <li>
+      <strong>Click "Download Apollo Video"</strong> in your bookmarks bar.<br>
+      The video file will start downloading to your Downloads folder.
+    </li>
+    <li>
+      <strong>Upload the downloaded file</strong> to UpSight using the file upload option.
+    </li>
+  </ol>
+
+  <div class="note">
+    <strong>Note:</strong> You must be logged into Apollo.io in the same browser for this to work.
+    The bookmarklet finds the video URL on the page and triggers a download — it does not send any data anywhere.
+  </div>
+
+</body>
+</html>

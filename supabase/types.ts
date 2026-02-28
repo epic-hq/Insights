@@ -3151,6 +3151,7 @@ export type Database = {
           share_expires_at: string | null
           share_token: string | null
           source_type: string | null
+          source_url: string | null
           speaker_review_needed: boolean | null
           status: Database["public"]["Enums"]["interview_status"]
           thumbnail_url: string | null
@@ -3199,6 +3200,7 @@ export type Database = {
           share_expires_at?: string | null
           share_token?: string | null
           source_type?: string | null
+          source_url?: string | null
           speaker_review_needed?: boolean | null
           status?: Database["public"]["Enums"]["interview_status"]
           thumbnail_url?: string | null
@@ -3247,6 +3249,7 @@ export type Database = {
           share_expires_at?: string | null
           share_token?: string | null
           source_type?: string | null
+          source_url?: string | null
           speaker_review_needed?: boolean | null
           status?: Database["public"]["Enums"]["interview_status"]
           thumbnail_url?: string | null

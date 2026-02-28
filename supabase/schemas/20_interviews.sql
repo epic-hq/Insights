@@ -44,6 +44,7 @@ create table if not exists interviews (
 	open_questions_and_next_steps text,
 	observations_and_notes text,
 	source_type text, -- source of the content: realtime_recording, audio_upload, video_upload, document, transcript
+	source_url text, -- original import URL (preserved for retry/debugging when URL imports fail)
 	interview_type text, -- type of interview: interview, voice_memo, note, meeting
 	lens_visibility text default 'account' check (lens_visibility in ('private', 'account')), -- controls lens application
 	file_extension text, -- file extension (mp3, mp4, pdf, csv, md, etc.)
@@ -76,6 +77,7 @@ COMMENT ON COLUMN public.interviews.media_url IS 'URL to the primary asset (audi
 COMMENT ON COLUMN public.interviews.thumbnail_url IS 'Optional preview image URL for video content (or other rich media).';
 
 COMMENT ON COLUMN public.interviews.source_type IS 'Where the content came from / ingestion path (free-text). Conventions: realtime_recording | audio_upload | video_upload | document_upload | transcript_paste | transcript_import.';
+COMMENT ON COLUMN public.interviews.source_url IS 'Original URL provided by the user for URL imports. Preserved even when the import fails, enabling retry and debugging.';
 COMMENT ON COLUMN public.interviews.interview_type IS 'User-entered workflow classification for UI + filtering (free-text). Conventions: interview | voice_memo | note | meeting. Notes are often stored as interviews for a unified pipeline.';
 COMMENT ON COLUMN public.interviews.media_type IS 'User-entered semantic content category (free-text). Conventions: interview | focus_group | customer_call | user_testing | voice_memo | meeting. Distinct from interaction_context (LLM) and from file_extension (format).';
 

@@ -233,6 +233,8 @@ export default function InterviewDetail({
   const _progressPercent = Math.min(100, Math.max(0, progressInfo.progress));
 
   const revalidator = useRevalidator();
+  const revalidatorRef = useRef(revalidator);
+  revalidatorRef.current = revalidator;
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "overview";
   const selectedLensKey = searchParams.get("lens") || null;
@@ -459,6 +461,22 @@ export default function InterviewDetail({
       currentStatus === "processing");
   const hasError = currentStatus === "error";
 
+  // Revalidate when processing finishes (isProcessing true → false)
+  const wasProcessingRef = useRef(isProcessing);
+  useEffect(() => {
+    const wasProcessing = wasProcessingRef.current;
+    wasProcessingRef.current = isProcessing;
+    if (wasProcessing && !isProcessing) {
+      consola.info("[detail] Processing finished, triggering revalidation");
+      const timer = setTimeout(() => {
+        if (revalidatorRef.current.state === "idle") {
+          revalidatorRef.current.revalidate();
+        }
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isProcessing]);
+
   // Get human-readable status label
   const getStatusLabel = (status: string): string => {
     switch (status) {
@@ -601,6 +619,19 @@ export default function InterviewDetail({
 
           // Update interview state (single source of truth)
           setInterviewState(raw as typeof interview);
+
+          // Revalidate loader data when interview reaches terminal status
+          const terminalStatuses = new Set(["ready", "error"]);
+          if (raw.status && terminalStatuses.has(raw.status)) {
+            consola.info(
+              `[realtime] Interview status → ${raw.status}, revalidating`,
+            );
+            setTimeout(() => {
+              if (revalidatorRef.current.state === "idle") {
+                revalidatorRef.current.revalidate();
+              }
+            }, 1500);
+          }
 
           // Also update analysisState for backward compatibility
           setAnalysisState((prev) => {

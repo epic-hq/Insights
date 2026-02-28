@@ -57,6 +57,7 @@ const UrlImportItemSchema = z.object({
   title: z.string().optional(),
   speakerNames: z.array(z.string()).optional(), // e.g., ["Speaker A", "John Smith"]
   personId: z.string().uuid().optional(), // Link to existing person
+  interviewId: z.string().uuid().optional(), // Pre-created interview record (from API endpoint)
   // New: Participant info for person creation
   participantName: z.string().optional(), // Name of participant to create
   participantOrganization: z.string().optional(), // Organization name (will be created if doesn't exist)
@@ -172,30 +173,33 @@ async function fetchVentoMedia(recordingId: string): Promise<MediaInfo | null> {
 }
 
 /**
- * Fetch media info from Apollo API
- * Note: Apollo may require authentication for some endpoints
+ * Try a single Apollo API endpoint and return MediaInfo if successful
  */
-async function fetchApolloMedia(shareId: string): Promise<MediaInfo | null> {
+async function tryApolloEndpoint(
+  endpointUrl: string,
+  label: string,
+  shareId: string,
+): Promise<MediaInfo | null> {
   try {
-    // Try the public share API - don't auto-follow redirects so we can see where it goes
-    const response = await fetch(
-      `https://app.apollo.io/api/v1/conversation_shares/${shareId}`,
-      { redirect: "manual" },
+    consola.info(`[Apollo] Trying ${label}: ${endpointUrl}`);
+
+    // First try with redirect: "manual" to inspect redirects
+    const response = await fetch(endpointUrl, { redirect: "manual" });
+    consola.info(
+      `[Apollo] ${label} returned ${response.status}, headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`,
     );
 
-    // Handle redirects - Apollo often redirects to the actual media
-    if (response.status === 303 || response.status === 302) {
+    // Handle redirects
+    if (
+      response.status === 301 ||
+      response.status === 302 ||
+      response.status === 303 ||
+      response.status === 307
+    ) {
       const location = response.headers.get("location");
-      consola.info(`Apollo redirecting to: ${location}`);
-
       if (location) {
-        // If it's redirecting to a media URL, return that
-        if (
-          location.includes(".mp4") ||
-          location.includes(".mp3") ||
-          location.includes(".m3u8") ||
-          location.includes(".webm")
-        ) {
+        // Direct media URL redirect
+        if (/\.(mp4|mp3|m3u8|webm|wav|m4a)/i.test(location)) {
           return {
             provider: "apollo",
             title: `Apollo Recording ${shareId.slice(0, 8)}`,
@@ -204,60 +208,145 @@ async function fetchApolloMedia(shareId: string): Promise<MediaInfo | null> {
           };
         }
 
-        // If it's redirecting to another API endpoint, follow it
+        // Follow redirect to another API endpoint
         if (location.startsWith("http")) {
+          consola.info(`[Apollo] Following redirect to: ${location}`);
           const redirectResponse = await fetch(location);
           if (redirectResponse.ok) {
-            const data = await redirectResponse.json();
-            return {
-              provider: "apollo",
-              title:
-                data.title ||
-                data.name ||
-                `Apollo Recording ${shareId.slice(0, 8)}`,
-              duration: data.duration,
-              videoUrl: data.video_url || data.videoUrl || data.recording_url,
-              audioUrl: data.audio_url || data.audioUrl,
-              isHls: data.video_url?.includes(".m3u8") ?? false,
-            };
+            const contentType =
+              redirectResponse.headers.get("content-type") || "";
+            if (contentType.includes("json")) {
+              const data = await redirectResponse.json();
+              const videoUrl =
+                data.video_url ||
+                data.videoUrl ||
+                data.recording_url ||
+                data.media_url;
+              const audioUrl = data.audio_url || data.audioUrl;
+              if (videoUrl || audioUrl) {
+                return {
+                  provider: "apollo",
+                  title:
+                    data.title ||
+                    data.name ||
+                    `Apollo Recording ${shareId.slice(0, 8)}`,
+                  duration: data.duration,
+                  videoUrl,
+                  audioUrl,
+                  isHls: videoUrl?.includes(".m3u8") ?? false,
+                };
+              }
+            }
           }
         }
       }
-
-      consola.warn(
-        `Apollo redirect not handled. Status: ${response.status}, Location: ${location}`,
-      );
       return null;
     }
 
-    if (!response.ok) {
-      consola.warn(`Apollo API returned ${response.status} for ${shareId}`);
+    if (!response.ok) return null;
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("json")) {
+      // Might be an HTML page — not useful
       return null;
     }
 
     const data = await response.json();
 
-    // Check if we need to follow a redirect
+    // Check for redirect instruction in response body
     if (data.message === "Redirect required" && data.type === "external") {
-      consola.info(
-        "Apollo requires external redirect - may need manual handling",
-      );
       return null;
     }
+
+    const videoUrl =
+      data.video_url || data.videoUrl || data.recording_url || data.media_url;
+    const audioUrl = data.audio_url || data.audioUrl;
+
+    if (!videoUrl && !audioUrl) return null;
 
     return {
       provider: "apollo",
       title:
         data.title || data.name || `Apollo Recording ${shareId.slice(0, 8)}`,
       duration: data.duration,
-      videoUrl: data.video_url || data.videoUrl,
-      audioUrl: data.audio_url || data.audioUrl,
-      isHls: data.video_url?.includes(".m3u8") ?? false,
+      videoUrl,
+      audioUrl,
+      isHls: videoUrl?.includes(".m3u8") ?? false,
     };
   } catch (error) {
-    consola.error("Failed to fetch Apollo media info:", error);
+    consola.warn(`[Apollo] ${label} failed:`, error);
     return null;
   }
+}
+
+/**
+ * Fetch media info from Apollo API
+ *
+ * Apollo conversation share URLs contain two IDs: {conversationId}-{shareId}
+ * We try multiple API endpoint patterns since Apollo's API is not documented.
+ */
+async function fetchApolloMedia(shareId: string): Promise<MediaInfo | null> {
+  // Split the composite ID into conversation ID and share ID
+  const parts = shareId.split("-");
+  // Apollo IDs are 24-char hex strings. The URL format is {convId}-{shareId}
+  // where each is 24 chars, making the composite 49 chars with the dash
+  const convId = parts.length >= 2 && parts[0].length === 24 ? parts[0] : null;
+  const actualShareId =
+    parts.length >= 2 && parts[1].length === 24 ? parts[1] : null;
+
+  consola.info(
+    `[Apollo] Parsed IDs — conv: ${convId}, share: ${actualShareId}, raw: ${shareId}`,
+  );
+
+  // Try multiple endpoint patterns
+  const endpoints: Array<{ url: string; label: string }> = [
+    // Original composite ID endpoint
+    {
+      url: `https://app.apollo.io/api/v1/conversation_shares/${shareId}`,
+      label: "conversation_shares (composite)",
+    },
+  ];
+
+  // If we could split the IDs, try more specific endpoints
+  if (convId && actualShareId) {
+    endpoints.push(
+      {
+        url: `https://app.apollo.io/api/v1/conversations/${convId}/shares/${actualShareId}`,
+        label: "conversations/{id}/shares/{shareId}",
+      },
+      {
+        url: `https://app.apollo.io/api/v1/conversation_shares/${actualShareId}`,
+        label: "conversation_shares (shareId only)",
+      },
+      {
+        url: `https://app.apollo.io/api/v1/conversations/${convId}`,
+        label: "conversations/{id}",
+      },
+      {
+        url: `https://app.apollo.io/api/v1/public/conversations/${convId}?shareId=${actualShareId}`,
+        label: "public/conversations with shareId",
+      },
+    );
+  }
+
+  for (const endpoint of endpoints) {
+    const result = await tryApolloEndpoint(
+      endpoint.url,
+      endpoint.label,
+      shareId,
+    );
+    if (result) {
+      consola.success(
+        `[Apollo] Found media via ${endpoint.label}: ${result.videoUrl || result.audioUrl}`,
+      );
+      return result;
+    }
+  }
+
+  consola.warn(
+    "[Apollo] All API endpoints failed — Apollo likely requires browser-based auth for this share link",
+  );
+  return null;
 }
 
 // =============================================================================
@@ -406,6 +495,7 @@ export const importFromUrlTask = schemaTask({
         title: userTitle,
         speakerNames,
         personId,
+        interviewId: preCreatedInterviewId,
         participantName,
         participantOrganization,
         participantSegment,
@@ -417,38 +507,81 @@ export const importFromUrlTask = schemaTask({
       const defaultTitle =
         userTitle || `Imported from URL - ${format(new Date(), "yyyy-MM-dd")}`;
 
-      // 1. Create interview record FIRST before any external API calls
-      // This ensures user always sees the import attempt in the UI
+      // 1. Use pre-created interview record if provided, otherwise create one
+      // The API endpoint now creates records upfront for progress tracking
       consola.info(`\n📥 Processing URL: ${url}`);
-      consola.info(`Creating interview record: ${defaultTitle}`);
 
-      const { data: interview, error: insertError } = await client
-        .from("interviews")
-        .insert({
-          account_id: accountId,
-          project_id: projectId,
-          title: defaultTitle,
-          participant_pseudonym: speakerNames?.[0] || "Unknown participant",
-          status: "uploading",
-          source_type: "video_url",
-          media_url: r2Key,
-          original_filename: `url-import-${timestamp}.mp4`,
-          created_by: userId,
-        })
-        .select()
-        .single();
+      let interview: {
+        id: string;
+        title: string | null;
+        original_filename: string | null;
+      };
 
-      if (insertError || !interview) {
-        consola.error(`Failed to create interview: ${insertError?.message}`);
-        results.push({
-          url,
-          success: false,
-          error: `Failed to create interview: ${insertError?.message}`,
-        });
-        continue;
+      if (preCreatedInterviewId) {
+        // Fetch existing record created by the API endpoint
+        consola.info(`Using pre-created interview: ${preCreatedInterviewId}`);
+        const { data: existing, error: fetchError } = await client
+          .from("interviews")
+          .select("id, title, original_filename")
+          .eq("id", preCreatedInterviewId)
+          .single();
+
+        if (fetchError || !existing) {
+          consola.error(
+            `Failed to fetch pre-created interview: ${fetchError?.message}`,
+          );
+          results.push({
+            url,
+            success: false,
+            error: `Failed to fetch pre-created interview: ${fetchError?.message}`,
+          });
+          continue;
+        }
+
+        // Update with speaker info if provided
+        if (speakerNames?.[0]) {
+          await client
+            .from("interviews")
+            .update({ participant_pseudonym: speakerNames[0] })
+            .eq("id", preCreatedInterviewId);
+        }
+
+        interview = existing;
+      } else {
+        // Create new interview record (legacy path — e.g., from Mastra agent)
+        consola.info(`Creating interview record: ${defaultTitle}`);
+
+        const { data: newInterview, error: insertError } = await client
+          .from("interviews")
+          .insert({
+            account_id: accountId,
+            project_id: projectId,
+            title: defaultTitle,
+            participant_pseudonym: speakerNames?.[0] || "Unknown participant",
+            status: "uploading",
+            source_type: "video_url",
+            source_url: url,
+            media_url: r2Key,
+            original_filename: `url-import-${timestamp}.mp4`,
+            created_by: userId,
+          })
+          .select()
+          .single();
+
+        if (insertError || !newInterview) {
+          consola.error(`Failed to create interview: ${insertError?.message}`);
+          results.push({
+            url,
+            success: false,
+            error: `Failed to create interview: ${insertError?.message}`,
+          });
+          continue;
+        }
+
+        interview = newInterview;
       }
 
-      consola.info(`Interview record created: ${interview.id}`);
+      consola.info(`Interview record ready: ${interview.id}`);
 
       // Link interviewer if userId provided
       if (userId) {
@@ -535,20 +668,21 @@ export const importFromUrlTask = schemaTask({
           }
           const mediaInfo = await fetchApolloMedia(apolloId);
           if (!mediaInfo || (!mediaInfo.videoUrl && !mediaInfo.audioUrl)) {
+            const errorMsg =
+              "Could not extract video from Apollo share link. Apollo requires browser authentication to access recordings. " +
+              "Try: open the link in your browser, play the video, right-click > 'Save video as', then upload the file directly.";
             await client
               .from("interviews")
               .update({
                 status: "error",
-                error_message:
-                  "Apollo recordings require authentication. Please download manually and upload.",
+                error_message: errorMsg,
               })
               .eq("id", interview.id);
             results.push({
               url,
               success: false,
               interviewId: interview.id,
-              error:
-                "Apollo recordings require authentication. Please download manually and upload.",
+              error: errorMsg,
             });
             continue;
           }
@@ -837,26 +971,25 @@ export const importFromUrlTask = schemaTask({
         // 6. Trigger the v2 interview processing workflow directly
         consola.info(`Triggering interview workflow for: ${defaultTitle}`);
 
-        const handle = await tasks.trigger<typeof processInterviewOrchestratorV2>(
-          "interview.v2.orchestrator",
-          {
-            analysisJobId: interview.id,
-            existingInterviewId: interview.id,
-            metadata: {
-              accountId,
-              projectId,
-              userId: userId ?? undefined,
-              interviewTitle: interview.title ?? undefined,
-              fileName: interview.original_filename ?? undefined,
-              participantName: participantName ?? undefined,
-              participantOrganization: participantOrganization ?? undefined,
-              segment: participantSegment ?? undefined,
-            },
-            transcriptData: { needs_transcription: true },
-            mediaUrl: actualR2Key,
-            userCustomInstructions: "",
+        const handle = await tasks.trigger<
+          typeof processInterviewOrchestratorV2
+        >("interview.v2.orchestrator", {
+          analysisJobId: interview.id,
+          existingInterviewId: interview.id,
+          metadata: {
+            accountId,
+            projectId,
+            userId: userId ?? undefined,
+            interviewTitle: interview.title ?? undefined,
+            fileName: interview.original_filename ?? undefined,
+            participantName: participantName ?? undefined,
+            participantOrganization: participantOrganization ?? undefined,
+            segment: participantSegment ?? undefined,
           },
-        );
+          transcriptData: { needs_transcription: true },
+          mediaUrl: actualR2Key,
+          userCustomInstructions: "",
+        });
 
         consola.success(`✅ Import complete: ${defaultTitle}`);
         results.push({
