@@ -8,6 +8,10 @@
 
 import { describe, expect, it } from "vitest";
 import type { BranchRule, QuestionBranching } from "./branching";
+import {
+  serializeToFormData,
+  type SurveyFormFields,
+} from "./hooks/useOptimisticForm";
 import type { ResearchLinkQuestion } from "./schemas";
 import { ResearchLinkPayloadSchema } from "./schemas";
 
@@ -43,7 +47,7 @@ function cleanupBranchingOnDelete(
 }
 
 // ============================================================================
-// Helper: simulate buildFormData from edit page
+// Helper: build form data using serializeToFormData from useOptimisticForm
 // ============================================================================
 function buildFormData(state: {
   name: string;
@@ -64,26 +68,7 @@ function buildFormData(state: {
   identityType: string;
   questions: ResearchLinkQuestion[];
 }): Record<string, string> {
-  return {
-    name: state.name,
-    slug: state.slug,
-    description: "",
-    hero_title: state.heroTitle,
-    hero_subtitle: state.heroSubtitle,
-    instructions: state.instructions,
-    hero_cta_label: state.heroCtaLabel,
-    hero_cta_helper: state.heroCtaHelper,
-    calendar_url: state.calendarUrl,
-    redirect_url: state.redirectUrl,
-    allow_chat: String(state.allowChat),
-    allow_voice: String(state.allowVoice),
-    allow_video: String(state.allowVideo),
-    default_response_mode: state.defaultResponseMode,
-    is_live: String(state.isLive),
-    ai_autonomy: state.aiAutonomy,
-    identity_type: state.identityType,
-    questions: JSON.stringify(state.questions),
-  };
+  return serializeToFormData(state as SurveyFormFields);
 }
 
 // ============================================================================
