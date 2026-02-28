@@ -557,7 +557,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const { data: list, error } = await supabase
     .from("research_links")
     .select(
-      "id, name, slug, description, hero_title, hero_subtitle, instructions, hero_cta_label, hero_cta_helper, redirect_url, calendar_url, questions, allow_chat, allow_voice, allow_video, walkthrough_video_url, default_response_mode, is_live, account_id, identity_mode, identity_field",
+      "id, name, slug, description, hero_title, hero_subtitle, instructions, hero_cta_label, hero_cta_helper, redirect_url, calendar_url, questions, allow_chat, allow_voice, allow_video, walkthrough_video_url, default_response_mode, is_live, account_id, identity_mode, identity_field, collect_title",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -629,6 +629,7 @@ type LoaderData = {
     account_id: string;
     identity_mode: IdentityMode;
     identity_field: IdentityField;
+    collect_title: boolean;
   };
   questions: Array<ResearchLinkQuestion>;
   walkthroughSignedUrl: string | null;
@@ -734,6 +735,7 @@ export default function ResearchLinkPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [company, setCompany] = useState("");
+  const [respondentTitle, setRespondentTitle] = useState("");
   const [responseId, setResponseId] = useState<string | null>(null);
   const [responses, setResponses] = useState<ResponseRecord>({});
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -1655,6 +1657,22 @@ export default function ResearchLinkPage() {
                   required
                 />
               </div>
+              {/* Optional title field */}
+              {list.collect_title && (
+                <div className="space-y-2">
+                  <Label htmlFor="respondent-title" className="text-white/90">
+                    Your Title <span className="text-white/40">(optional)</span>
+                  </Label>
+                  <Input
+                    id="respondent-title"
+                    type="text"
+                    value={respondentTitle}
+                    onChange={(e) => setRespondentTitle(e.target.value)}
+                    placeholder="e.g., Product Manager"
+                    className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+                  />
+                </div>
+              )}
               <div className="flex justify-end">
                 <Button
                   type="submit"
@@ -1785,6 +1803,22 @@ export default function ResearchLinkPage() {
                   required
                 />
               </div>
+              {/* Optional title field */}
+              {list.collect_title && (
+                <div className="space-y-2">
+                  <Label htmlFor="respondent-title-phone" className="text-white/90">
+                    Your Title <span className="text-white/40">(optional)</span>
+                  </Label>
+                  <Input
+                    id="respondent-title-phone"
+                    type="text"
+                    value={respondentTitle}
+                    onChange={(e) => setRespondentTitle(e.target.value)}
+                    placeholder="e.g., Product Manager"
+                    className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+                  />
+                </div>
+              )}
               <div className="flex justify-end">
                 <Button
                   type="submit"
@@ -2279,27 +2313,52 @@ function renderQuestionInput({
   const resolved = resolveQuestionInput(question);
 
   if (resolved.kind === "select") {
+    const currentValue = typeof value === "string" ? value : "";
+    const isOtherSelected = currentValue !== "" && !resolved.options.includes(currentValue);
     return (
-      <Select
-        value={typeof value === "string" ? value : ""}
-        onValueChange={(next) => onChange(next)}
-      >
-        <SelectTrigger className="border-white/10 bg-black/30 text-white">
-          <SelectValue placeholder="Select an option" />
-        </SelectTrigger>
-        <SelectContent>
-          {resolved.options.map((option) => (
-            <SelectItem key={option} value={option}>
-              {option}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="space-y-2">
+        <Select
+          value={isOtherSelected ? "__other__" : currentValue}
+          onValueChange={(next) => {
+            if (next === "__other__") {
+              onChange(""); // Clear so user can type
+            } else {
+              onChange(next);
+            }
+          }}
+        >
+          <SelectTrigger className="border-white/10 bg-black/30 text-white">
+            <SelectValue placeholder="Select an option" />
+          </SelectTrigger>
+          <SelectContent>
+            {resolved.options.map((option) => (
+              <SelectItem key={option} value={option}>
+                {option}
+              </SelectItem>
+            ))}
+            {resolved.allowOther && (
+              <SelectItem value="__other__">Other...</SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+        {resolved.allowOther && (isOtherSelected || currentValue === "") && (
+          <Input
+            type="text"
+            value={isOtherSelected ? currentValue : ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Type your answer..."
+            className="border-white/10 bg-black/30 text-white placeholder:text-white/40"
+            autoFocus={isOtherSelected}
+          />
+        )}
+      </div>
     );
   }
 
   if (resolved.kind === "multi") {
     const selected = Array.isArray(value) ? value : [];
+    const otherValues = selected.filter((v) => !resolved.options.includes(v));
+    const otherText = otherValues.join(", ");
     return (
       <div className="space-y-2">
         {resolved.options.map((option) => {
@@ -2324,6 +2383,26 @@ function renderQuestionInput({
             </label>
           );
         })}
+        {resolved.allowOther && (
+          <div className="space-y-1.5 pt-1">
+            <label className="text-sm text-white/60">Other:</label>
+            <Input
+              type="text"
+              value={otherText}
+              onChange={(e) => {
+                const newOther = e.target.value.trim();
+                const withoutOld = selected.filter((v) => resolved.options.includes(v));
+                if (newOther) {
+                  onChange([...withoutOld, newOther]);
+                } else {
+                  onChange(withoutOld);
+                }
+              }}
+              placeholder="Type your answer..."
+              className="border-white/10 bg-black/30 text-white placeholder:text-white/40"
+            />
+          </div>
+        )}
       </div>
     );
   }
@@ -2476,10 +2555,10 @@ function renderQuestionInput({
 
 function resolveQuestionInput(question: ResearchLinkQuestion) {
   if (question.type === "single_select" && question.options?.length) {
-    return { kind: "select" as const, options: question.options };
+    return { kind: "select" as const, options: question.options, allowOther: Boolean(question.allowOther) };
   }
   if (question.type === "multi_select" && question.options?.length) {
-    return { kind: "multi" as const, options: question.options };
+    return { kind: "multi" as const, options: question.options, allowOther: Boolean(question.allowOther) };
   }
   if (question.type === "likert") {
     return {

@@ -1,12 +1,14 @@
 import slugify from "@sindresorhus/slugify";
 import { motion } from "framer-motion";
 import {
+  Archive,
   ArrowLeft,
   Check,
   Copy,
   ExternalLink,
   Loader2,
   Mail,
+  QrCode,
   Send,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -32,6 +34,8 @@ import { userContext } from "~/server/user-context";
 import { createR2PresignedUrl } from "~/utils/r2.server";
 import { createRouteDefinitions } from "~/utils/route-definitions";
 import { EmbedCodeGenerator } from "../components/EmbedCodeGenerator";
+import { QRCodeButton } from "../components/QRCodeButton";
+import { QRCodeModal } from "../components/QRCodeModal";
 import { QuestionListEditor } from "../components/QuestionListEditor";
 import { ResearchLinkPreview } from "../components/ResearchLinkPreview";
 import { SendSurveyDialog } from "../components/SendSurveyDialog";
@@ -226,6 +230,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (formData.has("default_response_mode"))
     updatePayload.default_response_mode = payload.defaultResponseMode;
   if (formData.has("is_live")) updatePayload.is_live = payload.isLive;
+  if (formData.has("is_archived")) updatePayload.is_archived = payload.isArchived;
+  if (formData.has("collect_title")) updatePayload.collect_title = payload.collectTitle;
   if (formData.has("ai_autonomy")) {
     const autonomy = formData.get("ai_autonomy");
     if (
@@ -342,6 +348,12 @@ export default function EditResearchLinkPage() {
     if (mode === "anonymous") return "anonymous";
     return field || "email";
   });
+  const [collectTitle, setCollectTitle] = useState(
+    Boolean((list as { collect_title?: boolean }).collect_title),
+  );
+  const [isArchived, setIsArchived] = useState(
+    Boolean((list as { is_archived?: boolean }).is_archived),
+  );
   const [walkthroughVideoUrl, setWalkthroughVideoUrl] = useState<string | null>(
     initialWalkthroughUrl ?? null,
   );
@@ -354,6 +366,8 @@ export default function EditResearchLinkPage() {
     if (initialQuestions.length > 0) return initialQuestions;
     return [createEmptyQuestion()];
   });
+
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
 
   // Use refs to build form data from latest state without adding all state to useCallback deps
   const stateRef = useRef({
@@ -371,6 +385,8 @@ export default function EditResearchLinkPage() {
     allowVideo,
     defaultResponseMode,
     isLive,
+    isArchived,
+    collectTitle,
     aiAutonomy,
     identityType,
     questions,
@@ -390,6 +406,8 @@ export default function EditResearchLinkPage() {
     allowVideo,
     defaultResponseMode,
     isLive,
+    isArchived,
+    collectTitle,
     aiAutonomy,
     identityType,
     questions,
@@ -413,6 +431,8 @@ export default function EditResearchLinkPage() {
       allow_video: String(s.allowVideo),
       default_response_mode: s.defaultResponseMode,
       is_live: String(s.isLive),
+      is_archived: String(s.isArchived),
+      collect_title: String(s.collectTitle),
       ai_autonomy: s.aiAutonomy,
       identity_type: s.identityType,
       questions: JSON.stringify(s.questions),
@@ -625,6 +645,10 @@ export default function EditResearchLinkPage() {
                           Open in new tab
                         </a>
                       </Button>
+                      <QRCodeButton
+                        url={publicLink}
+                        onClick={() => setIsQRModalOpen(true)}
+                      />
                     </div>
                   </div>
                 </CardContent>
@@ -1071,6 +1095,18 @@ export default function EditResearchLinkPage() {
                     )}
                     <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
                       <div className="min-w-0">
+                        <p className="font-medium text-sm">Collect title</p>
+                        <p className="truncate text-muted-foreground text-xs">
+                          Ask respondents for their job title
+                        </p>
+                      </div>
+                      <Switch
+                        checked={collectTitle}
+                        onCheckedChange={handleImmediateChange(setCollectTitle)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
+                      <div className="min-w-0">
                         <p className="font-medium text-sm">Live</p>
                         <p className="truncate text-muted-foreground text-xs">
                           Accessible via public link
@@ -1079,6 +1115,21 @@ export default function EditResearchLinkPage() {
                       <Switch
                         checked={isLive}
                         onCheckedChange={handleImmediateChange(setIsLive)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-4 rounded-md border border-amber-500/30 border-dashed bg-amber-500/5 px-3 py-2.5">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <Archive className="h-4 w-4 text-amber-600" />
+                          <p className="font-medium text-sm">Archived</p>
+                        </div>
+                        <p className="truncate text-muted-foreground text-xs">
+                          Hide from survey list (keeps data)
+                        </p>
+                      </div>
+                      <Switch
+                        checked={isArchived}
+                        onCheckedChange={handleImmediateChange(setIsArchived)}
                       />
                     </div>
                     <div className="grid gap-3 pt-2 sm:grid-cols-2">
@@ -1183,6 +1234,13 @@ export default function EditResearchLinkPage() {
           people={peopleWithEmails}
         />
       )}
+      {/* QR Code Modal */}
+      <QRCodeModal
+        isOpen={isQRModalOpen}
+        onClose={() => setIsQRModalOpen(false)}
+        url={publicLink}
+        title={name}
+      />
     </PageContainer>
   );
 }

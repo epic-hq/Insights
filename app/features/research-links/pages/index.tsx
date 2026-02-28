@@ -1,4 +1,4 @@
-import { Copy, ExternalLink, Link2, Mail, MessageSquare, MoreHorizontal, Pencil, Trash2, Video } from "lucide-react";
+import { Archive, ArchiveRestore, Copy, ExternalLink, Link2, Mail, MessageSquare, MoreHorizontal, Pencil, Trash2, Video } from "lucide-react";
 import { useState } from "react";
 import type { LoaderFunctionArgs, MetaFunction } from "react-router";
 import { Link, useFetcher, useLoaderData } from "react-router-dom";
@@ -95,6 +95,7 @@ interface LoaderData {
 		allow_video: boolean;
 		default_response_mode: "form" | "chat";
 		is_live: boolean;
+		is_archived: boolean;
 		updated_at: string;
 		walkthrough_video_url: string | null;
 		research_link_responses?: Array<{ count: number | null }>;
@@ -143,9 +144,16 @@ function AskLinkCard({ list, questions, responsesCount, publicUrl, routes, email
 						<div className="min-w-0 flex-1 space-y-1">
 							<div className="flex items-center gap-2">
 								<CardTitle className="text-lg">{list.name}</CardTitle>
-								<Badge variant={list.is_live ? "default" : "secondary"} className="text-xs">
-									{list.is_live ? "Live" : "Draft"}
-								</Badge>
+								{list.is_archived ? (
+									<Badge variant="outline" className="border-amber-500/30 text-amber-600 text-xs">
+										<Archive className="mr-1 h-3 w-3" />
+										Archived
+									</Badge>
+								) : (
+									<Badge variant={list.is_live ? "default" : "secondary"} className="text-xs">
+										{list.is_live ? "Live" : "Draft"}
+									</Badge>
+								)}
 							</div>
 							{list.description && <CardDescription className="line-clamp-2">{list.description}</CardDescription>}
 						</div>
@@ -290,6 +298,32 @@ function AskLinkCard({ list, questions, responsesCount, publicUrl, routes, email
 export default function ResearchLinksIndexPage() {
 	const { accountId, projectId, origin, lists, emailStatsMap } = useLoaderData<LoaderData>();
 	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
+	const [showArchived, setShowArchived] = useState(false);
+
+	const activeLists = lists.filter((l) => !l.is_archived);
+	const archivedLists = lists.filter((l) => l.is_archived);
+
+	const renderSurveyGrid = (surveyLists: typeof lists) => (
+		<div className="grid gap-4 lg:grid-cols-2">
+			{surveyLists.map((list) => {
+				const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions);
+				const questions = questionsResult.success ? questionsResult.data : [];
+				const responsesCount = list.research_link_responses?.[0]?.count ?? 0;
+				const publicUrl = `${origin}${routes.ask.public(list.slug)}`;
+				return (
+					<AskLinkCard
+						key={list.id}
+						list={list}
+						questions={questions}
+						responsesCount={responsesCount}
+						publicUrl={publicUrl}
+						routes={routes}
+						emailStats={emailStatsMap[list.id]}
+					/>
+				);
+			})}
+		</div>
+	);
 
 	return (
 		<PageContainer className="space-y-6">
@@ -305,7 +339,7 @@ export default function ResearchLinksIndexPage() {
 				</Button>
 			</div>
 
-			{lists.length === 0 ? (
+			{activeLists.length === 0 && archivedLists.length === 0 ? (
 				<div className="rounded-lg border border-dashed bg-muted/40 p-12 text-center">
 					<Link2 className="mx-auto h-10 w-10 text-muted-foreground" />
 					<h2 className="mt-4 font-semibold text-xl">Create your first survey</h2>
@@ -317,25 +351,34 @@ export default function ResearchLinksIndexPage() {
 					</Button>
 				</div>
 			) : (
-				<div className="grid gap-4 lg:grid-cols-2">
-					{lists.map((list) => {
-						const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions);
-						const questions = questionsResult.success ? questionsResult.data : [];
-						const responsesCount = list.research_link_responses?.[0]?.count ?? 0;
-						const publicUrl = `${origin}${routes.ask.public(list.slug)}`;
-						return (
-							<AskLinkCard
-								key={list.id}
-								list={list}
-								questions={questions}
-								responsesCount={responsesCount}
-								publicUrl={publicUrl}
-								routes={routes}
-								emailStats={emailStatsMap[list.id]}
-							/>
-						);
-					})}
-				</div>
+				<>
+					{activeLists.length > 0 ? (
+						renderSurveyGrid(activeLists)
+					) : (
+						<div className="rounded-lg border border-dashed bg-muted/40 p-8 text-center">
+							<p className="text-muted-foreground text-sm">
+								No active surveys. {archivedLists.length > 0 && "Check archived surveys below or create a new one."}
+							</p>
+						</div>
+					)}
+
+					{/* Archived surveys section */}
+					{archivedLists.length > 0 && (
+						<div className="space-y-4">
+							<button
+								type="button"
+								onClick={() => setShowArchived(!showArchived)}
+								className="flex items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground"
+							>
+								<ArchiveRestore className="h-4 w-4" />
+								<span>
+									{showArchived ? "Hide" : "Show"} archived ({archivedLists.length})
+								</span>
+							</button>
+							{showArchived && renderSurveyGrid(archivedLists)}
+						</div>
+					)}
+				</>
 			)}
 		</PageContainer>
 	);
