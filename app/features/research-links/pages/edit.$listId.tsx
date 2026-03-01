@@ -1,5 +1,4 @@
 import slugify from "@sindresorhus/slugify";
-import { motion } from "framer-motion";
 import {
   Archive,
   ArrowLeft,
@@ -10,7 +9,6 @@ import {
   ExternalLink,
   Loader2,
   Mail,
-  QrCode,
   Send,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -40,7 +38,6 @@ import { EmbedCodeGenerator } from "../components/EmbedCodeGenerator";
 import { QRCodeButton } from "../components/QRCodeButton";
 import { QRCodeModal } from "../components/QRCodeModal";
 import { QuestionListEditor } from "../components/QuestionListEditor";
-import { ResearchLinkPreview } from "../components/ResearchLinkPreview";
 import { SendSurveyDialog } from "../components/SendSurveyDialog";
 import { WalkthroughRecorder } from "../components/WalkthroughRecorder";
 import { getResearchLinkById } from "../db";
@@ -653,7 +650,7 @@ export default function EditResearchLinkPage() {
           )}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,400px),minmax(240px,280px)]">
+        <div className="space-y-4">
           <div className="min-w-0 space-y-4">
             {/* Basics */}
             <div className="space-y-1.5">
@@ -713,125 +710,44 @@ export default function EditResearchLinkPage() {
                       ) : null}
                     </div>
                   </div>
-                  <p className="text-muted-foreground text-xs">Link:</p>
-                  <div className="space-y-2">
-                    <div className="rounded-md border bg-muted/40 px-2.5 py-2 text-foreground/70 text-xs">
-                      <span className="break-all font-mono">{publicLink}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCopyLink}
-                        className="gap-2"
-                      >
-                        {copiedLink ? (
-                          <Check className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                        {copiedLink ? "Copied" : "Copy link"}
-                      </Button>
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                      >
-                        <a href={publicLink} target="_blank" rel="noreferrer">
-                          <ExternalLink className="h-4 w-4" />
-                          Open in new tab
-                        </a>
-                      </Button>
-                      <QRCodeButton
-                        url={publicLink}
-                        onClick={() => setIsQRModalOpen(true)}
-                      />
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Email Distribution - inline Gmail connection prompt */}
-            <div className="space-y-1.5">
-              <h3 className="font-medium text-foreground/80 text-sm">
-                Email Distribution
-              </h3>
-              <Card>
-                <CardContent className="py-3">
-                  {gmailConnected ? (
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-                        <Mail className="h-4 w-4 text-green-600 dark:text-green-400" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">
-                          Gmail connected
-                          {gmailEmail && (
-                            <span className="ml-1 font-normal text-muted-foreground">
-                              ({gmailEmail})
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          Send survey invites from your email.
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => setSendDialogOpen(true)}
-                        className="gap-2"
-                      >
-                        <Send className="h-4 w-4" />
-                        Send Survey
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">
-                            Send via email — one step away
-                          </p>
-                          <p className="text-muted-foreground text-xs">
-                            Connect Gmail to send invites from your own address.
-                          </p>
-                        </div>
-                      </div>
-                      <PicaConnectButton
-                        userId={userId}
-                        accountId={accountId}
-                        platform="gmail"
-                        saveAction="/api/gmail/save-connection"
-                        icon={Mail}
-                        onSuccess={() => {
-                          toast.success("Gmail connected");
-                          window.location.reload();
-                        }}
-                        onError={(err) => toast.error(err)}
-                        size="sm"
-                        variant="outline"
-                      >
-                        Connect Gmail
-                      </PicaConnectButton>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+            {/* Respondent fields summary — compact row showing which fields are collected */}
+            {respondentFields.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border/40 bg-muted/20 px-3 py-2">
+                <span className="mr-1 text-muted-foreground text-xs">Collecting:</span>
+                {identityType === "email" && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-[11px] text-primary">
+                    Email
+                  </span>
+                )}
+                {identityType === "phone" && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-[11px] text-primary">
+                    Phone
+                  </span>
+                )}
+                {respondentFields.map((key) => {
+                  const opt = RESPONDENT_FIELD_OPTIONS.find((o) => o.key === key);
+                  return (
+                    <span
+                      key={key}
+                      className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground/70"
+                    >
+                      {opt?.label ?? key}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
 
             <Tabs defaultValue="landing" className="space-y-4">
               <TabsList className="w-full justify-start">
                 <TabsTrigger value="landing">Landing page</TabsTrigger>
                 <TabsTrigger value="questions">Questions</TabsTrigger>
                 <TabsTrigger value="options">Options</TabsTrigger>
-                <TabsTrigger value="embed">Embed</TabsTrigger>
+                <TabsTrigger value="distribute">Distribute</TabsTrigger>
               </TabsList>
 
               <TabsContent value="landing" className="space-y-1.5">
@@ -1275,40 +1191,138 @@ export default function EditResearchLinkPage() {
               </TabsContent>
 
               <TabsContent
-                value="embed"
-                className="min-w-0 space-y-1.5 overflow-hidden"
+                value="distribute"
+                className="min-w-0 space-y-4 overflow-hidden"
               >
-                <h3 className="font-medium text-foreground/80 text-sm">
-                  Embed on Your Website
-                </h3>
-                <p className="text-muted-foreground text-xs">
-                  Add this form to your website for waitlists, feedback
-                  collection, or lead capture.
-                </p>
-                <EmbedCodeGenerator
-                  slug={slug}
-                  heroTitle={heroTitle}
-                  heroCtaLabel={heroCtaLabel}
-                  walkthroughVideoUrl={walkthroughVideoUrl}
-                  walkthroughThumbnailUrl={walkthroughThumbnailUrl}
-                />
+                {/* Public Link */}
+                <Card>
+                  <CardContent className="space-y-2 py-3">
+                    <p className="font-medium text-sm">Public link</p>
+                    <div className="rounded-md border bg-muted/40 px-2.5 py-2 text-foreground/70 text-xs">
+                      <span className="break-all font-mono">{publicLink}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyLink}
+                        className="gap-2"
+                      >
+                        {copiedLink ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                        {copiedLink ? "Copied" : "Copy link"}
+                      </Button>
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                      >
+                        <a href={publicLink} target="_blank" rel="noreferrer">
+                          <ExternalLink className="h-4 w-4" />
+                          Open in new tab
+                        </a>
+                      </Button>
+                      <QRCodeButton
+                        url={publicLink}
+                        onClick={() => setIsQRModalOpen(true)}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Email Distribution */}
+                <Card>
+                  <CardContent className="py-3">
+                    {gmailConnected ? (
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+                          <Mail className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">
+                            Gmail connected
+                            {gmailEmail && (
+                              <span className="ml-1 font-normal text-muted-foreground">
+                                ({gmailEmail})
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-muted-foreground text-xs">
+                            Send survey invites from your email.
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => setSendDialogOpen(true)}
+                          className="gap-2"
+                        >
+                          <Send className="h-4 w-4" />
+                          Send Survey
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">
+                              Send via email
+                            </p>
+                            <p className="text-muted-foreground text-xs">
+                              Connect Gmail to send invites from your own
+                              address.
+                            </p>
+                          </div>
+                        </div>
+                        <PicaConnectButton
+                          userId={userId}
+                          accountId={accountId}
+                          platform="gmail"
+                          saveAction="/api/gmail/save-connection"
+                          icon={Mail}
+                          onSuccess={() => {
+                            toast.success("Gmail connected");
+                            window.location.reload();
+                          }}
+                          onError={(err) => toast.error(err)}
+                          size="sm"
+                          variant="outline"
+                        >
+                          Connect Gmail
+                        </PicaConnectButton>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Embed Code */}
+                <Card>
+                  <CardContent className="space-y-2 py-3">
+                    <p className="font-medium text-sm">Embed on your website</p>
+                    <p className="text-muted-foreground text-xs">
+                      Add this form to your website for waitlists, feedback
+                      collection, or lead capture.
+                    </p>
+                    <EmbedCodeGenerator
+                      slug={slug}
+                      heroTitle={heroTitle}
+                      heroCtaLabel={heroCtaLabel}
+                      walkthroughVideoUrl={walkthroughVideoUrl}
+                      walkthroughThumbnailUrl={walkthroughThumbnailUrl}
+                    />
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
-          >
-            <ResearchLinkPreview
-              heroTitle={heroTitle}
-              heroSubtitle={heroSubtitle}
-              heroCtaLabel={heroCtaLabel}
-              heroCtaHelper={heroCtaHelper}
-              questions={questions}
-            />
-          </motion.div>
         </div>
       </div>
 
