@@ -138,6 +138,9 @@ export function useOptimisticForm(
   const [status, setStatus] = useState<AutoSaveStatus>("idle");
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  /** Snapshot of dirty entries at the moment we submitted, used to avoid
+   *  clearing entries the user has changed since submission. */
+  const submittedSnapshotRef = useRef<Partial<SurveyFormFields>>({});
 
   // Keep refs to resolve the latest merged state inside timers/event handlers.
   const dirtyMapRef = useRef(dirtyMap);
@@ -159,8 +162,21 @@ export function useOptimisticForm(
       if (fetcher.data.errors) {
         setStatus("error");
       } else {
-        // Save succeeded — clear dirty map
-        setDirtyMap({});
+        // Save succeeded — only clear fields the user hasn't touched since submission.
+        // This prevents cursor jumps and whitespace stripping while actively typing.
+        setDirtyMap((prev) => {
+          const next: Partial<SurveyFormFields> = {};
+          for (const key of Object.keys(prev) as Array<
+            keyof SurveyFormFields
+          >) {
+            if (prev[key] !== submittedSnapshotRef.current[key]) {
+              // User edited this field after we submitted — keep it dirty
+              (next as Record<string, unknown>)[key] = prev[key];
+            }
+          }
+          dirtyMapRef.current = next;
+          return next;
+        });
         setStatus("saved");
         clearTimeout(savedTimerRef.current);
         savedTimerRef.current = setTimeout(
@@ -175,6 +191,9 @@ export function useOptimisticForm(
   }, [fetcher.state, fetcher.data, savedDisplayMs]);
 
   const submitAll = useCallback(() => {
+    // Snapshot dirty entries so we can tell on success whether the user
+    // has continued typing since this submission.
+    submittedSnapshotRef.current = { ...dirtyMapRef.current };
     const merged = {
       ...loaderFieldsRef.current,
       ...dirtyMapRef.current,
