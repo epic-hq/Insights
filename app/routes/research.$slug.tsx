@@ -11,12 +11,10 @@ import {
   Check,
   CheckCircle2,
   ClipboardList,
-  Copy,
   Loader2,
   MessageSquare,
   Mic,
   Send,
-  Share2,
   Video,
 } from "lucide-react";
 import {
@@ -714,10 +712,8 @@ export default function ResearchLinkPage() {
     useLoaderData() as LoaderData;
   const [searchParams] = useSearchParams();
   const ffVoice = searchParams.get("ffVoice") === "true";
-  const kioskMode = searchParams.get("kiosk") === "true";
   const emailId = useId();
   const phoneId = useId();
-  const storageKey = `research-link:${slug}`;
 
   // Determine initial stage based on identity mode
   const getInitialStage = (): Stage => {
@@ -744,11 +740,9 @@ export default function ResearchLinkPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
-  const [copiedLink, setCopiedLink] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState<number | null>(
     null,
   );
-  const [isReviewing, setIsReviewing] = useState(false);
   const utmParamsRef = useRef<Record<string, string> | undefined>(undefined);
 
   const resolvedMode = list.allow_chat ? mode : "form";
@@ -881,9 +875,6 @@ export default function ResearchLinkPage() {
   }, []);
 
   const handleStartOver = useCallback(() => {
-    if (!kioskMode) {
-      window.localStorage.removeItem(storageKey);
-    }
     setStage(getInitialStage());
     setEmail("");
     setPhone("");
@@ -896,26 +887,25 @@ export default function ResearchLinkPage() {
     setCurrentIndex(0);
     setCurrentAnswer("");
     setRedirectCountdown(null);
-    setIsReviewing(false);
     setError(null);
     setInitializing(true);
-  }, [storageKey, kioskMode]);
+  }, []);
 
-  // Kiosk mode: auto-reset after 5 seconds on completion
+  // Auto-reset after 5 seconds on completion (fresh start for next respondent)
   useEffect(() => {
-    if (!kioskMode || stage !== "complete") return;
+    if (stage !== "complete") return;
     const timer = setTimeout(() => {
       handleStartOver();
     }, 5000);
     return () => clearTimeout(timer);
-  }, [kioskMode, stage, handleStartOver]);
+  }, [stage, handleStartOver]);
 
-  // Kiosk mode: after handleStartOver resets initializing=true,
-  // re-trigger the anonymous auto-start flow
+  // After handleStartOver resets initializing=true,
+  // re-trigger the anonymous auto-start flow for the next respondent
   useEffect(() => {
-    if (!kioskMode || !initializing) return;
+    if (!initializing) return;
     if (list.identity_mode !== "anonymous") {
-      // For identified surveys in kiosk mode, just stop initializing
+      // For identified surveys, just stop initializing (user enters email/phone)
       setInitializing(false);
       return;
     }
@@ -941,17 +931,7 @@ export default function ResearchLinkPage() {
       .finally(() => {
         setInitializing(false);
       });
-  }, [kioskMode, initializing, slug, resolvedMode, questions, list.identity_mode, list.instructions]);
-
-  // Get the current page URL for sharing
-  const shareUrl =
-    typeof window !== "undefined" ? window.location.href : `/ask/${slug}`;
-
-  const handleCopyLink = useCallback(() => {
-    navigator.clipboard.writeText(shareUrl);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
-  }, [shareUrl]);
+  }, [initializing, slug, resolvedMode, questions, list.identity_mode, list.instructions]);
 
   // Voice input for form mode
   const handleFormVoiceTranscription = useCallback((text: string) => {
@@ -1020,16 +1000,6 @@ export default function ResearchLinkPage() {
             setEmail(urlEmail);
             setResponseId(result.responseId);
             setResponses(result.responses || {});
-            // Save to localStorage for future visits (skip in kiosk mode)
-            if (!kioskMode) {
-              window.localStorage.setItem(
-                storageKey,
-                JSON.stringify({
-                  email: urlEmail,
-                  responseId: result.responseId,
-                }),
-              );
-            }
             const initialIndex = findNextQuestionIndex(
               result.responses || {},
               questions,
@@ -1068,15 +1038,6 @@ export default function ResearchLinkPage() {
           .then((result) => {
             setResponseId(result.responseId);
             setResponses(result.responses || {});
-            if (!kioskMode) {
-              window.localStorage.setItem(
-                storageKey,
-                JSON.stringify({
-                  email: urlEmail,
-                  responseId: result.responseId,
-                }),
-              );
-            }
             const initialIndex = findNextQuestionIndex(
               result.responses || {},
               questions,
@@ -1141,15 +1102,6 @@ export default function ResearchLinkPage() {
           .then((result) => {
             setResponseId(result.responseId);
             setResponses(result.responses || {});
-            if (!kioskMode) {
-              window.localStorage.setItem(
-                storageKey,
-                JSON.stringify({
-                  phone: urlPhone,
-                  responseId: result.responseId,
-                }),
-              );
-            }
             const initialIndex = findNextQuestionIndex(
               result.responses || {},
               questions,
@@ -1181,84 +1133,32 @@ export default function ResearchLinkPage() {
       if (urlFirstName) setFirstName(urlFirstName);
       if (urlLastName) setLastName(urlLastName);
 
-      // Otherwise check localStorage for existing session (skip in kiosk mode)
-      const stored = kioskMode ? null : window.localStorage.getItem(storageKey);
-      if (!stored) {
-        // For anonymous mode with no stored session, auto-start the survey
-        if (list.identity_mode === "anonymous") {
-          void startSignup(slug, {
-            responseMode: resolvedMode,
-            utmParams: utmPayload,
-          })
-            .then((result) => {
-              setResponseId(result.responseId);
-              setResponses(result.responses || {});
-              if (!kioskMode) {
-                window.localStorage.setItem(
-                  storageKey,
-                  JSON.stringify({ responseId: result.responseId }),
-                );
-              }
-              const initialIndex = findNextQuestionIndex(
-                result.responses || {},
-                questions,
-              );
-              if (initialIndex >= questions.length) {
-                setStage("complete");
+      // For anonymous mode, auto-start the survey with a fresh session
+      if (list.identity_mode === "anonymous") {
+        void startSignup(slug, {
+          responseMode: resolvedMode,
+          utmParams: utmPayload,
+        })
+          .then((result) => {
+            setResponseId(result.responseId);
+            setResponses(result.responses || {});
+            const initialIndex = findNextQuestionIndex(
+              result.responses || {},
+              questions,
+            );
+            if (initialIndex >= questions.length) {
+              setStage("complete");
+            } else {
+              setCurrentIndex(initialIndex);
+              if (list.instructions) {
+                setStage("instructions");
               } else {
-                setCurrentIndex(initialIndex);
-                // Anonymous surveys show instructions or go straight to survey
-                if (list.instructions) {
-                  setStage("instructions");
-                } else {
-                  setStage("survey");
-                }
+                setStage("survey");
               }
-            })
-            .catch(() => {
-              // Silently fail - user can still use the survey
-            })
-            .finally(() => {
-              setInitializing(false);
-            });
-          return;
-        }
-        setInitializing(false);
-        return;
-      }
-      const parsed = JSON.parse(stored) as {
-        email?: string;
-        phone?: string;
-        responseId?: string;
-      };
-
-      // Handle email-identified resume
-      if (parsed.email && parsed.responseId) {
-        void startSignup(slug, {
-          email: parsed.email,
-          responseId: parsed.responseId,
-          responseMode: resolvedMode,
-        })
-          .then((result) => {
-            setEmail(parsed.email as string);
-            setResponseId(result.responseId);
-            setResponses(result.responses || {});
-            const initialIndex = findNextQuestionIndex(
-              result.responses || {},
-              questions,
-            );
-            if (initialIndex >= questions.length) {
-              setStage("complete");
-            } else {
-              setStage("survey");
-              setCurrentIndex(initialIndex);
-              const existingValue =
-                result.responses?.[questions[initialIndex]?.id];
-              setCurrentAnswer(existingValue ?? "");
             }
           })
           .catch(() => {
-            window.localStorage.removeItem(storageKey);
+            // Silently fail - user can still use the survey
           })
           .finally(() => {
             setInitializing(false);
@@ -1266,73 +1166,7 @@ export default function ResearchLinkPage() {
         return;
       }
 
-      // Handle phone-identified resume
-      if (parsed.phone && parsed.responseId) {
-        void startSignup(slug, {
-          phone: parsed.phone,
-          responseId: parsed.responseId,
-          responseMode: resolvedMode,
-        })
-          .then((result) => {
-            setPhone(parsed.phone as string);
-            setResponseId(result.responseId);
-            setResponses(result.responses || {});
-            const initialIndex = findNextQuestionIndex(
-              result.responses || {},
-              questions,
-            );
-            if (initialIndex >= questions.length) {
-              setStage("complete");
-            } else {
-              setStage("survey");
-              setCurrentIndex(initialIndex);
-              const existingValue =
-                result.responses?.[questions[initialIndex]?.id];
-              setCurrentAnswer(existingValue ?? "");
-            }
-          })
-          .catch(() => {
-            window.localStorage.removeItem(storageKey);
-          })
-          .finally(() => {
-            setInitializing(false);
-          });
-        return;
-      }
-
-      // Handle anonymous resume (just responseId)
-      if (parsed.responseId && list.identity_mode === "anonymous") {
-        void startSignup(slug, {
-          responseId: parsed.responseId,
-          responseMode: resolvedMode,
-        })
-          .then((result) => {
-            setResponseId(result.responseId);
-            setResponses(result.responses || {});
-            const initialIndex = findNextQuestionIndex(
-              result.responses || {},
-              questions,
-            );
-            if (initialIndex >= questions.length) {
-              setStage("complete");
-            } else {
-              setStage("survey");
-              setCurrentIndex(initialIndex);
-              const existingValue =
-                result.responses?.[questions[initialIndex]?.id];
-              setCurrentAnswer(existingValue ?? "");
-            }
-          })
-          .catch(() => {
-            window.localStorage.removeItem(storageKey);
-          })
-          .finally(() => {
-            setInitializing(false);
-          });
-        return;
-      }
-
-      window.localStorage.removeItem(storageKey);
+      // Identified mode with no URL params — show email/phone form
       setInitializing(false);
     } catch {
       setInitializing(false);
@@ -1340,9 +1174,7 @@ export default function ResearchLinkPage() {
   }, [
     questions,
     slug,
-    storageKey,
     resolvedMode,
-    kioskMode,
     list.identity_mode,
     list.identity_field,
     list.instructions,
@@ -1384,12 +1216,6 @@ export default function ResearchLinkPage() {
       });
       setResponseId(result.responseId);
       setResponses(result.responses || {});
-      if (!kioskMode) {
-        window.localStorage.setItem(
-          storageKey,
-          JSON.stringify({ email: email.trim(), responseId: result.responseId }),
-        );
-      }
 
       // If no person linked, we need to collect name info
       if (!result.personId) {
@@ -1434,12 +1260,6 @@ export default function ResearchLinkPage() {
       });
       setResponseId(result.responseId);
       setResponses(result.responses || {});
-      if (!kioskMode) {
-        window.localStorage.setItem(
-          storageKey,
-          JSON.stringify({ phone: phone.trim(), responseId: result.responseId }),
-        );
-      }
 
       // Phone-identified surveys don't collect name, go straight to survey
       const initialIndex = findNextQuestionIndex(
@@ -2084,46 +1904,25 @@ export default function ResearchLinkPage() {
                     <ArrowLeft className="mr-1 h-3.5 w-3.5" />
                     Back
                   </Button>
-                  {isReviewing ? (
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        if (currentIndex === questions.length - 1) {
-                          setIsReviewing(false);
-                          setStage("complete");
-                        } else {
-                          setCurrentIndex(currentIndex + 1);
-                          setCurrentAnswer(
-                            responses[questions[currentIndex + 1]?.id] ?? "",
-                          );
-                        }
-                      }}
-                      className="bg-white text-black hover:bg-white/90"
-                    >
-                      {currentIndex === questions.length - 1 ? "Done" : "Next"}
-                      <ArrowRight className="ml-1.5 h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      onClick={() => void handleAnswerSubmit(currentAnswer)}
-                      disabled={
-                        isSaving ||
-                        (currentQuestion?.required &&
-                          !hasResponseValue(currentAnswer))
-                      }
-                      className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
-                    >
-                      {isSaving ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : currentIndex === questions.length - 1 ? (
-                        "Submit"
-                      ) : (
-                        "Next"
-                      )}
-                      <ArrowRight className="ml-1.5 h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    onClick={() => void handleAnswerSubmit(currentAnswer)}
+                    disabled={
+                      isSaving ||
+                      (currentQuestion?.required &&
+                        !hasResponseValue(currentAnswer))
+                    }
+                    className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : currentIndex === questions.length - 1 ? (
+                      "Submit"
+                    ) : (
+                      "Next"
+                    )}
+                    <ArrowRight className="ml-1.5 h-4 w-4" />
+                  </Button>
                 </div>
 
                 {/* Progress indicator - minimal dots */}
@@ -2229,106 +2028,48 @@ export default function ResearchLinkPage() {
               <CheckCircle2 className="h-12 w-12 text-emerald-300" />
               <div className="space-y-2">
                 <h2 className="font-semibold text-xl">Thanks for sharing!</h2>
-                {kioskMode && (
-                  <p className="text-sm text-white/50">
-                    Starting over in a moment...
-                  </p>
-                )}
+                <p className="text-sm text-white/50">
+                  Starting over in a moment...
+                </p>
               </div>
 
-              {/* Non-kiosk content */}
-              {!kioskMode && (
-                <>
-                  <div className="flex items-center justify-center gap-2">
-                    <Button
-                      asChild
-                      variant="outline"
-                      className="border-white bg-transparent text-white hover:border-white/50 hover:bg-white/10 hover:text-white"
-                    >
-                      <a
-                        href="https://getupsight.com/sign-up"
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Create a free account to see your responses
-                      </a>
-                    </Button>
+              {/* Calendar booking */}
+              {list.calendar_url && (
+                <div className="w-full space-y-3 border-white/10 border-t pt-4">
+                  <div className="flex items-center justify-center gap-2 text-sm text-white/60">
+                    <Calendar className="h-4 w-4" />
+                    Want to discuss your feedback?
                   </div>
-
-                  {/* Calendar booking */}
-                  {list.calendar_url && (
-                    <div className="w-full space-y-3 border-white/10 border-t pt-4">
-                      <div className="flex items-center justify-center gap-2 text-sm text-white/60">
-                        <Calendar className="h-4 w-4" />
-                        Want to discuss your feedback?
-                      </div>
-                      <Button
-                        asChild
-                        className="w-full gap-2 bg-white text-black hover:bg-white/90"
-                      >
-                        <a
-                          href={list.calendar_url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <Calendar className="h-4 w-4" />
-                          Book a call
-                        </a>
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Share section */}
-                  <div className="w-full space-y-3 border-white/10 border-t pt-4">
-                    <Button
-                      onClick={handleCopyLink}
-                      variant="outline"
-                      className="w-full gap-2 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                  <Button
+                    asChild
+                    className="w-full gap-2 bg-white text-black hover:bg-white/90"
+                  >
+                    <a
+                      href={list.calendar_url}
+                      target="_blank"
+                      rel="noreferrer"
                     >
-                      {copiedLink ? (
-                        <>
-                          <Check className="h-4 w-4 text-emerald-400" />
-                          Link copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-4 w-4" />
-                          Copy link to share
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                      <Calendar className="h-4 w-4" />
+                      Book a call
+                    </a>
+                  </Button>
+                </div>
+              )}
 
-                  {list.redirect_url && redirectCountdown !== null && (
-                    <div className="flex items-center gap-3">
-                      <p className="text-white/40 text-xs">
-                        Redirecting in {redirectCountdown}s...
-                      </p>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={cancelRedirect}
-                        className="h-6 px-2 text-white/40 text-xs hover:bg-white/10 hover:text-white"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Review answers option */}
+              {list.redirect_url && redirectCountdown !== null && (
+                <div className="flex items-center gap-3">
+                  <p className="text-white/40 text-xs">
+                    Redirecting in {redirectCountdown}s...
+                  </p>
                   <Button
                     variant="ghost"
-                    onClick={() => {
-                      setCurrentIndex(0);
-                      setIsReviewing(true);
-                      setStage("survey");
-                    }}
-                    className="w-full gap-2 text-white/60 hover:bg-white/10 hover:text-white"
+                    size="sm"
+                    onClick={cancelRedirect}
+                    className="h-6 px-2 text-white/40 text-xs hover:bg-white/10 hover:text-white"
                   >
-                    <ClipboardList className="h-4 w-4" />
-                    Review your answers
+                    Cancel
                   </Button>
-                </>
+                </div>
               )}
             </motion.div>
           )}
