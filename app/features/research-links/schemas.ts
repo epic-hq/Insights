@@ -24,6 +24,8 @@ export const ResearchLinkQuestionSchema = z.object({
 	placeholder: z.string().optional().nullable(),
 	helperText: z.string().optional().nullable(),
 	options: z.array(z.string()).optional().nullable(),
+	// Allow "Other" write-in option for single/multi select
+	allowOther: z.boolean().optional().default(true),
 	// Likert scale configuration
 	likertScale: z.number().min(3).max(10).optional().nullable(),
 	likertLabels: z
@@ -43,7 +45,9 @@ export const ResearchLinkQuestionSchema = z.object({
 		)
 		.optional()
 		.nullable(),
-	// Video prompt URL (shown before/with question)
+	// Media URL (image, video, or audio shown before/with question)
+	mediaUrl: z.string().optional().nullable(),
+	// Legacy field name kept for backwards compatibility
 	videoUrl: z.string().optional().nullable(),
 	// Conditional branching rules
 	branching: QuestionBranchingSchema.optional().nullable(),
@@ -62,9 +66,11 @@ export function createEmptyQuestion(): ResearchLinkQuestion {
 		placeholder: null,
 		helperText: null,
 		options: null,
+		allowOther: true,
 		likertScale: null,
 		likertLabels: null,
 		imageOptions: null,
+		mediaUrl: null,
 		videoUrl: null,
 	};
 }
@@ -159,6 +165,22 @@ export const ResearchLinkPayloadSchema = z.object({
 			return "form";
 		}),
 	isLive: booleanFlag,
+	isArchived: booleanFlag,
+	collectTitle: booleanFlag,
+	respondentFields: z
+		.union([z.string(), z.array(z.string()), z.null(), z.undefined()])
+		.transform((value) => {
+			if (typeof value === "string") {
+				try {
+					return JSON.parse(value) as string[];
+				} catch {
+					return ["first_name", "last_name"];
+				}
+			}
+			if (Array.isArray(value)) return value;
+			return ["first_name", "last_name"];
+		})
+		.optional(),
 	questions: QuestionsJsonSchema,
 });
 

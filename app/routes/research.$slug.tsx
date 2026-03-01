@@ -11,12 +11,10 @@ import {
   Check,
   CheckCircle2,
   ClipboardList,
-  Copy,
   Loader2,
   MessageSquare,
   Mic,
   Send,
-  Share2,
   Video,
 } from "lucide-react";
 import {
@@ -62,6 +60,36 @@ import { extractUtmParamsFromSearch, hasUtmParams } from "~/utils/utm";
 
 const emailSchema = z.string().email();
 const phoneSchema = z.string().min(7, "Enter a valid phone number");
+
+/** Detect media type from URL by file extension */
+function detectMediaType(url: string): "image" | "video" | "audio" | "unknown" {
+  const lower = url.toLowerCase();
+  if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?|$)/.test(lower)) return "image";
+  if (/\.(mp4|webm|mov|avi|mkv|ogv)(\?|$)/.test(lower)) return "video";
+  if (/\.(mp3|wav|ogg|m4a|aac|flac|opus)(\?|$)/.test(lower)) return "audio";
+  return "unknown";
+}
+
+/** Render question media (image, video, or audio) with proper element type */
+function QuestionMedia({ url }: { url: string }) {
+  const type = detectMediaType(url);
+  if (type === "image") {
+    return (
+      <div className="overflow-hidden rounded-lg">
+        <img src={url} alt="" className="w-full rounded-lg object-contain" style={{ maxHeight: 320 }} />
+      </div>
+    );
+  }
+  if (type === "audio") {
+    return <audio src={url} className="w-full" controls />;
+  }
+  // Default to video for video and unknown types
+  return (
+    <div className="overflow-hidden rounded-lg">
+      <video src={url} className="aspect-video w-full bg-black" controls playsInline />
+    </div>
+  );
+}
 
 // Type definitions used by ChatSection (moved before component)
 type ResponseValue = string | string[] | boolean | null;
@@ -557,7 +585,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const { data: list, error } = await supabase
     .from("research_links")
     .select(
-      "id, name, slug, description, hero_title, hero_subtitle, instructions, hero_cta_label, hero_cta_helper, redirect_url, calendar_url, questions, allow_chat, allow_voice, allow_video, walkthrough_video_url, default_response_mode, is_live, account_id, identity_mode, identity_field",
+      "id, name, slug, description, hero_title, hero_subtitle, instructions, hero_cta_label, hero_cta_helper, redirect_url, calendar_url, questions, allow_chat, allow_voice, allow_video, walkthrough_video_url, default_response_mode, is_live, account_id, identity_mode, identity_field, collect_title, respondent_fields",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -572,11 +600,11 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const questionsResult = ResearchLinkQuestionSchema.array().safeParse(
     list.questions,
   );
+  const questions = questionsResult.success ? questionsResult.data : [];
 
   // Generate signed URL for walkthrough video if it exists
   let walkthroughSignedUrl: string | null = null;
   if (list.walkthrough_video_url) {
-    // Detect content type from file extension
     const key = list.walkthrough_video_url;
     const ext = key.split(".").pop()?.toLowerCase();
     const contentType =
@@ -588,16 +616,44 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
     const presigned = createR2PresignedUrl({
       key,
-      expiresInSeconds: 3600, // 1 hour
+      expiresInSeconds: 3600,
       responseContentType: contentType,
     });
     walkthroughSignedUrl = presigned?.url ?? null;
   }
 
+  // Sign question media R2 keys (images, videos, audio attached to questions)
+  const signedQuestions = questions.map((q) => {
+    const mediaKey = q.mediaUrl ?? q.videoUrl;
+    if (!mediaKey) return q;
+    // If it's already a full URL, keep it; if it's an R2 key, sign it
+    if (mediaKey.startsWith("http://") || mediaKey.startsWith("https://") || mediaKey.startsWith("data:")) {
+      return { ...q, mediaUrl: mediaKey };
+    }
+    const ext = mediaKey.split(".").pop()?.toLowerCase();
+    const isImage = ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "avif"].includes(ext ?? "");
+    const isAudio = ["mp3", "wav", "ogg", "m4a", "aac", "flac", "opus"].includes(ext ?? "");
+    const contentType = isImage
+      ? `image/${ext === "jpg" ? "jpeg" : ext}`
+      : isAudio
+        ? `audio/${ext}`
+        : ext === "mp4"
+          ? "video/mp4"
+          : ext === "mov"
+            ? "video/quicktime"
+            : "video/webm";
+    const presigned = createR2PresignedUrl({
+      key: mediaKey,
+      expiresInSeconds: 3600,
+      responseContentType: contentType,
+    });
+    return { ...q, mediaUrl: presigned?.url ?? null };
+  });
+
   return {
     slug,
     list,
-    questions: questionsResult.success ? questionsResult.data : [],
+    questions: signedQuestions,
     walkthroughSignedUrl,
   };
 }
@@ -629,6 +685,8 @@ type LoaderData = {
     account_id: string;
     identity_mode: IdentityMode;
     identity_field: IdentityField;
+    collect_title: boolean;
+    respondent_fields: string[] | null;
   };
   questions: Array<ResearchLinkQuestion>;
   walkthroughSignedUrl: string | null;
@@ -715,7 +773,6 @@ export default function ResearchLinkPage() {
   const ffVoice = searchParams.get("ffVoice") === "true";
   const emailId = useId();
   const phoneId = useId();
-  const storageKey = `research-link:${slug}`;
 
   // Determine initial stage based on identity mode
   const getInitialStage = (): Stage => {
@@ -734,6 +791,7 @@ export default function ResearchLinkPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [company, setCompany] = useState("");
+  const [respondentTitle, setRespondentTitle] = useState("");
   const [responseId, setResponseId] = useState<string | null>(null);
   const [responses, setResponses] = useState<ResponseRecord>({});
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -741,16 +799,26 @@ export default function ResearchLinkPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
-  const [copiedLink, setCopiedLink] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState<number | null>(
     null,
   );
-  const [isReviewing, setIsReviewing] = useState(false);
   const utmParamsRef = useRef<Record<string, string> | undefined>(undefined);
 
   const resolvedMode = list.allow_chat ? mode : "form";
   const voiceEnabled = list.allow_voice && ffVoice;
   const hasMultipleModes = list.allow_chat || voiceEnabled;
+
+  // Respondent fields configuration (falls back to collect_title for backwards compat)
+  const respondentFields = useMemo(() => {
+    const fields = list.respondent_fields;
+    if (Array.isArray(fields)) return fields as string[];
+    // Backwards compat: old surveys only have collect_title
+    const defaults = ["first_name", "last_name", "company"];
+    return list.collect_title ? [...defaults, "title"] : defaults;
+  }, [list.respondent_fields, list.collect_title]);
+
+  const hasField = useCallback((key: string) => respondentFields.includes(key), [respondentFields]);
+  const hasNameFields = hasField("first_name") || hasField("last_name");
   const isEmailValid = emailSchema.safeParse(email).success;
   const isPhoneValid = phoneSchema.safeParse(phone).success;
 
@@ -878,28 +946,63 @@ export default function ResearchLinkPage() {
   }, []);
 
   const handleStartOver = useCallback(() => {
-    window.localStorage.removeItem(storageKey);
-    setStage("email");
+    setStage(getInitialStage());
     setEmail("");
+    setPhone("");
     setFirstName("");
     setLastName("");
+    setCompany("");
+    setRespondentTitle("");
     setResponseId(null);
     setResponses({});
     setCurrentIndex(0);
     setCurrentAnswer("");
     setRedirectCountdown(null);
     setError(null);
-  }, [storageKey]);
+    setInitializing(true);
+  }, []);
 
-  // Get the current page URL for sharing
-  const shareUrl =
-    typeof window !== "undefined" ? window.location.href : `/ask/${slug}`;
+  // Auto-reset after 5 seconds on completion (fresh start for next respondent)
+  useEffect(() => {
+    if (stage !== "complete") return;
+    const timer = setTimeout(() => {
+      handleStartOver();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [stage, handleStartOver]);
 
-  const handleCopyLink = useCallback(() => {
-    navigator.clipboard.writeText(shareUrl);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
-  }, [shareUrl]);
+  // After handleStartOver resets initializing=true,
+  // re-trigger the anonymous auto-start flow for the next respondent
+  useEffect(() => {
+    if (!initializing) return;
+    if (list.identity_mode !== "anonymous") {
+      // For identified surveys, just stop initializing (user enters email/phone)
+      setInitializing(false);
+      return;
+    }
+    // Auto-start a new anonymous session
+    void startSignup(slug, { responseMode: resolvedMode })
+      .then((result) => {
+        setResponseId(result.responseId);
+        setResponses(result.responses || {});
+        const initialIndex = findNextQuestionIndex(
+          result.responses || {},
+          questions,
+        );
+        if (initialIndex >= questions.length) {
+          setStage("complete");
+        } else {
+          setCurrentIndex(initialIndex);
+          setStage(list.instructions ? "instructions" : "survey");
+        }
+      })
+      .catch(() => {
+        // Silently fail
+      })
+      .finally(() => {
+        setInitializing(false);
+      });
+  }, [initializing, slug, resolvedMode, questions, list.identity_mode, list.instructions]);
 
   // Voice input for form mode
   const handleFormVoiceTranscription = useCallback((text: string) => {
@@ -968,14 +1071,6 @@ export default function ResearchLinkPage() {
             setEmail(urlEmail);
             setResponseId(result.responseId);
             setResponses(result.responses || {});
-            // Save to localStorage for future visits
-            window.localStorage.setItem(
-              storageKey,
-              JSON.stringify({
-                email: urlEmail,
-                responseId: result.responseId,
-              }),
-            );
             const initialIndex = findNextQuestionIndex(
               result.responses || {},
               questions,
@@ -1014,13 +1109,6 @@ export default function ResearchLinkPage() {
           .then((result) => {
             setResponseId(result.responseId);
             setResponses(result.responses || {});
-            window.localStorage.setItem(
-              storageKey,
-              JSON.stringify({
-                email: urlEmail,
-                responseId: result.responseId,
-              }),
-            );
             const initialIndex = findNextQuestionIndex(
               result.responses || {},
               questions,
@@ -1085,13 +1173,6 @@ export default function ResearchLinkPage() {
           .then((result) => {
             setResponseId(result.responseId);
             setResponses(result.responses || {});
-            window.localStorage.setItem(
-              storageKey,
-              JSON.stringify({
-                phone: urlPhone,
-                responseId: result.responseId,
-              }),
-            );
             const initialIndex = findNextQuestionIndex(
               result.responses || {},
               questions,
@@ -1123,82 +1204,32 @@ export default function ResearchLinkPage() {
       if (urlFirstName) setFirstName(urlFirstName);
       if (urlLastName) setLastName(urlLastName);
 
-      // Otherwise check localStorage for existing session
-      const stored = window.localStorage.getItem(storageKey);
-      if (!stored) {
-        // For anonymous mode with no stored session, auto-start the survey
-        if (list.identity_mode === "anonymous") {
-          void startSignup(slug, {
-            responseMode: resolvedMode,
-            utmParams: utmPayload,
-          })
-            .then((result) => {
-              setResponseId(result.responseId);
-              setResponses(result.responses || {});
-              window.localStorage.setItem(
-                storageKey,
-                JSON.stringify({ responseId: result.responseId }),
-              );
-              const initialIndex = findNextQuestionIndex(
-                result.responses || {},
-                questions,
-              );
-              if (initialIndex >= questions.length) {
-                setStage("complete");
+      // For anonymous mode, auto-start the survey with a fresh session
+      if (list.identity_mode === "anonymous") {
+        void startSignup(slug, {
+          responseMode: resolvedMode,
+          utmParams: utmPayload,
+        })
+          .then((result) => {
+            setResponseId(result.responseId);
+            setResponses(result.responses || {});
+            const initialIndex = findNextQuestionIndex(
+              result.responses || {},
+              questions,
+            );
+            if (initialIndex >= questions.length) {
+              setStage("complete");
+            } else {
+              setCurrentIndex(initialIndex);
+              if (list.instructions) {
+                setStage("instructions");
               } else {
-                setCurrentIndex(initialIndex);
-                // Anonymous surveys show instructions or go straight to survey
-                if (list.instructions) {
-                  setStage("instructions");
-                } else {
-                  setStage("survey");
-                }
+                setStage("survey");
               }
-            })
-            .catch(() => {
-              // Silently fail - user can still use the survey
-            })
-            .finally(() => {
-              setInitializing(false);
-            });
-          return;
-        }
-        setInitializing(false);
-        return;
-      }
-      const parsed = JSON.parse(stored) as {
-        email?: string;
-        phone?: string;
-        responseId?: string;
-      };
-
-      // Handle email-identified resume
-      if (parsed.email && parsed.responseId) {
-        void startSignup(slug, {
-          email: parsed.email,
-          responseId: parsed.responseId,
-          responseMode: resolvedMode,
-        })
-          .then((result) => {
-            setEmail(parsed.email as string);
-            setResponseId(result.responseId);
-            setResponses(result.responses || {});
-            const initialIndex = findNextQuestionIndex(
-              result.responses || {},
-              questions,
-            );
-            if (initialIndex >= questions.length) {
-              setStage("complete");
-            } else {
-              setStage("survey");
-              setCurrentIndex(initialIndex);
-              const existingValue =
-                result.responses?.[questions[initialIndex]?.id];
-              setCurrentAnswer(existingValue ?? "");
             }
           })
           .catch(() => {
-            window.localStorage.removeItem(storageKey);
+            // Silently fail - user can still use the survey
           })
           .finally(() => {
             setInitializing(false);
@@ -1206,73 +1237,7 @@ export default function ResearchLinkPage() {
         return;
       }
 
-      // Handle phone-identified resume
-      if (parsed.phone && parsed.responseId) {
-        void startSignup(slug, {
-          phone: parsed.phone,
-          responseId: parsed.responseId,
-          responseMode: resolvedMode,
-        })
-          .then((result) => {
-            setPhone(parsed.phone as string);
-            setResponseId(result.responseId);
-            setResponses(result.responses || {});
-            const initialIndex = findNextQuestionIndex(
-              result.responses || {},
-              questions,
-            );
-            if (initialIndex >= questions.length) {
-              setStage("complete");
-            } else {
-              setStage("survey");
-              setCurrentIndex(initialIndex);
-              const existingValue =
-                result.responses?.[questions[initialIndex]?.id];
-              setCurrentAnswer(existingValue ?? "");
-            }
-          })
-          .catch(() => {
-            window.localStorage.removeItem(storageKey);
-          })
-          .finally(() => {
-            setInitializing(false);
-          });
-        return;
-      }
-
-      // Handle anonymous resume (just responseId)
-      if (parsed.responseId && list.identity_mode === "anonymous") {
-        void startSignup(slug, {
-          responseId: parsed.responseId,
-          responseMode: resolvedMode,
-        })
-          .then((result) => {
-            setResponseId(result.responseId);
-            setResponses(result.responses || {});
-            const initialIndex = findNextQuestionIndex(
-              result.responses || {},
-              questions,
-            );
-            if (initialIndex >= questions.length) {
-              setStage("complete");
-            } else {
-              setStage("survey");
-              setCurrentIndex(initialIndex);
-              const existingValue =
-                result.responses?.[questions[initialIndex]?.id];
-              setCurrentAnswer(existingValue ?? "");
-            }
-          })
-          .catch(() => {
-            window.localStorage.removeItem(storageKey);
-          })
-          .finally(() => {
-            setInitializing(false);
-          });
-        return;
-      }
-
-      window.localStorage.removeItem(storageKey);
+      // Identified mode with no URL params — show email/phone form
       setInitializing(false);
     } catch {
       setInitializing(false);
@@ -1280,7 +1245,6 @@ export default function ResearchLinkPage() {
   }, [
     questions,
     slug,
-    storageKey,
     resolvedMode,
     list.identity_mode,
     list.identity_field,
@@ -1323,10 +1287,6 @@ export default function ResearchLinkPage() {
       });
       setResponseId(result.responseId);
       setResponses(result.responses || {});
-      window.localStorage.setItem(
-        storageKey,
-        JSON.stringify({ email: email.trim(), responseId: result.responseId }),
-      );
 
       // If no person linked, we need to collect name info
       if (!result.personId) {
@@ -1371,10 +1331,6 @@ export default function ResearchLinkPage() {
       });
       setResponseId(result.responseId);
       setResponses(result.responses || {});
-      window.localStorage.setItem(
-        storageKey,
-        JSON.stringify({ phone: phone.trim(), responseId: result.responseId }),
-      );
 
       // Phone-identified surveys don't collect name, go straight to survey
       const initialIndex = findNextQuestionIndex(
@@ -1403,7 +1359,7 @@ export default function ResearchLinkPage() {
   async function handleNameSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    if (!firstName.trim()) {
+    if (hasField("first_name") && !firstName.trim()) {
       setError("Enter your first name to continue");
       return;
     }
@@ -1812,49 +1768,88 @@ export default function ResearchLinkPage() {
               className="space-y-4"
             >
               <p className="text-sm text-white/80 leading-relaxed">
-                We don't recognize your email. Please enter your name to
-                continue.
+                Tell us a bit about yourself to continue.
               </p>
 
               {/* Name fields */}
-              <div className="grid grid-cols-2 gap-3">
+              {hasNameFields && (
+                <div className={cn("grid gap-3", hasField("first_name") && hasField("last_name") ? "grid-cols-2" : "grid-cols-1")}>
+                  {hasField("first_name") && (
+                    <div className="space-y-2">
+                      <Label className="text-white/90">
+                        First Name <span className="text-red-400">*</span>
+                      </Label>
+                      <Input
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="Jane"
+                        className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                  )}
+                  {hasField("last_name") && (
+                    <div className="space-y-2">
+                      <Label className="text-white/90">Last Name</Label>
+                      <Input
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder="Doe"
+                        className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Company field */}
+              {hasField("company") && (
+                <div className="space-y-2">
+                  <Label className="text-white/90">Company</Label>
+                  <Input
+                    type="text"
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    placeholder="Acme Inc"
+                    className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+                  />
+                </div>
+              )}
+
+              {/* Title field */}
+              {hasField("title") && (
                 <div className="space-y-2">
                   <Label className="text-white/90">
-                    First Name <span className="text-red-400">*</span>
+                    Job Title <span className="text-white/40">(optional)</span>
                   </Label>
                   <Input
                     type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="Jane"
-                    className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-                    required
-                    autoFocus
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-white/90">Last Name</Label>
-                  <Input
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Doe"
+                    value={respondentTitle}
+                    onChange={(e) => setRespondentTitle(e.target.value)}
+                    placeholder="e.g., Product Manager"
                     className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
                   />
                 </div>
-              </div>
+              )}
 
-              {/* Company field - optional */}
-              <div className="space-y-2">
-                <Label className="text-white/90">Company</Label>
-                <Input
-                  type="text"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  placeholder="Acme Inc"
-                  className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-                />
-              </div>
+              {/* Phone field (when identity is email but phone is requested) */}
+              {hasField("phone") && list.identity_field !== "phone" && (
+                <div className="space-y-2">
+                  <Label className="text-white/90">
+                    Phone <span className="text-white/40">(optional)</span>
+                  </Label>
+                  <Input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+1 (555) 123-4567"
+                    className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+                  />
+                </div>
+              )}
 
               <div className="flex items-center justify-between">
                 <Button
@@ -1945,16 +1940,9 @@ export default function ResearchLinkPage() {
                         )}
                       </span>
                     </h2>
-                    {/* Question video prompt */}
-                    {currentQuestion.videoUrl && (
-                      <div className="overflow-hidden rounded-lg">
-                        <video
-                          src={currentQuestion.videoUrl}
-                          className="aspect-video w-full bg-black"
-                          controls
-                          playsInline
-                        />
-                      </div>
+                    {/* Question media (image, video, or audio) */}
+                    {(currentQuestion.mediaUrl ?? currentQuestion.videoUrl) && (
+                      <QuestionMedia url={(currentQuestion.mediaUrl ?? currentQuestion.videoUrl)!} />
                     )}
                     {currentQuestion.helperText && (
                       <p className="text-base text-white/50">
@@ -1987,46 +1975,25 @@ export default function ResearchLinkPage() {
                     <ArrowLeft className="mr-1 h-3.5 w-3.5" />
                     Back
                   </Button>
-                  {isReviewing ? (
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        if (currentIndex === questions.length - 1) {
-                          setIsReviewing(false);
-                          setStage("complete");
-                        } else {
-                          setCurrentIndex(currentIndex + 1);
-                          setCurrentAnswer(
-                            responses[questions[currentIndex + 1]?.id] ?? "",
-                          );
-                        }
-                      }}
-                      className="bg-white text-black hover:bg-white/90"
-                    >
-                      {currentIndex === questions.length - 1 ? "Done" : "Next"}
-                      <ArrowRight className="ml-1.5 h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      onClick={() => void handleAnswerSubmit(currentAnswer)}
-                      disabled={
-                        isSaving ||
-                        (currentQuestion?.required &&
-                          !hasResponseValue(currentAnswer))
-                      }
-                      className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
-                    >
-                      {isSaving ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : currentIndex === questions.length - 1 ? (
-                        "Submit"
-                      ) : (
-                        "Next"
-                      )}
-                      <ArrowRight className="ml-1.5 h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    onClick={() => void handleAnswerSubmit(currentAnswer)}
+                    disabled={
+                      isSaving ||
+                      (currentQuestion?.required &&
+                        !hasResponseValue(currentAnswer))
+                    }
+                    className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : currentIndex === questions.length - 1 ? (
+                      "Submit"
+                    ) : (
+                      "Next"
+                    )}
+                    <ArrowRight className="ml-1.5 h-4 w-4" />
+                  </Button>
                 </div>
 
                 {/* Progress indicator - minimal dots */}
@@ -2132,22 +2099,9 @@ export default function ResearchLinkPage() {
               <CheckCircle2 className="h-12 w-12 text-emerald-300" />
               <div className="space-y-2">
                 <h2 className="font-semibold text-xl">Thanks for sharing!</h2>
-                {/* <p className="text-sm text-white/70">Your responses have been saved.</p> */}
-                <div className="flex items-center justify-center gap-2">
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="border-white bg-transparent text-white hover:border-white/50 hover:bg-white/10 hover:text-white"
-                  >
-                    <a
-                      href="https://getupsight.com/sign-up"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Create a free account to see your responses
-                    </a>
-                  </Button>
-                </div>
+                <p className="text-sm text-white/50">
+                  Starting over in a moment...
+                </p>
               </div>
 
               {/* Calendar booking */}
@@ -2173,27 +2127,6 @@ export default function ResearchLinkPage() {
                 </div>
               )}
 
-              {/* Share section */}
-              <div className="w-full space-y-3 border-white/10 border-t pt-4">
-                <Button
-                  onClick={handleCopyLink}
-                  variant="outline"
-                  className="w-full gap-2 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-                >
-                  {copiedLink ? (
-                    <>
-                      <Check className="h-4 w-4 text-emerald-400" />
-                      Link copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      Copy link to share
-                    </>
-                  )}
-                </Button>
-              </div>
-
               {list.redirect_url && redirectCountdown !== null && (
                 <div className="flex items-center gap-3">
                   <p className="text-white/40 text-xs">
@@ -2209,20 +2142,6 @@ export default function ResearchLinkPage() {
                   </Button>
                 </div>
               )}
-
-              {/* Review answers option */}
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setCurrentIndex(0);
-                  setIsReviewing(true);
-                  setStage("survey");
-                }}
-                className="w-full gap-2 text-white/60 hover:bg-white/10 hover:text-white"
-              >
-                <ClipboardList className="h-4 w-4" />
-                Review your answers
-              </Button>
             </motion.div>
           )}
         </div>
@@ -2279,27 +2198,52 @@ function renderQuestionInput({
   const resolved = resolveQuestionInput(question);
 
   if (resolved.kind === "select") {
+    const currentValue = typeof value === "string" ? value : "";
+    const isOtherSelected = currentValue !== "" && !resolved.options.includes(currentValue);
     return (
-      <Select
-        value={typeof value === "string" ? value : ""}
-        onValueChange={(next) => onChange(next)}
-      >
-        <SelectTrigger className="border-white/10 bg-black/30 text-white">
-          <SelectValue placeholder="Select an option" />
-        </SelectTrigger>
-        <SelectContent>
-          {resolved.options.map((option) => (
-            <SelectItem key={option} value={option}>
-              {option}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="space-y-2">
+        <Select
+          value={isOtherSelected ? "__other__" : currentValue}
+          onValueChange={(next) => {
+            if (next === "__other__") {
+              onChange(""); // Clear so user can type
+            } else {
+              onChange(next);
+            }
+          }}
+        >
+          <SelectTrigger className="border-white/10 bg-black/30 text-white">
+            <SelectValue placeholder="Select an option" />
+          </SelectTrigger>
+          <SelectContent>
+            {resolved.options.map((option) => (
+              <SelectItem key={option} value={option}>
+                {option}
+              </SelectItem>
+            ))}
+            {resolved.allowOther && (
+              <SelectItem value="__other__">Other...</SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+        {resolved.allowOther && (isOtherSelected || currentValue === "") && (
+          <Input
+            type="text"
+            value={isOtherSelected ? currentValue : ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Type your answer..."
+            className="border-white/10 bg-black/30 text-white placeholder:text-white/40"
+            autoFocus={isOtherSelected}
+          />
+        )}
+      </div>
     );
   }
 
   if (resolved.kind === "multi") {
     const selected = Array.isArray(value) ? value : [];
+    const otherValues = selected.filter((v) => !resolved.options.includes(v));
+    const otherText = otherValues.join(", ");
     return (
       <div className="space-y-2">
         {resolved.options.map((option) => {
@@ -2324,6 +2268,26 @@ function renderQuestionInput({
             </label>
           );
         })}
+        {resolved.allowOther && (
+          <div className="space-y-1.5 pt-1">
+            <label className="text-sm text-white/60">Other:</label>
+            <Input
+              type="text"
+              value={otherText}
+              onChange={(e) => {
+                const newOther = e.target.value.trim();
+                const withoutOld = selected.filter((v) => resolved.options.includes(v));
+                if (newOther) {
+                  onChange([...withoutOld, newOther]);
+                } else {
+                  onChange(withoutOld);
+                }
+              }}
+              placeholder="Type your answer..."
+              className="border-white/10 bg-black/30 text-white placeholder:text-white/40"
+            />
+          </div>
+        )}
       </div>
     );
   }
@@ -2476,10 +2440,10 @@ function renderQuestionInput({
 
 function resolveQuestionInput(question: ResearchLinkQuestion) {
   if (question.type === "single_select" && question.options?.length) {
-    return { kind: "select" as const, options: question.options };
+    return { kind: "select" as const, options: question.options, allowOther: Boolean(question.allowOther) };
   }
   if (question.type === "multi_select" && question.options?.length) {
-    return { kind: "multi" as const, options: question.options };
+    return { kind: "multi" as const, options: question.options, allowOther: Boolean(question.allowOther) };
   }
   if (question.type === "likert") {
     return {

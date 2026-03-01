@@ -23,7 +23,10 @@ create table if not exists public.research_links (
     default_response_mode text not null default 'form' check (default_response_mode in ('form', 'chat', 'voice')),
     ai_autonomy text not null default 'strict' check (ai_autonomy in ('strict', 'moderate', 'adaptive')),
     research_goals jsonb default null,
-    is_live boolean not null default false,
+    is_live boolean not null default true,
+    is_archived boolean not null default false,
+    collect_title boolean not null default false,
+    respondent_fields jsonb not null default '["first_name", "last_name"]'::jsonb,
     statistics jsonb default null,
     stats_updated_at timestamptz default null,
     ai_analysis jsonb default null,
@@ -55,6 +58,7 @@ create table if not exists public.research_link_responses (
     responses jsonb not null default '{}'::jsonb,
     response_mode text not null default 'form' check (response_mode in ('form', 'chat', 'voice')),
     video_url text,
+    title text,
     completed boolean not null default false,
     utm_params jsonb, -- campaign attribution (utm_source, utm_medium, utm_campaign, etc.)
     evidence_id uuid, -- FK to evidence (added later via ALTER to avoid circular deps)

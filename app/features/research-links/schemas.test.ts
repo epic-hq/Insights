@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	ResearchLinkAnonymousStartSchema,
+	ResearchLinkPayloadSchema,
 	ResearchLinkQuestionSchema,
 	ResearchLinkResponseSaveSchema,
 	ResearchLinkResponseStartSchema,
@@ -252,5 +253,66 @@ describe("ResearchLinkQuestionSchema", () => {
 			branching: null,
 		});
 		expect(result.success).toBe(true);
+	});
+});
+
+describe("ResearchLinkPayloadSchema — respondentFields", () => {
+	/** Minimal valid payload to test respondentFields in isolation */
+	const basePayload = {
+		name: "Test Survey",
+		slug: "test-survey",
+		questions: JSON.stringify([{ id: "q1", prompt: "Test?" }]),
+	};
+
+	it("should parse a JSON string of field names", () => {
+		const result = ResearchLinkPayloadSchema.safeParse({
+			...basePayload,
+			respondentFields: JSON.stringify(["first_name", "company", "phone"]),
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.respondentFields).toEqual(["first_name", "company", "phone"]);
+		}
+	});
+
+	it("should accept an array directly", () => {
+		const result = ResearchLinkPayloadSchema.safeParse({
+			...basePayload,
+			respondentFields: ["first_name", "last_name"],
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.respondentFields).toEqual(["first_name", "last_name"]);
+		}
+	});
+
+	it("should be undefined when omitted (optional field)", () => {
+		const result = ResearchLinkPayloadSchema.safeParse(basePayload);
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.respondentFields).toBeUndefined();
+		}
+	});
+
+	it("should default to first_name + last_name for null", () => {
+		const result = ResearchLinkPayloadSchema.safeParse({
+			...basePayload,
+			respondentFields: null,
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.respondentFields).toEqual(["first_name", "last_name"]);
+		}
+	});
+
+	it("should default to first_name + last_name for invalid JSON string", () => {
+		const result = ResearchLinkPayloadSchema.safeParse({
+			...basePayload,
+			respondentFields: "not-valid-json",
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.respondentFields).toEqual(["first_name", "last_name"]);
+		}
 	});
 });

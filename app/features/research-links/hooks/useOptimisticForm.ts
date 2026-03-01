@@ -24,6 +24,9 @@ export interface SurveyFormFields {
   allowVideo: boolean;
   defaultResponseMode: "form" | "chat" | "voice";
   isLive: boolean;
+  isArchived: boolean;
+  collectTitle: boolean;
+  respondentFields: string[];
   aiAutonomy: "strict" | "moderate" | "adaptive";
   identityType: "anonymous" | "email" | "phone";
   questions: ResearchLinkQuestion[];
@@ -59,6 +62,11 @@ export function extractFormFields(
     defaultResponseMode:
       (list.default_response_mode as "form" | "chat" | "voice") ?? "form",
     isLive: Boolean(list.is_live),
+    isArchived: Boolean(list.is_archived),
+    collectTitle: Boolean(list.collect_title),
+    respondentFields: Array.isArray(list.respondent_fields)
+      ? (list.respondent_fields as string[])
+      : ["first_name", "last_name"],
     aiAutonomy:
       (list.ai_autonomy as "strict" | "moderate" | "adaptive") ?? "strict",
     identityType,
@@ -86,6 +94,9 @@ export function serializeToFormData(
     allow_video: String(fields.allowVideo),
     default_response_mode: fields.defaultResponseMode,
     is_live: String(fields.isLive),
+    is_archived: String(fields.isArchived),
+    collect_title: String(fields.collectTitle),
+    respondent_fields: JSON.stringify(fields.respondentFields),
     ai_autonomy: fields.aiAutonomy,
     identity_type: fields.identityType,
     questions: JSON.stringify(fields.questions),

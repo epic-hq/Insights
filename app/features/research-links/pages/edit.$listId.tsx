@@ -1,8 +1,10 @@
 import slugify from "@sindresorhus/slugify";
-import { motion } from "framer-motion";
 import {
+  Archive,
   ArrowLeft,
   Check,
+  ChevronDown,
+  ChevronRight,
   Copy,
   ExternalLink,
   Loader2,
@@ -21,6 +23,7 @@ import { PicaConnectButton } from "~/components/integrations/PicaConnectButton";
 import { PageContainer } from "~/components/layout/PageContainer";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
@@ -32,8 +35,9 @@ import { userContext } from "~/server/user-context";
 import { createR2PresignedUrl } from "~/utils/r2.server";
 import { createRouteDefinitions } from "~/utils/route-definitions";
 import { EmbedCodeGenerator } from "../components/EmbedCodeGenerator";
+import { QRCodeButton } from "../components/QRCodeButton";
+import { QRCodeModal } from "../components/QRCodeModal";
 import { QuestionListEditor } from "../components/QuestionListEditor";
-import { ResearchLinkPreview } from "../components/ResearchLinkPreview";
 import { SendSurveyDialog } from "../components/SendSurveyDialog";
 import { WalkthroughRecorder } from "../components/WalkthroughRecorder";
 import { getResearchLinkById } from "../db";
@@ -47,6 +51,88 @@ import {
   type ResearchLinkQuestion,
   ResearchLinkQuestionSchema,
 } from "../schemas";
+
+/** Available respondent fields with labels and descriptions */
+const RESPONDENT_FIELD_OPTIONS = [
+  { key: "first_name", label: "First name" },
+  { key: "last_name", label: "Last name" },
+  { key: "company", label: "Company" },
+  { key: "title", label: "Job title" },
+  { key: "phone", label: "Phone number" },
+] as const;
+
+/** Multi-picker for selecting which respondent fields to collect */
+function RespondentFieldsPicker({
+  fields,
+  onChange,
+  identityType,
+}: {
+  fields: string[];
+  onChange: (fields: string[]) => void;
+  identityType: "anonymous" | "email" | "phone";
+}) {
+  const [expanded, setExpanded] = useState(fields.length > 0);
+  const activeCount = fields.length;
+
+  // Filter out phone if identity is already phone-based
+  const options = RESPONDENT_FIELD_OPTIONS.filter(
+    (opt) => !(opt.key === "phone" && identityType === "phone"),
+  );
+
+  const toggleField = (key: string) => {
+    const next = fields.includes(key)
+      ? fields.filter((f) => f !== key)
+      : [...fields, key];
+    onChange(next);
+  };
+
+  return (
+    <div className="rounded-md border px-3 py-2.5">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between gap-4"
+      >
+        <div className="min-w-0">
+          <p className="font-medium text-sm">Respondent fields</p>
+          <p className="text-muted-foreground text-xs">
+            {identityType === "anonymous"
+              ? "Collect info before the survey"
+              : `Collect additional info after ${identityType}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {activeCount > 0 && (
+            <span className="rounded bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary">
+              {activeCount}
+            </span>
+          )}
+          {expanded ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
+      </button>
+      {expanded && (
+        <div className="mt-2 space-y-1 border-t pt-2">
+          {options.map((opt) => (
+            <label
+              key={opt.key}
+              className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 hover:bg-muted/30"
+            >
+              <Checkbox
+                checked={fields.includes(opt.key)}
+                onCheckedChange={() => toggleField(opt.key)}
+              />
+              <span className="text-sm">{opt.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export const meta: MetaFunction = () => {
   return [
@@ -229,6 +315,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (formData.has("default_response_mode"))
     updatePayload.default_response_mode = payload.defaultResponseMode;
   if (formData.has("is_live")) updatePayload.is_live = payload.isLive;
+  if (formData.has("is_archived"))
+    updatePayload.is_archived = payload.isArchived;
+  if (formData.has("collect_title"))
+    updatePayload.collect_title = payload.collectTitle;
+  if (formData.has("respondent_fields")) {
+    updatePayload.respondent_fields = payload.respondentFields;
+    // Keep collect_title in sync for backwards compatibility
+    const fields = payload.respondentFields ?? [];
+    updatePayload.collect_title = fields.includes("title");
+  }
   if (formData.has("ai_autonomy")) {
     const autonomy = formData.get("ai_autonomy");
     if (
@@ -329,6 +425,7 @@ export default function EditResearchLinkPage() {
   >(initialWalkthroughThumbnailUrl ?? null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
 
   // Auto-slug from name
   useEffect(() => {
@@ -411,7 +508,7 @@ export default function EditResearchLinkPage() {
           )}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,400px),minmax(240px,280px)]">
+        <div className="space-y-4">
           <div className="min-w-0 space-y-4">
             {/* Basics */}
             <div className="space-y-1.5">
@@ -456,8 +553,8 @@ export default function EditResearchLinkPage() {
                             lowercase: true,
                             preserveLeadingUnderscore: false,
                           });
-                          setSlugEdited(true);
                           setText("slug", slugified);
+                          setSlugEdited(true);
                         }}
                         required
                         className="h-9"
@@ -469,121 +566,48 @@ export default function EditResearchLinkPage() {
                       ) : null}
                     </div>
                   </div>
-                  <p className="text-muted-foreground text-xs">Link:</p>
-                  <div className="space-y-2">
-                    <div className="rounded-md border bg-muted/40 px-2.5 py-2 text-foreground/70 text-xs">
-                      <span className="break-all font-mono">{publicLink}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCopyLink}
-                        className="gap-2"
-                      >
-                        {copiedLink ? (
-                          <Check className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                        {copiedLink ? "Copied" : "Copy link"}
-                      </Button>
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                      >
-                        <a href={publicLink} target="_blank" rel="noreferrer">
-                          <ExternalLink className="h-4 w-4" />
-                          Open in new tab
-                        </a>
-                      </Button>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Email Distribution - inline Gmail connection prompt */}
-            <div className="space-y-1.5">
-              <h3 className="font-medium text-foreground/80 text-sm">
-                Email Distribution
-              </h3>
-              <Card>
-                <CardContent className="py-3">
-                  {gmailConnected ? (
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-                        <Mail className="h-4 w-4 text-green-600 dark:text-green-400" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">
-                          Gmail connected
-                          {gmailEmail && (
-                            <span className="ml-1 font-normal text-muted-foreground">
-                              ({gmailEmail})
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          Send survey invites from your email.
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => setSendDialogOpen(true)}
-                        className="gap-2"
-                      >
-                        <Send className="h-4 w-4" />
-                        Send Survey
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">
-                            Send via email — one step away
-                          </p>
-                          <p className="text-muted-foreground text-xs">
-                            Connect Gmail to send invites from your own address.
-                          </p>
-                        </div>
-                      </div>
-                      <PicaConnectButton
-                        userId={userId}
-                        accountId={accountId}
-                        platform="gmail"
-                        saveAction="/api/gmail/save-connection"
-                        icon={Mail}
-                        onSuccess={() => {
-                          toast.success("Gmail connected");
-                          window.location.reload();
-                        }}
-                        onError={(err) => toast.error(err)}
-                        size="sm"
-                        variant="outline"
-                      >
-                        Connect Gmail
-                      </PicaConnectButton>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+            {/* Respondent fields summary — compact row showing which fields are collected */}
+            {fields.respondentFields.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border/40 bg-muted/20 px-3 py-2">
+                <span className="mr-1 text-muted-foreground text-xs">
+                  Collecting:
+                </span>
+                {fields.identityType === "email" && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-[11px] text-primary">
+                    Email
+                  </span>
+                )}
+                {fields.identityType === "phone" && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-[11px] text-primary">
+                    Phone
+                  </span>
+                )}
+                {fields.respondentFields.map((key) => {
+                  const opt = RESPONDENT_FIELD_OPTIONS.find(
+                    (o) => o.key === key,
+                  );
+                  return (
+                    <span
+                      key={key}
+                      className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground/70"
+                    >
+                      {opt?.label ?? key}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
 
             <Tabs defaultValue="landing" className="space-y-4">
               <TabsList className="w-full justify-start">
                 <TabsTrigger value="landing">Landing page</TabsTrigger>
                 <TabsTrigger value="questions">Questions</TabsTrigger>
                 <TabsTrigger value="options">Options</TabsTrigger>
-                <TabsTrigger value="embed">Embed</TabsTrigger>
+                <TabsTrigger value="distribute">Distribute</TabsTrigger>
               </TabsList>
 
               <TabsContent value="landing" className="space-y-1.5">
@@ -944,6 +968,11 @@ export default function EditResearchLinkPage() {
                         </div>
                       </div>
                     )}
+                    <RespondentFieldsPicker
+                      fields={fields.respondentFields}
+                      onChange={(v) => setImmediate("respondentFields", v)}
+                      identityType={fields.identityType}
+                    />
                     <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
                       <div className="min-w-0">
                         <p className="font-medium text-sm">Live</p>
@@ -954,6 +983,21 @@ export default function EditResearchLinkPage() {
                       <Switch
                         checked={fields.isLive}
                         onCheckedChange={(v) => setImmediate("isLive", v)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-4 rounded-md border border-amber-500/30 border-dashed bg-amber-500/5 px-3 py-2.5">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <Archive className="h-4 w-4 text-amber-600" />
+                          <p className="font-medium text-sm">Archived</p>
+                        </div>
+                        <p className="truncate text-muted-foreground text-xs">
+                          Hide from survey list (keeps data)
+                        </p>
+                      </div>
+                      <Switch
+                        checked={fields.isArchived}
+                        onCheckedChange={(v) => setImmediate("isArchived", v)}
                       />
                     </div>
                     <div className="grid gap-3 pt-2 sm:grid-cols-2">
@@ -1007,40 +1051,138 @@ export default function EditResearchLinkPage() {
               </TabsContent>
 
               <TabsContent
-                value="embed"
-                className="min-w-0 space-y-1.5 overflow-hidden"
+                value="distribute"
+                className="min-w-0 space-y-4 overflow-hidden"
               >
-                <h3 className="font-medium text-foreground/80 text-sm">
-                  Embed on Your Website
-                </h3>
-                <p className="text-muted-foreground text-xs">
-                  Add this form to your website for waitlists, feedback
-                  collection, or lead capture.
-                </p>
-                <EmbedCodeGenerator
-                  slug={fields.slug}
-                  heroTitle={fields.heroTitle}
-                  heroCtaLabel={fields.heroCtaLabel}
-                  walkthroughVideoUrl={walkthroughVideoUrl}
-                  walkthroughThumbnailUrl={walkthroughThumbnailUrl}
-                />
+                {/* Public Link */}
+                <Card>
+                  <CardContent className="space-y-2 py-3">
+                    <p className="font-medium text-sm">Public link</p>
+                    <div className="rounded-md border bg-muted/40 px-2.5 py-2 text-foreground/70 text-xs">
+                      <span className="break-all font-mono">{publicLink}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyLink}
+                        className="gap-2"
+                      >
+                        {copiedLink ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                        {copiedLink ? "Copied" : "Copy link"}
+                      </Button>
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                      >
+                        <a href={publicLink} target="_blank" rel="noreferrer">
+                          <ExternalLink className="h-4 w-4" />
+                          Open in new tab
+                        </a>
+                      </Button>
+                      <QRCodeButton
+                        url={publicLink}
+                        onClick={() => setIsQRModalOpen(true)}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Email Distribution */}
+                <Card>
+                  <CardContent className="py-3">
+                    {gmailConnected ? (
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+                          <Mail className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">
+                            Gmail connected
+                            {gmailEmail && (
+                              <span className="ml-1 font-normal text-muted-foreground">
+                                ({gmailEmail})
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-muted-foreground text-xs">
+                            Send survey invites from your email.
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => setSendDialogOpen(true)}
+                          className="gap-2"
+                        >
+                          <Send className="h-4 w-4" />
+                          Send Survey
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">
+                              Send via email
+                            </p>
+                            <p className="text-muted-foreground text-xs">
+                              Connect Gmail to send invites from your own
+                              address.
+                            </p>
+                          </div>
+                        </div>
+                        <PicaConnectButton
+                          userId={userId}
+                          accountId={accountId}
+                          platform="gmail"
+                          saveAction="/api/gmail/save-connection"
+                          icon={Mail}
+                          onSuccess={() => {
+                            toast.success("Gmail connected");
+                            window.location.reload();
+                          }}
+                          onError={(err) => toast.error(err)}
+                          size="sm"
+                          variant="outline"
+                        >
+                          Connect Gmail
+                        </PicaConnectButton>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Embed Code */}
+                <Card>
+                  <CardContent className="space-y-2 py-3">
+                    <p className="font-medium text-sm">Embed on your website</p>
+                    <p className="text-muted-foreground text-xs">
+                      Add this form to your website for waitlists, feedback
+                      collection, or lead capture.
+                    </p>
+                    <EmbedCodeGenerator
+                      slug={fields.slug}
+                      heroTitle={fields.heroTitle}
+                      heroCtaLabel={fields.heroCtaLabel}
+                      walkthroughVideoUrl={walkthroughVideoUrl}
+                      walkthroughThumbnailUrl={walkthroughThumbnailUrl}
+                    />
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
-          >
-            <ResearchLinkPreview
-              heroTitle={fields.heroTitle}
-              heroSubtitle={fields.heroSubtitle}
-              heroCtaLabel={fields.heroCtaLabel}
-              heroCtaHelper={fields.heroCtaHelper}
-              questions={fields.questions}
-            />
-          </motion.div>
         </div>
       </div>
 
@@ -1058,6 +1200,13 @@ export default function EditResearchLinkPage() {
           people={peopleWithEmails}
         />
       )}
+      {/* QR Code Modal */}
+      <QRCodeModal
+        isOpen={isQRModalOpen}
+        onClose={() => setIsQRModalOpen(false)}
+        url={publicLink}
+        title={fields.name}
+      />
     </PageContainer>
   );
 }
