@@ -130,6 +130,21 @@ export function QuestionMediaEditor({ listId, questionId, existingMediaUrl, onMe
 		};
 	}, [videoUrl]);
 
+	// Safety net: if the stream is ready but the video element wasn't mounted
+	// when startPreview assigned srcObject, wire it up now.
+	useEffect(() => {
+		if (
+			(recordingState === "preview" || recordingState === "recording") &&
+			videoPreviewRef.current &&
+			mediaStreamRef.current &&
+			!videoPreviewRef.current.srcObject
+		) {
+			videoPreviewRef.current.srcObject = mediaStreamRef.current;
+			videoPreviewRef.current.muted = true;
+			videoPreviewRef.current.play().catch(() => {});
+		}
+	}, [recordingState]);
+
 	const startPreview = useCallback(async () => {
 		setRecordingState("requesting_permission");
 		setError(null);
@@ -524,22 +539,31 @@ export function QuestionMediaEditor({ listId, questionId, existingMediaUrl, onMe
 	return (
 		<div className="space-y-2">
 			<div className="relative aspect-video overflow-hidden rounded-lg bg-black/90">
+				{/* Always render the live preview <video> so the ref is available
+				    when getUserMedia resolves — hiding it until the stream is live
+				    prevents the black-screen bug where srcObject was set on a
+				    not-yet-mounted element. */}
+				<video
+					ref={videoPreviewRef}
+					className={cn(
+						"h-full w-full object-cover",
+						recordingState !== "preview" && recordingState !== "recording" && "hidden",
+					)}
+					playsInline
+					muted
+					autoPlay
+				/>
 				{recordingState === "requesting_permission" && (
 					<div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
 						<Loader2 className="h-6 w-6 animate-spin text-white/70" />
 						<p className="text-sm text-white/60">Requesting camera...</p>
 					</div>
 				)}
-				{(recordingState === "preview" || recordingState === "recording") && (
-					<>
-						<video ref={videoPreviewRef} className="h-full w-full object-cover" playsInline muted autoPlay />
-						{recordingState === "recording" && (
-							<div className="absolute top-2 left-2 flex items-center gap-2 rounded-full bg-red-500 px-2.5 py-1">
-								<span className="h-2 w-2 animate-pulse rounded-full bg-white" />
-								<span className="font-medium text-white text-xs">{formatTime(recordingSeconds)}</span>
-							</div>
-						)}
-					</>
+				{recordingState === "recording" && (
+					<div className="absolute top-2 left-2 flex items-center gap-2 rounded-full bg-red-500 px-2.5 py-1">
+						<span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+						<span className="font-medium text-white text-xs">{formatTime(recordingSeconds)}</span>
+					</div>
 				)}
 				{(recordingState === "stopped" || recordingState === "uploading") && videoUrl && (
 					<video src={videoUrl} className="h-full w-full object-cover" controls playsInline />

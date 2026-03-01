@@ -45,8 +45,43 @@ import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
 import type { ResearchLinkQuestion } from "../schemas";
 import { createEmptyQuestion } from "../schemas";
+import { getMediaType, isR2Key } from "../utils";
 import { QuestionBranchingEditor } from "./QuestionBranchingEditor";
 import { QuestionMediaEditor } from "./QuestionMediaEditor";
+
+/**
+ * Tiny media thumbnail for the question list row.
+ * Fetches a signed URL for R2 keys; shows an image preview for images,
+ * or a type-appropriate icon for video/audio.
+ */
+function QuestionMediaThumbnail({ url }: { url: string }) {
+  const [src, setSrc] = useState<string | null>(isR2Key(url) ? null : url);
+  const type = getMediaType(url);
+
+  useEffect(() => {
+    if (!isR2Key(url)) {
+      setSrc(url);
+      return;
+    }
+    fetch(`/api/upload-image?key=${encodeURIComponent(url)}`)
+      .then((r) => r.json())
+      .then((d) => setSrc(d.url ?? null))
+      .catch(() => setSrc(null));
+  }, [url]);
+
+  if (type === "image" && src) {
+    return (
+      <img
+        src={src}
+        alt=""
+        className="h-7 w-7 shrink-0 rounded border border-border/50 object-cover"
+      />
+    );
+  }
+
+  // For video/audio/unknown, show a colored icon
+  return <Paperclip className="h-3.5 w-3.5 shrink-0 text-blue-500" />;
+}
 
 /**
  * Options input that manages local state and only parses on blur.
@@ -903,8 +938,8 @@ export function QuestionListEditor({
                   {hasBranching && (
                     <GitBranch className="h-3.5 w-3.5 text-violet-500" />
                   )}
-                  {hasMedia && (
-                    <Paperclip className="h-3.5 w-3.5 text-blue-500" />
+                  {hasMedia && effectiveMediaUrl && (
+                    <QuestionMediaThumbnail url={effectiveMediaUrl} />
                   )}
                   {question.allowOther && (
                     <FileText className="h-3.5 w-3.5 text-amber-500" />
