@@ -4,6 +4,8 @@ import {
   Archive,
   ArrowLeft,
   Check,
+  ChevronDown,
+  ChevronRight,
   Copy,
   ExternalLink,
   Loader2,
@@ -23,6 +25,7 @@ import { PicaConnectButton } from "~/components/integrations/PicaConnectButton";
 import { PageContainer } from "~/components/layout/PageContainer";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
@@ -48,6 +51,88 @@ import {
   type ResearchLinkQuestion,
   ResearchLinkQuestionSchema,
 } from "../schemas";
+
+/** Available respondent fields with labels and descriptions */
+const RESPONDENT_FIELD_OPTIONS = [
+  { key: "first_name", label: "First name" },
+  { key: "last_name", label: "Last name" },
+  { key: "company", label: "Company" },
+  { key: "title", label: "Job title" },
+  { key: "phone", label: "Phone number" },
+] as const;
+
+/** Multi-picker for selecting which respondent fields to collect */
+function RespondentFieldsPicker({
+  fields,
+  onChange,
+  identityType,
+}: {
+  fields: string[];
+  onChange: (fields: string[]) => void;
+  identityType: "anonymous" | "email" | "phone";
+}) {
+  const [expanded, setExpanded] = useState(fields.length > 0);
+  const activeCount = fields.length;
+
+  // Filter out phone if identity is already phone-based
+  const options = RESPONDENT_FIELD_OPTIONS.filter(
+    (opt) => !(opt.key === "phone" && identityType === "phone"),
+  );
+
+  const toggleField = (key: string) => {
+    const next = fields.includes(key)
+      ? fields.filter((f) => f !== key)
+      : [...fields, key];
+    onChange(next);
+  };
+
+  return (
+    <div className="rounded-md border px-3 py-2.5">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between gap-4"
+      >
+        <div className="min-w-0">
+          <p className="font-medium text-sm">Respondent fields</p>
+          <p className="text-muted-foreground text-xs">
+            {identityType === "anonymous"
+              ? "Collect info before the survey"
+              : `Collect additional info after ${identityType}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {activeCount > 0 && (
+            <span className="rounded bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary">
+              {activeCount}
+            </span>
+          )}
+          {expanded ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
+      </button>
+      {expanded && (
+        <div className="mt-2 space-y-1 border-t pt-2">
+          {options.map((opt) => (
+            <label
+              key={opt.key}
+              className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 hover:bg-muted/30"
+            >
+              <Checkbox
+                checked={fields.includes(opt.key)}
+                onCheckedChange={() => toggleField(opt.key)}
+              />
+              <span className="text-sm">{opt.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export const meta: MetaFunction = () => {
   return [
@@ -232,6 +317,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (formData.has("is_live")) updatePayload.is_live = payload.isLive;
   if (formData.has("is_archived")) updatePayload.is_archived = payload.isArchived;
   if (formData.has("collect_title")) updatePayload.collect_title = payload.collectTitle;
+  if (formData.has("respondent_fields")) {
+    updatePayload.respondent_fields = payload.respondentFields;
+    // Keep collect_title in sync for backwards compatibility
+    const fields = payload.respondentFields ?? [];
+    updatePayload.collect_title = fields.includes("title");
+  }
   if (formData.has("ai_autonomy")) {
     const autonomy = formData.get("ai_autonomy");
     if (
@@ -351,6 +442,11 @@ export default function EditResearchLinkPage() {
   const [collectTitle, setCollectTitle] = useState(
     Boolean((list as { collect_title?: boolean }).collect_title),
   );
+  const [respondentFields, setRespondentFields] = useState<string[]>(() => {
+    const raw = (list as { respondent_fields?: string[] }).respondent_fields;
+    if (Array.isArray(raw)) return raw;
+    return ["first_name", "last_name"];
+  });
   const [isArchived, setIsArchived] = useState(
     Boolean((list as { is_archived?: boolean }).is_archived),
   );
@@ -387,6 +483,7 @@ export default function EditResearchLinkPage() {
     isLive,
     isArchived,
     collectTitle,
+    respondentFields,
     aiAutonomy,
     identityType,
     questions,
@@ -408,6 +505,7 @@ export default function EditResearchLinkPage() {
     isLive,
     isArchived,
     collectTitle,
+    respondentFields,
     aiAutonomy,
     identityType,
     questions,
@@ -433,6 +531,7 @@ export default function EditResearchLinkPage() {
       is_live: String(s.isLive),
       is_archived: String(s.isArchived),
       collect_title: String(s.collectTitle),
+      respondent_fields: JSON.stringify(s.respondentFields),
       ai_autonomy: s.aiAutonomy,
       identity_type: s.identityType,
       questions: JSON.stringify(s.questions),
@@ -1093,18 +1192,11 @@ export default function EditResearchLinkPage() {
                         </div>
                       </div>
                     )}
-                    <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm">Collect title</p>
-                        <p className="truncate text-muted-foreground text-xs">
-                          Ask respondents for their job title
-                        </p>
-                      </div>
-                      <Switch
-                        checked={collectTitle}
-                        onCheckedChange={handleImmediateChange(setCollectTitle)}
-                      />
-                    </div>
+                    <RespondentFieldsPicker
+                      fields={respondentFields}
+                      onChange={handleImmediateChange(setRespondentFields)}
+                      identityType={identityType}
+                    />
                     <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
                       <div className="min-w-0">
                         <p className="font-medium text-sm">Live</p>

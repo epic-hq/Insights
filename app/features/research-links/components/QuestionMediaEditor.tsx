@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
+import { getMediaType, isR2Key } from "../utils";
 
 type QuestionMediaEditorProps = {
 	listId: string;
@@ -42,31 +43,61 @@ type RecordingState =
 
 const MAX_RECORDING_SECONDS = 180; // 3 minutes max for question intro
 
-/** Detect media type from URL for rendering */
-function getMediaType(url: string): "image" | "video" | "audio" | "unknown" {
-	const lower = url.toLowerCase();
-	if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?|$)/.test(lower)) return "image";
-	if (/\.(mp4|webm|mov|avi|mkv|ogv)(\?|$)/.test(lower)) return "video";
-	if (/\.(mp3|wav|ogg|m4a|aac|flac|opus)(\?|$)/.test(lower)) return "audio";
-	return "unknown";
-}
-
 function getSupportedVideoMimeType(): string {
 	const types = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"];
 	return types.find((type) => MediaRecorder.isTypeSupported(type)) || "video/webm";
 }
 
-/** Render media preview based on detected type */
-function MediaPreview({ url }: { url: string }) {
+/**
+ * Render media preview based on detected type.
+ * Handles R2 keys by fetching a signed URL on mount.
+ */
+export function MediaPreview({ url, className }: { url: string; className?: string }) {
+	const [signedUrl, setSignedUrl] = useState<string | null>(isR2Key(url) ? null : url);
+	const [loading, setLoading] = useState(isR2Key(url));
+
+	useEffect(() => {
+		if (!isR2Key(url)) {
+			setSignedUrl(url);
+			setLoading(false);
+			return;
+		}
+		setLoading(true);
+		fetch(`/api/upload-image?key=${encodeURIComponent(url)}`)
+			.then((res) => res.json())
+			.then((data) => {
+				setSignedUrl(data.url ?? null);
+			})
+			.catch(() => {
+				setSignedUrl(null);
+			})
+			.finally(() => setLoading(false));
+	}, [url]);
+
+	if (loading) {
+		return (
+			<div className={cn("flex items-center justify-center rounded-lg border bg-muted/30 py-8", className)}>
+				<Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+			</div>
+		);
+	}
+	if (!signedUrl) {
+		return (
+			<div className={cn("flex items-center justify-center rounded-lg border bg-muted/30 py-8 text-muted-foreground text-xs", className)}>
+				Failed to load media
+			</div>
+		);
+	}
+
 	const type = getMediaType(url);
 	if (type === "image") {
-		return <img src={url} alt="Question media" className="w-full rounded-lg border object-contain" style={{ maxHeight: 200 }} />;
+		return <img src={signedUrl} alt="Question media" className={cn("w-full rounded-lg border object-contain", className)} style={{ maxHeight: 200 }} />;
 	}
 	if (type === "audio") {
-		return <audio src={url} className="w-full" controls />;
+		return <audio src={signedUrl} className={cn("w-full", className)} controls />;
 	}
 	// Default to video for video and unknown types
-	return <video src={url} className="aspect-video w-full rounded-lg bg-black" controls playsInline />;
+	return <video src={signedUrl} className={cn("aspect-video w-full rounded-lg bg-black", className)} controls playsInline />;
 }
 
 export function QuestionMediaEditor({ listId, questionId, existingMediaUrl, onMediaChange }: QuestionMediaEditorProps) {
@@ -223,7 +254,8 @@ export function QuestionMediaEditor({ listId, questionId, existingMediaUrl, onMe
 			}
 			const result = await response.json();
 			setRecordingState("complete");
-			onMediaChange(result.videoUrl);
+			// Store R2 key (not presigned URL) so it can be re-signed at display time
+			onMediaChange(result.videoKey);
 			setMode("idle");
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Upload failed");
@@ -252,7 +284,8 @@ export function QuestionMediaEditor({ listId, questionId, existingMediaUrl, onMe
 					});
 					const result = await response.json();
 					if (!response.ok || !result.success) throw new Error(result.error || "Upload failed");
-					onMediaChange(result.url);
+					// Store R2 key (not presigned URL) so it can be re-signed at display time
+					onMediaChange(result.imageKey);
 					setMode("idle");
 				} else {
 					// Upload video/audio via the question video endpoint
@@ -268,7 +301,8 @@ export function QuestionMediaEditor({ listId, questionId, existingMediaUrl, onMe
 						throw new Error(data.error || "Upload failed");
 					}
 					const result = await response.json();
-					onMediaChange(result.videoUrl);
+					// Store R2 key (not presigned URL) so it can be re-signed at display time
+					onMediaChange(result.videoKey);
 					setMode("idle");
 				}
 			} catch (err) {
@@ -318,7 +352,10 @@ export function QuestionMediaEditor({ listId, questionId, existingMediaUrl, onMe
 							variant="ghost"
 							size="sm"
 							className="h-7 px-2 text-muted-foreground text-xs hover:text-foreground"
-							onClick={() => setMode("record")}
+							onClick={() => {
+								setMode("record");
+								startPreview();
+							}}
 						>
 							<RefreshCw className="mr-1 h-3 w-3" />
 							Replace

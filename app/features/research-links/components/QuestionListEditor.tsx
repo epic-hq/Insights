@@ -683,7 +683,6 @@ function QuestionEditDrawer({
 
           {/* Branching / Skip Logic */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Skip Logic</Label>
             <QuestionBranchingEditor
               question={question}
               allQuestions={questions}

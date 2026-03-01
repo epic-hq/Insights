@@ -26,6 +26,7 @@ create table if not exists public.research_links (
     is_live boolean not null default true,
     is_archived boolean not null default false,
     collect_title boolean not null default false,
+    respondent_fields jsonb not null default '["first_name", "last_name"]'::jsonb,
     statistics jsonb default null,
     stats_updated_at timestamptz default null,
     ai_analysis jsonb default null,

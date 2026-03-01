@@ -61,6 +61,36 @@ import { extractUtmParamsFromSearch, hasUtmParams } from "~/utils/utm";
 const emailSchema = z.string().email();
 const phoneSchema = z.string().min(7, "Enter a valid phone number");
 
+/** Detect media type from URL by file extension */
+function detectMediaType(url: string): "image" | "video" | "audio" | "unknown" {
+  const lower = url.toLowerCase();
+  if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?|$)/.test(lower)) return "image";
+  if (/\.(mp4|webm|mov|avi|mkv|ogv)(\?|$)/.test(lower)) return "video";
+  if (/\.(mp3|wav|ogg|m4a|aac|flac|opus)(\?|$)/.test(lower)) return "audio";
+  return "unknown";
+}
+
+/** Render question media (image, video, or audio) with proper element type */
+function QuestionMedia({ url }: { url: string }) {
+  const type = detectMediaType(url);
+  if (type === "image") {
+    return (
+      <div className="overflow-hidden rounded-lg">
+        <img src={url} alt="" className="w-full rounded-lg object-contain" style={{ maxHeight: 320 }} />
+      </div>
+    );
+  }
+  if (type === "audio") {
+    return <audio src={url} className="w-full" controls />;
+  }
+  // Default to video for video and unknown types
+  return (
+    <div className="overflow-hidden rounded-lg">
+      <video src={url} className="aspect-video w-full bg-black" controls playsInline />
+    </div>
+  );
+}
+
 // Type definitions used by ChatSection (moved before component)
 type ResponseValue = string | string[] | boolean | null;
 type ResponseRecord = Record<string, ResponseValue>;
@@ -555,7 +585,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const { data: list, error } = await supabase
     .from("research_links")
     .select(
-      "id, name, slug, description, hero_title, hero_subtitle, instructions, hero_cta_label, hero_cta_helper, redirect_url, calendar_url, questions, allow_chat, allow_voice, allow_video, walkthrough_video_url, default_response_mode, is_live, account_id, identity_mode, identity_field, collect_title",
+      "id, name, slug, description, hero_title, hero_subtitle, instructions, hero_cta_label, hero_cta_helper, redirect_url, calendar_url, questions, allow_chat, allow_voice, allow_video, walkthrough_video_url, default_response_mode, is_live, account_id, identity_mode, identity_field, collect_title, respondent_fields",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -570,11 +600,11 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const questionsResult = ResearchLinkQuestionSchema.array().safeParse(
     list.questions,
   );
+  const questions = questionsResult.success ? questionsResult.data : [];
 
   // Generate signed URL for walkthrough video if it exists
   let walkthroughSignedUrl: string | null = null;
   if (list.walkthrough_video_url) {
-    // Detect content type from file extension
     const key = list.walkthrough_video_url;
     const ext = key.split(".").pop()?.toLowerCase();
     const contentType =
@@ -586,16 +616,44 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
     const presigned = createR2PresignedUrl({
       key,
-      expiresInSeconds: 3600, // 1 hour
+      expiresInSeconds: 3600,
       responseContentType: contentType,
     });
     walkthroughSignedUrl = presigned?.url ?? null;
   }
 
+  // Sign question media R2 keys (images, videos, audio attached to questions)
+  const signedQuestions = questions.map((q) => {
+    const mediaKey = q.mediaUrl ?? q.videoUrl;
+    if (!mediaKey) return q;
+    // If it's already a full URL, keep it; if it's an R2 key, sign it
+    if (mediaKey.startsWith("http://") || mediaKey.startsWith("https://") || mediaKey.startsWith("data:")) {
+      return { ...q, mediaUrl: mediaKey };
+    }
+    const ext = mediaKey.split(".").pop()?.toLowerCase();
+    const isImage = ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "avif"].includes(ext ?? "");
+    const isAudio = ["mp3", "wav", "ogg", "m4a", "aac", "flac", "opus"].includes(ext ?? "");
+    const contentType = isImage
+      ? `image/${ext === "jpg" ? "jpeg" : ext}`
+      : isAudio
+        ? `audio/${ext}`
+        : ext === "mp4"
+          ? "video/mp4"
+          : ext === "mov"
+            ? "video/quicktime"
+            : "video/webm";
+    const presigned = createR2PresignedUrl({
+      key: mediaKey,
+      expiresInSeconds: 3600,
+      responseContentType: contentType,
+    });
+    return { ...q, mediaUrl: presigned?.url ?? null };
+  });
+
   return {
     slug,
     list,
-    questions: questionsResult.success ? questionsResult.data : [],
+    questions: signedQuestions,
     walkthroughSignedUrl,
   };
 }
@@ -628,6 +686,7 @@ type LoaderData = {
     identity_mode: IdentityMode;
     identity_field: IdentityField;
     collect_title: boolean;
+    respondent_fields: string[] | null;
   };
   questions: Array<ResearchLinkQuestion>;
   walkthroughSignedUrl: string | null;
@@ -748,6 +807,18 @@ export default function ResearchLinkPage() {
   const resolvedMode = list.allow_chat ? mode : "form";
   const voiceEnabled = list.allow_voice && ffVoice;
   const hasMultipleModes = list.allow_chat || voiceEnabled;
+
+  // Respondent fields configuration (falls back to collect_title for backwards compat)
+  const respondentFields = useMemo(() => {
+    const fields = list.respondent_fields;
+    if (Array.isArray(fields)) return fields as string[];
+    // Backwards compat: old surveys only have collect_title
+    const defaults = ["first_name", "last_name", "company"];
+    return list.collect_title ? [...defaults, "title"] : defaults;
+  }, [list.respondent_fields, list.collect_title]);
+
+  const hasField = useCallback((key: string) => respondentFields.includes(key), [respondentFields]);
+  const hasNameFields = hasField("first_name") || hasField("last_name");
   const isEmailValid = emailSchema.safeParse(email).success;
   const isPhoneValid = phoneSchema.safeParse(phone).success;
 
@@ -1288,7 +1359,7 @@ export default function ResearchLinkPage() {
   async function handleNameSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    if (!firstName.trim()) {
+    if (hasField("first_name") && !firstName.trim()) {
       setError("Enter your first name to continue");
       return;
     }
@@ -1540,22 +1611,6 @@ export default function ResearchLinkPage() {
                   required
                 />
               </div>
-              {/* Optional title field */}
-              {list.collect_title && (
-                <div className="space-y-2">
-                  <Label htmlFor="respondent-title" className="text-white/90">
-                    Your Title <span className="text-white/40">(optional)</span>
-                  </Label>
-                  <Input
-                    id="respondent-title"
-                    type="text"
-                    value={respondentTitle}
-                    onChange={(e) => setRespondentTitle(e.target.value)}
-                    placeholder="e.g., Product Manager"
-                    className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-                  />
-                </div>
-              )}
               <div className="flex justify-end">
                 <Button
                   type="submit"
@@ -1686,22 +1741,6 @@ export default function ResearchLinkPage() {
                   required
                 />
               </div>
-              {/* Optional title field */}
-              {list.collect_title && (
-                <div className="space-y-2">
-                  <Label htmlFor="respondent-title-phone" className="text-white/90">
-                    Your Title <span className="text-white/40">(optional)</span>
-                  </Label>
-                  <Input
-                    id="respondent-title-phone"
-                    type="text"
-                    value={respondentTitle}
-                    onChange={(e) => setRespondentTitle(e.target.value)}
-                    placeholder="e.g., Product Manager"
-                    className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-                  />
-                </div>
-              )}
               <div className="flex justify-end">
                 <Button
                   type="submit"
@@ -1729,49 +1768,88 @@ export default function ResearchLinkPage() {
               className="space-y-4"
             >
               <p className="text-sm text-white/80 leading-relaxed">
-                We don't recognize your email. Please enter your name to
-                continue.
+                Tell us a bit about yourself to continue.
               </p>
 
               {/* Name fields */}
-              <div className="grid grid-cols-2 gap-3">
+              {hasNameFields && (
+                <div className={cn("grid gap-3", hasField("first_name") && hasField("last_name") ? "grid-cols-2" : "grid-cols-1")}>
+                  {hasField("first_name") && (
+                    <div className="space-y-2">
+                      <Label className="text-white/90">
+                        First Name <span className="text-red-400">*</span>
+                      </Label>
+                      <Input
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="Jane"
+                        className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                  )}
+                  {hasField("last_name") && (
+                    <div className="space-y-2">
+                      <Label className="text-white/90">Last Name</Label>
+                      <Input
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder="Doe"
+                        className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Company field */}
+              {hasField("company") && (
+                <div className="space-y-2">
+                  <Label className="text-white/90">Company</Label>
+                  <Input
+                    type="text"
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    placeholder="Acme Inc"
+                    className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+                  />
+                </div>
+              )}
+
+              {/* Title field */}
+              {hasField("title") && (
                 <div className="space-y-2">
                   <Label className="text-white/90">
-                    First Name <span className="text-red-400">*</span>
+                    Job Title <span className="text-white/40">(optional)</span>
                   </Label>
                   <Input
                     type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="Jane"
-                    className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-                    required
-                    autoFocus
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-white/90">Last Name</Label>
-                  <Input
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Doe"
+                    value={respondentTitle}
+                    onChange={(e) => setRespondentTitle(e.target.value)}
+                    placeholder="e.g., Product Manager"
                     className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
                   />
                 </div>
-              </div>
+              )}
 
-              {/* Company field - optional */}
-              <div className="space-y-2">
-                <Label className="text-white/90">Company</Label>
-                <Input
-                  type="text"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  placeholder="Acme Inc"
-                  className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-                />
-              </div>
+              {/* Phone field (when identity is email but phone is requested) */}
+              {hasField("phone") && list.identity_field !== "phone" && (
+                <div className="space-y-2">
+                  <Label className="text-white/90">
+                    Phone <span className="text-white/40">(optional)</span>
+                  </Label>
+                  <Input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+1 (555) 123-4567"
+                    className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+                  />
+                </div>
+              )}
 
               <div className="flex items-center justify-between">
                 <Button
@@ -1862,16 +1940,9 @@ export default function ResearchLinkPage() {
                         )}
                       </span>
                     </h2>
-                    {/* Question video prompt */}
-                    {currentQuestion.videoUrl && (
-                      <div className="overflow-hidden rounded-lg">
-                        <video
-                          src={currentQuestion.videoUrl}
-                          className="aspect-video w-full bg-black"
-                          controls
-                          playsInline
-                        />
-                      </div>
+                    {/* Question media (image, video, or audio) */}
+                    {(currentQuestion.mediaUrl ?? currentQuestion.videoUrl) && (
+                      <QuestionMedia url={(currentQuestion.mediaUrl ?? currentQuestion.videoUrl)!} />
                     )}
                     {currentQuestion.helperText && (
                       <p className="text-base text-white/50">

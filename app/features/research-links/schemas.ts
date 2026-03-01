@@ -167,6 +167,20 @@ export const ResearchLinkPayloadSchema = z.object({
 	isLive: booleanFlag,
 	isArchived: booleanFlag,
 	collectTitle: booleanFlag,
+	respondentFields: z
+		.union([z.string(), z.array(z.string()), z.null(), z.undefined()])
+		.transform((value) => {
+			if (typeof value === "string") {
+				try {
+					return JSON.parse(value) as string[];
+				} catch {
+					return ["first_name", "last_name"];
+				}
+			}
+			if (Array.isArray(value)) return value;
+			return ["first_name", "last_name"];
+		})
+		.optional(),
 	questions: QuestionsJsonSchema,
 });
 
