@@ -264,6 +264,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
     allowVideo: formData.get("allow_video"),
     defaultResponseMode: formData.get("default_response_mode"),
     isLive: formData.get("is_live"),
+    isArchived: formData.get("is_archived"),
+    collectTitle: formData.get("collect_title"),
+    respondentFields: formData.get("respondent_fields") ?? undefined,
     questions: formData.get("questions") ?? "[]",
   };
 
