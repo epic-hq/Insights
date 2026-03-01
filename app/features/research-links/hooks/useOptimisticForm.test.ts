@@ -80,6 +80,9 @@ function makeFields(
     allowVideo: false,
     defaultResponseMode: "form",
     isLive: true,
+    isArchived: false,
+    collectTitle: false,
+    respondentFields: ["first_name", "last_name"],
     aiAutonomy: "strict",
     identityType: "email",
     questions: [makeQuestion()],
@@ -277,10 +280,60 @@ describe("round-trip: loader → fields → formData → schema", () => {
       allowVideo: fd.allow_video,
       defaultResponseMode: fd.default_response_mode,
       isLive: fd.is_live,
+      isArchived: fd.is_archived,
+      collectTitle: fd.collect_title,
+      respondentFields: fd.respondent_fields,
       questions: fd.questions,
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("preserves new fields (isArchived, collectTitle, respondentFields) through round-trip", () => {
+    const list = makeLoaderList({
+      is_archived: true,
+      collect_title: true,
+      respondent_fields: ["first_name", "company", "title"],
+    });
+    const fields = extractFormFields(list, [makeQuestion()]);
+    expect(fields.isArchived).toBe(true);
+    expect(fields.collectTitle).toBe(true);
+    expect(fields.respondentFields).toEqual(["first_name", "company", "title"]);
+
+    const fd = serializeToFormData(fields);
+    expect(fd.is_archived).toBe("true");
+    expect(fd.collect_title).toBe("true");
+    expect(JSON.parse(fd.respondent_fields)).toEqual([
+      "first_name",
+      "company",
+      "title",
+    ]);
+
+    // Simulate the action's rawPayload extraction
+    const rawPayload = {
+      name: fd.name,
+      slug: fd.slug,
+      isArchived: fd.is_archived,
+      collectTitle: fd.collect_title,
+      respondentFields: fd.respondent_fields,
+      allowChat: fd.allow_chat,
+      allowVoice: fd.allow_voice,
+      allowVideo: fd.allow_video,
+      defaultResponseMode: fd.default_response_mode,
+      isLive: fd.is_live,
+      questions: fd.questions,
+    };
+    const parsed = ResearchLinkPayloadSchema.safeParse(rawPayload);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.isArchived).toBe(true);
+      expect(parsed.data.collectTitle).toBe(true);
+      expect(parsed.data.respondentFields).toEqual([
+        "first_name",
+        "company",
+        "title",
+      ]);
+    }
   });
 
   it("preserves identity type through round-trip for each variant", () => {
