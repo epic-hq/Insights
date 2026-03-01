@@ -227,6 +227,19 @@ type FastGuidanceCacheEntry = {
   expiresAt: number;
 };
 
+type CsvListContract = {
+  requestedRows: number;
+};
+
+type WebResearchStructuredResult = {
+  title: string;
+  url: string;
+  summary: string;
+  relevanceScore?: number | null;
+  publishedDate?: string | null;
+  author?: string | null;
+};
+
 const fastGuidanceCache = new Map<string, FastGuidanceCacheEntry>();
 
 /**
@@ -246,6 +259,122 @@ function hashString(input: string): string {
     hash = Math.imul(hash, 16777619);
   }
   return (hash >>> 0).toString(16);
+}
+
+function detectCsvListContract(prompt: string): CsvListContract | null {
+  const normalized = prompt.trim();
+  if (!normalized) return null;
+  if (!/\bcsv\b/i.test(normalized)) return null;
+
+  const countMatch =
+    normalized.match(/\btop\s+(\d{1,2})\b/i) ??
+    normalized.match(/\blist\s+of\s+(\d{1,2})\b/i) ??
+    normalized.match(/\b(\d{1,2})\s+items?\b/i);
+  if (!countMatch?.[1]) return null;
+
+  const parsed = Number.parseInt(countMatch[1], 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return null;
+
+  return { requestedRows: Math.min(parsed, 20) };
+}
+
+function escapeCsvCell(value: string): string {
+  const normalized = value.replace(/\r?\n+/g, " ").trim();
+  if (!normalized.includes(",") && !normalized.includes('"')) {
+    return normalized;
+  }
+  return `"${normalized.replace(/"/g, '""')}"`;
+}
+
+function buildCsvFromWebResearchResults(
+  results: WebResearchStructuredResult[],
+  requestedRows: number,
+): string | null {
+  if (!Array.isArray(results) || results.length === 0) return null;
+  if (!Number.isFinite(requestedRows) || requestedRows < 1) return null;
+
+  const deduped: WebResearchStructuredResult[] = [];
+  const seenKeys = new Set<string>();
+
+  for (const result of results) {
+    if (!result?.title || !result?.url) continue;
+    const key = `${result.title.toLowerCase()}::${result.url.toLowerCase()}`;
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    deduped.push(result);
+  }
+
+  if (deduped.length < requestedRows) return null;
+
+  const rows = deduped.slice(0, requestedRows).map((result) => {
+    const name = escapeCsvCell(result.title);
+    const description = escapeCsvCell(result.summary || "No summary available");
+    const website = escapeCsvCell(result.url);
+    return `${name},${description},${website}`;
+  });
+
+  return ["name,description,website", ...rows].join("\n");
+}
+
+function extractWebResearchResultsFromPayload(
+  payload: unknown,
+): WebResearchStructuredResult[] {
+  if (!payload || typeof payload !== "object") return [];
+  const candidate = (payload as { results?: unknown }).results;
+  if (!Array.isArray(candidate)) return [];
+
+  return candidate
+    .map((row) => {
+      if (!row || typeof row !== "object") return null;
+      const candidateRow = row as Record<string, unknown>;
+      if (typeof candidateRow.title !== "string") return null;
+      if (typeof candidateRow.url !== "string") return null;
+
+      return {
+        title: candidateRow.title,
+        url: candidateRow.url,
+        summary:
+          typeof candidateRow.summary === "string"
+            ? candidateRow.summary
+            : "No summary available",
+        relevanceScore:
+          typeof candidateRow.relevanceScore === "number"
+            ? candidateRow.relevanceScore
+            : null,
+        publishedDate:
+          typeof candidateRow.publishedDate === "string"
+            ? candidateRow.publishedDate
+            : null,
+        author:
+          typeof candidateRow.author === "string" ? candidateRow.author : null,
+      } satisfies WebResearchStructuredResult;
+    })
+    .filter((row): row is WebResearchStructuredResult => Boolean(row));
+}
+
+function extractCsvLines(text: string): string[] {
+  const normalized = text
+    .replace(/```csv/gi, "")
+    .replace(/```/g, "")
+    .trim();
+  if (!normalized) return [];
+
+  const lines = normalized
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  return lines.filter((line) => line.includes(","));
+}
+
+function responseSatisfiesCsvContract(
+  responseText: string,
+  contract: CsvListContract,
+): boolean {
+  const csvLines = extractCsvLines(responseText);
+  if (csvLines.length < 2) return false;
+  if (!csvLines[0].includes(",")) return false;
+  return csvLines.length - 1 === contract.requestedRows;
 }
 
 function streamPlainAssistantText(text: string) {
@@ -440,6 +569,7 @@ function augmentStreamForReliability(
     routingConfidence: number | null;
     userId: string;
     threadId: string;
+    csvListContract: CsvListContract | null;
   },
 ) {
   if (
@@ -454,10 +584,12 @@ function augmentStreamForReliability(
   let injectedSafetyMessage = false;
   let appendedDebugTrace = false;
   let appendedQuickLinks = false;
+  let appendedCsvCorrection = false;
   let sawFinishChunk = false;
   let appendedHowtoContractPatch = false;
   let accumulatedAssistantText = "";
   let loggedHowtoTelemetry = false;
+  const capturedWebResearchResults: WebResearchStructuredResult[] = [];
 
   const enqueueAssistantText = (
     controller: TransformStreamDefaultController<Record<string, unknown>>,
@@ -525,6 +657,7 @@ function augmentStreamForReliability(
     controller: TransformStreamDefaultController<Record<string, unknown>>,
   ) => {
     if (appendedQuickLinks) return;
+    if (options.csvListContract) return;
     if (!sawTextDelta) return;
     if (MARKDOWN_LINK_REGEX.test(accumulatedAssistantText)) return;
     const quickLinks = buildQuickLinksMarkdown({
@@ -536,6 +669,24 @@ function augmentStreamForReliability(
     if (!quickLinks) return;
     enqueueAssistantText(controller, quickLinks, "links");
     appendedQuickLinks = true;
+  };
+
+  const maybeEnqueueCsvCorrection = (
+    controller: TransformStreamDefaultController<Record<string, unknown>>,
+  ) => {
+    const contract = options.csvListContract;
+    if (!contract || appendedCsvCorrection) return;
+    if (responseSatisfiesCsvContract(accumulatedAssistantText, contract)) return;
+
+    const correctedCsv = buildCsvFromWebResearchResults(
+      capturedWebResearchResults,
+      contract.requestedRows,
+    );
+    if (!correctedCsv) return;
+
+    enqueueAssistantText(controller, correctedCsv, "csv-correction");
+    accumulatedAssistantText += `\n${correctedCsv}`;
+    appendedCsvCorrection = true;
   };
 
   const maybeLogHowtoStreamTelemetry = () => {
@@ -586,6 +737,22 @@ function augmentStreamForReliability(
           if (typeof payload === "object" && payload && "a2ui" in payload) {
             sawTextDelta = true;
           }
+
+          const extractedResults = extractWebResearchResultsFromPayload(payload);
+          if (extractedResults.length > 0) {
+            const existing = new Set(
+              capturedWebResearchResults.map(
+                (item) =>
+                  `${item.title.toLowerCase()}::${item.url.toLowerCase()}`,
+              ),
+            );
+            for (const result of extractedResults) {
+              const key = `${result.title.toLowerCase()}::${result.url.toLowerCase()}`;
+              if (existing.has(key)) continue;
+              existing.add(key);
+              capturedWebResearchResults.push(result);
+            }
+          }
         }
 
         if (chunk?.type === "error") {
@@ -596,6 +763,7 @@ function augmentStreamForReliability(
           sawFinishChunk = true;
           maybeEnqueueSafetyMessage(controller);
           maybeEnqueueHowtoContractPatch(controller);
+          maybeEnqueueCsvCorrection(controller);
           maybeEnqueueQuickLinks(controller);
           maybeEnqueueDebugTrace(controller);
           maybeLogHowtoStreamTelemetry();
@@ -606,6 +774,7 @@ function augmentStreamForReliability(
       flush(controller) {
         maybeEnqueueSafetyMessage(controller);
         maybeEnqueueHowtoContractPatch(controller);
+        maybeEnqueueCsvCorrection(controller);
         maybeEnqueueQuickLinks(controller);
         maybeEnqueueDebugTrace(controller);
         maybeLogHowtoStreamTelemetry();
@@ -1131,6 +1300,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     (!lastUserText || lastUserText === UI_EVENT_DISPATCH_TEXT)
       ? summarizeUiEventsForPrompt(typedUiEvents)
       : lastUserText;
+  const csvListContract = detectCsvListContract(lastUserTextForRouting);
   const threadTitleSeed =
     lastUserText === UI_EVENT_DISPATCH_TEXT ? lastUserTextForRouting : lastUserText;
   const runtimeMessagesForExecution = normalizeMessagesForExecution(
@@ -1359,6 +1529,9 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
   }
   if (debugRequested) {
     requestContext.set("debug_mode", true);
+  }
+  if (csvListContract) {
+    requestContext.set("csv_requested_rows", csvListContract.requestedRows);
   }
 
   if (
@@ -1589,6 +1762,18 @@ ${JSON.stringify(typedUiEvents, null, 2)}`,
             },
           ] as const)
         : []),
+      ...(csvListContract
+        ? ([
+            {
+              role: "system" as const,
+              content: `## Output Contract (MANDATORY)
+The user requested CSV output with exactly ${csvListContract.requestedRows} data rows.
+- Return plain CSV only (no markdown table, no code fences, no prose).
+- Include one header row, then exactly ${csvListContract.requestedRows} rows.
+- If there are more candidates, keep only the top ${csvListContract.requestedRows}.`,
+            },
+          ] as const)
+        : []),
     ],
     onFinish: async (data: {
       usage?: { inputTokens?: number; outputTokens?: number };
@@ -1790,6 +1975,7 @@ ${JSON.stringify(typedUiEvents, null, 2)}`,
     routingConfidence: routeDecision?.confidence ?? null,
     userId,
     threadId,
+    csvListContract,
   });
 
   return createUIMessageStreamResponse({ stream: reliableStream });

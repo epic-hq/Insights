@@ -23,6 +23,15 @@ interface ExaSearchResponse {
 	autopromptString?: string;
 }
 
+const webResearchResultSchema = z.object({
+	title: z.string(),
+	url: z.string(),
+	publishedDate: z.string().nullish(),
+	author: z.string().nullish(),
+	summary: z.string(),
+	relevanceScore: z.number(),
+});
+
 /**
  * Simple delay helper for rate limiting
  */
@@ -77,6 +86,9 @@ export const webResearchTool = createTool({
 		noteUrl: z.string().nullish().describe("Link to the full research note"),
 		noteId: z.string().nullish().describe("ID of the created note"),
 		resultCount: z.number().describe("Number of results found"),
+		results: z
+			.array(webResearchResultSchema)
+			.describe("Structured search results for downstream formatting (CSV, tables, summaries)"),
 		evidenceCount: z.number().nullish().describe("Number of evidence records created"),
 		error: z.string().optional(),
 	}),
@@ -86,6 +98,7 @@ export const webResearchTool = createTool({
 			return {
 				tldr: "Web research is not configured.",
 				resultCount: 0,
+				results: [],
 				error: "EXA_API_KEY not configured",
 			};
 		}
@@ -152,6 +165,7 @@ export const webResearchTool = createTool({
 				return {
 					tldr: "Search failed due to an API error.",
 					resultCount: 0,
+					results: [],
 					error: `Exa API error: ${response.status} - ${errorText}`,
 				};
 			}
@@ -161,6 +175,7 @@ export const webResearchTool = createTool({
 				return {
 					tldr: "Search failed due to rate limiting. Try again in a few seconds or use fewer parallel searches.",
 					resultCount: 0,
+					results: [],
 					error: "Exa API rate limit exceeded after retries",
 				};
 			}
@@ -174,6 +189,7 @@ export const webResearchTool = createTool({
 				return {
 					tldr: `No results found for "${query}". Try broadening your search or using different keywords.`,
 					resultCount: 0,
+					results: [],
 				};
 			}
 
@@ -312,6 +328,7 @@ export const webResearchTool = createTool({
 				noteUrl,
 				noteId,
 				resultCount,
+				results,
 				evidenceCount,
 			};
 		} catch (error) {
@@ -319,6 +336,7 @@ export const webResearchTool = createTool({
 			return {
 				tldr: "An error occurred during the search.",
 				resultCount: 0,
+				results: [],
 				error: error instanceof Error ? error.message : "Unknown error",
 			};
 		}

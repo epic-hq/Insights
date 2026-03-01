@@ -242,6 +242,15 @@ function makeTextStream(options: {
   });
 }
 
+function makeWebResearchResults(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    title: `Agentic System ${index + 1}`,
+    url: `https://example.com/system-${index + 1}`,
+    summary: `Summary ${index + 1}`,
+    relevanceScore: 0.9 - index * 0.01,
+  }));
+}
+
 describe("api.chat.project-status", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -948,6 +957,192 @@ describe("api.chat.project-status", () => {
       "Sorry, I couldn't answer that just now. Please try again.",
     );
     expect(chunks.some((chunk) => chunk.type === "finish")).toBe(true);
+  });
+
+  it("enforces top-N CSV contract by appending corrected CSV from web research results", async () => {
+    mockedGenerateObject.mockResolvedValue({
+      object: {
+        targetAgentId: "researchAgent",
+        confidence: 0.95,
+        responseMode: "normal",
+        rationale: "external list request",
+      },
+    } as any);
+
+    mockedHandleChatStream.mockResolvedValue(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: "start" });
+          controller.enqueue({ type: "start-step" });
+          controller.enqueue({ type: "text-start", id: "chunk-a" });
+          controller.enqueue({
+            type: "text-delta",
+            id: "chunk-a",
+            delta: "not csv output",
+          });
+          controller.enqueue({ type: "text-end", id: "chunk-a" });
+          controller.enqueue({
+            type: "tool-result",
+            result: { results: makeWebResearchResults(8) },
+          });
+          controller.enqueue({ type: "finish", finishReason: "stop" });
+          controller.close();
+        },
+      }) as any,
+    );
+
+    const response = await action(
+      buildArgs({
+        message:
+          "give me list of top 8 agentic ai systems like openClaw, Claude CoWork etc, in csv",
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+    const chatCall = mockedHandleChatStream.mock.calls[0][0] as any;
+    expect(chatCall.params.requestContext.get("csv_requested_rows")).toBe(8);
+    const csvContractContext = chatCall.params.context.find((entry: any) =>
+      String(entry?.content ?? "").includes("Output Contract (MANDATORY)"),
+    );
+    expect(csvContractContext).toBeTruthy();
+
+    const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(
+      -1,
+    )?.[0] as any;
+    const chunks = await readStreamChunks(
+      responseCall.stream as ReadableStream<Record<string, unknown>>,
+    );
+    const text = chunks
+      .filter((chunk) => chunk.type === "text-delta")
+      .map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""))
+      .join("\n");
+
+    expect(text).toContain("name,description,website");
+    const csvLines = text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.includes(","));
+    expect(csvLines.length).toBe(9); // header + 8 rows
+    expect(text).not.toContain("Quick links:");
+  });
+
+  it("does not enforce CSV contract for researchAgent requests without csv format intent", async () => {
+    mockedGenerateObject.mockResolvedValue({
+      object: {
+        targetAgentId: "researchAgent",
+        confidence: 0.95,
+        responseMode: "normal",
+        rationale: "external list request",
+      },
+    } as any);
+
+    mockedHandleChatStream.mockResolvedValue(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: "start" });
+          controller.enqueue({ type: "start-step" });
+          controller.enqueue({ type: "text-start", id: "chunk-a" });
+          controller.enqueue({
+            type: "text-delta",
+            id: "chunk-a",
+            delta: "Top systems: CrewAI, AutoGen, LangGraph.",
+          });
+          controller.enqueue({ type: "text-end", id: "chunk-a" });
+          controller.enqueue({
+            type: "tool-result",
+            result: { results: makeWebResearchResults(8) },
+          });
+          controller.enqueue({ type: "finish", finishReason: "stop" });
+          controller.close();
+        },
+      }) as any,
+    );
+
+    const response = await action(
+      buildArgs({
+        message: "give me list of top 8 agentic ai systems",
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+    const chatCall = mockedHandleChatStream.mock.calls[0][0] as any;
+    expect(chatCall.params.requestContext.get("csv_requested_rows")).toBeUndefined();
+    const csvContractContext = chatCall.params.context.find((entry: any) =>
+      String(entry?.content ?? "").includes("Output Contract (MANDATORY)"),
+    );
+    expect(csvContractContext).toBeFalsy();
+
+    const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(
+      -1,
+    )?.[0] as any;
+    const chunks = await readStreamChunks(
+      responseCall.stream as ReadableStream<Record<string, unknown>>,
+    );
+    const text = chunks
+      .filter((chunk) => chunk.type === "text-delta")
+      .map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""))
+      .join("\n");
+
+    expect(text).not.toContain("name,description,website");
+    expect(text).toContain("Quick links:");
+  });
+
+  it("keeps project setup/company-context flow free of CSV contract side effects", async () => {
+    mockedHandleChatStream.mockResolvedValue(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: "start" });
+          controller.enqueue({ type: "start-step" });
+          controller.enqueue({ type: "text-start", id: "chunk-a" });
+          controller.enqueue({
+            type: "text-delta",
+            id: "chunk-a",
+            delta: "Share your website URL and I will pull company context.",
+          });
+          controller.enqueue({ type: "text-end", id: "chunk-a" });
+          controller.enqueue({
+            type: "tool-result",
+            result: { results: makeWebResearchResults(5) },
+          });
+          controller.enqueue({ type: "finish", finishReason: "stop" });
+          controller.close();
+        },
+      }) as any,
+    );
+
+    const response = await action(
+      buildArgs({
+        message: "help me set up project and define research goals",
+        userId: "user-setup-company-context",
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(mockedGenerateObject).not.toHaveBeenCalled();
+    expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+    const chatCall = mockedHandleChatStream.mock.calls[0][0] as any;
+    expect(chatCall.agentId).toBe("projectSetupAgent");
+    expect(chatCall.params.requestContext.get("csv_requested_rows")).toBeUndefined();
+    const csvContractContext = chatCall.params.context.find((entry: any) =>
+      String(entry?.content ?? "").includes("Output Contract (MANDATORY)"),
+    );
+    expect(csvContractContext).toBeFalsy();
+
+    const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(
+      -1,
+    )?.[0] as any;
+    const chunks = await readStreamChunks(
+      responseCall.stream as ReadableStream<Record<string, unknown>>,
+    );
+    const text = chunks
+      .filter((chunk) => chunk.type === "text-delta")
+      .map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""))
+      .join("\n");
+
+    expect(text).toContain("Share your website URL");
+    expect(text).not.toContain("name,description,website");
   });
 
   it("builds contextual quick links for people/ICP queries", async () => {
