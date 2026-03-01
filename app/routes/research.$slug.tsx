@@ -714,6 +714,7 @@ export default function ResearchLinkPage() {
     useLoaderData() as LoaderData;
   const [searchParams] = useSearchParams();
   const ffVoice = searchParams.get("ffVoice") === "true";
+  const kioskMode = searchParams.get("kiosk") === "true";
   const emailId = useId();
   const phoneId = useId();
   const storageKey = `research-link:${slug}`;
@@ -880,18 +881,67 @@ export default function ResearchLinkPage() {
   }, []);
 
   const handleStartOver = useCallback(() => {
-    window.localStorage.removeItem(storageKey);
-    setStage("email");
+    if (!kioskMode) {
+      window.localStorage.removeItem(storageKey);
+    }
+    setStage(getInitialStage());
     setEmail("");
+    setPhone("");
     setFirstName("");
     setLastName("");
+    setCompany("");
+    setRespondentTitle("");
     setResponseId(null);
     setResponses({});
     setCurrentIndex(0);
     setCurrentAnswer("");
     setRedirectCountdown(null);
+    setIsReviewing(false);
     setError(null);
-  }, [storageKey]);
+    setInitializing(true);
+  }, [storageKey, kioskMode]);
+
+  // Kiosk mode: auto-reset after 5 seconds on completion
+  useEffect(() => {
+    if (!kioskMode || stage !== "complete") return;
+    const timer = setTimeout(() => {
+      handleStartOver();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [kioskMode, stage, handleStartOver]);
+
+  // Kiosk mode: after handleStartOver resets initializing=true,
+  // re-trigger the anonymous auto-start flow
+  useEffect(() => {
+    if (!kioskMode || !initializing) return;
+    if (list.identity_mode !== "anonymous") {
+      // For identified surveys in kiosk mode, just stop initializing
+      setInitializing(false);
+      return;
+    }
+    // Auto-start a new anonymous session
+    void startSignup(slug, { responseMode: resolvedMode })
+      .then((result) => {
+        setResponseId(result.responseId);
+        setResponses(result.responses || {});
+        const initialIndex = findNextQuestionIndex(
+          result.responses || {},
+          questions,
+        );
+        if (initialIndex >= questions.length) {
+          setStage("complete");
+        } else {
+          setCurrentIndex(initialIndex);
+          setStage(list.instructions ? "instructions" : "survey");
+        }
+      })
+      .catch(() => {
+        // Silently fail
+      })
+      .finally(() => {
+        setInitializing(false);
+      });
+  }, [kioskMode, initializing, slug, resolvedMode, questions, list.identity_mode, list.instructions]);
 
   // Get the current page URL for sharing
   const shareUrl =
@@ -970,14 +1020,16 @@ export default function ResearchLinkPage() {
             setEmail(urlEmail);
             setResponseId(result.responseId);
             setResponses(result.responses || {});
-            // Save to localStorage for future visits
-            window.localStorage.setItem(
-              storageKey,
-              JSON.stringify({
-                email: urlEmail,
-                responseId: result.responseId,
-              }),
-            );
+            // Save to localStorage for future visits (skip in kiosk mode)
+            if (!kioskMode) {
+              window.localStorage.setItem(
+                storageKey,
+                JSON.stringify({
+                  email: urlEmail,
+                  responseId: result.responseId,
+                }),
+              );
+            }
             const initialIndex = findNextQuestionIndex(
               result.responses || {},
               questions,
@@ -1016,13 +1068,15 @@ export default function ResearchLinkPage() {
           .then((result) => {
             setResponseId(result.responseId);
             setResponses(result.responses || {});
-            window.localStorage.setItem(
-              storageKey,
-              JSON.stringify({
-                email: urlEmail,
-                responseId: result.responseId,
-              }),
-            );
+            if (!kioskMode) {
+              window.localStorage.setItem(
+                storageKey,
+                JSON.stringify({
+                  email: urlEmail,
+                  responseId: result.responseId,
+                }),
+              );
+            }
             const initialIndex = findNextQuestionIndex(
               result.responses || {},
               questions,
@@ -1087,13 +1141,15 @@ export default function ResearchLinkPage() {
           .then((result) => {
             setResponseId(result.responseId);
             setResponses(result.responses || {});
-            window.localStorage.setItem(
-              storageKey,
-              JSON.stringify({
-                phone: urlPhone,
-                responseId: result.responseId,
-              }),
-            );
+            if (!kioskMode) {
+              window.localStorage.setItem(
+                storageKey,
+                JSON.stringify({
+                  phone: urlPhone,
+                  responseId: result.responseId,
+                }),
+              );
+            }
             const initialIndex = findNextQuestionIndex(
               result.responses || {},
               questions,
@@ -1125,8 +1181,8 @@ export default function ResearchLinkPage() {
       if (urlFirstName) setFirstName(urlFirstName);
       if (urlLastName) setLastName(urlLastName);
 
-      // Otherwise check localStorage for existing session
-      const stored = window.localStorage.getItem(storageKey);
+      // Otherwise check localStorage for existing session (skip in kiosk mode)
+      const stored = kioskMode ? null : window.localStorage.getItem(storageKey);
       if (!stored) {
         // For anonymous mode with no stored session, auto-start the survey
         if (list.identity_mode === "anonymous") {
@@ -1137,10 +1193,12 @@ export default function ResearchLinkPage() {
             .then((result) => {
               setResponseId(result.responseId);
               setResponses(result.responses || {});
-              window.localStorage.setItem(
-                storageKey,
-                JSON.stringify({ responseId: result.responseId }),
-              );
+              if (!kioskMode) {
+                window.localStorage.setItem(
+                  storageKey,
+                  JSON.stringify({ responseId: result.responseId }),
+                );
+              }
               const initialIndex = findNextQuestionIndex(
                 result.responses || {},
                 questions,
@@ -1284,6 +1342,7 @@ export default function ResearchLinkPage() {
     slug,
     storageKey,
     resolvedMode,
+    kioskMode,
     list.identity_mode,
     list.identity_field,
     list.instructions,
@@ -1325,10 +1384,12 @@ export default function ResearchLinkPage() {
       });
       setResponseId(result.responseId);
       setResponses(result.responses || {});
-      window.localStorage.setItem(
-        storageKey,
-        JSON.stringify({ email: email.trim(), responseId: result.responseId }),
-      );
+      if (!kioskMode) {
+        window.localStorage.setItem(
+          storageKey,
+          JSON.stringify({ email: email.trim(), responseId: result.responseId }),
+        );
+      }
 
       // If no person linked, we need to collect name info
       if (!result.personId) {
@@ -1373,10 +1434,12 @@ export default function ResearchLinkPage() {
       });
       setResponseId(result.responseId);
       setResponses(result.responses || {});
-      window.localStorage.setItem(
-        storageKey,
-        JSON.stringify({ phone: phone.trim(), responseId: result.responseId }),
-      );
+      if (!kioskMode) {
+        window.localStorage.setItem(
+          storageKey,
+          JSON.stringify({ phone: phone.trim(), responseId: result.responseId }),
+        );
+      }
 
       // Phone-identified surveys don't collect name, go straight to survey
       const initialIndex = findNextQuestionIndex(
@@ -2166,97 +2229,107 @@ export default function ResearchLinkPage() {
               <CheckCircle2 className="h-12 w-12 text-emerald-300" />
               <div className="space-y-2">
                 <h2 className="font-semibold text-xl">Thanks for sharing!</h2>
-                {/* <p className="text-sm text-white/70">Your responses have been saved.</p> */}
-                <div className="flex items-center justify-center gap-2">
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="border-white bg-transparent text-white hover:border-white/50 hover:bg-white/10 hover:text-white"
-                  >
-                    <a
-                      href="https://getupsight.com/sign-up"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Create a free account to see your responses
-                    </a>
-                  </Button>
-                </div>
-              </div>
-
-              {/* Calendar booking */}
-              {list.calendar_url && (
-                <div className="w-full space-y-3 border-white/10 border-t pt-4">
-                  <div className="flex items-center justify-center gap-2 text-sm text-white/60">
-                    <Calendar className="h-4 w-4" />
-                    Want to discuss your feedback?
-                  </div>
-                  <Button
-                    asChild
-                    className="w-full gap-2 bg-white text-black hover:bg-white/90"
-                  >
-                    <a
-                      href={list.calendar_url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <Calendar className="h-4 w-4" />
-                      Book a call
-                    </a>
-                  </Button>
-                </div>
-              )}
-
-              {/* Share section */}
-              <div className="w-full space-y-3 border-white/10 border-t pt-4">
-                <Button
-                  onClick={handleCopyLink}
-                  variant="outline"
-                  className="w-full gap-2 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-                >
-                  {copiedLink ? (
-                    <>
-                      <Check className="h-4 w-4 text-emerald-400" />
-                      Link copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      Copy link to share
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {list.redirect_url && redirectCountdown !== null && (
-                <div className="flex items-center gap-3">
-                  <p className="text-white/40 text-xs">
-                    Redirecting in {redirectCountdown}s...
+                {kioskMode && (
+                  <p className="text-sm text-white/50">
+                    Starting over in a moment...
                   </p>
+                )}
+              </div>
+
+              {/* Non-kiosk content */}
+              {!kioskMode && (
+                <>
+                  <div className="flex items-center justify-center gap-2">
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="border-white bg-transparent text-white hover:border-white/50 hover:bg-white/10 hover:text-white"
+                    >
+                      <a
+                        href="https://getupsight.com/sign-up"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Create a free account to see your responses
+                      </a>
+                    </Button>
+                  </div>
+
+                  {/* Calendar booking */}
+                  {list.calendar_url && (
+                    <div className="w-full space-y-3 border-white/10 border-t pt-4">
+                      <div className="flex items-center justify-center gap-2 text-sm text-white/60">
+                        <Calendar className="h-4 w-4" />
+                        Want to discuss your feedback?
+                      </div>
+                      <Button
+                        asChild
+                        className="w-full gap-2 bg-white text-black hover:bg-white/90"
+                      >
+                        <a
+                          href={list.calendar_url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Calendar className="h-4 w-4" />
+                          Book a call
+                        </a>
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Share section */}
+                  <div className="w-full space-y-3 border-white/10 border-t pt-4">
+                    <Button
+                      onClick={handleCopyLink}
+                      variant="outline"
+                      className="w-full gap-2 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                    >
+                      {copiedLink ? (
+                        <>
+                          <Check className="h-4 w-4 text-emerald-400" />
+                          Link copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4" />
+                          Copy link to share
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {list.redirect_url && redirectCountdown !== null && (
+                    <div className="flex items-center gap-3">
+                      <p className="text-white/40 text-xs">
+                        Redirecting in {redirectCountdown}s...
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={cancelRedirect}
+                        className="h-6 px-2 text-white/40 text-xs hover:bg-white/10 hover:text-white"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Review answers option */}
                   <Button
                     variant="ghost"
-                    size="sm"
-                    onClick={cancelRedirect}
-                    className="h-6 px-2 text-white/40 text-xs hover:bg-white/10 hover:text-white"
+                    onClick={() => {
+                      setCurrentIndex(0);
+                      setIsReviewing(true);
+                      setStage("survey");
+                    }}
+                    className="w-full gap-2 text-white/60 hover:bg-white/10 hover:text-white"
                   >
-                    Cancel
+                    <ClipboardList className="h-4 w-4" />
+                    Review your answers
                   </Button>
-                </div>
+                </>
               )}
-
-              {/* Review answers option */}
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setCurrentIndex(0);
-                  setIsReviewing(true);
-                  setStage("survey");
-                }}
-                className="w-full gap-2 text-white/60 hover:bg-white/10 hover:text-white"
-              >
-                <ClipboardList className="h-4 w-4" />
-                Review your answers
-              </Button>
             </motion.div>
           )}
         </div>

@@ -25,7 +25,7 @@ export const ResearchLinkQuestionSchema = z.object({
 	helperText: z.string().optional().nullable(),
 	options: z.array(z.string()).optional().nullable(),
 	// Allow "Other" write-in option for single/multi select
-	allowOther: z.boolean().optional().default(false),
+	allowOther: z.boolean().optional().default(true),
 	// Likert scale configuration
 	likertScale: z.number().min(3).max(10).optional().nullable(),
 	likertLabels: z
@@ -66,7 +66,7 @@ export function createEmptyQuestion(): ResearchLinkQuestion {
 		placeholder: null,
 		helperText: null,
 		options: null,
-		allowOther: false,
+		allowOther: true,
 		likertScale: null,
 		likertLabels: null,
 		imageOptions: null,
