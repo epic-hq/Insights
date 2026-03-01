@@ -139,7 +139,7 @@ export function useOptimisticForm(
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Keep a ref to the current merged fields for flush-on-unmount
+  // Keep refs to resolve the latest merged state inside timers/event handlers.
   const dirtyMapRef = useRef(dirtyMap);
   dirtyMapRef.current = dirtyMap;
   const loaderFieldsRef = useRef(loaderFields);
@@ -168,6 +168,9 @@ export function useOptimisticForm(
           savedDisplayMs,
         );
       }
+    } else if (fetcher.state === "idle") {
+      // Requests can be cancelled during route transitions; treat as idle.
+      setStatus((prev) => (prev === "saving" ? "idle" : prev));
     }
   }, [fetcher.state, fetcher.data, savedDisplayMs]);
 
@@ -239,17 +242,40 @@ export function useOptimisticForm(
     }
   }, [submitAll]);
 
-  // Flush on unmount
+  // Persist pending edits on full page unload without tying to fetcher lifecycle.
   useEffect(() => {
-    return () => flush();
-  }, [flush]);
+    const handleBeforeUnload = () => {
+      if (Object.keys(dirtyMapRef.current).length === 0) return;
 
-  // Flush on beforeunload
-  useEffect(() => {
-    const handleBeforeUnload = () => flush();
+      clearTimeout(timeoutRef.current);
+      const merged = {
+        ...loaderFieldsRef.current,
+        ...dirtyMapRef.current,
+      } as SurveyFormFields;
+      const body = new URLSearchParams(serializeToFormData(merged));
+
+      if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
+        navigator.sendBeacon(
+          window.location.pathname + window.location.search,
+          body,
+        );
+        return;
+      }
+
+      // Fallback for older browsers.
+      void fetch(window.location.pathname + window.location.search, {
+        method: "POST",
+        body,
+        keepalive: true,
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        },
+      });
+    };
+
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [flush]);
+  }, []);
 
   // Cleanup timers on unmount
   useEffect(() => {
