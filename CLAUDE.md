@@ -255,6 +255,8 @@ execute: async (input, context?) => {
 - **Vite cache corruption**: If you see 504 errors for optimized deps, run `rm -rf node_modules/.vite && rm -rf .cache`
 - **PostgREST**: `people_personas(count)` syntax not supported — use separate count queries
 - **Conform/Zod**: Form validation requires `useId()` for SSR-safe form element IDs
+- **AI SDK v5 tool parts**: Tool parts have `type: "tool-{toolName}"` (e.g. `"tool-update-survey-questions"`), NOT `"tool-invocation"`. Use `part.type.startsWith("tool-")` to detect tool parts, matching the SDK's own `isToolUIPart()`. State is directly on the part (`part.state`), not nested under `toolInvocation`
+- **AI SDK v5 `DefaultChatTransport` body**: Use `body: () => ({ ... })` (function form) with refs for values that change after mount. `useChat` stores the Chat instance in a ref — plain object `body` captures stale closure values
 
 ---
 
