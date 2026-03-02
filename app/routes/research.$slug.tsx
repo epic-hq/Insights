@@ -64,7 +64,8 @@ const phoneSchema = z.string().min(7, "Enter a valid phone number");
 /** Detect media type from URL by file extension */
 function detectMediaType(url: string): "image" | "video" | "audio" | "unknown" {
   const lower = url.toLowerCase();
-  if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?|$)/.test(lower)) return "image";
+  if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?|$)/.test(lower))
+    return "image";
   if (/\.(mp4|webm|mov|avi|mkv|ogv)(\?|$)/.test(lower)) return "video";
   if (/\.(mp3|wav|ogg|m4a|aac|flac|opus)(\?|$)/.test(lower)) return "audio";
   return "unknown";
@@ -76,7 +77,12 @@ function QuestionMedia({ url }: { url: string }) {
   if (type === "image") {
     return (
       <div className="overflow-hidden rounded-lg">
-        <img src={url} alt="" className="w-full rounded-lg object-contain" style={{ maxHeight: 320 }} />
+        <img
+          src={url}
+          alt=""
+          className="w-full rounded-lg object-contain"
+          style={{ maxHeight: 320 }}
+        />
       </div>
     );
   }
@@ -86,7 +92,12 @@ function QuestionMedia({ url }: { url: string }) {
   // Default to video for video and unknown types
   return (
     <div className="overflow-hidden rounded-lg">
-      <video src={url} className="aspect-video w-full bg-black" controls playsInline />
+      <video
+        src={url}
+        className="aspect-video w-full bg-black"
+        controls
+        playsInline
+      />
     </div>
   );
 }
@@ -630,12 +641,33 @@ export async function loader({ params }: LoaderFunctionArgs) {
     const mediaKey = q.mediaUrl ?? q.videoUrl;
     if (!mediaKey) return q;
     // If it's already a full URL, keep it; if it's an R2 key, sign it
-    if (mediaKey.startsWith("http://") || mediaKey.startsWith("https://") || mediaKey.startsWith("data:")) {
+    if (
+      mediaKey.startsWith("http://") ||
+      mediaKey.startsWith("https://") ||
+      mediaKey.startsWith("data:")
+    ) {
       return { ...q, mediaUrl: mediaKey };
     }
     const ext = mediaKey.split(".").pop()?.toLowerCase();
-    const isImage = ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "avif"].includes(ext ?? "");
-    const isAudio = ["mp3", "wav", "ogg", "m4a", "aac", "flac", "opus"].includes(ext ?? "");
+    const isImage = [
+      "jpg",
+      "jpeg",
+      "png",
+      "gif",
+      "webp",
+      "svg",
+      "bmp",
+      "avif",
+    ].includes(ext ?? "");
+    const isAudio = [
+      "mp3",
+      "wav",
+      "ogg",
+      "m4a",
+      "aac",
+      "flac",
+      "opus",
+    ].includes(ext ?? "");
     const contentType = isImage
       ? `image/${ext === "jpg" ? "jpeg" : ext}`
       : isAudio
@@ -820,7 +852,10 @@ export default function ResearchLinkPage() {
     return list.collect_title ? [...defaults, "title"] : defaults;
   }, [list.respondent_fields, list.collect_title]);
 
-  const hasField = useCallback((key: string) => respondentFields.includes(key), [respondentFields]);
+  const hasField = useCallback(
+    (key: string) => respondentFields.includes(key),
+    [respondentFields],
+  );
   const hasNameFields = hasField("first_name") || hasField("last_name");
   const isEmailValid = emailSchema.safeParse(email).success;
   const isPhoneValid = phoneSchema.safeParse(phone).success;
@@ -1005,7 +1040,14 @@ export default function ResearchLinkPage() {
       .finally(() => {
         setInitializing(false);
       });
-  }, [initializing, slug, resolvedMode, questions, list.identity_mode, list.instructions]);
+  }, [
+    initializing,
+    slug,
+    resolvedMode,
+    questions,
+    list.identity_mode,
+    list.instructions,
+  ]);
 
   // Voice input for form mode
   const handleFormVoiceTranscription = useCallback((text: string) => {
@@ -1510,6 +1552,22 @@ export default function ResearchLinkPage() {
               animate={{ opacity: 1, y: 0 }}
               className="space-y-4"
             >
+              {/* Hero heading */}
+              {(list.hero_title || list.hero_subtitle) && (
+                <div className="space-y-2">
+                  {list.hero_title && (
+                    <h1 className="font-bold text-2xl text-white md:text-3xl">
+                      {list.hero_title}
+                    </h1>
+                  )}
+                  {list.hero_subtitle && (
+                    <p className="text-base text-white/70 leading-relaxed">
+                      {list.hero_subtitle}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Walkthrough video */}
               {walkthroughSignedUrl && (
                 <div className="overflow-hidden rounded-xl">
@@ -1640,6 +1698,22 @@ export default function ResearchLinkPage() {
               animate={{ opacity: 1, y: 0 }}
               className="space-y-4"
             >
+              {/* Hero heading */}
+              {(list.hero_title || list.hero_subtitle) && (
+                <div className="space-y-2">
+                  {list.hero_title && (
+                    <h1 className="font-bold text-2xl text-white md:text-3xl">
+                      {list.hero_title}
+                    </h1>
+                  )}
+                  {list.hero_subtitle && (
+                    <p className="text-base text-white/70 leading-relaxed">
+                      {list.hero_subtitle}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Walkthrough video */}
               {walkthroughSignedUrl && (
                 <div className="overflow-hidden rounded-xl">
@@ -1776,7 +1850,14 @@ export default function ResearchLinkPage() {
 
               {/* Name fields */}
               {hasNameFields && (
-                <div className={cn("grid gap-3", hasField("first_name") && hasField("last_name") ? "grid-cols-2" : "grid-cols-1")}>
+                <div
+                  className={cn(
+                    "grid gap-3",
+                    hasField("first_name") && hasField("last_name")
+                      ? "grid-cols-2"
+                      : "grid-cols-1",
+                  )}
+                >
                   {hasField("first_name") && (
                     <div className="space-y-2">
                       <Label className="text-white/90">
@@ -1945,7 +2026,12 @@ export default function ResearchLinkPage() {
                     </h2>
                     {/* Question media (image, video, or audio) */}
                     {(currentQuestion.mediaUrl ?? currentQuestion.videoUrl) && (
-                      <QuestionMedia url={(currentQuestion.mediaUrl ?? currentQuestion.videoUrl)!} />
+                      <QuestionMedia
+                        url={
+                          (currentQuestion.mediaUrl ??
+                            currentQuestion.videoUrl)!
+                        }
+                      />
                     )}
                     {currentQuestion.helperText && (
                       <p className="text-base text-white/50">
@@ -2202,7 +2288,8 @@ function renderQuestionInput({
 
   if (resolved.kind === "select") {
     const currentValue = typeof value === "string" ? value : "";
-    const isOtherSelected = currentValue !== "" && !resolved.options.includes(currentValue);
+    const isOtherSelected =
+      currentValue !== "" && !resolved.options.includes(currentValue);
     return (
       <div className="space-y-2">
         <Select
@@ -2279,7 +2366,9 @@ function renderQuestionInput({
               value={otherText}
               onChange={(e) => {
                 const newOther = e.target.value.trim();
-                const withoutOld = selected.filter((v) => resolved.options.includes(v));
+                const withoutOld = selected.filter((v) =>
+                  resolved.options.includes(v),
+                );
                 if (newOther) {
                   onChange([...withoutOld, newOther]);
                 } else {
@@ -2443,10 +2532,18 @@ function renderQuestionInput({
 
 function resolveQuestionInput(question: ResearchLinkQuestion) {
   if (question.type === "single_select" && question.options?.length) {
-    return { kind: "select" as const, options: question.options, allowOther: Boolean(question.allowOther) };
+    return {
+      kind: "select" as const,
+      options: question.options,
+      allowOther: Boolean(question.allowOther),
+    };
   }
   if (question.type === "multi_select" && question.options?.length) {
-    return { kind: "multi" as const, options: question.options, allowOther: Boolean(question.allowOther) };
+    return {
+      kind: "multi" as const,
+      options: question.options,
+      allowOther: Boolean(question.allowOther),
+    };
   }
   if (question.type === "likert") {
     return {

@@ -11,7 +11,7 @@ import {
   Mail,
   Send,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   ActionFunctionArgs,
   LoaderFunctionArgs,
@@ -41,7 +41,10 @@ import { QuestionListEditor } from "../components/QuestionListEditor";
 import { SendSurveyDialog } from "../components/SendSurveyDialog";
 import { WalkthroughRecorder } from "../components/WalkthroughRecorder";
 import { getResearchLinkById } from "../db";
-import { useSurveyAutoSave } from "../hooks/useSurveyAutoSave";
+import {
+  extractFormFields,
+  useOptimisticForm,
+} from "../hooks/useOptimisticForm";
 import {
   createEmptyQuestion,
   ResearchLinkPayloadSchema,
@@ -261,6 +264,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
     allowVideo: formData.get("allow_video"),
     defaultResponseMode: formData.get("default_response_mode"),
     isLive: formData.get("is_live"),
+    isArchived: formData.get("is_archived"),
+    collectTitle: formData.get("collect_title"),
+    respondentFields: formData.get("respondent_fields") ?? undefined,
     questions: formData.get("questions") ?? "[]",
   };
 
@@ -312,8 +318,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (formData.has("default_response_mode"))
     updatePayload.default_response_mode = payload.defaultResponseMode;
   if (formData.has("is_live")) updatePayload.is_live = payload.isLive;
-  if (formData.has("is_archived")) updatePayload.is_archived = payload.isArchived;
-  if (formData.has("collect_title")) updatePayload.collect_title = payload.collectTitle;
+  if (formData.has("is_archived"))
+    updatePayload.is_archived = payload.isArchived;
+  if (formData.has("collect_title"))
+    updatePayload.collect_title = payload.collectTitle;
   if (formData.has("respondent_fields")) {
     updatePayload.respondent_fields = payload.respondentFields;
     // Keep collect_title in sync for backwards compatibility
@@ -388,65 +396,30 @@ export default function EditResearchLinkPage() {
     peopleWithEmails,
   } = useLoaderData<typeof loader>();
   const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
-  const { save, debouncedSave, flush, status, fetcher } = useSurveyAutoSave();
 
-  const [name, setName] = useState(list.name);
-  const [slug, setSlug] = useState(list.slug);
+  // Loader-first state: dirty edits overlay on top of loader data
+  const questionsWithDefault = useMemo(
+    () =>
+      initialQuestions.length > 0 ? initialQuestions : [createEmptyQuestion()],
+    [initialQuestions],
+  );
+  const loaderFields = useMemo(
+    () => extractFormFields(list, questionsWithDefault),
+    [list, questionsWithDefault],
+  );
+  const {
+    fields,
+    setText,
+    setImmediate,
+    setDirtyOnly,
+    setQuestions,
+    flush,
+    status,
+    errors,
+  } = useOptimisticForm(loaderFields);
+
+  // UI-only state (not form fields)
   const [slugEdited, setSlugEdited] = useState(true);
-  const [heroTitle, setHeroTitle] = useState(list.hero_title ?? "");
-  const [heroSubtitle, setHeroSubtitle] = useState(list.hero_subtitle ?? "");
-  const [instructions, setInstructions] = useState(
-    (list as { instructions?: string | null }).instructions ?? "",
-  );
-  const [heroCtaLabel, setHeroCtaLabel] = useState(
-    list.hero_cta_label ?? "Continue",
-  );
-  const [heroCtaHelper, setHeroCtaHelper] = useState(
-    list.hero_cta_helper ?? "",
-  );
-  const [calendarUrl, setCalendarUrl] = useState(list.calendar_url ?? "");
-  const [redirectUrl, setRedirectUrl] = useState(list.redirect_url ?? "");
-  const [allowChat, setAllowChat] = useState(Boolean(list.allow_chat));
-  const [allowVoice, setAllowVoice] = useState(Boolean(list.allow_voice));
-  const [allowVideo, setAllowVideo] = useState(Boolean(list.allow_video));
-  const [defaultResponseMode, setDefaultResponseMode] = useState<
-    "form" | "chat" | "voice"
-  >((list.default_response_mode as "form" | "chat" | "voice") ?? "form");
-  const [isLive, setIsLive] = useState(Boolean(list.is_live));
-  const [aiAutonomy, setAiAutonomy] = useState<
-    "strict" | "moderate" | "adaptive"
-  >(
-    ((list as { ai_autonomy?: string }).ai_autonomy as
-      | "strict"
-      | "moderate"
-      | "adaptive") ?? "strict",
-  );
-  // Simplified identity type: anonymous | email | phone
-  const [identityType, setIdentityType] = useState<
-    "anonymous" | "email" | "phone"
-  >(() => {
-    const mode = (list as { identity_mode?: string }).identity_mode as
-      | "anonymous"
-      | "identified"
-      | undefined;
-    const field = (list as { identity_field?: string }).identity_field as
-      | "email"
-      | "phone"
-      | undefined;
-    if (mode === "anonymous") return "anonymous";
-    return field || "email";
-  });
-  const [collectTitle, setCollectTitle] = useState(
-    Boolean((list as { collect_title?: boolean }).collect_title),
-  );
-  const [respondentFields, setRespondentFields] = useState<string[]>(() => {
-    const raw = (list as { respondent_fields?: string[] }).respondent_fields;
-    if (Array.isArray(raw)) return raw;
-    return ["first_name", "last_name"];
-  });
-  const [isArchived, setIsArchived] = useState(
-    Boolean((list as { is_archived?: boolean }).is_archived),
-  );
   const [walkthroughVideoUrl, setWalkthroughVideoUrl] = useState<string | null>(
     initialWalkthroughUrl ?? null,
   );
@@ -455,146 +428,38 @@ export default function EditResearchLinkPage() {
   >(initialWalkthroughThumbnailUrl ?? null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
-  const [questions, setQuestions] = useState<ResearchLinkQuestion[]>(() => {
-    if (initialQuestions.length > 0) return initialQuestions;
-    return [createEmptyQuestion()];
-  });
-
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
-
-  // Use refs to build form data from latest state without adding all state to useCallback deps
-  const stateRef = useRef({
-    name,
-    slug,
-    heroTitle,
-    heroSubtitle,
-    instructions,
-    heroCtaLabel,
-    heroCtaHelper,
-    calendarUrl,
-    redirectUrl,
-    allowChat,
-    allowVoice,
-    allowVideo,
-    defaultResponseMode,
-    isLive,
-    isArchived,
-    collectTitle,
-    respondentFields,
-    aiAutonomy,
-    identityType,
-    questions,
-  });
-  stateRef.current = {
-    name,
-    slug,
-    heroTitle,
-    heroSubtitle,
-    instructions,
-    heroCtaLabel,
-    heroCtaHelper,
-    calendarUrl,
-    redirectUrl,
-    allowChat,
-    allowVoice,
-    allowVideo,
-    defaultResponseMode,
-    isLive,
-    isArchived,
-    collectTitle,
-    respondentFields,
-    aiAutonomy,
-    identityType,
-    questions,
-  };
-
-  const buildFormData = useCallback((): Record<string, string> => {
-    const s = stateRef.current;
-    return {
-      name: s.name,
-      slug: s.slug,
-      description: "",
-      hero_title: s.heroTitle,
-      hero_subtitle: s.heroSubtitle,
-      instructions: s.instructions,
-      hero_cta_label: s.heroCtaLabel,
-      hero_cta_helper: s.heroCtaHelper,
-      calendar_url: s.calendarUrl,
-      redirect_url: s.redirectUrl,
-      allow_chat: String(s.allowChat),
-      allow_voice: String(s.allowVoice),
-      allow_video: String(s.allowVideo),
-      default_response_mode: s.defaultResponseMode,
-      is_live: String(s.isLive),
-      is_archived: String(s.isArchived),
-      collect_title: String(s.collectTitle),
-      respondent_fields: JSON.stringify(s.respondentFields),
-      ai_autonomy: s.aiAutonomy,
-      identity_type: s.identityType,
-      questions: JSON.stringify(s.questions),
-    };
-  }, []);
-
-  // Flush pending debounced save on unmount
-  useEffect(() => {
-    return () => flush();
-  }, [flush]);
 
   // Auto-slug from name
   useEffect(() => {
     if (!slugEdited) {
-      const nextSlug = slugify(name || "research-link", { lowercase: true });
-      setSlug(nextSlug);
+      const nextSlug = slugify(fields.name || "research-link", {
+        lowercase: true,
+      });
+      setDirtyOnly("slug", nextSlug);
     }
-  }, [name, slugEdited]);
+  }, [fields.name, slugEdited, setDirtyOnly]);
 
   // Reset default response mode if its modality is disabled
   useEffect(() => {
-    if (!allowChat && defaultResponseMode === "chat") {
-      setDefaultResponseMode("form");
+    if (!fields.allowChat && fields.defaultResponseMode === "chat") {
+      setImmediate("defaultResponseMode", "form");
     }
-    if (!allowVoice && defaultResponseMode === "voice") {
-      setDefaultResponseMode("form");
+    if (!fields.allowVoice && fields.defaultResponseMode === "voice") {
+      setImmediate("defaultResponseMode", "form");
     }
-  }, [allowChat, allowVoice, defaultResponseMode]);
-
-  // --- Auto-save wrappers ---
-
-  /** For text field changes: update state + debounced save */
-  const handleTextChange = useCallback(
-    (setter: (v: string) => void) => (value: string) => {
-      setter(value);
-      // State update is async, so we schedule the debounced save in a microtask
-      // to let React batch the setState, then buildFormData reads from ref
-      queueMicrotask(() => debouncedSave(buildFormData()));
-    },
-    [debouncedSave, buildFormData],
-  );
-
-  /** For toggle/structural changes: update state + immediate save */
-  const handleImmediateChange = useCallback(
-    <T,>(setter: (v: T) => void) =>
-      (value: T) => {
-        setter(value);
-        queueMicrotask(() => save(buildFormData()));
-      },
-    [save, buildFormData],
-  );
-
-  /** For questions: update state + immediate save */
-  const handleQuestionsChange = useCallback(
-    (next: ResearchLinkQuestion[]) => {
-      setQuestions(next);
-      queueMicrotask(() => save(buildFormData()));
-    },
-    [save, buildFormData],
-  );
+  }, [
+    fields.allowChat,
+    fields.allowVoice,
+    fields.defaultResponseMode,
+    setImmediate,
+  ]);
 
   const publicLink = useMemo(() => {
-    const path = routes.ask.public(slug || "your-slug");
+    const path = routes.ask.public(fields.slug || "your-slug");
     if (typeof window === "undefined") return path;
     return `${window.location.origin}${path}`;
-  }, [routes, slug]);
+  }, [routes, fields.slug]);
 
   const handleCopyLink = async () => {
     try {
@@ -605,10 +470,6 @@ export default function EditResearchLinkPage() {
       setCopiedLink(false);
     }
   };
-
-  // Error data from fetcher
-  const errors =
-    fetcher.data && "errors" in fetcher.data ? fetcher.data.errors : undefined;
 
   return (
     <PageContainer className="max-w-3xl space-y-4">
@@ -624,7 +485,7 @@ export default function EditResearchLinkPage() {
                 <ArrowLeft className="h-4 w-4" />
               </Link>
               <span className="truncate font-medium text-sm">
-                {name || "Untitled"}
+                {fields.name || "Untitled"}
               </span>
               {status === "saving" && (
                 <span className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
@@ -667,9 +528,9 @@ export default function EditResearchLinkPage() {
                       </Label>
                       <Input
                         id="name"
-                        value={name}
+                        value={fields.name}
                         onChange={(event) =>
-                          handleTextChange(setName)(event.target.value)
+                          setText("name", event.target.value)
                         }
                         required
                         className="h-9"
@@ -689,16 +550,14 @@ export default function EditResearchLinkPage() {
                       </Label>
                       <Input
                         id="slug"
-                        value={slug}
+                        value={fields.slug}
                         onChange={(event) => {
-                          // Slugify as user types for URL-safe slugs
                           const slugified = slugify(event.target.value, {
                             lowercase: true,
                             preserveLeadingUnderscore: false,
                           });
-                          setSlug(slugified);
+                          setText("slug", slugified);
                           setSlugEdited(true);
-                          queueMicrotask(() => debouncedSave(buildFormData()));
                         }}
                         required
                         className="h-9"
@@ -715,21 +574,25 @@ export default function EditResearchLinkPage() {
             </div>
 
             {/* Respondent fields summary — compact row showing which fields are collected */}
-            {respondentFields.length > 0 && (
+            {fields.respondentFields.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border/40 bg-muted/20 px-3 py-2">
-                <span className="mr-1 text-muted-foreground text-xs">Collecting:</span>
-                {identityType === "email" && (
+                <span className="mr-1 text-muted-foreground text-xs">
+                  Collecting:
+                </span>
+                {fields.identityType === "email" && (
                   <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-[11px] text-primary">
                     Email
                   </span>
                 )}
-                {identityType === "phone" && (
+                {fields.identityType === "phone" && (
                   <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-[11px] text-primary">
                     Phone
                   </span>
                 )}
-                {respondentFields.map((key) => {
-                  const opt = RESPONDENT_FIELD_OPTIONS.find((o) => o.key === key);
+                {fields.respondentFields.map((key) => {
+                  const opt = RESPONDENT_FIELD_OPTIONS.find(
+                    (o) => o.key === key,
+                  );
                   return (
                     <span
                       key={key}
@@ -765,9 +628,9 @@ export default function EditResearchLinkPage() {
                       </Label>
                       <Input
                         id="hero_title"
-                        value={heroTitle}
+                        value={fields.heroTitle}
                         onChange={(event) =>
-                          handleTextChange(setHeroTitle)(event.target.value)
+                          setText("heroTitle", event.target.value)
                         }
                         placeholder="Share your thoughts"
                         className="h-9"
@@ -782,9 +645,9 @@ export default function EditResearchLinkPage() {
                       </Label>
                       <Textarea
                         id="hero_subtitle"
-                        value={heroSubtitle}
+                        value={fields.heroSubtitle}
                         onChange={(event) =>
-                          handleTextChange(setHeroSubtitle)(event.target.value)
+                          setText("heroSubtitle", event.target.value)
                         }
                         rows={2}
                         placeholder="Brief description shown on landing page"
@@ -800,9 +663,9 @@ export default function EditResearchLinkPage() {
                       </Label>
                       <Textarea
                         id="instructions"
-                        value={instructions}
+                        value={fields.instructions}
                         onChange={(event) =>
-                          handleTextChange(setInstructions)(event.target.value)
+                          setText("instructions", event.target.value)
                         }
                         rows={3}
                         placeholder="Detailed instructions shown before starting the survey (optional)"
@@ -819,11 +682,9 @@ export default function EditResearchLinkPage() {
                         </Label>
                         <Input
                           id="hero_cta_label"
-                          value={heroCtaLabel}
+                          value={fields.heroCtaLabel}
                           onChange={(event) =>
-                            handleTextChange(setHeroCtaLabel)(
-                              event.target.value,
-                            )
+                            setText("heroCtaLabel", event.target.value)
                           }
                           className="h-9"
                         />
@@ -837,11 +698,9 @@ export default function EditResearchLinkPage() {
                         </Label>
                         <Input
                           id="hero_cta_helper"
-                          value={heroCtaHelper}
+                          value={fields.heroCtaHelper}
                           onChange={(event) =>
-                            handleTextChange(setHeroCtaHelper)(
-                              event.target.value,
-                            )
+                            setText("heroCtaHelper", event.target.value)
                           }
                           className="h-9"
                         />
@@ -878,8 +737,8 @@ export default function EditResearchLinkPage() {
                 <Card>
                   <CardContent className="py-3">
                     <QuestionListEditor
-                      questions={questions}
-                      onChange={handleQuestionsChange}
+                      questions={fields.questions}
+                      onChange={setQuestions}
                       listId={listId}
                     />
                     {errors?.questions ? (
@@ -909,12 +768,14 @@ export default function EditResearchLinkPage() {
                         <Button
                           type="button"
                           variant={
-                            identityType === "anonymous" ? "default" : "ghost"
+                            fields.identityType === "anonymous"
+                              ? "default"
+                              : "ghost"
                           }
                           size="sm"
                           className="h-7 px-2.5"
                           onClick={() =>
-                            handleImmediateChange(setIdentityType)("anonymous")
+                            setImmediate("identityType", "anonymous")
                           }
                         >
                           Anonymous
@@ -922,26 +783,26 @@ export default function EditResearchLinkPage() {
                         <Button
                           type="button"
                           variant={
-                            identityType === "email" ? "default" : "ghost"
+                            fields.identityType === "email"
+                              ? "default"
+                              : "ghost"
                           }
                           size="sm"
                           className="h-7 px-2.5"
-                          onClick={() =>
-                            handleImmediateChange(setIdentityType)("email")
-                          }
+                          onClick={() => setImmediate("identityType", "email")}
                         >
                           Email
                         </Button>
                         <Button
                           type="button"
                           variant={
-                            identityType === "phone" ? "default" : "ghost"
+                            fields.identityType === "phone"
+                              ? "default"
+                              : "ghost"
                           }
                           size="sm"
                           className="h-7 px-2.5"
-                          onClick={() =>
-                            handleImmediateChange(setIdentityType)("phone")
-                          }
+                          onClick={() => setImmediate("identityType", "phone")}
                         >
                           Phone
                         </Button>
@@ -955,8 +816,8 @@ export default function EditResearchLinkPage() {
                         </p>
                       </div>
                       <Switch
-                        checked={allowChat}
-                        onCheckedChange={handleImmediateChange(setAllowChat)}
+                        checked={fields.allowChat}
+                        onCheckedChange={(v) => setImmediate("allowChat", v)}
                       />
                     </div>
                     <div className="flex items-center justify-between gap-4 rounded-md border border-violet-500/30 border-dashed bg-violet-500/5 px-3 py-2.5">
@@ -972,8 +833,8 @@ export default function EditResearchLinkPage() {
                         </p>
                       </div>
                       <Switch
-                        checked={allowVoice}
-                        onCheckedChange={handleImmediateChange(setAllowVoice)}
+                        checked={fields.allowVoice}
+                        onCheckedChange={(v) => setImmediate("allowVoice", v)}
                       />
                     </div>
                     <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
@@ -984,8 +845,8 @@ export default function EditResearchLinkPage() {
                         </p>
                       </div>
                       <Switch
-                        checked={allowVideo}
-                        onCheckedChange={handleImmediateChange(setAllowVideo)}
+                        checked={fields.allowVideo}
+                        onCheckedChange={(v) => setImmediate("allowVideo", v)}
                       />
                     </div>
                     <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
@@ -996,14 +857,14 @@ export default function EditResearchLinkPage() {
                         <Button
                           type="button"
                           variant={
-                            defaultResponseMode === "form" ? "default" : "ghost"
+                            fields.defaultResponseMode === "form"
+                              ? "default"
+                              : "ghost"
                           }
                           size="sm"
                           className="h-7 px-2.5"
                           onClick={() =>
-                            handleImmediateChange(setDefaultResponseMode)(
-                              "form",
-                            )
+                            setImmediate("defaultResponseMode", "form")
                           }
                         >
                           Form
@@ -1011,57 +872,55 @@ export default function EditResearchLinkPage() {
                         <Button
                           type="button"
                           variant={
-                            defaultResponseMode === "chat" ? "default" : "ghost"
-                          }
-                          size="sm"
-                          className="h-7 px-2.5"
-                          onClick={() =>
-                            handleImmediateChange(setDefaultResponseMode)(
-                              "chat",
-                            )
-                          }
-                          disabled={!allowChat}
-                        >
-                          Chat
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={
-                            defaultResponseMode === "voice"
+                            fields.defaultResponseMode === "chat"
                               ? "default"
                               : "ghost"
                           }
                           size="sm"
                           className="h-7 px-2.5"
                           onClick={() =>
-                            handleImmediateChange(setDefaultResponseMode)(
-                              "voice",
-                            )
+                            setImmediate("defaultResponseMode", "chat")
                           }
-                          disabled={!allowVoice}
+                          disabled={!fields.allowChat}
+                        >
+                          Chat
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={
+                            fields.defaultResponseMode === "voice"
+                              ? "default"
+                              : "ghost"
+                          }
+                          size="sm"
+                          className="h-7 px-2.5"
+                          onClick={() =>
+                            setImmediate("defaultResponseMode", "voice")
+                          }
+                          disabled={!fields.allowVoice}
                         >
                           Voice
                         </Button>
                       </div>
                     </div>
                     {/* AI Autonomy - only show when chat or voice enabled */}
-                    {(allowChat || allowVoice) && (
+                    {(fields.allowChat || fields.allowVoice) && (
                       <div className="flex items-center justify-between gap-4 rounded-md border border-blue-500/30 border-dashed bg-blue-500/5 px-3 py-2.5">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-sm">AI autonomy</p>
-                            {aiAutonomy === "adaptive" && (
+                            {fields.aiAutonomy === "adaptive" && (
                               <span className="rounded bg-blue-500/20 px-1.5 py-0.5 font-medium text-[10px] text-blue-600">
                                 Pro
                               </span>
                             )}
                           </div>
                           <p className="text-muted-foreground text-xs">
-                            {aiAutonomy === "strict" &&
+                            {fields.aiAutonomy === "strict" &&
                               "Follows questions exactly"}
-                            {aiAutonomy === "moderate" &&
+                            {fields.aiAutonomy === "moderate" &&
                               "Can ask brief follow-ups"}
-                            {aiAutonomy === "adaptive" &&
+                            {fields.aiAutonomy === "adaptive" &&
                               "Adapts based on respondent context"}
                           </p>
                         </div>
@@ -1069,25 +928,27 @@ export default function EditResearchLinkPage() {
                           <Button
                             type="button"
                             variant={
-                              aiAutonomy === "strict" ? "default" : "ghost"
+                              fields.aiAutonomy === "strict"
+                                ? "default"
+                                : "ghost"
                             }
                             size="sm"
                             className="h-7 px-2.5"
-                            onClick={() =>
-                              handleImmediateChange(setAiAutonomy)("strict")
-                            }
+                            onClick={() => setImmediate("aiAutonomy", "strict")}
                           >
                             Strict
                           </Button>
                           <Button
                             type="button"
                             variant={
-                              aiAutonomy === "moderate" ? "default" : "ghost"
+                              fields.aiAutonomy === "moderate"
+                                ? "default"
+                                : "ghost"
                             }
                             size="sm"
                             className="h-7 px-2.5"
                             onClick={() =>
-                              handleImmediateChange(setAiAutonomy)("moderate")
+                              setImmediate("aiAutonomy", "moderate")
                             }
                           >
                             Moderate
@@ -1095,12 +956,14 @@ export default function EditResearchLinkPage() {
                           <Button
                             type="button"
                             variant={
-                              aiAutonomy === "adaptive" ? "default" : "ghost"
+                              fields.aiAutonomy === "adaptive"
+                                ? "default"
+                                : "ghost"
                             }
                             size="sm"
                             className="h-7 px-2.5"
                             onClick={() =>
-                              handleImmediateChange(setAiAutonomy)("adaptive")
+                              setImmediate("aiAutonomy", "adaptive")
                             }
                           >
                             Adaptive
@@ -1109,9 +972,9 @@ export default function EditResearchLinkPage() {
                       </div>
                     )}
                     <RespondentFieldsPicker
-                      fields={respondentFields}
-                      onChange={handleImmediateChange(setRespondentFields)}
-                      identityType={identityType}
+                      fields={fields.respondentFields}
+                      onChange={(v) => setImmediate("respondentFields", v)}
+                      identityType={fields.identityType}
                     />
                     <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
                       <div className="min-w-0">
@@ -1121,8 +984,8 @@ export default function EditResearchLinkPage() {
                         </p>
                       </div>
                       <Switch
-                        checked={isLive}
-                        onCheckedChange={handleImmediateChange(setIsLive)}
+                        checked={fields.isLive}
+                        onCheckedChange={(v) => setImmediate("isLive", v)}
                       />
                     </div>
                     <div className="flex items-center justify-between gap-4 rounded-md border border-amber-500/30 border-dashed bg-amber-500/5 px-3 py-2.5">
@@ -1136,8 +999,8 @@ export default function EditResearchLinkPage() {
                         </p>
                       </div>
                       <Switch
-                        checked={isArchived}
-                        onCheckedChange={handleImmediateChange(setIsArchived)}
+                        checked={fields.isArchived}
+                        onCheckedChange={(v) => setImmediate("isArchived", v)}
                       />
                     </div>
                     <div className="grid gap-3 pt-2 sm:grid-cols-2">
@@ -1150,9 +1013,9 @@ export default function EditResearchLinkPage() {
                         </Label>
                         <Input
                           id="calendar_url"
-                          value={calendarUrl}
+                          value={fields.calendarUrl}
                           onChange={(event) =>
-                            handleTextChange(setCalendarUrl)(event.target.value)
+                            setText("calendarUrl", event.target.value)
                           }
                           placeholder="https://cal.com/..."
                           className="h-9"
@@ -1172,9 +1035,9 @@ export default function EditResearchLinkPage() {
                         </Label>
                         <Input
                           id="redirect_url"
-                          value={redirectUrl}
+                          value={fields.redirectUrl}
                           onChange={(event) =>
-                            handleTextChange(setRedirectUrl)(event.target.value)
+                            setText("redirectUrl", event.target.value)
                           }
                           placeholder="https://..."
                           className="h-9"
@@ -1312,9 +1175,9 @@ export default function EditResearchLinkPage() {
                       collection, or lead capture.
                     </p>
                     <EmbedCodeGenerator
-                      slug={slug}
-                      heroTitle={heroTitle}
-                      heroCtaLabel={heroCtaLabel}
+                      slug={fields.slug}
+                      heroTitle={fields.heroTitle}
+                      heroCtaLabel={fields.heroCtaLabel}
                       walkthroughVideoUrl={walkthroughVideoUrl}
                       walkthroughThumbnailUrl={walkthroughThumbnailUrl}
                     />
@@ -1334,8 +1197,8 @@ export default function EditResearchLinkPage() {
           accountId={accountId}
           projectId={projectId}
           surveyId={listId}
-          surveySlug={slug}
-          surveyName={name}
+          surveySlug={fields.slug}
+          surveyName={fields.name}
           fromEmail={gmailEmail}
           people={peopleWithEmails}
         />
@@ -1345,7 +1208,7 @@ export default function EditResearchLinkPage() {
         isOpen={isQRModalOpen}
         onClose={() => setIsQRModalOpen(false)}
         url={publicLink}
-        title={name}
+        title={fields.name}
       />
     </PageContainer>
   );
