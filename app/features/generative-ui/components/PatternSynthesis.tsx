@@ -117,23 +117,23 @@ export function PatternSynthesis({ data, isStreaming, onAction }: PatternSynthes
 										<p className="mt-1 text-muted-foreground text-sm leading-relaxed">{pattern.statement}</p>
 									)}
 								</div>
-									{pattern.detailUrl && (
-										<Link
-											to={pattern.detailUrl}
-											onClick={() =>
-												onAction?.("openPattern", {
-													patternId: pattern.id,
-													patternName: pattern.name,
-													detailUrl: pattern.detailUrl,
-												})
-											}
-											className="flex-shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-											title="View pattern detail"
-										>
-											<ExternalLink className="h-3.5 w-3.5" />
-										</Link>
-									)}
-								</div>
+								{pattern.detailUrl && (
+									<Link
+										to={pattern.detailUrl}
+										onClick={() =>
+											onAction?.("openPattern", {
+												patternId: pattern.id,
+												patternName: pattern.name,
+												detailUrl: pattern.detailUrl,
+											})
+										}
+										className="flex-shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+										title="View pattern detail"
+									>
+										<ExternalLink className="h-3.5 w-3.5" />
+									</Link>
+								)}
+							</div>
 
 							{/* Mention + source counts */}
 							<div className="mt-2 flex items-center gap-3 text-muted-foreground text-xs">
@@ -153,7 +153,7 @@ export function PatternSynthesis({ data, isStreaming, onAction }: PatternSynthes
 							</div>
 
 							{/* Top quotes */}
-								{pattern.topQuotes && pattern.topQuotes.length > 0 && (
+							{pattern.topQuotes && pattern.topQuotes.length > 0 && (
 								<div className="mt-3 space-y-2 pl-3">
 									{pattern.topQuotes.map((quote, i) => (
 										<div key={i} className="rounded-r-md border-l-2 border-l-muted-foreground/20 py-1.5 pr-2 pl-3">
@@ -167,26 +167,26 @@ export function PatternSynthesis({ data, isStreaming, onAction }: PatternSynthes
 										</div>
 									))}
 								</div>
-								)}
-								<div className="mt-3">
-									<button
-										type="button"
-										className="rounded-md border px-2.5 py-1 font-medium text-xs transition-colors hover:bg-muted"
-										onClick={() =>
-											onAction?.("inspectPattern", {
-												patternId: pattern.id,
-												patternName: pattern.name,
-												confidenceTier: pattern.confidenceTier,
-												detailUrl: pattern.detailUrl ?? null,
-											})
-										}
-									>
-										Inspect with agent
-									</button>
-								</div>
+							)}
+							<div className="mt-3">
+								<button
+									type="button"
+									className="rounded-md border px-2.5 py-1 font-medium text-xs transition-colors hover:bg-muted"
+									onClick={() =>
+										onAction?.("inspectPattern", {
+											patternId: pattern.id,
+											patternName: pattern.name,
+											confidenceTier: pattern.confidenceTier,
+											detailUrl: pattern.detailUrl ?? null,
+										})
+									}
+								>
+									Inspect with agent
+								</button>
 							</div>
-						);
-					})}
+						</div>
+					);
+				})}
 
 				{data.patterns.length === 0 && (
 					<div className="px-5 py-6">
@@ -201,14 +201,12 @@ export function PatternSynthesis({ data, isStreaming, onAction }: PatternSynthes
 			{(data.nextAction || data.nextActionUrl) && (
 				<div className="border-t px-5 py-4">
 					{data.nextAction && <p className="text-muted-foreground text-sm">{data.nextAction}</p>}
-						{data.nextActionUrl && (
-							<Link
-								to={data.nextActionUrl}
-								onClick={() =>
-									onAction?.("explorePatterns", { nextActionUrl: data.nextActionUrl })
-								}
-								className="mt-2 inline-flex items-center gap-1.5 font-medium text-foreground text-sm transition-colors hover:text-foreground/80"
-							>
+					{data.nextActionUrl && (
+						<Link
+							to={data.nextActionUrl}
+							onClick={() => onAction?.("explorePatterns", { nextActionUrl: data.nextActionUrl })}
+							className="mt-2 inline-flex items-center gap-1.5 font-medium text-foreground text-sm transition-colors hover:text-foreground/80"
+						>
 							Explore patterns
 							<ArrowRight className="h-3.5 w-3.5" />
 						</Link>

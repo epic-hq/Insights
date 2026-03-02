@@ -4,8 +4,8 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { buildResponsesCsv, extractAnswer, getMediaType, isR2Key } from "./utils";
 import type { ResearchLinkQuestion } from "./schemas";
+import { buildResponsesCsv, extractAnswer, getMediaType, isR2Key } from "./utils";
 
 describe("getMediaType", () => {
 	it("should detect image extensions", () => {

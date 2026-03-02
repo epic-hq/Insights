@@ -13,9 +13,7 @@ function getRawProps(node: A2UIComponent): Record<string, unknown> | undefined {
 	const componentType = Object.keys(node.component)[0];
 	if (!componentType) return undefined;
 	const value = node.component[componentType];
-	return value && typeof value === "object"
-		? (value as Record<string, unknown>)
-		: undefined;
+	return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
 }
 
 function getExplicitChildren(rawProps: Record<string, unknown> | undefined): string[] {
@@ -28,7 +26,7 @@ function getExplicitChildren(rawProps: Record<string, unknown> | undefined): str
 }
 
 function getTemplateChild(
-	rawProps: Record<string, unknown> | undefined,
+	rawProps: Record<string, unknown> | undefined
 ): { dataBinding: string; componentId: string } | null {
 	if (!rawProps) return null;
 	const children = rawProps.children;
@@ -61,18 +59,13 @@ export function buildRenderPlan(surface: SurfaceState): RenderPlanNode[] {
 	if (surface.components.size === 0) return [];
 
 	const rootNode = surface.rootId
-		? surface.components.get(surface.rootId) ?? null
+		? (surface.components.get(surface.rootId) ?? null)
 		: (surface.components.values().next().value ?? null);
 	if (!rootNode) return [];
 
 	const plan: RenderPlanNode[] = [];
 
-	const walk = (
-		nodeId: string,
-		depth: number,
-		dataScopePath: string | undefined,
-		ancestry: Set<string>,
-	) => {
+	const walk = (nodeId: string, depth: number, dataScopePath: string | undefined, ancestry: Set<string>) => {
 		const node = surface.components.get(nodeId);
 		if (!node) return;
 
@@ -81,9 +74,7 @@ export function buildRenderPlan(surface: SurfaceState): RenderPlanNode[] {
 		const nextAncestry = new Set(ancestry);
 		nextAncestry.add(ancestryKey);
 
-		const actionComponentId = dataScopePath
-			? `${node.id}@${dataScopePath}`
-			: node.id;
+		const actionComponentId = dataScopePath ? `${node.id}@${dataScopePath}` : node.id;
 		plan.push({
 			key: `${actionComponentId}#${plan.length}`,
 			node,
@@ -101,16 +92,13 @@ export function buildRenderPlan(surface: SurfaceState): RenderPlanNode[] {
 		const templateChild = getTemplateChild(rawProps);
 		if (!templateChild) return;
 
-		const items = resolveTemplateData(
-			surface.dataModel,
-			templateChild.dataBinding,
-		);
+		const items = resolveTemplateData(surface.dataModel, templateChild.dataBinding);
 		for (let index = 0; index < items.length; index += 1) {
 			walk(
 				templateChild.componentId,
 				depth + 1,
 				buildTemplateScopePath(templateChild.dataBinding, index),
-				nextAncestry,
+				nextAncestry
 			);
 		}
 	};

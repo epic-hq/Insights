@@ -19,8 +19,13 @@ function toNonEmptyString(value: unknown): string | null {
  * Returns warning strings for each dependency found.
  */
 function checkBranchDependencies(
-	questions: Array<{ id: string; prompt: string; hidden?: boolean; branching?: { rules?: Array<{ targetQuestionId?: string }> } | null }>,
-	targetQuestionIds: Set<string>,
+	questions: Array<{
+		id: string;
+		prompt: string;
+		hidden?: boolean;
+		branching?: { rules?: Array<{ targetQuestionId?: string }> } | null;
+	}>,
+	targetQuestionIds: Set<string>
 ): string[] {
 	const warnings: string[] = [];
 	for (const q of questions) {
@@ -31,7 +36,7 @@ function checkBranchDependencies(
 				const targetQ = questions.find((tq) => tq.id === rule.targetQuestionId);
 				const targetLabel = targetQ ? `"${targetQ.prompt.slice(0, 60)}"` : rule.targetQuestionId;
 				warnings.push(
-					`Question "${q.prompt.slice(0, 60)}" has a branch rule targeting ${targetLabel} which will be hidden/deleted. The branch will fall through to linear order.`,
+					`Question "${q.prompt.slice(0, 60)}" has a branch rule targeting ${targetLabel} which will be hidden/deleted. The branch will fall through to linear order.`
 				);
 			}
 		}
@@ -58,20 +63,14 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 					required: z.boolean().nullish(),
 					helperText: z.string().nullish(),
 					hidden: z.boolean().nullish(),
-				}),
+				})
 			)
 			.nullish()
 			.describe("For 'update' action: partial updates keyed by questionId"),
 		// For hide/unhide/delete: which questions
-		questionIds: z
-			.array(z.string())
-			.nullish()
-			.describe("For hide/unhide/delete: question IDs to act on"),
+		questionIds: z.array(z.string()).nullish().describe("For hide/unhide/delete: question IDs to act on"),
 		// For reorder: full ordered list of question IDs
-		orderedIds: z
-			.array(z.string())
-			.nullish()
-			.describe("For 'reorder': the complete ordered list of question IDs"),
+		orderedIds: z.array(z.string()).nullish().describe("For 'reorder': the complete ordered list of question IDs"),
 		// For add: new questions + insertion point
 		newQuestions: z
 			.array(
@@ -81,7 +80,7 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 					options: z.array(z.string()).optional(),
 					required: z.boolean().optional(),
 					helperText: z.string().optional(),
-				}),
+				})
 			)
 			.nullish()
 			.describe("For 'add': new questions to insert"),
@@ -120,9 +119,7 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 				return { success: false, message: `Survey not found: ${surveyId}`, updatedCount: 0 };
 			}
 
-			let questions = Array.isArray(survey.questions)
-				? (survey.questions as Array<Record<string, unknown>>)
-				: [];
+			let questions = Array.isArray(survey.questions) ? (survey.questions as Array<Record<string, unknown>>) : [];
 			const warnings: string[] = [];
 
 			switch (input.action) {
@@ -178,8 +175,13 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 					const hideSet = new Set(input.questionIds);
 					// Check branch dependencies before hiding
 					const branchWarnings = checkBranchDependencies(
-						questions as Array<{ id: string; prompt: string; hidden?: boolean; branching?: { rules?: Array<{ targetQuestionId?: string }> } | null }>,
-						hideSet,
+						questions as Array<{
+							id: string;
+							prompt: string;
+							hidden?: boolean;
+							branching?: { rules?: Array<{ targetQuestionId?: string }> } | null;
+						}>,
+						hideSet
 					);
 					warnings.push(...branchWarnings);
 					let hidden = 0;
@@ -191,7 +193,12 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 						return q;
 					});
 					if (hidden === 0) {
-						return { success: false, message: "No matching questions found to hide.", updatedCount: 0, warnings: warnings.length > 0 ? warnings : null };
+						return {
+							success: false,
+							message: "No matching questions found to hide.",
+							updatedCount: 0,
+							warnings: warnings.length > 0 ? warnings : null,
+						};
 					}
 					break;
 				}
@@ -222,15 +229,25 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 					const deleteSet = new Set(input.questionIds);
 					// Check branch dependencies before deleting
 					const deleteWarnings = checkBranchDependencies(
-						questions as Array<{ id: string; prompt: string; hidden?: boolean; branching?: { rules?: Array<{ targetQuestionId?: string }> } | null }>,
-						deleteSet,
+						questions as Array<{
+							id: string;
+							prompt: string;
+							hidden?: boolean;
+							branching?: { rules?: Array<{ targetQuestionId?: string }> } | null;
+						}>,
+						deleteSet
 					);
 					warnings.push(...deleteWarnings);
 					const before = questions.length;
 					questions = questions.filter((q) => !deleteSet.has(q.id as string));
 					const deleted = before - questions.length;
 					if (deleted === 0) {
-						return { success: false, message: "No matching questions found to delete.", updatedCount: 0, warnings: warnings.length > 0 ? warnings : null };
+						return {
+							success: false,
+							message: "No matching questions found to delete.",
+							updatedCount: 0,
+							warnings: warnings.length > 0 ? warnings : null,
+						};
 					}
 					break;
 				}
@@ -270,10 +287,7 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 			}
 
 			// Save back to database
-			const { error: updateError } = await supabase
-				.from("research_links")
-				.update({ questions })
-				.eq("id", surveyId);
+			const { error: updateError } = await supabase.from("research_links").update({ questions }).eq("id", surveyId);
 
 			if (updateError) {
 				consola.error("update-survey-questions: save error", updateError);

@@ -13,112 +13,99 @@ import { InterviewQuestionsAccordion } from "./InterviewQuestionsAccordion";
 import { LazyTranscriptResults } from "./LazyTranscriptResults";
 
 interface Participant {
-  id: number;
-  role: string | null;
-  transcript_key: string | null;
-  display_name: string | null;
-  people?: {
-    id?: string;
-    name?: string | null;
-  };
+	id: number;
+	role: string | null;
+	transcript_key: string | null;
+	display_name: string | null;
+	people?: {
+		id?: string;
+		name?: string | null;
+	};
 }
 
 interface InterviewSourcePanelProps {
-  interview: {
-    id: string;
-    media_url: string | null;
-    thumbnail_url?: string | null;
-    file_extension?: string | null;
-    source_type?: string | null;
-    media_type?: string | null;
-    hasTranscript?: boolean;
-    hasFormattedTranscript?: boolean;
-    duration_sec: number | null;
-    participants: Participant[];
-  };
-  evidence: Evidence[];
-  accountId: string;
-  projectId: string;
-  onSpeakerClick: () => void;
-  /** Active source tab from URL state */
-  activeSource: string;
-  /** Callback to change source tab (updates URL) */
-  onSourceChange: (source: string) => void;
+	interview: {
+		id: string;
+		media_url: string | null;
+		thumbnail_url?: string | null;
+		file_extension?: string | null;
+		source_type?: string | null;
+		media_type?: string | null;
+		hasTranscript?: boolean;
+		hasFormattedTranscript?: boolean;
+		duration_sec: number | null;
+		participants: Participant[];
+	};
+	evidence: Evidence[];
+	accountId: string;
+	projectId: string;
+	onSpeakerClick: () => void;
+	/** Active source tab from URL state */
+	activeSource: string;
+	/** Callback to change source tab (updates URL) */
+	onSourceChange: (source: string) => void;
 }
 
 export function InterviewSourcePanel({
-  interview,
-  evidence,
-  accountId,
-  projectId,
-  onSpeakerClick,
-  activeSource,
-  onSourceChange,
+	interview,
+	evidence,
+	accountId,
+	projectId,
+	onSpeakerClick,
+	activeSource,
+	onSourceChange,
 }: InterviewSourcePanelProps) {
-  const [playbackTime, setPlaybackTime] = useState<number | null>(null);
+	const [playbackTime, setPlaybackTime] = useState<number | null>(null);
 
-  const handleChapterClick = (seconds: number | null) => {
-    if (seconds !== null) {
-      setPlaybackTime(seconds);
-    }
-  };
+	const handleChapterClick = (seconds: number | null) => {
+		if (seconds !== null) {
+			setPlaybackTime(seconds);
+		}
+	};
 
-  const hasMedia = !!interview.media_url;
+	const hasMedia = !!interview.media_url;
 
-  return (
-    <div className="space-y-4">
-      {/* Media player always visible when available */}
-      {hasMedia && (
-        <MediaPlayer
-          mediaUrl={interview.media_url!}
-          thumbnailUrl={interview.thumbnail_url}
-          startTime={playbackTime ?? undefined}
-          mediaType={deriveMediaFormat(
-            interview.file_extension,
-            interview.source_type,
-            interview.media_type,
-          )}
-          className="w-full"
-        />
-      )}
+	return (
+		<div className="space-y-4">
+			{/* Media player always visible when available */}
+			{hasMedia && (
+				<MediaPlayer
+					mediaUrl={interview.media_url!}
+					thumbnailUrl={interview.thumbnail_url}
+					startTime={playbackTime ?? undefined}
+					mediaType={deriveMediaFormat(interview.file_extension, interview.source_type, interview.media_type)}
+					className="w-full"
+				/>
+			)}
 
-      <Tabs value={activeSource} onValueChange={onSourceChange}>
-        <TabsList>
-          <TabsTrigger value="media">Chapters</TabsTrigger>
-          <TabsTrigger value="transcript">Transcript</TabsTrigger>
-        </TabsList>
+			<Tabs value={activeSource} onValueChange={onSourceChange}>
+				<TabsList>
+					<TabsTrigger value="media">Chapters</TabsTrigger>
+					<TabsTrigger value="transcript">Transcript</TabsTrigger>
+				</TabsList>
 
-        <TabsContent value="media" className="space-y-4">
-          {evidence.length > 0 ? (
-            <InterviewChapters
-              evidence={evidence}
-              onChapterClick={handleChapterClick}
-            />
-          ) : (
-            <div className="rounded-lg border border-dashed p-6 text-center">
-              <p className="text-muted-foreground text-sm">
-                Chapters will appear once analysis is complete
-              </p>
-            </div>
-          )}
-        </TabsContent>
+				<TabsContent value="media" className="space-y-4">
+					{evidence.length > 0 ? (
+						<InterviewChapters evidence={evidence} onChapterClick={handleChapterClick} />
+					) : (
+						<div className="rounded-lg border border-dashed p-6 text-center">
+							<p className="text-muted-foreground text-sm">Chapters will appear once analysis is complete</p>
+						</div>
+					)}
+				</TabsContent>
 
-        <TabsContent value="transcript" className="space-y-4">
-          <LazyTranscriptResults
-            interviewId={interview.id}
-            hasTranscript={interview.hasTranscript}
-            hasFormattedTranscript={interview.hasFormattedTranscript}
-            durationSec={interview.duration_sec}
-            participants={interview.participants}
-            onSpeakerClick={onSpeakerClick}
-          />
-          <InterviewQuestionsAccordion
-            interviewId={interview.id}
-            projectId={projectId}
-            accountId={accountId}
-          />
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
+				<TabsContent value="transcript" className="space-y-4">
+					<LazyTranscriptResults
+						interviewId={interview.id}
+						hasTranscript={interview.hasTranscript}
+						hasFormattedTranscript={interview.hasFormattedTranscript}
+						durationSec={interview.duration_sec}
+						participants={interview.participants}
+						onSpeakerClick={onSpeakerClick}
+					/>
+					<InterviewQuestionsAccordion interviewId={interview.id} projectId={projectId} accountId={accountId} />
+				</TabsContent>
+			</Tabs>
+		</div>
+	);
 }

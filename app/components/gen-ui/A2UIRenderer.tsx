@@ -25,19 +25,19 @@ import { cn } from "~/lib/utils";
 import "~/lib/gen-ui/registered-components";
 
 export interface A2UIAction {
-  componentId: string;
-  componentType: string;
-  actionName: string;
-  payload?: Record<string, unknown>;
+	componentId: string;
+	componentType: string;
+	actionName: string;
+	payload?: Record<string, unknown>;
 }
 
 interface A2UIRendererProps {
-  surface: SurfaceState;
-  onAction?: (action: A2UIAction) => void;
-  onDismiss?: () => void;
-  onToggleCollapse?: () => void;
-  isCollapsed?: boolean;
-  isStreaming?: boolean;
+	surface: SurfaceState;
+	onAction?: (action: A2UIAction) => void;
+	onDismiss?: () => void;
+	onToggleCollapse?: () => void;
+	isCollapsed?: boolean;
+	isStreaming?: boolean;
 }
 
 /**
@@ -45,119 +45,94 @@ interface A2UIRendererProps {
  * Looks up the component type in the registry and passes resolved data.
  */
 function RenderNode({
-  node,
-  surface,
-  onAction,
-  isStreaming,
-  actionComponentId,
-  dataScopePath,
-  depth,
+	node,
+	surface,
+	onAction,
+	isStreaming,
+	actionComponentId,
+	dataScopePath,
+	depth,
 }: {
-  node: A2UIComponent;
-  surface: SurfaceState;
-  onAction?: (action: A2UIAction) => void;
-  isStreaming?: boolean;
-  actionComponentId: string;
-  dataScopePath?: string;
-  depth?: number;
+	node: A2UIComponent;
+	surface: SurfaceState;
+	onAction?: (action: A2UIAction) => void;
+	isStreaming?: boolean;
+	actionComponentId: string;
+	dataScopePath?: string;
+	depth?: number;
 }) {
-  // The component type is the first key in the component record
-  const componentType = Object.keys(node.component)[0];
-  if (!componentType) return null;
+	// The component type is the first key in the component record
+	const componentType = Object.keys(node.component)[0];
+	if (!componentType) return null;
 
-  const definition = componentRegistry.get(componentType);
-  if (!definition) {
-    return (
-      <div className="rounded border border-destructive/30 bg-destructive/5 p-3 text-sm">
-        Unknown component: <code>{componentType}</code>
-      </div>
-    );
-  }
+	const definition = componentRegistry.get(componentType);
+	if (!definition) {
+		return (
+			<div className="rounded border border-destructive/30 bg-destructive/5 p-3 text-sm">
+				Unknown component: <code>{componentType}</code>
+			</div>
+		);
+	}
 
-  // Resolve data: check if the component props contain a data binding path,
-  // otherwise use the raw props from the component record
-  const rawProps = node.component[componentType] as
-    | Record<string, unknown>
-    | undefined;
+	// Resolve data: check if the component props contain a data binding path,
+	// otherwise use the raw props from the component record
+	const rawProps = node.component[componentType] as Record<string, unknown> | undefined;
 
-  // If rawProps has a dataBinding path, resolve it from the data model
-  let resolvedData: unknown = rawProps;
-  if (rawProps?.dataBinding && typeof rawProps.dataBinding === "string") {
-    const dataBinding = rawProps.dataBinding as string;
-    if (dataBinding === "@item" || dataBinding === "$item") {
-      resolvedData =
-        dataScopePath !== undefined
-          ? resolvePointer(surface.dataModel, dataScopePath)
-          : undefined;
-    } else if (
-      dataScopePath !== undefined &&
-      dataBinding.startsWith("./") &&
-      dataBinding.length > 2
-    ) {
-      resolvedData = resolvePointer(
-        surface.dataModel,
-        `${dataScopePath}/${dataBinding.slice(2)}`,
-      );
-    } else {
-      resolvedData = resolvePointer(surface.dataModel, dataBinding);
-    }
-  } else if (rawProps?.path && typeof rawProps.path === "string") {
-    const path = rawProps.path as string;
-    if (
-      dataScopePath !== undefined &&
-      path.startsWith("./") &&
-      path.length > 2
-    ) {
-      resolvedData = resolvePointer(
-        surface.dataModel,
-        `${dataScopePath}/${path.slice(2)}`,
-      );
-    } else {
-      resolvedData = resolvePointer(surface.dataModel, path);
-    }
-  } else if (dataScopePath !== undefined) {
-    // Template children without an explicit binding get the current item.
-    resolvedData = resolvePointer(surface.dataModel, dataScopePath);
-  }
+	// If rawProps has a dataBinding path, resolve it from the data model
+	let resolvedData: unknown = rawProps;
+	if (rawProps?.dataBinding && typeof rawProps.dataBinding === "string") {
+		const dataBinding = rawProps.dataBinding as string;
+		if (dataBinding === "@item" || dataBinding === "$item") {
+			resolvedData = dataScopePath !== undefined ? resolvePointer(surface.dataModel, dataScopePath) : undefined;
+		} else if (dataScopePath !== undefined && dataBinding.startsWith("./") && dataBinding.length > 2) {
+			resolvedData = resolvePointer(surface.dataModel, `${dataScopePath}/${dataBinding.slice(2)}`);
+		} else {
+			resolvedData = resolvePointer(surface.dataModel, dataBinding);
+		}
+	} else if (rawProps?.path && typeof rawProps.path === "string") {
+		const path = rawProps.path as string;
+		if (dataScopePath !== undefined && path.startsWith("./") && path.length > 2) {
+			resolvedData = resolvePointer(surface.dataModel, `${dataScopePath}/${path.slice(2)}`);
+		} else {
+			resolvedData = resolvePointer(surface.dataModel, path);
+		}
+	} else if (dataScopePath !== undefined) {
+		// Template children without an explicit binding get the current item.
+		resolvedData = resolvePointer(surface.dataModel, dataScopePath);
+	}
 
-  // Validate against schema
-  const validation = definition.schema.safeParse(resolvedData ?? rawProps);
-  if (!validation.success) {
-    return (
-      <div className="rounded border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
-        <p className="font-medium">Invalid data for {componentType}</p>
-        <pre className="mt-1 text-muted-foreground text-xs">
-          {validation.error.issues
-            .map((i) => `${i.path.join(".")}: ${i.message}`)
-            .join("\n")}
-        </pre>
-      </div>
-    );
-  }
+	// Validate against schema
+	const validation = definition.schema.safeParse(resolvedData ?? rawProps);
+	if (!validation.success) {
+		return (
+			<div className="rounded border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+				<p className="font-medium">Invalid data for {componentType}</p>
+				<pre className="mt-1 text-muted-foreground text-xs">
+					{validation.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("\n")}
+				</pre>
+			</div>
+		);
+	}
 
-  const Component = definition.component;
+	const Component = definition.component;
 
-  // Create a bound onAction that includes the component ID and type
-  const handleAction = onAction
-    ? (actionName: string, payload?: Record<string, unknown>) => {
-        onAction({
-          componentId: actionComponentId,
-          componentType,
-          actionName,
-          payload,
-        });
-      }
-    : undefined;
+	// Create a bound onAction that includes the component ID and type
+	const handleAction = onAction
+		? (actionName: string, payload?: Record<string, unknown>) => {
+				onAction({
+					componentId: actionComponentId,
+					componentType,
+					actionName,
+					payload,
+				});
+			}
+		: undefined;
 
-  return (
-    <div className={cn(depth && depth > 0 ? "ml-4 border-l pl-3" : "")}>
-      <Component
-        data={validation.data}
-        isStreaming={isStreaming}
-        onAction={handleAction}
-      />
-    </div>
-  );
+	return (
+		<div className={cn(depth && depth > 0 ? "ml-4 border-l pl-3" : "")}>
+			<Component data={validation.data} isStreaming={isStreaming} onAction={handleAction} />
+		</div>
+	);
 }
 
 /**
@@ -165,82 +140,72 @@ function RenderNode({
  * Takes a SurfaceState and renders all components starting from the root.
  */
 export function A2UIRenderer({
-  surface,
-  onAction,
-  onDismiss,
-  onToggleCollapse,
-  isCollapsed,
-  isStreaming,
+	surface,
+	onAction,
+	onDismiss,
+	onToggleCollapse,
+	isCollapsed,
+	isStreaming,
 }: A2UIRendererProps) {
-  const renderPlan = useMemo(() => buildRenderPlan(surface), [surface]);
-  const rootNode = renderPlan[0]?.node ?? null;
+	const renderPlan = useMemo(() => buildRenderPlan(surface), [surface]);
+	const rootNode = renderPlan[0]?.node ?? null;
 
-  const handleDismiss = useCallback(() => {
-    onDismiss?.();
-  }, [onDismiss]);
+	const handleDismiss = useCallback(() => {
+		onDismiss?.();
+	}, [onDismiss]);
 
-  const handleToggleCollapse = useCallback(() => {
-    onToggleCollapse?.();
-  }, [onToggleCollapse]);
+	const handleToggleCollapse = useCallback(() => {
+		onToggleCollapse?.();
+	}, [onToggleCollapse]);
 
-  if (!rootNode || renderPlan.length === 0) {
-    return null;
-  }
+	if (!rootNode || renderPlan.length === 0) {
+		return null;
+	}
 
-  // Determine display title from root component type
-  const componentType = Object.keys(rootNode.component)[0] ?? "Component";
-  const definition = componentRegistry.get(componentType);
-  const title = definition?.type ?? componentType;
+	// Determine display title from root component type
+	const componentType = Object.keys(rootNode.component)[0] ?? "Component";
+	const definition = componentRegistry.get(componentType);
+	const title = definition?.type ?? componentType;
 
-  return (
-    <Card className="border-primary/20 bg-gradient-to-br from-card to-primary/5">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-base">{title}</CardTitle>
-        <div className="flex items-center gap-1">
-          {onToggleCollapse && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={handleToggleCollapse}
-              title={isCollapsed ? "Expand widget" : "Collapse widget"}
-            >
-              {isCollapsed ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronUp className="h-4 w-4" />
-              )}
-            </Button>
-          )}
-          {onDismiss && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={handleDismiss}
-              title="Close widget"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      {!isCollapsed && (
-        <CardContent className="space-y-3">
-          {renderPlan.map((entry) => (
-            <RenderNode
-              key={entry.key}
-              node={entry.node}
-              surface={surface}
-              onAction={onAction}
-              isStreaming={isStreaming}
-              actionComponentId={entry.actionComponentId}
-              dataScopePath={entry.dataScopePath}
-              depth={entry.depth}
-            />
-          ))}
-        </CardContent>
-      )}
-    </Card>
-  );
+	return (
+		<Card className="border-primary/20 bg-gradient-to-br from-card to-primary/5">
+			<CardHeader className="flex flex-row items-center justify-between pb-2">
+				<CardTitle className="text-base">{title}</CardTitle>
+				<div className="flex items-center gap-1">
+					{onToggleCollapse && (
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-6 w-6"
+							onClick={handleToggleCollapse}
+							title={isCollapsed ? "Expand widget" : "Collapse widget"}
+						>
+							{isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+						</Button>
+					)}
+					{onDismiss && (
+						<Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleDismiss} title="Close widget">
+							<X className="h-4 w-4" />
+						</Button>
+					)}
+				</div>
+			</CardHeader>
+			{!isCollapsed && (
+				<CardContent className="space-y-3">
+					{renderPlan.map((entry) => (
+						<RenderNode
+							key={entry.key}
+							node={entry.node}
+							surface={surface}
+							onAction={onAction}
+							isStreaming={isStreaming}
+							actionComponentId={entry.actionComponentId}
+							dataScopePath={entry.dataScopePath}
+							depth={entry.depth}
+						/>
+					))}
+				</CardContent>
+			)}
+		</Card>
+	);
 }

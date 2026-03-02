@@ -25,14 +25,8 @@ Use this when the user wants to change settings like making a survey anonymous, 
 		allowChat: z.boolean().nullish().describe("Allow chat response mode"),
 		allowVoice: z.boolean().nullish().describe("Allow voice response mode"),
 		allowVideo: z.boolean().nullish().describe("Allow video response mode"),
-		defaultResponseMode: z
-			.enum(["form", "chat", "voice"])
-			.nullish()
-			.describe("Default response mode for respondents"),
-		identityType: z
-			.enum(["anonymous", "email", "phone"])
-			.nullish()
-			.describe("How respondents identify themselves"),
+		defaultResponseMode: z.enum(["form", "chat", "voice"]).nullish().describe("Default response mode for respondents"),
+		identityType: z.enum(["anonymous", "email", "phone"]).nullish().describe("How respondents identify themselves"),
 		respondentFields: z
 			.array(z.string())
 			.nullish()
@@ -126,10 +120,7 @@ Use this when the user wants to change settings like making a survey anonymous, 
 				return { success: false, message: "No settings provided to update." };
 			}
 
-			const { error } = await supabase
-				.from("research_links")
-				.update(updatePayload)
-				.eq("id", surveyId);
+			const { error } = await supabase.from("research_links").update(updatePayload).eq("id", surveyId);
 
 			if (error) {
 				consola.error("update-survey-settings: save error", error);

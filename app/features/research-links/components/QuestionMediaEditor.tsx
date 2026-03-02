@@ -83,7 +83,12 @@ export function MediaPreview({ url, className }: { url: string; className?: stri
 	}
 	if (!signedUrl) {
 		return (
-			<div className={cn("flex items-center justify-center rounded-lg border bg-muted/30 py-8 text-muted-foreground text-xs", className)}>
+			<div
+				className={cn(
+					"flex items-center justify-center rounded-lg border bg-muted/30 py-8 text-muted-foreground text-xs",
+					className
+				)}
+			>
 				Failed to load media
 			</div>
 		);
@@ -91,13 +96,22 @@ export function MediaPreview({ url, className }: { url: string; className?: stri
 
 	const type = getMediaType(url);
 	if (type === "image") {
-		return <img src={signedUrl} alt="Question media" className={cn("w-full rounded-lg border object-contain", className)} style={{ maxHeight: 200 }} />;
+		return (
+			<img
+				src={signedUrl}
+				alt="Question media"
+				className={cn("w-full rounded-lg border object-contain", className)}
+				style={{ maxHeight: 200 }}
+			/>
+		);
 	}
 	if (type === "audio") {
 		return <audio src={signedUrl} className={cn("w-full", className)} controls />;
 	}
 	// Default to video for video and unknown types
-	return <video src={signedUrl} className={cn("aspect-video w-full rounded-lg bg-black", className)} controls playsInline />;
+	return (
+		<video src={signedUrl} className={cn("aspect-video w-full rounded-lg bg-black", className)} controls playsInline />
+	);
 }
 
 export function QuestionMediaEditor({ listId, questionId, existingMediaUrl, onMediaChange }: QuestionMediaEditorProps) {
@@ -281,7 +295,8 @@ export function QuestionMediaEditor({ listId, questionId, existingMediaUrl, onMe
 	const handleFileUpload = useCallback(
 		async (file: File) => {
 			// Accept images, audio, and video
-			const isMedia = file.type.startsWith("image/") || file.type.startsWith("audio/") || file.type.startsWith("video/");
+			const isMedia =
+				file.type.startsWith("image/") || file.type.startsWith("audio/") || file.type.startsWith("video/");
 			if (!isMedia) {
 				setError("Please select an image, video, or audio file");
 				return;
@@ -326,7 +341,7 @@ export function QuestionMediaEditor({ listId, questionId, existingMediaUrl, onMe
 				setIsUploading(false);
 			}
 		},
-		[listId, questionId, onMediaChange],
+		[listId, questionId, onMediaChange]
 	);
 
 	const handleUrlSubmit = useCallback(() => {
@@ -547,7 +562,7 @@ export function QuestionMediaEditor({ listId, questionId, existingMediaUrl, onMe
 					ref={videoPreviewRef}
 					className={cn(
 						"h-full w-full object-cover",
-						recordingState !== "preview" && recordingState !== "recording" && "hidden",
+						recordingState !== "preview" && recordingState !== "recording" && "hidden"
 					)}
 					playsInline
 					muted
@@ -584,7 +599,12 @@ export function QuestionMediaEditor({ listId, questionId, existingMediaUrl, onMe
 			<div className="flex justify-center gap-2">
 				{recordingState === "preview" && (
 					<>
-						<Button type="button" onClick={startRecording} size="sm" className="gap-2 bg-red-500 text-white hover:bg-red-600">
+						<Button
+							type="button"
+							onClick={startRecording}
+							size="sm"
+							className="gap-2 bg-red-500 text-white hover:bg-red-600"
+						>
 							<span className="h-2.5 w-2.5 rounded-full bg-white" />
 							Record
 						</Button>
@@ -594,7 +614,12 @@ export function QuestionMediaEditor({ listId, questionId, existingMediaUrl, onMe
 					</>
 				)}
 				{recordingState === "recording" && (
-					<Button type="button" onClick={stopRecording} size="sm" className="gap-2 bg-white text-black hover:bg-white/90">
+					<Button
+						type="button"
+						onClick={stopRecording}
+						size="sm"
+						className="gap-2 bg-white text-black hover:bg-white/90"
+					>
 						<Square className="h-3.5 w-3.5 fill-current" />
 						Stop
 					</Button>

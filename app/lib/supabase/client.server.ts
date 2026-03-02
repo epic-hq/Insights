@@ -61,7 +61,7 @@ export function createSupabaseAdminClient() {
 		db: { schema: "public" },
 		cookies: {
 			getAll: () => [],
-			setAll: () => { },
+			setAll: () => {},
 		},
 		auth: {
 			autoRefreshToken: false,
@@ -181,7 +181,7 @@ export const supabaseAnon = createServerClient<Database, "public">(SUPABASE_URL,
 	db: { schema: "public" },
 	cookies: {
 		getAll: () => [],
-		setAll: () => { },
+		setAll: () => {},
 	},
 	auth: { persistSession: false },
 });
@@ -192,7 +192,7 @@ export function getRlsClient(jwt: string) {
 		db: { schema: "public" },
 		cookies: {
 			getAll: () => [],
-			setAll: () => { },
+			setAll: () => {},
 		},
 		auth: { persistSession: false },
 		global: {

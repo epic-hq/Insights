@@ -1,4 +1,16 @@
-import { Archive, ArchiveRestore, Copy, ExternalLink, Link2, Mail, MessageSquare, MoreHorizontal, Pencil, Trash2, Video } from "lucide-react";
+import {
+	Archive,
+	ArchiveRestore,
+	Copy,
+	ExternalLink,
+	Link2,
+	Mail,
+	MessageSquare,
+	MoreHorizontal,
+	Pencil,
+	Trash2,
+	Video,
+} from "lucide-react";
 import { useState } from "react";
 import type { LoaderFunctionArgs, MetaFunction } from "react-router";
 import { Link, useFetcher, useLoaderData } from "react-router-dom";

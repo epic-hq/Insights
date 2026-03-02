@@ -38,13 +38,13 @@ const reviewResultSchema = z.object({
 						type: z.enum(issueTypeValues),
 						explanation: z.string(),
 						severity: z.enum(severityValues),
-					}),
+					})
 				)
 				.nullish(),
 			suggestedPrompt: z.string().nullish(),
 			priority: z.number().nullish(),
 			recommendation: z.enum(recommendationValues).nullish(),
-		}),
+		})
 	),
 	summary: z.string(),
 });
@@ -53,7 +53,7 @@ function buildReviewPrompt(
 	questions: Array<{ id: string; prompt: string; type?: string; options?: string[] | null }>,
 	reviewType: string,
 	goals: string | null,
-	targetCount: number | null,
+	targetCount: number | null
 ): string {
 	const questionList = questions
 		.map((q, i) => {
@@ -147,10 +147,7 @@ Returns structured reviews with issues, suggestions, and recommendations.`,
 			.array(z.string())
 			.nullish()
 			.describe("Specific question IDs to review (null = all visible questions)"),
-		targetCount: z
-			.number()
-			.nullish()
-			.describe("For 'prioritize': target number of questions to keep"),
+		targetCount: z.number().nullish().describe("For 'prioritize': target number of questions to keep"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -166,13 +163,13 @@ Returns structured reviews with issues, suggestions, and recommendations.`,
 								type: z.enum(issueTypeValues),
 								explanation: z.string(),
 								severity: z.enum(severityValues),
-							}),
+							})
 						)
 						.nullish(),
 					suggestedPrompt: z.string().nullish(),
 					priority: z.number().nullish(),
 					recommendation: z.enum(recommendationValues).nullish(),
-				}),
+				})
 			)
 			.nullish(),
 		summary: z.string().nullish(),
@@ -201,9 +198,7 @@ Returns structured reviews with issues, suggestions, and recommendations.`,
 				return { success: false, message: `Survey not found: ${surveyId}` };
 			}
 
-			const allQuestions = Array.isArray(survey.questions)
-				? (survey.questions as Array<Record<string, unknown>>)
-				: [];
+			const allQuestions = Array.isArray(survey.questions) ? (survey.questions as Array<Record<string, unknown>>) : [];
 
 			// Filter to visible questions, then optionally filter by questionIds
 			let questionsToReview = allQuestions.filter((q) => !q.hidden);
@@ -227,7 +222,7 @@ Returns structured reviews with issues, suggestions, and recommendations.`,
 				questionsForPrompt,
 				input.reviewType,
 				toNonEmptyString(input.goals),
-				input.targetCount ?? null,
+				input.targetCount ?? null
 			);
 
 			// Dynamic import to avoid loading AI SDK at module level
@@ -245,7 +240,7 @@ Returns structured reviews with issues, suggestions, and recommendations.`,
 			const hideOrDeleteIds = new Set(
 				result.object.reviews
 					.filter((r) => r.recommendation === "hide" || r.recommendation === "delete")
-					.map((r) => r.questionId),
+					.map((r) => r.questionId)
 			);
 
 			if (hideOrDeleteIds.size > 0) {
@@ -258,7 +253,7 @@ Returns structured reviews with issues, suggestions, and recommendations.`,
 							const targetQ = allQuestions.find((tq) => tq.id === rule.targetQuestionId);
 							const targetLabel = targetQ ? `"${(targetQ.prompt as string).slice(0, 60)}"` : rule.targetQuestionId;
 							branchWarnings.push(
-								`Question "${(q.prompt as string).slice(0, 60)}" branches to ${targetLabel} which is recommended for hide/delete.`,
+								`Question "${(q.prompt as string).slice(0, 60)}" branches to ${targetLabel} which is recommended for hide/delete.`
 							);
 						}
 					}
