@@ -682,7 +682,15 @@ describe("api.chat.project-status", () => {
 
 		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
 		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
-		expect(chunks.some((chunk) => chunk.type === "tool-input-available")).toBe(true);
+		// The server emits a "data" part (not "tool-input-available") containing
+		// a navigate instruction to avoid addToolResult → infinite re-request loops.
+		const navigateChunk = chunks.find(
+			(chunk) =>
+				chunk.type === "data" &&
+				Array.isArray(chunk.data) &&
+				(chunk.data as Array<{ type?: string }>).some((d) => d.type === "navigate"),
+		);
+		expect(navigateChunk).toBeDefined();
 	});
 
 	it("returns fallback + debug trace when research stream init fails", async () => {
