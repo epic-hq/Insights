@@ -111,19 +111,20 @@ function OptionsInput({
     onChange(parsed.length > 0 ? parsed : null);
   };
 
+  // Show one option per line for readability
+  const lineCount = Math.max(
+    3,
+    localValue.split(",").filter(Boolean).length + 1,
+  );
+
   return (
-    <Input
+    <Textarea
       value={localValue}
       onChange={(e) => setLocalValue(e.target.value)}
       onBlur={parseAndSync}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          parseAndSync();
-        }
-      }}
       placeholder="Options (comma separated)"
-      className="h-8 text-xs"
+      className="text-xs"
+      rows={lineCount}
     />
   );
 }
@@ -256,10 +257,7 @@ function QuestionEditDrawer({
                   const updates: Partial<ResearchLinkQuestion> = {
                     type: value,
                   };
-                  if (
-                    value === "single_select" ||
-                    value === "multi_select"
-                  ) {
+                  if (value === "single_select" || value === "multi_select") {
                     updates.options = question.options ?? [];
                     updates.likertScale = null;
                     updates.likertLabels = null;
@@ -588,9 +586,7 @@ function QuestionEditDrawer({
                     <Input
                       value={option.label}
                       onChange={(e) => {
-                        const nextOptions = [
-                          ...(question.imageOptions ?? []),
-                        ];
+                        const nextOptions = [...(question.imageOptions ?? [])];
                         nextOptions[optionIndex] = {
                           ...nextOptions[optionIndex],
                           label: e.target.value,
@@ -605,9 +601,7 @@ function QuestionEditDrawer({
                     <Input
                       value={option.imageUrl}
                       onChange={(e) => {
-                        const nextOptions = [
-                          ...(question.imageOptions ?? []),
-                        ];
+                        const nextOptions = [...(question.imageOptions ?? [])];
                         nextOptions[optionIndex] = {
                           ...nextOptions[optionIndex],
                           imageUrl: e.target.value,
@@ -871,11 +865,8 @@ export function QuestionListEditor({
     setSelectedQuestionId(newQ.id);
   }, [onChange, questions]);
 
-  const selectedIndex = questions.findIndex(
-    (q) => q.id === selectedQuestionId,
-  );
-  const selectedQuestion =
-    selectedIndex >= 0 ? questions[selectedIndex] : null;
+  const selectedIndex = questions.findIndex((q) => q.id === selectedQuestionId);
+  const selectedQuestion = selectedIndex >= 0 ? questions[selectedIndex] : null;
 
   return (
     <div className="space-y-1">
@@ -884,7 +875,8 @@ export function QuestionListEditor({
         {questions.map((question, index) => {
           const hasBranching = Boolean(question.branching?.rules?.length);
           const hasMedia = Boolean(question.mediaUrl ?? question.videoUrl);
-          const effectiveMediaUrl = question.mediaUrl ?? question.videoUrl ?? null;
+          const effectiveMediaUrl =
+            question.mediaUrl ?? question.videoUrl ?? null;
 
           return (
             <motion.div

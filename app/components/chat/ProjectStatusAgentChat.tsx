@@ -37,7 +37,10 @@ import { InlineUserInput } from "~/components/chat/InlineUserInput";
 import { MessagePlayButton } from "~/components/chat/MessagePlayButton";
 import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat";
 import { TTSToggle } from "~/components/chat/TTSToggle";
-import { A2UIRenderer, type A2UIAction } from "~/components/gen-ui/A2UIRenderer";
+import {
+  A2UIRenderer,
+  type A2UIAction,
+} from "~/components/gen-ui/A2UIRenderer";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Textarea } from "~/components/ui/textarea";
 import {
@@ -891,15 +894,23 @@ export function ProjectStatusAgentChat({
     }
   }, []);
 
+  // Use refs so the transport body function always reads latest values,
+  // even though the Chat instance is created once and stored in a ref by useChat
+  const mergedSystemContextRef = useRef(mergedSystemContext);
+  mergedSystemContextRef.current = mergedSystemContext;
+
+  const activeThreadIdRef = useRef(activeThreadId);
+  activeThreadIdRef.current = activeThreadId;
+
   const { messages, sendMessage, status, addToolResult, stop, setMessages } =
     useChat<UpsightMessage>({
       transport: new DefaultChatTransport({
         api: `/a/${accountId}/${projectId}/api/chat/project-status`,
-        body: {
-          system: mergedSystemContext,
+        body: () => ({
+          system: mergedSystemContextRef.current,
           userTimezone,
-          threadId: activeThreadId,
-        },
+          threadId: activeThreadIdRef.current,
+        }),
       }),
       // Note: Mastra's memory system on the server handles historical context.
       // We load history for display but don't need to send it back since the server
@@ -1606,6 +1617,43 @@ export function ProjectStatusAgentChat({
     lastCreatedTaskIdRef.current = taskId;
     revalidator.revalidate();
   }, [displayableMessages, revalidator]);
+
+  // Revalidate route data after agent tool calls modify server-side data.
+  // In AI SDK v5, tool parts have type "tool-{toolName}" (e.g. "tool-update-survey-questions"),
+  // NOT "tool-invocation". Multi-step tool calls live on the same assistant message as the
+  // final text response, separated by "step-start" parts.
+  const prevChatStatusRef = useRef(status);
+  const revalidatedToolMsgIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const wasActive =
+      prevChatStatusRef.current === "streaming" ||
+      prevChatStatusRef.current === "submitted";
+    prevChatStatusRef.current = status;
+
+    // Only act on transitions TO "ready" (agent turn just finished)
+    if (status !== "ready" || !wasActive) return;
+
+    let shouldRevalidate = false;
+    for (const msg of messages) {
+      if (msg.role !== "assistant" || !msg.parts) continue;
+      if (revalidatedToolMsgIdsRef.current.has(msg.id)) continue;
+
+      const hasCompletedTool = msg.parts.some((part) => {
+        const p = part as { type: string; state?: string };
+        // AI SDK v5: tool parts have type "tool-{toolName}" (starts with "tool-")
+        return p.type.startsWith("tool-") && p.state === "output-available";
+      });
+
+      if (hasCompletedTool) {
+        revalidatedToolMsgIdsRef.current.add(msg.id);
+        shouldRevalidate = true;
+      }
+    }
+
+    if (shouldRevalidate) {
+      revalidator.revalidate();
+    }
+  }, [status, messages, revalidator]);
 
   // TTS: Auto-play new assistant responses when TTS is enabled
   const lastAutoPlayedMessageIdRef = useRef<string | null>(null);
