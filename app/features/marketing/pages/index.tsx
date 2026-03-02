@@ -5,10 +5,13 @@
  * - Crowd background → cycling Polaroid portrait carousel
  * - SVG annotation lines from labels INTO the portrait (Thinks/Feels/Uses)
  * - Progressive disclosure of SEO capabilities below the fold
+ * - PostHog A/B tested hero headline (3 variants)
+ * - Use-case category chips for buyer self-selection
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, type LinksFunction, type MetaFunction } from "react-router";
 import MarketingNav from "~/components/navigation/MarketingNav";
+import { usePostHogExperiment } from "~/hooks/usePostHogExperiment";
 import { PATHS } from "~/paths";
 import "./landing.css";
 
@@ -40,12 +43,12 @@ export const links: LinksFunction = () => [
 
 export const meta: MetaFunction = () => [
 	{
-		title: "UpSight — Get Your Customers. Build Conviction.",
+		title: "UpSight — The Best Way to Understand Your Customers",
 	},
 	{
 		name: "description",
 		content:
-			"Customer intelligence platform that helps teams engage the right people, understand what matters, and serve customers better. Turn conversations into evidence your whole team can act on.",
+			"AI-powered customer research platform — surveys, conversation analysis, and customer interviews for product, research, and sales teams. Turn conversations into evidence your whole team can act on.",
 	},
 ];
 
@@ -181,6 +184,65 @@ const ANNO_SUFFIX: Record<string, Record<number, string>> = {
 	},
 };
 
+// ---------------------------------------------------------------------------
+// Hero headline A/B variants (PostHog experiment: homepage-hero-headline)
+// ---------------------------------------------------------------------------
+
+interface HeroVariant {
+	headline: [string, string]; // [line1, line2 (amber)]
+	subline: string;
+}
+
+const HERO_VARIANTS: Record<string, HeroVariant> = {
+	control: {
+		headline: ["The best way to", "understand your customers."],
+		subline: "AI-powered surveys and conversation analysis for product, research, and sales teams.",
+	},
+	outcome: {
+		headline: ["Turn conversations into", "evidence you can act on."],
+		subline: "AI surveys. Conversation analysis. Insights with receipts — for your whole team.",
+	},
+	category: {
+		headline: ["AI-powered customer research —", "surveys to conversation analysis."],
+		subline: "Understand what your customers really think. Ship with conviction.",
+	},
+};
+
+// ---------------------------------------------------------------------------
+// Use-case category chips for buyer self-selection
+// ---------------------------------------------------------------------------
+
+const USE_CASE_CHIPS = [
+	{ label: "AI Surveys", href: "#capabilities" },
+	{ label: "Conversation Analysis", href: "#capabilities" },
+	{ label: "Customer Interviews", href: "#capabilities" },
+	{ label: "Sales Intelligence", href: "#capabilities" },
+	{ label: "Research Ops", href: "#capabilities" },
+];
+
+// ---------------------------------------------------------------------------
+// Condensed "For Teams" grid shown just below the hero
+// ---------------------------------------------------------------------------
+
+const TEAM_CARDS = [
+	{
+		tag: "Product",
+		line: "Build the right thing — with evidence, not opinions.",
+	},
+	{
+		tag: "Research",
+		line: "Insights with receipts. Every theme traceable to a voice.",
+	},
+	{
+		tag: "Sales",
+		line: "Win with proof. Walk into every deal knowing what matters.",
+	},
+	{
+		tag: "Consultants",
+		line: "From interviews to deliverables in hours, not weeks.",
+	},
+];
+
 const BODY_ZONES = { head: 0.18, heart: 0.5, hand: 0.75 } as const;
 const CAROUSEL_INTERVAL = 6000;
 const LABEL_GAP = 48;
@@ -292,6 +354,10 @@ export default function LandingPage() {
 	const labelRefs = useRef<(HTMLElement | null)[][]>([[], [], []]);
 	const timerFillRef = useRef<HTMLDivElement>(null);
 	const heroRef = useRef<HTMLElement>(null);
+
+	// PostHog A/B experiment — returns "control" | "outcome" | "category"
+	const { variant } = usePostHogExperiment("homepage-hero-headline", "control");
+	const heroContent = HERO_VARIANTS[variant] ?? HERO_VARIANTS.control;
 
 	// Reposition annotations when current changes or on resize
 	const reposition = useCallback((idx: number) => {
@@ -409,7 +475,7 @@ export default function LandingPage() {
 					</picture>
 				</div>
 
-				{/* Headline */}
+				{/* Headline — A/B tested via PostHog */}
 				<div className="relative z-[2] mb-[clamp(0.25rem,0.8vw,0.75rem)] text-center">
 					<p
 						className="mb-[clamp(0.2rem,0.5vw,0.5rem)] uppercase tracking-[0.2em]"
@@ -429,13 +495,42 @@ export default function LandingPage() {
 							fontWeight: 900,
 							lineHeight: 1.05,
 							letterSpacing: "-0.03em",
-							maxWidth: "18ch",
+							maxWidth: "22ch",
 						}}
 					>
-						Get your customers.
+						{heroContent.headline[0]}
 						<br />
-						<span style={{ color: "var(--lp-amber)" }}>Build conviction.</span>
+						<span style={{ color: "var(--lp-amber)" }}>{heroContent.headline[1]}</span>
 					</h1>
+					<p
+						className="mx-auto"
+						style={{
+							fontSize: "clamp(0.95rem, 1.3vw, 1.15rem)",
+							color: "var(--lp-dim)",
+							fontWeight: 300,
+							lineHeight: 1.5,
+							maxWidth: "42ch",
+							marginTop: "clamp(0.5rem, 1vw, 0.75rem)",
+						}}
+					>
+						{heroContent.subline}
+					</p>
+
+					{/* Use-case category chips */}
+					<div
+						className="mx-auto mt-[clamp(0.6rem,1.2vw,1rem)] flex flex-wrap items-center justify-center gap-[clamp(0.35rem,0.7vw,0.5rem)]"
+						style={{ maxWidth: "600px" }}
+					>
+						{USE_CASE_CHIPS.map((chip) => (
+							<a
+								key={chip.label}
+								href={chip.href}
+								className="lp-use-case-chip"
+							>
+								{chip.label}
+							</a>
+						))}
+					</div>
 				</div>
 
 				{/* Portrait Carousel */}
@@ -599,38 +694,90 @@ export default function LandingPage() {
 					<p
 						className="mx-auto"
 						style={{
-							fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)",
+							fontSize: "clamp(0.85rem, 1.2vw, 1rem)",
 							color: "var(--lp-dim)",
-							fontWeight: 300,
-							marginTop: "clamp(0.4rem, 0.8vw, 0.6rem)",
-							lineHeight: 1.5,
-							maxWidth: "36ch",
+							fontWeight: 400,
+							marginTop: "clamp(0.6rem, 1vw, 0.8rem)",
+							lineHeight: 1.6,
+							maxWidth: "44ch",
 						}}
 					>
-						Start with a{" "}
+						Start with an{" "}
 						<Link
 							to={`${PATHS.AUTH.REGISTER}?plan=pro`}
-							className="font-medium underline underline-offset-4"
+							className="font-semibold underline underline-offset-4"
 							style={{
-								color: "var(--lp-text)",
-								textDecorationColor: "rgba(238,238,242,0.3)",
+								color: "var(--lp-amber)",
+								textDecorationColor: "rgba(245,158,11,0.4)",
 							}}
 						>
-							smart survey
-						</Link>{" "}
-						<span style={{ color: "var(--lp-amber)", fontWeight: 500 }}>(personalized by AI)</span> or a{" "}
-						<Link
-							to={`${PATHS.AUTH.REGISTER}?plan=pro`}
-							className="font-medium underline underline-offset-4"
-							style={{
-								color: "var(--lp-text)",
-								textDecorationColor: "rgba(238,238,242,0.3)",
-							}}
-						>
-							conversation
+							AI-powered survey
 						</Link>
-						.
+						{" "}or analyze a{" "}
+						<Link
+							to={`${PATHS.AUTH.REGISTER}?plan=pro`}
+							className="font-semibold underline underline-offset-4"
+							style={{
+								color: "var(--lp-sky)",
+								textDecorationColor: "rgba(56,189,248,0.4)",
+							}}
+						>
+							customer conversation
+						</Link>
+						. Get evidence in minutes.
 					</p>
+				</div>
+			</section>
+
+			{/* ===== FOR TEAMS — condensed grid just below hero ===== */}
+			<section
+				className="lp-capabilities"
+				style={{
+					padding: "clamp(2.5rem, 6vw, 5rem) clamp(1.5rem, 4vw, 5rem)",
+					background: "var(--lp-bg)",
+					borderTop: "1px solid rgba(255,255,255,0.03)",
+				}}
+			>
+				<div
+					className="mx-auto grid grid-cols-2 md:grid-cols-4"
+					style={{
+						gap: "clamp(0.75rem, 1.5vw, 1.25rem)",
+						maxWidth: "min(95vw, 900px)",
+					}}
+				>
+					{TEAM_CARDS.map((card) => (
+						<div
+							key={card.tag}
+							className="lp-rv rounded-lg"
+							style={{
+								padding: "clamp(1rem, 1.5vw, 1.5rem)",
+								border: "1px solid rgba(255,255,255,0.06)",
+								background: "rgba(255,255,255,0.02)",
+							}}
+						>
+							<span
+								className="mb-[clamp(0.3rem,0.5vw,0.5rem)] block uppercase tracking-[0.14em]"
+								style={{
+									fontFamily: "'JetBrains Mono', monospace",
+									fontSize: "clamp(0.65rem, 0.9vw, 0.78rem)",
+									color: "var(--lp-amber)",
+									fontWeight: 500,
+								}}
+							>
+								{card.tag}
+							</span>
+							<p
+								style={{
+									fontSize: "clamp(0.78rem, 1.05vw, 0.9rem)",
+									color: "var(--lp-dim)",
+									fontWeight: 300,
+									lineHeight: 1.5,
+								}}
+							>
+								{card.line}
+							</p>
+						</div>
+					))}
 				</div>
 			</section>
 
