@@ -37,6 +37,7 @@ import { howtoAgent } from "./howto-agent";
 import { opsAgent } from "./ops-agent";
 import { peopleAgent } from "./people-agent";
 import { researchAgent } from "./research-agent";
+import { surveyAgent } from "./survey-agent";
 import { taskAgent } from "./task-agent";
 
 function auditToolSchemas(agent_name: string, tools: Record<string, unknown>) {
@@ -284,7 +285,8 @@ Call "getCurrentDate" first for any date/time questions.
   - If totalThemes = 0, explicitly say no themes with evidence were found and suggest the next action.
 - **Themes for a specific person** (e.g. "what themes stand out for Kai?"): call "fetchTopThemesWithPeople" with limit=10 and peoplePerTheme=10, then filter the results to themes where that person appears in the people array. Report those themes ranked by the person's mentionCount. If the person doesn't appear in any theme's people list, say so and offer to search their evidence directly.
 - "semanticSearchEvidence" with natural language query—searches quotes AND structured facets (pains, gains, thinks, feels) from INTERVIEWS only
-- Survey and interview data are handled by the ResearchAgent sub-agent.
+- Survey operations (editing questions, review, settings, responses) are handled by the surveyAgent sub-agent.
+- Interview data is handled by the ResearchAgent sub-agent.
   **MANDATORY: Link EVERY survey quote/citation to its source:**
   - Tool returns textResponses[] with { answer, responseUrl, personName } for each text answer
   - When quoting: [personName](responseUrl): "their exact quote"
@@ -321,10 +323,14 @@ Call "getCurrentDate" first for any date/time questions.
 - Document links: "generateDocumentLink" to give the user a clickable link after saving or reading a document
 - Annotations are handled by the OpsAgent sub-agent
 - **Tasks**: Task operations (create, update, complete, delete) are handled by the taskAgent sub-agent. The network will automatically route task-related requests.
-- Interview prompts and surveys are handled by the ResearchAgent sub-agent
+- Interview prompts are handled by the ResearchAgent sub-agent
 
-**Creating Surveys/Ask Links**:
-- Survey creation is handled by the ResearchAgent sub-agent.
+**Surveys/Ask Links**:
+- ALL survey operations are handled by the surveyAgent sub-agent:
+  - Editing questions, reviewing for bias, rephrasing
+  - Survey settings and configuration
+  - Response analysis and reporting
+  - Survey creation (unless it hit the fast-create path)
 
 **URL Pasted into chat**
 - URL content research/import is handled by the ResearchAgent sub-agent.
@@ -376,6 +382,7 @@ Please try:
     taskAgent,
     peopleAgent,
     researchAgent,
+    surveyAgent,
     opsAgent,
     feedbackAgent,
     chiefOfStaffAgent,

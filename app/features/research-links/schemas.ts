@@ -49,6 +49,8 @@ export const ResearchLinkQuestionSchema = z.object({
 	mediaUrl: z.string().optional().nullable(),
 	// Legacy field name kept for backwards compatibility
 	videoUrl: z.string().optional().nullable(),
+	// Whether this question is hidden (soft-deleted, can be restored)
+	hidden: z.boolean().optional().default(false),
 	// Conditional branching rules
 	branching: QuestionBranchingSchema.optional().nullable(),
 });
@@ -72,6 +74,7 @@ export function createEmptyQuestion(): ResearchLinkQuestion {
 		imageOptions: null,
 		mediaUrl: null,
 		videoUrl: null,
+		hidden: false,
 	};
 }
 

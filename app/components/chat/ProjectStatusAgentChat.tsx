@@ -2221,6 +2221,20 @@ function describeResourceContext(
     case "personas":
       if (!id) return "View: Personas overview";
       return `View: Persona detail (id=${id})`;
+    case "ask": {
+      if (!id) return "View: Surveys list (Ask Links)";
+      if (id === "new") return "View: Creating new survey";
+      const subpage = remainder[1];
+      if (subpage === "edit")
+        return `View: Survey editor (surveyId=${id}, editing questions & settings)`;
+      if (subpage === "responses") {
+        const responseId = remainder[2];
+        if (responseId)
+          return `View: Survey response detail (surveyId=${id}, responseId=${responseId})`;
+        return `View: Survey responses (surveyId=${id})`;
+      }
+      return `View: Survey detail (surveyId=${id})`;
+    }
     case "product-lens":
       return "View: Product Lens (pain × user matrix)";
     case "bant-lens":

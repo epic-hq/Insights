@@ -600,7 +600,10 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const questionsResult = ResearchLinkQuestionSchema.array().safeParse(
     list.questions,
   );
-  const questions = questionsResult.success ? questionsResult.data : [];
+  // Filter out hidden questions — respondents should never see them
+  const questions = questionsResult.success
+    ? questionsResult.data.filter((q) => !q.hidden)
+    : [];
 
   // Generate signed URL for walkthrough video if it exists
   let walkthroughSignedUrl: string | null = null;

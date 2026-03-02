@@ -189,7 +189,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const questionsResult = ResearchLinkQuestionSchema.array().safeParse(
     list.questions,
   );
-  const questions = questionsResult.success ? questionsResult.data : [];
+  // Filter out hidden questions — respondents should never see them
+  const questions = questionsResult.success
+    ? questionsResult.data.filter((q) => !q.hidden)
+    : [];
 
   // Fetch FRESH responses from database (not stale frontend state)
   // This ensures we see answers saved by the agent's tool calls

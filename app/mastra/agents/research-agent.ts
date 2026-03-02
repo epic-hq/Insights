@@ -7,10 +7,7 @@ import { Memory } from "@mastra/memory";
 import consola from "consola";
 import { openai } from "../../lib/billing/instrumented-openai.server";
 import { getSharedPostgresStore } from "../storage/postgres-singleton";
-import { createSurveyTool } from "../tools/create-survey";
-import { deleteSurveyTool } from "../tools/delete-survey";
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context";
-import { fetchSurveysTool } from "../tools/fetch-surveys";
 import { fetchWebContentTool } from "../tools/fetch-web-content";
 import { generateProjectRoutesTool } from "../tools/generate-project-routes";
 import { importPeopleFromTableTool } from "../tools/import-people-from-table";
@@ -27,14 +24,13 @@ import { navigateToPageTool } from "../tools/navigate-to-page";
 import { parseSpreadsheetTool } from "../tools/parse-spreadsheet";
 import { findSimilarPagesTool, webResearchTool } from "../tools/research-web";
 import { saveTableToAssetsTool } from "../tools/save-table-to-assets";
-import { searchSurveyResponsesTool } from "../tools/search-survey-responses";
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 import { updateTableAssetTool } from "../tools/update-table-asset";
 
 export const researchAgent = new Agent({
 	id: "research-agent",
 	name: "researchAgent",
-	description: "Specialist for research operations: interviews, surveys, and interview prompts.",
+	description: "Specialist for research operations: interviews, interview prompts, documents, and web research.",
 	instructions: async ({ requestContext }) => {
 		try {
 			const projectId = requestContext.get("project_id");
@@ -45,47 +41,10 @@ You are a Research specialist that EXECUTES actions using tools. You do NOT desc
 
 Project: ${projectId}, Account: ${accountId}
 
-# CRITICAL: Survey/Waitlist Creation
+NOTE: Survey operations (editing, reviewing, settings, responses) are handled by the surveyAgent. I focus on interviews, documents, and web research. If a user asks about surveys, tell them to ask about surveys directly (the routing layer will handle it).
 
-When the user asks to create a survey, waitlist, signup, or ask link, you MUST:
+# Operations
 
-1. IMMEDIATELY call the createSurvey tool with:
-   - projectId: "${projectId}"
-   - name: A descriptive name based on user request (e.g., "Product Waitlist", "Beta Signup")
-   - description: Brief description (or null)
-   - questions: Array of 2-4 questions (see examples below)
-   - isLive: true
-
-For updates to an existing survey, include surveyId in the tool arguments.
-
-2. After createSurvey succeeds, IMMEDIATELY call navigateToPage with the editUrl from the response
-
-DO NOT just describe what questions you would create. DO NOT provide fake URLs. CALL THE TOOL.
-
-Every question object MUST include this complete shape:
-{ "prompt": string, "type": "auto" | "short_text" | "long_text" | "single_select" | "multi_select" | "likert", "required": boolean, "options": string[] | null, "likertScale": number | null, "likertLabels": { "low": string | null, "high": string | null } | null }
-
-## Question Examples
-
-For WAITLISTS:
-[
-  { "prompt": "What is your biggest challenge right now?", "type": "auto", "required": true, "options": null, "likertScale": null, "likertLabels": null },
-  { "prompt": "On a scale of 1-10, how urgently do you need a solution?", "type": "likert", "required": true, "options": null, "likertScale": 10, "likertLabels": { "low": "Not urgent", "high": "Very urgent" } },
-  { "prompt": "What features or outcomes are most important to you?", "type": "auto", "required": false, "options": null, "likertScale": null, "likertLabels": null }
-]
-
-For FEEDBACK:
-[
-  { "prompt": "What's working well for you?", "type": "auto", "required": true, "options": null, "likertScale": null, "likertLabels": null },
-  { "prompt": "What could be improved?", "type": "auto", "required": true, "options": null, "likertScale": null, "likertLabels": null },
-  { "prompt": "How likely are you to recommend us to a colleague?", "type": "likert", "required": false, "options": null, "likertScale": 10, "likertLabels": { "low": "Not likely", "high": "Very likely" } }
-]
-
-# Other Operations
-
-- fetchSurveys: List/search surveys in the project
-- searchSurveyResponses: Analyze survey responses
-- deleteSurvey: Archive or delete a survey
 - Interview prompts: Use fetch/create/update/deleteInterviewPrompt tools
 - Interviews: Use manageInterviews, fetchInterviewContext
 - URL ingestion/research: fetchWebContent, importVideoFromUrl, webResearch, findSimilarPages
@@ -130,10 +89,6 @@ When the user asks about interview prep, open questions, follow-ups, or "how do 
 		createInterviewPrompt: createInterviewPromptTool,
 		updateInterviewPrompt: updateInterviewPromptTool,
 		deleteInterviewPrompt: deleteInterviewPromptTool,
-		fetchSurveys: fetchSurveysTool,
-		searchSurveyResponses: searchSurveyResponsesTool,
-		createSurvey: createSurveyTool,
-		deleteSurvey: deleteSurveyTool,
 		fetchWebContent: fetchWebContentTool,
 		importVideoFromUrl: importVideoFromUrlTool,
 		webResearch: webResearchTool,

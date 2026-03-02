@@ -80,6 +80,7 @@ const routingTargetAgents = [
   "feedbackAgent",
   "projectSetupAgent",
   "howtoAgent",
+  "surveyAgent",
 ] as const;
 type RoutingTargetAgent = (typeof routingTargetAgents)[number];
 type RoutingResponseMode =
@@ -118,7 +119,8 @@ const ROUTING_CLASSIFIER_INSTRUCTIONS = `Route the user message to one agent and
 Agents:
 - projectSetupAgent: onboarding, setup, research goals, company context.
 - chiefOfStaffAgent: strategic prioritization, next actions, "what should I do", "what now", "what next", "where should I start". Always use mode="normal" for this agent.
-- researchAgent: create/manage surveys, interview prompts, interview operations (NOT analysis/gaps/coverage questions).
+- researchAgent: interview prompts, interview operations (NOT surveys, NOT analysis/gaps/coverage questions).
+- surveyAgent: survey editing, question review/rephrase/reorder/hide, survey settings, response analysis. NOT survey creation (that uses researchAgent fast path via survey_quick_create mode).
 - feedbackAgent: classify feedback/bug/feature requests and submit to PostHog.
 - howtoAgent: procedural guidance ("how do I [specific task]", "best way to [do X]", "teach me"). NOT for "where should I start" or "what should I do" — those go to chiefOfStaffAgent.
 - projectStatusAgent: factual status/data lookup (themes, ICP, people, evidence, interviews, research gaps, coverage analysis, what's missing).
@@ -126,13 +128,14 @@ Agents:
 Modes:
 - fast_standardized: DEPRECATED, do not use. Always use normal mode.
 - theme_people_snapshot: top/common themes + who has them.
-- survey_quick_create: explicit create/build/generate survey/waitlist requests.
+- survey_quick_create: explicit create/build/generate survey/waitlist requests. Route to researchAgent.
 - gtm_mode: howtoAgent prompts about positioning, launch, distribution, sales.
 - ux_research_mode: howtoAgent prompts about UX or product research/how-to.
 - normal: everything else.
 
 Rule: For people comparisons ("what do X and Y have in common", "compare these people"), use mode="normal", not theme_people_snapshot.
-Rule: If system context indicates interview detail and the prompt is about open questions/prep/follow-up, route to researchAgent with mode="normal".`;
+Rule: If system context indicates interview detail and the prompt is about open questions/prep/follow-up, route to researchAgent with mode="normal".
+Rule: If user asks to edit/review/rephrase/evaluate/reorder/hide survey questions, route to surveyAgent with mode="normal".`;
 const DEBUG_PREFIX_REGEX = /^\s*\/debug\b[:\s-]*/i;
 const FALLBACK_EMPTY_RESPONSE_TEXT =
   "Sorry, I couldn't answer that just now. Please try again.";
@@ -211,6 +214,7 @@ const MAX_STEPS_BY_AGENT: Record<RoutingTargetAgent, number> = {
   feedbackAgent: 3,
   projectSetupAgent: 5,
   howtoAgent: 4,
+  surveyAgent: 8,
 };
 
 const BILLING_MODEL_BY_AGENT: Record<RoutingTargetAgent, string> = {
@@ -220,6 +224,7 @@ const BILLING_MODEL_BY_AGENT: Record<RoutingTargetAgent, string> = {
   feedbackAgent: "gpt-4o-mini",
   projectSetupAgent: "gpt-5.1",
   howtoAgent: "gpt-4o-mini",
+  surveyAgent: "claude-sonnet-4-20250514",
 };
 
 type FastGuidanceCacheEntry = {
@@ -315,6 +320,29 @@ function extractInterviewIdFromSystemContext(
 
   const viewMatch = systemContext.match(
     new RegExp(`View:\\s*Interview detail \\(id=(${UUID_PATTERN})\\)`, "i"),
+  );
+  if (viewMatch?.[1]) return viewMatch[1];
+
+  return null;
+}
+
+function extractSurveyIdFromSystemContext(
+  systemContext: string,
+): string | null {
+  if (!systemContext) return null;
+
+  const UUID_PATTERN =
+    "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+
+  // Match: /ask/<uuid>
+  const routeMatch = systemContext.match(
+    new RegExp(`/ask/(${UUID_PATTERN})\\b`, "i"),
+  );
+  if (routeMatch?.[1]) return routeMatch[1];
+
+  // Match: "View: Survey editor (surveyId=<uuid>..."
+  const viewMatch = systemContext.match(
+    new RegExp(`surveyId=(${UUID_PATTERN})`, "i"),
   );
   if (viewMatch?.[1]) return viewMatch[1];
 
@@ -740,6 +768,56 @@ function routeByDeterministicPrompt(
       confidence: 1,
       responseMode: "normal",
       rationale: "deterministic keyword routing for ICP lookup",
+    };
+  }
+
+  // Survey editing/review → surveyAgent (must be checked BEFORE creation)
+  const surveyIdFromContext = extractSurveyIdFromSystemContext(systemContext);
+  const asksForSurveyEdit =
+    hasAny("survey", "ask link", "question", "questionnaire") &&
+    hasAny(
+      "edit",
+      "rephrase",
+      "rewrite",
+      "update",
+      "change",
+      "hide",
+      "unhide",
+      "evaluate",
+      "review",
+      "bias",
+      "improve",
+      "shorten",
+      "simplify",
+      "reorder",
+      "prioritize",
+      "keep",
+      "remove",
+    );
+  if (asksForSurveyEdit) {
+    return {
+      targetAgentId: "surveyAgent",
+      confidence: 1,
+      responseMode: "normal",
+      rationale: "deterministic routing for survey editing/review",
+    };
+  }
+
+  // When user is on survey editor page and asks about "my questions" / "the questions"
+  const onSurveyPage = surveyIdFromContext != null;
+  const asksAboutQuestions = hasAny(
+    "question",
+    "questions",
+    "my survey",
+    "this survey",
+  );
+  if (onSurveyPage && asksAboutQuestions) {
+    return {
+      targetAgentId: "surveyAgent",
+      confidence: 1,
+      responseMode: "normal",
+      rationale:
+        "deterministic routing: user on survey page asking about questions",
     };
   }
 
@@ -1346,6 +1424,12 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
   );
   if (interviewIdFromSystemContext) {
     requestContext.set("interview_id", interviewIdFromSystemContext);
+  }
+  const surveyIdFromSystemContext = extractSurveyIdFromSystemContext(
+    typeof system === "string" ? system : "",
+  );
+  if (surveyIdFromSystemContext) {
+    requestContext.set("survey_id", surveyIdFromSystemContext);
   }
   if (userTimezone) {
     requestContext.set("user_timezone", userTimezone);
