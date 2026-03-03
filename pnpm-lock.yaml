@@ -54,19 +54,19 @@ importers:
         version: 1.0.6(@hono/node-server@1.19.5(hono@4.9.9))(hono@4.9.9)
       '@livekit/agents':
         specifier: latest
-        version: 1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76)
+        version: 1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       '@livekit/agents-plugin-deepgram':
         specifier: latest
-        version: 1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)
+        version: 1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)
       '@livekit/agents-plugin-livekit':
         specifier: latest
-        version: 1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))
+        version: 1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))
       '@livekit/agents-plugin-openai':
         specifier: latest
-        version: 1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)(zod@3.25.76)
+        version: 1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       '@livekit/agents-plugin-silero':
         specifier: latest
-        version: 1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)
+        version: 1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)
       '@livekit/components-react':
         specifier: latest
         version: 2.9.20(livekit-client@2.17.2(@types/dom-mediacapture-record@1.0.22))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(tslib@2.8.1)
@@ -535,8 +535,8 @@ importers:
         specifier: ^0.40.1
         version: 0.40.1(encoding@0.1.13)
       '@recallai/desktop-sdk':
-        specifier: ^2.0.0
-        version: 2.0.2
+        specifier: ^2.0.7
+        version: 2.0.7
       '@supabase/supabase-js':
         specifier: ^2.89.0
         version: 2.89.0
@@ -2480,31 +2480,31 @@ packages:
     peerDependencies:
       '@inquirer/prompts': '>= 3 < 8'
 
-  '@livekit/agents-plugin-deepgram@1.0.47':
-    resolution: {integrity: sha512-b7aYQLNGw/+JUWJQdchCKr+InQV2MynJmp6HRT1jfKO/dr/uzpMWUQV+5tQGQuyfNo+u2WdAxgBnHS6pFEQqVw==}
+  '@livekit/agents-plugin-deepgram@1.0.48':
+    resolution: {integrity: sha512-RRMkqGPqVMCwckn90tMHZifK8ElekysNC6/7iX10GghZq4nzqIUke1ebHpnekR63SLEaXdSUK9h4hCl8YEtG7Q==}
     peerDependencies:
-      '@livekit/agents': 1.0.47
+      '@livekit/agents': 1.0.48
       '@livekit/rtc-node': ^0.13.24
 
-  '@livekit/agents-plugin-livekit@1.0.47':
-    resolution: {integrity: sha512-ZDSoF8Y2fhzwPCtWsQZ8kC1hnY+0tA2FenLrlTHrj0IbyUsjV9x/LG7i6gGjFboLHV1cTKaVTU3yoLLWq7UbqA==}
+  '@livekit/agents-plugin-livekit@1.0.48':
+    resolution: {integrity: sha512-VQV/wpK5EMprR6ffEoJPmeTVwgTjBAxPir5XgwFgFhhM8DKfLbV6eJg6dp+1BL4EdXKScAnR4QRCiXp2Hb/J6Q==}
     peerDependencies:
-      '@livekit/agents': 1.0.47
+      '@livekit/agents': 1.0.48
 
-  '@livekit/agents-plugin-openai@1.0.47':
-    resolution: {integrity: sha512-LO5hZPPEI7jG1gKHe8RecWjSY42Khd5iCzalvepI3GDWWvKM+g9Ydc4Cr8gtTywwRHr59Kb3v4lzGkYSlHC5jA==}
+  '@livekit/agents-plugin-openai@1.0.48':
+    resolution: {integrity: sha512-+0Sb5YybNfxmszvzZOkQwEqFMRDbuZmKYnI0LAU4wkFWuYbk8NpG39sxIzestst28qUzsNpQtmwulax2p/wO4g==}
     peerDependencies:
-      '@livekit/agents': 1.0.47
+      '@livekit/agents': 1.0.48
       '@livekit/rtc-node': ^0.13.24
 
-  '@livekit/agents-plugin-silero@1.0.47':
-    resolution: {integrity: sha512-u4kpFNX1q7su+myU0A6T1GrVEl9oQnXoKL1eGs+l3teS+F+psTi6feX4onnT3cpHOieY0CwzaPlNkV3T4UBvCA==}
+  '@livekit/agents-plugin-silero@1.0.48':
+    resolution: {integrity: sha512-YdWS/BBT4kn2D/ljX3CBq+4Cc3uhqB2/ZoU/0Y/H9ycYyRd6tNJXJJi6KaC2O+hXpbIzJ/MYxNgIuMmgKKJhSw==}
     peerDependencies:
-      '@livekit/agents': 1.0.47
+      '@livekit/agents': 1.0.48
       '@livekit/rtc-node': ^0.13.24
 
-  '@livekit/agents@1.0.47':
-    resolution: {integrity: sha512-Iy995PAdObU2niimqYNvJxLGAvrTktrJAMd+vFOmMRmB1IRafcwEBIcSBM1N5csT7Snu6mwS9/3SmjkHgysXyg==}
+  '@livekit/agents@1.0.48':
+    resolution: {integrity: sha512-mfTppBj1GAFZfLLaQdACqmKevViydfgo4O7+CuxsGrxKDz+yq9HlgITFK8F4TTLeXkkyzYbTnx6jFjZD9BL+BA==}
     peerDependencies:
       '@livekit/rtc-node': ^0.13.24
       zod: ^3.25.76 || ^4.1.8
@@ -4194,8 +4194,8 @@ packages:
     peerDependencies:
       react: 19.2.3
 
-  '@recallai/desktop-sdk@2.0.2':
-    resolution: {integrity: sha512-5JS7qXr6+1q9Xpnk4zCg5nVb6gYoGbfBgZHCHCdvakE3AEXs69IgPJJe8Z4lKRUWWHj7ntnla5wEre796OK0GA==}
+  '@recallai/desktop-sdk@2.0.7':
+    resolution: {integrity: sha512-PbA2A0W+yZxOQfUvBNSXnnyItvNKrBzU/G8G0tl46l8wRlc55PuoKpWCoR7tLTCqoAiJjXMdUlwrJ0J6gU1/HA==}
     engines: {node: '>=18.0.0'}
 
   '@reduxjs/toolkit@2.11.1':
@@ -15256,25 +15256,25 @@ snapshots:
       '@inquirer/prompts': 6.0.1
       '@inquirer/type': 1.5.5
 
-  '@livekit/agents-plugin-deepgram@1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)':
+  '@livekit/agents-plugin-deepgram@1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)':
     dependencies:
-      '@livekit/agents': 1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76)
+      '@livekit/agents': 1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       '@livekit/rtc-node': 0.13.24
       ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@livekit/agents-plugin-livekit@1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))':
+  '@livekit/agents-plugin-livekit@1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))':
     dependencies:
       '@huggingface/hub': 2.4.1
       '@huggingface/transformers': 3.7.2
-      '@livekit/agents': 1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76)
+      '@livekit/agents': 1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       onnxruntime-node: 1.21.0
 
-  '@livekit/agents-plugin-openai@1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)(zod@3.25.76)':
+  '@livekit/agents-plugin-openai@1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)(zod@3.25.76)':
     dependencies:
-      '@livekit/agents': 1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76)
+      '@livekit/agents': 1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       '@livekit/mutex': 1.1.1
       '@livekit/rtc-node': 0.13.24
       openai: 6.10.0(ws@8.18.3)(zod@3.25.76)
@@ -15284,9 +15284,9 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@livekit/agents-plugin-silero@1.0.47(@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)':
+  '@livekit/agents-plugin-silero@1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)':
     dependencies:
-      '@livekit/agents': 1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76)
+      '@livekit/agents': 1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       '@livekit/rtc-node': 0.13.24
       onnxruntime-node: 1.21.0
       ws: 8.18.3
@@ -15294,7 +15294,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@livekit/agents@1.0.47(@livekit/rtc-node@0.13.24)(zod@3.25.76)':
+  '@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76)':
     dependencies:
       '@ffmpeg-installer/ffmpeg': 1.1.0
       '@livekit/mutex': 1.1.1
@@ -17204,7 +17204,7 @@ snapshots:
     dependencies:
       react: 19.2.3
 
-  '@recallai/desktop-sdk@2.0.2':
+  '@recallai/desktop-sdk@2.0.7':
     dependencies:
       tar: 7.5.2
       uuid: 11.1.0

@@ -7,6 +7,7 @@ const {
   shell,
   Menu,
   screen,
+  dialog,
 } = require("electron");
 const path = require("node:path");
 const url = require("url");
@@ -152,6 +153,26 @@ let floatingPanelWindow = null;
 // Track if we're currently recording in floating panel mode
 let floatingPanelRecordingActive = false;
 let floatingPanelRecordingInProgress = false; // Guard against rapid clicks
+let screenCapturePermissionPrompted = false;
+const sdkNoisyLogLastSeen = new Map();
+const SDK_NOISY_LOG_THROTTLE_MS = 30000;
+const SDK_LOG_MAX_LENGTH = 1800;
+const SCREEN_CAPTURE_SETTINGS_URL =
+  "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture";
+const TRANSCRIPT_DEDUP_WINDOW_MS = 5000;
+const TRANSCRIPT_WATCHDOG_MS = 25000;
+const SPEAKER_SOFT_MERGE_WINDOW_MS = 35000;
+const PROVIDER_DUPLICATE_SUPPRESSION_MS = 2500;
+const PANEL_JOIN_TIMEOUT_MS = 90000;
+const PANEL_JOIN_RECOVERY_CHECK_MS = 30000;
+const POST_RECORDING_TRANSCRIPT_GRACE_MS = 4000;
+const AUTO_MEETING_DUMP_COOLDOWN_MS = 15000;
+const recentTranscriptChunksByWindow = new Map();
+const recentNonProviderTranscriptByWindow = new Map();
+const lastFinalTranscriptEventByWindow = new Map();
+const transcriptHealthByWindow = new Map();
+let autoMeetingDumpInFlight = false;
+let lastAutoMeetingDumpAt = 0;
 
 const platformNames = {
   zoom: "Zoom",
@@ -160,8 +181,258 @@ const platformNames = {
   teams: "Microsoft Teams",
 };
 
+const MEETING_HINT_PATTERNS = [
+  { platform: "google-meet", regex: /meet\.google\.com/i },
+  { platform: "zoom", regex: /(?:^|\.)zoom\.us/i },
+  { platform: "teams", regex: /teams\.microsoft\.com/i },
+  { platform: "teams", regex: /teams\.live\.com/i },
+  { platform: "slack", regex: /slack.*huddle|app\.slack\.com\/huddle/i },
+  { platform: "google-meet", regex: /\bgoogle meet\b/i },
+  { platform: "zoom", regex: /\bzoom meeting\b/i },
+  { platform: "teams", regex: /\b(microsoft )?teams\b/i },
+];
+const AX_TREE_PROCESS_NAMES = [
+  "Google Chrome",
+  "Google Chrome Canary",
+  "Chromium",
+  "Arc",
+  "Brave Browser",
+  "Microsoft Edge",
+  "Firefox",
+  "zoom.us",
+  "Slack",
+  "Microsoft Teams",
+  "Teams",
+  "Safari",
+];
+let loggedUnsupportedDumpApi = false;
+
 function getPlatformName(platform) {
   return platformNames[platform] || platform || "Meeting";
+}
+
+function shouldThrottleSdkLog(evt, level, message) {
+  const isNoisyScreenCapture = /screen capture granted:\s*false/i.test(message);
+  const isNoisyMeetPolling =
+    level === "debug" && /polling google meet for meeting/i.test(message);
+  if (!isNoisyScreenCapture && !isNoisyMeetPolling) {
+    return false;
+  }
+
+  const key = `${evt?.subsystem || "unknown"}/${evt?.category || "unknown"}:${message}`;
+  const now = Date.now();
+  const lastSeen = sdkNoisyLogLastSeen.get(key) || 0;
+  if (now - lastSeen < SDK_NOISY_LOG_THROTTLE_MS) {
+    return true;
+  }
+  sdkNoisyLogLastSeen.set(key, now);
+  return false;
+}
+
+function sanitizeSdkLogMessage(rawMessage) {
+  const input = String(rawMessage || "");
+  let sanitized = input
+    .replace(/("token"\s*:\s*")([^"]+)(")/gi, '$1<redacted>$3')
+    .replace(/(upload token\s+)([A-Za-z0-9._-]+)/gi, "$1<redacted>");
+
+  if (sanitized.length > SDK_LOG_MAX_LENGTH) {
+    const truncatedChars = sanitized.length - SDK_LOG_MAX_LENGTH;
+    sanitized = `${sanitized.slice(0, SDK_LOG_MAX_LENGTH)}… [truncated ${truncatedChars} chars]`;
+  }
+  return sanitized;
+}
+
+function isStrongSdkMeetingSignal(rawMessage) {
+  const message = String(rawMessage || "");
+  const hasGoogleMeetSignal =
+    /meetOpenSomewhere:\s*true/i.test(message) &&
+    /windows:\s*true/i.test(message) &&
+    /urls:\s*true/i.test(message);
+  const hasZoomSignal =
+    /zoomOpenSomewhere:\s*true/i.test(message) &&
+    /windows:\s*true/i.test(message);
+  return hasGoogleMeetSignal || hasZoomSignal;
+}
+
+async function maybeAutoDetectMeetingViaDump(reason) {
+  if (detectedMeeting || autoMeetingDumpInFlight) {
+    return;
+  }
+  const now = Date.now();
+  if (now - lastAutoMeetingDumpAt < AUTO_MEETING_DUMP_COOLDOWN_MS) {
+    return;
+  }
+
+  autoMeetingDumpInFlight = true;
+  lastAutoMeetingDumpAt = now;
+  try {
+    await detectMeetingViaDump(reason);
+  } finally {
+    autoMeetingDumpInFlight = false;
+  }
+}
+
+function clearTranscriptTracking(windowId) {
+  if (!windowId) return;
+  const key = String(windowId);
+  const health = transcriptHealthByWindow.get(key);
+  if (health?.timer) {
+    clearTimeout(health.timer);
+  }
+  transcriptHealthByWindow.delete(key);
+  recentTranscriptChunksByWindow.delete(key);
+  recentNonProviderTranscriptByWindow.delete(key);
+  lastFinalTranscriptEventByWindow.delete(key);
+}
+
+function markTranscriptSeen(windowId) {
+  if (!windowId) return;
+  const key = String(windowId);
+  const health = transcriptHealthByWindow.get(key);
+  if (health) {
+    health.seenTranscript = true;
+  }
+}
+
+function armTranscriptWatchdog(windowId, noteId) {
+  if (!windowId) return;
+  const key = String(windowId);
+  clearTranscriptTracking(key);
+
+  const timer = setTimeout(() => {
+    const health = transcriptHealthByWindow.get(key);
+    if (!health || health.seenTranscript) {
+      return;
+    }
+
+    const recordingInfo = activeRecordings.recordings[key];
+    const stillRecording = recordingInfo?.state === "recording";
+    if (!stillRecording) {
+      return;
+    }
+
+    console.warn(
+      `[transcript-watchdog] No transcript events after ${TRANSCRIPT_WATCHDOG_MS / 1000}s for window ${key} (note ${noteId || "unknown"})`,
+    );
+    new Notification({
+      title: "Transcript delayed",
+      body: "Recording is running, but transcript events are not arriving yet. We will keep recording and finalize from available data.",
+    }).show();
+  }, TRANSCRIPT_WATCHDOG_MS);
+
+  transcriptHealthByWindow.set(key, {
+    noteId: noteId || null,
+    seenTranscript: false,
+    timer,
+  });
+}
+
+function isDuplicateTranscriptChunk(windowId, speaker, text) {
+  if (!windowId || !text) return false;
+  const key = String(windowId);
+  const normalizedSpeaker = String(speaker || "unknown").trim().toLowerCase();
+  const normalizedText = normalizeTranscriptText(text).toLowerCase();
+  if (!normalizedText) return false;
+  const now = Date.now();
+  const previous = recentTranscriptChunksByWindow.get(key);
+  if (previous && now - previous.at < TRANSCRIPT_DEDUP_WINDOW_MS) {
+    const previousSpeaker = previous.speaker || "unknown";
+    const previousText = previous.text || "";
+    const sameText = previousText === normalizedText;
+    const previousIsUnknown = isUnknownSpeakerLabel(previousSpeaker);
+    const currentIsUnknown = isUnknownSpeakerLabel(normalizedSpeaker);
+
+    if (sameText) {
+      if (previousSpeaker === normalizedSpeaker) {
+        return true;
+      }
+      if (!previousIsUnknown && currentIsUnknown) {
+        return true;
+      }
+      if (previousIsUnknown && !currentIsUnknown) {
+        return false;
+      }
+      if (previousIsUnknown && currentIsUnknown) {
+        return true;
+      }
+    }
+  }
+  recentTranscriptChunksByWindow.set(key, {
+    speaker: normalizedSpeaker,
+    text: normalizedText,
+    at: now,
+  });
+  return false;
+}
+
+function shouldSkipProviderTranscript(windowId, text) {
+  if (!windowId || !text) return false;
+  const key = String(windowId);
+  const normalizedText = normalizeTranscriptText(text).toLowerCase();
+  if (!normalizedText) return false;
+
+  const recent = recentNonProviderTranscriptByWindow.get(key);
+  if (!recent) return false;
+  if (Date.now() - recent.at > PROVIDER_DUPLICATE_SUPPRESSION_MS) {
+    return false;
+  }
+
+  const recentText = recent.text;
+  if (!recentText) return false;
+  return (
+    normalizedText === recentText ||
+    normalizedText.startsWith(recentText) ||
+    recentText.startsWith(normalizedText)
+  );
+}
+
+function trackNonProviderTranscript(windowId, text) {
+  if (!windowId || !text) return;
+  const key = String(windowId);
+  const normalizedText = normalizeTranscriptText(text).toLowerCase();
+  if (!normalizedText) return;
+  recentNonProviderTranscriptByWindow.set(key, {
+    text: normalizedText,
+    at: Date.now(),
+  });
+}
+
+function openScreenCaptureSettings() {
+  shell.openExternal(SCREEN_CAPTURE_SETTINGS_URL).catch((error) => {
+    console.error(
+      "[permissions] Failed to open Screen Recording settings:",
+      error?.message || error,
+    );
+  });
+}
+
+async function maybePromptForScreenCapturePermission(reason = "startup") {
+  const { systemPreferences } = require("electron");
+  const status = systemPreferences.getMediaAccessStatus("screen");
+  if (status === "granted" || screenCapturePermissionPrompted) {
+    return;
+  }
+
+  screenCapturePermissionPrompted = true;
+  console.warn(
+    `[permissions] Screen capture permission is ${status} (${reason})`,
+  );
+  const detail =
+    "To detect and record meetings, enable UpSight under System Settings -> Privacy & Security -> Screen Recording, then relaunch UpSight.";
+  const { response } = await dialog.showMessageBox({
+    type: "warning",
+    title: "Enable Screen Recording",
+    message:
+      "UpSight cannot detect active meetings until Screen Recording permission is granted.",
+    detail,
+    buttons: ["Open Settings", "Not now"],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  });
+  if (response === 0) {
+    openScreenCaptureSettings();
+  }
 }
 
 function normalizeMeetingUrl(value) {
@@ -177,6 +448,219 @@ function normalizeMeetingUrl(value) {
     return `${parsed.origin}${normalizedPath}`;
   } catch {
     return value.trim().replace(/\/+$/, "");
+  }
+}
+
+function inferMeetingPlatform(rawValue) {
+  const value = String(rawValue || "");
+  for (const pattern of MEETING_HINT_PATTERNS) {
+    if (pattern.regex.test(value)) {
+      return pattern.platform;
+    }
+  }
+  return null;
+}
+
+function isLikelyMeetingText(rawValue) {
+  return inferMeetingPlatform(rawValue) !== null;
+}
+
+function normalizeMeetingDumpCandidate(rawCandidate) {
+  if (!rawCandidate || typeof rawCandidate !== "object") {
+    return null;
+  }
+
+  const id =
+    rawCandidate.id ??
+    rawCandidate.window_id ??
+    rawCandidate.windowId ??
+    rawCandidate.handle ??
+    rawCandidate.pid ??
+    null;
+  const rawUrl =
+    rawCandidate.url ??
+    rawCandidate.href ??
+    rawCandidate.meeting_url ??
+    rawCandidate.meetingUrl ??
+    null;
+  const rawTitle =
+    rawCandidate.title ??
+    rawCandidate.window_title ??
+    rawCandidate.windowTitle ??
+    rawCandidate.name ??
+    null;
+  const platform =
+    rawCandidate.platform ||
+    inferMeetingPlatform(rawUrl) ||
+    inferMeetingPlatform(rawTitle);
+
+  if (!platform) {
+    return null;
+  }
+
+  if (!id && !rawUrl && !rawTitle) {
+    return null;
+  }
+
+  return {
+    id: id ? String(id) : `${platform}:${normalizeMeetingUrl(rawUrl || rawTitle || "")}`,
+    platform,
+    title: rawTitle ? String(rawTitle) : `${getPlatformName(platform)} Meeting`,
+    url: rawUrl ? String(rawUrl) : null,
+  };
+}
+
+function collectMeetingCandidatesFromDump(payload) {
+  const candidates = [];
+  const seen = new Set();
+
+  const visitNode = (node) => {
+    if (!node) return;
+    if (Array.isArray(node)) {
+      for (const entry of node) {
+        visitNode(entry);
+      }
+      return;
+    }
+    if (typeof node !== "object") {
+      return;
+    }
+
+    const candidate = normalizeMeetingDumpCandidate(node);
+    if (candidate) {
+      const dedupeKey = `${candidate.id}|${candidate.platform}|${candidate.url || candidate.title}`;
+      if (!seen.has(dedupeKey)) {
+        seen.add(dedupeKey);
+        candidates.push(candidate);
+      }
+    }
+
+    for (const value of Object.values(node)) {
+      if (!value) continue;
+      if (typeof value === "string" && isLikelyMeetingText(value)) {
+        const inferred = normalizeMeetingDumpCandidate({
+          id: node.id || node.window_id || node.windowId || node.pid || null,
+          platform: inferMeetingPlatform(value),
+          title:
+            node.title ||
+            node.window_title ||
+            node.windowTitle ||
+            node.name ||
+            value,
+          url: value.includes("http") ? value : null,
+        });
+        if (inferred) {
+          const dedupeKey = `${inferred.id}|${inferred.platform}|${inferred.url || inferred.title}`;
+          if (!seen.has(dedupeKey)) {
+            seen.add(dedupeKey);
+            candidates.push(inferred);
+          }
+        }
+      } else if (typeof value === "object") {
+        visitNode(value);
+      }
+    }
+  };
+
+  visitNode(payload);
+  return candidates;
+}
+
+async function collectMeetingCandidatesFromSdkDump() {
+  if (typeof RecallAiSdk.dumpAllApplications === "function") {
+    const dumpedApplications = await Promise.race([
+      RecallAiSdk.dumpAllApplications(),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("dumpAllApplications timeout after 4000ms")),
+          4000,
+        ),
+      ),
+    ]);
+    return collectMeetingCandidatesFromDump(dumpedApplications);
+  }
+
+  if (typeof RecallAiSdk.dumpAXTree === "function") {
+    const merged = [];
+    const seen = new Set();
+
+    for (const procName of AX_TREE_PROCESS_NAMES) {
+      let axTree;
+      try {
+        axTree = await Promise.race([
+          RecallAiSdk.dumpAXTree(procName),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error(`dumpAXTree timeout for ${procName}`)),
+              2000,
+            ),
+          ),
+        ]);
+      } catch (error) {
+        const errorMessage = String(error?.message || error || "");
+        const likelyMissingProcess =
+          /not found|no such process|timeout/i.test(errorMessage);
+        if (!likelyMissingProcess) {
+          console.warn(
+            `[meeting-fallback] AX tree probe failed for ${procName}: ${errorMessage}`,
+          );
+        }
+        continue;
+      }
+
+      const candidates = collectMeetingCandidatesFromDump(axTree);
+      for (const candidate of candidates) {
+        const dedupeKey = `${candidate.id}|${candidate.platform}|${candidate.url || candidate.title}`;
+        if (!seen.has(dedupeKey)) {
+          seen.add(dedupeKey);
+          merged.push(candidate);
+        }
+      }
+
+      if (merged.length > 0) {
+        break;
+      }
+    }
+
+    return merged;
+  }
+
+  if (!loggedUnsupportedDumpApi) {
+    loggedUnsupportedDumpApi = true;
+    console.warn(
+      "[meeting-fallback] SDK does not expose dumpAllApplications or dumpAXTree; disabling fallback detection",
+    );
+  }
+  return [];
+}
+
+async function detectMeetingViaDump(reason = "fallback") {
+  try {
+    const candidates = await collectMeetingCandidatesFromSdkDump();
+    if (candidates.length === 0) {
+      console.warn(`[meeting-fallback] No active meeting found via ${reason}`);
+      return null;
+    }
+
+    const selected = candidates[0];
+    detectedMeeting = { window: selected };
+    console.log(
+      `[meeting-fallback] Attached via ${reason}: ${selected.platform} ${selected.id}`,
+    );
+    notifyMeetingDetected(selected);
+    showFloatingPanel();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("meeting-detection-status", {
+        detected: true,
+      });
+    }
+    return selected;
+  } catch (error) {
+    console.warn(
+      `[meeting-fallback] Failed via ${reason}:`,
+      error?.message || error,
+    );
+    return null;
   }
 }
 
@@ -579,6 +1063,26 @@ app.whenReady().then(() => {
             showMeetingsArchive();
           },
         },
+        {
+          label: "Show Recorder Panel",
+          accelerator: "CmdOrCtrl+Shift+P",
+          click: () => {
+            showFloatingPanel();
+          },
+        },
+        {
+          label: "Detect Active Meeting (Fallback)",
+          accelerator: "CmdOrCtrl+Shift+D",
+          click: async () => {
+            const recovered = await detectMeetingViaDump("menu");
+            if (!recovered) {
+              new Notification({
+                title: "No meeting detected",
+                body: "Open your meeting tab and try again.",
+              }).show();
+            }
+          },
+        },
         { type: "separator" },
         {
           label: "Open Meetings Folder",
@@ -862,11 +1366,16 @@ const activeRecordings = {
   recordings: {},
 
   // Register a new recording
-  addRecording: function (recordingId, noteId, platform = "unknown") {
+  addRecording: function (
+    recordingId,
+    noteId,
+    platform = "unknown",
+    initialState = "recording",
+  ) {
     this.recordings[recordingId] = {
       noteId,
       platform,
-      state: "recording",
+      state: initialState,
       startTime: new Date(),
     };
     console.log(
@@ -909,6 +1418,25 @@ const activeRecordings = {
     return { ...this.recordings };
   },
 };
+
+async function waitForRecordingState(windowId, desiredState, timeoutMs = 15000) {
+  const startedAt = Date.now();
+  const key = String(windowId || "");
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const state = activeRecordings.recordings[key]?.state;
+    if (state === desiredState) {
+      return true;
+    }
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  return false;
+}
+
+function waitForMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 // File operation manager to prevent race conditions on both reads and writes
 const fileOperationManager = {
@@ -1029,8 +1557,20 @@ function getDesktopApiBaseCandidates() {
       urls.push(normalized);
     }
   };
+  const configuredHostname = (() => {
+    try {
+      return new URL(configuredUpsightApiUrl).hostname;
+    } catch {
+      return "";
+    }
+  })();
+  const isLocalConfiguredHost =
+    configuredHostname === "localhost" ||
+    configuredHostname === "127.0.0.1" ||
+    configuredHostname === "::1";
   const shouldIncludeProdFallback =
     configuredUpsightApiUrl === DEFAULT_UPSIGHT_API_URL ||
+    isLocalConfiguredHost ||
     process.env.UPSIGHT_ALLOW_PROD_FALLBACK === "1";
 
   pushUnique(activeUpsightApiUrl);
@@ -1427,6 +1967,16 @@ function initSDK() {
         "Please grant Accessibility permission to UpSight in System Settings.",
     );
   }
+  const screenPermissionStatus = systemPreferences.getMediaAccessStatus("screen");
+  console.log("Screen capture permission status:", screenPermissionStatus);
+  if (screenPermissionStatus !== "granted") {
+    maybePromptForScreenCapturePermission("startup").catch((error) =>
+      console.error(
+        "[permissions] Failed to prompt for screen-capture access:",
+        error?.message || error,
+      ),
+    );
+  }
 
   console.log(
     "═══════════════════════════════════════════════════════════════",
@@ -1614,6 +2164,7 @@ function initSDK() {
     detectedMeeting = null;
     if (evt.window?.id) {
       notifiedMeetingWindowFingerprints.delete(String(evt.window.id));
+      clearTranscriptTracking(evt.window.id);
     }
 
     // Send the meeting closed status to the renderer process
@@ -1622,6 +2173,7 @@ function initSDK() {
         detected: false,
       });
     }
+
   });
 
   // Listen for recording ended events
@@ -1686,7 +2238,18 @@ function initSDK() {
       // Update the note with recording information
       await updateNoteWithRecordingInfo(evt.window.id);
 
-      // Read meeting data once for both finalize and upload
+      // Flush any pending real-time extraction before finalization so
+      // tasks/people/evidence are as complete as possible.
+      if (noteId) {
+        console.log(
+          `[recording-ended] Waiting ${POST_RECORDING_TRANSCRIPT_GRACE_MS}ms for trailing transcript packets before finalization`,
+        );
+        await waitForMs(POST_RECORDING_TRANSCRIPT_GRACE_MS);
+        await flushEvidenceExtraction(noteId);
+      }
+
+      // Read meeting data once for both finalize and upload, after giving
+      // late transcript/provider packets time to persist.
       let meeting = null;
       if (noteId) {
         try {
@@ -1700,13 +2263,14 @@ function initSDK() {
         }
       }
 
-      // Flush any pending real-time extraction before finalization so
-      // tasks/people/evidence are as complete as possible.
-      if (noteId) {
-        await flushEvidenceExtraction(noteId);
-      }
-
       const postRecordingWork = [];
+      const transcriptTurnCount = Array.isArray(meeting?.transcript)
+        ? meeting.transcript.length
+        : 0;
+
+      const extractionState = noteId
+        ? evidenceExtractionState.getState(noteId)
+        : null;
 
       // Finalize interview at recording end so notes/tasks/status persist
       // even if transcript chunks are partial or delayed.
@@ -1737,7 +2301,7 @@ function initSDK() {
               noteId,
               interviewId,
               formattedTranscript,
-              state.manualNotes || [],
+              extractionState?.manualNotes || [],
               durationSeconds,
               meeting.platform || null,
             );
@@ -1765,7 +2329,16 @@ function initSDK() {
           (async () => {
             // Wait briefly for file system flush before opening file stream.
             await new Promise((resolve) => setTimeout(resolve, 3000));
-            await uploadRecordingToR2(recordingFileId, interviewId);
+            const uploadResult = await uploadRecordingToR2(
+              recordingFileId,
+              interviewId,
+            );
+            if (uploadResult && transcriptTurnCount === 0) {
+              await triggerInterviewReprocess(
+                interviewId,
+                "no-realtime-transcript",
+              );
+            }
           })(),
         );
       } else {
@@ -1794,6 +2367,7 @@ function initSDK() {
         evidenceExtractionState.cleanup(cleanupNoteId);
       }
       delete global.activeMeetingIds[windowId];
+      clearTranscriptTracking(windowId);
       console.log(
         `[recording-ended] Cleaned up activeMeetingIds for window ${windowId}`,
       );
@@ -1856,14 +2430,17 @@ function initSDK() {
             window.id,
             noteId,
             window.platform || "unknown",
+            "recording",
           );
         }
+        armTranscriptWatchdog(window.id, noteId);
       } else if (code === "paused") {
         console.log("Recording paused");
         activeRecordings.updateState(window.id, "paused");
       } else if (code === "idle") {
         console.log("Recording stopped");
         activeRecordings.removeRecording(window.id);
+        clearTranscriptTracking(window.id);
       }
 
       // Notify renderer process about recording state change
@@ -1896,14 +2473,14 @@ function initSDK() {
     }
 
     // Handle different event types
-    if (evt.event === "transcript.data" && evt.data && evt.data.data) {
-      await processTranscriptData(evt);
-    } else if (
-      evt.event === "transcript.provider_data" &&
+    if (
+      (evt.event === "transcript.data" ||
+        evt.event === "transcript.partial_data" ||
+        evt.event === "transcript.provider_data") &&
       evt.data &&
       evt.data.data
     ) {
-      await processTranscriptProviderData(evt);
+      await processTranscriptData(evt);
     } else if (
       evt.event === "participant_events.join" &&
       evt.data &&
@@ -1951,6 +2528,51 @@ function initSDK() {
     }
   });
 
+  // Surface SDK-internal warnings/errors to help diagnose missing meeting detection.
+  RecallAiSdk.addEventListener("log", (evt) => {
+    const level = String(evt?.level || "info").toLowerCase();
+    const rawMessage = String(evt?.message || "");
+    const message = sanitizeSdkLogMessage(rawMessage);
+    if (shouldThrottleSdkLog(evt, level, message)) {
+      return;
+    }
+    if (
+      level !== "debug" ||
+      /meeting|detect|zoom|teams|google meet|slack|url|accessibility|capture|permission/i.test(
+        message,
+      )
+    ) {
+      console.log(
+        `[RecallSDK:${level}] ${evt?.subsystem || "unknown"}/${evt?.category || "unknown"} ${message}`,
+      );
+    }
+
+    if (!detectedMeeting && isStrongSdkMeetingSignal(rawMessage)) {
+      maybeAutoDetectMeetingViaDump("sdk-signal").catch((error) =>
+        console.warn(
+          "[meeting-fallback] Auto detect via sdk-signal failed:",
+          error?.message || error,
+        ),
+      );
+    }
+  });
+
+  // Permission status events are emitted by the SDK process and provide direct
+  // signal when the OS is blocking meeting capture.
+  RecallAiSdk.addEventListener("permission-status", (evt) => {
+    const permission = String(evt?.permission || "");
+    const status = String(evt?.status || "unknown");
+    const granted = Boolean(evt?.granted);
+    if (permission !== "screen-capture") return;
+    if (granted || status === "granted") return;
+    maybePromptForScreenCapturePermission(`sdk:${status}`).catch((error) =>
+      console.error(
+        "[permissions] Failed to prompt after permission-status event:",
+        error?.message || error,
+      ),
+    );
+  });
+
   console.log(
     "═══════════════════════════════════════════════════════════════",
   );
@@ -1988,9 +2610,41 @@ ipcMain.handle("debugGetHandlers", async () => {
 ipcMain.handle("debugDumpApplications", async () => {
   console.log("[DEBUG] Manual dump of visible applications requested...");
   try {
-    const apps = await RecallAiSdk.dumpAllApplications();
-    console.log("[DEBUG] Visible applications:", JSON.stringify(apps, null, 2));
-    return { success: true, applications: apps };
+    if (typeof RecallAiSdk.dumpAllApplications === "function") {
+      const apps = await RecallAiSdk.dumpAllApplications();
+      console.log("[DEBUG] Visible applications:", JSON.stringify(apps, null, 2));
+      return { success: true, mode: "dumpAllApplications", applications: apps };
+    }
+
+    if (typeof RecallAiSdk.dumpAXTree === "function") {
+      const trees = [];
+      for (const procName of AX_TREE_PROCESS_NAMES) {
+        try {
+          const tree = await Promise.race([
+            RecallAiSdk.dumpAXTree(procName),
+            new Promise((_, reject) =>
+              setTimeout(
+                () => reject(new Error(`dumpAXTree timeout for ${procName}`)),
+                2000,
+              ),
+            ),
+          ]);
+          trees.push({ procName, tree });
+        } catch (_) {
+          // Ignore missing processes in debug mode.
+        }
+      }
+      console.log(
+        "[DEBUG] AX tree dumps:",
+        JSON.stringify({ processCount: trees.length }, null, 2),
+      );
+      return { success: true, mode: "dumpAXTree", applications: trees };
+    }
+
+    return {
+      success: false,
+      error: "SDK does not expose dumpAllApplications or dumpAXTree",
+    };
   } catch (err) {
     console.error("[DEBUG] Failed to dump applications:", err.message);
     return { success: false, error: err.message };
@@ -2524,7 +3178,12 @@ async function createMeetingNoteAndRecord(platformName, uploadToken) {
 
     // Register this meeting in our active recordings tracker (even before starting)
     // This ensures the UI knows about it immediately
-    activeRecordings.addRecording(meetingWindowId, id, platformName);
+    activeRecordings.addRecording(
+      meetingWindowId,
+      id,
+      platformName,
+      "starting",
+    );
 
     // Add to pastMeetings
     meetingsData.pastMeetings.unshift(newMeeting);
@@ -2633,6 +3292,22 @@ async function createMeetingNoteAndRecord(platformName, uploadToken) {
       uploadToken,
     });
     console.log("[RECORDING] startRecording with token result:", result);
+    if (result && result.success === false) {
+      throw new Error(result.error || "RecallAiSdk.startRecording failed");
+    }
+
+    const confirmed = await waitForRecordingState(
+      meetingWindowId,
+      "recording",
+      20000,
+    );
+    if (!confirmed) {
+      console.error(
+        `[RECORDING] Timed out waiting for recording state for window ${meetingWindowId}`,
+      );
+      activeRecordings.removeRecording(meetingWindowId);
+      return null;
+    }
 
     return id;
   } catch (error) {
@@ -2763,6 +3438,18 @@ function isGenericParticipantName(name) {
   }
 
   return normalized.includes("others");
+}
+
+function isUnknownSpeakerLabel(label) {
+  const normalized = String(label || "")
+    .trim()
+    .toLowerCase();
+  if (!normalized) return true;
+  return (
+    normalized === "unknown" ||
+    normalized === "unknown speaker" ||
+    /^speaker \d+$/.test(normalized)
+  );
 }
 
 function fallbackNameFromEmail(email) {
@@ -3427,6 +4114,51 @@ async function uploadRecordingToR2(recordingId, interviewId) {
   }
 }
 
+async function triggerInterviewReprocess(interviewId, reason = "fallback") {
+  if (!interviewId) return null;
+
+  try {
+    console.log(
+      `[reprocess] Triggering media-based transcription fallback for interview ${interviewId} (${reason})`,
+    );
+    const body = new URLSearchParams({ interviewId });
+    const response = await withDesktopAuth(
+      (accessToken) =>
+        withAxiosRetry(
+          () =>
+            axios.post(
+              `${activeUpsightApiUrl}/api/reprocess-interview`,
+              body.toString(),
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Content-Type": "application/x-www-form-urlencoded",
+                },
+                timeout: 30000,
+              },
+            ),
+          {
+            attempts: 2,
+            initialDelayMs: 1000,
+            label: "reprocess-interview",
+          },
+        ),
+      { label: "reprocess-interview" },
+    );
+
+    console.log(
+      `[reprocess] Trigger accepted for interview ${interviewId}: run ${response.data?.runId || "unknown"}`,
+    );
+    return response.data;
+  } catch (error) {
+    const errorMsg = error.response?.data?.error || error.message;
+    console.error(
+      `[reprocess] Failed to trigger reprocess for ${interviewId}: ${errorMsg}`,
+    );
+    return null;
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // Sliding Window Evidence Extraction Algorithm
 // ══════════════════════════════════════════════════════════════════════════════
@@ -3631,19 +4363,121 @@ async function flushEvidenceExtraction(noteId, maxPasses = 50) {
   }
 }
 
-async function processTranscriptProviderData(evt) {
-  // let speakerId = evt.data.data.payload.
-  try {
-    if (
-      evt.data.data.data.payload.channel.alternatives[0].words[0].speaker !==
-      undefined
-    ) {
-      currentUnknownSpeaker =
-        evt.data.data.data.payload.channel.alternatives[0].words[0].speaker;
-    }
-  } catch (error) {
-    // console.error("Error processing provider data:", error);
+function normalizeTranscriptWords(rawWords) {
+  if (!Array.isArray(rawWords)) {
+    return [];
   }
+
+  return rawWords
+    .map((word) => {
+      const token =
+        word?.text ??
+        word?.word ??
+        word?.punctuated_word ??
+        word?.token ??
+        "";
+      return {
+        text: String(token).trim(),
+        speaker: word?.speaker,
+      };
+    })
+    .filter((word) => word.text.length > 0);
+}
+
+function normalizeTranscriptText(rawText) {
+  if (typeof rawText !== "string") {
+    return "";
+  }
+  return rawText.replace(/\s+/g, " ").trim();
+}
+
+function textEndsSentence(text) {
+  const normalized = normalizeTranscriptText(text);
+  if (!normalized) return false;
+  return /[.!?]["')\]]?\s*$/.test(normalized);
+}
+
+function mergeTranscriptTexts(existingText, incomingText) {
+  const existing = normalizeTranscriptText(existingText);
+  const incoming = normalizeTranscriptText(incomingText);
+  if (!existing) return incoming;
+  if (!incoming) return existing;
+
+  const existingLower = existing.toLowerCase();
+  const incomingLower = incoming.toLowerCase();
+  if (incomingLower === existingLower) {
+    return existing;
+  }
+  if (incomingLower.startsWith(existingLower)) {
+    return incoming;
+  }
+  if (existingLower.startsWith(incomingLower)) {
+    return existing;
+  }
+
+  return `${existing} ${incoming}`.trim();
+}
+
+function extractTranscriptPacket(evt) {
+  const eventData = evt?.data?.data || {};
+  const nestedData = eventData?.data || {};
+  const providerData = eventData?.provider_data || {};
+  const providerPayload =
+    nestedData?.payload ||
+    eventData?.payload ||
+    providerData?.payload ||
+    providerData?.data?.payload ||
+    nestedData?.provider_data?.payload;
+  const topAlternative = providerPayload?.channel?.alternatives?.[0] || null;
+  const wordCandidates = [
+    normalizeTranscriptWords(eventData?.words),
+    normalizeTranscriptWords(nestedData?.words),
+    normalizeTranscriptWords(providerData?.words),
+    normalizeTranscriptWords(providerData?.data?.words),
+    normalizeTranscriptWords(providerData?.payload?.words),
+    normalizeTranscriptWords(providerPayload?.words),
+    normalizeTranscriptWords(topAlternative?.words),
+  ].filter((candidate) => candidate.length > 0);
+  const words = wordCandidates[0] || [];
+
+  const textCandidates = [
+    words.length ? words.map((word) => word.text).join(" ") : "",
+    topAlternative?.transcript,
+    topAlternative?.text,
+    eventData?.text,
+    eventData?.transcript,
+    nestedData?.text,
+    nestedData?.transcript,
+    providerData?.text,
+    providerData?.transcript,
+    providerData?.data?.text,
+    providerData?.data?.transcript,
+    providerPayload?.text,
+    providerPayload?.transcript,
+  ]
+    .map(normalizeTranscriptText)
+    .filter((candidate) => candidate.length > 0);
+  const text = textCandidates[0] || "";
+
+  const participant =
+    eventData?.participant ||
+    nestedData?.participant ||
+    providerData?.participant ||
+    providerData?.data?.participant ||
+    eventData?.data?.participant;
+  const speakerFromWords =
+    words.find((word) => word.speaker !== undefined)?.speaker ??
+    topAlternative?.words?.[0]?.speaker ??
+    providerData?.speaker ??
+    providerData?.data?.speaker;
+
+  return {
+    text,
+    words,
+    participant: participant || null,
+    speakerFromWords,
+    eventType: String(evt?.event || "unknown"),
+  };
 }
 
 function resolveSpeakerFromTranscriptParticipant(
@@ -3737,15 +4571,42 @@ async function processTranscriptData(evt) {
       return;
     }
 
-    // Extract the transcript data
-    const words = evt.data.data.words || [];
-    if (words.length === 0) {
-      return; // No words to process
+    const eventData = evt?.data?.data || {};
+    const packet = extractTranscriptPacket(evt);
+    if (packet.speakerFromWords !== undefined && packet.speakerFromWords !== null) {
+      currentUnknownSpeaker = packet.speakerFromWords;
     }
 
-    // Combine all words into a single text
-    const text = words.map((word) => word.text).join(" ");
+    const text = String(packet.text || "").trim();
+    if (!text) {
+      if (packet.eventType === "transcript.provider_data") {
+        const providerKeys = Object.keys(eventData?.provider_data || {});
+        const nestedKeys = Object.keys(eventData?.data || {});
+        console.log(
+          `[transcript] provider_data packet without transcript text (providerKeys=${providerKeys.join(",") || "none"} dataKeys=${nestedKeys.join(",") || "none"})`,
+        );
+      }
+      return;
+    }
+
+    const isProviderEvent = packet.eventType === "transcript.provider_data";
+    const isPartialEvent = packet.eventType === "transcript.partial_data";
+    const isFinalEvent = packet.eventType === "transcript.data";
+    if (isProviderEvent && shouldSkipProviderTranscript(windowId, text)) {
+      return;
+    }
+    if (isFinalEvent) {
+      lastFinalTranscriptEventByWindow.set(String(windowId), Date.now());
+    }
+    if (!isProviderEvent) {
+      trackNonProviderTranscript(windowId, text);
+    }
+
+    markTranscriptSeen(windowId);
     let resolvedSpeaker = "Unknown Speaker";
+    let queuedUtterance = false;
+    let transcriptChanged = false;
+    let panelText = text;
 
     // Use the file operation manager to safely update the meetings data
     await fileOperationManager.scheduleOperation(async (meetingsData) => {
@@ -3761,9 +4622,12 @@ async function processTranscriptData(evt) {
       // Add the transcript data
       const meeting = meetingsData.pastMeetings[noteIndex];
       resolvedSpeaker = resolveSpeakerFromTranscriptParticipant(
-        evt.data.data.participant,
+        packet.participant,
         meeting.participants || [],
       );
+      if (isDuplicateTranscriptChunk(windowId, resolvedSpeaker, text)) {
+        return null;
+      }
 
       console.log(`Transcript from ${resolvedSpeaker}: "${text}"`);
 
@@ -3772,23 +4636,105 @@ async function processTranscriptData(evt) {
         meeting.transcript = [];
       }
 
-      // Merge same-speaker entries within a 15-second window
+      // Merge/update related entries within a 15-second window
       const MERGE_WINDOW_MS = 15000;
-      const lastEntry = meeting.transcript[meeting.transcript.length - 1];
       const now = new Date();
       const timestampMs = meeting.date
         ? now.getTime() - new Date(meeting.date).getTime()
         : null;
+      const normalizedIncoming = normalizeTranscriptText(text).toLowerCase();
+      const incomingWordCount = normalizedIncoming
+        .split(" ")
+        .filter(Boolean).length;
+      const incomingStartsLowercase = /^[a-z0-9]/.test(
+        normalizeTranscriptText(text),
+      );
+      const normalizedSpeaker = String(resolvedSpeaker || "")
+        .trim()
+        .toLowerCase();
+      const resolvedSpeakerIsUnknown = isUnknownSpeakerLabel(resolvedSpeaker);
       let merged = false;
+      let mergedEntry = null;
 
-      if (lastEntry && lastEntry.speaker === resolvedSpeaker) {
-        const lastTime = new Date(lastEntry.timestamp);
-        if (now - lastTime < MERGE_WINDOW_MS) {
-          // Merge: append text to existing entry
-          lastEntry.text += " " + text;
-          lastEntry.timestamp = now.toISOString();
-          lastEntry.timestamp_ms = timestampMs;
+      // Look back through recent entries so provider/partial duplicates can
+      // upgrade/merge instead of creating parallel rows.
+      const lookbackStart = Math.max(0, meeting.transcript.length - 8);
+      for (let i = meeting.transcript.length - 1; i >= lookbackStart; i -= 1) {
+        const candidate = meeting.transcript[i];
+        if (!candidate) continue;
+        const candidateTime = new Date(candidate.timestamp);
+        const ageMs = now - candidateTime;
+        if (!Number.isFinite(ageMs) || ageMs > MERGE_WINDOW_MS) {
+          continue;
+        }
+
+        const candidateTextNormalized = normalizeTranscriptText(
+          candidate.text,
+        ).toLowerCase();
+        if (!candidateTextNormalized) continue;
+
+        const overlapsText =
+          candidateTextNormalized === normalizedIncoming ||
+          normalizedIncoming.startsWith(candidateTextNormalized) ||
+          candidateTextNormalized.startsWith(normalizedIncoming);
+        if (!overlapsText) {
+          continue;
+        }
+
+        const candidateSpeaker = String(candidate.speaker || "")
+          .trim()
+          .toLowerCase();
+        const candidateIsUnknown = isUnknownSpeakerLabel(candidateSpeaker);
+        const sameSpeaker = candidateSpeaker === normalizedSpeaker;
+
+        if (
+          sameSpeaker &&
+          ageMs <= SPEAKER_SOFT_MERGE_WINDOW_MS &&
+          !resolvedSpeakerIsUnknown
+        ) {
+          const candidateEndsSentence = textEndsSentence(candidate.text);
+          if (
+            !candidateEndsSentence ||
+            incomingStartsLowercase ||
+            incomingWordCount <= 6
+          ) {
+            candidate.text = mergeTranscriptTexts(candidate.text, text);
+            candidate.timestamp = now.toISOString();
+            candidate.timestamp_ms = timestampMs;
+            merged = true;
+            mergedEntry = candidate;
+            transcriptChanged = true;
+            break;
+          }
+        }
+
+        if (candidateIsUnknown && !resolvedSpeakerIsUnknown) {
+          candidate.speaker = resolvedSpeaker;
+          candidate.text = mergeTranscriptTexts(candidate.text, text);
+          candidate.timestamp = now.toISOString();
+          candidate.timestamp_ms = timestampMs;
           merged = true;
+          mergedEntry = candidate;
+          transcriptChanged = true;
+          break;
+        }
+
+        if (!candidateIsUnknown && resolvedSpeakerIsUnknown) {
+          return null;
+        }
+
+        if (candidateSpeaker === normalizedSpeaker) {
+          candidate.text = mergeTranscriptTexts(candidate.text, text);
+          candidate.timestamp = now.toISOString();
+          candidate.timestamp_ms = timestampMs;
+          merged = true;
+          mergedEntry = candidate;
+          transcriptChanged = true;
+          break;
+        }
+
+        if (candidateTextNormalized === normalizedIncoming) {
+          return null;
         }
       }
 
@@ -3799,6 +4745,13 @@ async function processTranscriptData(evt) {
           timestamp: now.toISOString(),
           timestamp_ms: timestampMs,
         });
+        transcriptChanged = true;
+      } else if (mergedEntry) {
+        panelText = mergedEntry.text;
+      }
+
+      if (!transcriptChanged) {
+        return null;
       }
 
       console.log(
@@ -3813,31 +4766,46 @@ async function processTranscriptData(evt) {
       // Also send transcript to floating panel
       sendTranscriptToPanel({
         speaker: resolvedSpeaker,
-        text: merged ? lastEntry.text : text,
+        text: panelText,
         timestamp: now.toISOString(),
         merged,
       });
 
-      // Queue the raw utterance for real-time evidence batching.
-      // Use the current chunk text (not merged transcript text) so extraction gets fresh turns.
-      const state = evidenceExtractionState.getState(noteId);
-      state.pendingUtterances.push({
-        speaker: resolvedSpeaker,
-        text,
-        timestamp_ms: timestampMs,
-      });
-      if (state.pendingUtterances.length > 200) {
-        state.pendingUtterances = state.pendingUtterances.slice(-200);
+      const wordsCount = normalizeTranscriptText(panelText)
+        .split(" ")
+        .filter(Boolean).length;
+      const lastFinalAt = lastFinalTranscriptEventByWindow.get(String(windowId)) || 0;
+      const recentlySawFinal = Date.now() - lastFinalAt <= 5000;
+      const shouldQueueForExtraction =
+        isFinalEvent ||
+        (isPartialEvent &&
+          !isProviderEvent &&
+          !recentlySawFinal &&
+          wordsCount >= 5);
+      if (shouldQueueForExtraction) {
+        // Queue high-signal utterances for real-time evidence extraction.
+        const state = evidenceExtractionState.getState(noteId);
+        state.pendingUtterances.push({
+          speaker: resolvedSpeaker,
+          text: panelText,
+          timestamp_ms: timestampMs,
+        });
+        if (state.pendingUtterances.length > 200) {
+          state.pendingUtterances = state.pendingUtterances.slice(-200);
+        }
+        queuedUtterance = true;
       }
 
       // Return the updated data to be written
       return meetingsData;
     });
 
-    // ═══ Real-time Evidence Extraction ═══
-    // Schedule evidence extraction after transcript is saved.
-    // This enables near real-time insights during the meeting.
-    scheduleEvidenceExtraction(noteId);
+    if (queuedUtterance) {
+      // ═══ Real-time Evidence Extraction ═══
+      // Schedule evidence extraction after transcript is saved.
+      // This enables near real-time insights during the meeting.
+      scheduleEvidenceExtraction(noteId);
+    }
 
     console.log(`Processed transcript data for meeting: ${noteId}`);
   } catch (error) {
@@ -4300,6 +5268,71 @@ async function joinDetectedMeeting() {
   }
 }
 
+function getActiveRecordingLifecycleState(windowId) {
+  if (!windowId) return null;
+  const key = String(windowId);
+  const state = activeRecordings.recordings[key]?.state;
+  return typeof state === "string" ? state : null;
+}
+
+async function joinDetectedMeetingFromPanelWithGuard() {
+  const meetingWindowId = detectedMeeting?.window?.id
+    ? String(detectedMeeting.window.id)
+    : null;
+
+  let timedOut = false;
+  let timeoutHandle = null;
+  const joinPromise = joinDetectedMeeting();
+  const timeoutPromise = new Promise((resolve) => {
+    timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      resolve({
+        success: true,
+        pending: true,
+        warning: "start_confirmation_delayed",
+      });
+    }, PANEL_JOIN_TIMEOUT_MS);
+  });
+
+  const result = await Promise.race([joinPromise, timeoutPromise]);
+  if (timeoutHandle) {
+    clearTimeout(timeoutHandle);
+  }
+
+  if (timedOut) {
+    const state = getActiveRecordingLifecycleState(meetingWindowId);
+    console.warn(
+      `[RECORDING] joinDetectedMeeting exceeded ${PANEL_JOIN_TIMEOUT_MS / 1000}s; preserving panel state (window ${meetingWindowId || "unknown"}, recordingState ${state || "none"})`,
+    );
+
+    // If start confirmation never arrives, recover UI state automatically.
+    setTimeout(() => {
+      const latestState = getActiveRecordingLifecycleState(meetingWindowId);
+      if (!floatingPanelRecordingActive || floatingPanelRecordingInProgress) {
+        return;
+      }
+      if (latestState === "recording" || latestState === "paused") {
+        return;
+      }
+      console.warn(
+        `[RECORDING] No recording state after delayed start confirmation window (${PANEL_JOIN_RECOVERY_CHECK_MS / 1000}s); resetting panel state`,
+      );
+      floatingPanelRecordingActive = false;
+      sendRecordingStateToPanel(false, null);
+    }, PANEL_JOIN_RECOVERY_CHECK_MS);
+
+    // Avoid unhandled rejection if join settles after our UI timeout.
+    joinPromise.catch((error) =>
+      console.error(
+        "[RECORDING] joinDetectedMeeting settled after timeout:",
+        error?.message || error,
+      ),
+    );
+  }
+
+  return result;
+}
+
 // ==========================================
 // Floating Panel IPC Handlers
 // ==========================================
@@ -4405,18 +5438,7 @@ ipcMain.handle("toggleRecordingFromPanel", async () => {
 
     try {
       // Join the detected meeting (this creates a note and starts recording)
-      // Timeout after 15s to prevent hanging forever
-      const result = await Promise.race([
-        joinDetectedMeeting(),
-        new Promise((resolve) =>
-          setTimeout(() => {
-            console.error(
-              "[RECORDING] joinDetectedMeeting timed out after 15s",
-            );
-            resolve({ success: false, error: "timeout" });
-          }, 15000),
-        ),
-      ]);
+      const result = await joinDetectedMeetingFromPanelWithGuard();
       console.log("joinDetectedMeeting result:", result);
 
       if (!result || !result.success) {
@@ -4435,7 +5457,30 @@ ipcMain.handle("toggleRecordingFromPanel", async () => {
       floatingPanelRecordingInProgress = false;
     }
   } else {
-    console.log("No detected meeting to record");
+    console.log("No detected meeting to record, attempting fallback scan...");
+    const fallbackMeeting = await detectMeetingViaDump("panel-start");
+    if (fallbackMeeting) {
+      floatingPanelRecordingInProgress = true;
+      floatingPanelRecordingActive = true;
+      const recordingStartTime = Date.now();
+      sendRecordingStateToPanel(true, recordingStartTime);
+
+      try {
+        const result = await joinDetectedMeetingFromPanelWithGuard();
+        if (!result || !result.success) {
+          floatingPanelRecordingActive = false;
+          sendRecordingStateToPanel(false, null);
+        }
+        return result;
+      } catch (err) {
+        floatingPanelRecordingActive = false;
+        sendRecordingStateToPanel(false, null);
+        return { success: false, error: err.message };
+      } finally {
+        floatingPanelRecordingInProgress = false;
+      }
+    }
+
     return { success: false, error: "No meeting detected" };
   }
 });

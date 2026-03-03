@@ -124,21 +124,35 @@ function waitForOAuthCallback() {
     ); // 5 minute timeout
 
     callbackServer.on("request", async (req, res) => {
-      clearTimeout(timeout);
+      const rawUrl = String(req.url || "");
+      if (
+        rawUrl === "/favicon.ico" ||
+        rawUrl.startsWith("/favicon.ico?") ||
+        rawUrl === "/apple-touch-icon.png"
+      ) {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
 
       // Parse the callback URL (sanitize spaces that may appear from hash fragment redirects)
       let url;
       try {
-        const sanitizedUrl = req.url.replace(/ /g, "");
+        const sanitizedUrl = rawUrl.replace(/ /g, "");
         url = new URL(sanitizedUrl, `http://127.0.0.1:${callbackPort}`);
       } catch (urlError) {
-        console.error(
+        console.warn(
           "Failed to parse OAuth callback URL:",
-          req.url,
+          rawUrl,
           urlError.message,
         );
         res.writeHead(400, { "Content-Type": "text/plain" });
         res.end("Invalid callback URL");
+        return;
+      }
+      if (url.pathname !== "/" && url.pathname !== "/callback") {
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("Not found");
         return;
       }
       console.log("OAuth callback received:", url.pathname, url.search);
@@ -147,6 +161,7 @@ function waitForOAuthCallback() {
       const error = url.searchParams.get("error");
       const errorDescription = url.searchParams.get("error_description");
       if (error) {
+        clearTimeout(timeout);
         // Send error page
         res.writeHead(200, { "Content-Type": "text/html" });
         res.end(`
@@ -169,6 +184,7 @@ function waitForOAuthCallback() {
       const code = url.searchParams.get("code");
 
       if (code) {
+        clearTimeout(timeout);
         // Send success page
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
         res.end(`
@@ -192,6 +208,7 @@ function waitForOAuthCallback() {
         const refreshToken = url.searchParams.get("refresh_token");
 
         if (accessToken) {
+          clearTimeout(timeout);
           res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
           res.end(`
             <!DOCTYPE html>
