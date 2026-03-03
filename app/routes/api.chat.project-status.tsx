@@ -26,6 +26,7 @@ import { recordUsageOnly } from "~/lib/billing/usage.server";
 import { UI_EVENT_DISPATCH_TEXT, type UiEvent, uiEventBatchSchema } from "~/lib/gen-ui/ui-events";
 import { getLangfuseClient } from "~/lib/langfuse.server";
 import { getPostHogServerClient } from "~/lib/posthog.server";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { mastra } from "~/mastra";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
@@ -68,6 +69,7 @@ const routingTargetAgents = [
 	"feedbackAgent",
 	"projectSetupAgent",
 	"howtoAgent",
+	"surveyAgent",
 ] as const;
 type RoutingTargetAgent = (typeof routingTargetAgents)[number];
 type RoutingResponseMode =
@@ -106,7 +108,8 @@ const ROUTING_CLASSIFIER_INSTRUCTIONS = `Route the user message to one agent and
 Agents:
 - projectSetupAgent: onboarding, setup, research goals, company context.
 - chiefOfStaffAgent: strategic prioritization, next actions, "what should I do", "what now", "what next", "where should I start". Always use mode="normal" for this agent.
-- researchAgent: create/manage surveys, interview prompts, interview operations (NOT analysis/gaps/coverage questions).
+- researchAgent: interview prompts, interview operations (NOT surveys, NOT analysis/gaps/coverage questions).
+- surveyAgent: survey editing, question review/rephrase/reorder/hide, survey settings, response analysis. NOT survey creation (that uses researchAgent fast path via survey_quick_create mode).
 - feedbackAgent: classify feedback/bug/feature requests and submit to PostHog.
 - howtoAgent: procedural guidance ("how do I [specific task]", "best way to [do X]", "teach me"). NOT for "where should I start" or "what should I do" — those go to chiefOfStaffAgent.
 - projectStatusAgent: factual status/data lookup (themes, ICP, people, evidence, interviews, research gaps, coverage analysis, what's missing).
@@ -114,13 +117,14 @@ Agents:
 Modes:
 - fast_standardized: DEPRECATED, do not use. Always use normal mode.
 - theme_people_snapshot: top/common themes + who has them.
-- survey_quick_create: explicit create/build/generate survey/waitlist requests.
+- survey_quick_create: explicit create/build/generate survey/waitlist requests. Route to researchAgent.
 - gtm_mode: howtoAgent prompts about positioning, launch, distribution, sales.
 - ux_research_mode: howtoAgent prompts about UX or product research/how-to.
 - normal: everything else.
 
 Rule: For people comparisons ("what do X and Y have in common", "compare these people"), use mode="normal", not theme_people_snapshot.
-Rule: If system context indicates interview detail and the prompt is about open questions/prep/follow-up, route to researchAgent with mode="normal".`;
+Rule: If system context indicates interview detail and the prompt is about open questions/prep/follow-up, route to researchAgent with mode="normal".
+Rule: If user asks to edit/review/rephrase/evaluate/reorder/hide survey questions, route to surveyAgent with mode="normal".`;
 const DEBUG_PREFIX_REGEX = /^\s*\/debug\b[:\s-]*/i;
 const FALLBACK_EMPTY_RESPONSE_TEXT = "Sorry, I couldn't answer that just now. Please try again.";
 const MARKDOWN_LINK_REGEX = /\[[^\]]+\]\((?:\/|https?:\/\/|#|mailto:)[^)]+\)/;
@@ -190,6 +194,7 @@ const MAX_STEPS_BY_AGENT: Record<RoutingTargetAgent, number> = {
 	feedbackAgent: 3,
 	projectSetupAgent: 5,
 	howtoAgent: 4,
+	surveyAgent: 8,
 };
 
 const BILLING_MODEL_BY_AGENT: Record<RoutingTargetAgent, string> = {
@@ -199,11 +204,25 @@ const BILLING_MODEL_BY_AGENT: Record<RoutingTargetAgent, string> = {
 	feedbackAgent: "gpt-4o-mini",
 	projectSetupAgent: "gpt-5.1",
 	howtoAgent: "gpt-4o-mini",
+	surveyAgent: "claude-sonnet-4-20250514",
 };
 
 type FastGuidanceCacheEntry = {
 	text: string;
 	expiresAt: number;
+};
+
+type CsvListContract = {
+	requestedRows: number;
+};
+
+type WebResearchStructuredResult = {
+	title: string;
+	url: string;
+	summary: string;
+	relevanceScore?: number | null;
+	publishedDate?: string | null;
+	author?: string | null;
 };
 
 const fastGuidanceCache = new Map<string, FastGuidanceCacheEntry>();
@@ -225,6 +244,104 @@ function hashString(input: string): string {
 		hash = Math.imul(hash, 16777619);
 	}
 	return (hash >>> 0).toString(16);
+}
+
+function detectCsvListContract(prompt: string): CsvListContract | null {
+	const normalized = prompt.trim();
+	if (!normalized) return null;
+	if (!/\bcsv\b/i.test(normalized)) return null;
+
+	const countMatch =
+		normalized.match(/\btop\s+(\d{1,2})\b/i) ??
+		normalized.match(/\blist\s+of\s+(\d{1,2})\b/i) ??
+		normalized.match(/\b(\d{1,2})\s+items?\b/i);
+	if (!countMatch?.[1]) return null;
+
+	const parsed = Number.parseInt(countMatch[1], 10);
+	if (!Number.isFinite(parsed) || parsed < 1) return null;
+
+	return { requestedRows: Math.min(parsed, 20) };
+}
+
+function escapeCsvCell(value: string): string {
+	const normalized = value.replace(/\r?\n+/g, " ").trim();
+	if (!normalized.includes(",") && !normalized.includes('"')) {
+		return normalized;
+	}
+	return `"${normalized.replace(/"/g, '""')}"`;
+}
+
+function buildCsvFromWebResearchResults(results: WebResearchStructuredResult[], requestedRows: number): string | null {
+	if (!Array.isArray(results) || results.length === 0) return null;
+	if (!Number.isFinite(requestedRows) || requestedRows < 1) return null;
+
+	const deduped: WebResearchStructuredResult[] = [];
+	const seenKeys = new Set<string>();
+
+	for (const result of results) {
+		if (!result?.title || !result?.url) continue;
+		const key = `${result.title.toLowerCase()}::${result.url.toLowerCase()}`;
+		if (seenKeys.has(key)) continue;
+		seenKeys.add(key);
+		deduped.push(result);
+	}
+
+	if (deduped.length < requestedRows) return null;
+
+	const rows = deduped.slice(0, requestedRows).map((result) => {
+		const name = escapeCsvCell(result.title);
+		const description = escapeCsvCell(result.summary || "No summary available");
+		const website = escapeCsvCell(result.url);
+		return `${name},${description},${website}`;
+	});
+
+	return ["name,description,website", ...rows].join("\n");
+}
+
+function extractWebResearchResultsFromPayload(payload: unknown): WebResearchStructuredResult[] {
+	if (!payload || typeof payload !== "object") return [];
+	const candidate = (payload as { results?: unknown }).results;
+	if (!Array.isArray(candidate)) return [];
+
+	return candidate
+		.map((row) => {
+			if (!row || typeof row !== "object") return null;
+			const candidateRow = row as Record<string, unknown>;
+			if (typeof candidateRow.title !== "string") return null;
+			if (typeof candidateRow.url !== "string") return null;
+
+			return {
+				title: candidateRow.title,
+				url: candidateRow.url,
+				summary: typeof candidateRow.summary === "string" ? candidateRow.summary : "No summary available",
+				relevanceScore: typeof candidateRow.relevanceScore === "number" ? candidateRow.relevanceScore : null,
+				publishedDate: typeof candidateRow.publishedDate === "string" ? candidateRow.publishedDate : null,
+				author: typeof candidateRow.author === "string" ? candidateRow.author : null,
+			} satisfies WebResearchStructuredResult;
+		})
+		.filter((row): row is WebResearchStructuredResult => Boolean(row));
+}
+
+function extractCsvLines(text: string): string[] {
+	const normalized = text
+		.replace(/```csv/gi, "")
+		.replace(/```/g, "")
+		.trim();
+	if (!normalized) return [];
+
+	const lines = normalized
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0);
+
+	return lines.filter((line) => line.includes(","));
+}
+
+function responseSatisfiesCsvContract(responseText: string, contract: CsvListContract): boolean {
+	const csvLines = extractCsvLines(responseText);
+	if (csvLines.length < 2) return false;
+	if (!csvLines[0].includes(",")) return false;
+	return csvLines.length - 1 === contract.requestedRows;
 }
 
 function streamPlainAssistantText(text: string) {
@@ -256,12 +373,14 @@ function streamSurveyQuickCreateResult(options: { text: string; navigatePath?: s
 			});
 			writer.write({ type: "text-end", id: messageChunkId });
 
+			// NOTE: Do NOT emit a synthetic tool-input-available here.
+			// That causes the client to call addToolResult() → sendAutomatically re-triggers
+			// the server request → matches survey_quick_create again → infinite loop.
+			// Instead, emit a data part with the navigate path for the client to handle.
 			if (options.navigatePath) {
 				writer.write({
-					type: "tool-input-available",
-					toolCallId: `navigate-${Date.now().toString(36)}`,
-					toolName: "navigateToPage",
-					input: { path: options.navigatePath },
+					type: "data",
+					data: [{ type: "navigate", path: options.navigatePath }],
 				});
 			}
 
@@ -285,6 +404,22 @@ function extractInterviewIdFromSystemContext(systemContext: string): string | nu
 	if (routeMatch?.[1]) return routeMatch[1];
 
 	const viewMatch = systemContext.match(new RegExp(`View:\\s*Interview detail \\(id=(${UUID_PATTERN})\\)`, "i"));
+	if (viewMatch?.[1]) return viewMatch[1];
+
+	return null;
+}
+
+function extractSurveyIdFromSystemContext(systemContext: string): string | null {
+	if (!systemContext) return null;
+
+	const UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+
+	// Match: /ask/<uuid>
+	const routeMatch = systemContext.match(new RegExp(`/ask/(${UUID_PATTERN})\\b`, "i"));
+	if (routeMatch?.[1]) return routeMatch[1];
+
+	// Match: "View: Survey editor (surveyId=<uuid>..."
+	const viewMatch = systemContext.match(new RegExp(`surveyId=(${UUID_PATTERN})`, "i"));
 	if (viewMatch?.[1]) return viewMatch[1];
 
 	return null;
@@ -394,6 +529,7 @@ function augmentStreamForReliability(
 		routingConfidence: number | null;
 		userId: string;
 		threadId: string;
+		csvListContract: CsvListContract | null;
 	}
 ) {
 	if (!stream || typeof (stream as { pipeThrough?: unknown }).pipeThrough !== "function") {
@@ -405,10 +541,12 @@ function augmentStreamForReliability(
 	let injectedSafetyMessage = false;
 	let appendedDebugTrace = false;
 	let appendedQuickLinks = false;
+	let appendedCsvCorrection = false;
 	let sawFinishChunk = false;
 	let appendedHowtoContractPatch = false;
 	let accumulatedAssistantText = "";
 	let loggedHowtoTelemetry = false;
+	const capturedWebResearchResults: WebResearchStructuredResult[] = [];
 
 	const enqueueAssistantText = (
 		controller: TransformStreamDefaultController<Record<string, unknown>>,
@@ -463,6 +601,7 @@ function augmentStreamForReliability(
 
 	const maybeEnqueueQuickLinks = (controller: TransformStreamDefaultController<Record<string, unknown>>) => {
 		if (appendedQuickLinks) return;
+		if (options.csvListContract) return;
 		if (!sawTextDelta) return;
 		if (MARKDOWN_LINK_REGEX.test(accumulatedAssistantText)) return;
 		const quickLinks = buildQuickLinksMarkdown({
@@ -474,6 +613,19 @@ function augmentStreamForReliability(
 		if (!quickLinks) return;
 		enqueueAssistantText(controller, quickLinks, "links");
 		appendedQuickLinks = true;
+	};
+
+	const maybeEnqueueCsvCorrection = (controller: TransformStreamDefaultController<Record<string, unknown>>) => {
+		const contract = options.csvListContract;
+		if (!contract || appendedCsvCorrection) return;
+		if (responseSatisfiesCsvContract(accumulatedAssistantText, contract)) return;
+
+		const correctedCsv = buildCsvFromWebResearchResults(capturedWebResearchResults, contract.requestedRows);
+		if (!correctedCsv) return;
+
+		enqueueAssistantText(controller, correctedCsv, "csv-correction");
+		accumulatedAssistantText += `\n${correctedCsv}`;
+		appendedCsvCorrection = true;
 	};
 
 	const maybeLogHowtoStreamTelemetry = () => {
@@ -512,6 +664,19 @@ function augmentStreamForReliability(
 					if (typeof payload === "object" && payload && "a2ui" in payload) {
 						sawTextDelta = true;
 					}
+
+					const extractedResults = extractWebResearchResultsFromPayload(payload);
+					if (extractedResults.length > 0) {
+						const existing = new Set(
+							capturedWebResearchResults.map((item) => `${item.title.toLowerCase()}::${item.url.toLowerCase()}`)
+						);
+						for (const result of extractedResults) {
+							const key = `${result.title.toLowerCase()}::${result.url.toLowerCase()}`;
+							if (existing.has(key)) continue;
+							existing.add(key);
+							capturedWebResearchResults.push(result);
+						}
+					}
 				}
 
 				if (chunk?.type === "error") {
@@ -522,6 +687,7 @@ function augmentStreamForReliability(
 					sawFinishChunk = true;
 					maybeEnqueueSafetyMessage(controller);
 					maybeEnqueueHowtoContractPatch(controller);
+					maybeEnqueueCsvCorrection(controller);
 					maybeEnqueueQuickLinks(controller);
 					maybeEnqueueDebugTrace(controller);
 					maybeLogHowtoStreamTelemetry();
@@ -532,6 +698,7 @@ function augmentStreamForReliability(
 			flush(controller) {
 				maybeEnqueueSafetyMessage(controller);
 				maybeEnqueueHowtoContractPatch(controller);
+				maybeEnqueueCsvCorrection(controller);
 				maybeEnqueueQuickLinks(controller);
 				maybeEnqueueDebugTrace(controller);
 				maybeLogHowtoStreamTelemetry();
@@ -654,6 +821,62 @@ function routeByDeterministicPrompt(
 			confidence: 1,
 			responseMode: "normal",
 			rationale: "deterministic keyword routing for ICP lookup",
+		};
+	}
+
+	// Survey editing/review → surveyAgent (must be checked BEFORE creation)
+	const surveyIdFromContext = extractSurveyIdFromSystemContext(systemContext);
+	const asksForSurveyEdit =
+		hasAny("survey", "ask link", "question", "questionnaire") &&
+		hasAny(
+			"edit",
+			"rephrase",
+			"rewrite",
+			"update",
+			"change",
+			"hide",
+			"unhide",
+			"evaluate",
+			"review",
+			"bias",
+			"improve",
+			"shorten",
+			"simplify",
+			"reorder",
+			"prioritize",
+			"keep",
+			"remove"
+		);
+	if (asksForSurveyEdit) {
+		return {
+			targetAgentId: "surveyAgent",
+			confidence: 1,
+			responseMode: "normal",
+			rationale: "deterministic routing for survey editing/review",
+		};
+	}
+
+	// When user is on survey editor page and asks about "my questions" / "the questions"
+	const onSurveyPage = surveyIdFromContext != null;
+	const asksAboutQuestions = hasAny("question", "questions", "my survey", "this survey");
+	if (onSurveyPage && asksAboutQuestions) {
+		return {
+			targetAgentId: "surveyAgent",
+			confidence: 1,
+			responseMode: "normal",
+			rationale: "deterministic routing: user on survey page asking about questions",
+		};
+	}
+
+	// Catch-all: user is on a survey page and no more-specific rule matched above.
+	// Route to surveyAgent so the coordinator network doesn't consume maxSteps
+	// bouncing between coordinator and sub-agent.
+	if (onSurveyPage) {
+		return {
+			targetAgentId: "surveyAgent",
+			confidence: 0.9,
+			responseMode: "normal",
+			rationale: "deterministic routing: user is on survey page (catch-all)",
 		};
 	}
 
@@ -819,18 +1042,22 @@ async function routeAgentByIntent(
 	const deterministicRoute = routeByDeterministicPrompt(prompt, options);
 	if (deterministicRoute) return deterministicRoute;
 
-	// Sticky routing: if the last routed agent was projectSetupAgent and no
-	// deterministic rule explicitly matched a different agent, keep routing to
-	// projectSetupAgent. This prevents follow-up answers (e.g. "buyer dynamics
-	// inside companies") from being misrouted by the LLM to chiefOfStaffAgent.
+	// Sticky routing: if the last routed agent was surveyAgent or projectSetupAgent
+	// and no deterministic rule explicitly matched a different agent, keep routing
+	// to the same agent. This prevents follow-up answers (e.g. "yes, tighten this
+	// into 10 questions") from being misrouted through the coordinator network.
 	if (resourceId) {
 		const sticky = lastRoutedAgentMap.get(resourceId);
-		if (sticky && sticky.agentId === "projectSetupAgent" && Date.now() - sticky.timestamp < STICKY_ROUTING_TTL_MS) {
+		if (
+			sticky &&
+			(sticky.agentId === "surveyAgent" || sticky.agentId === "projectSetupAgent") &&
+			Date.now() - sticky.timestamp < STICKY_ROUTING_TTL_MS
+		) {
 			return {
-				targetAgentId: "projectSetupAgent",
+				targetAgentId: sticky.agentId,
 				confidence: 0.95,
 				responseMode: "normal",
-				rationale: "sticky routing — continuing projectSetupAgent conversation",
+				rationale: `sticky routing — continuing ${sticky.agentId} conversation`,
 			};
 		}
 	}
@@ -994,6 +1221,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		typedUiEvents.length > 0 && (!lastUserText || lastUserText === UI_EVENT_DISPATCH_TEXT)
 			? summarizeUiEventsForPrompt(typedUiEvents)
 			: lastUserText;
+	const csvListContract = detectCsvListContract(lastUserTextForRouting);
 	const threadTitleSeed = lastUserText === UI_EVENT_DISPATCH_TEXT ? lastUserTextForRouting : lastUserText;
 	const runtimeMessagesForExecution = normalizeMessagesForExecution(runtimeMessages, debugRequested);
 	const routingResourceId = `project-chat-${userId}-${projectId}`;
@@ -1184,6 +1412,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	if (interviewIdFromSystemContext) {
 		requestContext.set("interview_id", interviewIdFromSystemContext);
 	}
+	const surveyIdFromSystemContext = extractSurveyIdFromSystemContext(typeof system === "string" ? system : "");
+	if (surveyIdFromSystemContext) {
+		requestContext.set("survey_id", surveyIdFromSystemContext);
+	}
 	if (userTimezone) {
 		requestContext.set("user_timezone", userTimezone);
 	}
@@ -1196,6 +1428,35 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	}
 	if (debugRequested) {
 		requestContext.set("debug_mode", true);
+	}
+	if (csvListContract) {
+		requestContext.set("csv_requested_rows", csvListContract.requestedRows);
+	}
+
+	// Fetch user persona from onboarding for persona-aware greetings
+	try {
+		const adminSupabase = createSupabaseAdminClient();
+		const { data: userSettings } = await adminSupabase
+			.from("user_settings")
+			.select("metadata")
+			.eq("user_id", userId)
+			.maybeSingle();
+
+		const onboarding = (userSettings?.metadata as Record<string, unknown> | null)?.onboarding as
+			| Record<string, string>
+			| undefined;
+
+		if (onboarding?.job_function) {
+			requestContext.set("user_role", onboarding.job_function);
+		}
+		if (onboarding?.primary_use_case) {
+			requestContext.set("user_use_cases", onboarding.primary_use_case);
+		}
+		if (onboarding?.company_size) {
+			requestContext.set("user_company_size", onboarding.company_size);
+		}
+	} catch (err) {
+		consola.warn("[persona] Failed to fetch user onboarding persona:", err);
 	}
 
 	if (targetAgentId === "researchAgent" && resolvedResponseMode === "survey_quick_create") {
@@ -1402,6 +1663,18 @@ ${JSON.stringify(typedUiEvents, null, 2)}`,
 						},
 					] as const)
 				: []),
+			...(csvListContract
+				? ([
+						{
+							role: "system" as const,
+							content: `## Output Contract (MANDATORY)
+The user requested CSV output with exactly ${csvListContract.requestedRows} data rows.
+- Return plain CSV only (no markdown table, no code fences, no prose).
+- Include one header row, then exactly ${csvListContract.requestedRows} rows.
+- If there are more candidates, keep only the top ${csvListContract.requestedRows}.`,
+						},
+					] as const)
+				: []),
 		],
 		onFinish: async (data: {
 			usage?: { inputTokens?: number; outputTokens?: number };
@@ -1584,6 +1857,7 @@ ${JSON.stringify(typedUiEvents, null, 2)}`,
 		routingConfidence: routeDecision?.confidence ?? null,
 		userId,
 		threadId,
+		csvListContract,
 	});
 
 	return createUIMessageStreamResponse({ stream: reliableStream });
