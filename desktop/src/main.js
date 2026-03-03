@@ -2197,6 +2197,9 @@ function initSDK() {
       }
 
       const postRecordingWork = [];
+      const transcriptTurnCount = Array.isArray(meeting?.transcript)
+        ? meeting.transcript.length
+        : 0;
 
       const extractionState = noteId
         ? evidenceExtractionState.getState(noteId)
@@ -2259,7 +2262,16 @@ function initSDK() {
           (async () => {
             // Wait briefly for file system flush before opening file stream.
             await new Promise((resolve) => setTimeout(resolve, 3000));
-            await uploadRecordingToR2(recordingFileId, interviewId);
+            const uploadResult = await uploadRecordingToR2(
+              recordingFileId,
+              interviewId,
+            );
+            if (uploadResult && transcriptTurnCount === 0) {
+              await triggerInterviewReprocess(
+                interviewId,
+                "no-realtime-transcript",
+              );
+            }
           })(),
         );
       } else {
@@ -4019,6 +4031,51 @@ async function uploadRecordingToR2(recordingId, interviewId) {
   } catch (error) {
     const errorMsg = error.response?.data?.error || error.message;
     console.error(`[r2-upload] Upload failed: ${errorMsg}`);
+    return null;
+  }
+}
+
+async function triggerInterviewReprocess(interviewId, reason = "fallback") {
+  if (!interviewId) return null;
+
+  try {
+    console.log(
+      `[reprocess] Triggering media-based transcription fallback for interview ${interviewId} (${reason})`,
+    );
+    const body = new URLSearchParams({ interviewId });
+    const response = await withDesktopAuth(
+      (accessToken) =>
+        withAxiosRetry(
+          () =>
+            axios.post(
+              `${activeUpsightApiUrl}/api/reprocess-interview`,
+              body.toString(),
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Content-Type": "application/x-www-form-urlencoded",
+                },
+                timeout: 30000,
+              },
+            ),
+          {
+            attempts: 2,
+            initialDelayMs: 1000,
+            label: "reprocess-interview",
+          },
+        ),
+      { label: "reprocess-interview" },
+    );
+
+    console.log(
+      `[reprocess] Trigger accepted for interview ${interviewId}: run ${response.data?.runId || "unknown"}`,
+    );
+    return response.data;
+  } catch (error) {
+    const errorMsg = error.response?.data?.error || error.message;
+    console.error(
+      `[reprocess] Failed to trigger reprocess for ${interviewId}: ${errorMsg}`,
+    );
     return null;
   }
 }
