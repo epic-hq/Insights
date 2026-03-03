@@ -15,7 +15,6 @@ import {
   FolderOpen,
   Glasses,
   Lightbulb,
-  Map as MapIcon,
   MessageSquare,
   ScrollText,
   Settings,
@@ -86,14 +85,7 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
         icon: ScrollText,
         to: (routes) => routes.ask.new(),
       },
-      {
-        key: "journey",
-        title: "Your Journey",
-        description: "Track your research progress",
-        icon: MapIcon,
-        to: (routes) => routes.journey(),
-        featureFlag: "ffYourJourney",
-      },
+      // Journey Map deprecated — agent ProgressCard replaces this
     ],
   },
   {
@@ -155,7 +147,7 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
         title: "Ideal Customer",
         description: "ICP scoring, criteria, and person fit",
         icon: UserCheck,
-        to: (routes) => routes.lenses.library(),
+        to: (routes) => `${routes.lenses.library()}?tab=people`,
       },
       {
         key: "vocabulary",

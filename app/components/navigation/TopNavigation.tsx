@@ -9,7 +9,7 @@
  */
 
 import { Menu } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -28,7 +28,6 @@ import {
   SheetTitle,
 } from "~/components/ui/sheet";
 import { useCurrentProject } from "~/contexts/current-project-context";
-import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
 import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
 import { useSidebarCounts } from "~/hooks/useSidebarCounts";
 import { cn } from "~/lib/utils";
@@ -55,7 +54,7 @@ interface TopNavigationProps {
 
 interface NavDropdownProps {
   category: TopNavCategory;
-  routes: ReturnType<typeof useProjectRoutes>;
+  routes: ReturnType<typeof useProjectRoutesFromIds>;
   counts: Record<string, number | undefined>;
   isActive: boolean;
 }
@@ -154,7 +153,7 @@ function MobileNavItem({
   onClose,
 }: {
   item: TopNavItem;
-  routes: ReturnType<typeof useProjectRoutes>;
+  routes: ReturnType<typeof useProjectRoutesFromIds>;
   onClose: () => void;
 }) {
   const href = item.to(routes);
@@ -187,23 +186,6 @@ export function TopNavigation({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const { counts } = useSidebarCounts(accountId, projectId);
-
-  // Feature flags for gated nav items
-  const { isEnabled: journeyEnabled } = usePostHogFeatureFlag("ffYourJourney");
-
-  // Filter out items gated behind disabled feature flags
-  const filteredCategories = useMemo(() => {
-    const flagMap: Record<string, boolean> = {
-      ffYourJourney: journeyEnabled,
-    };
-    return TOP_NAV_CATEGORIES.map((category) => ({
-      ...category,
-      items: category.items.filter((item) => {
-        if (item.featureFlag) return flagMap[item.featureFlag] ?? false;
-        return true;
-      }),
-    })).filter((category) => category.items.length > 0);
-  }, [journeyEnabled]);
 
   // Determine which category/standalone item is active based on current path
   const getActiveKey = () => {
@@ -260,7 +242,7 @@ export function TopNavigation({
 
           {/* Desktop Navigation */}
           <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
-            {filteredCategories.map((category) => (
+            {TOP_NAV_CATEGORIES.map((category) => (
               <NavDropdown
                 key={category.key}
                 category={category}
@@ -338,7 +320,7 @@ export function TopNavigation({
                 <TeamSwitcher accounts={accounts} collapsed={false} />
 
                 {/* Navigation Categories */}
-                {filteredCategories.map((category) => (
+                {TOP_NAV_CATEGORIES.map((category) => (
                   <div key={category.key}>
                     <h3 className="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
                       {category.title}
