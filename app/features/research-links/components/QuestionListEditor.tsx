@@ -584,34 +584,24 @@ function QuestionEditDrawer({
               <Select
                 value={question.type}
                 onValueChange={(value: ResearchLinkQuestion["type"]) => {
+                  // Preserve existing field values when switching types so
+                  // options survive a round-trip (e.g. select one → likert → select one).
+                  // Only initialize defaults for fields the new type needs if empty.
                   const updates: Partial<ResearchLinkQuestion> = {
                     type: value,
                   };
                   if (value === "single_select" || value === "multi_select") {
                     updates.options = question.options ?? [];
-                    updates.likertScale = null;
-                    updates.likertLabels = null;
-                    updates.imageOptions = null;
                   } else if (value === "likert") {
                     updates.likertScale = question.likertScale ?? 5;
                     updates.likertLabels = question.likertLabels ?? {
                       low: "Strongly disagree",
                       high: "Strongly agree",
                     };
-                    updates.options = null;
-                    updates.imageOptions = null;
                   } else if (value === "image_select") {
                     updates.imageOptions = question.imageOptions ?? [
                       { label: "", imageUrl: "" },
                     ];
-                    updates.options = null;
-                    updates.likertScale = null;
-                    updates.likertLabels = null;
-                  } else {
-                    updates.options = null;
-                    updates.likertScale = null;
-                    updates.likertLabels = null;
-                    updates.imageOptions = null;
                   }
                   updateQuestion(question.id, updates);
                 }}
