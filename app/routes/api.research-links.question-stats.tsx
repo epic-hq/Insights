@@ -6,12 +6,15 @@
  */
 import type { LoaderFunctionArgs } from "react-router";
 import { ResearchLinkQuestionSchema } from "~/features/research-links/schemas";
-import { getServerClient } from "~/lib/supabase/client.server";
 import { userContext } from "~/server/user-context";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const ctx = context.get(userContext);
   const supabase = ctx.supabase;
+
+  if (!supabase) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const url = new URL(request.url);
   const listId = url.searchParams.get("listId");
@@ -30,7 +33,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       .from("research_links")
       .select("questions")
       .eq("id", listId)
-      .eq("account_id", ctx.accountId)
+      .eq("account_id", ctx.account_id)
       .maybeSingle(),
     supabase
       .from("research_link_responses")
