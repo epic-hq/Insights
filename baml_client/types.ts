@@ -364,6 +364,13 @@ export interface ActionButton {
   
 }
 
+export interface AnswerDistribution {
+  answer: string
+  count: number
+  percentage: number
+  
+}
+
 export interface AskLinkInsightsResponse {
   executive_summary: string
   total_responses: number
@@ -1769,8 +1776,8 @@ export interface QuestionImprovement {
 export interface QuestionInsight {
   question: string
   summary: string
+  answer_distribution: AnswerDistribution[]
   key_findings: string[]
-  common_answers: string[]
   notable_outliers: string[]
   
 }
@@ -1928,6 +1935,7 @@ export interface ResponseTheme {
   theme: string
   description: string
   frequency: number
+  percentage: number
   sentiment: string
   example_quotes: string[]
   
@@ -1975,6 +1983,7 @@ export interface SegmentPattern {
   segment_name: string
   segment_description: string
   respondent_count: number
+  percentage: number
   key_characteristics: string[]
   recommended_actions: string[]
   

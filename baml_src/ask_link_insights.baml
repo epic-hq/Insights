@@ -3,39 +3,47 @@
 
 class ResponseTheme {
   theme string @description("Key theme identified across responses (3-5 words)")
-  description string @description("Brief description of the theme")
+  description string @description("Brief description with specific numbers, e.g. '7 of 12 respondents (58%) mentioned onboarding friction'")
   frequency int @description("Number of responses mentioning this theme")
+  percentage int @description("Percentage of total responses mentioning this theme (0-100)")
   sentiment string @description("Overall sentiment: Positive | Neutral | Negative | Mixed")
   example_quotes string[] @description("2-3 representative quotes from responses")
 }
 
+class AnswerDistribution {
+  answer string @description("The answer value or category, e.g. 'Sales', 'Engineering', 'Marketing'")
+  count int @description("Number of respondents who gave this answer")
+  percentage int @description("Percentage of respondents (0-100)")
+}
+
 class QuestionInsight {
   question string @description("The survey question")
-  summary string @description("Concise summary of responses to this question")
-  key_findings string[] @description("Top 3 key findings from responses")
-  common_answers string[] @description("Most common types of answers")
-  notable_outliers string[] @description("Interesting outlier responses worth noting")
+  summary string @description("Concise summary with specific numbers. BAD: 'Respondents come from various sectors'. GOOD: '42% Sales, 25% Engineering, 17% Marketing, 16% Other'")
+  answer_distribution AnswerDistribution[] @description("Breakdown of answers by category with counts and percentages. For open-ended: group into meaningful categories. For select: use exact option values.")
+  key_findings string[] @description("Top 3 key findings. Each MUST include a specific number or percentage. BAD: 'Many are at early stages'. GOOD: '8 of 12 (67%) are pre-revenue or MVP stage'")
+  notable_outliers string[] @description("Interesting outlier responses worth noting — include the quote")
 }
 
 class SegmentPattern {
-  segment_name string @description("Descriptive name for this response segment")
-  segment_description string @description("What characterizes this group")
+  segment_name string @description("Descriptive name for this response segment, e.g. 'Technical Founders (42%)'")
+  segment_description string @description("What characterizes this group — be specific about count and percentage")
   respondent_count int @description("Number of respondents in this segment")
+  percentage int @description("Percentage of total respondents in this segment (0-100)")
   key_characteristics string[] @description("Defining characteristics of this segment")
   recommended_actions string[] @description("Suggested follow-up actions for this segment")
 }
 
 class AskLinkInsightsResponse {
-  executive_summary string @description("2-3 sentence overview of all responses")
+  executive_summary string @description("2-3 sentence overview. MUST include specific numbers. BAD: 'Respondents range from early to late stage'. GOOD: 'Of 12 respondents, 67% (8) are pre-revenue startups, while 25% (3) are Series A/B. The dominant pain point is onboarding friction, cited by 58% (7).'")
   total_responses int @description("Total number of responses analyzed")
   completion_rate int @description("Percentage of responses that were completed")
 
-  top_themes ResponseTheme[] @description("Top 3-5 themes across all responses")
-  question_insights QuestionInsight[] @description("Insights for each survey question")
-  response_segments SegmentPattern[] @description("Distinct patterns/segments in respondents")
+  top_themes ResponseTheme[] @description("Top 3-5 themes across all responses, each with frequency count and percentage")
+  question_insights QuestionInsight[] @description("Insights for each survey question with answer distributions")
+  response_segments SegmentPattern[] @description("Distinct patterns/segments in respondents with counts and percentages")
 
   recommended_followups string[] @description("Suggested follow-up questions or research")
-  actionable_insights string[] @description("Clear, actionable insights from the data")
+  actionable_insights string[] @description("Clear, actionable insights. Each MUST cite a specific number. BAD: 'Improve onboarding'. GOOD: '58% cited onboarding friction — prioritize guided setup flow'")
   data_quality_notes string[] @description("Notes about data quality or gaps")
 }
 
@@ -61,38 +69,52 @@ function AnalyzeAskLinkResponses(
     {{ context }}
 
     ## Your Task
-    Analyze all survey responses to generate comprehensive insights:
+    Analyze all survey responses to generate comprehensive, QUANTITATIVE insights.
 
-    1. **Executive Summary**
-       - Provide a 2-3 sentence overview capturing the most important findings
-       - Focus on actionable insights, not just observations
+    ## CRITICAL: Be Specific and Numeric
+    Every finding MUST include concrete numbers and percentages. The reader should never see
+    vague phrases like "across various sectors", "many respondents", "some users", or "a range of stages".
 
-    2. **Theme Analysis**
-       - Identify 3-5 key themes that emerge across multiple responses
-       - Note sentiment and provide representative quotes
-       - Quantify frequency where possible
+    EXAMPLES OF BAD vs GOOD OUTPUT:
+    - BAD: "Stages range from pre-startup to Series A/B, with a focus on early-stage development"
+    - GOOD: "67% (8 of 12) are pre-revenue or MVP stage, 25% (3) are Series A/B, 8% (1) is pre-idea"
+
+    - BAD: "Many are at very early or MVP stages"
+    - GOOD: "5 of 12 respondents (42%) are at MVP stage, 3 (25%) are pre-revenue"
+
+    - BAD: "Respondents come from various industries"
+    - GOOD: "33% SaaS/Tech, 25% Consulting, 17% Healthcare, 8% Education, 17% Other"
+
+    ## Analysis Steps
+
+    1. **Executive Summary** (2-3 sentences)
+       - Lead with the most striking number: "Of N respondents, X% said..."
+       - Mention the #1 theme with its percentage
+
+    2. **Theme Analysis** (3-5 themes)
+       - Each theme: count + percentage + representative quotes
+       - Sort by frequency (most common first)
 
     3. **Question-by-Question Analysis**
-       - For each question, summarize the responses
-       - Highlight key findings and common patterns
-       - Note any surprising or outlier responses worth investigating
+       - For EVERY question, produce an answer_distribution breaking responses into categories
+       - For select/likert: use exact option values with counts
+       - For open-ended: categorize responses into meaningful groups (e.g. "Sales 30%, Marketing 20%, Engineering 25%, Other 25%")
+       - Each key_finding must include a number
 
     4. **Response Segmentation**
-       - Identify distinct groups or patterns in respondents
-       - What characterizes each segment?
-       - What different follow-up might each segment need?
+       - Name segments with their percentage: "Technical Founders (42%)"
+       - Include respondent_count AND percentage for each segment
 
     5. **Actionable Recommendations**
-       - What should the team do next based on these responses?
-       - What follow-up questions or research would be valuable?
-       - What decisions can be made from this data?
+       - Tie each recommendation to a specific finding with its number
+       - "58% cited onboarding friction → prioritize guided setup"
 
-    ## Analysis Guidelines
-    - Be specific and evidence-based - cite actual responses
-    - Focus on patterns, not individual data points
-    - Highlight unexpected findings and anomalies
-    - Consider what questions the data doesn't answer
-    - Provide actionable recommendations, not just observations
+    ## Rules
+    - Count responses carefully — your numbers must add up
+    - Percentages should sum to ~100% within each distribution
+    - Use "X of Y (Z%)" format for precision
+    - For small samples (<10), show both count and percentage
+    - Never round to make numbers look cleaner if it loses accuracy
 
     {{ ctx.output_format }}
   "#
@@ -103,7 +125,7 @@ class QuickResponseSummary {
   summary string @description("1-2 sentence summary. Be HONEST about sample size - if only 1-2 quality responses, say 'Based on limited data from X respondent(s)...'")
   quality_responses_count int @description("Number of quality responses after filtering junk")
   total_responses_count int @description("Total responses including junk")
-  top_insights string[] @description("1-3 BRIEF insights. If <3 quality responses, prefix with 'Limited data:' and keep very short. Empty array if insufficient data.")
+  top_insights string[] @description("1-3 BRIEF insights with specific numbers. BAD: 'Users face onboarding challenges'. GOOD: '2 of 3 (67%) cited onboarding friction'. If <3 quality responses, prefix with 'Limited data:'. Empty array if insufficient data.")
   sentiment_overview string @description("Overall sentiment: Positive | Neutral | Negative | Mixed | Insufficient data")
   suggested_actions string[] @description("1-2 brief actions. If <3 quality responses, just say 'Collect more responses before drawing conclusions'. Empty if no actionable data.")
   data_quality_warning string @description("Plain English warning like 'Only 1 of 3 responses contained meaningful answers - results are not statistically significant.' Empty if data quality is good (>50% quality).")

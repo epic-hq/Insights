@@ -112,6 +112,7 @@ AI assists; humans lead. Choose voice agent, guided interview, or just upload re
 - **Cross-source synthesis** (calls + tickets + notes, not just one interview)
 - **Role-aware analysis** (CEO vs. end user perspectives)
 - **Action integration** (insights → tasks → outcomes)
+- **Authoring-time question coaching** (no competitor — Qualtrics, SurveyMonkey, Typeform — offers real-time AI coaching with suggested rewrites while building surveys/interview guides. We flag leading, double-barreled, biased questions inline and offer one-click fixes.)
 
 ### Competitive Positioning
 
@@ -122,6 +123,7 @@ AI assists; humans lead. Choose voice agent, guided interview, or just upload re
 | **Looppanel** | Interview analysis | We're end-to-end: capture → synthesize → act |
 | **Notion + AI** | General docs with AI | We're purpose-built for customer evidence |
 | **Otter/Fathom** | Transcription | We're synthesis + traceability, not just notes |
+| **Qualtrics/SurveyMonkey/Typeform** | Survey distribution + post-hoc analytics | We coach question quality at authoring time — no one else does this |
 
 ### The Whitespace
 

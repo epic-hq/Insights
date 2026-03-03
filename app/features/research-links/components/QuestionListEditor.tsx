@@ -1046,7 +1046,10 @@ export function QuestionListEditor({
                 )}
                 <QuestionTypeBadge type={question.type} />
                 {hasBranching && (
-                  <GitBranch className="h-3.5 w-3.5 text-violet-500" />
+                  <GitBranch
+                    className="h-3.5 w-3.5 text-violet-500"
+                    title={`${question.branching?.rules?.length} branching rule${(question.branching?.rules?.length ?? 0) > 1 ? "s" : ""}`}
+                  />
                 )}
                 {hasMedia && effectiveMediaUrl && (
                   <QuestionMediaThumbnail url={effectiveMediaUrl} />
@@ -1075,6 +1078,35 @@ export function QuestionListEditor({
                       Apply fix
                     </button>
                   )}
+                </div>
+              )}
+              {/* Branching annotation — shows where this question branches to */}
+              {hasBranching && question.branching?.rules && (
+                <div className="ml-12 flex flex-wrap items-center gap-x-3 gap-y-0.5 py-0.5 text-[10px] text-violet-500">
+                  {question.branching.rules.map((rule) => {
+                    const targetIdx = rule.targetQuestionId
+                      ? questions.findIndex(
+                          (q) => q.id === rule.targetQuestionId,
+                        ) + 1
+                      : null;
+                    const label =
+                      rule.summary ??
+                      rule.label ??
+                      (rule.conditions.conditions[0]
+                        ? `${rule.conditions.conditions[0].operator} "${rule.conditions.conditions[0].value ?? ""}"`
+                        : "rule");
+                    const target =
+                      rule.action === "end_survey"
+                        ? "end"
+                        : targetIdx
+                          ? `Q${targetIdx}`
+                          : "?";
+                    return (
+                      <span key={rule.id} className="whitespace-nowrap">
+                        If {label} → {target}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
               {/* Inline hover results — lazy-loaded on hover */}

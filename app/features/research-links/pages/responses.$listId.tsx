@@ -476,11 +476,18 @@ interface AnalysisResult {
 }
 
 // Type for detailed analysis (matches BAML AskLinkInsightsResponse)
+interface AnswerDistribution {
+  answer: string;
+  count: number;
+  percentage: number;
+}
+
 interface QuestionInsight {
   question: string;
   summary: string;
+  answer_distribution?: AnswerDistribution[];
   key_findings: string[];
-  common_answers: string[];
+  common_answers?: string[];
   notable_outliers: string[];
 }
 
@@ -488,6 +495,7 @@ interface ResponseTheme {
   theme: string;
   description: string;
   frequency: number;
+  percentage?: number;
   sentiment: string;
   example_quotes: string[];
 }
@@ -502,6 +510,7 @@ interface DetailedAnalysisResult {
     segment_name: string;
     segment_description: string;
     respondent_count: number;
+    percentage?: number;
     key_characteristics: string[];
     recommended_actions: string[];
   }>;
@@ -649,6 +658,36 @@ function QuestionBreakdown({
             <span className="font-medium text-sm">AI Analysis</span>
           </div>
           <p className="text-sm">{aiInsight.summary}</p>
+          {aiInsight.answer_distribution &&
+            aiInsight.answer_distribution.length > 0 && (
+              <div>
+                <h5 className="mb-1.5 font-medium text-muted-foreground text-xs">
+                  Distribution
+                </h5>
+                <div className="space-y-1">
+                  {aiInsight.answer_distribution.map((item, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm">
+                      <div
+                        className="h-2 rounded-full bg-primary/20"
+                        style={{ width: "100%" }}
+                      >
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{ width: `${item.percentage}%` }}
+                        />
+                      </div>
+                      <span className="shrink-0 tabular-nums text-muted-foreground text-xs">
+                        {item.percentage}%
+                      </span>
+                      <span className="shrink-0 text-xs">{item.answer}</span>
+                      <span className="shrink-0 text-muted-foreground text-xs">
+                        ({item.count})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           {aiInsight.key_findings.length > 0 && (
             <div>
               <h5 className="mb-1 font-medium text-muted-foreground text-xs">
@@ -1298,6 +1337,11 @@ export default function ResearchLinkResponsesPage() {
                           <li key={idx} className="flex gap-2 text-sm">
                             <span className="text-primary">•</span>
                             <span className="font-medium">{theme.theme}</span>
+                            {theme.percentage != null && (
+                              <span className="tabular-nums text-muted-foreground">
+                                {theme.percentage}%
+                              </span>
+                            )}
                             <span className="text-muted-foreground">
                               — {theme.description.split(".")[0]}
                             </span>
@@ -1672,8 +1716,16 @@ export default function ResearchLinkResponsesPage() {
                               {detailedResult.top_themes.map((theme, idx) => (
                                 <li key={idx} className="flex gap-2 text-base">
                                   <span className="text-primary">•</span>
-                                  <span className="font-medium">
-                                    {theme.theme}
+                                  <span>
+                                    <span className="font-medium">
+                                      {theme.theme}
+                                    </span>
+                                    {theme.percentage != null && (
+                                      <span className="ml-1.5 text-muted-foreground text-sm">
+                                        ({theme.frequency} responses,{" "}
+                                        {theme.percentage}%)
+                                      </span>
+                                    )}
                                   </span>
                                 </li>
                               ))}
@@ -1689,6 +1741,12 @@ export default function ResearchLinkResponsesPage() {
                         <div className="space-y-2">
                           <h3 className="font-semibold text-xl sm:text-2xl">
                             {activeThemeForCard.theme}
+                            {activeThemeForCard.percentage != null && (
+                              <span className="ml-2 font-normal text-muted-foreground text-base">
+                                {activeThemeForCard.percentage}% (
+                                {activeThemeForCard.frequency})
+                              </span>
+                            )}
                           </h3>
                           <p className="text-muted-foreground text-base leading-relaxed">
                             {activeThemeForCard.description}
