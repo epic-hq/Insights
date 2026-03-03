@@ -10,13 +10,6 @@ import { Response as AiResponse } from "~/components/ai-elements/response";
 import { Suggestion, Suggestions } from "~/components/ai-elements/suggestion";
 import { FileUploadButton } from "~/components/chat/FileUploadButton";
 import { InlineUserInput } from "~/components/chat/InlineUserInput";
-import {
-	ActionSuggestionCard,
-	CelebrationCard,
-	ProgressCard,
-	SuggestionBadges,
-	WelcomeBackCard,
-} from "~/components/chat/inline";
 import { MessagePlayButton } from "~/components/chat/MessagePlayButton";
 import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat";
 import { TTSToggle } from "~/components/chat/TTSToggle";
@@ -500,225 +493,6 @@ function extractUserInputPayloads(message: UpsightMessage): UserInputPayload[] {
 	return payloads;
 }
 
-interface SuggestActionsBadge {
-	id: string;
-	label: string;
-	icon?: string;
-	action: "send_message" | "navigate";
-	message?: string;
-	path?: string;
-}
-
-interface SuggestActionsCard {
-	icon: string;
-	title: string;
-	description: string;
-	ctaLabel: string;
-	action: "send_message" | "navigate";
-	message?: string;
-	path?: string;
-	skipLabel?: string;
-}
-
-interface SuggestActionsPayload {
-	badges: SuggestActionsBadge[];
-	card?: SuggestActionsCard;
-}
-
-function extractSuggestActionsPayload(message: UpsightMessage): SuggestActionsPayload | null {
-	if (!message.parts) return null;
-
-	for (const part of message.parts) {
-		const anyPart = part as Record<string, unknown>;
-		const partType = typeof anyPart.type === "string" ? anyPart.type : undefined;
-		const toolInvocation =
-			anyPart.toolInvocation && typeof anyPart.toolInvocation === "object"
-				? (anyPart.toolInvocation as Record<string, unknown>)
-				: undefined;
-
-		const partToolName = typeof anyPart.toolName === "string" ? anyPart.toolName : undefined;
-		const invocationToolName =
-			typeof toolInvocation?.toolName === "string" ? (toolInvocation.toolName as string) : undefined;
-		const inferredToolName = partType?.startsWith("tool-") ? partType.replace(/^tool-/, "") : undefined;
-		const normalizedName = normalizeToolName(partToolName ?? invocationToolName ?? inferredToolName);
-
-		if (normalizedName !== "suggestactions") continue;
-
-		const candidates = [anyPart.args, anyPart.input, toolInvocation?.args, toolInvocation?.input];
-
-		for (const candidate of candidates) {
-			if (!candidate || typeof candidate !== "object") continue;
-			const payload = candidate as Record<string, unknown>;
-			if (Array.isArray(payload.badges) && payload.badges.length > 0) {
-				return {
-					badges: payload.badges as SuggestActionsBadge[],
-					card: payload.card as SuggestActionsCard | undefined,
-				};
-			}
-		}
-	}
-
-	return null;
-}
-
-interface ShowProgressStep {
-	id: string;
-	label: string;
-	status: "pending" | "active" | "done";
-}
-
-interface ShowProgressPayload {
-	title: string;
-	steps: ShowProgressStep[];
-	progressPercent?: number;
-}
-
-function extractShowProgressPayload(message: UpsightMessage): ShowProgressPayload | null {
-	if (!message.parts) return null;
-
-	for (const part of message.parts) {
-		const anyPart = part as Record<string, unknown>;
-		const partType = typeof anyPart.type === "string" ? anyPart.type : undefined;
-		const toolInvocation =
-			anyPart.toolInvocation && typeof anyPart.toolInvocation === "object"
-				? (anyPart.toolInvocation as Record<string, unknown>)
-				: undefined;
-
-		const partToolName = typeof anyPart.toolName === "string" ? anyPart.toolName : undefined;
-		const invocationToolName =
-			typeof toolInvocation?.toolName === "string" ? (toolInvocation.toolName as string) : undefined;
-		const inferredToolName = partType?.startsWith("tool-") ? partType.replace(/^tool-/, "") : undefined;
-		const normalizedName = normalizeToolName(partToolName ?? invocationToolName ?? inferredToolName);
-
-		if (normalizedName !== "showprogress") continue;
-
-		const candidates = [anyPart.args, anyPart.input, toolInvocation?.args, toolInvocation?.input];
-
-		for (const candidate of candidates) {
-			if (!candidate || typeof candidate !== "object") continue;
-			const payload = candidate as Record<string, unknown>;
-			if (typeof payload.title === "string" && Array.isArray(payload.steps) && payload.steps.length > 0) {
-				return {
-					title: payload.title,
-					steps: payload.steps as ShowProgressStep[],
-					progressPercent: typeof payload.progressPercent === "number" ? payload.progressPercent : undefined,
-				};
-			}
-		}
-	}
-
-	return null;
-}
-
-interface WelcomeChangeBullet {
-	icon?: string;
-	text: string;
-}
-
-interface WelcomeBadge {
-	id: string;
-	label: string;
-	icon?: string;
-	action: "send_message" | "navigate";
-	message?: string;
-	path?: string;
-}
-
-interface WelcomePayload {
-	datestamp: string;
-	changes: WelcomeChangeBullet[];
-	badges: WelcomeBadge[];
-}
-
-function extractWelcomePayload(message: UpsightMessage): WelcomePayload | null {
-	if (!message.parts) return null;
-
-	for (const part of message.parts) {
-		const anyPart = part as Record<string, unknown>;
-		const partType = typeof anyPart.type === "string" ? anyPart.type : undefined;
-		const toolInvocation =
-			anyPart.toolInvocation && typeof anyPart.toolInvocation === "object"
-				? (anyPart.toolInvocation as Record<string, unknown>)
-				: undefined;
-
-		const partToolName = typeof anyPart.toolName === "string" ? anyPart.toolName : undefined;
-		const invocationToolName =
-			typeof toolInvocation?.toolName === "string" ? (toolInvocation.toolName as string) : undefined;
-		const inferredToolName = partType?.startsWith("tool-") ? partType.replace(/^tool-/, "") : undefined;
-		const normalizedName = normalizeToolName(partToolName ?? invocationToolName ?? inferredToolName);
-
-		if (normalizedName !== "showwelcome") continue;
-
-		const candidates = [anyPart.args, anyPart.input, toolInvocation?.args, toolInvocation?.input];
-
-		for (const candidate of candidates) {
-			if (!candidate || typeof candidate !== "object") continue;
-			const payload = candidate as Record<string, unknown>;
-			if (typeof payload.datestamp === "string" && Array.isArray(payload.changes) && payload.changes.length > 0) {
-				return {
-					datestamp: payload.datestamp,
-					changes: payload.changes as WelcomeChangeBullet[],
-					badges: Array.isArray(payload.badges) ? (payload.badges as WelcomeBadge[]) : [],
-				};
-			}
-		}
-	}
-
-	return null;
-}
-
-interface CelebrationPayload {
-	milestone: string;
-	description: string;
-	icon?: string;
-	ctaLabel?: string;
-	ctaAction?: "send_message" | "navigate";
-	ctaMessage?: string;
-	ctaPath?: string;
-}
-
-function extractCelebrationPayload(message: UpsightMessage): CelebrationPayload | null {
-	if (!message.parts) return null;
-
-	for (const part of message.parts) {
-		const anyPart = part as Record<string, unknown>;
-		const partType = typeof anyPart.type === "string" ? anyPart.type : undefined;
-		const toolInvocation =
-			anyPart.toolInvocation && typeof anyPart.toolInvocation === "object"
-				? (anyPart.toolInvocation as Record<string, unknown>)
-				: undefined;
-
-		const partToolName = typeof anyPart.toolName === "string" ? anyPart.toolName : undefined;
-		const invocationToolName =
-			typeof toolInvocation?.toolName === "string" ? (toolInvocation.toolName as string) : undefined;
-		const inferredToolName = partType?.startsWith("tool-") ? partType.replace(/^tool-/, "") : undefined;
-		const normalizedName = normalizeToolName(partToolName ?? invocationToolName ?? inferredToolName);
-
-		if (normalizedName !== "showcelebration") continue;
-
-		const candidates = [anyPart.args, anyPart.input, toolInvocation?.args, toolInvocation?.input];
-
-		for (const candidate of candidates) {
-			if (!candidate || typeof candidate !== "object") continue;
-			const payload = candidate as Record<string, unknown>;
-			if (typeof payload.milestone === "string" && typeof payload.description === "string") {
-				return {
-					milestone: payload.milestone,
-					description: payload.description,
-					icon: typeof payload.icon === "string" ? payload.icon : undefined,
-					ctaLabel: typeof payload.ctaLabel === "string" ? payload.ctaLabel : undefined,
-					ctaAction:
-						payload.ctaAction === "send_message" || payload.ctaAction === "navigate" ? payload.ctaAction : undefined,
-					ctaMessage: typeof payload.ctaMessage === "string" ? payload.ctaMessage : undefined,
-					ctaPath: typeof payload.ctaPath === "string" ? payload.ctaPath : undefined,
-				};
-			}
-		}
-	}
-
-	return null;
-}
-
 function parseUserInputResponseText(text: string): {
 	promptKey?: string;
 	prompt: string;
@@ -1004,22 +778,14 @@ export function ProjectStatusAgentChat({
 		}
 	}, []);
 
-	// Use refs so the transport body function always reads latest values,
-	// even though the Chat instance is created once and stored in a ref by useChat
-	const mergedSystemContextRef = useRef(mergedSystemContext);
-	mergedSystemContextRef.current = mergedSystemContext;
-
-	const activeThreadIdRef = useRef(activeThreadId);
-	activeThreadIdRef.current = activeThreadId;
-
 	const { messages, sendMessage, status, addToolResult, stop, setMessages } = useChat<UpsightMessage>({
 		transport: new DefaultChatTransport({
 			api: `/a/${accountId}/${projectId}/api/chat/project-status`,
-			body: () => ({
-				system: mergedSystemContextRef.current,
+			body: {
+				system: mergedSystemContext,
 				userTimezone,
-				threadId: activeThreadIdRef.current,
-			}),
+				threadId: activeThreadId,
+			},
 		}),
 		// Note: Mastra's memory system on the server handles historical context.
 		// We load history for display but don't need to send it back since the server
@@ -1097,8 +863,6 @@ export function ProjectStatusAgentChat({
 	});
 
 	const [localUserInputAnswers, setLocalUserInputAnswers] = useState<Record<string, UserInputAnswer>>({});
-	const [usedSuggestActionMessageIds, setUsedSuggestActionMessageIds] = useState<Set<string>>(new Set());
-	const [dismissedCelebrationMessageIds, setDismissedCelebrationMessageIds] = useState<Set<string>>(new Set());
 	const persistedUserInputAnswers = useMemo(() => extractUserInputAnswers(messages), [messages]);
 	const userInputAnswers = useMemo(
 		() => ({ ...persistedUserInputAnswers, ...localUserInputAnswers }),
@@ -1205,35 +969,6 @@ export function ProjectStatusAgentChat({
 			lastA2UIMessageIdRef.current = messages[messages.length - 1].id;
 		}
 	}, [messages, a2uiSurface]);
-
-	// Auto-navigate when the server sends a data part with { type: "navigate", path }.
-	// Used by survey_quick_create to navigate to the editor without a fake tool call
-	// (which previously caused an infinite create loop via sendAutomatically).
-	const lastNavigateMessageIdRef = useRef<string | null>(null);
-	useEffect(() => {
-		for (let i = messages.length - 1; i >= 0; i--) {
-			const msg = messages[i];
-			if (msg.id === lastNavigateMessageIdRef.current) break;
-			if (msg.role !== "assistant" || !msg.parts) continue;
-			for (const part of msg.parts) {
-				const anyPart = part as { type: string; data?: unknown[] };
-				if (anyPart.type === "data" && Array.isArray(anyPart.data)) {
-					for (const item of anyPart.data) {
-						const navItem = item as { type?: string; path?: string };
-						if (navItem.type === "navigate" && navItem.path) {
-							const { resolved } = ensureProjectScopedPath(navItem.path, accountId, projectId);
-							if (resolved) {
-								navigate(resolved);
-							}
-						}
-					}
-				}
-			}
-		}
-		if (messages.length > 0) {
-			lastNavigateMessageIdRef.current = messages[messages.length - 1].id;
-		}
-	}, [messages, navigate, accountId, projectId]);
 
 	// Reset thread state when the project context changes.
 	useEffect(() => {
@@ -1663,41 +1398,6 @@ export function ProjectStatusAgentChat({
 		revalidator.revalidate();
 	}, [displayableMessages, revalidator]);
 
-	// Revalidate route data after agent tool calls modify server-side data.
-	// In AI SDK v5, tool parts have type "tool-{toolName}" (e.g. "tool-update-survey-questions"),
-	// NOT "tool-invocation". Multi-step tool calls live on the same assistant message as the
-	// final text response, separated by "step-start" parts.
-	const prevChatStatusRef = useRef(status);
-	const revalidatedToolMsgIdsRef = useRef<Set<string>>(new Set());
-	useEffect(() => {
-		const wasActive = prevChatStatusRef.current === "streaming" || prevChatStatusRef.current === "submitted";
-		prevChatStatusRef.current = status;
-
-		// Only act on transitions TO "ready" (agent turn just finished)
-		if (status !== "ready" || !wasActive) return;
-
-		let shouldRevalidate = false;
-		for (const msg of messages) {
-			if (msg.role !== "assistant" || !msg.parts) continue;
-			if (revalidatedToolMsgIdsRef.current.has(msg.id)) continue;
-
-			const hasCompletedTool = msg.parts.some((part) => {
-				const p = part as { type: string; state?: string };
-				// AI SDK v5: tool parts have type "tool-{toolName}" (starts with "tool-")
-				return p.type.startsWith("tool-") && p.state === "output-available";
-			});
-
-			if (hasCompletedTool) {
-				revalidatedToolMsgIdsRef.current.add(msg.id);
-				shouldRevalidate = true;
-			}
-		}
-
-		if (shouldRevalidate) {
-			revalidator.revalidate();
-		}
-	}, [status, messages, revalidator]);
-
 	// TTS: Auto-play new assistant responses when TTS is enabled
 	const lastAutoPlayedMessageIdRef = useRef<string | null>(null);
 	useEffect(() => {
@@ -1833,10 +1533,6 @@ export function ProjectStatusAgentChat({
 									(isTool ? extractToolResultText(message) : null) ||
 									filteredTextParts.filter(Boolean).join("\n").trim();
 								const userInputPayloads = extractUserInputPayloads(message);
-								const suggestActionsPayload = extractSuggestActionsPayload(message);
-								const showProgressPayload = extractShowProgressPayload(message);
-								const welcomePayload = extractWelcomePayload(message);
-								const celebrationPayload = extractCelebrationPayload(message);
 								const networkSteps = extractNetworkSteps(message);
 								const isAssistant = !isUser && !isTool;
 								const isThisMessagePlaying = tts.playingMessageId === message.id;
@@ -1928,99 +1624,6 @@ export function ProjectStatusAgentChat({
 															);
 														})}
 													</div>
-												)}
-												{!isUser && suggestActionsPayload && (
-													<>
-														{suggestActionsPayload.badges.length > 0 && (
-															<SuggestionBadges
-																badges={suggestActionsPayload.badges}
-																disabled={usedSuggestActionMessageIds.has(message.id)}
-																onSendMessage={(text) => {
-																	setUsedSuggestActionMessageIds((prev) => new Set([...prev, message.id]));
-																	tts.stopPlayback();
-																	sendMessage({ text });
-																}}
-																onNavigate={(path) => {
-																	setUsedSuggestActionMessageIds((prev) => new Set([...prev, message.id]));
-																	const { resolved } = ensureProjectScopedPath(path, accountId, projectId);
-																	if (resolved) navigate(resolved);
-																}}
-															/>
-														)}
-														{suggestActionsPayload.card && (
-															<ActionSuggestionCard
-																icon={suggestActionsPayload.card.icon}
-																title={suggestActionsPayload.card.title}
-																description={suggestActionsPayload.card.description}
-																ctaLabel={suggestActionsPayload.card.ctaLabel}
-																action={suggestActionsPayload.card.action}
-																message={suggestActionsPayload.card.message}
-																path={suggestActionsPayload.card.path}
-																skipLabel={suggestActionsPayload.card.skipLabel}
-																dismissed={usedSuggestActionMessageIds.has(message.id)}
-																onSendMessage={(text) => {
-																	tts.stopPlayback();
-																	sendMessage({ text });
-																}}
-																onNavigate={(path) => {
-																	const { resolved } = ensureProjectScopedPath(path, accountId, projectId);
-																	if (resolved) navigate(resolved);
-																}}
-																onDismiss={() =>
-																	setUsedSuggestActionMessageIds((prev) => new Set([...prev, message.id]))
-																}
-															/>
-														)}
-													</>
-												)}
-												{!isUser && showProgressPayload && (
-													<ProgressCard
-														title={showProgressPayload.title}
-														steps={showProgressPayload.steps}
-														progressPercent={showProgressPayload.progressPercent}
-														isStreaming={isBusy}
-													/>
-												)}
-												{!isUser && welcomePayload && (
-													<WelcomeBackCard
-														datestamp={welcomePayload.datestamp}
-														changes={welcomePayload.changes}
-														badges={welcomePayload.badges}
-														disabled={usedSuggestActionMessageIds.has(message.id)}
-														onSendMessage={(text) => {
-															setUsedSuggestActionMessageIds((prev) => new Set([...prev, message.id]));
-															tts.stopPlayback();
-															sendMessage({ text });
-														}}
-														onNavigate={(path) => {
-															setUsedSuggestActionMessageIds((prev) => new Set([...prev, message.id]));
-															const { resolved } = ensureProjectScopedPath(path, accountId, projectId);
-															if (resolved) navigate(resolved);
-														}}
-													/>
-												)}
-												{!isUser && celebrationPayload && (
-													<CelebrationCard
-														milestone={celebrationPayload.milestone}
-														description={celebrationPayload.description}
-														icon={celebrationPayload.icon}
-														ctaLabel={celebrationPayload.ctaLabel}
-														ctaAction={celebrationPayload.ctaAction}
-														ctaMessage={celebrationPayload.ctaMessage}
-														ctaPath={celebrationPayload.ctaPath}
-														dismissed={dismissedCelebrationMessageIds.has(message.id)}
-														onSendMessage={(text) => {
-															tts.stopPlayback();
-															sendMessage({ text });
-														}}
-														onNavigate={(path) => {
-															const { resolved } = ensureProjectScopedPath(path, accountId, projectId);
-															if (resolved) navigate(resolved);
-														}}
-														onDismiss={() =>
-															setDismissedCelebrationMessageIds((prev) => new Set([...prev, message.id]))
-														}
-													/>
 												)}
 											</div>
 										</div>
@@ -2331,18 +1934,6 @@ function describeResourceContext(resource: string, remainder: string[]): string 
 		case "personas":
 			if (!id) return "View: Personas overview";
 			return `View: Persona detail (id=${id})`;
-		case "ask": {
-			if (!id) return "View: Surveys list (Ask Links)";
-			if (id === "new") return "View: Creating new survey";
-			const subpage = remainder[1];
-			if (subpage === "edit") return `View: Survey editor (surveyId=${id}, editing questions & settings)`;
-			if (subpage === "responses") {
-				const responseId = remainder[2];
-				if (responseId) return `View: Survey response detail (surveyId=${id}, responseId=${responseId})`;
-				return `View: Survey responses (surveyId=${id})`;
-			}
-			return `View: Survey detail (surveyId=${id})`;
-		}
 		case "product-lens":
 			return "View: Product Lens (pain × user matrix)";
 		case "bant-lens":
