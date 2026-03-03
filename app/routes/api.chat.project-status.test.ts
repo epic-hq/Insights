@@ -682,7 +682,20 @@ describe("api.chat.project-status", () => {
 
 		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
 		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
-		expect(chunks.some((chunk) => chunk.type === "tool-input-available")).toBe(true);
+		const hasNavigateSignal = chunks.some((chunk) => {
+			if (chunk.type === "tool-input-available") return true;
+			if (chunk.type !== "data") return false;
+			const data = (chunk as { data?: unknown }).data;
+			if (!Array.isArray(data)) return false;
+			return data.some(
+				(part) =>
+					typeof part === "object" &&
+					part !== null &&
+					(part as { type?: unknown }).type === "navigate" &&
+					typeof (part as { path?: unknown }).path === "string"
+			);
+		});
+		expect(hasNavigateSignal).toBe(true);
 	});
 
 	it("returns fallback + debug trace when research stream init fails", async () => {

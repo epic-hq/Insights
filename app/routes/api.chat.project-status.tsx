@@ -26,7 +26,6 @@ import { recordUsageOnly } from "~/lib/billing/usage.server";
 import { UI_EVENT_DISPATCH_TEXT, type UiEvent, uiEventBatchSchema } from "~/lib/gen-ui/ui-events";
 import { getLangfuseClient } from "~/lib/langfuse.server";
 import { getPostHogServerClient } from "~/lib/posthog.server";
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { mastra } from "~/mastra";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
@@ -1435,6 +1434,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 	// Fetch user persona from onboarding for persona-aware greetings
 	try {
+		const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server");
 		const adminSupabase = createSupabaseAdminClient();
 		const { data: userSettings } = await adminSupabase
 			.from("user_settings")
