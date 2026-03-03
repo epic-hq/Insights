@@ -177,12 +177,18 @@ RULES:
 - Use the speaker's actual words for verbatim quotes.
 - If speaker is unknown, omit speaker_label.
 - Even short statements can contain evidence — a single sentence about a pain point or goal counts.
+- Infer evidence from intent language even when category words are not spoken:
+  - pain can be implied by phrases like "this is slow", "annoying", "blocked", "hard to", "keeps breaking".
+  - goal can be implied by phrases like "we need to", "I want to", "trying to", "so that we can".
+  - workflow can be implied by process descriptions like "first... then...", "usually I...", "my process is...".
+- Do NOT require words like "pain", "goal", or "workflow" to appear in transcript.
+- Prefer higher-signal complete thoughts over tiny partial fragments.
 - Only return EMPTY arrays if the transcript is purely greetings or small talk with zero informational content.
 
 Transcript:
 ${transcript}`,
 			temperature: 0.2,
-			maxTokens: 500,
+			maxTokens: 700,
 		});
 
 		const elapsed = Date.now() - startTime;

@@ -161,6 +161,7 @@ const SCREEN_CAPTURE_SETTINGS_URL =
   "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture";
 const TRANSCRIPT_DEDUP_WINDOW_MS = 5000;
 const TRANSCRIPT_WATCHDOG_MS = 25000;
+const SPEAKER_SOFT_MERGE_WINDOW_MS = 35000;
 const PROVIDER_DUPLICATE_SUPPRESSION_MS = 2500;
 const PANEL_JOIN_TIMEOUT_MS = 90000;
 const PANEL_JOIN_RECOVERY_CHECK_MS = 30000;
@@ -168,6 +169,7 @@ const POST_RECORDING_TRANSCRIPT_GRACE_MS = 4000;
 const AUTO_MEETING_DUMP_COOLDOWN_MS = 15000;
 const recentTranscriptChunksByWindow = new Map();
 const recentNonProviderTranscriptByWindow = new Map();
+const lastFinalTranscriptEventByWindow = new Map();
 const transcriptHealthByWindow = new Map();
 let autoMeetingDumpInFlight = false;
 let lastAutoMeetingDumpAt = 0;
@@ -280,6 +282,7 @@ function clearTranscriptTracking(windowId) {
   transcriptHealthByWindow.delete(key);
   recentTranscriptChunksByWindow.delete(key);
   recentNonProviderTranscriptByWindow.delete(key);
+  lastFinalTranscriptEventByWindow.delete(key);
 }
 
 function markTranscriptSeen(windowId) {
@@ -4388,6 +4391,12 @@ function normalizeTranscriptText(rawText) {
   return rawText.replace(/\s+/g, " ").trim();
 }
 
+function textEndsSentence(text) {
+  const normalized = normalizeTranscriptText(text);
+  if (!normalized) return false;
+  return /[.!?]["')\]]?\s*$/.test(normalized);
+}
+
 function mergeTranscriptTexts(existingText, incomingText) {
   const existing = normalizeTranscriptText(existingText);
   const incoming = normalizeTranscriptText(incomingText);
@@ -4581,8 +4590,13 @@ async function processTranscriptData(evt) {
     }
 
     const isProviderEvent = packet.eventType === "transcript.provider_data";
+    const isPartialEvent = packet.eventType === "transcript.partial_data";
+    const isFinalEvent = packet.eventType === "transcript.data";
     if (isProviderEvent && shouldSkipProviderTranscript(windowId, text)) {
       return;
+    }
+    if (isFinalEvent) {
+      lastFinalTranscriptEventByWindow.set(String(windowId), Date.now());
     }
     if (!isProviderEvent) {
       trackNonProviderTranscript(windowId, text);
@@ -4629,6 +4643,12 @@ async function processTranscriptData(evt) {
         ? now.getTime() - new Date(meeting.date).getTime()
         : null;
       const normalizedIncoming = normalizeTranscriptText(text).toLowerCase();
+      const incomingWordCount = normalizedIncoming
+        .split(" ")
+        .filter(Boolean).length;
+      const incomingStartsLowercase = /^[a-z0-9]/.test(
+        normalizeTranscriptText(text),
+      );
       const normalizedSpeaker = String(resolvedSpeaker || "")
         .trim()
         .toLowerCase();
@@ -4665,6 +4685,28 @@ async function processTranscriptData(evt) {
           .trim()
           .toLowerCase();
         const candidateIsUnknown = isUnknownSpeakerLabel(candidateSpeaker);
+        const sameSpeaker = candidateSpeaker === normalizedSpeaker;
+
+        if (
+          sameSpeaker &&
+          ageMs <= SPEAKER_SOFT_MERGE_WINDOW_MS &&
+          !resolvedSpeakerIsUnknown
+        ) {
+          const candidateEndsSentence = textEndsSentence(candidate.text);
+          if (
+            !candidateEndsSentence ||
+            incomingStartsLowercase ||
+            incomingWordCount <= 6
+          ) {
+            candidate.text = mergeTranscriptTexts(candidate.text, text);
+            candidate.timestamp = now.toISOString();
+            candidate.timestamp_ms = timestampMs;
+            merged = true;
+            mergedEntry = candidate;
+            transcriptChanged = true;
+            break;
+          }
+        }
 
         if (candidateIsUnknown && !resolvedSpeakerIsUnknown) {
           candidate.speaker = resolvedSpeaker;
@@ -4732,9 +4774,14 @@ async function processTranscriptData(evt) {
       const wordsCount = normalizeTranscriptText(panelText)
         .split(" ")
         .filter(Boolean).length;
+      const lastFinalAt = lastFinalTranscriptEventByWindow.get(String(windowId)) || 0;
+      const recentlySawFinal = Date.now() - lastFinalAt <= 5000;
       const shouldQueueForExtraction =
-        packet.eventType === "transcript.data" ||
-        (packet.eventType === "transcript.partial_data" && wordsCount >= 8);
+        isFinalEvent ||
+        (isPartialEvent &&
+          !isProviderEvent &&
+          !recentlySawFinal &&
+          wordsCount >= 5);
       if (shouldQueueForExtraction) {
         // Queue high-signal utterances for real-time evidence extraction.
         const state = evidenceExtractionState.getState(noteId);
