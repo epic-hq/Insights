@@ -47,7 +47,7 @@ export default class TypeBuilder {
     
     Chapter: ClassViewer<'Chapter', "start_ms" | "end_ms" | "summary" | "title">;
     
-    CoachingNudge: ClassViewer<'CoachingNudge', "questionIndex" | "issue" | "summary" | "alternatives">;
+    CoachingNudge: ClassViewer<'CoachingNudge', "questionIndex" | "reasoning" | "issue" | "summary" | "alternatives">;
     
     CoachingResult: ClassViewer<'CoachingResult', "nudges" | "totalTimeWarning" | "overallNote">;
     
@@ -469,7 +469,7 @@ export default class TypeBuilder {
         ]);
         
         this.CoachingNudge = this.tb.classViewer("CoachingNudge", [
-          "questionIndex","issue","summary","alternatives",
+          "questionIndex","reasoning","issue","summary","alternatives",
         ]);
         
         this.CoachingResult = this.tb.classViewer("CoachingResult", [

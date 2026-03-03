@@ -9,9 +9,10 @@ import {
   ExternalLink,
   Loader2,
   Mail,
+  Pencil,
   Send,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   ActionFunctionArgs,
   LoaderFunctionArgs,
@@ -420,6 +421,8 @@ export default function EditResearchLinkPage() {
 
   // UI-only state (not form fields)
   const [slugEdited, setSlugEdited] = useState(true);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const [walkthroughVideoUrl, setWalkthroughVideoUrl] = useState<string | null>(
     initialWalkthroughUrl ?? null,
   );
@@ -431,6 +434,13 @@ export default function EditResearchLinkPage() {
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
 
   // Auto-slug from name
+  useEffect(() => {
+    if (isEditingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [isEditingTitle]);
+
   useEffect(() => {
     if (!slugEdited) {
       const nextSlug = slugify(fields.name || "research-link", {
@@ -477,16 +487,37 @@ export default function EditResearchLinkPage() {
         {/* Sticky top bar with actions */}
         <div className="-mx-4 sticky top-0 z-20 border-border/40 border-b bg-background/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 overflow-hidden">
+            <div className="group/title flex items-center gap-2 overflow-hidden">
               <Link
                 to={routes.ask.index()}
                 className="shrink-0 text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Link>
-              <span className="truncate font-medium text-sm">
-                {fields.name || "Untitled"}
-              </span>
+              {isEditingTitle ? (
+                <input
+                  ref={titleInputRef}
+                  value={fields.name}
+                  onChange={(e) => setText("name", e.target.value)}
+                  onBlur={() => setIsEditingTitle(false)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") setIsEditingTitle(false);
+                    if (e.key === "Escape") setIsEditingTitle(false);
+                  }}
+                  className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-0.5 font-medium text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingTitle(true)}
+                  className="flex min-w-0 items-center gap-1.5 rounded px-1 py-0.5 hover:bg-muted/50"
+                >
+                  <span className="truncate font-medium text-sm">
+                    {fields.name || "Untitled"}
+                  </span>
+                  <Pencil className="h-3 w-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/title:opacity-100" />
+                </button>
+              )}
               {status === "saving" && (
                 <span className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -513,66 +544,6 @@ export default function EditResearchLinkPage() {
 
         <div className="space-y-4">
           <div className="min-w-0 space-y-4">
-            {/* Basics */}
-            <div className="space-y-1.5">
-              <h3 className="font-medium text-foreground/80 text-sm">Basics</h3>
-              <Card>
-                <CardContent className="space-y-3 py-3">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label
-                        htmlFor="name"
-                        className="text-muted-foreground text-xs"
-                      >
-                        Internal name
-                      </Label>
-                      <Input
-                        id="name"
-                        value={fields.name}
-                        onChange={(event) =>
-                          setText("name", event.target.value)
-                        }
-                        required
-                        className="h-9"
-                      />
-                      {errors?.name ? (
-                        <p className="text-destructive text-xs">
-                          {errors.name}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label
-                        htmlFor="slug"
-                        className="text-muted-foreground text-xs"
-                      >
-                        Public slug
-                      </Label>
-                      <Input
-                        id="slug"
-                        value={fields.slug}
-                        onChange={(event) => {
-                          const slugified = slugify(event.target.value, {
-                            lowercase: true,
-                            preserveLeadingUnderscore: false,
-                          });
-                          setText("slug", slugified);
-                          setSlugEdited(true);
-                        }}
-                        required
-                        className="h-9"
-                      />
-                      {errors?.slug ? (
-                        <p className="text-destructive text-xs">
-                          {errors.slug}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
             {/* Respondent fields summary — compact row showing which fields are collected */}
             {fields.respondentFields.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border/40 bg-muted/20 px-3 py-2">
@@ -1057,9 +1028,36 @@ export default function EditResearchLinkPage() {
                 value="distribute"
                 className="min-w-0 space-y-4 overflow-hidden"
               >
-                {/* Public Link */}
+                {/* Public Link + Slug */}
                 <Card>
-                  <CardContent className="space-y-2 py-3">
+                  <CardContent className="space-y-3 py-3">
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="slug"
+                        className="text-muted-foreground text-xs"
+                      >
+                        URL slug
+                      </Label>
+                      <Input
+                        id="slug"
+                        value={fields.slug}
+                        onChange={(event) => {
+                          const slugified = slugify(event.target.value, {
+                            lowercase: true,
+                            preserveLeadingUnderscore: false,
+                          });
+                          setText("slug", slugified);
+                          setSlugEdited(true);
+                        }}
+                        required
+                        className="h-9"
+                      />
+                      {errors?.slug ? (
+                        <p className="text-destructive text-xs">
+                          {errors.slug}
+                        </p>
+                      ) : null}
+                    </div>
                     <p className="font-medium text-sm">Public link</p>
                     <div className="rounded-md border bg-muted/40 px-2.5 py-2 text-foreground/70 text-xs">
                       <span className="break-all font-mono">{publicLink}</span>

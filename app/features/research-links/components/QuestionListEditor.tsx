@@ -43,7 +43,6 @@ import {
   UnifiedQuestionRow,
 } from "~/components/questions/UnifiedQuestionRow";
 import { UnifiedQuestionList } from "~/components/questions/UnifiedQuestionList";
-import { estimateQuestionSeconds } from "~/components/questions/coaching/time-estimates";
 import type { ResearchLinkQuestion } from "../schemas";
 import { createEmptyQuestion } from "../schemas";
 import { getMediaType, isR2Key } from "../utils";
@@ -838,6 +837,21 @@ export function QuestionListEditor({
   const [hoveredQuestionId, setHoveredQuestionId] = useState<string | null>(
     null,
   );
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** Delayed hover — prevents flicker during drag and fast mouse sweeps */
+  const handleMouseEnter = useCallback((questionId: string) => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => {
+      setHoveredQuestionId(questionId);
+    }, 300);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = null;
+    setHoveredQuestionId(null);
+  }, []);
 
   const updateQuestion = useCallback(
     (id: string, updates: Partial<ResearchLinkQuestion>) => {
@@ -936,8 +950,6 @@ export function QuestionListEditor({
           const hasMedia = Boolean(question.mediaUrl ?? question.videoUrl);
           const effectiveMediaUrl =
             question.mediaUrl ?? question.videoUrl ?? null;
-          const timeSeconds = estimateQuestionSeconds(question.type);
-
           return (
             <motion.div
               key={question.id}
@@ -946,8 +958,8 @@ export function QuestionListEditor({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.15 }}
-              onMouseEnter={() => setHoveredQuestionId(question.id)}
-              onMouseLeave={() => setHoveredQuestionId(null)}
+              onMouseEnter={() => handleMouseEnter(question.id)}
+              onMouseLeave={handleMouseLeave}
             >
               <UnifiedQuestionRow
                 index={index + 1}
@@ -959,9 +971,6 @@ export function QuestionListEditor({
                   <span className="text-destructive text-xs">*</span>
                 )}
                 <QuestionTypeBadge type={question.type} />
-                <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
-                  ~{timeSeconds}s
-                </span>
                 {hasBranching && (
                   <GitBranch className="h-3.5 w-3.5 text-violet-500" />
                 )}

@@ -4,9 +4,10 @@
 
 class CoachingNudge {
   questionIndex int @description("1-based index of the question in the list")
+  reasoning string @description("Internal: one sentence explaining WHY this is flagged. Forces careful evaluation before labeling.")
   issue "leading" | "double_barreled" | "closed_ended" | "too_long" | "too_vague" | "biased" | "jargon" | "redundant" | "survey_fatigue"
   summary string @description("Pithy 5-10 word description. E.g. 'Leading — presupposes frustration' or 'Double-barreled — asks two things'")
-  alternatives string[] @description("1-2 suggested rewrites. Short, direct, ready to use.")
+  alternatives string[] @description("1-2 suggested rewrites. Short, direct, ready to use. Must preserve the original question's intent and type.")
 }
 
 class CoachingResult {
@@ -34,30 +35,43 @@ function CoachQuestionSet(
     CONTEXT: {{ question_context }}
     MODE: {{ mode }}
 
-    ISSUES TO CATCH:
+    ISSUES TO CATCH (check in this priority order):
 
     HIGH PRIORITY (always flag):
-    - Leading: presupposes an answer ("Don't you think X is frustrating?")
-    - Double-barreled: asks two things ("How do you feel about X and Y?")
-    - Closed-ended in interview mode: yes/no when open-ended would be richer
+    - Leading: presupposes an answer or uses loaded framing ("Don't you think X is frustrating?")
+    - Double-barreled: two distinct predicates where a respondent could reasonably have different answers to each part ("How do you feel about X and Y?")
+    - Closed-ended in interview mode ONLY: yes/no when open-ended would be richer. Never flag closed-ended in survey mode.
 
     MEDIUM PRIORITY:
-    - Too vague: won't produce actionable data ("Tell me about your experience")
-    - Biased framing: emotionally loaded language
-    - Jargon: terms the respondent might not know
-    - Redundant: two questions asking essentially the same thing
+    - Too vague: won't produce actionable data, no specific object of inquiry ("Tell me about your experience")
+    - Biased: emotionally loaded language distinct from leading — charged adjectives/superlatives ("biggest problem", "worst part")
+    - Jargon: terms the respondent likely won't know. CHECK CONTEXT FIRST — if the audience is technical/professional, domain terms are expected. Only flag for general/consumer audiences.
+    - Redundant: two questions that would produce substantially the same data. Compare each question against all others.
 
     SURVEY-SPECIFIC (only in survey mode):
-    - Survey fatigue: too many open-ended questions back-to-back
+    - Survey fatigue: 3+ consecutive open-ended questions with no structured relief
     - Too long: question text over ~25 words is hard to scan
+
+    DO NOT FLAG these patterns (they look suspicious but are fine):
+    - "What do you think about X and Y?" when X and Y are the same dimension (not double-barreled)
+    - "How has your experience with [product] changed over time?" — "changed" is not leading
+    - "What was most frustrating?" in interview mode when it follows a topic the user already raised — not leading
+    - "Can you tell me more about..." — closed-ended phrasing but genuinely open intent
+    - "How do you feel about the pricing and cost?" — synonyms, not double-barreled
+
+    EXAMPLES for commonly confused issues:
+    - Leading: "How frustrating was it when the product failed?" → presupposes failure
+    - Biased (NOT leading): "What makes this the most broken part of your workflow?" → "most broken" is emotionally loaded
+    - Neither: "What challenges have you faced with X?" → neutral language, do NOT flag
 
     RULES:
     1. Only flag questions with real problems. Most questions are fine — return empty nudges if so.
-    2. Keep summaries to 5-10 words. Format: "Issue type — brief reason"
-    3. Suggest 1-2 alternatives max. Make them ready to use, not vague directions.
-    4. If total estimated response time exceeds 5 min for surveys or 45 min for interviews, add totalTimeWarning.
-    5. overallNote only if there's a notable pattern (e.g. all pain, no goals). Otherwise null.
-    6. Never repeat the full question text in your summary — just reference by number.
+    2. For each flagged question, first write a reasoning sentence explaining WHY, then produce the summary.
+    3. Keep summaries to 5-10 words. Format: "Issue type — brief reason"
+    4. Suggest 1-2 alternatives max. Make them ready to use. Preserve the original question's intent and type.
+    5. If total estimated response time exceeds 5 min for surveys or 45 min for interviews, add totalTimeWarning.
+    6. overallNote only if there's a notable pattern (e.g. all pain, no goals; missing behavioral questions). Otherwise null.
+    7. Never repeat the full question text in your summary — just reference by number.
 
     {{ ctx.output_format }}
   "#
@@ -84,13 +98,26 @@ function CoachSingleQuestion(
 
     Context: {{ question_context }}
 
-    Only flag if there's a genuine problem (leading, double-barreled, closed-ended, too vague, biased).
+    Check issues in this order. STOP at the first real issue found:
+    1. Is it leading? (presupposes an answer or uses loaded framing)
+    2. Is it double-barreled? (two distinct predicates with potentially different answers — NOT synonyms)
+    3. In interview mode only: is it closed-ended when open-ended would be richer?
+    4. Is it too vague to produce actionable data?
+    5. Is the language biased/emotionally loaded?
+    6. Does it contain jargon the audience wouldn't know? (Check context — technical audiences expect domain terms)
+
     Most questions are fine — return hasIssue: false for acceptable questions.
+
+    DO NOT flag:
+    - "Can you tell me more about..." (open intent despite closed phrasing)
+    - Questions using "and" to join synonyms ("pricing and cost")
+    - Follow-up questions that reference a topic already raised
+    - Neutral words like "challenges", "experience", "think"
 
     If flagged, provide:
     - issue: the type (leading, double_barreled, closed_ended, too_vague, biased, jargon)
     - summary: 5-10 words ("Leading — presupposes frustration")
-    - alternative: one ready-to-use rewrite
+    - alternative: one ready-to-use rewrite that preserves the original intent
 
     {{ ctx.output_format }}
   "#
