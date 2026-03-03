@@ -287,11 +287,7 @@ export function EditPersonDataSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        className="flex flex-col sm:max-w-md"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-      >
+      <SheetContent className="flex flex-col sm:max-w-md">
         <SheetHeader>
           <div className="flex items-center gap-2">
             {onNavigate && (

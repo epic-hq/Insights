@@ -281,10 +281,7 @@ export function ResourceShareMenu({
 
       {/* Team Invite Dialog */}
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-        <DialogContent
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-        >
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Invite to team</DialogTitle>
             <DialogDescription>
@@ -350,11 +347,7 @@ export function ResourceShareMenu({
         open={publicShareDialogOpen}
         onOpenChange={setPublicShareDialogOpen}
       >
-        <DialogContent
-          className="sm:max-w-md"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-        >
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Public Share Link</DialogTitle>
             <DialogDescription>

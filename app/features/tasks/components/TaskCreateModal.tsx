@@ -147,11 +147,7 @@ export function TaskCreateModal({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent
-        className="sm:max-w-[500px]"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-      >
+      <DialogContent className="sm:max-w-[500px]">
         <fetcher.Form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Create Task</DialogTitle>

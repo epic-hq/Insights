@@ -472,12 +472,7 @@ function QuestionEditDrawer({
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent
-        side="right"
-        className="w-full overflow-y-auto sm:max-w-lg"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-      >
+      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 font-semibold text-primary text-xs tabular-nums">
@@ -1474,6 +1469,7 @@ export function QuestionListEditor({
       {/* Side drawer for editing */}
       {selectedQuestion && (
         <QuestionEditDrawer
+          key={selectedQuestionId}
           question={selectedQuestion}
           questions={questions}
           index={selectedIndex}

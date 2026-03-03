@@ -283,11 +283,7 @@ export function BulkGenerateSurveys({
   return (
     <>
       <Dialog open={open && !quickViewOpen} onOpenChange={handleClose}>
-        <DialogContent
-          className="sm:max-w-md"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-        >
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-purple-500" />

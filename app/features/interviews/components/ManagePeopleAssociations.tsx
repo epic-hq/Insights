@@ -566,11 +566,7 @@ export function ManagePeopleAssociations({
           }
         }}
       >
-        <DialogContent
-          className="sm:max-w-[400px]"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-        >
+        <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Add Participant</DialogTitle>
           </DialogHeader>
