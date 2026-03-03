@@ -7,23 +7,17 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowDown,
   ArrowUp,
-  ChevronDown,
-  ChevronRight,
-  ClipboardCopy,
-  FileText,
   GitBranch,
-  GripVertical,
   Image,
   Loader2,
   Paperclip,
   Plus,
-  Settings2,
   Trash2,
   Upload,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Badge } from "~/components/ui/badge";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -43,8 +37,13 @@ import {
 } from "~/components/ui/sheet";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
-import { toast } from "sonner";
-import { cn } from "~/lib/utils";
+import { QuestionHoverResults } from "~/components/questions/QuestionHoverResults";
+import {
+  QuestionTypeBadge,
+  UnifiedQuestionRow,
+} from "~/components/questions/UnifiedQuestionRow";
+import { UnifiedQuestionList } from "~/components/questions/UnifiedQuestionList";
+import { estimateQuestionSeconds } from "~/components/questions/coaching/time-estimates";
 import type { ResearchLinkQuestion } from "../schemas";
 import { createEmptyQuestion } from "../schemas";
 import { getMediaType, isR2Key } from "../utils";
@@ -836,6 +835,9 @@ export function QuestionListEditor({
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(
     null,
   );
+  const [hoveredQuestionId, setHoveredQuestionId] = useState<string | null>(
+    null,
+  );
 
   const updateQuestion = useCallback(
     (id: string, updates: Partial<ResearchLinkQuestion>) => {
@@ -906,15 +908,35 @@ export function QuestionListEditor({
   const selectedIndex = questions.findIndex((q) => q.id === selectedQuestionId);
   const selectedQuestion = selectedIndex >= 0 ? questions[selectedIndex] : null;
 
+  const questionTypes = useMemo(
+    () => questions.map((q) => q.type),
+    [questions],
+  );
+
+  const handleCopy = useCallback(() => {
+    const text = formatQuestionsForClipboard(questions);
+    navigator.clipboard.writeText(text).then(
+      () => toast.success("Questions copied to clipboard"),
+      () => toast.error("Failed to copy"),
+    );
+  }, [questions]);
+
   return (
-    <div className="space-y-1">
-      {/* Streamlined question list */}
+    <UnifiedQuestionList
+      count={questions.length}
+      questionTypes={questionTypes}
+      showTimeBar
+      onAdd={addQuestion}
+      onCopy={handleCopy}
+    >
+      {/* Question rows */}
       <AnimatePresence initial={false}>
         {questions.map((question, index) => {
           const hasBranching = Boolean(question.branching?.rules?.length);
           const hasMedia = Boolean(question.mediaUrl ?? question.videoUrl);
           const effectiveMediaUrl =
             question.mediaUrl ?? question.videoUrl ?? null;
+          const timeSeconds = estimateQuestionSeconds(question.type);
 
           return (
             <motion.div
@@ -924,92 +946,42 @@ export function QuestionListEditor({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.15 }}
+              onMouseEnter={() => setHoveredQuestionId(question.id)}
+              onMouseLeave={() => setHoveredQuestionId(null)}
             >
-              <button
-                type="button"
+              <UnifiedQuestionRow
+                index={index + 1}
+                text={question.prompt}
+                isSelected={selectedQuestionId === question.id}
                 onClick={() => setSelectedQuestionId(question.id)}
-                className={cn(
-                  "group flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all",
-                  selectedQuestionId === question.id
-                    ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
-                    : "border-border/40 bg-background hover:border-border/80 hover:bg-muted/30",
-                )}
               >
-                {/* Question number */}
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-muted font-semibold text-foreground/60 text-xs tabular-nums">
-                  {index + 1}
+                {question.required && (
+                  <span className="text-destructive text-xs">*</span>
+                )}
+                <QuestionTypeBadge type={question.type} />
+                <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
+                  ~{timeSeconds}s
                 </span>
-
-                {/* Question text */}
-                <span
-                  className={cn(
-                    "min-w-0 flex-1 truncate text-sm",
-                    question.prompt
-                      ? "text-foreground"
-                      : "text-muted-foreground italic",
-                  )}
-                >
-                  {question.prompt || "Untitled question"}
-                </span>
-
-                {/* Indicator badges */}
-                <div className="flex shrink-0 items-center gap-1.5">
-                  {question.required && (
-                    <span className="text-destructive text-xs">*</span>
-                  )}
-                  {question.type !== "auto" && (
-                    <Badge
-                      variant="secondary"
-                      className="px-1.5 py-0 font-normal text-[10px]"
-                    >
-                      {questionTypeLabel(question.type)}
-                    </Badge>
-                  )}
-                  {hasBranching && (
-                    <GitBranch className="h-3.5 w-3.5 text-violet-500" />
-                  )}
-                  {hasMedia && effectiveMediaUrl && (
-                    <QuestionMediaThumbnail url={effectiveMediaUrl} />
-                  )}
-                  {question.allowOther && (
-                    <FileText className="h-3.5 w-3.5 text-amber-500" />
-                  )}
-                </div>
-              </button>
+                {hasBranching && (
+                  <GitBranch className="h-3.5 w-3.5 text-violet-500" />
+                )}
+                {hasMedia && effectiveMediaUrl && (
+                  <QuestionMediaThumbnail url={effectiveMediaUrl} />
+                )}
+              </UnifiedQuestionRow>
+              {/* Inline hover results — lazy-loaded on hover */}
+              {listId && (
+                <QuestionHoverResults
+                  questionId={question.id}
+                  questionType={question.type}
+                  listId={listId}
+                  isVisible={hoveredQuestionId === question.id}
+                />
+              )}
             </motion.div>
           );
         })}
       </AnimatePresence>
-
-      {/* Action bar: Add + Copy */}
-      <div className="mt-2 flex items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="flex-1 border-border/60 border-dashed bg-muted/20 text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground"
-          onClick={addQuestion}
-        >
-          <Plus className="mr-1.5 h-3.5 w-3.5" /> Add question
-        </Button>
-        {questions.length > 0 && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="shrink-0 text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              const text = formatQuestionsForClipboard(questions);
-              navigator.clipboard.writeText(text).then(
-                () => toast.success("Questions copied to clipboard"),
-                () => toast.error("Failed to copy"),
-              );
-            }}
-          >
-            <ClipboardCopy className="mr-1.5 h-3.5 w-3.5" /> Copy
-          </Button>
-        )}
-      </div>
 
       {/* Side drawer for editing */}
       {selectedQuestion && (
@@ -1025,6 +997,6 @@ export function QuestionListEditor({
           moveQuestion={moveQuestion}
         />
       )}
-    </div>
+    </UnifiedQuestionList>
   );
 }
