@@ -8,9 +8,13 @@
  */
 
 import consola from "consola";
-import { createSupabaseAdminClient } from "../../lib/supabase/client.server";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function getSupabaseAdminClient() {
+	const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
+	return createSupabaseAdminClient();
+}
 
 /**
  * Validates that a string is a valid UUID v4 format.
@@ -85,7 +89,7 @@ export async function resolveProjectContext(
 
 	// IMPORTANT: Always get account_id from the project record, NOT from session context
 	// The session context account_id can differ from the project's actual account
-	const supabase = createSupabaseAdminClient();
+	const supabase = await getSupabaseAdminClient();
 
 	const { data: project, error } = await supabase.from("projects").select("account_id").eq("id", projectId).single();
 
@@ -140,7 +144,7 @@ export async function resolveAccountIdFromProject(
 		throw new Error(`[${routeName}] Missing projectId`);
 	}
 
-	const supabase = createSupabaseAdminClient();
+	const supabase = await getSupabaseAdminClient();
 	const { data: project, error } = await supabase.from("projects").select("account_id").eq("id", projectId).single();
 
 	if (error || !project?.account_id) {
