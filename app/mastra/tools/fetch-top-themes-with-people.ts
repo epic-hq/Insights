@@ -2,10 +2,7 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import {
-	buildSingleComponentSurface,
-	withA2UI,
-} from "../../lib/gen-ui/tool-helpers";
+import { buildSingleComponentSurface, withA2UI } from "../../lib/gen-ui/tool-helpers";
 
 type ThemeLinkRow = {
 	theme_id: string | null;
@@ -110,7 +107,7 @@ export const fetchTopThemesWithPeopleTool = createTool({
 					),
 				})
 			),
-		}),
+		})
 	),
 	execute: async (input, context?) => {
 		const { supabaseAdmin } = await import("../../lib/supabase/client.server");
@@ -309,7 +306,7 @@ export const fetchTopThemesWithPeopleTool = createTool({
 			const projectPath = accountId ? `/a/${accountId}/${projectId}` : "";
 			const routes = projectPath ? createRouteDefinitions(projectPath) : null;
 
-				const topThemes = selectedThemes.map((theme) => {
+			const topThemes = selectedThemes.map((theme) => {
 				const evidenceIds = evidenceIdsByTheme.get(theme.id) ?? new Set<string>();
 				const personMentions = new Map<string, number>();
 
@@ -331,74 +328,72 @@ export const fetchTopThemesWithPeopleTool = createTool({
 						url: routes ? `${HOST}${routes.people.detail(personId)}` : null,
 					}));
 
-					return {
-						themeId: theme.id,
+				return {
+					themeId: theme.id,
 					name: theme.name,
 					statement: theme.statement ?? null,
 					evidenceCount: theme.evidenceCount,
 					peopleCount: personMentions.size,
 					updatedAt: normalizeDate(theme.updated_at),
 					url: routes ? `${HOST}${routes.themes.detail(theme.id)}` : null,
-						people: sortedPeople,
-					};
-				});
-
-				const distribution = {
-					strong: 0,
-					emerging: 0,
-					thin: 0,
+					people: sortedPeople,
 				};
+			});
 
-				const patterns = topThemes.map((theme) => {
-					const confidenceTier = getConfidenceTier(theme.evidenceCount);
-					if (confidenceTier === "validated" || confidenceTier === "strong") {
-						distribution.strong += 1;
-					} else if (confidenceTier === "emerging") {
-						distribution.emerging += 1;
-					} else {
-						distribution.thin += 1;
-					}
+			const distribution = {
+				strong: 0,
+				emerging: 0,
+				thin: 0,
+			};
 
-					return {
-						id: theme.themeId,
-						name: theme.name,
-						statement: theme.statement,
-						mentionCount: theme.evidenceCount,
-						confidenceTier,
-						confidenceLabel: getConfidenceLabel(confidenceTier),
-						uniqueSources: theme.peopleCount,
-						detailUrl: toInternalPath(theme.url),
-					};
-				});
-
-				const a2ui =
-					patterns.length > 0
-						? buildSingleComponentSurface({
-								surfaceId: accountId || projectId,
-								componentType: "PatternSynthesis",
-								data: {
-									projectId,
-									headline:
-										patterns.length === 1
-											? `Top theme in this project`
-											: `Top ${patterns.length} themes in this project`,
-									narrativeSummary: `Found ${sortedThemes.length} themes overall. Ranked by evidence mentions and recency.`,
-									patterns,
-									distribution,
-									nextAction: "Inspect a theme and decide what to validate next.",
-									nextActionUrl: toInternalPath(topThemes[0]?.url ?? null),
-								},
-						  })
-						: undefined;
+			const patterns = topThemes.map((theme) => {
+				const confidenceTier = getConfidenceTier(theme.evidenceCount);
+				if (confidenceTier === "validated" || confidenceTier === "strong") {
+					distribution.strong += 1;
+				} else if (confidenceTier === "emerging") {
+					distribution.emerging += 1;
+				} else {
+					distribution.thin += 1;
+				}
 
 				return {
-					success: true,
-					message: `Found ${sortedThemes.length} total themes. Returning top ${topThemes.length}.`,
-					projectId,
-					totalThemes: sortedThemes.length,
-					topThemes,
-					a2ui,
+					id: theme.themeId,
+					name: theme.name,
+					statement: theme.statement,
+					mentionCount: theme.evidenceCount,
+					confidenceTier,
+					confidenceLabel: getConfidenceLabel(confidenceTier),
+					uniqueSources: theme.peopleCount,
+					detailUrl: toInternalPath(theme.url),
 				};
+			});
+
+			const a2ui =
+				patterns.length > 0
+					? buildSingleComponentSurface({
+							surfaceId: accountId || projectId,
+							componentType: "PatternSynthesis",
+							data: {
+								projectId,
+								headline:
+									patterns.length === 1 ? "Top theme in this project" : `Top ${patterns.length} themes in this project`,
+								narrativeSummary: `Found ${sortedThemes.length} themes overall. Ranked by evidence mentions and recency.`,
+								patterns,
+								distribution,
+								nextAction: "Inspect a theme and decide what to validate next.",
+								nextActionUrl: toInternalPath(topThemes[0]?.url ?? null),
+							},
+						})
+					: undefined;
+
+			return {
+				success: true,
+				message: `Found ${sortedThemes.length} total themes. Returning top ${topThemes.length}.`,
+				projectId,
+				totalThemes: sortedThemes.length,
+				topThemes,
+				a2ui,
+			};
 		} catch (error) {
 			consola.error("fetch-top-themes-with-people: unexpected error", error);
 			return {

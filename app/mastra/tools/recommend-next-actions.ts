@@ -9,91 +9,72 @@ import consola from "consola";
 import { z } from "zod";
 import { getProjectResearchContext } from "../../features/research-links/db";
 import {
-  determineProjectStage,
-  generateRecommendations,
-  type ProjectStage,
+	determineProjectStage,
+	generateRecommendations,
+	type ProjectStage,
 } from "../../features/research-links/utils/recommendation-rules";
-import {
-  buildSingleComponentSurface,
-  withA2UI,
-} from "../../lib/gen-ui/tool-helpers";
 import { buildProgressRailData } from "../../lib/gen-ui/phase-detection";
+import { buildSingleComponentSurface, withA2UI } from "../../lib/gen-ui/tool-helpers";
 import { supabaseAdmin } from "../../lib/supabase/client.server";
 import type { Database } from "../../types";
 import { createRouteDefinitions } from "../../utils/route-definitions";
 
 function buildProjectPath(accountId: string, projectId: string) {
-  return `/a/${accountId}/${projectId}`;
+	return `/a/${accountId}/${projectId}`;
 }
 
-function resolveNavigateTo(
-  projectPath: string,
-  navigateTo?: string,
-  focusThemeId?: string,
-): string | undefined {
-  if (!navigateTo) return undefined;
-  const routes = createRouteDefinitions(projectPath);
+function resolveNavigateTo(projectPath: string, navigateTo?: string, focusThemeId?: string): string | undefined {
+	if (!navigateTo) return undefined;
+	const routes = createRouteDefinitions(projectPath);
 
-  if (navigateTo === "/setup") return routes.projects.setup();
-  if (navigateTo === "/ask/new") return routes.ask.new();
-  if (navigateTo === "/themes") return routes.themes.index();
-  if (navigateTo === "/people") return routes.people.index();
+	if (navigateTo === "/setup") return routes.projects.setup();
+	if (navigateTo === "/ask/new") return routes.ask.new();
+	if (navigateTo === "/themes") return routes.themes.index();
+	if (navigateTo === "/people") return routes.people.index();
 
-  if (navigateTo.startsWith("/themes/")) {
-    const themeId = navigateTo.split("/")[2] || focusThemeId;
-    if (themeId) return routes.themes.detail(themeId);
-  }
+	if (navigateTo.startsWith("/themes/")) {
+		const themeId = navigateTo.split("/")[2] || focusThemeId;
+		if (themeId) return routes.themes.detail(themeId);
+	}
 
-  return navigateTo.startsWith(projectPath) ? navigateTo : undefined;
+	return navigateTo.startsWith(projectPath) ? navigateTo : undefined;
 }
 
 const RecommendationSchema = z.object({
-  id: z.string(),
-  priority: z.number(),
-  title: z.string(),
-  description: z.string(),
-  reasoning: z.string(),
-  actionType: z.enum([
-    "setup",
-    "interview",
-    "survey",
-    "validate",
-    "deep_dive",
-    "analyze",
-    "decide",
-    "data_quality",
-  ]),
-  navigateTo: z
-    .string()
-    .nullish()
-    .describe("Relative path to navigate user to (e.g., /setup, /ask/new)"),
-  focusTheme: z
-    .object({
-      id: z.string(),
-      name: z.string(),
-    })
-    .optional(),
-  metadata: z.record(z.unknown()).optional(),
+	id: z.string(),
+	priority: z.number(),
+	title: z.string(),
+	description: z.string(),
+	reasoning: z.string(),
+	actionType: z.enum(["setup", "interview", "survey", "validate", "deep_dive", "analyze", "decide", "data_quality"]),
+	navigateTo: z.string().nullish().describe("Relative path to navigate user to (e.g., /setup, /ask/new)"),
+	focusTheme: z
+		.object({
+			id: z.string(),
+			name: z.string(),
+		})
+		.optional(),
+	metadata: z.record(z.unknown()).optional(),
 });
 
 const ProjectStateSchema = z.object({
-  stage: z.enum(["setup", "discovery", "gathering", "validation", "synthesis"]),
-  interviewCount: z.number(),
-  surveyCount: z.number(),
-  themeCount: z.number(),
-  hasGoals: z.boolean(),
-  dataQuality: z
-    .object({
-      peopleNeedingSegments: z.number(),
-      totalPeople: z.number(),
-      peopleWithoutTitles: z.number(),
-    })
-    .optional(),
+	stage: z.enum(["setup", "discovery", "gathering", "validation", "synthesis"]),
+	interviewCount: z.number(),
+	surveyCount: z.number(),
+	themeCount: z.number(),
+	hasGoals: z.boolean(),
+	dataQuality: z
+		.object({
+			peopleNeedingSegments: z.number(),
+			totalPeople: z.number(),
+			peopleWithoutTitles: z.number(),
+		})
+		.optional(),
 });
 
 export const recommendNextActionsTool = createTool({
-  id: "recommend-next-actions",
-  description: `Get personalized recommendations for what the user should do next in their research project.
+	id: "recommend-next-actions",
+	description: `Get personalized recommendations for what the user should do next in their research project.
 Returns 1-3 actionable suggestions based on current project state (themes, evidence, interviews, surveys).
 
 Use this tool proactively when:
@@ -108,201 +89,190 @@ The recommendations are based on:
 - Theme evidence levels (low = needs validation, high = ready for deep dive)
 - Pricing themes (special handling)
 - Recency of surveys (NPS check if stale)`,
-  inputSchema: z.object({
-    projectId: z
-      .string()
-      .nullish()
-      .describe(
-        "Project ID to get recommendations for. If not provided, uses runtime context.",
-      ),
-    reason: z
-      .string()
-      .nullish()
-      .describe("Why you are fetching recommendations (for logging)"),
-  }),
-  outputSchema: withA2UI(
-    z.object({
-      success: z.boolean(),
-      message: z.string(),
-      recommendations: z.array(RecommendationSchema),
-      projectState: ProjectStateSchema,
-    }),
-  ),
-  execute: async (input, context?) => {
-    const supabase = supabaseAdmin as SupabaseClient<Database>;
-    // Prefer explicit input, fall back to runtime context
-    const runtimeProjectId = context?.requestContext?.get?.("project_id");
-    const projectId = input.projectId ?? runtimeProjectId;
-    const accountId = context?.requestContext?.get?.("account_id");
+	inputSchema: z.object({
+		projectId: z
+			.string()
+			.nullish()
+			.describe("Project ID to get recommendations for. If not provided, uses runtime context."),
+		reason: z.string().nullish().describe("Why you are fetching recommendations (for logging)"),
+	}),
+	outputSchema: withA2UI(
+		z.object({
+			success: z.boolean(),
+			message: z.string(),
+			recommendations: z.array(RecommendationSchema),
+			projectState: ProjectStateSchema,
+		})
+	),
+	execute: async (input, context?) => {
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		// Prefer explicit input, fall back to runtime context
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const projectId = input.projectId ?? runtimeProjectId;
+		const accountId = context?.requestContext?.get?.("account_id");
 
-    consola.debug("recommend-next-actions: execute start", {
-      inputProjectId: input.projectId,
-      runtimeProjectId,
-      resolvedProjectId: projectId,
-      accountId,
-      reason: input.reason,
-    });
+		consola.debug("recommend-next-actions: execute start", {
+			inputProjectId: input.projectId,
+			runtimeProjectId,
+			resolvedProjectId: projectId,
+			accountId,
+			reason: input.reason,
+		});
 
-    if (!projectId) {
-      consola.warn("recommend-next-actions: missing projectId", {
-        hasContext: !!context,
-        hasRequestContext: !!context?.requestContext,
-      });
-      return {
-        success: false,
-        message:
-          "Missing projectId. Pass projectId parameter or ensure runtime context sets project_id.",
-        recommendations: [],
-        projectState: {
-          stage: "setup" as ProjectStage,
-          interviewCount: 0,
-          surveyCount: 0,
-          themeCount: 0,
-          hasGoals: false,
-        },
-      };
-    }
+		if (!projectId) {
+			consola.warn("recommend-next-actions: missing projectId", {
+				hasContext: !!context,
+				hasRequestContext: !!context?.requestContext,
+			});
+			return {
+				success: false,
+				message: "Missing projectId. Pass projectId parameter or ensure runtime context sets project_id.",
+				recommendations: [],
+				projectState: {
+					stage: "setup" as ProjectStage,
+					interviewCount: 0,
+					surveyCount: 0,
+					themeCount: 0,
+					hasGoals: false,
+				},
+			};
+		}
 
-    try {
-      // Fetch comprehensive project context
-      const projectContext = await getProjectResearchContext({
-        supabase,
-        projectId,
-      });
+		try {
+			// Fetch comprehensive project context
+			const projectContext = await getProjectResearchContext({
+				supabase,
+				projectId,
+			});
 
-      // Generate recommendations using rule engine
-      const recommendations = generateRecommendations(projectContext);
-      const projectPath =
-        accountId && projectId ? buildProjectPath(accountId, projectId) : null;
-      const resolvedRecommendations = projectPath
-        ? recommendations.map((rec) => ({
-            ...rec,
-            navigateTo: resolveNavigateTo(
-              projectPath,
-              rec.navigateTo,
-              rec.focusTheme?.id,
-            ),
-          }))
-        : recommendations;
-      const stage = determineProjectStage(projectContext);
+			// Generate recommendations using rule engine
+			const recommendations = generateRecommendations(projectContext);
+			const projectPath = accountId && projectId ? buildProjectPath(accountId, projectId) : null;
+			const resolvedRecommendations = projectPath
+				? recommendations.map((rec) => ({
+						...rec,
+						navigateTo: resolveNavigateTo(projectPath, rec.navigateTo, rec.focusTheme?.id),
+					}))
+				: recommendations;
+			const stage = determineProjectStage(projectContext);
 
-      consola.debug("recommend-next-actions: generated recommendations", {
-        projectId,
-        stage,
-        recommendationCount: recommendations.length,
-        recommendationIds: recommendations.map((r) => r.id),
-      });
+			consola.debug("recommend-next-actions: generated recommendations", {
+				projectId,
+				stage,
+				recommendationCount: recommendations.length,
+				recommendationIds: recommendations.map((r) => r.id),
+			});
 
-      // Map recommendations to DecisionSupport actions
-      const effortMap: Record<string, "low" | "medium" | "high"> = {
-        setup: "low",
-        analyze: "low",
-        data_quality: "low",
-        interview: "medium",
-        survey: "medium",
-        validate: "medium",
-        deep_dive: "high",
-        decide: "high",
-      };
-      const impactMap: Record<number, "low" | "medium" | "high"> = {
-        1: "high",
-        2: "medium",
-        3: "low",
-      };
+			// Map recommendations to DecisionSupport actions
+			const effortMap: Record<string, "low" | "medium" | "high"> = {
+				setup: "low",
+				analyze: "low",
+				data_quality: "low",
+				interview: "medium",
+				survey: "medium",
+				validate: "medium",
+				deep_dive: "high",
+				decide: "high",
+			};
+			const impactMap: Record<number, "low" | "medium" | "high"> = {
+				1: "high",
+				2: "medium",
+				3: "low",
+			};
 
-      const decisionActions = resolvedRecommendations.map((rec) => ({
-        id: rec.id,
-        action: rec.title,
-        reasoning: rec.reasoning,
-        effort: effortMap[rec.actionType] ?? "medium",
-        impact: impactMap[rec.priority] ?? "medium",
-        evidenceUrl: rec.navigateTo ?? undefined,
-        owner: null,
-        dueDate: null,
-      }));
+			const decisionActions = resolvedRecommendations.map((rec) => ({
+				id: rec.id,
+				action: rec.title,
+				reasoning: rec.reasoning,
+				effort: effortMap[rec.actionType] ?? "medium",
+				impact: impactMap[rec.priority] ?? "medium",
+				evidenceUrl: rec.navigateTo ?? undefined,
+				owner: null,
+				dueDate: null,
+			}));
 
-      const stageLabels: Record<string, string> = {
-        setup: "setting up",
-        discovery: "early discovery",
-        gathering: "actively gathering data",
-        validation: "validating themes",
-        synthesis: "synthesizing insights",
-      };
+			const stageLabels: Record<string, string> = {
+				setup: "setting up",
+				discovery: "early discovery",
+				gathering: "actively gathering data",
+				validation: "validating themes",
+				synthesis: "synthesizing insights",
+			};
 
-      const surfaceId = accountId ?? projectId;
-      const reason = (input.reason ?? "").toLowerCase();
-      const wantsProgressRail =
-        reason.includes("progress") ||
-        reason.includes("status") ||
-        reason.includes("project state") ||
-        reason.includes("where am i") ||
-        reason.includes("phase");
+			const surfaceId = accountId ?? projectId;
+			const reason = (input.reason ?? "").toLowerCase();
+			const wantsProgressRail =
+				reason.includes("progress") ||
+				reason.includes("status") ||
+				reason.includes("project state") ||
+				reason.includes("where am i") ||
+				reason.includes("phase");
 
-      const a2ui = wantsProgressRail
-        ? (() => {
-            const progressData = buildProgressRailData({
-              stage,
-              interviewCount: projectContext.interviewCount,
-              surveyCount: projectContext.surveyCount,
-              themeCount: projectContext.themes.length,
-              hasGoals: projectContext.hasGoals,
-            });
+			const a2ui = wantsProgressRail
+				? (() => {
+						const progressData = buildProgressRailData({
+							stage,
+							interviewCount: projectContext.interviewCount,
+							surveyCount: projectContext.surveyCount,
+							themeCount: projectContext.themes.length,
+							hasGoals: projectContext.hasGoals,
+						});
 
-            const topRecommendation = resolvedRecommendations[0];
-            if (topRecommendation?.title) {
-              progressData.nextAction = topRecommendation.title;
-            }
-            if (topRecommendation?.navigateTo) {
-              progressData.nextActionUrl = topRecommendation.navigateTo;
-            }
+						const topRecommendation = resolvedRecommendations[0];
+						if (topRecommendation?.title) {
+							progressData.nextAction = topRecommendation.title;
+						}
+						if (topRecommendation?.navigateTo) {
+							progressData.nextActionUrl = topRecommendation.navigateTo;
+						}
 
-            return buildSingleComponentSurface({
-              surfaceId,
-              componentType: "ProgressRail",
-              data: progressData as Record<string, unknown>,
-            });
-          })()
-        : resolvedRecommendations.length > 0
-          ? buildSingleComponentSurface({
-              surfaceId,
-              componentType: "DecisionSupport",
-              data: {
-                projectId,
-                headline: `${projectContext.interviewCount} interviews, ${projectContext.themes.length} themes — ${stageLabels[stage] ?? stage}`,
-                decisionContext: `Your project is in the ${stage} stage with ${projectContext.surveyCount} surveys completed.`,
-                actions: decisionActions,
-              },
-            })
-          : undefined;
+						return buildSingleComponentSurface({
+							surfaceId,
+							componentType: "ProgressRail",
+							data: progressData as Record<string, unknown>,
+						});
+					})()
+				: resolvedRecommendations.length > 0
+					? buildSingleComponentSurface({
+							surfaceId,
+							componentType: "DecisionSupport",
+							data: {
+								projectId,
+								headline: `${projectContext.interviewCount} interviews, ${projectContext.themes.length} themes — ${stageLabels[stage] ?? stage}`,
+								decisionContext: `Your project is in the ${stage} stage with ${projectContext.surveyCount} surveys completed.`,
+								actions: decisionActions,
+							},
+						})
+					: undefined;
 
-      return {
-        success: true,
-        message: `Found ${recommendations.length} recommendations for your project.`,
-        recommendations: resolvedRecommendations,
-        projectState: {
-          stage,
-          interviewCount: projectContext.interviewCount,
-          surveyCount: projectContext.surveyCount,
-          themeCount: projectContext.themes.length,
-          hasGoals: projectContext.hasGoals,
-          dataQuality: projectContext.dataQuality,
-        },
-        a2ui,
-      };
-    } catch (error) {
-      consola.error("recommend-next-actions: unexpected error", error);
-      return {
-        success: false,
-        message: "Unexpected error generating recommendations.",
-        recommendations: [],
-        projectState: {
-          stage: "setup" as ProjectStage,
-          interviewCount: 0,
-          surveyCount: 0,
-          themeCount: 0,
-          hasGoals: false,
-        },
-      };
-    }
-  },
+			return {
+				success: true,
+				message: `Found ${recommendations.length} recommendations for your project.`,
+				recommendations: resolvedRecommendations,
+				projectState: {
+					stage,
+					interviewCount: projectContext.interviewCount,
+					surveyCount: projectContext.surveyCount,
+					themeCount: projectContext.themes.length,
+					hasGoals: projectContext.hasGoals,
+					dataQuality: projectContext.dataQuality,
+				},
+				a2ui,
+			};
+		} catch (error) {
+			consola.error("recommend-next-actions: unexpected error", error);
+			return {
+				success: false,
+				message: "Unexpected error generating recommendations.",
+				recommendations: [],
+				projectState: {
+					stage: "setup" as ProjectStage,
+					interviewCount: 0,
+					surveyCount: 0,
+					themeCount: 0,
+					hasGoals: false,
+				},
+			};
+		}
+	},
 });

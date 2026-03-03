@@ -14,8 +14,8 @@ import { z } from "zod";
 import { createTask, createTaskLink } from "~/features/tasks/db";
 import { authenticateDesktopRequest } from "~/lib/auth/desktop-auth.server";
 import { validateAttributionParity } from "~/lib/evidence/personAttribution.server";
-import { getPostHogServerClient } from "~/lib/posthog.server";
 import { resolveOrCreatePerson } from "~/lib/people/resolution.server";
+import { getPostHogServerClient } from "~/lib/posthog.server";
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
 const FinalizeRequestSchema = z.object({

@@ -25,10 +25,7 @@ export const userInputEventSchema = z.object({
 	occurredAt: z.string().datetime().optional(),
 });
 
-export const uiEventSchema = z.discriminatedUnion("type", [
-	canvasActionEventSchema,
-	userInputEventSchema,
-]);
+export const uiEventSchema = z.discriminatedUnion("type", [canvasActionEventSchema, userInputEventSchema]);
 
 export const uiEventBatchSchema = z.array(uiEventSchema).min(1).max(20);
 
