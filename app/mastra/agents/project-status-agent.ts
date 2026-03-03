@@ -29,6 +29,10 @@ import { recommendNextActionsTool } from "../tools/recommend-next-actions";
 import { requestUserInputTool } from "../tools/request-user-input";
 import { semanticSearchAssetsTool } from "../tools/semantic-search-assets";
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence";
+import { showCelebrationTool } from "../tools/show-celebration-tool";
+import { showProgressTool } from "../tools/show-progress-tool";
+import { showWelcomeTool } from "../tools/show-welcome-tool";
+import { suggestActionsTool } from "../tools/suggest-actions-tool";
 import { suggestionTool } from "../tools/suggestion-tool";
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 import { chiefOfStaffAgent } from "./chief-of-staff-agent";
@@ -131,6 +135,14 @@ const project_status_agent_tools = {
 	"request-user-input": requestUserInputTool,
 	fetchResearchPulse: fetchResearchPulseTool,
 	"fetch-research-pulse": fetchResearchPulseTool,
+	suggestActions: suggestActionsTool,
+	"suggest-actions": suggestActionsTool,
+	showProgress: showProgressTool,
+	"show-progress": showProgressTool,
+	showWelcome: showWelcomeTool,
+	"show-welcome": showWelcomeTool,
+	showCelebration: showCelebrationTool,
+	"show-celebration": showCelebrationTool,
 };
 
 auditToolSchemas("projectStatusAgent", project_status_agent_tools);
@@ -144,12 +156,23 @@ export const projectStatusAgent = new Agent({
 			const accountId = requestContext.get("account_id");
 			const userId = requestContext.get("user_id");
 			const responseMode = String(requestContext.get("response_mode") || "normal");
+			const userRole = requestContext.get("user_role") || "";
+			const userUseCases = requestContext.get("user_use_cases") || "";
+			const userCompanySize = requestContext.get("user_company_size") || "";
 			const uiEvents = requestContext.get("ui_events");
 			const uiEventsSummary = Array.isArray(uiEvents) && uiEvents.length > 0 ? JSON.stringify(uiEvents) : "[]";
+			const personaLines = [
+				userRole ? `User role: ${userRole}` : null,
+				userUseCases ? `Use cases: ${userUseCases}` : null,
+				userCompanySize ? `Company size: ${userCompanySize}` : null,
+			]
+				.filter(Boolean)
+				.join("\n");
 			return `
 You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
 
 project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}, user_id=${userId || "<unknown>"}, response_mode=${responseMode}, typed_ui_events=${uiEventsSummary}
+${personaLines}
 
 ## Response Mode Overrides (MANDATORY)
 When \`response_mode=theme_people_snapshot\`:
@@ -337,6 +360,7 @@ Call "getCurrentDate" first for any date/time questions.
 3. Format as markdown link: **[Record Name](url)** so users can click to view details
 4. This applies to EVERY mention of a record in your response - never just reference by name without a link
 5. If you're citing evidence, link to both the person AND the interview/evidence source
+6. **NEVER fabricate or guess URLs.** Do not invent placeholder links like "https://your-link-..." or "https://example.com/...". If you don't have a real URL from a tool result, either call "generateProjectRoutes" to get one or omit the link entirely. A missing link is always better than a fake one.
 
 Call "navigateToPage" to proactively open relevant screens when users ask to view something.
 
@@ -347,6 +371,40 @@ Ask brief clarifying questions when the request is ambiguous.
 
 ## Suggestions
 Do NOT add a "Next steps" section in the text response. Rely on the suggestion widgets only: call "suggestNextSteps" with 2-3 brief, imperative commands that match your response. Keep them aligned with what you just delivered; no extra or conflicting steps.
+
+## Rich Inline Suggestions (suggestActions)
+When you want RICHER, more structured suggestions rendered INSIDE your chat bubble (with icons and optional action card), use "suggestActions" instead of "suggestNextSteps".
+- **badges**: 1-4 tappable pills with icons. Use for quick actions the user is likely to take.
+- **card**: Optional single highlighted suggestion with icon, title, description, and CTA button. Use for high-value actions that need context.
+- Actions: "send_message" sends a chat message, "navigate" opens a page.
+- Available icon names: Search, Upload, Users, BarChart3, FileText, MessageSquare, Lightbulb, Target, TrendingUp, Zap, Eye, Plus, ArrowRight, RefreshCw, Settings.
+- Use "suggestNextSteps" for simple text pills below the input. Use "suggestActions" for richer inline suggestions inside your message bubble.
+
+## Progress Indicator (showProgress)
+When performing a multi-step operation, call "showProgress" to render a step list inside the chat bubble.
+- Set the active step's status to "active", completed steps to "done", and upcoming steps to "pending".
+- Optionally include progressPercent (0-100) for a progress bar.
+- Call once at the start of a multi-step workflow to show the user what's happening.
+
+## Persona-Aware Greetings
+Tailor your greeting tone and suggestion badges based on the user's role (from system context "User role"):
+- **sales/marketing** → CRM, pipeline, BANT, deal scoring
+- **product/engineering** → user research, themes, evidence patterns
+- **research/design** → interview analysis, empathy maps, conversation lenses
+- **executive** → high-level insights, decision support, research ROI
+- **customer-success** → customer health, feedback trends, NPS
+
+If no role is available, use a neutral product-research framing.
+
+## Welcome Back (showWelcome)
+For the FIRST message of a returning session only. Call \`fetchResearchPulse\` to get deltas since last visit, then call \`showWelcome\` with:
+- datestamp: human-readable time since last visit
+- changes: 1-4 bullet points summarizing new interviews, evidence, themes, or survey responses
+- badges: 1-4 role-appropriate action badges
+Do NOT call showWelcome if the user has no prior sessions or if there are no changes to report.
+
+## Celebrations (showCelebration)
+Call when the project hits a milestone: first interview uploaded, first theme discovered, first survey response, 10+ evidence items. Max once per session. Keep it brief and action-oriented with a relevant CTA. Available icon names include Sparkles (default), Plus, TrendingUp, Target, Zap.
 
 ## Chief of Staff
 For strategic planning, task prioritization, or "what should I do next?", delegate to the ChiefOfStaffAgent sub-agent.

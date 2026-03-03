@@ -7,7 +7,7 @@ create table public.user_settings (
 	company_website text,
 	company_description text,
 	title text,
-	role text,
+	job_function text,
 	industry text,
 	email text,
 	mobile_phone text,

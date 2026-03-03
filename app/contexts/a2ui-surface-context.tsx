@@ -19,6 +19,8 @@ interface A2UISurfaceContextValue {
 	surface: SurfaceState | null;
 	/** Whether a surface is active and ready to render */
 	isActive: boolean;
+	/** Whether the surface has canvas content to display (layout transition trigger) */
+	hasCanvasContent: boolean;
 	/** Whether the surface is collapsed (minimized) */
 	isCollapsed: boolean;
 	/** Apply an A2UI message to the surface */
@@ -75,6 +77,7 @@ export function A2UISurfaceProvider({ children }: { children: ReactNode }) {
 		() => ({
 			surface,
 			isActive,
+			hasCanvasContent: isActive,
 			isCollapsed,
 			applyMessage,
 			applyMessages,

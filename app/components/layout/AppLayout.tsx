@@ -1,14 +1,13 @@
 /**
  * AppLayout - Main application layout wrapper
  *
- * Provides:
- * - Desktop: Horizontal top nav + AI panel on left + main content (SplitPaneLayout)
- * - Mobile: Bottom tab bar + hamburger menu
- *
- * Legacy sidebar layout available via ?layout=sidebar URL param for testing.
+ * Layout modes (selected via ?layout= URL param):
+ * - (default): Agent-first layout — chat centered or two-column with canvas
+ * - ?layout=legacy: Old floating AI panel overlay layout
+ * - ?layout=sidebar: Legacy sidebar layout
  */
 
-import { useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useState } from "react";
 import { Outlet, useSearchParams } from "react-router";
 import { AppSidebar } from "~/components/navigation/AppSidebar";
 import { BottomTabBar } from "~/components/navigation/BottomTabBar";
@@ -19,6 +18,8 @@ import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 import { cn } from "~/lib/utils";
 import { SplitPaneLayout } from "./SplitPaneLayout";
+
+const LegacyFloatingPanelLayout = lazy(() => import("./LegacyFloatingPanelLayout"));
 
 interface AppLayoutProps {
 	showJourneyNav?: boolean;
@@ -65,13 +66,10 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 		}
 	});
 
-	// Profile sheet state
 	const [isProfileOpen, setIsProfileOpen] = useState(false);
 
 	const isOnboarding = searchParams.get("onboarding") === "true";
 	const showMainNav = !isOnboarding;
-
-	// Should we show the mobile navigation?
 	const showMobileNav = isMobile && showJourneyNav && showMainNav;
 
 	const handleSidebarOpenChange = useCallback(
@@ -82,12 +80,20 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 		[persistSidebarPreference]
 	);
 
-	// Allow legacy sidebar via URL param for testing
-	const forceLegacySidebar = searchParams.get("layout") === "sidebar";
+	const layoutMode = searchParams.get("layout");
 
-	// Default to new split-pane layout (top nav + AI panel)
-	if (!forceLegacySidebar) {
+	// Default: agent-first layout
+	if (!layoutMode) {
 		return <SplitPaneLayout showJourneyNav={showJourneyNav} />;
+	}
+
+	// Legacy floating panel layout (accessible via ?layout=legacy)
+	if (layoutMode === "legacy") {
+		return (
+			<Suspense fallback={null}>
+				<LegacyFloatingPanelLayout showJourneyNav={showJourneyNav} />
+			</Suspense>
+		);
 	}
 
 	// Legacy sidebar layout (accessible via ?layout=sidebar)
@@ -99,7 +105,6 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 					<Outlet />
 				</main>
 
-				{/* Mobile Bottom Tab Bar */}
 				{showMobileNav && (
 					<BottomTabBar
 						routes={{
@@ -111,7 +116,6 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 				)}
 			</SidebarInset>
 
-			{/* Profile Sheet (mobile) */}
 			{isMobile && (
 				<ProfileSheet
 					open={isProfileOpen}
