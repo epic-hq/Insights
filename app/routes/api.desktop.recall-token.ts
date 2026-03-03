@@ -85,7 +85,12 @@ export async function action({ request }: ActionFunctionArgs) {
 					realtime_endpoints: [
 						{
 							type: "desktop_sdk_callback",
-							events: ["transcript.data", "transcript.partial_data", "participant_events.join"],
+							events: [
+								"transcript.data",
+								"transcript.partial_data",
+								"transcript.provider_data",
+								"participant_events.join",
+							],
 						},
 					],
 					// 7-day retention - no storage charges (we upload to our own R2)

@@ -156,8 +156,16 @@ let floatingPanelRecordingInProgress = false; // Guard against rapid clicks
 let screenCapturePermissionPrompted = false;
 const sdkNoisyLogLastSeen = new Map();
 const SDK_NOISY_LOG_THROTTLE_MS = 30000;
+const SDK_LOG_MAX_LENGTH = 1800;
 const SCREEN_CAPTURE_SETTINGS_URL =
   "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture";
+const TRANSCRIPT_DEDUP_WINDOW_MS = 5000;
+const TRANSCRIPT_WATCHDOG_MS = 25000;
+const AUTO_MEETING_DUMP_COOLDOWN_MS = 15000;
+const recentTranscriptChunksByWindow = new Map();
+const transcriptHealthByWindow = new Map();
+let autoMeetingDumpInFlight = false;
+let lastAutoMeetingDumpAt = 0;
 
 const platformNames = {
   zoom: "Zoom",
@@ -211,6 +219,123 @@ function shouldThrottleSdkLog(evt, level, message) {
     return true;
   }
   sdkNoisyLogLastSeen.set(key, now);
+  return false;
+}
+
+function sanitizeSdkLogMessage(rawMessage) {
+  const input = String(rawMessage || "");
+  let sanitized = input
+    .replace(/("token"\s*:\s*")([^"]+)(")/gi, '$1<redacted>$3')
+    .replace(/(upload token\s+)([A-Za-z0-9._-]+)/gi, "$1<redacted>");
+
+  if (sanitized.length > SDK_LOG_MAX_LENGTH) {
+    const truncatedChars = sanitized.length - SDK_LOG_MAX_LENGTH;
+    sanitized = `${sanitized.slice(0, SDK_LOG_MAX_LENGTH)}… [truncated ${truncatedChars} chars]`;
+  }
+  return sanitized;
+}
+
+function isStrongSdkMeetingSignal(rawMessage) {
+  const message = String(rawMessage || "");
+  const hasGoogleMeetSignal =
+    /meetOpenSomewhere:\s*true/i.test(message) &&
+    /windows:\s*true/i.test(message) &&
+    /urls:\s*true/i.test(message);
+  const hasZoomSignal =
+    /zoomOpenSomewhere:\s*true/i.test(message) &&
+    /windows:\s*true/i.test(message);
+  return hasGoogleMeetSignal || hasZoomSignal;
+}
+
+async function maybeAutoDetectMeetingViaDump(reason) {
+  if (detectedMeeting || autoMeetingDumpInFlight) {
+    return;
+  }
+  const now = Date.now();
+  if (now - lastAutoMeetingDumpAt < AUTO_MEETING_DUMP_COOLDOWN_MS) {
+    return;
+  }
+
+  autoMeetingDumpInFlight = true;
+  lastAutoMeetingDumpAt = now;
+  try {
+    await detectMeetingViaDump(reason);
+  } finally {
+    autoMeetingDumpInFlight = false;
+  }
+}
+
+function clearTranscriptTracking(windowId) {
+  if (!windowId) return;
+  const key = String(windowId);
+  const health = transcriptHealthByWindow.get(key);
+  if (health?.timer) {
+    clearTimeout(health.timer);
+  }
+  transcriptHealthByWindow.delete(key);
+  recentTranscriptChunksByWindow.delete(key);
+}
+
+function markTranscriptSeen(windowId) {
+  if (!windowId) return;
+  const key = String(windowId);
+  const health = transcriptHealthByWindow.get(key);
+  if (health) {
+    health.seenTranscript = true;
+  }
+}
+
+function armTranscriptWatchdog(windowId, noteId) {
+  if (!windowId) return;
+  const key = String(windowId);
+  clearTranscriptTracking(key);
+
+  const timer = setTimeout(() => {
+    const health = transcriptHealthByWindow.get(key);
+    if (!health || health.seenTranscript) {
+      return;
+    }
+
+    const recordingInfo = activeRecordings.recordings[key];
+    const stillRecording = recordingInfo?.state === "recording";
+    if (!stillRecording) {
+      return;
+    }
+
+    console.warn(
+      `[transcript-watchdog] No transcript events after ${TRANSCRIPT_WATCHDOG_MS / 1000}s for window ${key} (note ${noteId || "unknown"})`,
+    );
+    new Notification({
+      title: "Transcript delayed",
+      body: "Recording is running, but transcript events are not arriving yet. We will keep recording and finalize from available data.",
+    }).show();
+  }, TRANSCRIPT_WATCHDOG_MS);
+
+  transcriptHealthByWindow.set(key, {
+    noteId: noteId || null,
+    seenTranscript: false,
+    timer,
+  });
+}
+
+function isDuplicateTranscriptChunk(windowId, speaker, text) {
+  if (!windowId || !text) return false;
+  const key = String(windowId);
+  const normalizedSpeaker = String(speaker || "unknown")
+    .trim()
+    .toLowerCase();
+  const normalizedText = String(text).trim().toLowerCase();
+  const dedupeKey = `${normalizedSpeaker}|${normalizedText}`;
+  const now = Date.now();
+  const previous = recentTranscriptChunksByWindow.get(key);
+  if (
+    previous &&
+    previous.dedupeKey === dedupeKey &&
+    now - previous.at < TRANSCRIPT_DEDUP_WINDOW_MS
+  ) {
+    return true;
+  }
+  recentTranscriptChunksByWindow.set(key, { dedupeKey, at: now });
   return false;
 }
 
@@ -1183,11 +1308,16 @@ const activeRecordings = {
   recordings: {},
 
   // Register a new recording
-  addRecording: function (recordingId, noteId, platform = "unknown") {
+  addRecording: function (
+    recordingId,
+    noteId,
+    platform = "unknown",
+    initialState = "recording",
+  ) {
     this.recordings[recordingId] = {
       noteId,
       platform,
-      state: "recording",
+      state: initialState,
       startTime: new Date(),
     };
     console.log(
@@ -1230,6 +1360,21 @@ const activeRecordings = {
     return { ...this.recordings };
   },
 };
+
+async function waitForRecordingState(windowId, desiredState, timeoutMs = 15000) {
+  const startedAt = Date.now();
+  const key = String(windowId || "");
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const state = activeRecordings.recordings[key]?.state;
+    if (state === desiredState) {
+      return true;
+    }
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  return false;
+}
 
 // File operation manager to prevent race conditions on both reads and writes
 const fileOperationManager = {
@@ -1957,6 +2102,7 @@ function initSDK() {
     detectedMeeting = null;
     if (evt.window?.id) {
       notifiedMeetingWindowFingerprints.delete(String(evt.window.id));
+      clearTranscriptTracking(evt.window.id);
     }
 
     // Send the meeting closed status to the renderer process
@@ -2052,6 +2198,10 @@ function initSDK() {
 
       const postRecordingWork = [];
 
+      const extractionState = noteId
+        ? evidenceExtractionState.getState(noteId)
+        : null;
+
       // Finalize interview at recording end so notes/tasks/status persist
       // even if transcript chunks are partial or delayed.
       if (noteId && interviewId && meeting) {
@@ -2081,7 +2231,7 @@ function initSDK() {
               noteId,
               interviewId,
               formattedTranscript,
-              state.manualNotes || [],
+              extractionState?.manualNotes || [],
               durationSeconds,
               meeting.platform || null,
             );
@@ -2138,6 +2288,7 @@ function initSDK() {
         evidenceExtractionState.cleanup(cleanupNoteId);
       }
       delete global.activeMeetingIds[windowId];
+      clearTranscriptTracking(windowId);
       console.log(
         `[recording-ended] Cleaned up activeMeetingIds for window ${windowId}`,
       );
@@ -2200,14 +2351,17 @@ function initSDK() {
             window.id,
             noteId,
             window.platform || "unknown",
+            "recording",
           );
         }
+        armTranscriptWatchdog(window.id, noteId);
       } else if (code === "paused") {
         console.log("Recording paused");
         activeRecordings.updateState(window.id, "paused");
       } else if (code === "idle") {
         console.log("Recording stopped");
         activeRecordings.removeRecording(window.id);
+        clearTranscriptTracking(window.id);
       }
 
       // Notify renderer process about recording state change
@@ -2240,14 +2394,14 @@ function initSDK() {
     }
 
     // Handle different event types
-    if (evt.event === "transcript.data" && evt.data && evt.data.data) {
-      await processTranscriptData(evt);
-    } else if (
-      evt.event === "transcript.provider_data" &&
+    if (
+      (evt.event === "transcript.data" ||
+        evt.event === "transcript.partial_data" ||
+        evt.event === "transcript.provider_data") &&
       evt.data &&
       evt.data.data
     ) {
-      await processTranscriptProviderData(evt);
+      await processTranscriptData(evt);
     } else if (
       evt.event === "participant_events.join" &&
       evt.data &&
@@ -2298,7 +2452,8 @@ function initSDK() {
   // Surface SDK-internal warnings/errors to help diagnose missing meeting detection.
   RecallAiSdk.addEventListener("log", (evt) => {
     const level = String(evt?.level || "info").toLowerCase();
-    const message = String(evt?.message || "");
+    const rawMessage = String(evt?.message || "");
+    const message = sanitizeSdkLogMessage(rawMessage);
     if (shouldThrottleSdkLog(evt, level, message)) {
       return;
     }
@@ -2310,6 +2465,15 @@ function initSDK() {
     ) {
       console.log(
         `[RecallSDK:${level}] ${evt?.subsystem || "unknown"}/${evt?.category || "unknown"} ${message}`,
+      );
+    }
+
+    if (!detectedMeeting && isStrongSdkMeetingSignal(rawMessage)) {
+      maybeAutoDetectMeetingViaDump("sdk-signal").catch((error) =>
+        console.warn(
+          "[meeting-fallback] Auto detect via sdk-signal failed:",
+          error?.message || error,
+        ),
       );
     }
   });
@@ -2935,7 +3099,12 @@ async function createMeetingNoteAndRecord(platformName, uploadToken) {
 
     // Register this meeting in our active recordings tracker (even before starting)
     // This ensures the UI knows about it immediately
-    activeRecordings.addRecording(meetingWindowId, id, platformName);
+    activeRecordings.addRecording(
+      meetingWindowId,
+      id,
+      platformName,
+      "starting",
+    );
 
     // Add to pastMeetings
     meetingsData.pastMeetings.unshift(newMeeting);
@@ -3044,6 +3213,22 @@ async function createMeetingNoteAndRecord(platformName, uploadToken) {
       uploadToken,
     });
     console.log("[RECORDING] startRecording with token result:", result);
+    if (result && result.success === false) {
+      throw new Error(result.error || "RecallAiSdk.startRecording failed");
+    }
+
+    const confirmed = await waitForRecordingState(
+      meetingWindowId,
+      "recording",
+      20000,
+    );
+    if (!confirmed) {
+      console.error(
+        `[RECORDING] Timed out waiting for recording state for window ${meetingWindowId}`,
+      );
+      activeRecordings.removeRecording(meetingWindowId);
+      return null;
+    }
 
     return id;
   } catch (error) {
@@ -4042,19 +4227,66 @@ async function flushEvidenceExtraction(noteId, maxPasses = 50) {
   }
 }
 
-async function processTranscriptProviderData(evt) {
-  // let speakerId = evt.data.data.payload.
-  try {
-    if (
-      evt.data.data.data.payload.channel.alternatives[0].words[0].speaker !==
-      undefined
-    ) {
-      currentUnknownSpeaker =
-        evt.data.data.data.payload.channel.alternatives[0].words[0].speaker;
-    }
-  } catch (error) {
-    // console.error("Error processing provider data:", error);
+function normalizeTranscriptWords(rawWords) {
+  if (!Array.isArray(rawWords)) {
+    return [];
   }
+
+  return rawWords
+    .map((word) => {
+      const token =
+        word?.text ??
+        word?.word ??
+        word?.punctuated_word ??
+        word?.token ??
+        "";
+      return {
+        text: String(token).trim(),
+        speaker: word?.speaker,
+      };
+    })
+    .filter((word) => word.text.length > 0);
+}
+
+function extractTranscriptPacket(evt) {
+  const eventData = evt?.data?.data || {};
+  const nestedData = eventData?.data || {};
+  const providerPayload =
+    nestedData?.payload || eventData?.payload || eventData?.provider_data?.payload;
+  const topAlternative = providerPayload?.channel?.alternatives?.[0] || null;
+  const providerWords = normalizeTranscriptWords(topAlternative?.words);
+  const directWords = normalizeTranscriptWords(eventData?.words);
+  const nestedWords = normalizeTranscriptWords(nestedData?.words);
+  const words = directWords.length
+    ? directWords
+    : nestedWords.length
+      ? nestedWords
+      : providerWords;
+
+  let text = words.map((word) => word.text).join(" ").trim();
+  if (!text && typeof topAlternative?.transcript === "string") {
+    text = topAlternative.transcript.trim();
+  }
+  if (!text && typeof topAlternative?.text === "string") {
+    text = topAlternative.text.trim();
+  }
+  if (!text && typeof eventData?.text === "string") {
+    text = eventData.text.trim();
+  }
+
+  const participant =
+    eventData?.participant || nestedData?.participant || eventData?.data?.participant;
+  const speakerFromWords =
+    words.find((word) => word.speaker !== undefined)?.speaker ??
+    topAlternative?.words?.[0]?.speaker;
+
+  return {
+    text,
+    words,
+    participant: participant || null,
+    speakerFromWords,
+    eventType: String(evt?.event || "unknown"),
+  };
 }
 
 function resolveSpeakerFromTranscriptParticipant(
@@ -4148,14 +4380,17 @@ async function processTranscriptData(evt) {
       return;
     }
 
-    // Extract the transcript data
-    const words = evt.data.data.words || [];
-    if (words.length === 0) {
-      return; // No words to process
+    const packet = extractTranscriptPacket(evt);
+    if (packet.speakerFromWords !== undefined && packet.speakerFromWords !== null) {
+      currentUnknownSpeaker = packet.speakerFromWords;
     }
 
-    // Combine all words into a single text
-    const text = words.map((word) => word.text).join(" ");
+    const text = String(packet.text || "").trim();
+    if (!text) {
+      return;
+    }
+
+    markTranscriptSeen(windowId);
     let resolvedSpeaker = "Unknown Speaker";
 
     // Use the file operation manager to safely update the meetings data
@@ -4172,9 +4407,12 @@ async function processTranscriptData(evt) {
       // Add the transcript data
       const meeting = meetingsData.pastMeetings[noteIndex];
       resolvedSpeaker = resolveSpeakerFromTranscriptParticipant(
-        evt.data.data.participant,
+        packet.participant,
         meeting.participants || [],
       );
+      if (isDuplicateTranscriptChunk(windowId, resolvedSpeaker, text)) {
+        return null;
+      }
 
       console.log(`Transcript from ${resolvedSpeaker}: "${text}"`);
 
