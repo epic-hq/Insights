@@ -50,7 +50,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     ? listResult.data.questions
     : [];
   const rawQuestion = questions.find(
-    (q: Record<string, unknown>) => q.id === questionId,
+    (q: unknown) => (q as Record<string, unknown>).id === questionId,
   );
   if (!rawQuestion) {
     return Response.json({ error: "Question not found" }, { status: 404 });
@@ -129,16 +129,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     stats.likertAvg =
       likertCount > 0 ? Math.round((sum / likertCount) * 10) / 10 : null;
   } else {
-    // Text-based (short_text, long_text, auto)
-    let totalWords = 0;
+    // Text-based (short_text, long_text, auto) — show recent answers
+    const recentAnswers: string[] = [];
     for (const val of answerValues) {
       const text = String(val).trim();
       if (text) {
-        totalWords += text.split(/\s+/).length;
+        recentAnswers.push(text.length > 100 ? `${text.slice(0, 100)}…` : text);
+        if (recentAnswers.length >= 3) break;
       }
     }
-    stats.avgWordCount =
-      answered > 0 ? Math.round(totalWords / answered) : null;
+    stats.recentAnswers = recentAnswers;
   }
 
   return Response.json(stats);

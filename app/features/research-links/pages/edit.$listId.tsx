@@ -150,17 +150,21 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   const { client: supabase } = getServerClient(request);
   const ctx = context.get(userContext);
   const userId = ctx?.claims?.sub;
-  const { data, error } = await getResearchLinkById({
-    supabase,
-    accountId,
-    listId,
-  });
+  const [listResult, responseCountResult] = await Promise.all([
+    getResearchLinkById({ supabase, accountId, listId }),
+    supabase
+      .from("research_link_responses")
+      .select("id", { count: "exact", head: true })
+      .eq("research_link_id", listId),
+  ]);
+  const { data, error } = listResult;
   if (error) {
     throw new Response(error.message, { status: 500 });
   }
   if (!data) {
     throw new Response("Ask link not found", { status: 404 });
   }
+  const responseCount = responseCountResult.count ?? 0;
   const questionsResult = ResearchLinkQuestionSchema.array().safeParse(
     data.questions,
   );
@@ -238,6 +242,11 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     gmailConnected,
     gmailEmail,
     peopleWithEmails,
+    responseCount,
+    aiAnalysis: (data as { ai_analysis?: unknown }).ai_analysis ?? null,
+    aiAnalysisUpdatedAt:
+      (data as { ai_analysis_updated_at?: string }).ai_analysis_updated_at ??
+      null,
   };
 }
 
@@ -395,6 +404,9 @@ export default function EditResearchLinkPage() {
     gmailConnected,
     gmailEmail,
     peopleWithEmails,
+    responseCount,
+    aiAnalysis,
+    aiAnalysisUpdatedAt,
   } = useLoaderData<typeof loader>();
   const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
 
@@ -544,39 +556,7 @@ export default function EditResearchLinkPage() {
 
         <div className="space-y-4">
           <div className="min-w-0 space-y-4">
-            {/* Respondent fields summary — compact row showing which fields are collected */}
-            {fields.respondentFields.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border/40 bg-muted/20 px-3 py-2">
-                <span className="mr-1 text-muted-foreground text-xs">
-                  Collecting:
-                </span>
-                {fields.identityType === "email" && (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-[11px] text-primary">
-                    Email
-                  </span>
-                )}
-                {fields.identityType === "phone" && (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-[11px] text-primary">
-                    Phone
-                  </span>
-                )}
-                {fields.respondentFields.map((key) => {
-                  const opt = RESPONDENT_FIELD_OPTIONS.find(
-                    (o) => o.key === key,
-                  );
-                  return (
-                    <span
-                      key={key}
-                      className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground/70"
-                    >
-                      {opt?.label ?? key}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-
-            <Tabs defaultValue="landing" className="space-y-4">
+            <Tabs defaultValue="questions" className="space-y-4">
               <TabsList className="w-full justify-start">
                 <TabsTrigger value="landing">Landing page</TabsTrigger>
                 <TabsTrigger value="questions">Questions</TabsTrigger>
@@ -702,15 +682,45 @@ export default function EditResearchLinkPage() {
               </TabsContent>
 
               <TabsContent value="questions" className="space-y-1.5">
-                <h3 className="font-medium text-foreground/80 text-sm">
-                  Questions
-                </h3>
+                {/* Respondent fields summary — shows what data is being collected */}
+                {fields.respondentFields.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border/40 bg-muted/20 px-3 py-2">
+                    <span className="mr-1 text-muted-foreground text-xs">
+                      Collecting:
+                    </span>
+                    {fields.identityType === "email" && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-[11px] text-primary">
+                        Email
+                      </span>
+                    )}
+                    {fields.identityType === "phone" && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-[11px] text-primary">
+                        Phone
+                      </span>
+                    )}
+                    {fields.respondentFields.map((key) => {
+                      const opt = RESPONDENT_FIELD_OPTIONS.find(
+                        (o) => o.key === key,
+                      );
+                      return (
+                        <span
+                          key={key}
+                          className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground/70"
+                        >
+                          {opt?.label ?? key}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
                 <Card>
                   <CardContent className="py-3">
                     <QuestionListEditor
                       questions={fields.questions}
                       onChange={setQuestions}
                       listId={listId}
+                      aiAnalysis={aiAnalysis}
+                      responseCount={responseCount}
                     />
                     {errors?.questions ? (
                       <p className="mt-3 text-destructive text-xs">

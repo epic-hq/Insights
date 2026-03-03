@@ -27,6 +27,8 @@ export interface UnifiedQuestionRowProps {
   children?: ReactNode;
   /** Optional className override */
   className?: string;
+  /** Optional drop-off completion percentage (0-100) — renders a vertical bar on the right edge */
+  dropoff?: { completionPct: number };
 }
 
 export function UnifiedQuestionRow({
@@ -39,13 +41,14 @@ export function UnifiedQuestionRow({
   highlighted,
   children,
   className,
+  dropoff,
 }: UnifiedQuestionRowProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "group flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left transition-all",
+        "group relative flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left transition-all",
         isSelected
           ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
           : "border-border/40 bg-background hover:border-border/80 hover:bg-muted/30",
@@ -92,7 +95,46 @@ export function UnifiedQuestionRow({
       {children && (
         <div className="flex shrink-0 items-center gap-1.5">{children}</div>
       )}
+
+      {/* Drop-off bar — thin vertical bar on right edge */}
+      {dropoff && <DropoffBar completionPct={dropoff.completionPct} />}
     </button>
+  );
+}
+
+/** Thin vertical completion bar on the right edge of a question row */
+function DropoffBar({ completionPct }: { completionPct: number }) {
+  const pct = Math.max(0, Math.min(100, completionPct));
+  let height: number;
+  let colorClass: string;
+
+  if (pct >= 90) {
+    height = 28;
+    colorClass = "bg-green-500";
+  } else if (pct >= 80) {
+    height = 24;
+    colorClass = "bg-green-500";
+  } else if (pct >= 60) {
+    height = 18;
+    colorClass = "bg-blue-500";
+  } else if (pct >= 40) {
+    height = 12;
+    colorClass = "bg-amber-500";
+  } else {
+    height = 10;
+    colorClass = "bg-red-500";
+  }
+
+  return (
+    <div className="group/dropoff absolute top-1/2 right-0 -translate-y-1/2">
+      <div
+        className={cn("w-1 rounded-l", colorClass)}
+        style={{ height: `${height}px` }}
+      />
+      <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 rounded bg-popover px-1 py-0.5 text-[9px] text-foreground/80 opacity-0 shadow-sm transition-opacity group-hover/dropoff:opacity-100">
+        {pct}%
+      </span>
+    </div>
   );
 }
 

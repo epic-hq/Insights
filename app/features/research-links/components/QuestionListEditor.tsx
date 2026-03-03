@@ -5,18 +5,23 @@
  */
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
+  BarChart3,
+  ChevronDown as ChevronDownIcon,
   GitBranch,
   Image,
   Loader2,
   Paperclip,
   Plus,
+  Sparkles,
   Trash2,
   Upload,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRevalidator } from "react-router";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -37,6 +42,7 @@ import {
 } from "~/components/ui/sheet";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
+import { cn } from "~/lib/utils";
 import { QuestionHoverResults } from "~/components/questions/QuestionHoverResults";
 import {
   QuestionTypeBadge,
@@ -180,6 +186,214 @@ function questionTypeLabel(type: string): string {
 }
 
 /**
+ * Response Insights section for the question edit drawer.
+ * Shows AI analysis results, key findings, and staleness info.
+ */
+function DrawerInsightsSection({
+  aiInsight,
+  responseCount,
+  newSinceAnalysis,
+  listId,
+}: {
+  aiInsight?: AiQuestionInsight;
+  responseCount: number;
+  newSinceAnalysis: number;
+  listId?: string;
+}) {
+  const { accountId, projectId } = useParams();
+  const revalidator = useRevalidator();
+  const [expanded, setExpanded] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  const handleReanalyze = async () => {
+    if (!listId || !accountId || !projectId) return;
+    setAnalyzing(true);
+    try {
+      const fd = new FormData();
+      fd.set("listId", listId);
+      fd.set("mode", "detailed");
+      const res = await fetch(
+        `/a/${accountId}/${projectId}/ask/api/analyze-responses`,
+        { method: "POST", body: fd },
+      );
+      if (!res.ok) throw new Error("Analysis failed");
+      toast.success("Analysis complete");
+      revalidator.revalidate();
+    } catch {
+      toast.error("Analysis failed — try again");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const hasAiInsight = Boolean(aiInsight);
+  const isStale = newSinceAnalysis > 0;
+
+  return (
+    <div className="rounded-lg border border-border/60 bg-muted/20">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between px-3 py-2"
+      >
+        <div className="flex items-center gap-1.5">
+          <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="font-medium text-xs">Response Insights</span>
+          <span className="text-muted-foreground text-[10px]">
+            ({responseCount} response{responseCount !== 1 ? "s" : ""})
+          </span>
+          {isStale && hasAiInsight && (
+            <span className="flex items-center gap-0.5 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-2.5 w-2.5" />
+              {newSinceAnalysis} new
+            </span>
+          )}
+        </div>
+        <ChevronDownIcon
+          className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${expanded ? "" : "-rotate-90"}`}
+        />
+      </button>
+
+      {expanded && (
+        <div className="space-y-3 border-t px-3 py-3">
+          {hasAiInsight && aiInsight ? (
+            <>
+              {/* Summary */}
+              <p className="text-xs leading-relaxed text-foreground/80">
+                {aiInsight.summary}
+              </p>
+
+              {/* Key findings */}
+              {aiInsight.key_findings.length > 0 && (
+                <div className="space-y-1">
+                  <span className="font-medium text-[10px] text-muted-foreground uppercase tracking-wide">
+                    Key findings
+                  </span>
+                  <ul className="space-y-0.5">
+                    {aiInsight.key_findings.map(
+                      (finding: string, i: number) => (
+                        <li
+                          key={i}
+                          className="flex items-start gap-1.5 text-[11px] text-foreground/70"
+                        >
+                          <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-primary/50" />
+                          {finding}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              {/* Answer distribution bars (for select/likert-type insights) */}
+              {aiInsight.answer_distribution &&
+                aiInsight.answer_distribution.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="font-medium text-[10px] text-muted-foreground uppercase tracking-wide">
+                      Distribution
+                    </span>
+                    {aiInsight.answer_distribution.map((item, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="w-24 truncate text-[10px] text-foreground/70">
+                          {item.answer}
+                        </span>
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-primary/60"
+                            style={{ width: `${item.percentage}%` }}
+                          />
+                        </div>
+                        <span className="w-8 text-right font-mono text-[9px] text-muted-foreground tabular-nums">
+                          {item.percentage}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+              {/* Notable outliers */}
+              {aiInsight.notable_outliers.length > 0 && (
+                <div className="space-y-1">
+                  <span className="font-medium text-[10px] text-muted-foreground uppercase tracking-wide">
+                    Notable outliers
+                  </span>
+                  <ul className="space-y-0.5">
+                    {aiInsight.notable_outliers.map((outlier, i) => (
+                      <li
+                        key={i}
+                        className="text-[11px] text-foreground/60 italic"
+                      >
+                        {outlier}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Stale / re-analyze */}
+              {isStale && (
+                <div className="flex items-center justify-between rounded border border-amber-500/20 bg-amber-500/5 px-2 py-1.5">
+                  <span className="text-[10px] text-amber-700 dark:text-amber-400">
+                    Analysis from{" "}
+                    {analysisResponseCount(responseCount, newSinceAnalysis)}{" "}
+                    responses — {newSinceAnalysis} new since
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-[10px]"
+                    disabled={analyzing}
+                    onClick={handleReanalyze}
+                  >
+                    {analyzing ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="mr-1 h-3 w-3" />
+                    )}
+                    Re-analyze
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-2 py-2">
+              <p className="text-center text-[11px] text-muted-foreground">
+                {responseCount >= 3
+                  ? "Run AI analysis to get insights for this question"
+                  : "Collect more responses to unlock AI insights"}
+              </p>
+              {responseCount >= 3 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  disabled={analyzing}
+                  onClick={handleReanalyze}
+                >
+                  {analyzing ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-1 h-3 w-3" />
+                  )}
+                  Run AI Analysis
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Helper to compute analysis-time response count */
+function analysisResponseCount(total: number, newSince: number): number {
+  return total - newSince;
+}
+
+/**
  * Side-drawer panel for editing a single question's settings.
  */
 function QuestionEditDrawer({
@@ -192,6 +406,10 @@ function QuestionEditDrawer({
   updateQuestion,
   removeQuestion,
   moveQuestion,
+  aiInsight,
+  responseCount,
+  newSinceAnalysis,
+  coachingFlag,
 }: {
   question: ResearchLinkQuestion;
   questions: ResearchLinkQuestion[];
@@ -202,6 +420,10 @@ function QuestionEditDrawer({
   updateQuestion: (id: string, updates: Partial<ResearchLinkQuestion>) => void;
   removeQuestion: (id: string) => void;
   moveQuestion: (id: string, direction: -1 | 1) => void;
+  aiInsight?: AiQuestionInsight;
+  responseCount?: number;
+  newSinceAnalysis?: number;
+  coachingFlag?: { issue: string; summary: string; alternatives: string[] };
 }) {
   // Image upload state
   const [uploadingImageKey, setUploadingImageKey] = useState<string | null>(
@@ -264,6 +486,73 @@ function QuestionEditDrawer({
         </SheetHeader>
 
         <div className="space-y-5 px-4 pb-6">
+          {/* Response Insights section */}
+          {(responseCount ?? 0) > 0 && (
+            <DrawerInsightsSection
+              aiInsight={aiInsight}
+              responseCount={responseCount ?? 0}
+              newSinceAnalysis={newSinceAnalysis ?? 0}
+              listId={listId}
+            />
+          )}
+
+          {/* Coaching flag — shown when AI coaching flagged this question */}
+          {coachingFlag && (
+            <div
+              className={cn(
+                "rounded-lg border px-3 py-2.5",
+                ["leading", "double_barreled", "closed_ended"].includes(
+                  coachingFlag.issue,
+                )
+                  ? "border-red-500/20 bg-red-500/5"
+                  : "border-amber-500/20 bg-amber-500/5",
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-1">
+                  <span
+                    className={cn(
+                      "font-medium text-xs",
+                      ["leading", "double_barreled", "closed_ended"].includes(
+                        coachingFlag.issue,
+                      )
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-amber-600 dark:text-amber-400",
+                    )}
+                  >
+                    {coachingFlag.issue.replace(/_/g, " ")}
+                  </span>
+                  <p className="text-[11px] text-foreground/70">
+                    {coachingFlag.summary}
+                  </p>
+                </div>
+              </div>
+              {coachingFlag.alternatives.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <span className="font-medium text-[10px] text-muted-foreground uppercase tracking-wide">
+                    Suggested alternatives
+                  </span>
+                  {coachingFlag.alternatives.map((alt: string, i: number) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded border border-border/40 bg-background px-2 py-1.5 text-left text-[11px] text-foreground/80 transition-colors hover:border-primary/30 hover:bg-primary/5"
+                      onClick={() =>
+                        updateQuestion(question.id, { prompt: alt })
+                      }
+                    >
+                      <Sparkles className="h-3 w-3 shrink-0 text-violet-500" />
+                      <span className="flex-1">{alt}</span>
+                      <span className="shrink-0 text-[9px] text-primary">
+                        Apply
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Question text */}
           <div className="space-y-1.5">
             <Label className="text-xs">Question text</Label>
@@ -819,17 +1108,53 @@ function QuestionEditDrawer({
   );
 }
 
+/** Per-question AI insight from BAML analysis */
+interface AiQuestionInsight {
+  question: string;
+  summary: string;
+  answer_distribution?: Array<{
+    answer: string;
+    count: number;
+    percentage: number;
+  }>;
+  key_findings: string[];
+  common_answers?: string[];
+  notable_outliers: string[];
+}
+
+/** Parsed shape of the saved ai_analysis JSONB */
+interface SavedAiAnalysis {
+  mode?: string;
+  updatedAt?: string;
+  result?: {
+    executive_summary?: string;
+    question_insights?: AiQuestionInsight[];
+    top_themes?: Array<{ theme: string; description: string }>;
+  };
+  responseCountAtAnalysis?: number;
+  questionDropoff?: Record<
+    string,
+    { answered: number; total: number; completionPct: number }
+  >;
+}
+
 interface QuestionListEditorProps {
   questions: ResearchLinkQuestion[];
   onChange: (next: ResearchLinkQuestion[]) => void;
   /** Required for media recording/upload functionality */
   listId?: string;
+  /** Saved AI analysis data from loader */
+  aiAnalysis?: SavedAiAnalysis | null;
+  /** Current total response count */
+  responseCount?: number;
 }
 
 export function QuestionListEditor({
   questions,
   onChange,
   listId,
+  aiAnalysis,
+  responseCount,
 }: QuestionListEditorProps) {
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(
     null,
@@ -838,6 +1163,24 @@ export function QuestionListEditor({
     null,
   );
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // AI analysis helpers
+  const parsedAnalysis = aiAnalysis as SavedAiAnalysis | null | undefined;
+  const questionInsights = parsedAnalysis?.result?.question_insights;
+  const questionDropoff = parsedAnalysis?.questionDropoff;
+  const analysisResponseCount = parsedAnalysis?.responseCountAtAnalysis ?? 0;
+  const newSinceAnalysis = (responseCount ?? 0) - analysisResponseCount;
+
+  /** Match a question to its AI insight by text or index */
+  const getQuestionInsight = (questionText: string, questionIndex: number) => {
+    if (!questionInsights) return undefined;
+    if (questionInsights[questionIndex]) return questionInsights[questionIndex];
+    return questionInsights.find((qi) =>
+      qi.question
+        .toLowerCase()
+        .includes(questionText.toLowerCase().slice(0, 40)),
+    );
+  };
 
   // Coaching state
   const [isCoaching, setIsCoaching] = useState(false);
@@ -999,6 +1342,7 @@ export function QuestionListEditor({
       onCopy={handleCopy}
       onCoach={handleCoach}
       isCoaching={isCoaching}
+      hasBeenCoached={coachingFlags.size > 0 || coachingNote !== null}
       footer={
         coachingNote ? (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
@@ -1040,6 +1384,14 @@ export function QuestionListEditor({
                 isSelected={selectedQuestionId === question.id}
                 onClick={() => setSelectedQuestionId(question.id)}
                 flag={flagColor}
+                dropoff={
+                  questionDropoff?.[question.id]
+                    ? {
+                        completionPct:
+                          questionDropoff[question.id].completionPct,
+                      }
+                    : undefined
+                }
               >
                 {question.required && (
                   <span className="text-destructive text-xs">*</span>
@@ -1116,6 +1468,7 @@ export function QuestionListEditor({
                   questionType={question.type}
                   listId={listId}
                   isVisible={hoveredQuestionId === question.id}
+                  aiInsight={getQuestionInsight(question.prompt, index)}
                 />
               )}
             </motion.div>
@@ -1135,6 +1488,10 @@ export function QuestionListEditor({
           updateQuestion={updateQuestion}
           removeQuestion={removeQuestion}
           moveQuestion={moveQuestion}
+          aiInsight={getQuestionInsight(selectedQuestion.prompt, selectedIndex)}
+          responseCount={responseCount}
+          newSinceAnalysis={newSinceAnalysis}
+          coachingFlag={coachingFlags.get(selectedIndex + 1)}
         />
       )}
     </UnifiedQuestionList>

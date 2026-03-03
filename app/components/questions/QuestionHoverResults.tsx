@@ -17,8 +17,18 @@ export interface QuestionResponseStats {
   /** For likert: scale value → count */
   likertDistribution?: { value: number; count: number }[];
   likertAvg?: number;
-  /** For open text */
-  avgWordCount?: number;
+  /** For open text — recent answer snippets */
+  recentAnswers?: string[];
+}
+
+/** AI insight for a single question (from BAML analysis) */
+export interface QuestionInsight {
+  question: string;
+  summary: string;
+  answer_distribution?: { answer: string; count: number; percentage: number }[];
+  key_findings: string[];
+  common_answers?: string[];
+  notable_outliers: string[];
 }
 
 interface QuestionHoverResultsProps {
@@ -27,6 +37,8 @@ interface QuestionHoverResultsProps {
   listId: string;
   isVisible: boolean;
   stats?: QuestionResponseStats;
+  /** AI insight from saved analysis (shown for text questions instead of raw stats) */
+  aiInsight?: QuestionInsight;
 }
 
 /** Cache stats so we don't re-fetch on every hover */
@@ -38,6 +50,7 @@ export function QuestionHoverResults({
   listId,
   isVisible,
   stats: preloadedStats,
+  aiInsight,
 }: QuestionHoverResultsProps) {
   const { accountId, projectId } = useParams();
   const [stats, setStats] = useState<QuestionResponseStats | null>(
@@ -102,13 +115,10 @@ export function QuestionHoverResults({
         </span>
       )}
 
-      {/* Text: word count */}
-      {stats.avgWordCount != null && (
-        <span>
-          avg{" "}
-          <strong className="text-foreground">
-            {stats.avgWordCount} words
-          </strong>
+      {/* Text: AI summary or recent answers */}
+      {!isSelect && !isLikert && aiInsight && (
+        <span className="max-w-[300px] truncate italic">
+          {aiInsight.summary}
         </span>
       )}
     </div>
