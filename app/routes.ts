@@ -333,6 +333,7 @@ const routes = [
   route("api/interviews/delete", "./routes/api.interviews.delete.tsx"),
   route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),
   route("api/evaluate-question", "./routes/api.evaluate-question.tsx"),
+  route("api/coach-questions", "./routes/api.coach-questions.tsx"),
   route("api/create-project", "./routes/api.create-project.tsx"),
   route("api/save-project-goals", "./routes/api.save-project-goals.tsx"),
   route("api/load-project-goals", "./routes/api.load-project-goals.tsx"),

@@ -23,7 +23,7 @@ import { toBamlError } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, AskLinkInsightsResponse, AuthorityInfo, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, BehaviorPattern, BudgetInfo, Category, Chapter, CompetitiveInsight, ConditionOperator, ContextualSuggestions, ConversationAnalysis, ConversationEvidence, ConversationLensResult, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, ConversationTakeaways, CrossLensFinding, CrossLensRecommendedAction, CrossLensSynthesisResult, DealAdvisorRecommendation, DealQualificationSignals, DecisionInsight, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, DocumentEvidence, DocumentExtraction, Emotions, EntityAggregation, EvidenceAnalysisResponse, EvidenceItem, EvidenceLinkResult, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, ExecutiveInsight, ExecutiveSummary, ExtractedEvidence, ExtractedInsight, Extraction, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetGroupInput, FacetGroupSummary, FacetMention, FacetSignalInput, FeaturePrioritization, FeatureRequest, FieldSynthesis, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, GeneratedLensField, GeneratedLensSection, GeneratedLensTemplate, GoalAnswer, GoalLensExtraction, GuidelineAction, GuidelineParseResult, HistoryItem, HypothesisValidation, InferredPersonSegments, InsightMatch, InteractionContext, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, JobFunction, JobToBeDone, LensEntityResult, LensEvidenceHighlight, LensFieldValue, LensHygieneItem, LensNextStepItem, LensObjectionItem, LensRecommendation, LensSectionResult, LensStakeholderItem, LensSynthesisResult, MentalModel, NeedInfo, NextStepInfo, NoteSnippet, OpportunityRecommendation, PainMatrixInsights, PainMatrixInsightsInput, ParsedCondition, ParsedGuideline, Participant, ParticipantGoal, Person, PersonContext, PersonDescriptionSummary, PersonEvidenceHighlight, PersonFacetInput, PersonFacetLensRequest, PersonFacetLensResponse, PersonFacets, PersonLensMetadata, PersonNextStep, PersonNextStepsInput, PersonNextStepsOutput, PersonProfileInput, PersonScaleInput, PersonSegmentInput, PersonSnapshot, Persona, Persona1, PersonaAdvisorContext, PersonaAdvisorFacetInput, PersonaAdvisorPersonaInput, PersonaAdvisorReport, PersonaAdvisorScaleInput, PersonaAdvisorThemeInput, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, PersonalizedQuestion, ProductGap, ProductLensExtraction, ProjectAnalysis, ProjectContext, ProjectNameDescription, ProjectTemplateOut, ProposedTheme, QALensResult, QAPair, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionInsight, QuestionIssue, QuestionPolicy, QuestionSet, QuickResponseSummary, ResearchGoal, ResearchInsightInput, ResearchLearning, ResearchLensExtraction, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionInsight, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, ResponseTheme, RuleConfidence, SalesLensExtraction, Scene, Scores, SectionSynthesis, SegmentPattern, SeniorityLevel, Set, SetRecord, Source, SpeakerUtterance, Spectrum, SpreadsheetAnalysis, SpreadsheetColumnMapping, StakeholderRole, SuggestedFacet, SuggestedQuestion, SurveyGoal, SurveyQuestionInput, SynthesisDiscrepancy, SynthesizedInsight, TargetFitAssessment, ThemeValidation, TimelineInfo, TopPainCell, TurnAnchors, UnknownResolution, UsabilityFinding, UserJourneyInsight} from "./types"
+import type {ActionButton, AskLinkInsightsResponse, AuthorityInfo, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, BehaviorPattern, BudgetInfo, Category, Chapter, CoachingNudge, CoachingResult, CompetitiveInsight, ConditionOperator, ContextualSuggestions, ConversationAnalysis, ConversationEvidence, ConversationLensResult, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, ConversationTakeaways, CrossLensFinding, CrossLensRecommendedAction, CrossLensSynthesisResult, DealAdvisorRecommendation, DealQualificationSignals, DecisionInsight, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, DocumentEvidence, DocumentExtraction, Emotions, EntityAggregation, EvidenceAnalysisResponse, EvidenceItem, EvidenceLinkResult, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, ExecutiveInsight, ExecutiveSummary, ExtractedEvidence, ExtractedInsight, Extraction, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetGroupInput, FacetGroupSummary, FacetMention, FacetSignalInput, FeaturePrioritization, FeatureRequest, FieldSynthesis, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, GeneratedLensField, GeneratedLensSection, GeneratedLensTemplate, GoalAnswer, GoalLensExtraction, GuidelineAction, GuidelineParseResult, HistoryItem, HypothesisValidation, InferredPersonSegments, InsightMatch, InteractionContext, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, JobFunction, JobToBeDone, LensEntityResult, LensEvidenceHighlight, LensFieldValue, LensHygieneItem, LensNextStepItem, LensObjectionItem, LensRecommendation, LensSectionResult, LensStakeholderItem, LensSynthesisResult, MentalModel, NeedInfo, NextStepInfo, NoteSnippet, OpportunityRecommendation, PainMatrixInsights, PainMatrixInsightsInput, ParsedCondition, ParsedGuideline, Participant, ParticipantGoal, Person, PersonContext, PersonDescriptionSummary, PersonEvidenceHighlight, PersonFacetInput, PersonFacetLensRequest, PersonFacetLensResponse, PersonFacets, PersonLensMetadata, PersonNextStep, PersonNextStepsInput, PersonNextStepsOutput, PersonProfileInput, PersonScaleInput, PersonSegmentInput, PersonSnapshot, Persona, Persona1, PersonaAdvisorContext, PersonaAdvisorFacetInput, PersonaAdvisorPersonaInput, PersonaAdvisorReport, PersonaAdvisorScaleInput, PersonaAdvisorThemeInput, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, PersonalizedQuestion, ProductGap, ProductLensExtraction, ProjectAnalysis, ProjectContext, ProjectNameDescription, ProjectTemplateOut, ProposedTheme, QALensResult, QAPair, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionInsight, QuestionIssue, QuestionPolicy, QuestionSet, QuickCoachResult, QuickResponseSummary, ResearchGoal, ResearchInsightInput, ResearchLearning, ResearchLensExtraction, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionInsight, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, ResponseTheme, RuleConfidence, SalesLensExtraction, Scene, Scores, SectionSynthesis, SegmentPattern, SeniorityLevel, Set, SetRecord, Source, SpeakerUtterance, Spectrum, SpreadsheetAnalysis, SpreadsheetColumnMapping, StakeholderRole, SuggestedFacet, SuggestedQuestion, SurveyGoal, SurveyQuestionInput, SynthesisDiscrepancy, SynthesizedInsight, TargetFitAssessment, ThemeValidation, TimelineInfo, TopPainCell, TurnAnchors, UnknownResolution, UsabilityFinding, UserJourneyInsight} from "./types"
 import type TypeBuilder from "./type_builder"
 
 export class LlmResponseParser {
@@ -186,6 +186,52 @@ export class LlmResponseParser {
         __baml_options__?.clientRegistry,
         __env__,
       ) as types.AutoGroupThemesResponse
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  CoachQuestionSet(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): types.CoachingResult {
+    try {
+      const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const __env__: Record<string, string> = Object.fromEntries(
+        Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "CoachQuestionSet",
+        llmResponse,
+        false,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        __env__,
+      ) as types.CoachingResult
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  CoachSingleQuestion(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): types.QuickCoachResult {
+    try {
+      const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const __env__: Record<string, string> = Object.fromEntries(
+        Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "CoachSingleQuestion",
+        llmResponse,
+        false,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        __env__,
+      ) as types.QuickCoachResult
     } catch (error) {
       throw toBamlError(error);
     }
@@ -1434,6 +1480,52 @@ export class LlmStreamParser {
         __baml_options__?.clientRegistry,
         __env__,
       ) as partial_types.AutoGroupThemesResponse
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  CoachQuestionSet(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): partial_types.CoachingResult {
+    try {
+      const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const __env__: Record<string, string> = Object.fromEntries(
+        Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "CoachQuestionSet",
+        llmResponse,
+        true,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        __env__,
+      ) as partial_types.CoachingResult
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  CoachSingleQuestion(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): partial_types.QuickCoachResult {
+    try {
+      const __rawEnv__ = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const __env__: Record<string, string> = Object.fromEntries(
+        Object.entries(__rawEnv__).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "CoachSingleQuestion",
+        llmResponse,
+        true,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        __env__,
+      ) as partial_types.QuickCoachResult
     } catch (error) {
       throw toBamlError(error);
     }

@@ -450,6 +450,21 @@ export interface Chapter {
   
 }
 
+export interface CoachingNudge {
+  questionIndex: number
+  issue: "leading" | "double_barreled" | "closed_ended" | "too_long" | "too_vague" | "biased" | "jargon" | "redundant" | "survey_fatigue"
+  summary: string
+  alternatives: string[]
+  
+}
+
+export interface CoachingResult {
+  nudges: CoachingNudge[]
+  totalTimeWarning?: string | null
+  overallNote?: string | null
+  
+}
+
 export interface CompetitiveInsight {
   competitor_name: string
   context: string
@@ -1782,6 +1797,14 @@ export interface QuestionSet {
   questions: Question[]
   history: HistoryItem[]
   round?: number | null
+  
+}
+
+export interface QuickCoachResult {
+  hasIssue: boolean
+  issue?: string | null
+  summary?: string | null
+  alternative?: string | null
   
 }
 
