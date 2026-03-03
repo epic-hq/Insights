@@ -129,10 +129,14 @@ create or replace function public.get_account_invitations(account_id uuid, resul
     language plpgsql
 as
 $$
+DECLARE
+    user_role text;
 BEGIN
-    -- only account owners can access this function
-    if (select public.current_user_account_role(get_account_invitations.account_id) ->> 'account_role' <> 'owner') then
-        raise exception 'Only account owners can access this function';
+    -- Check that the current user is a member of this account (any role)
+    user_role := (select public.current_user_account_role(get_account_invitations.account_id) ->> 'account_role');
+
+    if user_role is null then
+        raise exception 'You are not a member of this account';
     end if;
 
     return (select json_agg(
