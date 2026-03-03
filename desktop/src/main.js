@@ -161,11 +161,13 @@ const SCREEN_CAPTURE_SETTINGS_URL =
   "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture";
 const TRANSCRIPT_DEDUP_WINDOW_MS = 5000;
 const TRANSCRIPT_WATCHDOG_MS = 25000;
+const PROVIDER_DUPLICATE_SUPPRESSION_MS = 2500;
 const PANEL_JOIN_TIMEOUT_MS = 90000;
 const PANEL_JOIN_RECOVERY_CHECK_MS = 30000;
 const POST_RECORDING_TRANSCRIPT_GRACE_MS = 4000;
 const AUTO_MEETING_DUMP_COOLDOWN_MS = 15000;
 const recentTranscriptChunksByWindow = new Map();
+const recentNonProviderTranscriptByWindow = new Map();
 const transcriptHealthByWindow = new Map();
 let autoMeetingDumpInFlight = false;
 let lastAutoMeetingDumpAt = 0;
@@ -277,6 +279,7 @@ function clearTranscriptTracking(windowId) {
   }
   transcriptHealthByWindow.delete(key);
   recentTranscriptChunksByWindow.delete(key);
+  recentNonProviderTranscriptByWindow.delete(key);
 }
 
 function markTranscriptSeen(windowId) {
@@ -324,22 +327,71 @@ function armTranscriptWatchdog(windowId, noteId) {
 function isDuplicateTranscriptChunk(windowId, speaker, text) {
   if (!windowId || !text) return false;
   const key = String(windowId);
-  const normalizedSpeaker = String(speaker || "unknown")
-    .trim()
-    .toLowerCase();
-  const normalizedText = String(text).trim().toLowerCase();
-  const dedupeKey = `${normalizedSpeaker}|${normalizedText}`;
+  const normalizedSpeaker = String(speaker || "unknown").trim().toLowerCase();
+  const normalizedText = normalizeTranscriptText(text).toLowerCase();
+  if (!normalizedText) return false;
   const now = Date.now();
   const previous = recentTranscriptChunksByWindow.get(key);
-  if (
-    previous &&
-    previous.dedupeKey === dedupeKey &&
-    now - previous.at < TRANSCRIPT_DEDUP_WINDOW_MS
-  ) {
-    return true;
+  if (previous && now - previous.at < TRANSCRIPT_DEDUP_WINDOW_MS) {
+    const previousSpeaker = previous.speaker || "unknown";
+    const previousText = previous.text || "";
+    const sameText = previousText === normalizedText;
+    const previousIsUnknown = isUnknownSpeakerLabel(previousSpeaker);
+    const currentIsUnknown = isUnknownSpeakerLabel(normalizedSpeaker);
+
+    if (sameText) {
+      if (previousSpeaker === normalizedSpeaker) {
+        return true;
+      }
+      if (!previousIsUnknown && currentIsUnknown) {
+        return true;
+      }
+      if (previousIsUnknown && !currentIsUnknown) {
+        return false;
+      }
+      if (previousIsUnknown && currentIsUnknown) {
+        return true;
+      }
+    }
   }
-  recentTranscriptChunksByWindow.set(key, { dedupeKey, at: now });
+  recentTranscriptChunksByWindow.set(key, {
+    speaker: normalizedSpeaker,
+    text: normalizedText,
+    at: now,
+  });
   return false;
+}
+
+function shouldSkipProviderTranscript(windowId, text) {
+  if (!windowId || !text) return false;
+  const key = String(windowId);
+  const normalizedText = normalizeTranscriptText(text).toLowerCase();
+  if (!normalizedText) return false;
+
+  const recent = recentNonProviderTranscriptByWindow.get(key);
+  if (!recent) return false;
+  if (Date.now() - recent.at > PROVIDER_DUPLICATE_SUPPRESSION_MS) {
+    return false;
+  }
+
+  const recentText = recent.text;
+  if (!recentText) return false;
+  return (
+    normalizedText === recentText ||
+    normalizedText.startsWith(recentText) ||
+    recentText.startsWith(normalizedText)
+  );
+}
+
+function trackNonProviderTranscript(windowId, text) {
+  if (!windowId || !text) return;
+  const key = String(windowId);
+  const normalizedText = normalizeTranscriptText(text).toLowerCase();
+  if (!normalizedText) return;
+  recentNonProviderTranscriptByWindow.set(key, {
+    text: normalizedText,
+    at: Date.now(),
+  });
 }
 
 function openScreenCaptureSettings() {
@@ -3385,6 +3437,18 @@ function isGenericParticipantName(name) {
   return normalized.includes("others");
 }
 
+function isUnknownSpeakerLabel(label) {
+  const normalized = String(label || "")
+    .trim()
+    .toLowerCase();
+  if (!normalized) return true;
+  return (
+    normalized === "unknown" ||
+    normalized === "unknown speaker" ||
+    /^speaker \d+$/.test(normalized)
+  );
+}
+
 function fallbackNameFromEmail(email) {
   if (!email || typeof email !== "string") {
     return null;
@@ -4324,6 +4388,27 @@ function normalizeTranscriptText(rawText) {
   return rawText.replace(/\s+/g, " ").trim();
 }
 
+function mergeTranscriptTexts(existingText, incomingText) {
+  const existing = normalizeTranscriptText(existingText);
+  const incoming = normalizeTranscriptText(incomingText);
+  if (!existing) return incoming;
+  if (!incoming) return existing;
+
+  const existingLower = existing.toLowerCase();
+  const incomingLower = incoming.toLowerCase();
+  if (incomingLower === existingLower) {
+    return existing;
+  }
+  if (incomingLower.startsWith(existingLower)) {
+    return incoming;
+  }
+  if (existingLower.startsWith(incomingLower)) {
+    return existing;
+  }
+
+  return `${existing} ${incoming}`.trim();
+}
+
 function extractTranscriptPacket(evt) {
   const eventData = evt?.data?.data || {};
   const nestedData = eventData?.data || {};
@@ -4495,8 +4580,19 @@ async function processTranscriptData(evt) {
       return;
     }
 
+    const isProviderEvent = packet.eventType === "transcript.provider_data";
+    if (isProviderEvent && shouldSkipProviderTranscript(windowId, text)) {
+      return;
+    }
+    if (!isProviderEvent) {
+      trackNonProviderTranscript(windowId, text);
+    }
+
     markTranscriptSeen(windowId);
     let resolvedSpeaker = "Unknown Speaker";
+    let queuedUtterance = false;
+    let transcriptChanged = false;
+    let panelText = text;
 
     // Use the file operation manager to safely update the meetings data
     await fileOperationManager.scheduleOperation(async (meetingsData) => {
@@ -4526,23 +4622,77 @@ async function processTranscriptData(evt) {
         meeting.transcript = [];
       }
 
-      // Merge same-speaker entries within a 15-second window
+      // Merge/update related entries within a 15-second window
       const MERGE_WINDOW_MS = 15000;
-      const lastEntry = meeting.transcript[meeting.transcript.length - 1];
       const now = new Date();
       const timestampMs = meeting.date
         ? now.getTime() - new Date(meeting.date).getTime()
         : null;
+      const normalizedIncoming = normalizeTranscriptText(text).toLowerCase();
+      const normalizedSpeaker = String(resolvedSpeaker || "")
+        .trim()
+        .toLowerCase();
+      const resolvedSpeakerIsUnknown = isUnknownSpeakerLabel(resolvedSpeaker);
       let merged = false;
+      let mergedEntry = null;
 
-      if (lastEntry && lastEntry.speaker === resolvedSpeaker) {
-        const lastTime = new Date(lastEntry.timestamp);
-        if (now - lastTime < MERGE_WINDOW_MS) {
-          // Merge: append text to existing entry
-          lastEntry.text += " " + text;
-          lastEntry.timestamp = now.toISOString();
-          lastEntry.timestamp_ms = timestampMs;
+      // Look back through recent entries so provider/partial duplicates can
+      // upgrade/merge instead of creating parallel rows.
+      const lookbackStart = Math.max(0, meeting.transcript.length - 8);
+      for (let i = meeting.transcript.length - 1; i >= lookbackStart; i -= 1) {
+        const candidate = meeting.transcript[i];
+        if (!candidate) continue;
+        const candidateTime = new Date(candidate.timestamp);
+        const ageMs = now - candidateTime;
+        if (!Number.isFinite(ageMs) || ageMs > MERGE_WINDOW_MS) {
+          continue;
+        }
+
+        const candidateTextNormalized = normalizeTranscriptText(
+          candidate.text,
+        ).toLowerCase();
+        if (!candidateTextNormalized) continue;
+
+        const overlapsText =
+          candidateTextNormalized === normalizedIncoming ||
+          normalizedIncoming.startsWith(candidateTextNormalized) ||
+          candidateTextNormalized.startsWith(normalizedIncoming);
+        if (!overlapsText) {
+          continue;
+        }
+
+        const candidateSpeaker = String(candidate.speaker || "")
+          .trim()
+          .toLowerCase();
+        const candidateIsUnknown = isUnknownSpeakerLabel(candidateSpeaker);
+
+        if (candidateIsUnknown && !resolvedSpeakerIsUnknown) {
+          candidate.speaker = resolvedSpeaker;
+          candidate.text = mergeTranscriptTexts(candidate.text, text);
+          candidate.timestamp = now.toISOString();
+          candidate.timestamp_ms = timestampMs;
           merged = true;
+          mergedEntry = candidate;
+          transcriptChanged = true;
+          break;
+        }
+
+        if (!candidateIsUnknown && resolvedSpeakerIsUnknown) {
+          return null;
+        }
+
+        if (candidateSpeaker === normalizedSpeaker) {
+          candidate.text = mergeTranscriptTexts(candidate.text, text);
+          candidate.timestamp = now.toISOString();
+          candidate.timestamp_ms = timestampMs;
+          merged = true;
+          mergedEntry = candidate;
+          transcriptChanged = true;
+          break;
+        }
+
+        if (candidateTextNormalized === normalizedIncoming) {
+          return null;
         }
       }
 
@@ -4553,6 +4703,13 @@ async function processTranscriptData(evt) {
           timestamp: now.toISOString(),
           timestamp_ms: timestampMs,
         });
+        transcriptChanged = true;
+      } else if (mergedEntry) {
+        panelText = mergedEntry.text;
+      }
+
+      if (!transcriptChanged) {
+        return null;
       }
 
       console.log(
@@ -4567,31 +4724,41 @@ async function processTranscriptData(evt) {
       // Also send transcript to floating panel
       sendTranscriptToPanel({
         speaker: resolvedSpeaker,
-        text: merged ? lastEntry.text : text,
+        text: panelText,
         timestamp: now.toISOString(),
         merged,
       });
 
-      // Queue the raw utterance for real-time evidence batching.
-      // Use the current chunk text (not merged transcript text) so extraction gets fresh turns.
-      const state = evidenceExtractionState.getState(noteId);
-      state.pendingUtterances.push({
-        speaker: resolvedSpeaker,
-        text,
-        timestamp_ms: timestampMs,
-      });
-      if (state.pendingUtterances.length > 200) {
-        state.pendingUtterances = state.pendingUtterances.slice(-200);
+      const wordsCount = normalizeTranscriptText(panelText)
+        .split(" ")
+        .filter(Boolean).length;
+      const shouldQueueForExtraction =
+        packet.eventType === "transcript.data" ||
+        (packet.eventType === "transcript.partial_data" && wordsCount >= 8);
+      if (shouldQueueForExtraction) {
+        // Queue high-signal utterances for real-time evidence extraction.
+        const state = evidenceExtractionState.getState(noteId);
+        state.pendingUtterances.push({
+          speaker: resolvedSpeaker,
+          text: panelText,
+          timestamp_ms: timestampMs,
+        });
+        if (state.pendingUtterances.length > 200) {
+          state.pendingUtterances = state.pendingUtterances.slice(-200);
+        }
+        queuedUtterance = true;
       }
 
       // Return the updated data to be written
       return meetingsData;
     });
 
-    // ═══ Real-time Evidence Extraction ═══
-    // Schedule evidence extraction after transcript is saved.
-    // This enables near real-time insights during the meeting.
-    scheduleEvidenceExtraction(noteId);
+    if (queuedUtterance) {
+      // ═══ Real-time Evidence Extraction ═══
+      // Schedule evidence extraction after transcript is saved.
+      // This enables near real-time insights during the meeting.
+      scheduleEvidenceExtraction(noteId);
+    }
 
     console.log(`Processed transcript data for meeting: ${noteId}`);
   } catch (error) {
