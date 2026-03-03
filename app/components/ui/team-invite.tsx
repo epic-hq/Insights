@@ -397,7 +397,15 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
                       );
                     })}
 
-                    {/* Pending invitations inside the access list */}
+                    {/* Pending invitations */}
+                    {pendingInvitations.length > 0 && (
+                      <div className="mt-1 mb-1">
+                        <Separator />
+                        <p className="mt-2 text-muted-foreground text-xs">
+                          Pending invitations expire after 3 days
+                        </p>
+                      </div>
+                    )}
                     {pendingInvitations.map((inv) => (
                       <motion.div
                         key={`invite-${inv.invitation_id}`}

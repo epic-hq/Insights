@@ -7,7 +7,6 @@ import {
   Clock4,
   Copy,
   DoorOpen,
-  Info,
   LinkIcon,
   RefreshCw,
   ShieldOff,
@@ -916,47 +915,22 @@ export default function ManageTeamMembers() {
       padded={false}
       className="container max-w-3xl py-6"
     >
-      <div className="mb-6 space-y-2">
+      <div className="mb-6">
         <h1 className="font-semibold text-2xl">Team Access</h1>
-        <div className="space-y-1 text-muted-foreground text-sm">
-          <p>
-            {canManage
-              ? "Manage access and invite collaborators for"
-              : "Viewing members for"}{" "}
-            <span className="font-medium text-foreground">{teamName}</span>
-          </p>
-          <p>
-            Your role:{" "}
-            <span className="font-medium text-foreground">
-              {formatAccountRoleForDisplay(account?.account_role || "viewer")}
-            </span>
-          </p>
-        </div>
         {inviteAcceptance.status !== "idle" && inviteAcceptance.message && (
           <div
-            className={
+            className={`mt-3 ${
               inviteAcceptance.status === "accepted"
                 ? "rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700 text-sm dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
                 : inviteAcceptance.status === "inactive"
                   ? "rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700 text-sm dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300"
                   : "rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-600 text-sm dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
-            }
+            }`}
           >
             {inviteAcceptance.message}
           </div>
         )}
       </div>
-
-      {/* Explainer widget - what this page does */}
-      <Alert className="mb-6">
-        <Info className="h-4 w-4" />
-        <AlertDescription className="text-sm">
-          <strong>How team access works:</strong> Invite colleagues to your
-          account. They'll have access to all projects and resources based on
-          their permission level, either view or edit. Invitations expire after
-          3 days.
-        </AlertDescription>
-      </Alert>
 
       {/* Seat billing warning for Team plans */}
       {seatBilling && (
@@ -1308,20 +1282,6 @@ function mapPermissionToAccountRole(
       return "viewer";
     default:
       return "member";
-  }
-}
-
-function formatAccountRoleForDisplay(
-  role: "owner" | "member" | "viewer",
-): string {
-  const permission = mapAccountRoleToPermission(role);
-  switch (permission) {
-    case "admin":
-      return "Admin";
-    case "can-edit":
-      return "Editor";
-    default:
-      return "Viewer";
   }
 }
 
