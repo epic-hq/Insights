@@ -3,6 +3,7 @@
  * Lazy-loads aggregated response stats. Single-line display to avoid disrupting layout.
  */
 import { useEffect, useState } from "react";
+import { useParams } from "react-router";
 
 /** Response stats shape returned by the API */
 export interface QuestionResponseStats {
@@ -38,13 +39,14 @@ export function QuestionHoverResults({
   isVisible,
   stats: preloadedStats,
 }: QuestionHoverResultsProps) {
+  const { accountId, projectId } = useParams();
   const [stats, setStats] = useState<QuestionResponseStats | null>(
     preloadedStats ?? statsCache.get(questionId) ?? null,
   );
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!isVisible || stats || loading) return;
+    if (!isVisible || stats || loading || !accountId || !projectId) return;
 
     const cached = statsCache.get(questionId);
     if (cached) {
@@ -54,7 +56,7 @@ export function QuestionHoverResults({
 
     setLoading(true);
     fetch(
-      `/api/research-links/question-stats?listId=${encodeURIComponent(listId)}&questionId=${encodeURIComponent(questionId)}`,
+      `/a/${accountId}/${projectId}/ask/api/question-stats?listId=${encodeURIComponent(listId)}&questionId=${encodeURIComponent(questionId)}`,
     )
       .then((r) => {
         if (!r.ok) throw new Error("Failed to fetch stats");

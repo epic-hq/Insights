@@ -84,10 +84,6 @@ const routes = [
     ),
 
     // Protected API routes
-    route(
-      "api/research-links/question-stats",
-      "./routes/api.research-links.question-stats.tsx",
-    ),
     route("api/tasks/deduplicate", "./routes/api.tasks.deduplicate.ts"),
     route(
       "api/update-ui-preference",
