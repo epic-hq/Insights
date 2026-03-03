@@ -128,6 +128,7 @@ create or replace function public.get_account_invitations(account_id uuid, resul
                                                           results_offset integer default 0)
     returns json
     language plpgsql
+    security definer set search_path = public, accounts
 as
 $$
 DECLARE
