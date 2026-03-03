@@ -80,7 +80,7 @@ alter table accounts.invitations
     for select
     to authenticated
     using (
-            created_at > (now() - interval '3 days')
+            created_at > (now() - interval '30 days')
         and
             accounts.has_role_on_account(account_id, 'owner') = true
     );
@@ -120,7 +120,8 @@ create policy "Invitations can be deleted by account owners" on accounts.invitat
 
 
 /**
-  Returns a list of currently active invitations for a given account
+  Returns invitations for a given account (last 30 days, including expired).
+  Invitations are valid for 14 days; the UI computes expired status from created_at.
  */
 
 create or replace function public.get_account_invitations(account_id uuid, results_limit integer default 25,
@@ -150,7 +151,7 @@ BEGIN
                        )
             from accounts.invitations i
             where i.account_id = get_account_invitations.account_id
-              and i.created_at > now() - interval '3 days'
+              and i.created_at > now() - interval '30 days'
             limit coalesce(get_account_invitations.results_limit, 25) offset coalesce(get_account_invitations.results_offset, 0));
 END;
 $$;
@@ -161,7 +162,8 @@ grant execute on function public.get_account_invitations(uuid, integer, integer)
 /**
   * Allows a user to accept an existing invitation and join a account
   * This one exists in the public schema because we want it to be called
-  * using the supabase rpc method
+  * using the supabase rpc method.
+  * Invitations expire after 14 days.
  */
 create or replace function public.accept_invitation(lookup_invitation_token text)
     returns jsonb
@@ -179,7 +181,7 @@ begin
     from accounts.invitations i
              join accounts.accounts a on a.id = i.account_id
     where i.token = lookup_invitation_token
-      and i.created_at > now() - interval '3 days';
+      and i.created_at > now() - interval '14 days';
 
     if lookup_account_id IS NULL then
         raise exception 'Invitation not found';
@@ -206,7 +208,8 @@ grant execute on function public.accept_invitation(text) to authenticated;
 /**
   * Allows a user to lookup an existing invitation and join a account
   * This one exists in the public schema because we want it to be called
-  * using the supabase rpc method
+  * using the supabase rpc method.
+  * Invitations expire after 14 days.
  */
 create or replace function public.lookup_invitation(lookup_invitation_token text)
     returns json
@@ -226,7 +229,7 @@ begin
     into invitation_record
     from accounts.invitations
     where token = lookup_invitation_token
-      and created_at > now() - interval '3 days'
+      and created_at > now() - interval '14 days'
     limit 1;
     return json_build_object(
         'active', coalesce(invitation_record.active, false),

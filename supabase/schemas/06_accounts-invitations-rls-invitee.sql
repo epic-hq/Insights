@@ -1,5 +1,6 @@
 -- Allow users to view invitations sent to their email address
 -- This enables the /invites page to work for users who aren't yet members of the account
+-- Shows invitations from the last 30 days (including expired) so users can see status
 
 CREATE POLICY "Users can view invitations sent to their email"
 ON accounts.invitations
@@ -8,11 +9,11 @@ TO authenticated
 USING (
   invitee_email IS NOT NULL
   AND lower(invitee_email) = lower(auth.jwt() ->> 'email')
-  AND created_at > now() - interval '3 days'  -- Only show non-expired invitations
+  AND created_at > now() - interval '30 days'
 );
 
 -- List pending invitations for the currently authenticated user's email
--- Returns a JSON array of invitations with account info and token
+-- Returns invitations from the last 30 days; UI computes expired status from created_at
 CREATE OR REPLACE FUNCTION public.list_invitations_for_current_user()
 RETURNS json
 LANGUAGE plpgsql
@@ -45,7 +46,7 @@ BEGIN
     FROM accounts.invitations i
     WHERE i.invitee_email IS NOT NULL
       AND lower(i.invitee_email) = lower(current_email)
-      AND i.created_at > now() - interval '3 days'  -- Only show non-expired invitations
+      AND i.created_at > now() - interval '30 days'
   );
 END;
 $$;

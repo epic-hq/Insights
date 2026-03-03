@@ -401,75 +401,104 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
                     {pendingInvitations.length > 0 && (
                       <div className="mt-1 mb-1">
                         <Separator />
-                        <p className="mt-2 text-muted-foreground text-xs">
-                          Pending invitations expire after 3 days
-                        </p>
                       </div>
                     )}
-                    {pendingInvitations.map((inv) => (
-                      <motion.div
-                        key={`invite-${inv.invitation_id}`}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2 }}
-                        className="flex items-center gap-3 rounded-ele p-2 transition-colors hover:bg-accent"
-                      >
-                        <Avatar className="size-6">
-                          <AvatarFallback className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
-                            <Mail size={12} />
-                          </AvatarFallback>
-                        </Avatar>
+                    {pendingInvitations.map((inv) => {
+                      const createdAt = new Date(inv.created_at);
+                      const expiresAt = new Date(
+                        createdAt.getTime() + 14 * 24 * 60 * 60 * 1000,
+                      );
+                      const isExpired = expiresAt.getTime() <= Date.now();
 
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="truncate font-medium text-sm">
-                              {inv.email || "(no email)"}
+                      return (
+                        <motion.div
+                          key={`invite-${inv.invitation_id}`}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ duration: 0.2 }}
+                          className={cn(
+                            "flex items-center gap-3 rounded-ele p-2 transition-colors hover:bg-accent",
+                            isExpired && "opacity-60",
+                          )}
+                        >
+                          <Avatar className="size-6">
+                            <AvatarFallback
+                              className={cn(
+                                isExpired
+                                  ? "bg-muted text-muted-foreground"
+                                  : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
+                              )}
+                            >
+                              <Mail size={12} />
+                            </AvatarFallback>
+                          </Avatar>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="truncate font-medium text-sm">
+                                {inv.email || "(no email)"}
+                              </p>
+                              {isExpired ? (
+                                <Badge
+                                  variant="outline"
+                                  className="border-red-200 bg-red-50 px-1.5 py-0.5 text-red-600 text-xs dark:border-red-800 dark:bg-red-900/30 dark:text-red-400"
+                                >
+                                  Expired
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className="border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-700 text-xs dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                                >
+                                  <Clock4 size={10} className="mr-1" />
+                                  Invited
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-muted-foreground text-xs">
+                              {getRoleLabel(inv.account_role)}
+                              {isExpired
+                                ? " — expired, resend to re-invite"
+                                : ` — expires ${expiresAt.toLocaleDateString()}`}
                             </p>
-                            <Badge
-                              variant="outline"
-                              className="border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-700 text-xs dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-                            >
-                              <Clock4 size={10} className="mr-1" />
-                              Invited
-                            </Badge>
                           </div>
-                          <p className="text-muted-foreground text-xs">
-                            {getRoleLabel(inv.account_role)}
-                          </p>
-                        </div>
 
-                        <div className="flex items-center gap-1">
-                          {onResendInvitation && inv.email && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-muted-foreground text-xs hover:text-foreground"
-                              onClick={() =>
-                                onResendInvitation(inv.email!, inv.account_role)
-                              }
-                              title="Resend invitation"
-                            >
-                              <RefreshCw size={12} className="mr-1" />
-                              Resend
-                            </Button>
-                          )}
-                          {onRevokeInvitation && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() =>
-                                onRevokeInvitation(inv.invitation_id)
-                              }
-                              title="Revoke invitation"
-                            >
-                              <X size={14} />
-                            </Button>
-                          )}
-                        </div>
-                      </motion.div>
-                    ))}
+                          <div className="flex items-center gap-1">
+                            {onResendInvitation && inv.email && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-muted-foreground text-xs hover:text-foreground"
+                                onClick={() =>
+                                  onResendInvitation(
+                                    inv.email!,
+                                    inv.account_role,
+                                  )
+                                }
+                                title="Resend invitation"
+                              >
+                                <RefreshCw size={12} className="mr-1" />
+                                Resend
+                              </Button>
+                            )}
+                            {onRevokeInvitation && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() =>
+                                  onRevokeInvitation(inv.invitation_id)
+                                }
+                                title="Revoke invitation"
+                              >
+                                <X size={14} />
+                              </Button>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </AnimatePresence>
                 </div>
               </div>
