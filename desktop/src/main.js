@@ -161,6 +161,9 @@ const SCREEN_CAPTURE_SETTINGS_URL =
   "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture";
 const TRANSCRIPT_DEDUP_WINDOW_MS = 5000;
 const TRANSCRIPT_WATCHDOG_MS = 25000;
+const PANEL_JOIN_TIMEOUT_MS = 90000;
+const PANEL_JOIN_RECOVERY_CHECK_MS = 30000;
+const POST_RECORDING_TRANSCRIPT_GRACE_MS = 4000;
 const AUTO_MEETING_DUMP_COOLDOWN_MS = 15000;
 const recentTranscriptChunksByWindow = new Map();
 const transcriptHealthByWindow = new Map();
@@ -1376,6 +1379,10 @@ async function waitForRecordingState(windowId, desiredState, timeoutMs = 15000) 
   return false;
 }
 
+function waitForMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // File operation manager to prevent race conditions on both reads and writes
 const fileOperationManager = {
   isProcessing: false,
@@ -2176,7 +2183,18 @@ function initSDK() {
       // Update the note with recording information
       await updateNoteWithRecordingInfo(evt.window.id);
 
-      // Read meeting data once for both finalize and upload
+      // Flush any pending real-time extraction before finalization so
+      // tasks/people/evidence are as complete as possible.
+      if (noteId) {
+        console.log(
+          `[recording-ended] Waiting ${POST_RECORDING_TRANSCRIPT_GRACE_MS}ms for trailing transcript packets before finalization`,
+        );
+        await waitForMs(POST_RECORDING_TRANSCRIPT_GRACE_MS);
+        await flushEvidenceExtraction(noteId);
+      }
+
+      // Read meeting data once for both finalize and upload, after giving
+      // late transcript/provider packets time to persist.
       let meeting = null;
       if (noteId) {
         try {
@@ -2188,12 +2206,6 @@ function initSDK() {
             readErr,
           );
         }
-      }
-
-      // Flush any pending real-time extraction before finalization so
-      // tasks/people/evidence are as complete as possible.
-      if (noteId) {
-        await flushEvidenceExtraction(noteId);
       }
 
       const postRecordingWork = [];
@@ -4305,37 +4317,65 @@ function normalizeTranscriptWords(rawWords) {
     .filter((word) => word.text.length > 0);
 }
 
+function normalizeTranscriptText(rawText) {
+  if (typeof rawText !== "string") {
+    return "";
+  }
+  return rawText.replace(/\s+/g, " ").trim();
+}
+
 function extractTranscriptPacket(evt) {
   const eventData = evt?.data?.data || {};
   const nestedData = eventData?.data || {};
+  const providerData = eventData?.provider_data || {};
   const providerPayload =
-    nestedData?.payload || eventData?.payload || eventData?.provider_data?.payload;
+    nestedData?.payload ||
+    eventData?.payload ||
+    providerData?.payload ||
+    providerData?.data?.payload ||
+    nestedData?.provider_data?.payload;
   const topAlternative = providerPayload?.channel?.alternatives?.[0] || null;
-  const providerWords = normalizeTranscriptWords(topAlternative?.words);
-  const directWords = normalizeTranscriptWords(eventData?.words);
-  const nestedWords = normalizeTranscriptWords(nestedData?.words);
-  const words = directWords.length
-    ? directWords
-    : nestedWords.length
-      ? nestedWords
-      : providerWords;
+  const wordCandidates = [
+    normalizeTranscriptWords(eventData?.words),
+    normalizeTranscriptWords(nestedData?.words),
+    normalizeTranscriptWords(providerData?.words),
+    normalizeTranscriptWords(providerData?.data?.words),
+    normalizeTranscriptWords(providerData?.payload?.words),
+    normalizeTranscriptWords(providerPayload?.words),
+    normalizeTranscriptWords(topAlternative?.words),
+  ].filter((candidate) => candidate.length > 0);
+  const words = wordCandidates[0] || [];
 
-  let text = words.map((word) => word.text).join(" ").trim();
-  if (!text && typeof topAlternative?.transcript === "string") {
-    text = topAlternative.transcript.trim();
-  }
-  if (!text && typeof topAlternative?.text === "string") {
-    text = topAlternative.text.trim();
-  }
-  if (!text && typeof eventData?.text === "string") {
-    text = eventData.text.trim();
-  }
+  const textCandidates = [
+    words.length ? words.map((word) => word.text).join(" ") : "",
+    topAlternative?.transcript,
+    topAlternative?.text,
+    eventData?.text,
+    eventData?.transcript,
+    nestedData?.text,
+    nestedData?.transcript,
+    providerData?.text,
+    providerData?.transcript,
+    providerData?.data?.text,
+    providerData?.data?.transcript,
+    providerPayload?.text,
+    providerPayload?.transcript,
+  ]
+    .map(normalizeTranscriptText)
+    .filter((candidate) => candidate.length > 0);
+  const text = textCandidates[0] || "";
 
   const participant =
-    eventData?.participant || nestedData?.participant || eventData?.data?.participant;
+    eventData?.participant ||
+    nestedData?.participant ||
+    providerData?.participant ||
+    providerData?.data?.participant ||
+    eventData?.data?.participant;
   const speakerFromWords =
     words.find((word) => word.speaker !== undefined)?.speaker ??
-    topAlternative?.words?.[0]?.speaker;
+    topAlternative?.words?.[0]?.speaker ??
+    providerData?.speaker ??
+    providerData?.data?.speaker;
 
   return {
     text,
@@ -4437,6 +4477,7 @@ async function processTranscriptData(evt) {
       return;
     }
 
+    const eventData = evt?.data?.data || {};
     const packet = extractTranscriptPacket(evt);
     if (packet.speakerFromWords !== undefined && packet.speakerFromWords !== null) {
       currentUnknownSpeaker = packet.speakerFromWords;
@@ -4444,6 +4485,13 @@ async function processTranscriptData(evt) {
 
     const text = String(packet.text || "").trim();
     if (!text) {
+      if (packet.eventType === "transcript.provider_data") {
+        const providerKeys = Object.keys(eventData?.provider_data || {});
+        const nestedKeys = Object.keys(eventData?.data || {});
+        console.log(
+          `[transcript] provider_data packet without transcript text (providerKeys=${providerKeys.join(",") || "none"} dataKeys=${nestedKeys.join(",") || "none"})`,
+        );
+      }
       return;
     }
 
@@ -5006,6 +5054,71 @@ async function joinDetectedMeeting() {
   }
 }
 
+function getActiveRecordingLifecycleState(windowId) {
+  if (!windowId) return null;
+  const key = String(windowId);
+  const state = activeRecordings.recordings[key]?.state;
+  return typeof state === "string" ? state : null;
+}
+
+async function joinDetectedMeetingFromPanelWithGuard() {
+  const meetingWindowId = detectedMeeting?.window?.id
+    ? String(detectedMeeting.window.id)
+    : null;
+
+  let timedOut = false;
+  let timeoutHandle = null;
+  const joinPromise = joinDetectedMeeting();
+  const timeoutPromise = new Promise((resolve) => {
+    timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      resolve({
+        success: true,
+        pending: true,
+        warning: "start_confirmation_delayed",
+      });
+    }, PANEL_JOIN_TIMEOUT_MS);
+  });
+
+  const result = await Promise.race([joinPromise, timeoutPromise]);
+  if (timeoutHandle) {
+    clearTimeout(timeoutHandle);
+  }
+
+  if (timedOut) {
+    const state = getActiveRecordingLifecycleState(meetingWindowId);
+    console.warn(
+      `[RECORDING] joinDetectedMeeting exceeded ${PANEL_JOIN_TIMEOUT_MS / 1000}s; preserving panel state (window ${meetingWindowId || "unknown"}, recordingState ${state || "none"})`,
+    );
+
+    // If start confirmation never arrives, recover UI state automatically.
+    setTimeout(() => {
+      const latestState = getActiveRecordingLifecycleState(meetingWindowId);
+      if (!floatingPanelRecordingActive || floatingPanelRecordingInProgress) {
+        return;
+      }
+      if (latestState === "recording" || latestState === "paused") {
+        return;
+      }
+      console.warn(
+        `[RECORDING] No recording state after delayed start confirmation window (${PANEL_JOIN_RECOVERY_CHECK_MS / 1000}s); resetting panel state`,
+      );
+      floatingPanelRecordingActive = false;
+      sendRecordingStateToPanel(false, null);
+    }, PANEL_JOIN_RECOVERY_CHECK_MS);
+
+    // Avoid unhandled rejection if join settles after our UI timeout.
+    joinPromise.catch((error) =>
+      console.error(
+        "[RECORDING] joinDetectedMeeting settled after timeout:",
+        error?.message || error,
+      ),
+    );
+  }
+
+  return result;
+}
+
 // ==========================================
 // Floating Panel IPC Handlers
 // ==========================================
@@ -5111,18 +5224,7 @@ ipcMain.handle("toggleRecordingFromPanel", async () => {
 
     try {
       // Join the detected meeting (this creates a note and starts recording)
-      // Timeout after 15s to prevent hanging forever
-      const result = await Promise.race([
-        joinDetectedMeeting(),
-        new Promise((resolve) =>
-          setTimeout(() => {
-            console.error(
-              "[RECORDING] joinDetectedMeeting timed out after 15s",
-            );
-            resolve({ success: false, error: "timeout" });
-          }, 15000),
-        ),
-      ]);
+      const result = await joinDetectedMeetingFromPanelWithGuard();
       console.log("joinDetectedMeeting result:", result);
 
       if (!result || !result.success) {
@@ -5150,15 +5252,7 @@ ipcMain.handle("toggleRecordingFromPanel", async () => {
       sendRecordingStateToPanel(true, recordingStartTime);
 
       try {
-        const result = await Promise.race([
-          joinDetectedMeeting(),
-          new Promise((resolve) =>
-            setTimeout(
-              () => resolve({ success: false, error: "timeout" }),
-              15000,
-            ),
-          ),
-        ]);
+        const result = await joinDetectedMeetingFromPanelWithGuard();
         if (!result || !result.success) {
           floatingPanelRecordingActive = false;
           sendRecordingStateToPanel(false, null);
