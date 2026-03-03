@@ -70,14 +70,6 @@ export function QuestionHoverResults({
 
   if (!isVisible) return null;
 
-  if (loading) {
-    return (
-      <div className="ml-12 py-1 text-[10px] text-muted-foreground">
-        Loading...
-      </div>
-    );
-  }
-
   if (!stats || stats.answered === 0) return null;
 
   const isSelect =
