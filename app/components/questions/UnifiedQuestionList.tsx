@@ -3,9 +3,8 @@
  * Wraps UnifiedQuestionRow with add-question, copy-to-clipboard, and total time display.
  * Used by both survey and interview guide editors.
  */
-import { ClipboardCopy, Plus } from "lucide-react";
-import { type ReactNode, useCallback } from "react";
-import { toast } from "sonner";
+import { ClipboardCopy, Loader2, Plus, Sparkles } from "lucide-react";
+import type { ReactNode } from "react";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 import {
@@ -27,6 +26,10 @@ export interface UnifiedQuestionListProps {
   onAdd: () => void;
   /** Called when "Copy" is clicked — pass formatted text */
   onCopy?: () => void;
+  /** Called when "Coach" is clicked — triggers AI coaching */
+  onCoach?: () => void;
+  /** Whether coaching is in progress */
+  isCoaching?: boolean;
   /** Optional footer content (e.g. validation errors) */
   footer?: ReactNode;
   /** Optional className */
@@ -40,6 +43,8 @@ export function UnifiedQuestionList({
   showTimeBar = false,
   onAdd,
   onCopy,
+  onCoach,
+  isCoaching = false,
   footer,
   className,
 }: UnifiedQuestionListProps) {
@@ -62,6 +67,23 @@ export function UnifiedQuestionList({
         >
           <Plus className="mr-1.5 h-3.5 w-3.5" /> Add question
         </Button>
+        {count > 0 && onCoach && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+            onClick={onCoach}
+            disabled={isCoaching}
+          >
+            {isCoaching ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            {isCoaching ? "Coaching..." : "Coach"}
+          </Button>
+        )}
         {count > 0 && onCopy && (
           <Button
             type="button"

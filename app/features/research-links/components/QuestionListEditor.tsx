@@ -839,6 +839,13 @@ export function QuestionListEditor({
   );
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Coaching state
+  const [isCoaching, setIsCoaching] = useState(false);
+  const [coachingFlags, setCoachingFlags] = useState<
+    Map<number, { issue: string; summary: string; alternatives: string[] }>
+  >(new Map());
+  const [coachingNote, setCoachingNote] = useState<string | null>(null);
+
   /** Delayed hover — prevents flicker during drag and fast mouse sweeps */
   const handleMouseEnter = useCallback((questionId: string) => {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
@@ -927,6 +934,54 @@ export function QuestionListEditor({
     [questions],
   );
 
+  const handleCoach = useCallback(async () => {
+    const questionTexts = questions
+      .filter((q) => !q.hidden && q.prompt.trim())
+      .map((q) => q.prompt);
+    if (questionTexts.length === 0) {
+      toast.error("Add some questions first");
+      return;
+    }
+    setIsCoaching(true);
+    setCoachingFlags(new Map());
+    setCoachingNote(null);
+    try {
+      const res = await fetch("/api/coach-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questions: questionTexts,
+          context: "General research",
+          mode: "survey",
+        }),
+      });
+      if (!res.ok) throw new Error("Coaching failed");
+      const result = await res.json();
+      const flags = new Map<
+        number,
+        { issue: string; summary: string; alternatives: string[] }
+      >();
+      for (const nudge of result.nudges ?? []) {
+        flags.set(nudge.questionIndex, {
+          issue: nudge.issue,
+          summary: nudge.summary,
+          alternatives: nudge.alternatives ?? [],
+        });
+      }
+      setCoachingFlags(flags);
+      setCoachingNote(result.overallNote ?? result.totalTimeWarning ?? null);
+      if (flags.size === 0) {
+        toast.success("All questions look good!");
+      } else {
+        toast(`${flags.size} question${flags.size > 1 ? "s" : ""} flagged`);
+      }
+    } catch {
+      toast.error("Coaching failed — try again");
+    } finally {
+      setIsCoaching(false);
+    }
+  }, [questions]);
+
   const handleCopy = useCallback(() => {
     const text = formatQuestionsForClipboard(questions);
     navigator.clipboard.writeText(text).then(
@@ -942,6 +997,15 @@ export function QuestionListEditor({
       showTimeBar
       onAdd={addQuestion}
       onCopy={handleCopy}
+      onCoach={handleCoach}
+      isCoaching={isCoaching}
+      footer={
+        coachingNote ? (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+            {coachingNote}
+          </div>
+        ) : undefined
+      }
     >
       {/* Question rows */}
       <AnimatePresence initial={false}>
@@ -950,6 +1014,15 @@ export function QuestionListEditor({
           const hasMedia = Boolean(question.mediaUrl ?? question.videoUrl);
           const effectiveMediaUrl =
             question.mediaUrl ?? question.videoUrl ?? null;
+          // Coaching flag for this question (1-based index)
+          const coaching = coachingFlags.get(index + 1);
+          const flagColor = coaching
+            ? ["leading", "double_barreled", "closed_ended"].includes(
+                coaching.issue,
+              )
+              ? ("red" as const)
+              : ("amber" as const)
+            : undefined;
           return (
             <motion.div
               key={question.id}
@@ -966,6 +1039,7 @@ export function QuestionListEditor({
                 text={question.prompt}
                 isSelected={selectedQuestionId === question.id}
                 onClick={() => setSelectedQuestionId(question.id)}
+                flag={flagColor}
               >
                 {question.required && (
                   <span className="text-destructive text-xs">*</span>
@@ -978,6 +1052,31 @@ export function QuestionListEditor({
                   <QuestionMediaThumbnail url={effectiveMediaUrl} />
                 )}
               </UnifiedQuestionRow>
+              {/* Coaching nudge — shown when AI flags an issue */}
+              {coaching && (
+                <div className="ml-12 flex items-start gap-2 py-1 text-[11px]">
+                  <span
+                    className={
+                      flagColor === "red" ? "text-red-500" : "text-amber-500"
+                    }
+                  >
+                    {coaching.summary}
+                  </span>
+                  {coaching.alternatives.length > 0 && (
+                    <button
+                      type="button"
+                      className="text-primary hover:underline"
+                      onClick={() =>
+                        updateQuestion(question.id, {
+                          prompt: coaching.alternatives[0],
+                        })
+                      }
+                    >
+                      Apply fix
+                    </button>
+                  )}
+                </div>
+              )}
               {/* Inline hover results — lazy-loaded on hover */}
               {listId && (
                 <QuestionHoverResults
