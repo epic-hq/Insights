@@ -7,12 +7,7 @@
 import { createTool } from "@mastra/core/tools";
 import consola from "consola";
 import { z } from "zod";
-
-function toNonEmptyString(value: unknown): string | null {
-	if (typeof value !== "string") return null;
-	const trimmed = value.trim();
-	return trimmed.length > 0 ? trimmed : null;
-}
+import { areCanonicallyEqual, asQuestionArray, resolveBoundSurveyTarget } from "./survey-mutation-guards";
 
 /**
  * Check if any visible question's branching targets a given question ID.
@@ -50,7 +45,7 @@ export const updateSurveyQuestionsTool = createTool({
 Use this when the user wants to modify individual questions rather than recreate the entire survey.
 Returns warnings if hiding/deleting questions that are branch targets.`,
 	inputSchema: z.object({
-		surveyId: z.string().describe("The survey ID to modify"),
+		surveyId: z.string().nullish().describe("The survey ID to modify (defaults to active survey in context)"),
 		action: z.enum(["update", "reorder", "hide", "unhide", "delete", "add"]).describe("The operation to perform"),
 		// For update: array of partial question updates
 		updates: z
@@ -94,33 +89,26 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 		message: z.string(),
 		updatedCount: z.number(),
 		warnings: z.array(z.string()).nullish(),
+		surveyId: z.string().nullish(),
+		questionCount: z.number().nullish(),
 	}),
 	execute: async (input, context?) => {
 		try {
-			const contextSurveyId = context?.requestContext?.get?.("survey_id");
-			const surveyId =
-				toNonEmptyString(input.surveyId) ??
-				(typeof contextSurveyId === "string" ? toNonEmptyString(contextSurveyId) : null);
-			if (!surveyId) {
-				return { success: false, message: "Missing surveyId.", updatedCount: 0 };
-			}
-
 			const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
 			const supabase = createSupabaseAdminClient();
 
-			// Fetch current survey with questions
-			const { data: survey, error: fetchError } = await supabase
-				.from("research_links")
-				.select("id, questions")
-				.eq("id", surveyId)
-				.single();
+			const { survey, surveyId, projectId } = await resolveBoundSurveyTarget({
+				context,
+				toolName: "update-survey-questions",
+				supabase,
+				surveyIdInput: input.surveyId,
+				select: "id, name, questions, project_id, account_id",
+			});
 
-			if (fetchError || !survey) {
-				return { success: false, message: `Survey not found: ${surveyId}`, updatedCount: 0 };
-			}
-
-			let questions = Array.isArray(survey.questions) ? (survey.questions as Array<Record<string, unknown>>) : [];
+			let questions = asQuestionArray(survey.questions);
+			const initialQuestionCount = questions.length;
 			const warnings: string[] = [];
+			let changedCount = 0;
 
 			switch (input.action) {
 				case "update": {
@@ -139,11 +127,12 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 						if (upd.helperText !== undefined) q.helperText = upd.helperText;
 						if (upd.hidden != null) q.hidden = upd.hidden;
 						questions[idx] = q;
-						updated++;
+						updated += 1;
 					}
 					if (updated === 0) {
 						return { success: false, message: "No matching questions found to update.", updatedCount: 0 };
 					}
+					changedCount = updated;
 					break;
 				}
 
@@ -165,6 +154,7 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 						reordered.push(q);
 					}
 					questions = reordered;
+					changedCount = questions.length;
 					break;
 				}
 
@@ -200,6 +190,7 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 							warnings: warnings.length > 0 ? warnings : null,
 						};
 					}
+					changedCount = hidden;
 					break;
 				}
 
@@ -219,6 +210,7 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 					if (unhidden === 0) {
 						return { success: false, message: "No matching questions found to unhide.", updatedCount: 0 };
 					}
+					changedCount = unhidden;
 					break;
 				}
 
@@ -249,6 +241,7 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 							warnings: warnings.length > 0 ? warnings : null,
 						};
 					}
+					changedCount = deleted;
 					break;
 				}
 
@@ -282,41 +275,82 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 					} else {
 						questions.push(...newQs);
 					}
+					changedCount = newQs.length;
 					break;
 				}
 			}
 
 			// Save back to database
-			const { error: updateError } = await supabase.from("research_links").update({ questions }).eq("id", surveyId);
+			const { error: updateError } = await supabase
+				.from("research_links")
+				.update({ questions })
+				.eq("id", surveyId)
+				.eq("project_id", projectId);
 
 			if (updateError) {
 				consola.error("update-survey-questions: save error", updateError);
 				return { success: false, message: `Failed to save: ${updateError.message}`, updatedCount: 0 };
 			}
 
-			const actionMessages: Record<string, string> = {
-				update: `Updated ${input.updates?.length ?? 0} question(s).`,
-				reorder: `Reordered ${questions.length} questions.`,
-				hide: `Hid ${input.questionIds?.length ?? 0} question(s).`,
-				unhide: `Unhid ${input.questionIds?.length ?? 0} question(s).`,
-				delete: `Deleted ${input.questionIds?.length ?? 0} question(s).`,
-				add: `Added ${input.newQuestions?.length ?? 0} question(s).`,
-			};
+			const { data: persisted, error: persistedError } = await supabase
+				.from("research_links")
+				.select("id, questions")
+				.eq("id", surveyId)
+				.eq("project_id", projectId)
+				.single();
 
-			const count =
-				input.action === "update"
-					? (input.updates?.length ?? 0)
-					: input.action === "add"
-						? (input.newQuestions?.length ?? 0)
-						: input.action === "reorder"
-							? questions.length
-							: (input.questionIds?.length ?? 0);
+			if (persistedError || !persisted) {
+				return {
+					success: false,
+					message: "Saved changes but failed to verify persisted survey state. Please refresh and retry.",
+					updatedCount: 0,
+					surveyId,
+					questionCount: null,
+					warnings: warnings.length > 0 ? warnings : null,
+				};
+			}
+
+			const persistedQuestions = asQuestionArray(persisted.questions);
+			if (!areCanonicallyEqual(questions, persistedQuestions)) {
+				consola.error("update-survey-questions: post-write verification mismatch", {
+					surveyId,
+					action: input.action,
+					expectedCount: questions.length,
+					actualCount: persistedQuestions.length,
+				});
+				return {
+					success: false,
+					message:
+						"Survey write verification failed. The database state differs from the intended update, so no success was reported.",
+					updatedCount: 0,
+					surveyId,
+					questionCount: persistedQuestions.length,
+					warnings: warnings.length > 0 ? warnings : null,
+				};
+			}
+
+			const actionMessages: Record<string, string> = {
+				update: `Updated ${changedCount} question(s).`,
+				reorder: `Reordered ${changedCount} question(s).`,
+				hide: `Hid ${changedCount} question(s).`,
+				unhide: `Unhid ${changedCount} question(s).`,
+				delete: `Deleted ${changedCount} question(s).`,
+				add: `Added ${changedCount} question(s).`,
+			};
+			const totalQuestions = persistedQuestions.length;
+			const countDelta = totalQuestions - initialQuestionCount;
+			const totalText =
+				input.action === "add" || input.action === "delete"
+					? ` Survey now has ${totalQuestions} questions (${countDelta >= 0 ? "+" : ""}${countDelta}).`
+					: ` Survey has ${totalQuestions} questions.`;
 
 			return {
 				success: true,
-				message: actionMessages[input.action] ?? "Done.",
-				updatedCount: count,
+				message: `${actionMessages[input.action] ?? "Done."}${totalText}`,
+				updatedCount: changedCount,
 				warnings: warnings.length > 0 ? warnings : null,
+				surveyId,
+				questionCount: totalQuestions,
 			};
 		} catch (error) {
 			consola.error("update-survey-questions: unexpected error", error);

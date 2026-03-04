@@ -6,19 +6,14 @@
 import { createTool } from "@mastra/core/tools";
 import consola from "consola";
 import { z } from "zod";
-
-function toNonEmptyString(value: unknown): string | null {
-	if (typeof value !== "string") return null;
-	const trimmed = value.trim();
-	return trimmed.length > 0 ? trimmed : null;
-}
+import { areCanonicallyEqual, resolveBoundSurveyTarget } from "./survey-mutation-guards";
 
 export const updateSurveySettingsTool = createTool({
 	id: "update-survey-settings",
 	description: `Update survey configuration (name, description, mode, identity, hero, etc.) without modifying questions.
 Use this when the user wants to change settings like making a survey anonymous, switching to voice mode, updating the hero text, etc.`,
 	inputSchema: z.object({
-		surveyId: z.string().describe("The survey ID to update"),
+		surveyId: z.string().nullish().describe("The survey ID to update (defaults to active survey in context)"),
 		name: z.string().nullish().describe("Survey name/title"),
 		description: z.string().nullish().describe("Survey description"),
 		isLive: z.boolean().nullish().describe("Whether the survey is live"),
@@ -41,19 +36,20 @@ Use this when the user wants to change settings like making a survey anonymous, 
 		success: z.boolean(),
 		message: z.string(),
 		updatedFields: z.array(z.string()).nullish(),
+		surveyId: z.string().nullish(),
 	}),
 	execute: async (input, context?) => {
 		try {
-			const contextSurveyId = context?.requestContext?.get?.("survey_id");
-			const surveyId =
-				toNonEmptyString(input.surveyId) ??
-				(typeof contextSurveyId === "string" ? toNonEmptyString(contextSurveyId) : null);
-			if (!surveyId) {
-				return { success: false, message: "Missing surveyId." };
-			}
-
 			const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
 			const supabase = createSupabaseAdminClient();
+			const { surveyId, projectId } = await resolveBoundSurveyTarget({
+				context,
+				toolName: "update-survey-settings",
+				supabase,
+				surveyIdInput: input.surveyId,
+				select:
+					"id, name, description, is_live, allow_chat, allow_voice, allow_video, default_response_mode, identity_type, respondent_fields, hero_title, hero_subtitle, hero_cta_label, calendar_url, redirect_url, project_id, account_id",
+			});
 
 			// Build the update payload, only including fields that were actually provided
 			const updatePayload: Record<string, unknown> = {};
@@ -120,17 +116,57 @@ Use this when the user wants to change settings like making a survey anonymous, 
 				return { success: false, message: "No settings provided to update." };
 			}
 
-			const { error } = await supabase.from("research_links").update(updatePayload).eq("id", surveyId);
+			const { error } = await supabase
+				.from("research_links")
+				.update(updatePayload)
+				.eq("id", surveyId)
+				.eq("project_id", projectId);
 
 			if (error) {
 				consola.error("update-survey-settings: save error", error);
 				return { success: false, message: `Failed to update: ${error.message}` };
 			}
 
+			const { data: persisted, error: persistedError } = await supabase
+				.from("research_links")
+				.select(
+					"id, name, description, is_live, allow_chat, allow_voice, allow_video, default_response_mode, identity_type, respondent_fields, hero_title, hero_subtitle, hero_cta_label, calendar_url, redirect_url"
+				)
+				.eq("id", surveyId)
+				.eq("project_id", projectId)
+				.single();
+
+			if (persistedError || !persisted) {
+				return {
+					success: false,
+					message: "Saved settings but failed to verify persisted state. Please refresh and retry.",
+					updatedFields: null,
+					surveyId,
+				};
+			}
+
+			const mismatchFields = Object.entries(updatePayload)
+				.filter(([column, expectedValue]) => !areCanonicallyEqual(persisted[column], expectedValue))
+				.map(([column]) => column);
+
+			if (mismatchFields.length > 0) {
+				consola.error("update-survey-settings: post-write verification mismatch", {
+					surveyId,
+					mismatchFields,
+				});
+				return {
+					success: false,
+					message: `Survey settings verification failed for: ${mismatchFields.join(", ")}.`,
+					updatedFields: null,
+					surveyId,
+				};
+			}
+
 			return {
 				success: true,
 				message: `Updated ${updatedFields.length} setting(s): ${updatedFields.join(", ")}.`,
 				updatedFields,
+				surveyId,
 			};
 		} catch (error) {
 			consola.error("update-survey-settings: unexpected error", error);

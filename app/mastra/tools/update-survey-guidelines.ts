@@ -6,6 +6,7 @@
 import { createTool } from "@mastra/core/tools";
 import consola from "consola";
 import { z } from "zod";
+import { asQuestionArray, resolveBoundSurveyTarget } from "./survey-mutation-guards";
 
 const BranchRuleSchema = z.object({
 	id: z.string(),
@@ -54,7 +55,7 @@ The tool will:
 
 If the confidence is low, it will suggest clarifications.`,
 	inputSchema: z.object({
-		surveyId: z.string().describe("ID of the survey to update"),
+		surveyId: z.string().nullish().describe("ID of the survey to update (defaults to active survey in context)"),
 		guidelines: z.string().describe("Natural language guidelines to parse and add"),
 		questionIds: z.array(z.string()).nullish().describe("Specific question IDs to apply guidelines to (optional)"),
 	}),
@@ -78,29 +79,23 @@ If the confidence is low, it will suggest clarifications.`,
 				message: z.string(),
 			})
 			.optional(),
+		surveyId: z.string().optional(),
 	}),
 	execute: async (input, context?) => {
 		try {
 			const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
 			const supabase = createSupabaseAdminClient();
 
-			// Fetch the survey with its questions
-			const { data: survey, error: surveyError } = await supabase
-				.from("research_links")
-				.select("id, name, questions")
-				.eq("id", input.surveyId)
-				.single();
-
-			if (surveyError || !survey) {
-				return {
-					success: false,
-					message: `Survey not found: ${input.surveyId}`,
-					error: { code: "SURVEY_NOT_FOUND", message: "Invalid survey ID" },
-				};
-			}
+			const { survey, surveyId, projectId } = await resolveBoundSurveyTarget({
+				context,
+				toolName: "update-survey-guidelines",
+				supabase,
+				surveyIdInput: input.surveyId,
+				select: "id, name, questions, project_id, account_id",
+			});
 
 			const questions =
-				(survey.questions as Array<{
+				(asQuestionArray(survey.questions) as Array<{
 					id: string;
 					prompt: string;
 					type: string;
@@ -139,7 +134,7 @@ If the confidence is low, it will suggest clarifications.`,
 			}
 
 			consola.info("update-survey-guidelines: parsing guidelines", {
-				surveyId: input.surveyId,
+				surveyId,
 				guidelines: input.guidelines,
 				questionCount: questions.length,
 				existingRuleCount: existingGuidelines.length,
@@ -178,6 +173,7 @@ If the confidence is low, it will suggest clarifications.`,
 				action: string;
 				confidence: string;
 			}> = [];
+			const addedRuleIds: string[] = [];
 
 			// Create a map of question ID to index for easy lookup
 			const updatedQuestions = [...questions];
@@ -229,6 +225,7 @@ If the confidence is low, it will suggest clarifications.`,
 					updatedQuestions[triggerIndex].branching = { rules: [] };
 				}
 				updatedQuestions[triggerIndex].branching!.rules.push(branchRule);
+				addedRuleIds.push(branchRule.id);
 
 				addedRules.push({
 					summary: guideline.summary,
@@ -253,7 +250,8 @@ If the confidence is low, it will suggest clarifications.`,
 			const { error: updateError } = await supabase
 				.from("research_links")
 				.update({ questions: updatedQuestions })
-				.eq("id", input.surveyId);
+				.eq("id", surveyId)
+				.eq("project_id", projectId);
 
 			if (updateError) {
 				consola.error("update-survey-guidelines: update error", updateError);
@@ -264,13 +262,62 @@ If the confidence is low, it will suggest clarifications.`,
 				};
 			}
 
+			const { data: persistedSurvey, error: persistedError } = await supabase
+				.from("research_links")
+				.select("id, questions")
+				.eq("id", surveyId)
+				.eq("project_id", projectId)
+				.single();
+
+			if (persistedError || !persistedSurvey) {
+				return {
+					success: false,
+					message: "Saved guideline changes but failed to verify persisted rules. Please refresh and retry.",
+					surveyId,
+					error: { code: "VERIFY_READ_FAILED", message: "Unable to fetch persisted survey after write" },
+				};
+			}
+
+			const persistedRuleIds = new Set(
+				asQuestionArray(persistedSurvey.questions).flatMap((question) => {
+					const branching =
+						question && typeof question === "object"
+							? ((question as { branching?: { rules?: Array<{ id?: unknown }> } }).branching ?? null)
+							: null;
+					return Array.isArray(branching?.rules)
+						? branching.rules
+								.map((rule) => (rule && typeof rule.id === "string" ? rule.id : null))
+								.filter((ruleId): ruleId is string => Boolean(ruleId))
+						: [];
+				})
+			);
+
+			const missingRuleIds = addedRuleIds.filter((ruleId) => !persistedRuleIds.has(ruleId));
+			if (missingRuleIds.length > 0) {
+				consola.error("update-survey-guidelines: post-write verification mismatch", {
+					surveyId,
+					addedRuleIds,
+					missingRuleIds,
+				});
+				return {
+					success: false,
+					message:
+						"Guideline write verification failed. Some generated rules were not persisted, so no success was reported.",
+					surveyId,
+					error: {
+						code: "VERIFY_RULE_MISMATCH",
+						message: `Missing persisted rule ids: ${missingRuleIds.join(", ")}`,
+					},
+				};
+			}
+
 			const summaryText =
 				addedRules.length === 1
 					? `Added guideline: "${addedRules[0].summary}"`
 					: `Added ${addedRules.length} guidelines`;
 
 			consola.info("update-survey-guidelines: success", {
-				surveyId: input.surveyId,
+				surveyId,
 				rulesAdded: addedRules.length,
 			});
 
@@ -278,6 +325,7 @@ If the confidence is low, it will suggest clarifications.`,
 				success: true,
 				message: summaryText,
 				addedRules,
+				surveyId,
 				clarificationsNeeded:
 					parseResult.suggestedClarifications.length > 0 ? parseResult.suggestedClarifications : undefined,
 			};

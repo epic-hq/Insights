@@ -8,6 +8,8 @@ import slugify from "@sindresorhus/slugify";
 import consola from "consola";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
+import { validateUUID } from "./context-utils";
+import { areCanonicallyEqual, asQuestionArray, resolveBoundSurveyTarget } from "./survey-mutation-guards";
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 8);
 
@@ -138,6 +140,7 @@ Question types:
 		success: z.boolean(),
 		message: z.string(),
 		surveyId: z.string().optional(),
+		questionCount: z.number().nullish(),
 		editUrl: z.string().nullish().describe("Relative URL to edit the survey - use with navigateToPage"),
 		publicUrl: z.string().nullish().describe("Public URL where respondents can take the survey"),
 		error: z
@@ -163,11 +166,16 @@ Question types:
 
 			const surveyName = toNonEmptyString(input.name) ?? "Untitled Survey";
 			const surveyDescription = toNonEmptyString(input.description) ?? null;
-			const surveyId =
-				typeof (input as { surveyId?: unknown }).surveyId === "string" &&
-				(input as { surveyId?: string }).surveyId?.trim()
-					? ((input as { surveyId?: string }).surveyId ?? null)
-					: null;
+			const surveyIdFromInput = validateUUID((input as { surveyId?: unknown }).surveyId, "surveyId", "create-survey");
+			const rawSurveyIdFromInput = toNonEmptyString((input as { surveyId?: unknown }).surveyId);
+			if (rawSurveyIdFromInput && !surveyIdFromInput) {
+				return {
+					success: false,
+					message: "surveyId must be a valid UUID when provided.",
+					questionCount: null,
+					error: { code: "INVALID_SURVEY_ID", message: "Provided surveyId is not a valid UUID" },
+				};
+			}
 			const isLive = input.isLive ?? true;
 
 			// Get accountId from project record
@@ -196,7 +204,20 @@ Question types:
 			);
 
 			// UPDATE existing survey
-			if (surveyId) {
+			if (surveyIdFromInput) {
+				const {
+					survey: existingSurvey,
+					surveyId,
+					projectId: boundProjectId,
+				} = await resolveBoundSurveyTarget({
+					context,
+					toolName: "create-survey",
+					supabase,
+					surveyIdInput: surveyIdFromInput,
+					select: "id, slug, name, description, is_live, hero_title, hero_subtitle, questions, project_id, account_id",
+				});
+				const persistedProjectId = boundProjectId;
+
 				consola.info("create-survey: updating survey", {
 					surveyId,
 					name: surveyName,
@@ -214,6 +235,7 @@ Question types:
 						hero_subtitle: surveyDescription,
 					})
 					.eq("id", surveyId)
+					.eq("project_id", persistedProjectId)
 					.select("id, slug")
 					.single();
 
@@ -226,13 +248,62 @@ Question types:
 					};
 				}
 
-				const editUrl = `/a/${accountId}/${projectId}/ask/${data.id}/edit`;
+				const { data: persistedSurvey, error: persistedError } = await supabase
+					.from("research_links")
+					.select("id, slug, name, description, is_live, hero_title, hero_subtitle, questions")
+					.eq("id", surveyId)
+					.eq("project_id", persistedProjectId)
+					.single();
+
+				if (persistedError || !persistedSurvey) {
+					return {
+						success: false,
+						message: "Saved survey update but failed to verify persisted state. Please refresh and retry.",
+						surveyId,
+						questionCount: null,
+						error: { code: "VERIFY_READ_FAILED", message: "Unable to load persisted survey after update" },
+					};
+				}
+
+				const expectedFields: Record<string, unknown> = {
+					name: surveyName,
+					description: surveyDescription,
+					is_live: isLive,
+					hero_title: surveyName,
+					hero_subtitle: surveyDescription,
+				};
+				const mismatchedFields = Object.entries(expectedFields)
+					.filter(
+						([field, expected]) => !areCanonicallyEqual((persistedSurvey as Record<string, unknown>)[field], expected)
+					)
+					.map(([field]) => field);
+				const persistedQuestions = asQuestionArray(persistedSurvey.questions);
+				if (!areCanonicallyEqual(persistedQuestions, questions)) {
+					mismatchedFields.push("questions");
+				}
+				if (mismatchedFields.length > 0) {
+					consola.error("create-survey: update verification mismatch", {
+						surveyId,
+						mismatchedFields,
+						existingSurveyId: existingSurvey.id,
+					});
+					return {
+						success: false,
+						message: `Survey update verification failed for: ${mismatchedFields.join(", ")}.`,
+						surveyId,
+						questionCount: persistedQuestions.length,
+						error: { code: "VERIFY_MISMATCH", message: `Mismatched fields: ${mismatchedFields.join(", ")}` },
+					};
+				}
+
+				const editUrl = `/a/${accountId}/${projectId}/ask/${persistedSurvey.id}/edit`;
 				const publicUrl = `/research/${data.slug}`;
 
 				return {
 					success: true,
-					message: `Updated survey "${surveyName}" with ${questions.length} questions.`,
-					surveyId: data.id,
+					message: `Updated survey "${surveyName}" with ${persistedQuestions.length} questions.`,
+					surveyId: persistedSurvey.id,
+					questionCount: persistedQuestions.length,
 					editUrl,
 					publicUrl,
 				};
@@ -282,6 +353,53 @@ Question types:
 			const editUrl = `/a/${accountId}/${projectId}/ask/${data.id}/edit`;
 			const publicUrl = `/research/${data.slug}`;
 
+			const { data: persistedSurvey, error: persistedError } = await supabase
+				.from("research_links")
+				.select("id, slug, project_id, account_id, name, description, is_live, questions")
+				.eq("id", data.id)
+				.eq("project_id", projectId)
+				.single();
+
+			if (persistedError || !persistedSurvey) {
+				return {
+					success: false,
+					message: "Created survey but failed to verify persisted state. Please refresh and retry.",
+					surveyId: data.id,
+					questionCount: null,
+					error: { code: "VERIFY_READ_FAILED", message: "Unable to load persisted survey after create" },
+				};
+			}
+
+			const expectedCreateFields: Record<string, unknown> = {
+				project_id: projectId,
+				account_id: accountId,
+				name: surveyName,
+				description: surveyDescription,
+				is_live: isLive,
+			};
+			const createMismatchFields = Object.entries(expectedCreateFields)
+				.filter(
+					([field, expected]) => !areCanonicallyEqual((persistedSurvey as Record<string, unknown>)[field], expected)
+				)
+				.map(([field]) => field);
+			const persistedQuestions = asQuestionArray(persistedSurvey.questions);
+			if (!areCanonicallyEqual(persistedQuestions, questions)) {
+				createMismatchFields.push("questions");
+			}
+			if (createMismatchFields.length > 0) {
+				consola.error("create-survey: create verification mismatch", {
+					surveyId: data.id,
+					createMismatchFields,
+				});
+				return {
+					success: false,
+					message: `Survey create verification failed for: ${createMismatchFields.join(", ")}.`,
+					surveyId: data.id,
+					questionCount: persistedQuestions.length,
+					error: { code: "VERIFY_MISMATCH", message: `Mismatched fields: ${createMismatchFields.join(", ")}` },
+				};
+			}
+
 			consola.info("create-survey: survey created", {
 				surveyId: data.id,
 				editUrl,
@@ -290,8 +408,9 @@ Question types:
 
 			return {
 				success: true,
-				message: `Created survey "${surveyName}" with ${questions.length} questions. Navigate to the edit page to review and share.`,
+				message: `Created survey "${surveyName}" with ${persistedQuestions.length} questions. Navigate to the edit page to review and share.`,
 				surveyId: data.id,
+				questionCount: persistedQuestions.length,
 				editUrl,
 				publicUrl,
 			};
