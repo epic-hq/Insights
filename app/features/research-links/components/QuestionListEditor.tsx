@@ -452,6 +452,7 @@ function QuestionEditDrawer({
 	const draftRef = useRef<ResearchLinkQuestion>(question);
 	const pendingQuestionUpdateRef = useRef<Partial<ResearchLinkQuestion> | null>(null);
 	const pendingQuestionUpdateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const draftSessionKeyRef = useRef<string | null>(null);
 
 	const commitQuestionUpdates = useCallback(
 		(updates: Partial<ResearchLinkQuestion>) => {
@@ -505,6 +506,9 @@ function QuestionEditDrawer({
 	);
 
 	useEffect(() => {
+		const sessionKey = `${question.id}:${isOpen ? "open" : "closed"}`;
+		if (draftSessionKeyRef.current === sessionKey) return;
+		draftSessionKeyRef.current = sessionKey;
 		setDraft(question);
 		draftRef.current = question;
 		pendingQuestionUpdateRef.current = null;
@@ -512,7 +516,7 @@ function QuestionEditDrawer({
 			clearTimeout(pendingQuestionUpdateTimerRef.current);
 			pendingQuestionUpdateTimerRef.current = null;
 		}
-	}, [question.id, isOpen, question]);
+	}, [question, isOpen]);
 
 	useEffect(
 		() => () => {
@@ -625,7 +629,7 @@ function QuestionEditDrawer({
 											key={i}
 											type="button"
 											className="flex w-full items-center gap-2 rounded border border-border/40 bg-background px-2 py-1.5 text-left text-[11px] text-foreground/80 transition-colors hover:border-primary/30 hover:bg-primary/5"
-											onClick={() => updateQuestion(question.id, { prompt: alt })}
+											onClick={() => applyDraftUpdates({ prompt: alt })}
 										>
 											<Sparkles className="h-3 w-3 shrink-0 text-violet-500" />
 											<span className="flex-1">{alt}</span>
@@ -641,15 +645,13 @@ function QuestionEditDrawer({
 					<div className="space-y-1.5">
 						<Label className="text-xs">Question text</Label>
 						<Textarea
-							value={promptDraft}
+							value={draft.prompt}
 							placeholder="What would you like to ask?"
-							onFocus={() => setIsEditingPrompt(true)}
 							onChange={(e) => {
 								const next = e.target.value;
-								setPromptDraft(next);
-								updateQuestion(question.id, { prompt: next });
+								applyDraftUpdates({ prompt: next }, "debounced");
 							}}
-							onBlur={() => setIsEditingPrompt(false)}
+							onBlur={() => flushPendingQuestionUpdates()}
 							onInput={(e) => {
 								const target = e.target as HTMLTextAreaElement;
 								target.style.height = "auto";
@@ -665,7 +667,7 @@ function QuestionEditDrawer({
 						<div className="flex-1 space-y-1.5">
 							<Label className="text-xs">Type</Label>
 							<Select
-								value={question.type}
+								value={draft.type}
 								onValueChange={(value: ResearchLinkQuestion["type"]) => {
 									// Preserve existing field values when switching types so
 									// options survive a round-trip (e.g. select one → likert → select one).
@@ -674,17 +676,17 @@ function QuestionEditDrawer({
 										type: value,
 									};
 									if (value === "single_select" || value === "multi_select") {
-										updates.options = question.options ?? [];
+										updates.options = draft.options ?? [];
 									} else if (value === "likert") {
-										updates.likertScale = question.likertScale ?? 5;
-										updates.likertLabels = question.likertLabels ?? {
+										updates.likertScale = draft.likertScale ?? 5;
+										updates.likertLabels = draft.likertLabels ?? {
 											low: "Strongly disagree",
 											high: "Strongly agree",
 										};
 									} else if (value === "image_select") {
-										updates.imageOptions = question.imageOptions ?? [{ label: "", imageUrl: "" }];
+										updates.imageOptions = draft.imageOptions ?? [{ label: "", imageUrl: "" }];
 									}
-									updateQuestion(question.id, updates);
+									applyDraftUpdates(updates);
 								}}
 							>
 								<SelectTrigger className="h-9 text-xs">
@@ -705,25 +707,25 @@ function QuestionEditDrawer({
 							<Label className="text-xs">Required</Label>
 							<div className="flex h-9 items-center">
 								<Switch
-									checked={question.required}
-									onCheckedChange={(checked) => updateQuestion(question.id, { required: checked })}
+									checked={draft.required}
+									onCheckedChange={(checked) => applyDraftUpdates({ required: checked })}
 								/>
 							</div>
 						</div>
 					</div>
 
 					{/* Select options */}
-					{(question.type === "single_select" || question.type === "multi_select") && (
+					{(draft.type === "single_select" || draft.type === "multi_select") && (
 						<div className="space-y-3">
 							<div className="flex items-center justify-between">
 								<Label className="text-xs">Options</Label>
 								<div className="flex cursor-pointer items-center gap-1.5 text-muted-foreground text-xs">
 									<Switch
-										checked={Boolean(question.imageOptions?.length)}
+										checked={Boolean(draft.imageOptions?.length)}
 										onCheckedChange={(checked) => {
 											if (checked) {
-												const existingOptions = question.options ?? [];
-												updateQuestion(question.id, {
+												const existingOptions = draft.options ?? [];
+												applyDraftUpdates({
 													imageOptions:
 														existingOptions.length > 0
 															? existingOptions.map((label) => ({
@@ -734,8 +736,8 @@ function QuestionEditDrawer({
 													options: null,
 												});
 											} else {
-												const existingImageOptions = question.imageOptions ?? [];
-												updateQuestion(question.id, {
+												const existingImageOptions = draft.imageOptions ?? [];
+												applyDraftUpdates({
 													options:
 														existingImageOptions.length > 0
 															? existingImageOptions.map((o) => o.label).filter(Boolean)
@@ -750,10 +752,10 @@ function QuestionEditDrawer({
 									With images
 								</div>
 							</div>
-							{question.imageOptions?.length ? (
+							{draft.imageOptions?.length ? (
 								<div className="space-y-2">
-									{question.imageOptions.map((option, optionIndex) => {
-										const uploadKey = `${question.id}-${optionIndex}`;
+									{draft.imageOptions.map((option, optionIndex) => {
+										const uploadKey = `${draft.id}-${optionIndex}`;
 										const isUploading = uploadingImageKey === uploadKey;
 										return (
 											<div key={optionIndex} className="flex items-center gap-2">
@@ -761,7 +763,7 @@ function QuestionEditDrawer({
 													type="button"
 													onClick={() => {
 														pendingUploadRef.current = {
-															questionId: question.id,
+															questionId: draft.id,
 															optionIndex,
 														};
 														imageInputRef.current?.click();
@@ -785,14 +787,12 @@ function QuestionEditDrawer({
 												<Input
 													value={option.label}
 													onChange={(e) => {
-														const nextOptions = [...(question.imageOptions ?? [])];
+														const nextOptions = [...(draft.imageOptions ?? [])];
 														nextOptions[optionIndex] = {
 															...nextOptions[optionIndex],
 															label: e.target.value,
 														};
-														updateQuestion(question.id, {
-															imageOptions: nextOptions,
-														});
+														applyDraftUpdates({ imageOptions: nextOptions }, "debounced");
 													}}
 													placeholder="Label"
 													className="h-8 flex-1 text-xs"
@@ -800,14 +800,12 @@ function QuestionEditDrawer({
 												<Input
 													value={option.imageUrl}
 													onChange={(e) => {
-														const nextOptions = [...(question.imageOptions ?? [])];
+														const nextOptions = [...(draft.imageOptions ?? [])];
 														nextOptions[optionIndex] = {
 															...nextOptions[optionIndex],
 															imageUrl: e.target.value,
 														};
-														updateQuestion(question.id, {
-															imageOptions: nextOptions,
-														});
+														applyDraftUpdates({ imageOptions: nextOptions }, "debounced");
 													}}
 													placeholder="Image URL or click thumbnail"
 													className="h-8 flex-[2] text-xs"
@@ -818,8 +816,8 @@ function QuestionEditDrawer({
 													size="icon"
 													className="h-7 w-7 shrink-0 opacity-60 hover:text-destructive hover:opacity-100"
 													onClick={() => {
-														const nextOptions = (question.imageOptions ?? []).filter((_, i) => i !== optionIndex);
-														updateQuestion(question.id, {
+														const nextOptions = (draft.imageOptions ?? []).filter((_, i) => i !== optionIndex);
+														applyDraftUpdates({
 															imageOptions: nextOptions.length > 0 ? nextOptions : [{ label: "", imageUrl: "" }],
 														});
 													}}
@@ -835,8 +833,8 @@ function QuestionEditDrawer({
 										size="sm"
 										className="h-7 text-muted-foreground text-xs hover:text-foreground"
 										onClick={() => {
-											const nextOptions = [...(question.imageOptions ?? []), { label: "", imageUrl: "" }];
-											updateQuestion(question.id, {
+											const nextOptions = [...(draft.imageOptions ?? []), { label: "", imageUrl: "" }];
+											applyDraftUpdates({
 												imageOptions: nextOptions,
 											});
 										}}
@@ -845,17 +843,14 @@ function QuestionEditDrawer({
 									</Button>
 								</div>
 							) : (
-								<OptionsInput
-									options={question.options ?? null}
-									onChange={(options) => updateQuestion(question.id, { options })}
-								/>
+								<OptionsInput options={draft.options ?? null} onChange={(options) => applyDraftUpdates({ options })} />
 							)}
 
 							{/* Allow "Other" write-in toggle */}
 							<div className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 bg-muted/20 px-3 py-2">
 								<Switch
-									checked={Boolean(question.allowOther)}
-									onCheckedChange={(checked) => updateQuestion(question.id, { allowOther: checked })}
+									checked={Boolean(draft.allowOther)}
+									onCheckedChange={(checked) => applyDraftUpdates({ allowOther: checked })}
 									className="scale-75"
 								/>
 								<div>
@@ -869,17 +864,13 @@ function QuestionEditDrawer({
 					)}
 
 					{/* Likert scale config */}
-					{question.type === "likert" && (
+					{draft.type === "likert" && (
 						<div className="space-y-3">
 							<div className="flex items-center gap-2">
 								<Label className="text-xs">Scale</Label>
 								<Select
-									value={String(question.likertScale ?? 5)}
-									onValueChange={(value) =>
-										updateQuestion(question.id, {
-											likertScale: Number(value),
-										})
-									}
+									value={String(draft.likertScale ?? 5)}
+									onValueChange={(value) => applyDraftUpdates({ likertScale: Number(value) })}
 								>
 									<SelectTrigger className="h-8 w-20 text-xs">
 										<SelectValue />
@@ -894,27 +885,33 @@ function QuestionEditDrawer({
 							</div>
 							<div className="flex gap-2">
 								<Input
-									value={question.likertLabels?.low ?? ""}
+									value={draft.likertLabels?.low ?? ""}
 									onChange={(e) =>
-										updateQuestion(question.id, {
-											likertLabels: {
-												...question.likertLabels,
-												low: e.target.value || undefined,
+										applyDraftUpdates(
+											{
+												likertLabels: {
+													...draft.likertLabels,
+													low: e.target.value || undefined,
+												},
 											},
-										})
+											"debounced"
+										)
 									}
 									placeholder="Low label (e.g., Strongly disagree)"
 									className="h-8 text-xs"
 								/>
 								<Input
-									value={question.likertLabels?.high ?? ""}
+									value={draft.likertLabels?.high ?? ""}
 									onChange={(e) =>
-										updateQuestion(question.id, {
-											likertLabels: {
-												...question.likertLabels,
-												high: e.target.value || undefined,
+										applyDraftUpdates(
+											{
+												likertLabels: {
+													...draft.likertLabels,
+													high: e.target.value || undefined,
+												},
 											},
-										})
+											"debounced"
+										)
 									}
 									placeholder="High label (e.g., Strongly agree)"
 									className="h-8 text-xs"
@@ -924,11 +921,11 @@ function QuestionEditDrawer({
 					)}
 
 					{/* Image select config */}
-					{question.type === "image_select" && (
+					{draft.type === "image_select" && (
 						<div className="space-y-2">
 							<Label className="text-xs">Image options</Label>
-							{(question.imageOptions ?? []).map((option, optionIndex) => {
-								const uploadKey = `${question.id}-${optionIndex}`;
+							{(draft.imageOptions ?? []).map((option, optionIndex) => {
+								const uploadKey = `${draft.id}-${optionIndex}`;
 								const isUploading = uploadingImageKey === uploadKey;
 								return (
 									<div key={optionIndex} className="flex items-center gap-2">
@@ -936,7 +933,7 @@ function QuestionEditDrawer({
 											type="button"
 											onClick={() => {
 												pendingUploadRef.current = {
-													questionId: question.id,
+													questionId: draft.id,
 													optionIndex,
 												};
 												imageInputRef.current?.click();
@@ -960,14 +957,12 @@ function QuestionEditDrawer({
 										<Input
 											value={option.label}
 											onChange={(e) => {
-												const nextOptions = [...(question.imageOptions ?? [])];
+												const nextOptions = [...(draft.imageOptions ?? [])];
 												nextOptions[optionIndex] = {
 													...nextOptions[optionIndex],
 													label: e.target.value,
 												};
-												updateQuestion(question.id, {
-													imageOptions: nextOptions,
-												});
+												applyDraftUpdates({ imageOptions: nextOptions }, "debounced");
 											}}
 											placeholder="Label"
 											className="h-8 flex-1 text-xs"
@@ -975,14 +970,12 @@ function QuestionEditDrawer({
 										<Input
 											value={option.imageUrl}
 											onChange={(e) => {
-												const nextOptions = [...(question.imageOptions ?? [])];
+												const nextOptions = [...(draft.imageOptions ?? [])];
 												nextOptions[optionIndex] = {
 													...nextOptions[optionIndex],
 													imageUrl: e.target.value,
 												};
-												updateQuestion(question.id, {
-													imageOptions: nextOptions,
-												});
+												applyDraftUpdates({ imageOptions: nextOptions }, "debounced");
 											}}
 											placeholder="Image URL or click thumbnail"
 											className="h-8 flex-[2] text-xs"
@@ -993,8 +986,8 @@ function QuestionEditDrawer({
 											size="icon"
 											className="h-7 w-7 shrink-0 opacity-60 hover:text-destructive hover:opacity-100"
 											onClick={() => {
-												const nextOptions = (question.imageOptions ?? []).filter((_, i) => i !== optionIndex);
-												updateQuestion(question.id, {
+												const nextOptions = (draft.imageOptions ?? []).filter((_, i) => i !== optionIndex);
+												applyDraftUpdates({
 													imageOptions: nextOptions.length > 0 ? nextOptions : null,
 												});
 											}}
@@ -1010,8 +1003,8 @@ function QuestionEditDrawer({
 								size="sm"
 								className="h-7 text-muted-foreground text-xs hover:text-foreground"
 								onClick={() => {
-									const nextOptions = [...(question.imageOptions ?? []), { label: "", imageUrl: "" }];
-									updateQuestion(question.id, { imageOptions: nextOptions });
+									const nextOptions = [...(draft.imageOptions ?? []), { label: "", imageUrl: "" }];
+									applyDraftUpdates({ imageOptions: nextOptions });
 								}}
 							>
 								<Plus className="mr-1 h-3 w-3" /> Add image option
@@ -1023,22 +1016,14 @@ function QuestionEditDrawer({
 					<div className="space-y-1.5">
 						<Label className="text-xs">Helper text</Label>
 						<Input
-							value={helperTextDraft}
-							onFocus={() => setIsEditingHelperText(true)}
+							value={draft.helperText ?? ""}
 							onChange={(e) => {
 								const next = e.target.value;
-								setHelperTextDraft(next);
-								updateQuestion(question.id, {
-									helperText: next || null,
-								});
+								applyDraftUpdates({ helperText: next || null }, "debounced");
 							}}
 							onBlur={() => {
-								setIsEditingHelperText(false);
-								const trimmed = helperTextDraft.trim();
-								setHelperTextDraft(trimmed);
-								updateQuestion(question.id, {
-									helperText: trimmed || null,
-								});
+								const trimmed = (draft.helperText ?? "").trim();
+								applyDraftUpdates({ helperText: trimmed || null });
 							}}
 							placeholder="Optional hint shown below the question"
 							className="h-8 text-xs"
@@ -1051,10 +1036,10 @@ function QuestionEditDrawer({
 						{listId ? (
 							<QuestionMediaEditor
 								listId={listId}
-								questionId={question.id}
+								questionId={draft.id}
 								existingMediaUrl={effectiveMediaUrl}
 								onMediaChange={(url) =>
-									updateQuestion(question.id, {
+									applyDraftUpdates({
 										mediaUrl: url,
 										videoUrl: url,
 									})
@@ -1064,21 +1049,20 @@ function QuestionEditDrawer({
 							<div className="flex items-center gap-2">
 								<Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
 								<Input
-									value={mediaUrlDraft}
-									onFocus={() => setIsEditingMediaUrl(true)}
+									value={effectiveMediaUrl ?? ""}
 									onChange={(e) => {
 										const next = e.target.value;
-										setMediaUrlDraft(next);
-										updateQuestion(question.id, {
-											mediaUrl: next || null,
-											videoUrl: next || null,
-										});
+										applyDraftUpdates(
+											{
+												mediaUrl: next || null,
+												videoUrl: next || null,
+											},
+											"debounced"
+										);
 									}}
 									onBlur={() => {
-										setIsEditingMediaUrl(false);
-										const trimmed = mediaUrlDraft.trim();
-										setMediaUrlDraft(trimmed);
-										updateQuestion(question.id, {
+										const trimmed = (effectiveMediaUrl ?? "").trim();
+										applyDraftUpdates({
 											mediaUrl: trimmed || null,
 											videoUrl: trimmed || null,
 										});
@@ -1093,10 +1077,10 @@ function QuestionEditDrawer({
 					{/* Branching / Skip Logic */}
 					<div className="space-y-1.5">
 						<QuestionBranchingEditor
-							question={question}
+							question={draft}
 							allQuestions={questions}
 							questionIndex={index}
-							onChange={(branching) => updateQuestion(question.id, { branching })}
+							onChange={(branching) => applyDraftUpdates({ branching })}
 						/>
 					</div>
 
@@ -1108,7 +1092,7 @@ function QuestionEditDrawer({
 								variant="outline"
 								size="sm"
 								disabled={index === 0}
-								onClick={() => moveQuestion(question.id, -1)}
+								onClick={() => moveQuestion(draft.id, -1)}
 							>
 								<ArrowUp className="mr-1 h-3.5 w-3.5" />
 								Move up
@@ -1118,7 +1102,7 @@ function QuestionEditDrawer({
 								variant="outline"
 								size="sm"
 								disabled={index === questions.length - 1}
-								onClick={() => moveQuestion(question.id, 1)}
+								onClick={() => moveQuestion(draft.id, 1)}
 							>
 								<ArrowDown className="mr-1 h-3.5 w-3.5" />
 								Move down
@@ -1130,7 +1114,12 @@ function QuestionEditDrawer({
 							size="sm"
 							className="text-destructive hover:bg-destructive/10 hover:text-destructive"
 							onClick={() => {
-								removeQuestion(question.id);
+								pendingQuestionUpdateRef.current = null;
+								if (pendingQuestionUpdateTimerRef.current) {
+									clearTimeout(pendingQuestionUpdateTimerRef.current);
+									pendingQuestionUpdateTimerRef.current = null;
+								}
+								removeQuestion(draft.id);
 								onClose();
 							}}
 						>
