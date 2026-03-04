@@ -3,6 +3,7 @@ import type { LoaderFunctionArgs, MetaFunction } from "react-router";
 import { Link, useLoaderData } from "react-router";
 import { getPostBySlug } from "~/lib/cms/payload.server";
 import { formatDate, getImageUrl, getReadingTime } from "~/lib/cms/utils";
+import { canonicalMetaTag, canonicalUrl, indexRobotsMeta } from "../../seo";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	if (!data?.caseStudy) {
@@ -20,15 +21,12 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: seoTitle },
 		{ name: "description", content: seoDescription },
+		indexRobotsMeta(),
 		{ property: "og:title", content: seoTitle },
 		{ property: "og:description", content: seoDescription },
 		{ property: "og:type", content: "article" },
-		{ property: "og:url", content: `https://getupsight.com/case-studies/${caseStudy.slug}` },
-		{
-			tagName: "link",
-			rel: "canonical",
-			href: `https://getupsight.com/case-studies/${caseStudy.slug}`,
-		},
+		{ property: "og:url", content: canonicalUrl(`/case-studies/${caseStudy.slug}`) },
+		canonicalMetaTag(`/case-studies/${caseStudy.slug}`),
 		...(seoImage ? [{ property: "og:image", content: getImageUrl(seoImage) }] : []),
 	];
 };

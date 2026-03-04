@@ -312,6 +312,8 @@ const routes = [
 	route("api/calendar/callback", "./routes/api.calendar.callback.tsx"),
 
 	// Resource routes
+	route("robots.txt", "./routes/robots[.]txt.ts"),
+	route("sitemap.xml", "./routes/sitemap[.]xml.tsx"),
 	route("/link", "./routes/link.tsx"),
 	route("s/:token", "./routes/s.$token.tsx"), // Public share links
 	route("deck/:token", "./routes/deck.$token.tsx"), // Public deck share links

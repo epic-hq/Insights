@@ -5,6 +5,7 @@
 
 import { Link, type LinksFunction, type MetaFunction } from "react-router";
 import MarketingNav from "~/components/navigation/MarketingNav";
+import { canonicalLink, indexRobotsMeta } from "../seo";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -14,15 +15,11 @@ export const meta: MetaFunction = () => {
 			content:
 				"DeepLight Terms of Service - The agreement governing your use of our conversation intelligence platform.",
 		},
+		indexRobotsMeta(),
 	];
 };
 
-export const links: LinksFunction = () => [
-	{
-		rel: "canonical",
-		href: "https://getupsight.com/terms",
-	},
-];
+export const links: LinksFunction = () => [canonicalLink("/terms")];
 
 export default function TermsOfServicePage() {
 	const lastUpdated = "January 2026";

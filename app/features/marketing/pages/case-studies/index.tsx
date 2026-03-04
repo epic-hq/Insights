@@ -3,6 +3,7 @@ import type { LinksFunction, LoaderFunctionArgs, MetaFunction } from "react-rout
 import { Link, useLoaderData } from "react-router";
 import { getServerEnv } from "~/env.server";
 import { formatDate, getReadingTime } from "~/lib/cms/utils";
+import { canonicalLink, indexRobotsMeta } from "../../seo";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -24,15 +25,11 @@ export const meta: MetaFunction = () => {
 		},
 		{ property: "og:type", content: "website" },
 		{ property: "og:url", content: "https://getupsight.com/case-studies" },
+		indexRobotsMeta(),
 	];
 };
 
-export const links: LinksFunction = () => [
-	{
-		rel: "canonical",
-		href: "https://getupsight.com/case-studies",
-	},
-];
+export const links: LinksFunction = () => [canonicalLink("/case-studies")];
 
 // Format case study data on the server
 function formatCaseStudyForClient(post: any) {

@@ -156,6 +156,82 @@ const surveyQuickCreateDraftSchema = z.object({
 	questions: z.array(surveyQuestionDraftSchema).min(3).max(8),
 });
 
+type RecommendationFeedback = {
+	annotationId: string;
+	response: "accepted" | "declined" | "deferred";
+	source: "message_body" | "ui_event";
+};
+
+const recommendationFeedbackSchema = z.object({
+	annotationId: z.string().min(1),
+	response: z.enum(["accepted", "declined", "deferred"]).default("accepted"),
+});
+
+function mapCanvasActionToRecommendationResponse(actionName: string): RecommendationFeedback["response"] | null {
+	const normalized = actionName.toLowerCase();
+	if (normalized === "selectaction" || normalized === "markcommitted" || normalized === "saveactions") {
+		return "accepted";
+	}
+	if (normalized.includes("decline") || normalized.includes("reject")) {
+		return "declined";
+	}
+	if (normalized.includes("defer") || normalized.includes("dismiss")) {
+		return "deferred";
+	}
+	return null;
+}
+
+function extractRecommendationFeedbackFromUiEvents(uiEvents: UiEvent[]): RecommendationFeedback[] {
+	const feedback: RecommendationFeedback[] = [];
+
+	for (const uiEvent of uiEvents) {
+		if (uiEvent.type !== "canvas_action") continue;
+		const response = mapCanvasActionToRecommendationResponse(uiEvent.actionName);
+		if (!response) continue;
+		const payload = uiEvent.payload;
+		const annotationId =
+			payload &&
+			typeof payload === "object" &&
+			!Array.isArray(payload) &&
+			typeof (payload as Record<string, unknown>).annotationId === "string"
+				? ((payload as Record<string, unknown>).annotationId as string)
+				: null;
+		if (!annotationId) continue;
+		feedback.push({
+			annotationId,
+			response,
+			source: "ui_event",
+		});
+	}
+
+	return feedback;
+}
+
+function parseRecommendationFeedbackPayload(payload: unknown): RecommendationFeedback[] {
+	const rawItems = Array.isArray(payload) ? payload : payload ? [payload] : [];
+	const parsed: RecommendationFeedback[] = [];
+
+	for (const rawItem of rawItems) {
+		const validated = recommendationFeedbackSchema.safeParse(rawItem);
+		if (!validated.success) continue;
+		parsed.push({
+			annotationId: validated.data.annotationId,
+			response: validated.data.response,
+			source: "message_body",
+		});
+	}
+
+	return parsed;
+}
+
+function dedupeRecommendationFeedback(items: RecommendationFeedback[]): RecommendationFeedback[] {
+	const deduped = new Map<string, RecommendationFeedback>();
+	for (const item of items) {
+		deduped.set(item.annotationId, item);
+	}
+	return Array.from(deduped.values());
+}
+
 function mapUsageToLangfuse(usage?: { inputTokens?: number; outputTokens?: number }) {
 	if (!usage) return { usage: undefined, usageDetails: undefined };
 	const inputTokens = usage.inputTokens;
@@ -1168,6 +1244,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		userTimezone?: unknown;
 		threadId?: unknown;
 		uiEvents?: unknown;
+		recommendationResponse?: unknown;
+		recommendationResponses?: unknown;
 	};
 	const messages = body.messages;
 	const system = typeof body.system === "string" ? body.system : undefined;
@@ -1180,6 +1258,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			errorCount: parsedUiEvents.error.issues.length,
 		});
 	}
+	const recommendationFeedback = dedupeRecommendationFeedback([
+		...extractRecommendationFeedbackFromUiEvents(typedUiEvents),
+		...parseRecommendationFeedbackPayload(body.recommendationResponses ?? body.recommendationResponse),
+	]);
 	const sanitizedMessages = Array.isArray(messages)
 		? messages.map((message) => {
 				if (!message || typeof message !== "object") return message;
@@ -1402,6 +1484,51 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			requestedThreadId,
 		},
 	});
+
+	const isUiEventDispatchMessage = lastUserText === UI_EVENT_DISPATCH_TEXT;
+	const shouldAutoDeferPendingSuggestions =
+		!isUiEventDispatchMessage && recommendationFeedback.length === 0 && lastUserText.trim().length > 0;
+
+	if (recommendationFeedback.length > 0 || shouldAutoDeferPendingSuggestions) {
+		try {
+			const [{ createSupabaseAdminClient }, { deferPendingRecommendationsForThread, recordRecommendationResponse }] =
+				await Promise.all([
+					import("~/lib/supabase/client.server"),
+					import("~/features/research-links/utils/recommendation-memory.server"),
+				]);
+
+			const adminSupabase = createSupabaseAdminClient();
+			const touchedAnnotationIds: string[] = [];
+
+			for (const feedback of recommendationFeedback) {
+				const updated = await recordRecommendationResponse({
+					supabase: adminSupabase,
+					accountId,
+					projectId,
+					annotationId: feedback.annotationId,
+					userId,
+					response: feedback.response,
+				});
+				if (updated) touchedAnnotationIds.push(feedback.annotationId);
+			}
+
+			if (shouldAutoDeferPendingSuggestions) {
+				await deferPendingRecommendationsForThread({
+					supabase: adminSupabase,
+					projectId,
+					threadId,
+					userId,
+					excludeAnnotationIds: touchedAnnotationIds,
+				});
+			}
+		} catch (feedbackError) {
+			consola.warn("project-status: recommendation feedback tracking failed", {
+				projectId,
+				threadId,
+				error: feedbackError instanceof Error ? feedbackError.message : String(feedbackError),
+			});
+		}
+	}
 
 	const requestContext = new RequestContext();
 	requestContext.set("user_id", userId);

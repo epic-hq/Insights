@@ -2,6 +2,7 @@ import { ArrowRight, CheckCircle2, CircleAlert, Quote, Sparkles } from "lucide-r
 import type { LinksFunction, MetaFunction } from "react-router";
 import { Link } from "react-router";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion";
+import { canonicalLink, indexRobotsMeta } from "../seo";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -24,15 +25,11 @@ export const meta: MetaFunction = () => {
 			property: "og:url",
 			content: "https://getupsight.com/customer-discovery",
 		},
+		indexRobotsMeta(),
 	];
 };
 
-export const links: LinksFunction = () => [
-	{
-		rel: "canonical",
-		href: "https://getupsight.com/customer-discovery",
-	},
-];
+export const links: LinksFunction = () => [canonicalLink("/customer-discovery")];
 
 const proofLoop = [
 	{

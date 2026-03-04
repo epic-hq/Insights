@@ -2,31 +2,11 @@
 
 ## 📋 Overview
 
-This document explains the SEO setup for Upsight, including sitemap configuration and the difference between static and dynamic sitemap files.
+This document explains the SEO setup for Upsight, with a single dynamic source of truth for `sitemap.xml` and `robots.txt`.
 
 ---
 
-## 🗺️ Sitemap Files Explained
-
-### Static Sitemap: `public/sitemap.xml`
-
-**What it is:**
-- A static XML file served directly from the `/public` folder
-- Fastest option - served by CDN without server processing
-- Best for sites with fixed, unchanging URLs
-
-**When to use:**
-- Your site has a fixed set of public pages
-- You want maximum performance (no server processing)
-- You manually update the sitemap when adding new pages
-
-**Current URLs:**
-```xml
-https://getupsight.com/                      (Priority: 1.0)
-https://getupsight.com/customer-interviews   (Priority: 0.9)
-https://getupsight.com/sign-up              (Priority: 0.8)
-https://getupsight.com/login           (Priority: 0.7)
-```
+## 🗺️ Sitemap Source of Truth
 
 ### Dynamic Sitemap: `app/routes/sitemap[.]xml.tsx`
 
@@ -486,7 +466,7 @@ app/routes/
 
 ## 🤖 Robots.txt
 
-### Static: `public/robots.txt`
+### Source of Truth: `app/routes/robots[.]txt.ts`
 
 ```txt
 User-agent: *
@@ -505,8 +485,6 @@ Allow: /sign-up
 # Sitemap location
 Sitemap: https://getupsight.com/sitemap.xml
 ```
-
-### Dynamic: `app/routes/robots[.]txt.tsx`
 
 **Environment-aware:**
 - **Development**: Blocks all crawlers (`Disallow: /`)
@@ -607,20 +585,10 @@ To drive more organic traffic, consider adding:
 ## 🔧 Maintenance
 
 ### Adding New Pages to Sitemap
-
-**Option 1: Static Sitemap (Manual)**
-1. Edit `public/sitemap.xml`
-2. Add new `<url>` entry
-3. Update `<lastmod>` dates
-4. Commit changes
-
-**Option 2: Dynamic Sitemap (Recommended)**
-1. Edit `app/routes/sitemap[.]xml.tsx`
-2. Add entry to `pages` array:
-   ```typescript
-   { path: "/new-page", priority: 0.9, changefreq: "weekly" }
-   ```
-3. Sitemap auto-updates on next request
+1. Edit `app/lib/seo/public-sitemap.ts`.
+2. Add a new static entry (or include it in CMS-driven routes).
+3. Confirm the route is indexable (not in the intentional noindex list).
+4. Sitemap auto-updates on the next request to `/sitemap.xml`.
 
 ### Submitting to Search Engines
 

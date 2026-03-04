@@ -9,6 +9,16 @@ const { determineProjectStageMock, generateRecommendationsMock, getProjectResear
 	getProjectResearchContextMock: vi.fn(),
 }));
 
+const {
+	buildRecommendationStateSignatureMock,
+	createRecommendationBatchAnnotationsMock,
+	fetchRecommendationHistoryMock,
+} = vi.hoisted(() => ({
+	buildRecommendationStateSignatureMock: vi.fn(() => "state-signature"),
+	createRecommendationBatchAnnotationsMock: vi.fn(async () => new Map()),
+	fetchRecommendationHistoryMock: vi.fn(async () => []),
+}));
+
 vi.mock("../../../lib/supabase/client.server", () => ({
 	supabaseAdmin: {},
 }));
@@ -20,6 +30,12 @@ vi.mock("../../../features/research-links/db", () => ({
 vi.mock("../../../features/research-links/utils/recommendation-rules", () => ({
 	determineProjectStage: determineProjectStageMock,
 	generateRecommendations: generateRecommendationsMock,
+}));
+
+vi.mock("../../../features/research-links/utils/recommendation-memory.server", () => ({
+	buildRecommendationStateSignature: buildRecommendationStateSignatureMock,
+	createRecommendationBatchAnnotations: createRecommendationBatchAnnotationsMock,
+	fetchRecommendationHistory: fetchRecommendationHistoryMock,
 }));
 
 vi.mock("../../../utils/route-definitions", () => ({

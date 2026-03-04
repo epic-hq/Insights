@@ -3,6 +3,7 @@ import { Link, useLoaderData } from "react-router";
 import type { PayloadPost } from "~/lib/cms/payload.server";
 import { getPostBySlug, getRecentPosts } from "~/lib/cms/payload.server";
 import { formatDate, getImageUrl, getReadingTime, lexicalToHtml } from "~/lib/cms/utils";
+import { canonicalMetaTag, canonicalUrl, indexRobotsMeta } from "../../seo";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	if (!data?.post) {
@@ -21,12 +22,13 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: `${seoTitle} | Upsight Blog` },
 		{ name: "description", content: seoDescription },
+		indexRobotsMeta(),
 		{ name: "keywords", content: post.seo?.keywords || "" },
 		{ property: "og:title", content: seoTitle },
 		{ property: "og:description", content: seoDescription },
 		{ property: "og:type", content: "article" },
-		{ property: "og:url", content: `https://getupsight.com/blog/${post.slug}` },
-		{ tagName: "link", rel: "canonical", href: `https://getupsight.com/blog/${post.slug}` },
+		{ property: "og:url", content: canonicalUrl(`/blog/${post.slug}`) },
+		canonicalMetaTag(`/blog/${post.slug}`),
 		...(seoImage ? [{ property: "og:image", content: seoImage }] : []),
 		{ property: "article:published_time", content: post.publishedAt },
 		{ property: "article:modified_time", content: post.updatedAt },

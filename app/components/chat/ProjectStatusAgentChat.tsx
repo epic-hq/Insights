@@ -1551,12 +1551,15 @@ export function ProjectStatusAgentChat({
 	const lastCreatedTaskIdRef = useRef<string | null>(null);
 
 	// Extract suggestions from assistant's response via tool invocations
-	const toolSuggestions = useMemo(() => {
+	const { toolSuggestions, suggestionTrackingByText } = useMemo(() => {
 		// Initial suggestions based on project state
 		if (displayableMessages.length === 0) {
 			// Setup-aware suggestions when on /setup page
 			if (location.pathname.endsWith("/setup")) {
-				return ["Help me set up this project", "Research my company website", "Define research goals"];
+				return {
+					toolSuggestions: ["Help me set up this project", "Research my company website", "Define research goals"],
+					suggestionTrackingByText: {} as Record<string, string>,
+				};
 			}
 
 			const interviewMatch = systemContext.match(/Interviews conducted:\s*(\d+)/);
@@ -1567,20 +1570,36 @@ export function ProjectStatusAgentChat({
 			const insights = insightsMatch ? Number.parseInt(insightsMatch[1], 10) : 0;
 
 			if (interviews === 0 && evidence === 0) {
-				return ["Help me set up this project", "Suggest next steps", "What can you do?"];
+				return {
+					toolSuggestions: ["Help me set up this project", "Suggest next steps", "What can you do?"],
+					suggestionTrackingByText: {} as Record<string, string>,
+				};
 			}
 			if (interviews > 0 && evidence === 0) {
-				return ["Analyze my interviews", "Suggest next steps", "Show project status"];
+				return {
+					toolSuggestions: ["Analyze my interviews", "Suggest next steps", "Show project status"],
+					suggestionTrackingByText: {} as Record<string, string>,
+				};
 			}
 			if (insights > 0) {
-				return ["Summarize key findings", "What are the top themes?", "Suggest next steps"];
+				return {
+					toolSuggestions: ["Summarize key findings", "What are the top themes?", "Suggest next steps"],
+					suggestionTrackingByText: {} as Record<string, string>,
+				};
 			}
-			return ["Show project status", "Suggest next steps", "Summarize findings"];
+			return {
+				toolSuggestions: ["Show project status", "Suggest next steps", "Summarize findings"],
+				suggestionTrackingByText: {} as Record<string, string>,
+			};
 		}
 
 		// Find the last assistant message
 		const lastAssistantMsg = [...displayableMessages].reverse().find((m) => m.role === "assistant");
-		if (!lastAssistantMsg || !lastAssistantMsg.parts) return [];
+		if (!lastAssistantMsg || !lastAssistantMsg.parts) {
+			return { toolSuggestions: [], suggestionTrackingByText: {} as Record<string, string> };
+		}
+
+		const suggestionTracking: Record<string, string> = {};
 
 		// Check for suggestNextSteps tool invocation in parts (AI SDK v5 format)
 		for (const part of lastAssistantMsg.parts) {
@@ -1599,15 +1618,29 @@ export function ProjectStatusAgentChat({
 			if (anyPart.type === "tool-invocation" || anyPart.toolInvocation) {
 				const toolData = anyPart.toolInvocation || anyPart;
 				if (toolData.toolName === "suggestNextSteps" && toolData.state === "output-available") {
-					const args = toolData.args as { suggestions?: string[] } | undefined;
+					const args = toolData.args as
+						| {
+								suggestions?: string[];
+								trackedSuggestions?: Array<{ text?: string; annotationId?: string }>;
+						  }
+						| undefined;
+					const trackedSuggestions = Array.isArray(args?.trackedSuggestions) ? args.trackedSuggestions : [];
+					for (const tracked of trackedSuggestions) {
+						if (typeof tracked?.text === "string" && typeof tracked?.annotationId === "string") {
+							suggestionTracking[tracked.text] = tracked.annotationId;
+						}
+					}
 					if (args?.suggestions && Array.isArray(args.suggestions) && args.suggestions.length > 0) {
-						return args.suggestions;
+						return {
+							toolSuggestions: args.suggestions,
+							suggestionTrackingByText: suggestionTracking,
+						};
 					}
 				}
 			}
 		}
 
-		return [];
+		return { toolSuggestions: [], suggestionTrackingByText: {} as Record<string, string> };
 	}, [displayableMessages, location.pathname, systemContext]);
 
 	// Fallback: Generate suggestions if no tool calls found
@@ -1733,9 +1766,24 @@ export function ProjectStatusAgentChat({
 	const handleSuggestionClick = useCallback(
 		(suggestion: string) => {
 			tts.stopPlayback();
+			const annotationId = suggestionTrackingByText[suggestion];
+			if (annotationId) {
+				sendMessage(
+					{ text: suggestion },
+					{
+						body: {
+							recommendationResponse: {
+								annotationId,
+								response: "accepted",
+							},
+						},
+					}
+				);
+				return;
+			}
 			sendMessage({ text: suggestion });
 		},
-		[sendMessage, tts.stopPlayback] // eslint-disable-line react-hooks/exhaustive-deps
+		[sendMessage, suggestionTrackingByText, tts.stopPlayback] // eslint-disable-line react-hooks/exhaustive-deps
 	);
 
 	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {

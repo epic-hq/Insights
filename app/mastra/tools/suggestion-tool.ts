@@ -13,6 +13,16 @@ export const suggestionTool = createTool({
 			.describe(
 				"2-3 short options (max 6 words). If you mentioned specific examples in your response, use those exact examples here."
 			),
+		trackedSuggestions: z
+			.array(
+				z.object({
+					text: z.string(),
+					annotationId: z.string(),
+				})
+			)
+			.max(3)
+			.optional()
+			.describe("Optional analytics mapping for suggestion click tracking."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

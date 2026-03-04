@@ -5,6 +5,7 @@
 
 import { Link, type LinksFunction, type MetaFunction } from "react-router";
 import MarketingNav from "~/components/navigation/MarketingNav";
+import { canonicalLink, indexRobotsMeta } from "../seo";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -13,15 +14,11 @@ export const meta: MetaFunction = () => {
 			name: "description",
 			content: "DeepLight Privacy Policy - Learn how we collect, use, and protect your personal information.",
 		},
+		indexRobotsMeta(),
 	];
 };
 
-export const links: LinksFunction = () => [
-	{
-		rel: "canonical",
-		href: "https://getupsight.com/privacy",
-	},
-];
+export const links: LinksFunction = () => [canonicalLink("/privacy")];
 
 export default function PrivacyPolicyPage() {
 	const lastUpdated = "January 2026";

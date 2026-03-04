@@ -38,6 +38,27 @@ export interface Recommendation {
  */
 export type ProjectStage = "setup" | "discovery" | "gathering" | "validation" | "synthesis";
 
+export type RecommendationResponse = "accepted" | "declined" | "deferred";
+
+export interface RecommendationHistoryEntry {
+	annotationId: string;
+	recommendationId: string;
+	title: string | null;
+	actionType: Recommendation["actionType"] | null;
+	response: RecommendationResponse | null;
+	respondedAt: string | null;
+	createdAt: string | null;
+	navigateTo: string | null;
+	stateSignature: string | null;
+	batchId: string | null;
+	projectState: {
+		hasGoals: boolean;
+		interviewCount: number;
+		surveyCount: number;
+		themeCount: number;
+	};
+}
+
 /**
  * Determine the current stage of the project.
  * Stage reflects actual research progress, not just setup completeness.
@@ -67,11 +88,82 @@ export function determineProjectStage(context: ProjectResearchContext): ProjectS
 	return "synthesis";
 }
 
+function buildLatestHistoryByRecommendationId(history: RecommendationHistoryEntry[]): Map<string, RecommendationHistoryEntry> {
+	const latestById = new Map<string, RecommendationHistoryEntry>();
+
+	for (const entry of history) {
+		if (!entry.recommendationId) continue;
+		const existing = latestById.get(entry.recommendationId);
+		if (!existing) {
+			latestById.set(entry.recommendationId, entry);
+			continue;
+		}
+		const existingTime = Date.parse(existing.respondedAt || existing.createdAt || "");
+		const entryTime = Date.parse(entry.respondedAt || entry.createdAt || "");
+		if (Number.isFinite(entryTime) && (!Number.isFinite(existingTime) || entryTime > existingTime)) {
+			latestById.set(entry.recommendationId, entry);
+		}
+	}
+
+	return latestById;
+}
+
+function buildActionTypePreference(history: RecommendationHistoryEntry[]): Partial<Record<Recommendation["actionType"], number>> {
+	const scoreByAction: Partial<Record<Recommendation["actionType"], number>> = {};
+
+	for (const entry of history) {
+		if (!entry.actionType || !entry.response) continue;
+		const current = scoreByAction[entry.actionType] ?? 0;
+		if (entry.response === "accepted") {
+			scoreByAction[entry.actionType] = current + 1;
+		} else if (entry.response === "declined") {
+			scoreByAction[entry.actionType] = current - 1;
+		}
+	}
+
+	return scoreByAction;
+}
+
+function shouldSuppressRecommendation(
+	latestHistory: RecommendationHistoryEntry | undefined,
+	stateSignature: string | null,
+	now: Date
+): boolean {
+	if (!latestHistory || !latestHistory.response) return false;
+	if (latestHistory.stateSignature && stateSignature && latestHistory.stateSignature !== stateSignature) return false;
+
+	if (latestHistory.response === "declined") {
+		return true;
+	}
+
+	if (latestHistory.response === "deferred") {
+		const responseDate = Date.parse(latestHistory.respondedAt || latestHistory.createdAt || "");
+		if (!Number.isFinite(responseDate)) return true;
+		const deferAgeMs = now.getTime() - responseDate;
+		const minimumRetryWindowMs = 7 * 24 * 60 * 60 * 1000;
+		return deferAgeMs < minimumRetryWindowMs;
+	}
+
+	if (latestHistory.response === "accepted") {
+		// If a user has already accepted this exact recommendation in the same state, avoid repeating it.
+		return true;
+	}
+
+	return false;
+}
+
 /**
  * Generate recommendations based on project state.
  * Returns up to 3 prioritized recommendations.
  */
-export function generateRecommendations(context: ProjectResearchContext): Recommendation[] {
+export function generateRecommendations(
+	context: ProjectResearchContext,
+	options?: {
+		history?: RecommendationHistoryEntry[];
+		stateSignature?: string | null;
+		now?: Date;
+	}
+): Recommendation[] {
 	const recommendations: Recommendation[] = [];
 
 	// Rule 1: Project setup incomplete
@@ -240,8 +332,27 @@ export function generateRecommendations(context: ProjectResearchContext): Recomm
 		});
 	}
 
-	// Sort by priority and return top 3
-	return recommendations.sort((a, b) => a.priority - b.priority).slice(0, 3);
+	const history = options?.history ?? [];
+	const stateSignature = options?.stateSignature ?? null;
+	const now = options?.now ?? new Date();
+	const latestHistoryByRecommendation = buildLatestHistoryByRecommendationId(history);
+	const actionTypePreference = buildActionTypePreference(history);
+
+	const filtered = recommendations.filter((recommendation) =>
+		!shouldSuppressRecommendation(latestHistoryByRecommendation.get(recommendation.id), stateSignature, now)
+	);
+
+	const scored = filtered.map((recommendation) => {
+		const preferenceScore = actionTypePreference[recommendation.actionType] ?? 0;
+		// Favor action types with higher acceptance history while preserving base priority ordering.
+		const effectivePriority = recommendation.priority - preferenceScore * 0.2;
+		return { recommendation, effectivePriority };
+	});
+
+	return scored
+		.sort((a, b) => a.effectivePriority - b.effectivePriority)
+		.slice(0, 3)
+		.map((entry) => entry.recommendation);
 }
 
 /**

@@ -5,6 +5,7 @@ import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 
 import { PATHS } from "~/paths";
+import { canonicalLink, noindexRobotsMeta } from "../seo";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -14,15 +15,11 @@ export const meta: MetaFunction = () => {
 			content:
 				"The only research platform that coaches your team, uncovers wedge opportunities, and delivers executive-ready insights—backed by 100% traceable evidence. Built for business users, not researchers.",
 		},
+		noindexRobotsMeta(),
 	];
 };
 
-export const links: LinksFunction = () => [
-	{
-		rel: "canonical",
-		href: "https://getupsight.com/index2",
-	},
-];
+export const links: LinksFunction = () => [canonicalLink("/index2")];
 
 export default function LandingPage() {
 	return (

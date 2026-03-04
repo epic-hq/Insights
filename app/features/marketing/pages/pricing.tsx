@@ -6,6 +6,7 @@ import { useAuth } from "~/contexts/AuthContext";
 import { useCurrentProject } from "~/contexts/current-project-context";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 import { PATHS } from "~/paths";
+import { canonicalLink, indexRobotsMeta } from "../seo";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -22,10 +23,11 @@ export const meta: MetaFunction = () => {
 		},
 		{ property: "og:type", content: "website" },
 		{ property: "og:url", content: "https://getupsight.com/pricing" },
+		indexRobotsMeta(),
 	];
 };
 
-export const links: LinksFunction = () => [{ rel: "canonical", href: "https://getupsight.com/pricing" }];
+export const links: LinksFunction = () => [canonicalLink("/pricing")];
 
 const included = [
 	"Unlimited recording and transcription",

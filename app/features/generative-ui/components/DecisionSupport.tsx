@@ -22,6 +22,7 @@ export interface DecisionSupportData {
 		tradeoffs?: string[];
 		evidenceCount?: number;
 		evidenceUrl?: string;
+		annotationId?: string;
 		owner: string | null;
 		dueDate: string | null;
 		committed?: boolean;
@@ -118,13 +119,14 @@ export function DecisionSupport({ data, isStreaming, onAction }: DecisionSupport
 											{action.evidenceUrl ? (
 												<Link
 													to={action.evidenceUrl}
-													onClick={() =>
-														onAction?.("viewEvidence", {
-															actionId: action.id,
-															action: action.action,
-															evidenceUrl: action.evidenceUrl,
-														})
-													}
+												onClick={() =>
+													onAction?.("viewEvidence", {
+														actionId: action.id,
+														action: action.action,
+														annotationId: action.annotationId ?? null,
+														evidenceUrl: action.evidenceUrl,
+													})
+												}
 													className="flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
 												>
 													<Flame className="h-3 w-3" />
@@ -178,6 +180,7 @@ export function DecisionSupport({ data, isStreaming, onAction }: DecisionSupport
 											onAction?.("selectAction", {
 												actionId: action.id,
 												action: action.action,
+												annotationId: action.annotationId ?? null,
 												priority: index + 1,
 												evidenceUrl: action.evidenceUrl ?? null,
 											})
@@ -192,6 +195,7 @@ export function DecisionSupport({ data, isStreaming, onAction }: DecisionSupport
 											onAction?.("markCommitted", {
 												actionId: action.id,
 												action: action.action,
+												annotationId: action.annotationId ?? null,
 											})
 										}
 									>

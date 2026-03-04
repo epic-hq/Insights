@@ -1,10 +1,16 @@
-import { Link, type LinksFunction } from "react-router";
+import { Link, type LinksFunction, type MetaFunction } from "react-router";
+import { canonicalLink, indexRobotsMeta } from "../seo";
 
-export const links: LinksFunction = () => [
+export const links: LinksFunction = () => [canonicalLink("/about")];
+
+export const meta: MetaFunction = () => [
+	{ title: "About UpSight | Know Your Customers, Serve Them Better" },
 	{
-		rel: "canonical",
-		href: "https://getupsight.com/about",
+		name: "description",
+		content:
+			"Learn the mission behind UpSight and how we help teams engage the right customers, understand evidence, and serve them better.",
 	},
+	indexRobotsMeta(),
 ];
 
 const ROLES = [

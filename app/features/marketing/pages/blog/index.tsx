@@ -4,6 +4,7 @@ import { Link, useLoaderData } from "react-router";
 import type { PayloadPost } from "~/lib/cms/payload.server";
 import { getPosts } from "~/lib/cms/payload.server";
 import { formatDate, getReadingTime } from "~/lib/cms/utils";
+import { canonicalLink, indexRobotsMeta } from "../../seo";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -25,15 +26,11 @@ export const meta: MetaFunction = () => {
 		},
 		{ property: "og:type", content: "website" },
 		{ property: "og:url", content: "https://getupsight.com/blog" },
+		indexRobotsMeta(),
 	];
 };
 
-export const links: LinksFunction = () => [
-	{
-		rel: "canonical",
-		href: "https://getupsight.com/blog",
-	},
-];
+export const links: LinksFunction = () => [canonicalLink("/blog")];
 
 // Format post data on the server
 interface PayloadImageVariant {

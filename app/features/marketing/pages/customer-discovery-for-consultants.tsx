@@ -2,6 +2,7 @@ import { ArrowRight, Briefcase, CheckCircle2, CircleAlert, Clock3, DollarSign, Q
 import type { LinksFunction, MetaFunction } from "react-router";
 import { Link } from "react-router";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion";
+import { canonicalLink, indexRobotsMeta } from "../seo";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -27,15 +28,11 @@ export const meta: MetaFunction = () => {
 			property: "og:url",
 			content: "https://getupsight.com/customer-discovery-for-consultants",
 		},
+		indexRobotsMeta(),
 	];
 };
 
-export const links: LinksFunction = () => [
-	{
-		rel: "canonical",
-		href: "https://getupsight.com/customer-discovery-for-consultants",
-	},
-];
+export const links: LinksFunction = () => [canonicalLink("/customer-discovery-for-consultants")];
 
 const consultantFlow = [
 	{

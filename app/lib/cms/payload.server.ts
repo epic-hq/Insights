@@ -225,3 +225,25 @@ export async function getAllPostSlugs(): Promise<string[]> {
 	const data = await handleResponse<PayloadResponse<PayloadPost>>(response);
 	return data.docs.map((post) => post.slug);
 }
+
+/**
+ * Get all case study slugs for sitemap generation
+ */
+export async function getAllCaseStudySlugs(): Promise<string[]> {
+	const env = getServerEnv();
+
+	const queryString = stringify(
+		{
+			limit: 1000,
+			sort: "-publishedAt",
+		},
+		{ addQueryPrefix: true }
+	);
+
+	const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/case-studies${queryString}`, {
+		headers: getHeaders(),
+	});
+
+	const data = await handleResponse<PayloadResponse<PayloadPost>>(response);
+	return data.docs.map((post) => post.slug).filter((slug): slug is string => typeof slug === "string" && slug.length > 0);
+}

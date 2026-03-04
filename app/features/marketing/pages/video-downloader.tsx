@@ -7,6 +7,7 @@
 
 import type { LinksFunction, MetaFunction } from "react-router";
 import MarketingNav from "~/components/navigation/MarketingNav";
+import { canonicalLink, indexRobotsMeta } from "../seo";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -16,15 +17,11 @@ export const meta: MetaFunction = () => {
 			content:
 				"Download call recordings from Apollo.io with one click. Drag the bookmarklet to your bookmarks bar and download videos from any Apollo share link.",
 		},
+		indexRobotsMeta(),
 	];
 };
 
-export const links: LinksFunction = () => [
-	{
-		rel: "canonical",
-		href: "https://getupsight.com/video-downloader",
-	},
-];
+export const links: LinksFunction = () => [canonicalLink("/video-downloader")];
 
 // The bookmarklet JS — minified into a javascript: URL
 // What it does:

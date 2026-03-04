@@ -13,13 +13,11 @@ import { Link, type LinksFunction, type MetaFunction } from "react-router";
 import MarketingNav from "~/components/navigation/MarketingNav";
 import { usePostHogExperiment } from "~/hooks/usePostHogExperiment";
 import { PATHS } from "~/paths";
+import { canonicalLink, indexRobotsMeta } from "../seo";
 import "./landing.css";
 
 export const links: LinksFunction = () => [
-	{
-		rel: "canonical",
-		href: "https://getupsight.com",
-	},
+	canonicalLink("/"),
 	{
 		rel: "preload",
 		href: "/images/hero/crowd-1280.avif",
@@ -50,6 +48,7 @@ export const meta: MetaFunction = () => [
 		content:
 			"AI-powered customer research platform — surveys, conversation analysis, and customer interviews for product, research, and sales teams. Turn conversations into evidence your whole team can act on.",
 	},
+	indexRobotsMeta(),
 ];
 
 // ---------------------------------------------------------------------------
