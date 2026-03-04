@@ -112,6 +112,15 @@ export interface UseOptimisticFormReturn {
 	errors: Record<string, string> | undefined;
 }
 
+function fieldValuesEqual(a: unknown, b: unknown): boolean {
+	if (Object.is(a, b)) return true;
+	try {
+		return JSON.stringify(a) === JSON.stringify(b);
+	} catch {
+		return false;
+	}
+}
+
 export function useOptimisticForm(
 	loaderFields: SurveyFormFields,
 	{ debounceMs = 1000, savedDisplayMs = 2000 }: UseOptimisticFormOptions = {}
@@ -149,16 +158,24 @@ export function useOptimisticForm(
 			if (fetcher.data.errors) {
 				setStatus("error");
 			} else {
-				// Save succeeded — only clear fields the user hasn't touched since submission.
-				// This prevents cursor jumps and whitespace stripping while actively typing.
+				// Save succeeded — only clear entries if loader has already caught up.
+				// If we clear too early, UI can "snap back" to stale loader values.
 				setDirtyMap((prev) => {
+					let changed = false;
 					const next: Partial<SurveyFormFields> = {};
 					for (const key of Object.keys(prev) as Array<keyof SurveyFormFields>) {
-						if (prev[key] !== submittedSnapshotRef.current[key]) {
-							// User edited this field after we submitted — keep it dirty
-							(next as Record<string, unknown>)[key] = prev[key];
+						const currentValue = prev[key];
+						const submittedValue = submittedSnapshotRef.current[key];
+						const loaderValue = loaderFieldsRef.current[key];
+						const changedSinceSubmit = !fieldValuesEqual(currentValue, submittedValue);
+						const loaderCaughtUp = fieldValuesEqual(loaderValue, currentValue);
+						if (changedSinceSubmit || !loaderCaughtUp) {
+							(next as Record<string, unknown>)[key] = currentValue;
+							continue;
 						}
+						changed = true;
 					}
+					if (!changed) return prev;
 					dirtyMapRef.current = next;
 					return next;
 				});
@@ -171,6 +188,24 @@ export function useOptimisticForm(
 			setStatus((prev) => (prev === "saving" ? "idle" : prev));
 		}
 	}, [fetcher.state, fetcher.data, savedDisplayMs]);
+
+	// Clear dirty entries lazily as loader data catches up after action revalidation.
+	useEffect(() => {
+		setDirtyMap((prev) => {
+			let changed = false;
+			const next: Partial<SurveyFormFields> = {};
+			for (const key of Object.keys(prev) as Array<keyof SurveyFormFields>) {
+				if (fieldValuesEqual(prev[key], loaderFields[key])) {
+					changed = true;
+					continue;
+				}
+				(next as Record<string, unknown>)[key] = prev[key];
+			}
+			if (!changed) return prev;
+			dirtyMapRef.current = next;
+			return next;
+		});
+	}, [loaderFields]);
 
 	const submitAll = useCallback(() => {
 		// Snapshot dirty entries so we can tell on success whether the user
