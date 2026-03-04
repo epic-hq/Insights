@@ -1244,7 +1244,7 @@ interface SavedAiAnalysis {
 
 interface QuestionListEditorProps {
 	questions: ResearchLinkQuestion[];
-	onChange: (next: ResearchLinkQuestion[]) => void;
+	onChange: (next: ResearchLinkQuestion[] | ((previous: ResearchLinkQuestion[]) => ResearchLinkQuestion[])) => void;
 	/** Required for media recording/upload functionality */
 	listId?: string;
 	/** Saved AI analysis data from loader */
@@ -1318,9 +1318,9 @@ export function QuestionListEditor({
 
 	const dispatchQuestionAction = useCallback(
 		(action: QuestionEditorAction) => {
-			onChange(applyQuestionEditorAction(questions, action));
+			onChange((previousQuestions) => applyQuestionEditorAction(previousQuestions, action));
 		},
-		[onChange, questions]
+		[onChange]
 	);
 
 	const updateQuestion = useCallback(
