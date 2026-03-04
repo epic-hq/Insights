@@ -245,6 +245,38 @@ test.describe("Dialog/Sheet portal dismiss protection", () => {
       const questionText = page.locator('text="What is your favorite color?"');
       await expect(questionText).toBeVisible({ timeout: 3000 });
     });
+
+    test("helper text is stable while autosave runs", async ({ page }) => {
+      await page.click('button:has-text("Add question")');
+      await page.waitForTimeout(500);
+
+      const drawer = page.locator('[data-slot="sheet-content"]');
+      await expect(drawer).toBeVisible({ timeout: 3000 });
+
+      const promptArea = drawer.locator(
+        'textarea[placeholder*="What would you like to ask"]',
+      );
+      await promptArea.fill("How do you currently solve this problem?");
+      await page.waitForTimeout(300);
+
+      const helperInput = drawer.locator(
+        'input[placeholder*="Optional hint shown below the question"]',
+      );
+      await expect(helperInput).toBeVisible({ timeout: 2000 });
+
+      const helperText = "Please include one concrete example.";
+      await helperInput.click();
+      await helperInput.type(helperText, { delay: 40 });
+      await expect(helperInput).toHaveValue(helperText);
+
+      // Wait long enough for autosave to run and potential revalidation churn.
+      await page.waitForTimeout(1800);
+      await expect(helperInput).toHaveValue(helperText);
+
+      await helperInput.blur();
+      await page.waitForTimeout(1200);
+      await expect(helperInput).toHaveValue(helperText);
+    });
   });
 
   test.describe("Task Create Modal — Select + Popover inside Dialog", () => {
