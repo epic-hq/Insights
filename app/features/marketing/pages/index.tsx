@@ -522,11 +522,7 @@ export default function LandingPage() {
 						style={{ maxWidth: "600px" }}
 					>
 						{USE_CASE_CHIPS.map((chip) => (
-							<a
-								key={chip.label}
-								href={chip.href}
-								className="lp-use-case-chip"
-							>
+							<a key={chip.label} href={chip.href} className="lp-use-case-chip">
 								{chip.label}
 							</a>
 						))}
@@ -712,8 +708,8 @@ export default function LandingPage() {
 							}}
 						>
 							AI-powered survey
-						</Link>
-						{" "}or analyze a{" "}
+						</Link>{" "}
+						or analyze a{" "}
 						<Link
 							to={`${PATHS.AUTH.REGISTER}?plan=pro`}
 							className="font-semibold underline underline-offset-4"

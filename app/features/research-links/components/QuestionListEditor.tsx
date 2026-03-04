@@ -162,6 +162,57 @@ function questionTypeLabel(type: string): string {
 	return labels[type] ?? type;
 }
 
+function normalizeInsightText(value: string): string {
+	return value
+		.toLowerCase()
+		.replace(/["'`]/g, "")
+		.replace(/[^a-z0-9]+/g, " ")
+		.trim();
+}
+
+function hasNumericSignal(value: string): boolean {
+	return /\b\d+(?:\.\d+)?%?\b/.test(value);
+}
+
+function sanitizeInsight(insight: AiQuestionInsight | undefined, responseCount: number): AiQuestionInsight | undefined {
+	if (!insight) return undefined;
+
+	const distribution = (insight.answer_distribution ?? []).filter((item) => item.answer?.trim());
+	const labelSet = new Set(distribution.map((item) => normalizeInsightText(item.answer)));
+	const findings = (insight.key_findings ?? [])
+		.map((finding) => finding.trim())
+		.filter(Boolean)
+		.filter((finding) => {
+			const normalized = normalizeInsightText(finding);
+			return normalized.length > 4 && !labelSet.has(normalized);
+		});
+	const dedupedFindings = [...new Set(findings)];
+
+	if (dedupedFindings.length === 0 && distribution.length > 0) {
+		const top = distribution[0];
+		if (top) {
+			dedupedFindings.push(
+				`${top.count} of ${Math.max(responseCount, top.count)} responses (${top.percentage}%) selected "${top.answer}".`
+			);
+		}
+	}
+
+	let summary = insight.summary?.trim() ?? "";
+	if ((!summary || !hasNumericSignal(summary)) && distribution.length > 0) {
+		const top = distribution[0];
+		if (top) {
+			summary = `Top response was "${top.answer}" at ${top.percentage}% (${top.count} of ${Math.max(responseCount, top.count)} responses).`;
+		}
+	}
+
+	return {
+		...insight,
+		summary,
+		key_findings: dedupedFindings,
+		answer_distribution: distribution,
+	};
+}
+
 /**
  * Response Insights section for the question edit drawer.
  * Shows AI analysis results, key findings, and staleness info.
@@ -171,11 +222,13 @@ function DrawerInsightsSection({
 	responseCount,
 	newSinceAnalysis,
 	listId,
+	onDetailedAnalysis,
 }: {
 	aiInsight?: AiQuestionInsight;
 	responseCount: number;
 	newSinceAnalysis: number;
 	listId?: string;
+	onDetailedAnalysis?: (result: SavedAiAnalysis["result"]) => void;
 }) {
 	const { accountId, projectId } = useParams();
 	const revalidator = useRevalidator();
@@ -190,7 +243,11 @@ function DrawerInsightsSection({
 			fd.set("listId", listId);
 			fd.set("mode", "detailed");
 			const res = await fetch(`/a/${accountId}/${projectId}/ask/api/analyze-responses`, { method: "POST", body: fd });
+			const data = (await res.json()) as { mode?: string; result?: SavedAiAnalysis["result"] };
 			if (!res.ok) throw new Error("Analysis failed");
+			if (data.mode === "detailed" && data.result) {
+				onDetailedAnalysis?.(data.result);
+			}
 			toast.success("Analysis complete");
 			revalidator.revalidate();
 		} catch {
@@ -367,6 +424,7 @@ function QuestionEditDrawer({
 	responseCount,
 	newSinceAnalysis,
 	coachingFlag,
+	onDetailedAnalysis,
 }: {
 	question: ResearchLinkQuestion;
 	questions: ResearchLinkQuestion[];
@@ -381,6 +439,7 @@ function QuestionEditDrawer({
 	responseCount?: number;
 	newSinceAnalysis?: number;
 	coachingFlag?: { issue: string; summary: string; alternatives: string[] };
+	onDetailedAnalysis?: (result: SavedAiAnalysis["result"]) => void;
 }) {
 	// Image upload state
 	const [uploadingImageKey, setUploadingImageKey] = useState<string | null>(null);
@@ -389,6 +448,82 @@ function QuestionEditDrawer({
 		questionId: string;
 		optionIndex: number;
 	} | null>(null);
+	const [draft, setDraft] = useState<ResearchLinkQuestion>(question);
+	const draftRef = useRef<ResearchLinkQuestion>(question);
+	const pendingQuestionUpdateRef = useRef<Partial<ResearchLinkQuestion> | null>(null);
+	const pendingQuestionUpdateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const commitQuestionUpdates = useCallback(
+		(updates: Partial<ResearchLinkQuestion>) => {
+			updateQuestion(question.id, updates);
+		},
+		[question.id, updateQuestion]
+	);
+
+	const flushPendingQuestionUpdates = useCallback(() => {
+		if (pendingQuestionUpdateTimerRef.current) {
+			clearTimeout(pendingQuestionUpdateTimerRef.current);
+			pendingQuestionUpdateTimerRef.current = null;
+		}
+		const pending = pendingQuestionUpdateRef.current;
+		if (!pending) return;
+		pendingQuestionUpdateRef.current = null;
+		commitQuestionUpdates(pending);
+	}, [commitQuestionUpdates]);
+
+	const applyDraftUpdates = useCallback(
+		(updates: Partial<ResearchLinkQuestion>, mode: "immediate" | "debounced" = "immediate") => {
+			setDraft((prev) => {
+				const next = { ...prev, ...updates };
+				draftRef.current = next;
+				return next;
+			});
+
+			if (mode === "debounced") {
+				pendingQuestionUpdateRef.current = {
+					...(pendingQuestionUpdateRef.current ?? {}),
+					...updates,
+				};
+				if (pendingQuestionUpdateTimerRef.current) {
+					clearTimeout(pendingQuestionUpdateTimerRef.current);
+				}
+				pendingQuestionUpdateTimerRef.current = setTimeout(() => {
+					const pending = pendingQuestionUpdateRef.current;
+					pendingQuestionUpdateRef.current = null;
+					pendingQuestionUpdateTimerRef.current = null;
+					if (pending) {
+						commitQuestionUpdates(pending);
+					}
+				}, 300);
+				return;
+			}
+
+			flushPendingQuestionUpdates();
+			commitQuestionUpdates(updates);
+		},
+		[commitQuestionUpdates, flushPendingQuestionUpdates]
+	);
+
+	useEffect(() => {
+		setDraft(question);
+		draftRef.current = question;
+		pendingQuestionUpdateRef.current = null;
+		if (pendingQuestionUpdateTimerRef.current) {
+			clearTimeout(pendingQuestionUpdateTimerRef.current);
+			pendingQuestionUpdateTimerRef.current = null;
+		}
+	}, [question.id, isOpen, question]);
+
+	useEffect(
+		() => () => {
+			if (pendingQuestionUpdateTimerRef.current) {
+				clearTimeout(pendingQuestionUpdateTimerRef.current);
+				pendingQuestionUpdateTimerRef.current = null;
+			}
+			pendingQuestionUpdateRef.current = null;
+		},
+		[]
+	);
 
 	const handleImageUpload = useCallback(
 		async (file: File, questionId: string, optionIndex: number) => {
@@ -401,13 +536,14 @@ function QuestionEditDrawer({
 				const response = await fetch("/api/upload-image?category=survey-images", { method: "POST", body: formData });
 				const result = await response.json();
 				if (!response.ok || !result.success) throw new Error(result.error || "Upload failed");
-				if (question.imageOptions) {
-					const nextOptions = [...question.imageOptions];
+				const currentImageOptions = draftRef.current.imageOptions;
+				if (currentImageOptions) {
+					const nextOptions = [...currentImageOptions];
 					nextOptions[optionIndex] = {
 						...nextOptions[optionIndex],
 						imageUrl: result.url,
 					};
-					updateQuestion(questionId, { imageOptions: nextOptions });
+					applyDraftUpdates({ imageOptions: nextOptions });
 				}
 			} catch (err) {
 				console.error("Image upload failed:", err);
@@ -415,38 +551,22 @@ function QuestionEditDrawer({
 				setUploadingImageKey(null);
 			}
 		},
-		[question, updateQuestion]
+		[applyDraftUpdates]
 	);
 
 	// Get the effective media URL (prefer mediaUrl, fall back to videoUrl)
-	const effectiveMediaUrl = question.mediaUrl ?? question.videoUrl ?? null;
-	const [promptDraft, setPromptDraft] = useState(question.prompt);
-	const [helperTextDraft, setHelperTextDraft] = useState(question.helperText ?? "");
-	const [mediaUrlDraft, setMediaUrlDraft] = useState(effectiveMediaUrl ?? "");
-	const [isEditingPrompt, setIsEditingPrompt] = useState(false);
-	const [isEditingHelperText, setIsEditingHelperText] = useState(false);
-	const [isEditingMediaUrl, setIsEditingMediaUrl] = useState(false);
-
-	useEffect(() => {
-		if (!isEditingPrompt) {
-			setPromptDraft(question.prompt);
-		}
-	}, [question.prompt, isEditingPrompt]);
-
-	useEffect(() => {
-		if (!isEditingHelperText) {
-			setHelperTextDraft(question.helperText ?? "");
-		}
-	}, [question.helperText, isEditingHelperText]);
-
-	useEffect(() => {
-		if (!isEditingMediaUrl) {
-			setMediaUrlDraft(effectiveMediaUrl ?? "");
-		}
-	}, [effectiveMediaUrl, isEditingMediaUrl]);
+	const effectiveMediaUrl = draft.mediaUrl ?? draft.videoUrl ?? null;
 
 	return (
-		<Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+		<Sheet
+			open={isOpen}
+			onOpenChange={(open) => {
+				if (!open) {
+					flushPendingQuestionUpdates();
+					onClose();
+				}
+			}}
+		>
 			<SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
 				<SheetHeader>
 					<SheetTitle className="flex items-center gap-2">
@@ -466,6 +586,7 @@ function QuestionEditDrawer({
 							responseCount={responseCount ?? 0}
 							newSinceAnalysis={newSinceAnalysis ?? 0}
 							listId={listId}
+							onDetailedAnalysis={onDetailedAnalysis}
 						/>
 					)}
 
@@ -1052,6 +1173,7 @@ interface AiQuestionInsight {
 	key_findings: string[];
 	common_answers?: string[];
 	notable_outliers: string[];
+	questionId?: string | null;
 }
 
 /** Parsed shape of the saved ai_analysis JSONB */
@@ -1088,19 +1210,36 @@ export function QuestionListEditor({
 	const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
 	const [hoveredQuestionId, setHoveredQuestionId] = useState<string | null>(null);
 	const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const [localDetailedResult, setLocalDetailedResult] = useState<SavedAiAnalysis["result"] | null>(null);
 
 	// AI analysis helpers
 	const parsedAnalysis = aiAnalysis as SavedAiAnalysis | null | undefined;
-	const questionInsights = parsedAnalysis?.result?.question_insights;
+	const effectiveResult = localDetailedResult ?? parsedAnalysis?.result;
+	const questionInsights = effectiveResult?.question_insights;
 	const questionDropoff = parsedAnalysis?.questionDropoff;
 	const analysisResponseCount = parsedAnalysis?.responseCountAtAnalysis ?? 0;
 	const newSinceAnalysis = (responseCount ?? 0) - analysisResponseCount;
 
-	/** Match a question to its AI insight by text or index */
-	const getQuestionInsight = (questionText: string, questionIndex: number) => {
-		if (!questionInsights) return undefined;
-		if (questionInsights[questionIndex]) return questionInsights[questionIndex];
-		return questionInsights.find((qi) => qi.question.toLowerCase().includes(questionText.toLowerCase().slice(0, 40)));
+	useEffect(() => {
+		setLocalDetailedResult(null);
+	}, [parsedAnalysis?.updatedAt]);
+
+	/** Match a question to its AI insight by id/text/index with defensive fallback */
+	const getQuestionInsight = (question: ResearchLinkQuestion, questionIndex: number) => {
+		if (!questionInsights || questionInsights.length === 0) return undefined;
+		const normalizedPrompt = normalizeInsightText(question.prompt);
+		const byId = questionInsights.find((qi) => qi.questionId === question.id);
+		const byExactText = normalizedPrompt
+			? questionInsights.find((qi) => normalizeInsightText(qi.question) === normalizedPrompt)
+			: undefined;
+		const byContainsText = normalizedPrompt
+			? questionInsights.find((qi) => {
+					const normalizedInsight = normalizeInsightText(qi.question);
+					return normalizedInsight.includes(normalizedPrompt) || normalizedPrompt.includes(normalizedInsight);
+				})
+			: undefined;
+		const byIndex = questionInsights[questionIndex];
+		return sanitizeInsight(byId ?? byExactText ?? byContainsText ?? byIndex, responseCount ?? 0);
 	};
 
 	// Coaching state
@@ -1356,7 +1495,7 @@ export function QuestionListEditor({
 									questionType={question.type}
 									listId={listId}
 									isVisible={hoveredQuestionId === question.id}
-									aiInsight={getQuestionInsight(question.prompt, index)}
+									aiInsight={getQuestionInsight(question, index)}
 								/>
 							)}
 						</motion.div>
@@ -1377,10 +1516,11 @@ export function QuestionListEditor({
 					updateQuestion={updateQuestion}
 					removeQuestion={removeQuestion}
 					moveQuestion={moveQuestion}
-					aiInsight={getQuestionInsight(selectedQuestion.prompt, selectedIndex)}
+					aiInsight={getQuestionInsight(selectedQuestion, selectedIndex)}
 					responseCount={responseCount}
 					newSinceAnalysis={newSinceAnalysis}
 					coachingFlag={coachingFlags.get(selectedIndex + 1)}
+					onDetailedAnalysis={(result) => setLocalDetailedResult(result ?? null)}
 				/>
 			)}
 		</UnifiedQuestionList>

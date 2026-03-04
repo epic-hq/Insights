@@ -11,32 +11,32 @@
  */
 
 const TIME_BY_TYPE: Record<string, number> = {
-  short_text: 20,
-  long_text: 60,
-  single_select: 15,
-  multi_select: 20,
-  likert: 12,
-  image_select: 25,
-  auto: 30,
+	short_text: 20,
+	long_text: 60,
+	single_select: 15,
+	multi_select: 20,
+	likert: 12,
+	image_select: 25,
+	auto: 30,
 };
 
 /** Estimated seconds to complete a single question */
 export function estimateQuestionSeconds(type: string): number {
-  return TIME_BY_TYPE[type] ?? 30;
+	return TIME_BY_TYPE[type] ?? 30;
 }
 
 /** Estimated total seconds for a list of question types */
 export function estimateTotalSeconds(types: string[]): number {
-  return types.reduce((sum, t) => sum + estimateQuestionSeconds(t), 0);
+	return types.reduce((sum, t) => sum + estimateQuestionSeconds(t), 0);
 }
 
 /** Format seconds as human-readable "~Xm" or "~Xs" */
 export function formatEstimate(seconds: number): string {
-  if (seconds >= 60) {
-    const mins = Math.round(seconds / 60);
-    return `~${mins} min`;
-  }
-  return `~${seconds}s`;
+	if (seconds >= 60) {
+		const mins = Math.round(seconds / 60);
+		return `~${mins} min`;
+	}
+	return `~${seconds}s`;
 }
 
 /** Threshold in seconds beyond which we warn about survey length */

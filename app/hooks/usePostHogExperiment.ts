@@ -15,7 +15,7 @@ let sharedInstance: import("posthog-js").PostHog | null = null;
 
 export function usePostHogExperiment(
 	flagKey: string,
-	defaultVariant = "control",
+	defaultVariant = "control"
 ): { variant: string; isLoading: boolean } {
 	const [variant, setVariant] = useState(defaultVariant);
 	const [isLoading, setIsLoading] = useState(true);
