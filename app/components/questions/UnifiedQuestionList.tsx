@@ -30,6 +30,8 @@ export interface UnifiedQuestionListProps {
 	hasBeenCoached?: boolean;
 	/** Optional footer content (e.g. validation errors) */
 	footer?: ReactNode;
+	/** Show the standard Add/Copy action bar */
+	showActionBar?: boolean;
 	/** Optional className */
 	className?: string;
 }
@@ -45,6 +47,7 @@ export function UnifiedQuestionList({
 	isCoaching = false,
 	hasBeenCoached = false,
 	footer,
+	showActionBar = true,
 	className,
 }: UnifiedQuestionListProps) {
 	const totalSeconds = questionTypes ? estimateTotalSeconds(questionTypes) : 0;
@@ -135,28 +138,30 @@ export function UnifiedQuestionList({
 			{children}
 
 			{/* Action bar: Add + Copy */}
-			<div className="mt-2 flex items-center gap-2">
-				<Button
-					type="button"
-					variant="outline"
-					size="sm"
-					className="flex-1 border-border/60 border-dashed bg-muted/20 text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground"
-					onClick={onAdd}
-				>
-					<Plus className="mr-1.5 h-3.5 w-3.5" /> Add question
-				</Button>
-				{count > 0 && onCopy && (
+			{showActionBar && (
+				<div className="mt-2 flex items-center gap-2">
 					<Button
 						type="button"
-						variant="ghost"
+						variant="outline"
 						size="sm"
-						className="shrink-0 text-muted-foreground hover:text-foreground"
-						onClick={onCopy}
+						className="flex-1 border-border/60 border-dashed bg-muted/20 text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground"
+						onClick={onAdd}
 					>
-						<ClipboardCopy className="mr-1.5 h-3.5 w-3.5" /> Copy
+						<Plus className="mr-1.5 h-3.5 w-3.5" /> Add question
 					</Button>
-				)}
-			</div>
+					{count > 0 && onCopy && (
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="shrink-0 text-muted-foreground hover:text-foreground"
+							onClick={onCopy}
+						>
+							<ClipboardCopy className="mr-1.5 h-3.5 w-3.5" /> Copy
+						</Button>
+					)}
+				</div>
+			)}
 
 			{footer}
 		</div>

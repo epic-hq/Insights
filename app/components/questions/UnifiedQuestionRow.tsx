@@ -4,7 +4,7 @@
  * Context-specific metadata (category tag, type badge, time, etc.) passed via slots.
  */
 import { GripVertical } from "lucide-react";
-import type { ReactNode } from "react";
+import type { HTMLAttributes, MouseEventHandler, ReactNode } from "react";
 import { Badge } from "~/components/ui/badge";
 import { cn } from "~/lib/utils";
 
@@ -16,15 +16,19 @@ export interface UnifiedQuestionRowProps {
 	/** Whether this row is currently selected/active */
 	isSelected?: boolean;
 	/** Click handler (typically opens drawer) */
-	onClick?: () => void;
+	onClick?: MouseEventHandler<HTMLButtonElement | HTMLDivElement>;
+	/** Render as non-button container when nested interactive controls are needed */
+	as?: "button" | "div";
 	/** Drag handle render prop — pass DnD handle props here */
-	dragHandleProps?: Record<string, unknown>;
+	dragHandleProps?: unknown;
 	/** Optional coaching flag color */
 	flag?: "green" | "amber" | "red";
 	/** Whether to show the row as highlighted (e.g. newly inserted) */
 	highlighted?: boolean;
 	/** Right-side metadata slots */
 	children?: ReactNode;
+	/** Optional custom content for the main text area (e.g. inline editor) */
+	textSlot?: ReactNode;
 	/** Optional className override */
 	className?: string;
 	/** Optional drop-off completion percentage (0-100) — renders a vertical bar on the right edge */
@@ -36,29 +40,20 @@ export function UnifiedQuestionRow({
 	text,
 	isSelected,
 	onClick,
+	as = "button",
 	dragHandleProps,
 	flag,
 	highlighted,
 	children,
+	textSlot,
 	className,
 	dropoff,
 }: UnifiedQuestionRowProps) {
-	return (
-		<button
-			type="button"
-			onClick={onClick}
-			className={cn(
-				"group relative flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left transition-all",
-				isSelected
-					? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
-					: "border-border/40 bg-background hover:border-border/80 hover:bg-muted/30",
-				highlighted && "border-green-500/40 bg-green-500/5",
-				className
-			)}
-		>
+	const content = (
+		<>
 			{/* Drag handle */}
 			<span
-				{...(dragHandleProps as React.HTMLAttributes<HTMLSpanElement>)}
+				{...((dragHandleProps ?? {}) as HTMLAttributes<HTMLSpanElement>)}
 				className="shrink-0 cursor-grab text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100"
 			>
 				<GripVertical className="h-4 w-4" />
@@ -81,18 +76,45 @@ export function UnifiedQuestionRow({
 				/>
 			)}
 
-			{/* Question text */}
-			<span
-				className={cn("min-w-0 flex-1 truncate text-sm", text ? "text-foreground" : "text-muted-foreground italic")}
-			>
-				{text || "Untitled question"}
-			</span>
+			{/* Question text / editor slot */}
+			{textSlot ? (
+				<span className="min-w-0 flex-1">{textSlot}</span>
+			) : (
+				<span
+					className={cn("min-w-0 flex-1 truncate text-sm", text ? "text-foreground" : "text-muted-foreground italic")}
+				>
+					{text || "Untitled question"}
+				</span>
+			)}
 
 			{/* Right-side metadata (badges, time, indicators) */}
 			{children && <div className="flex shrink-0 items-center gap-1.5">{children}</div>}
 
 			{/* Drop-off bar — thin vertical bar on right edge */}
 			{dropoff && <DropoffBar completionPct={dropoff.completionPct} />}
+		</>
+	);
+
+	const classes = cn(
+		"group relative flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left transition-all",
+		isSelected
+			? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
+			: "border-border/40 bg-background hover:border-border/80 hover:bg-muted/30",
+		highlighted && "border-green-500/40 bg-green-500/5",
+		className
+	);
+
+	if (as === "div") {
+		return (
+			<div onClick={onClick} className={classes}>
+				{content}
+			</div>
+		);
+	}
+
+	return (
+		<button type="button" onClick={onClick} className={classes}>
+			{content}
 		</button>
 	);
 }

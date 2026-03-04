@@ -10,7 +10,6 @@ import {
 	EyeOff,
 	Filter,
 	Flag,
-	GripVertical,
 	HelpCircle,
 	MessageCircleQuestion,
 	MoreHorizontal,
@@ -27,6 +26,12 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { createQuestionQueueStore, useQuestionQueueStore } from "~/components/questions/stores/questionQueueStore";
 import type { Question } from "~/components/questions/types";
+import { UnifiedQuestionList } from "~/components/questions/UnifiedQuestionList";
+import {
+	QuestionCategoryBadge,
+	QuestionTimeEstimate,
+	UnifiedQuestionRow,
+} from "~/components/questions/UnifiedQuestionRow";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -2404,461 +2409,452 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 						</div>
 					)}
 
-					<DragDropContext onDragEnd={onDragEnd}>
-						<Droppable droppableId="question-pack">
-							{(provided) => (
-								<div className="space-y-3" {...provided.droppableProps} ref={provided.innerRef}>
-									{questionPack.questions.map((question, index) => {
-										const isFirstOverflow = index === questionPack.overflowIndex;
-										const cat = questionCategories.find((c) => c.id === question.categoryId);
+					<UnifiedQuestionList count={questionPack.questions.length} onAdd={_addCustomQuestion} showActionBar={false}>
+						<DragDropContext onDragEnd={onDragEnd}>
+							<Droppable droppableId="question-pack">
+								{(provided) => (
+									<div className="space-y-3" {...provided.droppableProps} ref={provided.innerRef}>
+										{questionPack.questions.map((question, index) => {
+											const isFirstOverflow = index === questionPack.overflowIndex;
+											const cat = questionCategories.find((c) => c.id === question.categoryId);
+											const questionMinutes = Math.max(1, Math.round(question.estimatedMinutes || 3));
+											const qualityDot =
+												question.qualityFlag?.assessment === "yellow"
+													? ("amber" as const)
+													: question.qualityFlag?.assessment === "green"
+														? ("green" as const)
+														: question.qualityFlag?.assessment === "red"
+															? ("red" as const)
+															: undefined;
+											const isEditing = editingId === question.id;
 
-										return (
-											<React.Fragment key={question.id}>
-												{isFirstOverflow && (
-													<div className="mt-6 border-orange-300 border-t-2 border-dashed pt-4">
-														<div className="mb-4 flex items-center gap-2">
-															<Clock className="h-4 w-4 text-orange-600" />
-															<span className="font-medium text-orange-600 text-sm">
-																Questions below may not fit in your {timeMinutes}-minute time limit
-															</span>
-														</div>
-													</div>
-												)}
-
-												<Draggable draggableId={question.id} index={index}>
-													{(provided, snapshot) => (
-														<div
-															ref={provided.innerRef}
-															{...provided.draggableProps}
-															className={`${snapshot.isDragging ? "opacity-50" : ""}`}
-														>
-															<Card
-																className={`border-l-4 p-1 shadow-sm transition-all ${recentlyAddedQuestionIds.includes(question.id) ? "border-l-green-500 bg-green-50" : "border-l-gray-200"}`}
-															>
-																<CardContent className="p-2">
-																	<div className="flex items-start gap-3">
-																		<div className="flex items-start gap-2">
-																			<div {...provided.dragHandleProps}>
-																				<GripVertical className="mt-0.5 h-4 w-4 cursor-grab text-gray-400 hover:text-gray-600 active:cursor-grabbing" />
-																			</div>
-																			<div className="mt-0.5 min-w-[1.5rem] font-medium text-foreground/60 text-sm">
-																				{index + 1}.
-																			</div>
-																		</div>
-																		<div className="min-w-0 flex-1">
-																			{editingId === question.id ? (
-																				<div className="mb-2 flex items-center gap-2">
-																					<Textarea
-																						value={editingText}
-																						onChange={(e) => setEditingText(e.target.value)}
-																						autoFocus
-																						rows={2}
-																						className="resize-none"
-																					/>
-																					<div className="flex flex-col gap-2">
-																						<Button
-																							variant="ghost"
-																							size="icon"
-																							onClick={async () => {
-																								try {
-																									setEvaluatingId(question.id);
-																									const quality = isEvalEnabled
-																										? await evaluateQuestionQuality(editingText)
-																										: null;
-
-																									// Use PATCH API to update the question text
-																									const response = await fetch(`/api/questions/${question.id}`, {
-																										method: "PATCH",
-																										headers: {
-																											"Content-Type": "application/json",
-																										},
-																										body: JSON.stringify({
-																											text: editingText,
-																											table: "interview_prompts",
-																										}),
-																									});
-
-																									if (!response.ok) {
-																										const error = await response.json();
-																										throw new Error(error.error || "Failed to update question");
-																									}
-
-																									const result = await response.json();
-																									if (result.success) {
-																										// Update local state with the saved text
-																										const updated = questions.map((q) =>
-																											q.id === question.id
-																												? {
-																														...q,
-																														text: editingText,
-																														qualityFlag: quality ?? undefined,
-																													}
-																												: q
-																										);
-																										setQuestions(updated);
-																										toast.success("Question updated successfully");
-																									}
-
-																									setEditingId(null);
-																									setEditingText("");
-																									setEvaluatingId(null);
-																								} catch (error) {
-																									console.error("Failed to update question:", error);
-																									toast.error("Failed to update question", {
-																										description:
-																											error instanceof Error ? error.message : "Please try again",
-																									});
-																									setEvaluatingId(null);
-																								}
-																							}}
-																							className="text-green-600"
-																						>
-																							{evaluatingId === question.id ? (
-																								<div className="h-4 w-4 animate-spin rounded-full border-current border-b-2" />
-																							) : (
-																								<Check className="h-4 w-4" />
-																							)}
-																						</Button>
-																						<Button
-																							variant="ghost"
-																							size="icon"
-																							onClick={() => {
-																								setEditingId(null);
-																								setEditingText("");
-																							}}
-																							className="text-gray-500"
-																						>
-																							<X className="h-4 w-4" />
-																						</Button>
-																					</div>
-																				</div>
-																			) : (
-																				<div className="mb-2">
-																					<p
-																						className="-mx-1 cursor-pointer rounded-md px-1 font-medium text-sm hover:bg-gray-50"
-																						title={question.rationale ? `Why: ${question.rationale}` : undefined}
-																						onClick={() => {
-																							setEditingId(question.id);
-																							setEditingText(question.text);
-																						}}
-																					>
-																						{question.text}
-																					</p>
-																					{/* Inline badges */}
-																					<div className="mt-1 flex flex-wrap items-center gap-2">
-																						{/* {question.source === "user" && (
-																							<Badge
-																								variant="outline"
-																								className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200"
-																							>
-																								<User className="mr-1 h-3 w-3" />
-																								Custom
-																							</Badge>
-																						)} */}
-																						{/* {question.timesAnswered > 0 && (
-																							<Badge
-																								className={getAnsweredCountColor(question.timesAnswered)}
-																								variant="outline"
-																							>
-																								{question.timesAnswered}
-																							</Badge>
-																						)} */}
-																						{question.isMustHave && (
-																							<Badge
-																								variant="outline"
-																								className="border-red-200 text-red-800 dark:border-red-800 dark:text-red-200"
-																							>
-																								<Star className="mr-1 h-3 w-3 fill-current" />
-																								Must-Have
-																							</Badge>
-																						)}
-																					</div>
-																				</div>
-																			)}
-
-																			{/* Category/Time display on small screens */}
-																			{showCategoryTime && (
-																				<div className="mt-2 sm:hidden">
-																					<span
-																						className={`inline-flex items-center rounded-md border px-2 py-1 text-xs ${cat?.color || "border-gray-200 bg-gray-50 text-gray-700"}`}
-																					>
-																						{cat?.name || "Other"} • ~{Math.round(question.estimatedMinutes || 3)}
-																						min
-																					</span>
-																				</div>
-																			)}
-																		</div>
-																		<div className="flex items-center gap-1">
-																			{isEvalEnabled && question.qualityFlag && (
-																				<QualityFlag qualityFlag={question.qualityFlag} />
-																			)}
-																			{showCategoryTime && (
-																				<span
-																					className={`hidden items-center rounded-md border px-2 py-1 text-xs sm:inline-flex ${cat?.color || "border-gray-200 bg-gray-50 text-gray-700"}`}
-																					title="View question details"
-																				>
-																					{questionCategories.find((c) => c.id === question.categoryId)?.name ||
-																						"Other"}{" "}
-																					• ~{Math.round(question.estimatedMinutes || 3)}
-																					min
-																				</span>
-																			)}
-																			<DropdownMenu>
-																				<DropdownMenuTrigger asChild>
-																					<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-																						<MoreHorizontal className="h-4 w-4" />
-																					</Button>
-																				</DropdownMenuTrigger>
-																				<DropdownMenuContent align="end">
-																					<DropdownMenuItem
-																						onClick={async () => {
-																							// Use new intent-based API
-																							const formData = new FormData();
-																							formData.append("intent", "toggle-must-have");
-
-																							try {
-																								const response = await fetch(`/api/questions/${question.id}`, {
-																									method: "POST",
-																									body: formData,
-																								});
-
-																								const result = await response.json();
-
-																								if (result.success) {
-																									// Update UI state with server response
-																									const updated = questions.map((q) =>
-																										q.id === question.id
-																											? {
-																													...q,
-																													isMustHave: result.question.is_must_have,
-																												}
-																											: q
-																									);
-																									setQuestions(updated);
-																									toast.success(result.message);
-																								} else {
-																									toast.error("Failed to toggle must-have", {
-																										description: result.error || "Please try again",
-																									});
-																								}
-																							} catch (error) {
-																								console.error("❌ Network error:", error);
-																								toast.error("Failed to toggle must-have", {
-																									description: "Network error, please try again",
-																								});
-																							}
-																						}}
-																					>
-																						<Star className="mr-2 h-4 w-4" />
-																						{question.isMustHave ? "Remove Must-Have" : "Mark Must-Have"}
-																					</DropdownMenuItem>
-																					<DropdownMenuItem
-																						onClick={() => {
-																							setShowingFollowupFor(question.id);
-																							setFollowupCategory(question.categoryId);
-																							setFollowupInput("");
-																						}}
-																					>
-																						<ArrowDownFromLine className="mr-2 h-4 w-4" />
-																						Add Followup
-																					</DropdownMenuItem>
-																					<DropdownMenuItem
-																						onClick={() => {
-																							setEditingId(question.id);
-																							setEditingText(question.text);
-																						}}
-																					>
-																						<Edit className="mr-2 h-4 w-4" />
-																						Edit Question
-																					</DropdownMenuItem>
-																					<DropdownMenuItem
-																						onClick={() => removeQuestion(question.id)}
-																						className="text-orange-600 focus:text-orange-600"
-																					>
-																						<Trash2 className="mr-2 h-4 w-4" />
-																						Backup
-																					</DropdownMenuItem>
-																					<DropdownMenuItem
-																						onClick={async () => {
-																							console.group(`🗑️ DELETE QUESTION [${question.id.slice(0, 8)}]`);
-
-																							// Use new intent-based API
-																							const formData = new FormData();
-																							formData.append("intent", "delete");
-
-																							try {
-																								const response = await fetch(`/api/questions/${question.id}`, {
-																									method: "POST",
-																									body: formData,
-																								});
-
-																								const result = await response.json();
-
-																								if (result.success) {
-																									// Update UI state with server response
-																									const updated = questions.map((q) =>
-																										q.id === question.id
-																											? {
-																													...q,
-																													status: "deleted" as const,
-																												}
-																											: q
-																									);
-																									setQuestions(updated);
-																									const baseIds = getBaseSelectedIds().filter(
-																										(id) => id !== question.id
-																									);
-																									commitSelection(baseIds);
-
-																									console.log("✅ Delete operation completed successfully");
-																									toast.success(result.message);
-																								} else {
-																									console.error("❌ Failed to delete question:", result.error);
-																									toast.error("Failed to delete question", {
-																										description: result.error || "Please try again",
-																									});
-																								}
-																							} catch (error) {
-																								console.error("❌ Network error:", error);
-																								toast.error("Failed to delete question", {
-																									description: "Network error, please try again",
-																								});
-																							} finally {
-																								console.groupEnd();
-																							}
-																						}}
-																						className="text-red-600 focus:text-red-600"
-																					>
-																						<X className="mr-2 h-4 w-4" />
-																						Delete
-																					</DropdownMenuItem>
-																				</DropdownMenuContent>
-																			</DropdownMenu>
-																		</div>
-																	</div>
-																</CardContent>
-															</Card>
-
-															{/* Contextual Suggestions for Follow-up Questions */}
-															{showingFollowupFor === question.id && (
-																<div className="mt-2 ml-8 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
-																	<div className="mb-3 flex items-center justify-between">
-																		<div className="flex flex-start flex-row font-medium text-blue-900 text-sm">
-																			<ArrowDownFromLine className="mr-2 h-4 w-4" />
-																			Add follow-up question:
-																		</div>
-																		<Button
-																			variant="ghost"
-																			size="sm"
-																			onClick={() => {
-																				setShowingFollowupFor(null);
-																				setFollowupInput("");
-																				setFollowupCategory(question.categoryId);
-																			}}
-																			className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
-																		>
-																			<X className="h-4 w-4" />
-																		</Button>
-																	</div>
-
-																	<div className="mb-3 space-y-2">
-																		<Textarea
-																			placeholder="e.g., Can you walk me through a specific example of that challenge?"
-																			value={followupInput}
-																			onChange={(e) => setFollowupInput(e.target.value)}
-																			className="resize-none"
-																			rows={2}
-																		/>
-																		<Select value={followupCategory} onValueChange={setFollowupCategory}>
-																			<SelectTrigger className="w-full">
-																				<SelectValue placeholder="Select category" />
-																			</SelectTrigger>
-																			<SelectContent>
-																				{questionCategories.map((cat) => (
-																					<SelectItem key={cat.id} value={cat.id}>
-																						{cat.name}
-																					</SelectItem>
-																				))}
-																			</SelectContent>
-																		</Select>
-																		<div className="flex items-center gap-2">
-																			<Button
-																				onClick={async () => {
-																					const trimmedInput = followupInput.trim();
-																					if (!trimmedInput) return;
-																					setAddingCustomQuestion(true);
-																					try {
-																						const followupQuestion: Question = {
-																							id: crypto.randomUUID(),
-																							text: trimmedInput,
-																							categoryId: followupCategory,
-																							scores: {
-																								importance: 0.7,
-																								goalMatch: 0.8,
-																								novelty: 0.6,
-																							},
-																							rationale: `Follow-up to: ${question.text}`,
-																							status: "selected",
-																							timesAnswered: 0,
-																							source: "user",
-																							isMustHave: mustHavesOnly,
-																							estimatedMinutes: estimateMinutesPerQuestion(
-																								{
-																									categoryId: followupCategory,
-																								} as Question,
-																								researchMode,
-																								familiarity
-																							),
-																							selectedOrder: null,
-																							isSelected: true,
-																						};
-																						await insertQuestionAfter(question.id, followupQuestion);
-																						setFollowupInput("");
-																						setFollowupCategory(question.categoryId);
-																						setShowingFollowupFor(null);
-																						toast.success("Follow-up question added");
-																					} catch (error) {
-																						console.error("Error adding follow-up:", error);
-																						toast.error("Failed to add follow-up question");
-																					} finally {
-																						setAddingCustomQuestion(false);
-																					}
-																				}}
-																				size="sm"
-																			>
-																				<Plus className="mr-1 h-3 w-3" />
-																				Add Follow-up
-																			</Button>
-																		</div>
-																	</div>
-
-																	{effectiveResearchGoal && (
-																		<ContextualSuggestions
-																			researchGoal={effectiveResearchGoal}
-																			currentInput={followupInput}
-																			suggestionType="interview_questions"
-																			questionCategory={followupCategory}
-																			customInstructions={`Generate deeper follow-up questions specifically for: "${question.text}"`}
-																			existingItems={questions.map((q) => q.text)}
-																			onSuggestionClick={(suggestion) => setFollowupInput(suggestion)}
-																			apiPath={contextualSuggestionsApiPath}
-																			isActive={true}
-																			responseCount={3}
-																		/>
-																	)}
-																</div>
-															)}
+											return (
+												<React.Fragment key={question.id}>
+													{isFirstOverflow && (
+														<div className="mt-6 border-orange-300 border-t-2 border-dashed pt-4">
+															<div className="mb-4 flex items-center gap-2">
+																<Clock className="h-4 w-4 text-orange-600" />
+																<span className="font-medium text-orange-600 text-sm">
+																	Questions below may not fit in your {timeMinutes}-minute time limit
+																</span>
+															</div>
 														</div>
 													)}
-												</Draggable>
-											</React.Fragment>
-										);
-									})}
-									{provided.placeholder}
-								</div>
-							)}
-						</Droppable>
-					</DragDropContext>
+
+													<Draggable draggableId={question.id} index={index}>
+														{(provided, snapshot) => (
+															<div ref={provided.innerRef} {...provided.draggableProps}>
+																<UnifiedQuestionRow
+																	as="div"
+																	index={index + 1}
+																	text={question.text}
+																	isSelected={isEditing || showingFollowupFor === question.id}
+																	dragHandleProps={provided.dragHandleProps}
+																	flag={qualityDot}
+																	highlighted={recentlyAddedQuestionIds.includes(question.id)}
+																	className={[
+																		"border-l-4 px-2 py-2 shadow-sm",
+																		recentlyAddedQuestionIds.includes(question.id)
+																			? "border-l-green-500 bg-green-50 dark:bg-green-900/10"
+																			: "border-l-gray-200",
+																		snapshot.isDragging ? "opacity-50" : "",
+																	].join(" ")}
+																	textSlot={
+																		isEditing ? (
+																			<div
+																				className="flex items-center gap-2"
+																				onClick={(e) => {
+																					e.stopPropagation();
+																				}}
+																			>
+																				<Textarea
+																					value={editingText}
+																					onChange={(e) => setEditingText(e.target.value)}
+																					autoFocus
+																					rows={2}
+																					className="resize-none"
+																				/>
+																				<div className="flex flex-col gap-2">
+																					<Button
+																						variant="ghost"
+																						size="icon"
+																						onClick={async () => {
+																							try {
+																								setEvaluatingId(question.id);
+																								const quality = isEvalEnabled
+																									? await evaluateQuestionQuality(editingText)
+																									: null;
+
+																								// Use PATCH API to update the question text
+																								const response = await fetch(`/api/questions/${question.id}`, {
+																									method: "PATCH",
+																									headers: {
+																										"Content-Type": "application/json",
+																									},
+																									body: JSON.stringify({
+																										text: editingText,
+																										table: "interview_prompts",
+																									}),
+																								});
+
+																								if (!response.ok) {
+																									const error = await response.json();
+																									throw new Error(error.error || "Failed to update question");
+																								}
+
+																								const result = await response.json();
+																								if (result.success) {
+																									// Update local state with the saved text
+																									const updated = questions.map((q) =>
+																										q.id === question.id
+																											? {
+																													...q,
+																													text: editingText,
+																													qualityFlag: quality ?? undefined,
+																												}
+																											: q
+																									);
+																									setQuestions(updated);
+																									toast.success("Question updated successfully");
+																								}
+
+																								setEditingId(null);
+																								setEditingText("");
+																								setEvaluatingId(null);
+																							} catch (error) {
+																								console.error("Failed to update question:", error);
+																								toast.error("Failed to update question", {
+																									description:
+																										error instanceof Error ? error.message : "Please try again",
+																								});
+																								setEvaluatingId(null);
+																							}
+																						}}
+																						className="text-green-600"
+																					>
+																						{evaluatingId === question.id ? (
+																							<div className="h-4 w-4 animate-spin rounded-full border-current border-b-2" />
+																						) : (
+																							<Check className="h-4 w-4" />
+																						)}
+																					</Button>
+																					<Button
+																						variant="ghost"
+																						size="icon"
+																						onClick={() => {
+																							setEditingId(null);
+																							setEditingText("");
+																						}}
+																						className="text-gray-500"
+																					>
+																						<X className="h-4 w-4" />
+																					</Button>
+																				</div>
+																			</div>
+																		) : (
+																			<div className="min-w-0">
+																				<p
+																					className="-mx-1 cursor-pointer rounded-md px-1 font-medium text-sm hover:bg-gray-50 dark:hover:bg-white/5"
+																					title={question.rationale ? `Why: ${question.rationale}` : undefined}
+																					onClick={() => {
+																						setEditingId(question.id);
+																						setEditingText(question.text);
+																					}}
+																				>
+																					{question.text}
+																				</p>
+																				<div className="mt-1 flex flex-wrap items-center gap-2">
+																					{question.isMustHave && (
+																						<Badge
+																							variant="outline"
+																							className="border-red-200 text-red-800 dark:border-red-800 dark:text-red-200"
+																						>
+																							<Star className="mr-1 h-3 w-3 fill-current" />
+																							Must-Have
+																						</Badge>
+																					)}
+																				</div>
+																				{showCategoryTime && (
+																					<div className="mt-2 sm:hidden">
+																						<span className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-muted/30 px-2 py-1 text-xs">
+																							<QuestionCategoryBadge category={cat?.name || "Other"} />
+																							<QuestionTimeEstimate seconds={questionMinutes * 60} />
+																						</span>
+																					</div>
+																				)}
+																			</div>
+																		)
+																	}
+																>
+																	{isEvalEnabled && question.qualityFlag && (
+																		<QualityFlag qualityFlag={question.qualityFlag} />
+																	)}
+																	{showCategoryTime && (
+																		<span
+																			className="hidden items-center gap-1 sm:inline-flex"
+																			title="View question details"
+																		>
+																			<QuestionCategoryBadge category={cat?.name || "Other"} />
+																			<QuestionTimeEstimate seconds={questionMinutes * 60} />
+																		</span>
+																	)}
+																	<DropdownMenu>
+																		<DropdownMenuTrigger asChild>
+																			<Button
+																				variant="ghost"
+																				size="sm"
+																				className="h-8 w-8 p-0"
+																				onClick={(e) => e.stopPropagation()}
+																			>
+																				<MoreHorizontal className="h-4 w-4" />
+																			</Button>
+																		</DropdownMenuTrigger>
+																		<DropdownMenuContent align="end">
+																			<DropdownMenuItem
+																				onClick={async () => {
+																					// Use new intent-based API
+																					const formData = new FormData();
+																					formData.append("intent", "toggle-must-have");
+
+																					try {
+																						const response = await fetch(`/api/questions/${question.id}`, {
+																							method: "POST",
+																							body: formData,
+																						});
+
+																						const result = await response.json();
+
+																						if (result.success) {
+																							// Update UI state with server response
+																							const updated = questions.map((q) =>
+																								q.id === question.id
+																									? {
+																											...q,
+																											isMustHave: result.question.is_must_have,
+																										}
+																									: q
+																							);
+																							setQuestions(updated);
+																							toast.success(result.message);
+																						} else {
+																							toast.error("Failed to toggle must-have", {
+																								description: result.error || "Please try again",
+																							});
+																						}
+																					} catch (error) {
+																						console.error("❌ Network error:", error);
+																						toast.error("Failed to toggle must-have", {
+																							description: "Network error, please try again",
+																						});
+																					}
+																				}}
+																			>
+																				<Star className="mr-2 h-4 w-4" />
+																				{question.isMustHave ? "Remove Must-Have" : "Mark Must-Have"}
+																			</DropdownMenuItem>
+																			<DropdownMenuItem
+																				onClick={() => {
+																					setShowingFollowupFor(question.id);
+																					setFollowupCategory(question.categoryId);
+																					setFollowupInput("");
+																				}}
+																			>
+																				<ArrowDownFromLine className="mr-2 h-4 w-4" />
+																				Add Followup
+																			</DropdownMenuItem>
+																			<DropdownMenuItem
+																				onClick={() => {
+																					setEditingId(question.id);
+																					setEditingText(question.text);
+																				}}
+																			>
+																				<Edit className="mr-2 h-4 w-4" />
+																				Edit Question
+																			</DropdownMenuItem>
+																			<DropdownMenuItem
+																				onClick={() => removeQuestion(question.id)}
+																				className="text-orange-600 focus:text-orange-600"
+																			>
+																				<Trash2 className="mr-2 h-4 w-4" />
+																				Backup
+																			</DropdownMenuItem>
+																			<DropdownMenuItem
+																				onClick={async () => {
+																					console.group(`🗑️ DELETE QUESTION [${question.id.slice(0, 8)}]`);
+
+																					// Use new intent-based API
+																					const formData = new FormData();
+																					formData.append("intent", "delete");
+
+																					try {
+																						const response = await fetch(`/api/questions/${question.id}`, {
+																							method: "POST",
+																							body: formData,
+																						});
+
+																						const result = await response.json();
+
+																						if (result.success) {
+																							// Update UI state with server response
+																							const updated = questions.map((q) =>
+																								q.id === question.id
+																									? {
+																											...q,
+																											status: "deleted" as const,
+																										}
+																									: q
+																							);
+																							setQuestions(updated);
+																							const baseIds = getBaseSelectedIds().filter((id) => id !== question.id);
+																							commitSelection(baseIds);
+
+																							console.log("✅ Delete operation completed successfully");
+																							toast.success(result.message);
+																						} else {
+																							console.error("❌ Failed to delete question:", result.error);
+																							toast.error("Failed to delete question", {
+																								description: result.error || "Please try again",
+																							});
+																						}
+																					} catch (error) {
+																						console.error("❌ Network error:", error);
+																						toast.error("Failed to delete question", {
+																							description: "Network error, please try again",
+																						});
+																					} finally {
+																						console.groupEnd();
+																					}
+																				}}
+																				className="text-red-600 focus:text-red-600"
+																			>
+																				<X className="mr-2 h-4 w-4" />
+																				Delete
+																			</DropdownMenuItem>
+																		</DropdownMenuContent>
+																	</DropdownMenu>
+																</UnifiedQuestionRow>
+
+																{/* Contextual Suggestions for Follow-up Questions */}
+																{showingFollowupFor === question.id && (
+																	<div className="mt-2 ml-8 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
+																		<div className="mb-3 flex items-center justify-between">
+																			<div className="flex flex-start flex-row font-medium text-blue-900 text-sm">
+																				<ArrowDownFromLine className="mr-2 h-4 w-4" />
+																				Add follow-up question:
+																			</div>
+																			<Button
+																				variant="ghost"
+																				size="sm"
+																				onClick={() => {
+																					setShowingFollowupFor(null);
+																					setFollowupInput("");
+																					setFollowupCategory(question.categoryId);
+																				}}
+																				className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
+																			>
+																				<X className="h-4 w-4" />
+																			</Button>
+																		</div>
+
+																		<div className="mb-3 space-y-2">
+																			<Textarea
+																				placeholder="e.g., Can you walk me through a specific example of that challenge?"
+																				value={followupInput}
+																				onChange={(e) => setFollowupInput(e.target.value)}
+																				className="resize-none"
+																				rows={2}
+																			/>
+																			<Select value={followupCategory} onValueChange={setFollowupCategory}>
+																				<SelectTrigger className="w-full">
+																					<SelectValue placeholder="Select category" />
+																				</SelectTrigger>
+																				<SelectContent>
+																					{questionCategories.map((cat) => (
+																						<SelectItem key={cat.id} value={cat.id}>
+																							{cat.name}
+																						</SelectItem>
+																					))}
+																				</SelectContent>
+																			</Select>
+																			<div className="flex items-center gap-2">
+																				<Button
+																					onClick={async () => {
+																						const trimmedInput = followupInput.trim();
+																						if (!trimmedInput) return;
+																						setAddingCustomQuestion(true);
+																						try {
+																							const followupQuestion: Question = {
+																								id: crypto.randomUUID(),
+																								text: trimmedInput,
+																								categoryId: followupCategory,
+																								scores: {
+																									importance: 0.7,
+																									goalMatch: 0.8,
+																									novelty: 0.6,
+																								},
+																								rationale: `Follow-up to: ${question.text}`,
+																								status: "selected",
+																								timesAnswered: 0,
+																								source: "user",
+																								isMustHave: mustHavesOnly,
+																								estimatedMinutes: estimateMinutesPerQuestion(
+																									{
+																										categoryId: followupCategory,
+																									} as Question,
+																									researchMode,
+																									familiarity
+																								),
+																								selectedOrder: null,
+																								isSelected: true,
+																							};
+																							await insertQuestionAfter(question.id, followupQuestion);
+																							setFollowupInput("");
+																							setFollowupCategory(question.categoryId);
+																							setShowingFollowupFor(null);
+																							toast.success("Follow-up question added");
+																						} catch (error) {
+																							console.error("Error adding follow-up:", error);
+																							toast.error("Failed to add follow-up question");
+																						} finally {
+																							setAddingCustomQuestion(false);
+																						}
+																					}}
+																					size="sm"
+																				>
+																					<Plus className="mr-1 h-3 w-3" />
+																					Add Follow-up
+																				</Button>
+																			</div>
+																		</div>
+
+																		{effectiveResearchGoal && (
+																			<ContextualSuggestions
+																				researchGoal={effectiveResearchGoal}
+																				currentInput={followupInput}
+																				suggestionType="interview_questions"
+																				questionCategory={followupCategory}
+																				customInstructions={`Generate deeper follow-up questions specifically for: "${question.text}"`}
+																				existingItems={questions.map((q) => q.text)}
+																				onSuggestionClick={(suggestion) => setFollowupInput(suggestion)}
+																				apiPath={contextualSuggestionsApiPath}
+																				isActive={true}
+																				responseCount={3}
+																			/>
+																		)}
+																	</div>
+																)}
+															</div>
+														)}
+													</Draggable>
+												</React.Fragment>
+											);
+										})}
+										{provided.placeholder}
+									</div>
+								)}
+							</Droppable>
+						</DragDropContext>
+					</UnifiedQuestionList>
 
 					{questionPack.remainingQuestions.length > 0 && (
 						<div className="mt-6">
