@@ -162,6 +162,70 @@ function questionTypeLabel(type: string): string {
 	return labels[type] ?? type;
 }
 
+type QuestionEditorAction =
+	| { type: "add"; question: ResearchLinkQuestion }
+	| { type: "update"; id: string; updates: Partial<ResearchLinkQuestion> }
+	| { type: "remove"; id: string }
+	| { type: "move"; id: string; direction: -1 | 1 };
+
+function cleanupBranchingAfterQuestionDelete(
+	questions: ResearchLinkQuestion[],
+	deletedQuestionId: string
+): ResearchLinkQuestion[] {
+	return questions
+		.filter((question) => question.id !== deletedQuestionId)
+		.map((question) => {
+			if (!question.branching) return question;
+			const cleanedRules = question.branching.rules.filter((rule) => {
+				if (rule.targetQuestionId === deletedQuestionId) return false;
+				if (rule.conditions.conditions.some((c) => c.questionId === deletedQuestionId)) return false;
+				return true;
+			});
+			const cleanedDefaultNext =
+				question.branching.defaultNext === deletedQuestionId ? undefined : question.branching.defaultNext;
+			if (cleanedRules.length === 0 && !cleanedDefaultNext) {
+				return { ...question, branching: null };
+			}
+			return {
+				...question,
+				branching: { rules: cleanedRules, defaultNext: cleanedDefaultNext },
+			};
+		});
+}
+
+function applyQuestionEditorAction(
+	questions: ResearchLinkQuestion[],
+	action: QuestionEditorAction
+): ResearchLinkQuestion[] {
+	switch (action.type) {
+		case "add":
+			return [...questions, action.question];
+		case "update":
+			return questions.map((question) =>
+				question.id === action.id
+					? {
+							...question,
+							...action.updates,
+						}
+					: question
+			);
+		case "remove":
+			return cleanupBranchingAfterQuestionDelete(questions, action.id);
+		case "move": {
+			const index = questions.findIndex((question) => question.id === action.id);
+			if (index < 0) return questions;
+			const newIndex = index + action.direction;
+			if (newIndex < 0 || newIndex >= questions.length) return questions;
+			const reordered = [...questions];
+			const [item] = reordered.splice(index, 1);
+			reordered.splice(newIndex, 0, item);
+			return reordered;
+		}
+		default:
+			return questions;
+	}
+}
+
 function normalizeInsightText(value: string): string {
 	return value
 		.toLowerCase()
@@ -1252,67 +1316,40 @@ export function QuestionListEditor({
 		setHoveredQuestionId(null);
 	}, []);
 
-	const updateQuestion = useCallback(
-		(id: string, updates: Partial<ResearchLinkQuestion>) => {
-			onChange(
-				questions.map((question) =>
-					question.id === id
-						? {
-								...question,
-								...updates,
-							}
-						: question
-				)
-			);
+	const dispatchQuestionAction = useCallback(
+		(action: QuestionEditorAction) => {
+			onChange(applyQuestionEditorAction(questions, action));
 		},
 		[onChange, questions]
+	);
+
+	const updateQuestion = useCallback(
+		(id: string, updates: Partial<ResearchLinkQuestion>) => {
+			dispatchQuestionAction({ type: "update", id, updates });
+		},
+		[dispatchQuestionAction]
 	);
 
 	const removeQuestion = useCallback(
 		(id: string) => {
-			const remaining = questions
-				.filter((question) => question.id !== id)
-				.map((question) => {
-					if (!question.branching) return question;
-					const cleanedRules = question.branching.rules.filter((rule) => {
-						if (rule.targetQuestionId === id) return false;
-						if (rule.conditions.conditions.some((c) => c.questionId === id)) return false;
-						return true;
-					});
-					const cleanedDefaultNext = question.branching.defaultNext === id ? undefined : question.branching.defaultNext;
-					if (cleanedRules.length === 0 && !cleanedDefaultNext) {
-						return { ...question, branching: null };
-					}
-					return {
-						...question,
-						branching: { rules: cleanedRules, defaultNext: cleanedDefaultNext },
-					};
-				});
-			onChange(remaining);
+			dispatchQuestionAction({ type: "remove", id });
 		},
-		[onChange, questions]
+		[dispatchQuestionAction]
 	);
 
 	const moveQuestion = useCallback(
 		(id: string, direction: -1 | 1) => {
-			const index = questions.findIndex((question) => question.id === id);
-			if (index < 0) return;
-			const newIndex = index + direction;
-			if (newIndex < 0 || newIndex >= questions.length) return;
-			const reordered = [...questions];
-			const [item] = reordered.splice(index, 1);
-			reordered.splice(newIndex, 0, item);
-			onChange(reordered);
+			dispatchQuestionAction({ type: "move", id, direction });
 		},
-		[onChange, questions]
+		[dispatchQuestionAction]
 	);
 
 	const addQuestion = useCallback(() => {
 		const newQ = createEmptyQuestion();
-		onChange([...questions, newQ]);
+		dispatchQuestionAction({ type: "add", question: newQ });
 		// Auto-open the new question for editing
 		setSelectedQuestionId(newQ.id);
-	}, [onChange, questions]);
+	}, [dispatchQuestionAction]);
 
 	const selectedIndex = questions.findIndex((q) => q.id === selectedQuestionId);
 	const selectedQuestion = selectedIndex >= 0 ? questions[selectedIndex] : null;
