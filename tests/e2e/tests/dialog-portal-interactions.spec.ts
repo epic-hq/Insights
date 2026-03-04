@@ -277,6 +277,108 @@ test.describe("Dialog/Sheet portal dismiss protection", () => {
       await page.waitForTimeout(1200);
       await expect(helperInput).toHaveValue(helperText);
     });
+
+    test("helper text persists after close and reopen", async ({ page }) => {
+      await page.click('button:has-text("Add question")');
+      await page.waitForTimeout(500);
+
+      const drawer = page.locator('[data-slot="sheet-content"]');
+      await expect(drawer).toBeVisible({ timeout: 3000 });
+
+      const promptText = `Drawer helper persistence ${Date.now()}`;
+      const promptArea = drawer.locator(
+        'textarea[placeholder*="What would you like to ask"]',
+      );
+      await promptArea.fill(promptText);
+
+      const helperInput = drawer.locator(
+        'input[placeholder*="Optional hint shown below the question"]',
+      );
+      const helperText = "Use one concrete example in your response.";
+      await helperInput.fill(helperText);
+      await helperInput.blur();
+
+      // Wait through autosave + loader churn window
+      await page.waitForTimeout(1800);
+      await expect(drawer).toBeVisible();
+      await expect(helperInput).toHaveValue(helperText);
+
+      // Close and reopen the same question drawer
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(400);
+
+      const questionRow = page
+        .locator('[class*="rounded-lg"][class*="border"]')
+        .filter({ hasText: promptText })
+        .first();
+      await expect(questionRow).toBeVisible({ timeout: 3000 });
+      await questionRow.click();
+      await expect(drawer).toBeVisible({ timeout: 3000 });
+
+      const reopenedHelperInput = drawer.locator(
+        'input[placeholder*="Optional hint shown below the question"]',
+      );
+      await expect(reopenedHelperInput).toHaveValue(helperText);
+    });
+
+    test("select options stay stable across autosave and reopen", async ({
+      page,
+    }) => {
+      await page.click('button:has-text("Add question")');
+      await page.waitForTimeout(500);
+
+      const drawer = page.locator('[data-slot="sheet-content"]');
+      await expect(drawer).toBeVisible({ timeout: 3000 });
+
+      const promptText = `Drawer options persistence ${Date.now()}`;
+      const promptArea = drawer.locator(
+        'textarea[placeholder*="What would you like to ask"]',
+      );
+      await promptArea.fill(promptText);
+      await page.waitForTimeout(250);
+
+      // Change type to Select one
+      const typeSelect = drawer.locator('[data-slot="select-trigger"]').first();
+      await typeSelect.click();
+      await page.waitForTimeout(250);
+      await page
+        .locator('[data-slot="select-item"]:has-text("Select one")')
+        .click();
+      await page.waitForTimeout(400);
+
+      const optionsTextarea = drawer.locator(
+        'textarea[placeholder*="Options"]',
+      );
+      await expect(optionsTextarea).toBeVisible({ timeout: 2000 });
+
+      const optionsValue = "Alpha, Beta, Gamma";
+      await optionsTextarea.click();
+      await optionsTextarea.type(optionsValue, { delay: 40 });
+
+      // Wait through debounce with focus retained to catch overwrite regressions
+      await page.waitForTimeout(1800);
+      await expect(drawer).toBeVisible();
+      await expect(optionsTextarea).toHaveValue(optionsValue);
+
+      // Commit parsed options, then close/reopen drawer
+      await optionsTextarea.blur();
+      await page.waitForTimeout(1200);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(400);
+
+      const questionRow = page
+        .locator('[class*="rounded-lg"][class*="border"]')
+        .filter({ hasText: promptText })
+        .first();
+      await expect(questionRow).toBeVisible({ timeout: 3000 });
+      await questionRow.click();
+      await expect(drawer).toBeVisible({ timeout: 3000 });
+
+      const reopenedOptionsTextarea = drawer.locator(
+        'textarea[placeholder*="Options"]',
+      );
+      await expect(reopenedOptionsTextarea).toHaveValue(optionsValue);
+    });
   });
 
   test.describe("Task Create Modal — Select + Popover inside Dialog", () => {
