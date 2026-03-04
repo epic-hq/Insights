@@ -79,8 +79,9 @@ COPY --from=build /app/supabase/types.ts ./supabase/types.ts
 RUN mkdir -p /app/data /app/.mastra/output /app/app/mastra/public \
   && chown -R node:node /app/data /app/.mastra /app/app/mastra/public \
   && chown -R node:node /app/node_modules
-# Copy production env file for dotenvx
+# Copy encrypted env files for dotenvx (fly.toml controls which one is used)
 COPY --chown=node:node .env.production ./.env.production
+COPY --chown=node:node .env.stagin[g] ./.env.staging
 
 # Prefer running as non-root
 USER node

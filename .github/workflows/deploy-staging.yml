@@ -1,0 +1,71 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [staging]
+    paths-ignore:
+      - "*.md"
+      - "docs/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: staging-deploy
+      cancel-in-progress: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.3.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@v1
+
+      - name: Build app
+        run: |
+          pnpm exec dotenvx run -f .env.staging -- pnpm run build
+        env:
+          DOTENVX_KEY: ${{ secrets.DOTENVX_KEY }}
+          DOTENV_PRIVATE_KEY_STAGING: ${{ secrets.DOTENV_PRIVATE_KEY_STAGING }}
+
+      - name: Deploy to Fly.io (staging)
+        if: success()
+        run: |
+          flyctl deploy -c fly.staging.toml --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Deploy Trigger.dev (staging)
+        run: |
+          pnpm exec dotenvx run -f .env.staging -- pnpm dlx trigger.dev@4.4.1 deploy
+        env:
+          DOTENVX_KEY: ${{ secrets.DOTENVX_KEY }}
+          DOTENV_PRIVATE_KEY_STAGING: ${{ secrets.DOTENV_PRIVATE_KEY_STAGING }}
+          TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          {
+            echo "## Staging Deployment"
+            echo ""
+            echo "- Environment: staging"
+            echo "- Fly app: upsight-staging"
+            echo "- URL: https://upsight-staging.fly.dev"
+          } >> "$GITHUB_STEP_SUMMARY"

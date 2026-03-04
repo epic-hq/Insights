@@ -1,0 +1,48 @@
+# fly.staging.toml — staging environment
+# Deploy with: flyctl deploy -c fly.staging.toml --remote-only
+
+app = 'upsight-staging'
+primary_region = 'sjc'
+
+[build]
+
+[env]
+  NODE_ENV = 'production'
+  HOST = "0.0.0.0"
+  PORT = '3000'
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['web']
+  max_request_body_size = '500M'
+
+  [http_service.http_options]
+    response_timeout = 600
+    idle_timeout = 600
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/healthcheck"
+    protocol = "http"
+    tls_skip_verify = false
+    headers = { Host = "upsight-staging.fly.dev" }
+
+[machine]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '1gb'
+
+[processes]
+web   = '/usr/local/bin/dotenvx run -f .env.staging -- pnpm start'
+mastra = '/usr/local/bin/dotenvx run -f .env.staging -- npx mastra dev --dir app/mastra'

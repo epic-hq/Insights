@@ -23,10 +23,10 @@ coverage
 .env*
 !.env.example
 !.env.production
+!.env.staging
 
 # Test screenshots (usually blank error images)
 **/__screenshots__/
-!.env.production
 .swp*
 .turbo
 .npm
