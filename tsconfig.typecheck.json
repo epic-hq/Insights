@@ -3,5 +3,9 @@
 	"compilerOptions": {
 		"skipLibCheck": true
 	},
-	"exclude": ["**/*.stories.*", "app/stories/**/*", "**/__tests__/**", "**/node_modules/**"]
+	"files": [
+		"app/vite-env.d.ts",
+		"app/env.server.ts"
+	],
+	"include": []
 }
