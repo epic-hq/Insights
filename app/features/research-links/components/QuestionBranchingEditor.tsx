@@ -370,6 +370,9 @@ export function QuestionBranchingEditor({
 								{isParsing ? "Parsing…" : "Add"}
 							</Button>
 						</div>
+						<p className="text-[10px] text-muted-foreground">
+							Plain English works here. Example: If role is founder, go to the founder section.
+						</p>
 						{parseError && <p className="text-[10px] text-destructive">{parseError}</p>}
 						{rules.length > 1 && (
 							<Button

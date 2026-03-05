@@ -7,14 +7,15 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
 	AlertTriangle,
 	ArrowDown,
-	ArrowRight,
 	ArrowUp,
 	BarChart3,
+	Check,
 	ChevronDown as ChevronDownIcon,
 	GitBranch,
 	Image,
 	Loader2,
 	Paperclip,
+	Pencil,
 	Plus,
 	Sparkles,
 	Trash2,
@@ -35,7 +36,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
-import { type BranchRule, getNextQuestionId } from "../branching";
+import type { BranchRule } from "../branching";
 import type { ResearchLinkQuestion } from "../schemas";
 import { createEmptyQuestion } from "../schemas";
 import { DEFAULT_SECTION_ID, deriveSurveySections } from "../sections";
@@ -284,6 +285,7 @@ function groupRulesByTarget(
 			ruleCount: entry.ruleCount,
 			conditionSummary,
 			rules: entry.rules,
+			ruleIds: entry.rules.map((rule) => rule.id),
 		};
 	});
 }
@@ -306,63 +308,6 @@ function estimateQuestionSeconds(question: ResearchLinkQuestion): number {
 function formatEstimatedMinutes(totalSeconds: number): string {
 	if (totalSeconds <= 0) return "~0 min";
 	return `~${Math.max(1, Math.round(totalSeconds / 60))} min`;
-}
-
-function estimatePathPreviewForTargetGroup(
-	questions: ResearchLinkQuestion[],
-	group: { rules: BranchRule[] }
-): { questionCount: number; estimatedMinutes: string } | null {
-	if (questions.length === 0) return null;
-
-	const seedResponses: Record<string, string | string[]> = {};
-	const representativeCondition = group.rules
-		.flatMap((rule) => rule.conditions.conditions)
-		.find((condition) => {
-			if (typeof condition.value !== "string") return false;
-			return (
-				(condition.operator === "equals" || condition.operator === "contains" || condition.operator === "selected") &&
-				condition.value.trim().length > 0
-			);
-		});
-
-	if (representativeCondition && typeof representativeCondition.value === "string") {
-		if (representativeCondition.operator === "selected") {
-			seedResponses[representativeCondition.questionId] = [representativeCondition.value];
-		} else {
-			seedResponses[representativeCondition.questionId] = representativeCondition.value;
-		}
-	}
-
-	const activeQuestions = questions.filter(
-		(question): question is ResearchLinkQuestion & { id: string } => Boolean(question.id) && !question.hidden
-	);
-	const visited = new Set<string>();
-	const questionById = new Map(activeQuestions.map((question) => [question.id, question]));
-	let currentQuestion = activeQuestions[0] ?? null;
-	let guard = 0;
-
-	while (currentQuestion && guard < activeQuestions.length * 3) {
-		visited.add(currentQuestion.id);
-		const nextId = getNextQuestionId(currentQuestion, activeQuestions, seedResponses);
-		if (!nextId) break;
-		const nextQuestion = questionById.get(nextId) ?? null;
-		if (!nextQuestion) break;
-		currentQuestion = nextQuestion;
-		guard += 1;
-	}
-
-	if (visited.size === 0) return null;
-
-	const totalSeconds = Array.from(visited).reduce((acc, questionId) => {
-		const question = questionById.get(questionId);
-		if (!question) return acc;
-		return acc + estimateQuestionSeconds(question);
-	}, 0);
-
-	return {
-		questionCount: visited.size,
-		estimatedMinutes: formatEstimatedMinutes(totalSeconds),
-	};
 }
 
 type QuestionEditorAction =
@@ -1474,6 +1419,8 @@ export function QuestionListEditor({
 }: QuestionListEditorProps) {
 	const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
 	const [expandedBranchingQuestionId, setExpandedBranchingQuestionId] = useState<string | null>(null);
+	const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+	const [editingSectionTitle, setEditingSectionTitle] = useState("");
 	const [highlightedTargetQuestionId, setHighlightedTargetQuestionId] = useState<string | null>(null);
 	const [collapsedSectionIds, setCollapsedSectionIds] = useState<Set<string>>(new Set());
 	const [hoveredQuestionId, setHoveredQuestionId] = useState<string | null>(null);
@@ -1600,6 +1547,70 @@ export function QuestionListEditor({
 
 			setExpandedBranchingQuestionId(toQuestionId);
 			toast.success("Routing decision point moved");
+		},
+		[onChange]
+	);
+
+	const updateBranchTargetForRuleGroup = useCallback(
+		(
+			sourceQuestionId: string,
+			groupRuleIds: string[],
+			target: { action: "skip_to" | "end_survey"; targetQuestionId?: string; targetSectionId?: string }
+		) => {
+			if (groupRuleIds.length === 0) return;
+			const groupRuleIdSet = new Set(groupRuleIds);
+			onChange((previousQuestions) =>
+				previousQuestions.map((candidate) => {
+					if (candidate.id !== sourceQuestionId || !candidate.branching) return candidate;
+					const nextRules = candidate.branching.rules.map((rule) => {
+						if (!groupRuleIdSet.has(rule.id)) return rule;
+						if (target.action === "end_survey") {
+							return {
+								...rule,
+								action: "end_survey" as const,
+								targetQuestionId: undefined,
+								targetSectionId: undefined,
+							};
+						}
+						return {
+							...rule,
+							action: "skip_to" as const,
+							targetQuestionId: target.targetQuestionId,
+							targetSectionId: target.targetSectionId,
+						};
+					});
+					return {
+						...candidate,
+						branching: {
+							...candidate.branching,
+							rules: nextRules,
+						},
+					};
+				})
+			);
+			toast.success("Updated branch destination");
+		},
+		[onChange]
+	);
+
+	const renameSection = useCallback(
+		(sectionId: string, nextTitleRaw: string) => {
+			const nextTitle = nextTitleRaw.trim();
+			if (!nextTitle) return;
+			onChange((previousQuestions) =>
+				previousQuestions.map((candidate) => {
+					const candidateSectionId = candidate.sectionId?.trim() || DEFAULT_SECTION_ID;
+					if (candidateSectionId !== sectionId) return candidate;
+					return {
+						...candidate,
+						sectionId,
+						sectionTitle: nextTitle,
+					};
+				})
+			);
+			setEditingSectionId(null);
+			setEditingSectionTitle("");
+			toast.success(`Renamed section to "${nextTitle}"`);
 		},
 		[onChange]
 	);
@@ -1806,14 +1817,11 @@ export function QuestionListEditor({
 					});
 					const groupedTargets = groupRulesByTarget(branchRuleRows);
 					const branchTargets = groupedTargets.map((group) => group.targetLabel);
-					const pathPreviewByTargetKey = new Map(
-						groupedTargets.map((group) => {
-							const preview = estimatePathPreviewForTargetGroup(questions, group);
-							const key = `${group.targetLabel}:${group.targetQuestionId ?? "none"}`;
-							return [key, preview] as const;
-						})
-					);
 					const isBranchingExpanded = expandedBranchingQuestionId === question.id;
+					const branchSummaryLabel =
+						groupedTargets.length === 1
+							? `Branch: to ${branchTargets[0]}`
+							: `Branch: to ${branchTargets.slice(0, 3).join(", ")}${branchTargets.length > 3 ? ` +${branchTargets.length - 3} more` : ""}`;
 					const coaching = coachingFlags.get(index + 1);
 					const flagColor = coaching
 						? ["leading", "double_barreled", "closed_ended"].includes(coaching.issue)
@@ -1825,16 +1833,76 @@ export function QuestionListEditor({
 						<Fragment key={question.id}>
 							{isSectionStart && sectionSummary && (
 								<div className="mt-2 mb-1 ml-1 flex items-center justify-between rounded-md border border-border/50 bg-muted/25 px-2 py-1">
-									<button
-										type="button"
-										className="flex items-center gap-1.5 text-left text-xs"
-										onClick={() => toggleSectionCollapse(sectionSummary.id)}
-									>
-										<ChevronDownIcon
-											className={cn("h-3 w-3 transition-transform", isSectionCollapsed ? "-rotate-90" : "")}
-										/>
-										<span className="font-medium">{sectionSummary.title}</span>
-									</button>
+									<div className="flex min-w-0 items-center gap-1.5">
+										<button
+											type="button"
+											className="flex items-center gap-1.5 text-left text-xs"
+											onClick={() => toggleSectionCollapse(sectionSummary.id)}
+										>
+											<ChevronDownIcon
+												className={cn("h-3 w-3 transition-transform", isSectionCollapsed ? "-rotate-90" : "")}
+											/>
+										</button>
+										{editingSectionId === sectionSummary.id ? (
+											<div className="flex items-center gap-1">
+												<Input
+													autoFocus
+													value={editingSectionTitle}
+													onChange={(event) => setEditingSectionTitle(event.target.value)}
+													onKeyDown={(event) => {
+														if (event.key === "Enter") {
+															event.preventDefault();
+															renameSection(sectionSummary.id, editingSectionTitle);
+														}
+														if (event.key === "Escape") {
+															event.preventDefault();
+															setEditingSectionId(null);
+															setEditingSectionTitle("");
+														}
+													}}
+													className="h-6 min-w-[180px] text-xs"
+												/>
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													className="h-5 w-5"
+													onClick={() => renameSection(sectionSummary.id, editingSectionTitle)}
+												>
+													<Check className="h-3 w-3" />
+												</Button>
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													className="h-5 w-5"
+													onClick={() => {
+														setEditingSectionId(null);
+														setEditingSectionTitle("");
+													}}
+												>
+													<X className="h-3 w-3" />
+												</Button>
+											</div>
+										) : (
+											<>
+												<span className="truncate font-medium text-xs">{sectionSummary.title}</span>
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													className="h-5 w-5 text-muted-foreground hover:text-foreground"
+													title="Rename section"
+													onClick={() => {
+														setEditingSectionId(sectionSummary.id);
+														setEditingSectionTitle(sectionSummary.title);
+													}}
+												>
+													<Pencil className="h-3 w-3" />
+												</Button>
+											</>
+										)}
+									</div>
 									<span className="text-[10px] text-muted-foreground">
 										{sectionSummary.questionCount} questions • {sectionSummary.estimatedMinutes}
 									</span>
@@ -1899,21 +1967,21 @@ export function QuestionListEditor({
 										<div className="ml-12 py-1">
 											<button
 												type="button"
-												className="group/branch flex items-center gap-2 rounded-md px-1 py-0.5 text-[10px] text-violet-600 transition-colors hover:bg-violet-500/5 dark:text-violet-400"
+												className="group/branch flex items-center gap-2 rounded-md px-1 py-0.5 text-[11px] text-foreground transition-colors hover:bg-violet-500/10"
 												onClick={() =>
 													setExpandedBranchingQuestionId((current) => (current === question.id ? null : question.id))
 												}
-												title="Edit routing rules or move the routing decision point"
+												title="View and edit branching"
 											>
-												<span className="rounded-full border border-violet-500/40 bg-violet-500/10 px-1.5 py-0.5 font-medium">
-													Routing after Q{index + 1}
+												<span className="rounded-full border border-violet-500/40 bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-700 dark:text-violet-200">
+													{branchSummaryLabel}
 												</span>
-												<span className="max-w-[420px] truncate text-violet-500/90">
-													{groupedTargets.length} target{groupedTargets.length === 1 ? "" : "s"}:{" "}
-													{branchTargets.join(", ")}
+												<span className="max-w-[420px] truncate text-foreground/75">
+													Location: Q{index + 1} • {groupedTargets.length} destination
+													{groupedTargets.length === 1 ? "" : "s"}
 												</span>
-												<span className="rounded-full border border-violet-500/25 bg-violet-500/5 px-1 py-0.5 text-[9px] text-violet-500/80 uppercase tracking-wide">
-													Edit / Move
+												<span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-1 py-0.5 font-medium text-[9px] text-violet-700 uppercase tracking-wide dark:text-violet-200">
+													Edit
 												</span>
 												<ChevronDownIcon
 													className={cn(
@@ -1925,64 +1993,118 @@ export function QuestionListEditor({
 											</button>
 
 											{isBranchingExpanded && (
-												<div className="mt-1 space-y-1 rounded-md border border-violet-500/20 bg-violet-500/[0.03] p-2">
-													<div className="flex flex-wrap items-center gap-2 rounded-md border border-violet-500/20 border-dashed bg-violet-500/[0.04] px-2 py-1.5">
-														<span className="text-[10px] text-violet-600/90 dark:text-violet-300/90">
-															Move routing decision point
-														</span>
-														<Select
-															value={question.id}
-															onValueChange={(nextQuestionId) => moveRoutingDecisionPoint(question.id, nextQuestionId)}
+												<div className="mt-1 space-y-2 rounded-md border border-violet-500/20 bg-violet-500/[0.03] p-2">
+													<div className="flex items-center justify-between">
+														<div className="text-[11px] text-foreground/70">Simple branch view</div>
+														<Button
+															type="button"
+															variant="link"
+															size="sm"
+															className="h-6 px-0 text-[11px] text-violet-600 dark:text-violet-300"
+															onClick={() => setSelectedQuestionId(question.id)}
 														>
-															<SelectTrigger className="h-6 min-w-[180px] border-violet-500/20 bg-background text-xs">
-																<SelectValue />
-															</SelectTrigger>
-															<SelectContent>
-																{questions.map((candidate, candidateIndex) => (
-																	<SelectItem key={candidate.id} value={candidate.id}>
-																		After Q{candidateIndex + 1}: {candidate.prompt.slice(0, 34)}
-																		{candidate.prompt.length > 34 ? "…" : ""}
-																	</SelectItem>
-																))}
-															</SelectContent>
-														</Select>
+															Link to full editor
+														</Button>
 													</div>
-
 													{groupedTargets.map((group, rowIndex) => (
 														<div
 															key={`${group.targetLabel}-${rowIndex}`}
-															className="group/rule flex items-center justify-between gap-2 rounded px-1 py-0.5 text-[11px]"
+															className="group/rule space-y-1 rounded-md border border-violet-500/20 bg-background/40 px-2 py-1.5 text-[11px]"
+															onMouseEnter={() => setHighlightedTargetQuestionId(group.targetQuestionId)}
+															onMouseLeave={() => setHighlightedTargetQuestionId(null)}
 														>
-															<span className="min-w-0 truncate text-foreground/80">
-																{group.conditionSummary === "otherwise" ? "Otherwise" : `If ${group.conditionSummary}`}
-																{group.ruleCount > 1 ? ` (${group.ruleCount} rules)` : ""}
-															</span>
-															<div className="flex items-center gap-1.5">
-																{(() => {
-																	const key = `${group.targetLabel}:${group.targetQuestionId ?? "none"}`;
-																	const preview = pathPreviewByTargetKey.get(key) ?? null;
-																	if (!preview) return null;
-																	return (
-																		<span className="rounded-full border border-violet-500/25 bg-violet-500/[0.08] px-1.5 py-0.5 text-[10px] text-violet-600/90 dark:text-violet-200/90">
-																			{preview.questionCount} questions • {preview.estimatedMinutes}
-																		</span>
-																	);
-																})()}
-																<span
-																	className="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 font-medium text-violet-600 dark:text-violet-300"
-																	onMouseEnter={() => setHighlightedTargetQuestionId(group.targetQuestionId)}
-																	onMouseLeave={() => setHighlightedTargetQuestionId(null)}
-																	title={
-																		group.targetPrompt
-																			? `${group.targetLabel}: ${group.targetPrompt}`
-																			: group.targetLabel
+															<div className="flex items-start gap-1">
+																<span className="min-w-[76px] font-medium text-muted-foreground">Branch:</span>
+																<span className="truncate text-foreground">to {group.targetLabel}</span>
+															</div>
+															<div className="flex flex-wrap items-center gap-2">
+																<span className="min-w-[76px] font-medium text-muted-foreground">Location:</span>
+																<Select
+																	value={question.id}
+																	onValueChange={(nextQuestionId) =>
+																		moveRoutingDecisionPoint(question.id, nextQuestionId)
 																	}
 																>
-																	<ArrowRight className="h-3 w-3 opacity-0 transition-opacity group-hover/rule:opacity-100" />
-																	{group.targetPrompt
-																		? `${group.targetLabel} • ${group.targetPrompt.slice(0, 28)}`
-																		: group.targetLabel}
+																	<SelectTrigger className="h-6 min-w-[190px] border-violet-500/20 bg-background text-[11px]">
+																		<SelectValue />
+																	</SelectTrigger>
+																	<SelectContent>
+																		{questions.map((candidate, candidateIndex) => (
+																			<SelectItem key={candidate.id} value={candidate.id}>
+																				Q{candidateIndex + 1}: {candidate.prompt.slice(0, 40)}
+																				{candidate.prompt.length > 40 ? "…" : ""}
+																			</SelectItem>
+																		))}
+																	</SelectContent>
+																</Select>
+															</div>
+															<div className="flex items-start gap-1">
+																<span className="min-w-[76px] font-medium text-muted-foreground">Condition:</span>
+																<span className="truncate text-foreground/90">
+																	{group.conditionSummary === "otherwise"
+																		? "otherwise"
+																		: `if ${group.conditionSummary}`}
+																	{group.ruleCount > 1 ? ` (${group.ruleCount} rules)` : ""}
 																</span>
+															</div>
+															<div className="flex flex-wrap items-center gap-2">
+																<span className="min-w-[76px] font-medium text-muted-foreground">Destination:</span>
+																<Select
+																	value={
+																		group.rules[0]?.action === "end_survey"
+																			? "__end__"
+																			: group.rules[0]?.targetSectionId
+																				? `section:${group.rules[0].targetSectionId}`
+																				: (group.rules[0]?.targetQuestionId ?? "__end__")
+																	}
+																	onValueChange={(value) => {
+																		if (value === "__end__") {
+																			updateBranchTargetForRuleGroup(question.id, group.ruleIds, {
+																				action: "end_survey",
+																			});
+																			return;
+																		}
+																		if (value.startsWith("section:")) {
+																			updateBranchTargetForRuleGroup(question.id, group.ruleIds, {
+																				action: "skip_to",
+																				targetSectionId: value.slice("section:".length),
+																			});
+																			return;
+																		}
+																		updateBranchTargetForRuleGroup(question.id, group.ruleIds, {
+																			action: "skip_to",
+																			targetQuestionId: value,
+																		});
+																	}}
+																>
+																	<SelectTrigger className="h-6 min-w-[210px] border-violet-500/30 bg-background text-[11px]">
+																		<SelectValue />
+																	</SelectTrigger>
+																	<SelectContent>
+																		<SelectItem value="__end__">End survey</SelectItem>
+																		{sections
+																			.filter((section) => {
+																				const startIndex = questions.findIndex((q) => q.id === section.startQuestionId);
+																				return startIndex > index;
+																			})
+																			.map((section) => {
+																				const startIndex = questions.findIndex((q) => q.id === section.startQuestionId);
+																				return (
+																					<SelectItem
+																						key={`inline-section-${section.id}`}
+																						value={`section:${section.id}`}
+																					>
+																						Section: {section.title} (Q{startIndex + 1})
+																					</SelectItem>
+																				);
+																			})}
+																		{questions.slice(index + 1).map((candidate, candidateOffset) => (
+																			<SelectItem key={`inline-question-${candidate.id}`} value={candidate.id}>
+																				Q{index + candidateOffset + 2}
+																			</SelectItem>
+																		))}
+																	</SelectContent>
+																</Select>
 															</div>
 														</div>
 													))}
