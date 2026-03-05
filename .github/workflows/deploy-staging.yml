@@ -69,3 +69,58 @@ jobs:
             echo "- Fly app: upsight-staging"
             echo "- URL: https://upsight-staging.fly.dev"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  smoke-tests:
+    needs: deploy
+    if: ${{ !contains(github.event.head_commit.message, '[skip tests]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.3.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Wait for staging to be ready
+        run: |
+          echo "Waiting for staging to respond..."
+          for i in $(seq 1 30); do
+            if curl -sf https://upsight-staging.fly.dev/healthcheck > /dev/null 2>&1; then
+              echo "Staging is ready!"
+              exit 0
+            fi
+            echo "Attempt $i/30 - waiting 10s..."
+            sleep 10
+          done
+          echo "Staging did not become ready in time"
+          exit 1
+
+      - name: Run smoke tests
+        run: pnpm test:e2e:smoke
+        env:
+          E2E_BASE_URL: https://upsight-staging.fly.dev
+          E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
