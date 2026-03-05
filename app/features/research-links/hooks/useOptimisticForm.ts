@@ -273,8 +273,7 @@ export function useOptimisticForm(
 		});
 	}, []);
 
-	/** Update questions: mark dirty immediately and debounce saves.
-	 *  If a question is still empty (e.g. just added), keep it dirty until prompt is filled. */
+	/** Update questions: mark dirty immediately and debounce saves. */
 	const setQuestions = useCallback(
 		(
 			questionsOrUpdater:
@@ -286,11 +285,8 @@ export function useOptimisticForm(
 				[];
 			const questions =
 				typeof questionsOrUpdater === "function" ? questionsOrUpdater(currentQuestions) : questionsOrUpdater;
-			const hasEmptyPrompt = questions.some((q) => !q.prompt.trim());
 			setDirtyOnly("questions", questions);
-			if (!hasEmptyPrompt) {
-				debouncedSubmit();
-			}
+			debouncedSubmit();
 		},
 		[setDirtyOnly, debouncedSubmit]
 	);

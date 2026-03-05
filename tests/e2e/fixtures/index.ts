@@ -15,10 +15,11 @@ export { STORAGE_STATE_PATH } from "./storage-state";
 /** Setup auth fixture */
 async function setupAuth(page: Page): Promise<AuthFixture> {
   const isLoggedIn = async () => {
-    const cookies = await page.context().cookies();
-    return cookies.some(
-      (c) => c.name.includes("supabase") || c.name.includes("auth"),
-    );
+    // Robust check: hit /login and verify we get redirected away.
+    // Cookie presence alone is insufficient when session cookies are stale.
+    await page.goto("/login");
+    await page.waitForLoadState("domcontentloaded");
+    return !/\/login(?:$|[?#])/.test(page.url());
   };
 
   return {
@@ -34,14 +35,20 @@ async function setupAuth(page: Page): Promise<AuthFixture> {
         );
       }
 
-      await page.goto("/login");
       await page.fill('input[name="email"]', testEmail);
       await page.fill('input[name="password"]', testPassword);
-      await page.click('button[type="submit"]');
+      // Avoid clicking social auth submit buttons.
+      await page.click('button[type="submit"]:has-text("Login")');
 
-      await page.waitForURL(/\/(projects|login_success|onboarding)/, {
-        timeout: 15000,
-      });
+      const loginSuccessPattern =
+        /\/(projects|login_success|onboarding)(?:\/|$)|\/a\/[^/]+\/[^/]+/;
+      const deadline = Date.now() + 15000;
+      // App login can route client-side; poll URL instead of relying on a nav event.
+      while (Date.now() < deadline) {
+        if (loginSuccessPattern.test(page.url())) return;
+        await page.waitForTimeout(150);
+      }
+      throw new Error(`Login did not reach an authenticated route. Final URL: ${page.url()}`);
     },
     async isLoggedIn() {
       return isLoggedIn();
