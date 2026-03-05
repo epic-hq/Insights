@@ -7,6 +7,9 @@
 
 import consola from "consola";
 import { z } from "zod";
+import { resolveSectionStartQuestionId } from "./sections";
+
+const ENABLE_BRANCHING_DEBUG = typeof process !== "undefined" && process.env.NODE_ENV !== "production";
 
 // ============================================================================
 // Types & Schemas
@@ -82,6 +85,7 @@ export const BranchRuleSchema = z.object({
 	conditions: ConditionGroupSchema,
 	action: BranchActionSchema,
 	targetQuestionId: z.string().optional(), // Required for skip_to
+	targetSectionId: z.string().optional(), // Optional first-class section target
 	label: z.string().optional(), // Human-readable description (legacy)
 
 	// Natural language fields (for AI-parsed guidelines)
@@ -202,14 +206,22 @@ export function evaluateConditionGroup(group: ConditionGroup, responses: Respons
 export function evaluateBranchRules(
 	branching: QuestionBranching | null | undefined,
 	responses: ResponseRecord
-): { action: BranchAction; targetQuestionId?: string; ruleId?: string } | null {
+): { action: BranchAction; targetQuestionId?: string; targetSectionId?: string; ruleId?: string } | null {
 	if (!branching?.rules?.length) return null;
 
 	for (const rule of branching.rules) {
 		if (evaluateConditionGroup(rule.conditions, responses)) {
+			if (ENABLE_BRANCHING_DEBUG) {
+				consola.debug("[branching] matched rule", {
+					ruleId: rule.id,
+					action: rule.action,
+					targetQuestionId: rule.targetQuestionId ?? null,
+				});
+			}
 			return {
 				action: rule.action,
 				targetQuestionId: rule.targetQuestionId,
+				targetSectionId: rule.targetSectionId,
 				ruleId: rule.id,
 			};
 		}
@@ -224,6 +236,7 @@ export function evaluateBranchRules(
 
 export interface QuestionWithBranching {
 	id: string;
+	sectionId?: string | null;
 	branching?: QuestionBranching | null;
 }
 
@@ -247,17 +260,27 @@ export function getNextQuestionId(
 		if (branchResult.action === "end_survey") {
 			return null;
 		}
-		if (branchResult.action === "skip_to" && branchResult.targetQuestionId) {
-			// Verify target exists and is after current
-			const targetIndex = questions.findIndex((q) => q.id === branchResult.targetQuestionId);
-			const currentIndex = questions.findIndex((q) => q.id === currentQuestion.id);
-			if (targetIndex > currentIndex) {
-				return branchResult.targetQuestionId;
+		if (branchResult.action === "skip_to") {
+			const resolvedTargetQuestionId =
+				branchResult.targetSectionId && branchResult.targetSectionId.trim().length > 0
+					? resolveSectionStartQuestionId(questions, branchResult.targetSectionId, currentQuestion.id)
+					: branchResult.targetQuestionId;
+			if (!resolvedTargetQuestionId) {
+				consola.warn(
+					`[branching] skip_to rule "${branchResult.ruleId}" could not resolve target from section "${branchResult.targetSectionId ?? ""}" and question "${branchResult.targetQuestionId ?? ""}". Falling through to default.`
+				);
+			} else {
+				// Verify target exists and is after current
+				const targetIndex = questions.findIndex((q) => q.id === resolvedTargetQuestionId);
+				const currentIndex = questions.findIndex((q) => q.id === currentQuestion.id);
+				if (targetIndex > currentIndex) {
+					return resolvedTargetQuestionId;
+				}
+				// Target is before current or not found — log and fall through to default
+				consola.warn(
+					`[branching] skip_to rule "${branchResult.ruleId}" targets question "${resolvedTargetQuestionId}" which is ${targetIndex < 0 ? "not found" : "before current question"} (currentIndex=${currentIndex}, targetIndex=${targetIndex}). Falling through to linear order.`
+				);
 			}
-			// Target is before current or not found — log and fall through to default
-			consola.warn(
-				`[branching] skip_to rule "${branchResult.ruleId}" targets question "${branchResult.targetQuestionId}" which is ${targetIndex < 0 ? "not found" : "before current question"} (currentIndex=${currentIndex}, targetIndex=${targetIndex}). Falling through to linear order.`
-			);
 		}
 	}
 
@@ -266,6 +289,12 @@ export function getNextQuestionId(
 		const targetIndex = questions.findIndex((q) => q.id === currentQuestion.branching?.defaultNext);
 		const currentIndex = questions.findIndex((q) => q.id === currentQuestion.id);
 		if (targetIndex > currentIndex) {
+			if (ENABLE_BRANCHING_DEBUG) {
+				consola.debug("[branching] defaultNext selected", {
+					questionId: currentQuestion.id,
+					defaultNext: currentQuestion.branching.defaultNext,
+				});
+			}
 			return currentQuestion.branching.defaultNext;
 		}
 	}
@@ -273,6 +302,12 @@ export function getNextQuestionId(
 	// Default: next question in linear order
 	const currentIndex = questions.findIndex((q) => q.id === currentQuestion.id);
 	const nextQuestion = questions[currentIndex + 1];
+	if (ENABLE_BRANCHING_DEBUG) {
+		consola.debug("[branching] linear next question", {
+			questionId: currentQuestion.id,
+			nextQuestionId: nextQuestion?.id ?? null,
+		});
+	}
 	return nextQuestion?.id ?? null;
 }
 

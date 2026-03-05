@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
 	AlertTriangle,
 	ArrowDown,
+	ArrowRight,
 	ArrowUp,
 	BarChart3,
 	ChevronDown as ChevronDownIcon,
@@ -20,7 +21,7 @@ import {
 	Upload,
 	X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRevalidator } from "react-router";
 import { toast } from "sonner";
 import { QuestionHoverResults } from "~/components/questions/QuestionHoverResults";
@@ -34,8 +35,11 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
+import { type BranchRule, getNextQuestionId } from "../branching";
 import type { ResearchLinkQuestion } from "../schemas";
 import { createEmptyQuestion } from "../schemas";
+import { DEFAULT_SECTION_ID, deriveSurveySections } from "../sections";
+import { formatFlowRangeLabel, formatPathBreakdown, summarizeSurveyFlow } from "../survey-flow";
 import { getMediaType, isR2Key } from "../utils";
 import { QuestionBranchingEditor } from "./QuestionBranchingEditor";
 import { QuestionMediaEditor } from "./QuestionMediaEditor";
@@ -110,7 +114,7 @@ function OptionsInput({
 	options: string[] | null;
 	onChange: (options: string[] | null) => void;
 }) {
-	const serializedOptions = useMemo(() => (options ?? []).join(", "), [options]);
+	const serializedOptions = useMemo(() => (options ?? []).join("\n"), [options]);
 	const [localValue, setLocalValue] = useState(() => serializedOptions);
 	const [isEditing, setIsEditing] = useState(false);
 
@@ -123,14 +127,13 @@ function OptionsInput({
 
 	const parseAndSync = () => {
 		const parsed = localValue
-			.split(",")
+			.split(/\r?\n/)
 			.map((o) => o.trim())
 			.filter(Boolean);
 		onChange(parsed.length > 0 ? parsed : null);
 	};
 
-	// Show one option per line for readability
-	const lineCount = Math.max(3, localValue.split(",").filter(Boolean).length + 1);
+	const lineCount = Math.max(3, localValue.split(/\r?\n/).filter(Boolean).length + 1);
 
 	return (
 		<Textarea
@@ -141,7 +144,7 @@ function OptionsInput({
 				setIsEditing(false);
 				parseAndSync();
 			}}
-			placeholder="Options (comma separated)"
+			placeholder={"One option per line\nCommas are kept as part of the option text"}
 			className="text-xs"
 			rows={lineCount}
 		/>
@@ -160,6 +163,206 @@ function questionTypeLabel(type: string): string {
 		image_select: "Image select",
 	};
 	return labels[type] ?? type;
+}
+
+function formatBranchRuleValue(value: string | string[] | undefined): string {
+	if (Array.isArray(value)) return value.filter(Boolean).join(", ");
+	return value?.trim() ?? "";
+}
+
+function getBranchTargetMeta(
+	rule: BranchRule,
+	questions: ResearchLinkQuestion[],
+	sections: ReturnType<typeof deriveSurveySections>
+): {
+	targetLabel: string;
+	targetQuestionId: string | null;
+	targetPrompt: string | null;
+} {
+	if (rule.action === "end_survey") {
+		return { targetLabel: "End survey", targetQuestionId: null, targetPrompt: null };
+	}
+	if (rule.targetSectionId) {
+		const section = sections.find((entry) => entry.id === rule.targetSectionId);
+		if (section) {
+			const startIndex = questions.findIndex((q) => q.id === section.startQuestionId);
+			return {
+				targetLabel: `Section: ${section.title}`,
+				targetQuestionId: section.startQuestionId,
+				targetPrompt: startIndex >= 0 ? (questions[startIndex]?.prompt ?? null) : null,
+			};
+		}
+	}
+	const targetIndex = rule.targetQuestionId ? questions.findIndex((q) => q.id === rule.targetQuestionId) : -1;
+	if (targetIndex < 0 || !rule.targetQuestionId) {
+		return { targetLabel: "Unknown", targetQuestionId: null, targetPrompt: null };
+	}
+	return {
+		targetLabel: `Q${targetIndex + 1}`,
+		targetQuestionId: rule.targetQuestionId,
+		targetPrompt: questions[targetIndex]?.prompt ?? null,
+	};
+}
+
+function formatRuleConditionForGrouping(rule: BranchRule): string {
+	if (rule.conditions.conditions.length === 0) return "otherwise";
+	const parts = rule.conditions.conditions.map((condition) => {
+		const value = formatBranchRuleValue(condition.value);
+		switch (condition.operator) {
+			case "equals":
+			case "selected":
+				return value ? `"${value}"` : "selected";
+			case "not_equals":
+			case "not_selected":
+				return value ? `not "${value}"` : "not selected";
+			case "contains":
+				return value ? `contains "${value}"` : "contains";
+			case "not_contains":
+				return value ? `does not contain "${value}"` : "does not contain";
+			case "answered":
+				return "answered";
+			case "not_answered":
+				return "not answered";
+			default:
+				return condition.operator;
+		}
+	});
+	return parts.join(rule.conditions.logic === "or" ? " OR " : " AND ");
+}
+
+function groupRulesByTarget(
+	ruleRows: Array<{
+		rule: BranchRule;
+		targetLabel: string;
+		targetQuestionId: string | null;
+		targetPrompt: string | null;
+	}>
+) {
+	const grouped = new Map<
+		string,
+		{
+			targetLabel: string;
+			targetQuestionId: string | null;
+			targetPrompt: string | null;
+			conditions: Set<string>;
+			ruleCount: number;
+			rules: BranchRule[];
+		}
+	>();
+
+	for (const { rule, targetLabel, targetQuestionId, targetPrompt } of ruleRows) {
+		const groupKey = `${targetLabel}:${targetQuestionId ?? "none"}`;
+		const entry = grouped.get(groupKey) ?? {
+			targetLabel,
+			targetQuestionId,
+			targetPrompt,
+			conditions: new Set<string>(),
+			ruleCount: 0,
+			rules: [],
+		};
+		entry.ruleCount += 1;
+		entry.conditions.add(formatRuleConditionForGrouping(rule));
+		entry.rules.push(rule);
+		grouped.set(groupKey, entry);
+	}
+
+	return Array.from(grouped.values()).map((entry) => {
+		const conditionList = Array.from(entry.conditions).filter(Boolean);
+		let conditionSummary = "otherwise";
+		if (conditionList.length === 1) {
+			conditionSummary = conditionList[0];
+		} else if (conditionList.length > 1 && conditionList.length <= 4) {
+			conditionSummary = conditionList.join(" OR ");
+		} else if (conditionList.length > 4) {
+			conditionSummary = `${conditionList.slice(0, 3).join(", ")} +${conditionList.length - 3} more`;
+		}
+
+		return {
+			targetLabel: entry.targetLabel,
+			targetQuestionId: entry.targetQuestionId,
+			targetPrompt: entry.targetPrompt,
+			ruleCount: entry.ruleCount,
+			conditionSummary,
+			rules: entry.rules,
+		};
+	});
+}
+
+const QUESTION_SECONDS_BY_TYPE: Record<string, number> = {
+	auto: 16,
+	short_text: 16,
+	long_text: 28,
+	single_select: 9,
+	multi_select: 14,
+	likert: 9,
+	image_select: 14,
+};
+const SURVEY_LENGTH_WARN_SECONDS = 5 * 60;
+
+function estimateQuestionSeconds(question: ResearchLinkQuestion): number {
+	return QUESTION_SECONDS_BY_TYPE[question.type] ?? QUESTION_SECONDS_BY_TYPE.auto;
+}
+
+function formatEstimatedMinutes(totalSeconds: number): string {
+	if (totalSeconds <= 0) return "~0 min";
+	return `~${Math.max(1, Math.round(totalSeconds / 60))} min`;
+}
+
+function estimatePathPreviewForTargetGroup(
+	questions: ResearchLinkQuestion[],
+	group: { rules: BranchRule[] }
+): { questionCount: number; estimatedMinutes: string } | null {
+	if (questions.length === 0) return null;
+
+	const seedResponses: Record<string, string | string[]> = {};
+	const representativeCondition = group.rules
+		.flatMap((rule) => rule.conditions.conditions)
+		.find((condition) => {
+			if (typeof condition.value !== "string") return false;
+			return (
+				(condition.operator === "equals" || condition.operator === "contains" || condition.operator === "selected") &&
+				condition.value.trim().length > 0
+			);
+		});
+
+	if (representativeCondition && typeof representativeCondition.value === "string") {
+		if (representativeCondition.operator === "selected") {
+			seedResponses[representativeCondition.questionId] = [representativeCondition.value];
+		} else {
+			seedResponses[representativeCondition.questionId] = representativeCondition.value;
+		}
+	}
+
+	const activeQuestions = questions.filter(
+		(question): question is ResearchLinkQuestion & { id: string } => Boolean(question.id) && !question.hidden
+	);
+	const visited = new Set<string>();
+	const questionById = new Map(activeQuestions.map((question) => [question.id, question]));
+	let currentQuestion = activeQuestions[0] ?? null;
+	let guard = 0;
+
+	while (currentQuestion && guard < activeQuestions.length * 3) {
+		visited.add(currentQuestion.id);
+		const nextId = getNextQuestionId(currentQuestion, activeQuestions, seedResponses);
+		if (!nextId) break;
+		const nextQuestion = questionById.get(nextId) ?? null;
+		if (!nextQuestion) break;
+		currentQuestion = nextQuestion;
+		guard += 1;
+	}
+
+	if (visited.size === 0) return null;
+
+	const totalSeconds = Array.from(visited).reduce((acc, questionId) => {
+		const question = questionById.get(questionId);
+		if (!question) return acc;
+		return acc + estimateQuestionSeconds(question);
+	}, 0);
+
+	return {
+		questionCount: visited.size,
+		estimatedMinutes: formatEstimatedMinutes(totalSeconds),
+	};
 }
 
 type QuestionEditorAction =
@@ -858,6 +1061,7 @@ function QuestionEditDrawer({
 														};
 														applyDraftUpdates({ imageOptions: nextOptions }, "debounced");
 													}}
+													onBlur={() => flushPendingQuestionUpdates()}
 													placeholder="Label"
 													className="h-8 flex-1 text-xs"
 												/>
@@ -871,6 +1075,7 @@ function QuestionEditDrawer({
 														};
 														applyDraftUpdates({ imageOptions: nextOptions }, "debounced");
 													}}
+													onBlur={() => flushPendingQuestionUpdates()}
 													placeholder="Image URL or click thumbnail"
 													className="h-8 flex-[2] text-xs"
 												/>
@@ -961,6 +1166,7 @@ function QuestionEditDrawer({
 											"debounced"
 										)
 									}
+									onBlur={() => flushPendingQuestionUpdates()}
 									placeholder="Low label (e.g., Strongly disagree)"
 									className="h-8 text-xs"
 								/>
@@ -977,6 +1183,7 @@ function QuestionEditDrawer({
 											"debounced"
 										)
 									}
+									onBlur={() => flushPendingQuestionUpdates()}
 									placeholder="High label (e.g., Strongly agree)"
 									className="h-8 text-xs"
 								/>
@@ -1028,6 +1235,7 @@ function QuestionEditDrawer({
 												};
 												applyDraftUpdates({ imageOptions: nextOptions }, "debounced");
 											}}
+											onBlur={() => flushPendingQuestionUpdates()}
 											placeholder="Label"
 											className="h-8 flex-1 text-xs"
 										/>
@@ -1041,6 +1249,7 @@ function QuestionEditDrawer({
 												};
 												applyDraftUpdates({ imageOptions: nextOptions }, "debounced");
 											}}
+											onBlur={() => flushPendingQuestionUpdates()}
 											placeholder="Image URL or click thumbnail"
 											className="h-8 flex-[2] text-xs"
 										/>
@@ -1138,7 +1347,7 @@ function QuestionEditDrawer({
 						)}
 					</div>
 
-					{/* Branching / Skip Logic */}
+					{/* Branching */}
 					<div className="space-y-1.5">
 						<QuestionBranchingEditor
 							question={draft}
@@ -1247,6 +1456,8 @@ interface QuestionListEditorProps {
 	onChange: (next: ResearchLinkQuestion[] | ((previous: ResearchLinkQuestion[]) => ResearchLinkQuestion[])) => void;
 	/** Required for media recording/upload functionality */
 	listId?: string;
+	/** Survey context to improve coaching quality */
+	coachingContext?: string;
 	/** Saved AI analysis data from loader */
 	aiAnalysis?: SavedAiAnalysis | null;
 	/** Current total response count */
@@ -1257,10 +1468,14 @@ export function QuestionListEditor({
 	questions,
 	onChange,
 	listId,
+	coachingContext,
 	aiAnalysis,
 	responseCount,
 }: QuestionListEditorProps) {
 	const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
+	const [expandedBranchingQuestionId, setExpandedBranchingQuestionId] = useState<string | null>(null);
+	const [highlightedTargetQuestionId, setHighlightedTargetQuestionId] = useState<string | null>(null);
+	const [collapsedSectionIds, setCollapsedSectionIds] = useState<Set<string>>(new Set());
 	const [hoveredQuestionId, setHoveredQuestionId] = useState<string | null>(null);
 	const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [localDetailedResult, setLocalDetailedResult] = useState<SavedAiAnalysis["result"] | null>(null);
@@ -1314,6 +1529,7 @@ export function QuestionListEditor({
 		if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
 		hoverTimerRef.current = null;
 		setHoveredQuestionId(null);
+		setHighlightedTargetQuestionId(null);
 	}, []);
 
 	const dispatchQuestionAction = useCallback(
@@ -1344,6 +1560,50 @@ export function QuestionListEditor({
 		[dispatchQuestionAction]
 	);
 
+	const moveRoutingDecisionPoint = useCallback(
+		(fromQuestionId: string, toQuestionId: string) => {
+			if (fromQuestionId === toQuestionId) return;
+			onChange((previousQuestions) => {
+				const fromIndex = previousQuestions.findIndex((q) => q.id === fromQuestionId);
+				const toIndex = previousQuestions.findIndex((q) => q.id === toQuestionId);
+				if (fromIndex < 0 || toIndex < 0) return previousQuestions;
+
+				const fromQuestion = previousQuestions[fromIndex];
+				const toQuestion = previousQuestions[toIndex];
+				if (!fromQuestion.branching) return previousQuestions;
+
+				const sourceBranching = fromQuestion.branching;
+				const targetExisting = toQuestion.branching;
+				const mergedRules = [...(targetExisting?.rules ?? []), ...sourceBranching.rules];
+				const mergedDefaultNext = sourceBranching.defaultNext ?? targetExisting?.defaultNext;
+
+				const nextQuestions = [...previousQuestions];
+				nextQuestions[fromIndex] = { ...fromQuestion, branching: null };
+				nextQuestions[toIndex] = {
+					...toQuestion,
+					branching: {
+						rules: mergedRules,
+						...(mergedDefaultNext ? { defaultNext: mergedDefaultNext } : {}),
+					},
+				};
+
+				if (import.meta.env.DEV) {
+					console.debug("[QuestionListEditor] moved routing decision point", {
+						fromQuestionId,
+						toQuestionId,
+						movedRuleCount: sourceBranching.rules.length,
+					});
+				}
+
+				return nextQuestions;
+			});
+
+			setExpandedBranchingQuestionId(toQuestionId);
+			toast.success("Routing decision point moved");
+		},
+		[onChange]
+	);
+
 	const addQuestion = useCallback(() => {
 		const newQ = createEmptyQuestion();
 		dispatchQuestionAction({ type: "add", question: newQ });
@@ -1355,6 +1615,80 @@ export function QuestionListEditor({
 	const selectedQuestion = selectedIndex >= 0 ? questions[selectedIndex] : null;
 
 	const questionTypes = useMemo(() => questions.map((q) => q.type), [questions]);
+	const flowSummary = useMemo(() => summarizeSurveyFlow(questions), [questions]);
+	const flowEstimateLabel = useMemo(() => {
+		if (!flowSummary.hasBranching || flowSummary.paths.length < 2) return undefined;
+		return `Path-aware ${formatFlowRangeLabel(flowSummary)}`;
+	}, [flowSummary]);
+	const flowEstimateIsLong = flowSummary.hasBranching && flowSummary.maxSeconds > SURVEY_LENGTH_WARN_SECONDS;
+	const flowEstimateDebug = useMemo(() => {
+		if (!flowSummary.hasBranching || flowSummary.paths.length < 2) return null;
+		return formatPathBreakdown(flowSummary);
+	}, [flowSummary]);
+	const pathSummaryStrip = useMemo(() => {
+		if (!flowSummary.hasBranching || flowSummary.paths.length < 2) return null;
+		return (
+			<div className="rounded-md border border-violet-500/20 bg-violet-500/[0.04] px-2 py-1.5">
+				<div className="mb-1 font-medium text-[10px] text-violet-600/80 uppercase tracking-wide dark:text-violet-300/80">
+					Branching paths
+				</div>
+				<div className="flex flex-wrap items-center gap-1.5">
+					{flowSummary.paths.map((path, index) => (
+						<div
+							key={`${path.label}-${index}`}
+							className="inline-flex items-center gap-1 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[11px] text-violet-700 dark:text-violet-200"
+						>
+							<span className="font-medium">{path.label}</span>
+							<span className="text-violet-600/70 dark:text-violet-300/70">
+								{path.questionCount}q · {path.estimatedMinutesLabel}
+							</span>
+						</div>
+					))}
+				</div>
+			</div>
+		);
+	}, [flowSummary]);
+
+	const branchingDebugSnapshot = useMemo(
+		() =>
+			questions
+				.map((question, index) => {
+					const rules = question.branching?.rules ?? [];
+					if (rules.length === 0) return null;
+					const targets = new Set<string>();
+					for (const rule of rules) {
+						if (rule.action === "end_survey") {
+							targets.add("end");
+							continue;
+						}
+						const targetIdx = rule.targetQuestionId
+							? questions.findIndex((q) => q.id === rule.targetQuestionId) + 1
+							: 0;
+						targets.add(targetIdx > 0 ? `Q${targetIdx}` : "?");
+					}
+					return {
+						index: index + 1,
+						id: question.id,
+						ruleCount: rules.length,
+						targets: [...targets],
+					};
+				})
+				.filter(Boolean),
+		[questions]
+	);
+
+	useEffect(() => {
+		if (!import.meta.env.DEV) return;
+		console.debug("[QuestionListEditor] branching snapshot", branchingDebugSnapshot);
+	}, [branchingDebugSnapshot]);
+
+	useEffect(() => {
+		if (!import.meta.env.DEV || !flowEstimateDebug) return;
+		console.debug("[QuestionListEditor] path-aware estimate", {
+			label: flowEstimateLabel,
+			paths: flowEstimateDebug,
+		});
+	}, [flowEstimateDebug, flowEstimateLabel]);
 
 	const handleCoach = useCallback(async () => {
 		const questionTexts = questions.filter((q) => !q.hidden && q.prompt.trim()).map((q) => q.prompt);
@@ -1371,7 +1705,7 @@ export function QuestionListEditor({
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					questions: questionTexts,
-					context: "General research",
+					context: coachingContext ?? "General research",
 					mode: "survey",
 				}),
 			});
@@ -1397,7 +1731,7 @@ export function QuestionListEditor({
 		} finally {
 			setIsCoaching(false);
 		}
-	}, [questions]);
+	}, [questions, coachingContext]);
 
 	const handleCopy = useCallback(() => {
 		const text = formatQuestionsForClipboard(questions);
@@ -1407,10 +1741,55 @@ export function QuestionListEditor({
 		);
 	}, [questions]);
 
+	const sectionSummaries = useMemo(() => {
+		const sections = deriveSurveySections(questions);
+		return sections.map((section) => {
+			const sectionQuestions = questions.filter(
+				(question) => (question.sectionId?.trim() || DEFAULT_SECTION_ID) === section.id && !question.hidden
+			);
+			const totalSeconds = sectionQuestions.reduce((acc, question) => acc + estimateQuestionSeconds(question), 0);
+			return {
+				...section,
+				questionCount: sectionQuestions.length,
+				estimatedMinutes: formatEstimatedMinutes(totalSeconds),
+			};
+		});
+	}, [questions]);
+
+	const sectionSummaryById = useMemo(
+		() => new Map(sectionSummaries.map((section) => [section.id, section] as const)),
+		[sectionSummaries]
+	);
+
+	useEffect(() => {
+		setCollapsedSectionIds((current) => {
+			const next = new Set<string>();
+			for (const section of sectionSummaries) {
+				if (current.has(section.id)) next.add(section.id);
+			}
+			return next;
+		});
+	}, [sectionSummaries]);
+
+	const toggleSectionCollapse = useCallback((sectionId: string) => {
+		setCollapsedSectionIds((current) => {
+			const next = new Set(current);
+			if (next.has(sectionId)) {
+				next.delete(sectionId);
+			} else {
+				next.add(sectionId);
+			}
+			return next;
+		});
+	}, []);
+
 	return (
 		<UnifiedQuestionList
 			count={questions.length}
 			questionTypes={questionTypes}
+			timeLabelOverride={flowEstimateLabel}
+			timeIsLongOverride={flowEstimateLabel ? flowEstimateIsLong : undefined}
+			pathSummaryStrip={pathSummaryStrip}
 			showTimeBar
 			onAdd={addQuestion}
 			onCopy={handleCopy}
@@ -1428,103 +1807,226 @@ export function QuestionListEditor({
 			{/* Question rows */}
 			<AnimatePresence initial={false}>
 				{questions.map((question, index) => {
+					const sections = sectionSummaries;
+					const sectionId = question.sectionId?.trim() || DEFAULT_SECTION_ID;
+					const sectionSummary = sectionSummaryById.get(sectionId) ?? null;
+					const isSectionStart = sectionSummary?.startQuestionId === question.id;
+					const isSectionCollapsed = collapsedSectionIds.has(sectionId);
+					if (isSectionCollapsed && !isSectionStart) {
+						return null;
+					}
 					const hasBranching = Boolean(question.branching?.rules?.length);
 					const hasMedia = Boolean(question.mediaUrl ?? question.videoUrl);
 					const effectiveMediaUrl = question.mediaUrl ?? question.videoUrl ?? null;
-					// Coaching flag for this question (1-based index)
+					const branchRules = question.branching?.rules ?? [];
+					const branchRuleRows = branchRules.map((rule) => {
+						const targetMeta = getBranchTargetMeta(rule, questions, sections);
+						return {
+							rule,
+							targetLabel: targetMeta.targetLabel,
+							targetQuestionId: targetMeta.targetQuestionId,
+							targetPrompt: targetMeta.targetPrompt,
+						};
+					});
+					const groupedTargets = groupRulesByTarget(branchRuleRows);
+					const branchTargets = groupedTargets.map((group) => group.targetLabel);
+					const pathPreviewByTargetKey = new Map(
+						groupedTargets.map((group) => {
+							const preview = estimatePathPreviewForTargetGroup(questions, group);
+							const key = `${group.targetLabel}:${group.targetQuestionId ?? "none"}`;
+							return [key, preview] as const;
+						})
+					);
+					const isBranchingExpanded = expandedBranchingQuestionId === question.id;
 					const coaching = coachingFlags.get(index + 1);
 					const flagColor = coaching
 						? ["leading", "double_barreled", "closed_ended"].includes(coaching.issue)
 							? ("red" as const)
 							: ("amber" as const)
 						: undefined;
+
 					return (
-						<motion.div
-							key={question.id}
-							layout
-							initial={{ opacity: 0, y: 4 }}
-							animate={{ opacity: 1, y: 0 }}
-							exit={{ opacity: 0, y: -4 }}
-							transition={{ duration: 0.15 }}
-							onMouseEnter={() => handleMouseEnter(question.id)}
-							onMouseLeave={handleMouseLeave}
-						>
-							<UnifiedQuestionRow
-								index={index + 1}
-								text={question.prompt}
-								isSelected={selectedQuestionId === question.id}
-								onClick={() => setSelectedQuestionId(question.id)}
-								flag={flagColor}
-								dropoff={
-									questionDropoff?.[question.id]
-										? {
-												completionPct: questionDropoff[question.id].completionPct,
-											}
-										: undefined
-								}
-							>
-								{question.required && <span className="text-destructive text-xs">*</span>}
-								<QuestionTypeBadge type={question.type} />
-								{hasBranching && (
-									<GitBranch
-										className="h-3.5 w-3.5 text-violet-500"
-										title={`${question.branching?.rules?.length} branching rule${(question.branching?.rules?.length ?? 0) > 1 ? "s" : ""}`}
-									/>
-								)}
-								{hasMedia && effectiveMediaUrl && <QuestionMediaThumbnail url={effectiveMediaUrl} />}
-							</UnifiedQuestionRow>
-							{/* Coaching nudge — shown when AI flags an issue */}
-							{coaching && (
-								<div className="ml-12 flex items-start gap-2 py-1 text-[11px]">
-									<span className={flagColor === "red" ? "text-red-500" : "text-amber-500"}>{coaching.summary}</span>
-									{coaching.alternatives.length > 0 && (
-										<button
-											type="button"
-											className="text-primary hover:underline"
-											onClick={() =>
-												updateQuestion(question.id, {
-													prompt: coaching.alternatives[0],
-												})
-											}
-										>
-											Apply fix
-										</button>
-									)}
+						<Fragment key={question.id}>
+							{isSectionStart && sectionSummary && (
+								<div className="mt-2 mb-1 ml-1 flex items-center justify-between rounded-md border border-border/50 bg-muted/25 px-2 py-1">
+									<button
+										type="button"
+										className="flex items-center gap-1.5 text-left text-xs"
+										onClick={() => toggleSectionCollapse(sectionSummary.id)}
+									>
+										<ChevronDownIcon
+											className={cn("h-3 w-3 transition-transform", isSectionCollapsed ? "-rotate-90" : "")}
+										/>
+										<span className="font-medium">{sectionSummary.title}</span>
+									</button>
+									<span className="text-[10px] text-muted-foreground">
+										{sectionSummary.questionCount} questions • {sectionSummary.estimatedMinutes}
+									</span>
 								</div>
 							)}
-							{/* Branching annotation — shows where this question branches to */}
-							{hasBranching && question.branching?.rules && (
-								<div className="ml-12 flex flex-wrap items-center gap-x-3 gap-y-0.5 py-0.5 text-[10px] text-violet-500">
-									{question.branching.rules.map((rule) => {
-										const targetIdx = rule.targetQuestionId
-											? questions.findIndex((q) => q.id === rule.targetQuestionId) + 1
-											: null;
-										const label =
-											rule.summary ??
-											rule.label ??
-											(rule.conditions.conditions[0]
-												? `${rule.conditions.conditions[0].operator} "${rule.conditions.conditions[0].value ?? ""}"`
-												: "rule");
-										const target = rule.action === "end_survey" ? "end" : targetIdx ? `Q${targetIdx}` : "?";
-										return (
-											<span key={rule.id} className="whitespace-nowrap">
-												If {label} → {target}
+							{isSectionCollapsed ? null : (
+								<motion.div
+									layout
+									initial={{ opacity: 0, y: 4 }}
+									animate={{ opacity: 1, y: 0 }}
+									exit={{ opacity: 0, y: -4 }}
+									transition={{ duration: 0.15 }}
+									onMouseEnter={() => handleMouseEnter(question.id)}
+									onMouseLeave={handleMouseLeave}
+								>
+									<UnifiedQuestionRow
+										index={index + 1}
+										text={question.prompt}
+										isSelected={selectedQuestionId === question.id}
+										onClick={() => setSelectedQuestionId(question.id)}
+										className={cn(
+											highlightedTargetQuestionId === question.id &&
+												"border-violet-500/60 bg-violet-500/[0.06] ring-1 ring-violet-500/30"
+										)}
+										flag={flagColor}
+										dropoff={
+											questionDropoff?.[question.id]
+												? {
+														completionPct: questionDropoff[question.id].completionPct,
+													}
+												: undefined
+										}
+									>
+										{question.required && <span className="text-destructive text-xs">*</span>}
+										<QuestionTypeBadge type={question.type} />
+										{hasBranching && <GitBranch className="h-3.5 w-3.5 text-violet-500" />}
+										{hasMedia && effectiveMediaUrl && <QuestionMediaThumbnail url={effectiveMediaUrl} />}
+									</UnifiedQuestionRow>
+
+									{coaching && (
+										<div className="ml-12 flex items-start gap-2 py-1 text-[11px]">
+											<span className={flagColor === "red" ? "text-red-500" : "text-amber-500"}>
+												{coaching.summary}
 											</span>
-										);
-									})}
-								</div>
+											{coaching.alternatives.length > 0 && (
+												<button
+													type="button"
+													className="text-primary hover:underline"
+													onClick={() =>
+														updateQuestion(question.id, {
+															prompt: coaching.alternatives[0],
+														})
+													}
+												>
+													Apply fix
+												</button>
+											)}
+										</div>
+									)}
+
+									{hasBranching && (
+										<div className="ml-12 py-1">
+											<button
+												type="button"
+												className="group/branch flex items-center gap-2 rounded-md px-1 py-0.5 text-[10px] text-violet-600 transition-colors hover:bg-violet-500/5 dark:text-violet-400"
+												onClick={() =>
+													setExpandedBranchingQuestionId((current) => (current === question.id ? null : question.id))
+												}
+												title="Edit routing rules or move the routing decision point"
+											>
+												<span className="rounded-full border border-violet-500/40 bg-violet-500/10 px-1.5 py-0.5 font-medium">
+													Routing after Q{index + 1}
+												</span>
+												<span className="max-w-[420px] truncate text-violet-500/90">
+													{groupedTargets.length} target{groupedTargets.length === 1 ? "" : "s"}:{" "}
+													{branchTargets.join(", ")}
+												</span>
+												<span className="rounded-full border border-violet-500/25 bg-violet-500/5 px-1 py-0.5 text-[9px] text-violet-500/80 uppercase tracking-wide">
+													Edit / Move
+												</span>
+												<ChevronDownIcon
+													className={cn(
+														"h-3 w-3 transition-transform",
+														isBranchingExpanded ? "rotate-180" : "",
+														"group-hover/branch:scale-110"
+													)}
+												/>
+											</button>
+
+											{isBranchingExpanded && (
+												<div className="mt-1 space-y-1 rounded-md border border-violet-500/20 bg-violet-500/[0.03] p-2">
+													<div className="flex flex-wrap items-center gap-2 rounded-md border border-violet-500/20 border-dashed bg-violet-500/[0.04] px-2 py-1.5">
+														<span className="text-[10px] text-violet-600/90 dark:text-violet-300/90">
+															Move routing decision point
+														</span>
+														<Select
+															value={question.id}
+															onValueChange={(nextQuestionId) => moveRoutingDecisionPoint(question.id, nextQuestionId)}
+														>
+															<SelectTrigger className="h-6 min-w-[180px] border-violet-500/20 bg-background text-xs">
+																<SelectValue />
+															</SelectTrigger>
+															<SelectContent>
+																{questions.map((candidate, candidateIndex) => (
+																	<SelectItem key={candidate.id} value={candidate.id}>
+																		After Q{candidateIndex + 1}: {candidate.prompt.slice(0, 34)}
+																		{candidate.prompt.length > 34 ? "…" : ""}
+																	</SelectItem>
+																))}
+															</SelectContent>
+														</Select>
+													</div>
+
+													{groupedTargets.map((group, rowIndex) => (
+														<div
+															key={`${group.targetLabel}-${rowIndex}`}
+															className="group/rule flex items-center justify-between gap-2 rounded px-1 py-0.5 text-[11px]"
+														>
+															<span className="min-w-0 truncate text-foreground/80">
+																{group.conditionSummary === "otherwise" ? "Otherwise" : `If ${group.conditionSummary}`}
+																{group.ruleCount > 1 ? ` (${group.ruleCount} rules)` : ""}
+															</span>
+															<div className="flex items-center gap-1.5">
+																{(() => {
+																	const key = `${group.targetLabel}:${group.targetQuestionId ?? "none"}`;
+																	const preview = pathPreviewByTargetKey.get(key) ?? null;
+																	if (!preview) return null;
+																	return (
+																		<span className="rounded-full border border-violet-500/25 bg-violet-500/[0.08] px-1.5 py-0.5 text-[10px] text-violet-600/90 dark:text-violet-200/90">
+																			{preview.questionCount} questions • {preview.estimatedMinutes}
+																		</span>
+																	);
+																})()}
+																<span
+																	className="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 font-medium text-violet-600 dark:text-violet-300"
+																	onMouseEnter={() => setHighlightedTargetQuestionId(group.targetQuestionId)}
+																	onMouseLeave={() => setHighlightedTargetQuestionId(null)}
+																	title={
+																		group.targetPrompt
+																			? `${group.targetLabel}: ${group.targetPrompt}`
+																			: group.targetLabel
+																	}
+																>
+																	<ArrowRight className="h-3 w-3 opacity-0 transition-opacity group-hover/rule:opacity-100" />
+																	{group.targetPrompt
+																		? `${group.targetLabel} • ${group.targetPrompt.slice(0, 28)}`
+																		: group.targetLabel}
+																</span>
+															</div>
+														</div>
+													))}
+												</div>
+											)}
+										</div>
+									)}
+
+									{listId && (
+										<QuestionHoverResults
+											questionId={question.id}
+											questionType={question.type}
+											listId={listId}
+											isVisible={hoveredQuestionId === question.id}
+											aiInsight={getQuestionInsight(question, index)}
+										/>
+									)}
+								</motion.div>
 							)}
-							{/* Inline hover results — lazy-loaded on hover */}
-							{listId && (
-								<QuestionHoverResults
-									questionId={question.id}
-									questionType={question.type}
-									listId={listId}
-									isVisible={hoveredQuestionId === question.id}
-									aiInsight={getQuestionInsight(question, index)}
-								/>
-							)}
-						</motion.div>
+						</Fragment>
 					);
 				})}
 			</AnimatePresence>

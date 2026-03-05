@@ -1304,7 +1304,34 @@ export default function ResearchLinkPage() {
 		}
 	}
 
+	const persistCurrentQuestionDraft = useCallback(async () => {
+		if (!responseId || stage !== "survey" || resolvedMode !== "form" || !currentQuestion?.id) return;
+
+		const questionId = currentQuestion.id;
+		const normalized = normalizeResponseValue(currentAnswer);
+		const existing = normalizeResponseValue((responses[questionId] ?? null) as ResponseValue);
+		if (responseValuesEqual(normalized, existing)) return;
+
+		const nextResponses: ResponseRecord = { ...responses };
+		if (hasResponseValue(normalized)) {
+			nextResponses[questionId] = normalized;
+		} else {
+			delete nextResponses[questionId];
+		}
+		setResponses(nextResponses);
+		try {
+			await saveProgress(slug, {
+				responseId,
+				responses: nextResponses,
+				completed: false,
+			});
+		} catch (caught) {
+			console.warn("[survey] Failed to save draft while navigating", caught);
+		}
+	}, [responseId, stage, resolvedMode, currentQuestion, currentAnswer, responses, slug]);
+
 	function handleBack() {
+		void persistCurrentQuestionDraft();
 		if (currentIndex > 0) {
 			const prevIndex = currentIndex - 1;
 			setCurrentIndex(prevIndex);
@@ -1319,6 +1346,9 @@ export default function ResearchLinkPage() {
 		const isCurrent = targetIndex === currentIndex;
 		const isPrevious = targetIndex < currentIndex;
 		if (isAnswered || isCurrent || isPrevious) {
+			if (!isCurrent) {
+				void persistCurrentQuestionDraft();
+			}
 			setCurrentIndex(targetIndex);
 			setCurrentAnswer(responses[questions[targetIndex]?.id] ?? "");
 		}
@@ -1950,6 +1980,18 @@ function hasResponseValue(value: ResponseValue) {
 	if (typeof value === "string") return value.trim().length > 0;
 	if (typeof value === "boolean") return true;
 	return false;
+}
+
+function responseValuesEqual(a: ResponseValue, b: ResponseValue) {
+	const aHasValue = hasResponseValue(a);
+	const bHasValue = hasResponseValue(b);
+	if (!aHasValue && !bHasValue) return true;
+	if (Array.isArray(a) || Array.isArray(b)) {
+		if (!Array.isArray(a) || !Array.isArray(b)) return false;
+		if (a.length !== b.length) return false;
+		return a.every((entry, idx) => entry === b[idx]);
+	}
+	return a === b;
 }
 
 function normalizeResponseValue(value: ResponseValue): ResponseValue {

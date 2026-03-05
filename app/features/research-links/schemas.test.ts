@@ -216,6 +216,17 @@ describe("ResearchLinkQuestionSchema", () => {
 		expect(result.success).toBe(true);
 	});
 
+	it("should accept likert config with nullable endpoints", () => {
+		const result = ResearchLinkQuestionSchema.safeParse({
+			id: "q1",
+			prompt: "Rate this",
+			type: "likert",
+			likertScale: 5,
+			likertLabels: { low: null, high: null },
+		});
+		expect(result.success).toBe(true);
+	});
+
 	it("should reject likert scale out of range", () => {
 		const tooLow = ResearchLinkQuestionSchema.safeParse({
 			id: "q1",

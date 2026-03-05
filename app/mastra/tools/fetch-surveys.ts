@@ -54,8 +54,41 @@ Returns survey metadata including:
 							prompt: z.string(),
 							type: z.string(),
 							required: z.boolean().nullable(),
+							sectionId: z.string().nullable().optional(),
+							sectionTitle: z.string().nullable().optional(),
+							branchRuleCount: z.number().optional(),
 						})
 					)
+					.optional(),
+				sections: z
+					.array(
+						z.object({
+							id: z.string(),
+							title: z.string(),
+							order: z.number(),
+							startQuestionId: z.string(),
+							questionCount: z.number(),
+						})
+					)
+					.optional(),
+				flowSummary: z
+					.object({
+						hasBranching: z.boolean(),
+						decisionQuestionId: z.string().nullable(),
+						decisionQuestionIndex: z.number().nullable(),
+						minQuestions: z.number(),
+						maxQuestions: z.number(),
+						minMinutesLabel: z.string(),
+						maxMinutesLabel: z.string(),
+						pathCount: z.number(),
+						paths: z.array(
+							z.object({
+								label: z.string(),
+								questionCount: z.number(),
+								estimatedMinutesLabel: z.string(),
+							})
+						),
+					})
 					.optional(),
 			})
 		),
@@ -103,6 +136,9 @@ Returns survey metadata including:
 		});
 
 		try {
+			const surveyHelpers = input.includeQuestions ? await import("../../features/research-links/survey-flow") : null;
+			const sectionHelpers = input.includeQuestions ? await import("../../features/research-links/sections") : null;
+
 			// Build query
 			let query = supabase
 				.from("research_links")
@@ -187,6 +223,10 @@ Returns survey metadata including:
 						prompt: string;
 						type: string;
 						required?: boolean;
+						sectionId?: string | null;
+						sectionTitle?: string | null;
+						hidden?: boolean;
+						branching?: { rules?: unknown[] } | null;
 					}>) ?? [];
 
 				const counts = countMap[survey.id] ?? { total: 0, completed: 0 };
@@ -197,7 +237,32 @@ Returns survey metadata including:
 						prompt: string;
 						type: string;
 						required: boolean | null;
+						sectionId?: string | null;
+						sectionTitle?: string | null;
+						branchRuleCount?: number;
 					}>;
+					sections?: Array<{
+						id: string;
+						title: string;
+						order: number;
+						startQuestionId: string;
+						questionCount: number;
+					}>;
+					flowSummary?: {
+						hasBranching: boolean;
+						decisionQuestionId: string | null;
+						decisionQuestionIndex: number | null;
+						minQuestions: number;
+						maxQuestions: number;
+						minMinutesLabel: string;
+						maxMinutesLabel: string;
+						pathCount: number;
+						paths: Array<{
+							label: string;
+							questionCount: number;
+							estimatedMinutesLabel: string;
+						}>;
+					};
 				} = {
 					id: survey.id,
 					name: survey.name,
@@ -222,7 +287,43 @@ Returns survey metadata including:
 						prompt: q.prompt,
 						type: q.type,
 						required: q.required ?? null,
+						sectionId: q.sectionId ?? null,
+						sectionTitle: q.sectionTitle ?? null,
+						branchRuleCount: Array.isArray(q.branching?.rules) ? q.branching.rules.length : 0,
 					}));
+
+					if (sectionHelpers && surveyHelpers) {
+						const sections = sectionHelpers
+							.deriveSurveySections(
+								(questions as unknown as Parameters<typeof sectionHelpers.deriveSurveySections>[0]) ?? []
+							)
+							.map((section) => ({
+								id: section.id,
+								title: section.title,
+								order: section.order,
+								startQuestionId: section.startQuestionId,
+								questionCount: section.questionIds.length,
+							}));
+						const flow = surveyHelpers.summarizeSurveyFlow(
+							questions as unknown as Parameters<typeof surveyHelpers.summarizeSurveyFlow>[0]
+						);
+						result.sections = sections;
+						result.flowSummary = {
+							hasBranching: flow.hasBranching,
+							decisionQuestionId: flow.decisionQuestionId,
+							decisionQuestionIndex: flow.decisionQuestionIndex,
+							minQuestions: flow.minQuestions,
+							maxQuestions: flow.maxQuestions,
+							minMinutesLabel: surveyHelpers.formatEstimatedMinutesFromSeconds(flow.minSeconds),
+							maxMinutesLabel: surveyHelpers.formatEstimatedMinutesFromSeconds(flow.maxSeconds),
+							pathCount: flow.paths.length,
+							paths: flow.paths.map((path) => ({
+								label: path.label,
+								questionCount: path.questionCount,
+								estimatedMinutesLabel: path.estimatedMinutesLabel,
+							})),
+						};
+					}
 				}
 
 				return result;

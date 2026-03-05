@@ -34,6 +34,12 @@ export interface UnifiedQuestionListProps {
 	showActionBar?: boolean;
 	/** Optional className */
 	className?: string;
+	/** Optional precomputed estimate label (e.g., path-aware summary) */
+	timeLabelOverride?: string;
+	/** Optional long-survey flag for override label */
+	timeIsLongOverride?: boolean;
+	/** Optional strip rendered under the coaching/time bar */
+	pathSummaryStrip?: ReactNode;
 }
 
 export function UnifiedQuestionList({
@@ -49,9 +55,14 @@ export function UnifiedQuestionList({
 	footer,
 	showActionBar = true,
 	className,
+	timeLabelOverride,
+	timeIsLongOverride,
+	pathSummaryStrip,
 }: UnifiedQuestionListProps) {
 	const totalSeconds = questionTypes ? estimateTotalSeconds(questionTypes) : 0;
-	const isLong = totalSeconds > SURVEY_LENGTH_WARN_SECONDS;
+	const isLong = timeIsLongOverride ?? totalSeconds > SURVEY_LENGTH_WARN_SECONDS;
+	const estimateLabel = timeLabelOverride ?? formatEstimate(totalSeconds);
+	const hasEstimate = Boolean(timeLabelOverride) || Boolean(questionTypes);
 	const [nudgeDismissed, setNudgeDismissed] = useState(false);
 	const showNudge = !nudgeDismissed && !hasBeenCoached && count >= 5 && onCoach;
 
@@ -64,14 +75,14 @@ export function UnifiedQuestionList({
 						<div className="flex items-center gap-2">
 							<Sparkles className="h-4 w-4 shrink-0 animate-pulse text-violet-500" />
 							<span className="text-sm text-violet-700 dark:text-violet-300">You have {count} questions</span>
-							{showTimeBar && questionTypes && (
+							{showTimeBar && hasEstimate && (
 								<span
 									className={cn(
 										"text-xs",
 										isLong ? "text-amber-600 dark:text-amber-400" : "text-violet-500/70 dark:text-violet-400/70"
 									)}
 								>
-									· {formatEstimate(totalSeconds)}
+									· {estimateLabel}
 									{isLong && " · consider trimming"}
 								</span>
 							)}
@@ -104,11 +115,11 @@ export function UnifiedQuestionList({
 			)}
 
 			{/* Coach button + time estimate — shown after coaching or when nudge dismissed */}
-			{!showNudge && count > 0 && (onCoach || (showTimeBar && questionTypes)) && (
+			{!showNudge && count > 0 && (onCoach || (showTimeBar && hasEstimate)) && (
 				<div className="mb-2 flex items-center justify-between">
-					{showTimeBar && questionTypes ? (
+					{showTimeBar && hasEstimate ? (
 						<span className={cn("text-xs", isLong ? "font-semibold text-amber-500" : "text-muted-foreground")}>
-							{formatEstimate(totalSeconds)}
+							{estimateLabel}
 							{isLong && " · consider trimming"}
 						</span>
 					) : (
@@ -133,6 +144,8 @@ export function UnifiedQuestionList({
 					)}
 				</div>
 			)}
+
+			{pathSummaryStrip ? <div className="mb-2">{pathSummaryStrip}</div> : null}
 
 			{/* Question rows */}
 			{children}

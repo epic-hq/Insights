@@ -30,8 +30,8 @@ export const ResearchLinkQuestionSchema = z.object({
 	likertScale: z.number().min(3).max(10).optional().nullable(),
 	likertLabels: z
 		.object({
-			low: z.string().optional(),
-			high: z.string().optional(),
+			low: z.string().nullable().optional(),
+			high: z.string().nullable().optional(),
 		})
 		.optional()
 		.nullable(),
@@ -49,6 +49,14 @@ export const ResearchLinkQuestionSchema = z.object({
 	mediaUrl: z.string().optional().nullable(),
 	// Legacy field name kept for backwards compatibility
 	videoUrl: z.string().optional().nullable(),
+	// Optional section grouping metadata (first-class visible blocks in editor)
+	sectionId: z.string().optional().nullable(),
+	sectionTitle: z.string().optional().nullable(),
+	// Optional canonical metadata for response -> person profile standardization
+	// Example taxonomy keys: role_type, industry_vertical, tenure_in_role
+	taxonomyKey: z.string().optional().nullable(),
+	// Optional explicit people field target (e.g. title, job_function, seniority_level)
+	personFieldKey: z.string().optional().nullable(),
 	// Whether this question is hidden (soft-deleted, can be restored)
 	hidden: z.boolean().optional().default(false),
 	// Conditional branching rules
@@ -74,6 +82,10 @@ export function createEmptyQuestion(): ResearchLinkQuestion {
 		imageOptions: null,
 		mediaUrl: null,
 		videoUrl: null,
+		sectionId: null,
+		sectionTitle: null,
+		taxonomyKey: null,
+		personFieldKey: null,
 		hidden: false,
 	};
 }
