@@ -327,10 +327,10 @@ Returns structured reviews with issues, suggestions, and recommendations.`,
 
 			// Dynamic import to avoid loading AI SDK at module level
 			const { generateObject } = await import("ai");
-			const { anthropic } = await import("../../lib/billing/instrumented-anthropic.server");
+			const { openai } = await import("../../lib/billing/instrumented-openai.server");
 
 			const result = await generateObject({
-				model: anthropic("claude-haiku-4-5-20251001"),
+				model: openai("gpt-4o-mini"),
 				schema: reviewResultSchema,
 				prompt: reviewPrompt,
 			});

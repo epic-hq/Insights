@@ -12,7 +12,7 @@
 import { Agent } from "@mastra/core/agent";
 import { TokenLimiterProcessor } from "@mastra/core/processors";
 import { Memory } from "@mastra/memory";
-import { anthropic } from "../../lib/billing/instrumented-anthropic.server";
+import { openai } from "../../lib/billing/instrumented-openai.server";
 import { getSharedPostgresStore } from "../storage/postgres-singleton";
 import { createSurveyTool } from "../tools/create-survey";
 import { deleteSurveyTool } from "../tools/delete-survey";
@@ -163,7 +163,7 @@ LINKING & NAVIGATION:
 - Use generate-project-routes for entity URLs
 - Never fabricate URLs — only use tool-returned URLs`;
 	},
-	model: anthropic("claude-sonnet-4-20250514"),
+	model: openai("gpt-4o-mini"),
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
 	}),

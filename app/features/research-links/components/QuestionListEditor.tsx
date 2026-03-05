@@ -39,7 +39,7 @@ import { type BranchRule, getNextQuestionId } from "../branching";
 import type { ResearchLinkQuestion } from "../schemas";
 import { createEmptyQuestion } from "../schemas";
 import { DEFAULT_SECTION_ID, deriveSurveySections } from "../sections";
-import { formatFlowRangeLabel, formatPathBreakdown, summarizeSurveyFlow } from "../survey-flow";
+import { formatFlowAverageLabel, formatPathBreakdown, summarizeSurveyFlow } from "../survey-flow";
 import { getMediaType, isR2Key } from "../utils";
 import { QuestionBranchingEditor } from "./QuestionBranchingEditor";
 import { QuestionMediaEditor } from "./QuestionMediaEditor";
@@ -1618,35 +1618,12 @@ export function QuestionListEditor({
 	const flowSummary = useMemo(() => summarizeSurveyFlow(questions), [questions]);
 	const flowEstimateLabel = useMemo(() => {
 		if (!flowSummary.hasBranching || flowSummary.paths.length < 2) return undefined;
-		return `Path-aware ${formatFlowRangeLabel(flowSummary)}`;
+		return formatFlowAverageLabel(flowSummary);
 	}, [flowSummary]);
 	const flowEstimateIsLong = flowSummary.hasBranching && flowSummary.maxSeconds > SURVEY_LENGTH_WARN_SECONDS;
 	const flowEstimateDebug = useMemo(() => {
 		if (!flowSummary.hasBranching || flowSummary.paths.length < 2) return null;
 		return formatPathBreakdown(flowSummary);
-	}, [flowSummary]);
-	const pathSummaryStrip = useMemo(() => {
-		if (!flowSummary.hasBranching || flowSummary.paths.length < 2) return null;
-		return (
-			<div className="rounded-md border border-violet-500/20 bg-violet-500/[0.04] px-2 py-1.5">
-				<div className="mb-1 font-medium text-[10px] text-violet-600/80 uppercase tracking-wide dark:text-violet-300/80">
-					Branching paths
-				</div>
-				<div className="flex flex-wrap items-center gap-1.5">
-					{flowSummary.paths.map((path, index) => (
-						<div
-							key={`${path.label}-${index}`}
-							className="inline-flex items-center gap-1 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[11px] text-violet-700 dark:text-violet-200"
-						>
-							<span className="font-medium">{path.label}</span>
-							<span className="text-violet-600/70 dark:text-violet-300/70">
-								{path.questionCount}q · {path.estimatedMinutesLabel}
-							</span>
-						</div>
-					))}
-				</div>
-			</div>
-		);
 	}, [flowSummary]);
 
 	const branchingDebugSnapshot = useMemo(
@@ -1789,7 +1766,6 @@ export function QuestionListEditor({
 			questionTypes={questionTypes}
 			timeLabelOverride={flowEstimateLabel}
 			timeIsLongOverride={flowEstimateLabel ? flowEstimateIsLong : undefined}
-			pathSummaryStrip={pathSummaryStrip}
 			showTimeBar
 			onAdd={addQuestion}
 			onCopy={handleCopy}

@@ -38,8 +38,6 @@ export interface UnifiedQuestionListProps {
 	timeLabelOverride?: string;
 	/** Optional long-survey flag for override label */
 	timeIsLongOverride?: boolean;
-	/** Optional strip rendered under the coaching/time bar */
-	pathSummaryStrip?: ReactNode;
 }
 
 export function UnifiedQuestionList({
@@ -57,7 +55,6 @@ export function UnifiedQuestionList({
 	className,
 	timeLabelOverride,
 	timeIsLongOverride,
-	pathSummaryStrip,
 }: UnifiedQuestionListProps) {
 	const totalSeconds = questionTypes ? estimateTotalSeconds(questionTypes) : 0;
 	const isLong = timeIsLongOverride ?? totalSeconds > SURVEY_LENGTH_WARN_SECONDS;
@@ -144,8 +141,6 @@ export function UnifiedQuestionList({
 					)}
 				</div>
 			)}
-
-			{pathSummaryStrip ? <div className="mb-2">{pathSummaryStrip}</div> : null}
 
 			{/* Question rows */}
 			{children}

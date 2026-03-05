@@ -126,6 +126,20 @@ Rule: If system context indicates interview detail and the prompt is about open 
 Rule: If user asks to edit/review/rephrase/evaluate/reorder/hide survey questions, route to surveyAgent with mode="normal".`;
 const DEBUG_PREFIX_REGEX = /^\s*\/debug\b[:\s-]*/i;
 const FALLBACK_EMPTY_RESPONSE_TEXT = "Sorry, I couldn't answer that just now. Please try again.";
+
+function buildStreamInitFailureMessage(errorMessage: string, targetAgentId: RoutingTargetAgent): string {
+	const normalized = errorMessage.toLowerCase();
+	const isRateLimit =
+		normalized.includes("rate limit") ||
+		normalized.includes("rate_limit") ||
+		normalized.includes("429") ||
+		normalized.includes("too many requests");
+	if (isRateLimit) {
+		const agentLabel = targetAgentId === "surveyAgent" ? "survey assistant" : "assistant";
+		return `I hit a model rate limit before I could finish that request in the ${agentLabel}. I did not complete the action. Please retry in about a minute.`;
+	}
+	return FALLBACK_EMPTY_RESPONSE_TEXT;
+}
 const MARKDOWN_LINK_REGEX = /\[[^\]]+\]\((?:\/|https?:\/\/|#|mailto:)[^)]+\)/;
 const SURVEY_QUESTION_TYPE_VALUES = [
 	"auto",
@@ -203,7 +217,7 @@ const BILLING_MODEL_BY_AGENT: Record<RoutingTargetAgent, string> = {
 	feedbackAgent: "gpt-4o-mini",
 	projectSetupAgent: "gpt-5.1",
 	howtoAgent: "gpt-4o-mini",
-	surveyAgent: "claude-sonnet-4-20250514",
+	surveyAgent: "gpt-4o-mini",
 };
 
 type FastGuidanceCacheEntry = {
@@ -1839,8 +1853,9 @@ The user requested CSV output with exactly ${csvListContract.requestedRows} data
 			const debugSuffix = debugRequested
 				? `\n\nDebug Trace:\n- routed_to: ${targetAgentId}\n- response_mode: ${resolvedResponseMode}\n- max_steps: ${targetMaxSteps}\n- tool_calls: none (stream init failed)`
 				: "";
+			const failureText = buildStreamInitFailureMessage(errorMessage, targetAgentId);
 			return createUIMessageStreamResponse({
-				stream: streamPlainAssistantText(`${FALLBACK_EMPTY_RESPONSE_TEXT}${debugSuffix}`),
+				stream: streamPlainAssistantText(`${failureText}${debugSuffix}`),
 			});
 		}
 	}

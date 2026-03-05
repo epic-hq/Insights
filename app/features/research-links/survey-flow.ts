@@ -244,6 +244,15 @@ export function formatFlowRangeLabel(summary: SurveyFlowSummary): string {
 	return `${minuteRange} · ${questionRange}`;
 }
 
+export function formatFlowAverageLabel(summary: SurveyFlowSummary): string {
+	if (summary.paths.length === 0) return "Avg path ~0 min · 0 questions/path";
+	const totalSeconds = summary.paths.reduce((sum, path) => sum + path.estimatedSeconds, 0);
+	const totalQuestions = summary.paths.reduce((sum, path) => sum + path.questionCount, 0);
+	const avgSeconds = Math.round(totalSeconds / summary.paths.length);
+	const avgQuestions = Math.round(totalQuestions / summary.paths.length);
+	return `Avg path ${formatEstimatedMinutesFromSeconds(avgSeconds)} · ${avgQuestions} questions/path`;
+}
+
 export function formatPathBreakdown(summary: SurveyFlowSummary): string {
 	if (summary.paths.length <= 1) return "";
 	return summary.paths
