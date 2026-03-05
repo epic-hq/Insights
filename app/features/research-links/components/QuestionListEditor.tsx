@@ -1977,8 +1977,7 @@ export function QuestionListEditor({
 													{branchSummaryLabel}
 												</span>
 												<span className="max-w-[420px] truncate text-foreground/75">
-													Location: Q{index + 1} • {groupedTargets.length} destination
-													{groupedTargets.length === 1 ? "" : "s"}
+													{groupedTargets.length} destination{groupedTargets.length === 1 ? "" : "s"}
 												</span>
 												<span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-1 py-0.5 font-medium text-[9px] text-violet-700 uppercase tracking-wide dark:text-violet-200">
 													Edit
