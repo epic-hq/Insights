@@ -44,5 +44,5 @@ primary_region = 'sjc'
   memory = '1gb'
 
 [processes]
-web   = '/usr/local/bin/dotenvx run -f .env.staging -- pnpm start'
+web   = '/usr/local/bin/dotenvx run -f .env.staging -- node ./build/server/index.js'
 mastra = '/usr/local/bin/dotenvx run -f .env.staging -- npx mastra dev --dir app/mastra'
