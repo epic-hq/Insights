@@ -2086,9 +2086,9 @@ function renderQuestionInput({
 							type="text"
 							value={otherText}
 							onChange={(e) => {
-								const newOther = e.target.value.trim();
+								const newOther = e.target.value;
 								const withoutOld = selected.filter((v) => resolved.options.includes(v));
-								if (newOther) {
+								if (newOther.trim().length > 0) {
 									onChange([...withoutOld, newOther]);
 								} else {
 									onChange(withoutOld);
