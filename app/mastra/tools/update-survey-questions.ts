@@ -7,7 +7,13 @@
 import { createTool } from "@mastra/core/tools";
 import consola from "consola";
 import { z } from "zod";
-import { areCanonicallyEqual, asQuestionArray, resolveBoundSurveyTarget } from "./survey-mutation-guards";
+import {
+	areCanonicallyEqual,
+	asQuestionArray,
+	isRetryableSurveyMutationError,
+	resolveBoundSurveyTarget,
+	withSurveyMutationRetry,
+} from "./survey-mutation-guards";
 
 /**
  * Check if any visible question's branching targets a given question ID.
@@ -58,6 +64,8 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 					required: z.boolean().nullish(),
 					helperText: z.string().nullish(),
 					hidden: z.boolean().nullish(),
+					taxonomyKey: z.string().nullish(),
+					personFieldKey: z.string().nullish(),
 				})
 			)
 			.nullish()
@@ -75,6 +83,8 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 					options: z.array(z.string()).optional(),
 					required: z.boolean().optional(),
 					helperText: z.string().optional(),
+					taxonomyKey: z.string().optional(),
+					personFieldKey: z.string().optional(),
 				})
 			)
 			.nullish()
@@ -91,6 +101,17 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 		warnings: z.array(z.string()).nullish(),
 		surveyId: z.string().nullish(),
 		questionCount: z.number().nullish(),
+		requestedCount: z.number().nullish(),
+		appliedCount: z.number().nullish(),
+		skippedCount: z.number().nullish(),
+		verification: z
+			.object({
+				verified: z.boolean(),
+				status: z.string(),
+				expectedQuestionCount: z.number().nullish(),
+				actualQuestionCount: z.number().nullish(),
+			})
+			.nullish(),
 	}),
 	execute: async (input, context?) => {
 		try {
@@ -109,11 +130,26 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 			const initialQuestionCount = questions.length;
 			const warnings: string[] = [];
 			let changedCount = 0;
+			let requestedCount: number | null = null;
 
 			switch (input.action) {
 				case "update": {
+					requestedCount = input.updates?.length ?? 0;
 					if (!input.updates?.length) {
-						return { success: false, message: "No updates provided.", updatedCount: 0 };
+						return {
+							success: false,
+							message: "No updates provided.",
+							updatedCount: 0,
+							requestedCount,
+							appliedCount: 0,
+							skippedCount: requestedCount,
+							verification: {
+								verified: false,
+								status: "no_changes_requested",
+								expectedQuestionCount: questions.length,
+								actualQuestionCount: questions.length,
+							},
+						};
 					}
 					let updated = 0;
 					for (const upd of input.updates) {
@@ -126,19 +162,48 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 						if (upd.required != null) q.required = upd.required;
 						if (upd.helperText !== undefined) q.helperText = upd.helperText;
 						if (upd.hidden != null) q.hidden = upd.hidden;
+						if (upd.taxonomyKey !== undefined) q.taxonomyKey = upd.taxonomyKey;
+						if (upd.personFieldKey !== undefined) q.personFieldKey = upd.personFieldKey;
 						questions[idx] = q;
 						updated += 1;
 					}
 					if (updated === 0) {
-						return { success: false, message: "No matching questions found to update.", updatedCount: 0 };
+						return {
+							success: false,
+							message: `No matching questions found to update. Applied 0/${requestedCount}.`,
+							updatedCount: 0,
+							requestedCount,
+							appliedCount: 0,
+							skippedCount: requestedCount,
+							verification: {
+								verified: false,
+								status: "no_matching_targets",
+								expectedQuestionCount: questions.length,
+								actualQuestionCount: questions.length,
+							},
+						};
 					}
 					changedCount = updated;
 					break;
 				}
 
 				case "reorder": {
+					requestedCount = input.orderedIds?.length ?? 0;
 					if (!input.orderedIds?.length) {
-						return { success: false, message: "No orderedIds provided.", updatedCount: 0 };
+						return {
+							success: false,
+							message: "No orderedIds provided.",
+							updatedCount: 0,
+							requestedCount,
+							appliedCount: 0,
+							skippedCount: requestedCount,
+							verification: {
+								verified: false,
+								status: "no_changes_requested",
+								expectedQuestionCount: questions.length,
+								actualQuestionCount: questions.length,
+							},
+						};
 					}
 					const idMap = new Map(questions.map((q) => [q.id as string, q]));
 					const reordered: Array<Record<string, unknown>> = [];
@@ -159,8 +224,22 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 				}
 
 				case "hide": {
+					requestedCount = input.questionIds?.length ?? 0;
 					if (!input.questionIds?.length) {
-						return { success: false, message: "No questionIds provided.", updatedCount: 0 };
+						return {
+							success: false,
+							message: "No questionIds provided.",
+							updatedCount: 0,
+							requestedCount,
+							appliedCount: 0,
+							skippedCount: requestedCount,
+							verification: {
+								verified: false,
+								status: "no_changes_requested",
+								expectedQuestionCount: questions.length,
+								actualQuestionCount: questions.length,
+							},
+						};
 					}
 					const hideSet = new Set(input.questionIds);
 					// Check branch dependencies before hiding
@@ -185,9 +264,18 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 					if (hidden === 0) {
 						return {
 							success: false,
-							message: "No matching questions found to hide.",
+							message: `No matching questions found to hide. Applied 0/${requestedCount}.`,
 							updatedCount: 0,
 							warnings: warnings.length > 0 ? warnings : null,
+							requestedCount,
+							appliedCount: 0,
+							skippedCount: requestedCount,
+							verification: {
+								verified: false,
+								status: "no_matching_targets",
+								expectedQuestionCount: questions.length,
+								actualQuestionCount: questions.length,
+							},
 						};
 					}
 					changedCount = hidden;
@@ -195,8 +283,22 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 				}
 
 				case "unhide": {
+					requestedCount = input.questionIds?.length ?? 0;
 					if (!input.questionIds?.length) {
-						return { success: false, message: "No questionIds provided.", updatedCount: 0 };
+						return {
+							success: false,
+							message: "No questionIds provided.",
+							updatedCount: 0,
+							requestedCount,
+							appliedCount: 0,
+							skippedCount: requestedCount,
+							verification: {
+								verified: false,
+								status: "no_changes_requested",
+								expectedQuestionCount: questions.length,
+								actualQuestionCount: questions.length,
+							},
+						};
 					}
 					const unhideSet = new Set(input.questionIds);
 					let unhidden = 0;
@@ -208,15 +310,42 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 						return q;
 					});
 					if (unhidden === 0) {
-						return { success: false, message: "No matching questions found to unhide.", updatedCount: 0 };
+						return {
+							success: false,
+							message: `No matching questions found to unhide. Applied 0/${requestedCount}.`,
+							updatedCount: 0,
+							requestedCount,
+							appliedCount: 0,
+							skippedCount: requestedCount,
+							verification: {
+								verified: false,
+								status: "no_matching_targets",
+								expectedQuestionCount: questions.length,
+								actualQuestionCount: questions.length,
+							},
+						};
 					}
 					changedCount = unhidden;
 					break;
 				}
 
 				case "delete": {
+					requestedCount = input.questionIds?.length ?? 0;
 					if (!input.questionIds?.length) {
-						return { success: false, message: "No questionIds provided.", updatedCount: 0 };
+						return {
+							success: false,
+							message: "No questionIds provided.",
+							updatedCount: 0,
+							requestedCount,
+							appliedCount: 0,
+							skippedCount: requestedCount,
+							verification: {
+								verified: false,
+								status: "no_changes_requested",
+								expectedQuestionCount: questions.length,
+								actualQuestionCount: questions.length,
+							},
+						};
 					}
 					const deleteSet = new Set(input.questionIds);
 					// Check branch dependencies before deleting
@@ -236,9 +365,18 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 					if (deleted === 0) {
 						return {
 							success: false,
-							message: "No matching questions found to delete.",
+							message: `No matching questions found to delete. Applied 0/${requestedCount}.`,
 							updatedCount: 0,
 							warnings: warnings.length > 0 ? warnings : null,
+							requestedCount,
+							appliedCount: 0,
+							skippedCount: requestedCount,
+							verification: {
+								verified: false,
+								status: "no_matching_targets",
+								expectedQuestionCount: questions.length,
+								actualQuestionCount: questions.length,
+							},
 						};
 					}
 					changedCount = deleted;
@@ -246,8 +384,22 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 				}
 
 				case "add": {
+					requestedCount = input.newQuestions?.length ?? 0;
 					if (!input.newQuestions?.length) {
-						return { success: false, message: "No newQuestions provided.", updatedCount: 0 };
+						return {
+							success: false,
+							message: "No newQuestions provided.",
+							updatedCount: 0,
+							requestedCount,
+							appliedCount: 0,
+							skippedCount: requestedCount,
+							verification: {
+								verified: false,
+								status: "no_changes_requested",
+								expectedQuestionCount: questions.length,
+								actualQuestionCount: questions.length,
+							},
+						};
 					}
 					const newQs = input.newQuestions.map((nq) => ({
 						id: crypto.randomUUID(),
@@ -263,6 +415,8 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 						imageOptions: null,
 						mediaUrl: null,
 						videoUrl: null,
+						taxonomyKey: nq.taxonomyKey ?? null,
+						personFieldKey: nq.personFieldKey ?? null,
 						hidden: false,
 					}));
 					if (input.insertAfterQuestionId) {
@@ -281,32 +435,75 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 			}
 
 			// Save back to database
-			const { error: updateError } = await supabase
-				.from("research_links")
-				.update({ questions })
-				.eq("id", surveyId)
-				.eq("project_id", projectId);
+			const { error: updateError } = await withSurveyMutationRetry({
+				operation: "update-survey-questions.save",
+				run: async () => {
+					const result = await supabase
+						.from("research_links")
+						.update({ questions: questions as any })
+						.eq("id", surveyId)
+						.eq("project_id", projectId);
+					if (result.error && isRetryableSurveyMutationError(result.error)) {
+						throw result.error;
+					}
+					return result;
+				},
+			});
 
 			if (updateError) {
 				consola.error("update-survey-questions: save error", updateError);
-				return { success: false, message: `Failed to save: ${updateError.message}`, updatedCount: 0 };
-			}
-
-			const { data: persisted, error: persistedError } = await supabase
-				.from("research_links")
-				.select("id, questions")
-				.eq("id", surveyId)
-				.eq("project_id", projectId)
-				.single();
-
-			if (persistedError || !persisted) {
 				return {
 					success: false,
-					message: "Saved changes but failed to verify persisted survey state. Please refresh and retry.",
+					message: `Write failed. Applied 0/${requestedCount ?? changedCount} changes. Error: ${updateError.message}`,
 					updatedCount: 0,
 					surveyId,
 					questionCount: null,
 					warnings: warnings.length > 0 ? warnings : null,
+					requestedCount: requestedCount ?? changedCount,
+					appliedCount: 0,
+					skippedCount: requestedCount ?? changedCount,
+					verification: {
+						verified: false,
+						status: "write_failed",
+						expectedQuestionCount: questions.length,
+						actualQuestionCount: null,
+					},
+				};
+			}
+
+			const { data: persisted, error: persistedError } = await withSurveyMutationRetry({
+				operation: "update-survey-questions.verify-read",
+				run: async () => {
+					const result = await supabase
+						.from("research_links")
+						.select("id, questions")
+						.eq("id", surveyId)
+						.eq("project_id", projectId)
+						.single();
+					if (result.error && isRetryableSurveyMutationError(result.error)) {
+						throw result.error;
+					}
+					return result;
+				},
+			});
+
+			if (persistedError || !persisted) {
+				return {
+					success: false,
+					message: `Write may have succeeded but verification read failed. Applied unknown/${requestedCount ?? changedCount}.`,
+					updatedCount: 0,
+					surveyId,
+					questionCount: null,
+					warnings: warnings.length > 0 ? warnings : null,
+					requestedCount: requestedCount ?? changedCount,
+					appliedCount: null,
+					skippedCount: null,
+					verification: {
+						verified: false,
+						status: "verify_read_failed",
+						expectedQuestionCount: questions.length,
+						actualQuestionCount: null,
+					},
 				};
 			}
 
@@ -320,12 +517,20 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 				});
 				return {
 					success: false,
-					message:
-						"Survey write verification failed. The database state differs from the intended update, so no success was reported.",
+					message: `Verification failed. Applied unknown/${requestedCount ?? changedCount}; persisted state differs from intended update.`,
 					updatedCount: 0,
 					surveyId,
 					questionCount: persistedQuestions.length,
 					warnings: warnings.length > 0 ? warnings : null,
+					requestedCount: requestedCount ?? changedCount,
+					appliedCount: null,
+					skippedCount: null,
+					verification: {
+						verified: false,
+						status: "mismatch",
+						expectedQuestionCount: questions.length,
+						actualQuestionCount: persistedQuestions.length,
+					},
 				};
 			}
 
@@ -346,11 +551,20 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 
 			return {
 				success: true,
-				message: `${actionMessages[input.action] ?? "Done."}${totalText}`,
+				message: `${actionMessages[input.action] ?? "Done."}${totalText} Applied ${changedCount}/${requestedCount ?? changedCount}. Verification passed.`,
 				updatedCount: changedCount,
 				warnings: warnings.length > 0 ? warnings : null,
 				surveyId,
 				questionCount: totalQuestions,
+				requestedCount: requestedCount ?? changedCount,
+				appliedCount: changedCount,
+				skippedCount: Math.max((requestedCount ?? changedCount) - changedCount, 0),
+				verification: {
+					verified: true,
+					status: "verified",
+					expectedQuestionCount: questions.length,
+					actualQuestionCount: totalQuestions,
+				},
 			};
 		} catch (error) {
 			consola.error("update-survey-questions: unexpected error", error);
@@ -358,6 +572,15 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 				success: false,
 				message: error instanceof Error ? error.message : "Unexpected error",
 				updatedCount: 0,
+				requestedCount: null,
+				appliedCount: null,
+				skippedCount: null,
+				verification: {
+					verified: false,
+					status: "unexpected_error",
+					expectedQuestionCount: null,
+					actualQuestionCount: null,
+				},
 			};
 		}
 	},

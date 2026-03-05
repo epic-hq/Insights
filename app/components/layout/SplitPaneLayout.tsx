@@ -275,7 +275,7 @@ function DesktopLayout({
 					>
 						{/* Agent column */}
 						<motion.div
-							className="relative flex min-h-0 flex-shrink-0 flex-col border-border border-r bg-slate-900/50"
+							className="relative flex min-h-0 flex-shrink-0 flex-col border-border border-r bg-background"
 							style={{ width: agentWidth }}
 							layout
 							transition={layoutSpring}
@@ -288,7 +288,7 @@ function DesktopLayout({
 								className="group absolute top-0 right-0 z-10 h-full w-1.5 cursor-col-resize transition-colors hover:bg-primary/20"
 								title="Drag to resize"
 							>
-								<div className="-translate-y-1/2 absolute top-1/2 right-0.5 h-8 w-0.5 rounded-full bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
+								<div className="-translate-y-1/2 absolute top-1/2 right-0.5 h-8 w-0.5 rounded-full bg-border opacity-0 transition-opacity group-hover:opacity-100" />
 							</div>
 						</motion.div>
 
@@ -385,6 +385,7 @@ function AgentCentered({
 							projectId={projectId}
 							systemContext={systemContext}
 							embedded
+							embeddedTone="light"
 							onClearChatRef={(fn) => {
 								clearChatRef.current = fn;
 							}}
@@ -469,6 +470,7 @@ function AgentColumn({
 						projectId={projectId}
 						systemContext={systemContext}
 						embedded
+						embeddedTone="light"
 						onClearChatRef={(fn) => {
 							clearChatRef.current = fn;
 						}}
@@ -560,6 +562,7 @@ function MobileLayout({
 							projectId={projectId}
 							systemContext={systemContext}
 							embedded
+							embeddedTone="light"
 							onClearChatRef={(fn) => {
 								clearChatRef.current = fn;
 							}}

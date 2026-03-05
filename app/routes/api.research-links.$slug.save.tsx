@@ -6,6 +6,7 @@ import {
 	type ResearchLinkResponsePayload,
 	ResearchLinkResponseSaveSchema,
 } from "~/features/research-links/schemas";
+import { applySurveyResponsesToPersonProfile } from "~/features/research-links/survey-person-attributes.server";
 import { getPostHogServerClient } from "~/lib/posthog.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import type { ResearchLink, ResearchLinkResponse } from "~/types";
@@ -19,6 +20,7 @@ type ExistingResearchLinkResponse = Pick<
 type ExistingResearchLink = Pick<ResearchLink, "id" | "name" | "account_id" | "project_id" | "questions">;
 
 type AdminSupabaseClient = ReturnType<typeof createSupabaseAdminClient>;
+const STRUCTURAL_QUESTION_TYPES = ["likert", "single_select", "multi_select", "image_select"];
 
 function coerceSupabaseRow<T>(value: unknown): T {
 	return value as T;
@@ -123,8 +125,23 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		const questionsParse = ResearchLinkQuestionSchema.array().safeParse(list.questions);
 		const questions: ResearchLinkQuestion[] = questionsParse.success ? questionsParse.data : [];
 
-		// Extract evidence per text question for theme clustering
-		await extractTextQuestionEvidence({
+		if (personId) {
+			try {
+				await applySurveyResponsesToPersonProfile({
+					supabase,
+					accountId: list.account_id,
+					projectId: list.project_id,
+					personId,
+					questions,
+					responses: nextResponses,
+				});
+			} catch (error) {
+				consola.error("[survey-person-standardization] failed to sync person attributes", error);
+			}
+		}
+
+		// Emit per-question evidence + survey_response facets for semantic parity.
+		await emitSurveyQuestionEvidenceAndFacets({
 			supabase,
 			responseId,
 			accountId: list.account_id,
@@ -246,17 +263,113 @@ async function findOrCreatePerson({
 	return newPerson?.id ?? null;
 }
 
-/**
- * Question types that should NOT create evidence records
- * (stats computed directly from JSONB)
- */
-const STRUCTURAL_QUESTION_TYPES = ["likert", "single_select", "multi_select", "image_select"];
+function normalizeSurveyAnswerValue(value: unknown): string | null {
+	if (value === null || value === undefined) return null;
+	if (typeof value === "boolean") return value ? "Yes" : "No";
+	if (typeof value === "number") return String(value);
+	if (Array.isArray(value)) {
+		const normalized = value.map((entry) => String(entry).trim()).filter((entry) => entry.length > 0);
+		return normalized.length > 0 ? normalized.join("; ") : null;
+	}
+	if (typeof value === "string") {
+		const trimmed = value.trim();
+		return trimmed.length > 0 ? trimmed : null;
+	}
+	try {
+		const asJson = JSON.stringify(value);
+		return asJson && asJson !== "{}" && asJson !== "[]" ? asJson : null;
+	} catch {
+		return null;
+	}
+}
+
+function buildSurveyQuestionFacetSlug(questionId: string, prompt: string): string {
+	const idPart = questionId
+		.toLowerCase()
+		.replace(/[^a-z0-9]/g, "")
+		.slice(0, 20);
+	const promptPart = prompt
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "_")
+		.replace(/^_+|_+$/g, "")
+		.slice(0, 30);
+	const base = promptPart ? `survey_q_${idPart}_${promptPart}` : `survey_q_${idPart}`;
+	return base.slice(0, 63);
+}
+
+async function resolveSurveyQuestionFacetAccountId({
+	supabase,
+	accountId,
+	surveyKindId,
+	questionId,
+	prompt,
+	cache,
+}: {
+	supabase: AdminSupabaseClient;
+	accountId: string;
+	surveyKindId: number;
+	questionId: string;
+	prompt: string;
+	cache: Map<string, number>;
+}): Promise<number | null> {
+	const cacheKey = questionId;
+	const cached = cache.get(cacheKey);
+	if (cached) return cached;
+
+	const slug = buildSurveyQuestionFacetSlug(questionId, prompt);
+	const label = prompt.trim();
+
+	const { data: existing, error: existingError } = await supabase
+		.from("facet_account")
+		.select("id, label")
+		.eq("account_id", accountId)
+		.eq("kind_id", surveyKindId)
+		.eq("slug", slug)
+		.maybeSingle();
+
+	if (existingError) {
+		consola.warn("[survey-response-facets] Failed loading facet_account", { questionId, error: existingError.message });
+		return null;
+	}
+
+	if (existing?.id) {
+		if (label.length > 0 && existing.label !== label) {
+			await supabase.from("facet_account").update({ label }).eq("id", existing.id);
+		}
+		cache.set(cacheKey, existing.id);
+		return existing.id;
+	}
+
+	const { data: created, error: createError } = await supabase
+		.from("facet_account")
+		.insert({
+			account_id: accountId,
+			kind_id: surveyKindId,
+			slug,
+			label: label.length > 0 ? label : questionId,
+			is_active: true,
+		})
+		.select("id")
+		.single();
+
+	if (createError || !created?.id) {
+		consola.warn("[survey-response-facets] Failed creating facet_account", {
+			questionId,
+			error: createError?.message ?? "unknown",
+		});
+		return null;
+	}
+
+	cache.set(cacheKey, created.id);
+	return created.id;
+}
 
 /**
- * Extract evidence records per text question for theme clustering.
- * Only creates evidence for text questions (short_text, long_text, auto with text answers).
+ * Emit per-question evidence + evidence_facet(kind_slug='survey_response') rows
+ * for every answered survey question so semantic retrieval and person timelines
+ * can consume survey data through the same facet pipeline as other sources.
  */
-async function extractTextQuestionEvidence({
+async function emitSurveyQuestionEvidenceAndFacets({
 	supabase,
 	responseId,
 	accountId,
@@ -273,37 +386,31 @@ async function extractTextQuestionEvidence({
 	questions: ResearchLinkQuestion[];
 	responses: ResearchLinkResponses;
 }): Promise<void> {
+	const { data: surveyKind, error: surveyKindError } = await supabase
+		.from("facet_kind_global")
+		.select("id")
+		.eq("slug", "survey_response")
+		.maybeSingle();
+
+	if (surveyKindError) {
+		consola.warn("[survey-response-facets] Failed loading survey_response kind", surveyKindError.message);
+	}
+
+	const surveyKindId = surveyKind?.id ?? null;
+	const facetAccountCache = new Map<string, number>();
+	let evidenceCreated = 0;
+	let evidenceLinksCreated = 0;
+	let facetsCreated = 0;
+
 	for (let i = 0; i < questions.length; i++) {
 		const question = questions[i];
 		if (!question.id || !question.prompt) continue;
 
-		const answer = responses[question.id];
-		if (answer === undefined || answer === null || answer === "") continue;
+		const answerText = normalizeSurveyAnswerValue(responses[question.id]);
+		if (!answerText) continue;
 
-		// Skip structural types - stats computed from JSONB
-		if (question.type && STRUCTURAL_QUESTION_TYPES.includes(question.type)) {
-			continue;
-		}
+		const verbatim = `${question.prompt}\n\n"${answerText}"`;
 
-		// For "auto" type, check if answer is numeric (skip) or text (extract)
-		if (question.type === "auto") {
-			if (typeof answer === "number") continue;
-			if (
-				typeof answer === "string" &&
-				!Number.isNaN(Number.parseFloat(answer)) &&
-				Number.parseFloat(answer) >= 1 &&
-				Number.parseFloat(answer) <= 10
-			) {
-				continue; // Numeric rating, skip
-			}
-		}
-
-		// Only extract evidence for text answers
-		if (typeof answer !== "string" || answer.trim().length === 0) continue;
-
-		const verbatim = `${question.prompt}\n\n"${answer}"`;
-
-		// Create evidence record linked to response
 		const { data: evidence, error: evidenceError } = await supabase
 			.from("evidence")
 			.insert({
@@ -319,6 +426,7 @@ async function extractTextQuestionEvidence({
 						type: "survey_question",
 						question_id: question.id,
 						question_index: i,
+						question_type: question.type ?? "auto",
 					},
 				],
 			})
@@ -332,16 +440,19 @@ async function extractTextQuestionEvidence({
 			});
 			continue;
 		}
+		evidenceCreated += 1;
 
-		// Link evidence to person if we have one
 		if (evidence?.id && personId) {
-			const { error: linkError } = await supabase.from("evidence_people").insert({
-				evidence_id: evidence.id,
-				person_id: personId,
-				account_id: accountId,
-				project_id: projectId,
-				role: "respondent",
-			});
+			const { error: linkError } = await supabase.from("evidence_people").upsert(
+				{
+					evidence_id: evidence.id,
+					person_id: personId,
+					account_id: accountId,
+					project_id: projectId,
+					role: "respondent",
+				},
+				{ onConflict: "evidence_id,person_id,account_id" }
+			);
 
 			if (linkError) {
 				consola.error("Failed to link evidence to person", {
@@ -349,7 +460,55 @@ async function extractTextQuestionEvidence({
 					personId,
 					error: linkError,
 				});
+			} else {
+				evidenceLinksCreated += 1;
 			}
 		}
+
+		if (!surveyKindId || !evidence?.id) continue;
+
+		const facetAccountId = await resolveSurveyQuestionFacetAccountId({
+			supabase,
+			accountId,
+			surveyKindId,
+			questionId: question.id,
+			prompt: question.prompt,
+			cache: facetAccountCache,
+		});
+
+		if (!facetAccountId) continue;
+
+		const { error: facetError } = await supabase.from("evidence_facet").insert({
+			evidence_id: evidence.id,
+			account_id: accountId,
+			project_id: projectId,
+			person_id: personId,
+			kind_slug: "survey_response",
+			facet_account_id: facetAccountId,
+			label: question.prompt,
+			quote: answerText,
+			source: "survey",
+			confidence: 0.95,
+		});
+
+		if (facetError) {
+			consola.error("Failed to create survey_response evidence_facet", {
+				questionId: question.id,
+				evidenceId: evidence.id,
+				error: facetError.message,
+			});
+			continue;
+		}
+		facetsCreated += 1;
+	}
+
+	if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
+		consola.debug("[survey-response-facets] emitted", {
+			responseId,
+			evidenceCreated,
+			evidenceLinksCreated,
+			facetsCreated,
+			questionCount: questions.length,
+		});
 	}
 }

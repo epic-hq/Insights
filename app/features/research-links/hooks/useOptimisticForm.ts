@@ -106,6 +106,7 @@ export interface UseOptimisticFormReturn {
 	setText(key: keyof SurveyFormFields, value: string): void;
 	setImmediate<K extends keyof SurveyFormFields>(key: K, value: SurveyFormFields[K]): void;
 	setDirtyOnly<K extends keyof SurveyFormFields>(key: K, value: SurveyFormFields[K]): void;
+	clearDirtyField(key: keyof SurveyFormFields): void;
 	setQuestions(
 		questionsOrUpdater: ResearchLinkQuestion[] | ((previousQuestions: ResearchLinkQuestion[]) => ResearchLinkQuestion[])
 	): void;
@@ -261,6 +262,17 @@ export function useOptimisticForm(
 		});
 	}, []);
 
+	/** Clears one dirty field so loader data can show through immediately. */
+	const clearDirtyField = useCallback((key: keyof SurveyFormFields) => {
+		setDirtyMap((prev) => {
+			if (!(key in prev)) return prev;
+			const next = { ...prev };
+			delete next[key];
+			dirtyMapRef.current = next;
+			return next;
+		});
+	}, []);
+
 	/** Update questions: mark dirty immediately and debounce saves.
 	 *  If a question is still empty (e.g. just added), keep it dirty until prompt is filled. */
 	const setQuestions = useCallback(
@@ -338,6 +350,7 @@ export function useOptimisticForm(
 		setText,
 		setImmediate,
 		setDirtyOnly,
+		clearDirtyField,
 		setQuestions,
 		flush,
 		status,

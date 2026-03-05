@@ -13,7 +13,11 @@ import { getServerClient } from "~/lib/supabase/client.server";
 
 const CoachRequestSchema = z.object({
 	questions: z.array(z.string()).min(1, "At least one question required").max(30, "Too many questions"),
-	context: z.string().default("General research"),
+	context: z
+		.string()
+		.default(
+			"General research. If survey context is unclear, assume low-commitment respondents and optimize for quick completion."
+		),
 	mode: z.enum(["interview", "survey"]).default("survey"),
 });
 

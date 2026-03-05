@@ -9,13 +9,21 @@ import consola from "consola";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 import { validateUUID } from "./context-utils";
-import { areCanonicallyEqual, asQuestionArray, resolveBoundSurveyTarget } from "./survey-mutation-guards";
+import {
+	areCanonicallyEqual,
+	asQuestionArray,
+	isRetryableSurveyMutationError,
+	resolveBoundSurveyTarget,
+	withSurveyMutationRetry,
+} from "./survey-mutation-guards";
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 8);
 
 const QUESTION_TYPES = ["auto", "short_text", "long_text", "single_select", "multi_select", "likert"] as const;
 type SurveyQuestionType = (typeof QUESTION_TYPES)[number];
 const QUESTION_TYPE_SET = new Set<string>(QUESTION_TYPES);
+const NPS_PROMPT_PATTERN =
+	/\b(nps|net promoter|how likely are you to recommend|recommend (us|this|startupsd|our)\b|recommend .* (colleague|friend|peer))\b/i;
 
 function toNonEmptyString(value: unknown): string | null {
 	if (typeof value !== "string") return null;
@@ -23,8 +31,70 @@ function toNonEmptyString(value: unknown): string | null {
 	return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizeTaxonomyKey(value: unknown): string | null {
+	const raw = toNonEmptyString(value);
+	if (!raw) return null;
+	const key = raw.toLowerCase().replace(/[\s-]+/g, "_");
+	const aliases: Record<string, string> = {
+		role: "role_type",
+		role_type: "role_type",
+		job_title: "job_title",
+		title: "job_title",
+		job_function: "job_function",
+		function: "job_function",
+		seniority: "seniority_level",
+		seniority_level: "seniority_level",
+		tenure: "tenure_in_role",
+		tenure_in_role: "tenure_in_role",
+		industry: "industry_vertical",
+		industry_vertical: "industry_vertical",
+		company_stage: "company_stage",
+		stage: "company_stage",
+		team_size: "team_size",
+		company_size: "team_size",
+		geographic_scope: "geographic_scope",
+		funding_stage: "funding_stage",
+		discovery_channel: "discovery_channel",
+	};
+	return aliases[key] ?? null;
+}
+
+function inferTaxonomyKeyFromPrompt(prompt: string): string | null {
+	const patterns: Array<{ taxonomyKey: string; pattern: RegExp }> = [
+		{ taxonomyKey: "job_title", pattern: /\b(job title|current title|professional title)\b/i },
+		{ taxonomyKey: "job_function", pattern: /\b(job function|function|department)\b/i },
+		{ taxonomyKey: "industry_vertical", pattern: /\b(industry|vertical|sector)\b/i },
+		{ taxonomyKey: "role_type", pattern: /\b(primary role|best describes your role|role in)\b/i },
+		{ taxonomyKey: "seniority_level", pattern: /\b(seniority|years? of experience|experience level)\b/i },
+		{ taxonomyKey: "tenure_in_role", pattern: /\b(years? in (your )?role|tenure in role)\b/i },
+		{ taxonomyKey: "team_size", pattern: /\b(team size|how many (people|employees)|company size)\b/i },
+		{ taxonomyKey: "company_stage", pattern: /\b(company stage|startup stage|business stage|arr)\b/i },
+		{ taxonomyKey: "funding_stage", pattern: /\b(funding stage|pre-seed|seed|series [a-z])\b/i },
+		{ taxonomyKey: "discovery_channel", pattern: /\b(how did you hear|discovery channel|heard about)\b/i },
+		{ taxonomyKey: "geographic_scope", pattern: /\b(geographic scope|region|where.*operate|market scope)\b/i },
+	];
+	for (const entry of patterns) {
+		if (entry.pattern.test(prompt)) return entry.taxonomyKey;
+	}
+	return null;
+}
+
+function derivePersonFieldKey(taxonomyKey: string | null): string | null {
+	if (!taxonomyKey) return null;
+	if (taxonomyKey === "job_title") return "title";
+	if (taxonomyKey === "job_function") return "job_function";
+	if (taxonomyKey === "seniority_level" || taxonomyKey === "tenure_in_role") return "seniority_level";
+	if (taxonomyKey === "role_type") return "role";
+	return null;
+}
+
 function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) {
 	const prompt = toNonEmptyString(input.prompt) ?? `Question ${index + 1}`;
+	const isNpsPrompt = NPS_PROMPT_PATTERN.test(prompt);
+	const explicitTaxonomy = normalizeTaxonomyKey(input.taxonomyKey);
+	const taxonomyKey = explicitTaxonomy ?? inferTaxonomyKeyFromPrompt(prompt);
+	const explicitPersonFieldKey = toNonEmptyString(input.personFieldKey);
+	const personFieldKey = explicitPersonFieldKey ?? derivePersonFieldKey(taxonomyKey);
 
 	const rawType = typeof input.type === "string" ? input.type : "";
 	let type: SurveyQuestionType = QUESTION_TYPE_SET.has(rawType) ? (rawType as SurveyQuestionType) : "auto";
@@ -67,8 +137,13 @@ function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) 
 			: null;
 
 	if (type === "likert") {
-		likertScale ??= 5;
-		likertLabels ??= { low: null, high: null };
+		if (isNpsPrompt) {
+			likertScale = 10;
+			likertLabels ??= { low: "1 = Not at all likely", high: "10 = Extremely likely" };
+		} else {
+			likertScale ??= 5;
+			likertLabels ??= { low: null, high: null };
+		}
 		return {
 			id: crypto.randomUUID(),
 			prompt,
@@ -81,6 +156,8 @@ function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) 
 			likertLabels,
 			imageOptions: null,
 			videoUrl: null,
+			taxonomyKey,
+			personFieldKey,
 		};
 	}
 
@@ -100,6 +177,8 @@ function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) 
 		likertLabels: null,
 		imageOptions: null,
 		videoUrl: null,
+		taxonomyKey,
+		personFieldKey,
 	};
 }
 
@@ -117,7 +196,8 @@ Question types:
 - "long_text": Multi-line text area
 - "single_select": Choose one option from a list (requires options array)
 - "multi_select": Choose multiple options (requires options array)
-- "likert": Rating scale (use likertScale for size, likertLabels for endpoints)`,
+- "likert": Rating scale (use likertScale for size, likertLabels for endpoints)
+- NPS standard in this product: use 1-10 scale with labeled endpoints`,
 	inputSchema: z
 		.object({
 			projectId: z
@@ -131,7 +211,7 @@ Question types:
 				.array(z.record(z.unknown()))
 				.min(1)
 				.describe(
-					"Array of question objects. Missing fields are normalized server-side (type/required/options/likertScale/likertLabels)."
+					"Array of question objects. Missing fields are normalized server-side (type/required/options/likertScale/likertLabels). Optional metadata: taxonomyKey and personFieldKey for canonical response mapping."
 				),
 			isLive: z.boolean().nullish().describe("Whether the survey is immediately live (default: true)"),
 		})
@@ -182,11 +262,16 @@ Question types:
 			const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
 			const supabase = createSupabaseAdminClient();
 
-			const { data: project, error: projectError } = await supabase
-				.from("projects")
-				.select("account_id")
-				.eq("id", projectId)
-				.single();
+			const { data: project, error: projectError } = await withSurveyMutationRetry({
+				operation: "create-survey.load-project",
+				run: async () => {
+					const result = await supabase.from("projects").select("account_id").eq("id", projectId).single();
+					if (result.error && isRetryableSurveyMutationError(result.error)) {
+						throw result.error;
+					}
+					return result;
+				},
+			});
 
 			if (projectError || !project) {
 				return {
@@ -224,20 +309,29 @@ Question types:
 					questionCount: questions.length,
 				});
 
-				const { data, error } = await supabase
-					.from("research_links")
-					.update({
-						name: surveyName,
-						description: surveyDescription,
-						questions,
-						is_live: isLive,
-						hero_title: surveyName,
-						hero_subtitle: surveyDescription,
-					})
-					.eq("id", surveyId)
-					.eq("project_id", persistedProjectId)
-					.select("id, slug")
-					.single();
+				const { data, error } = await withSurveyMutationRetry({
+					operation: "create-survey.update-survey",
+					run: async () => {
+						const result = await supabase
+							.from("research_links")
+							.update({
+								name: surveyName,
+								description: surveyDescription,
+								questions,
+								is_live: isLive,
+								hero_title: surveyName,
+								hero_subtitle: surveyDescription,
+							})
+							.eq("id", surveyId)
+							.eq("project_id", persistedProjectId)
+							.select("id, slug")
+							.single();
+						if (result.error && isRetryableSurveyMutationError(result.error)) {
+							throw result.error;
+						}
+						return result;
+					},
+				});
 
 				if (error) {
 					consola.error("create-survey: update error", error);
@@ -248,12 +342,21 @@ Question types:
 					};
 				}
 
-				const { data: persistedSurvey, error: persistedError } = await supabase
-					.from("research_links")
-					.select("id, slug, name, description, is_live, hero_title, hero_subtitle, questions")
-					.eq("id", surveyId)
-					.eq("project_id", persistedProjectId)
-					.single();
+				const { data: persistedSurvey, error: persistedError } = await withSurveyMutationRetry({
+					operation: "create-survey.verify-update",
+					run: async () => {
+						const result = await supabase
+							.from("research_links")
+							.select("id, slug, name, description, is_live, hero_title, hero_subtitle, questions")
+							.eq("id", surveyId)
+							.eq("project_id", persistedProjectId)
+							.single();
+						if (result.error && isRetryableSurveyMutationError(result.error)) {
+							throw result.error;
+						}
+						return result;
+					},
+				});
 
 				if (persistedError || !persistedSurvey) {
 					return {
@@ -321,25 +424,34 @@ Question types:
 				accountId,
 			});
 
-			const { data, error } = await supabase
-				.from("research_links")
-				.insert({
-					account_id: accountId,
-					project_id: projectId,
-					name: surveyName,
-					slug,
-					description: surveyDescription,
-					questions,
-					is_live: isLive,
-					allow_chat: true,
-					default_response_mode: "form",
-					hero_title: surveyName,
-					hero_subtitle: surveyDescription,
-					hero_cta_label: "Start",
-					hero_cta_helper: null,
-				})
-				.select("id, slug")
-				.single();
+			const { data, error } = await withSurveyMutationRetry({
+				operation: "create-survey.insert",
+				run: async () => {
+					const result = await supabase
+						.from("research_links")
+						.insert({
+							account_id: accountId,
+							project_id: projectId,
+							name: surveyName,
+							slug,
+							description: surveyDescription,
+							questions,
+							is_live: isLive,
+							allow_chat: true,
+							default_response_mode: "form",
+							hero_title: surveyName,
+							hero_subtitle: surveyDescription,
+							hero_cta_label: "Start",
+							hero_cta_helper: null,
+						})
+						.select("id, slug")
+						.single();
+					if (result.error && isRetryableSurveyMutationError(result.error)) {
+						throw result.error;
+					}
+					return result;
+				},
+			});
 
 			if (error) {
 				consola.error("create-survey: database error", error);
@@ -353,12 +465,21 @@ Question types:
 			const editUrl = `/a/${accountId}/${projectId}/ask/${data.id}/edit`;
 			const publicUrl = `/research/${data.slug}`;
 
-			const { data: persistedSurvey, error: persistedError } = await supabase
-				.from("research_links")
-				.select("id, slug, project_id, account_id, name, description, is_live, questions")
-				.eq("id", data.id)
-				.eq("project_id", projectId)
-				.single();
+			const { data: persistedSurvey, error: persistedError } = await withSurveyMutationRetry({
+				operation: "create-survey.verify-insert",
+				run: async () => {
+					const result = await supabase
+						.from("research_links")
+						.select("id, slug, project_id, account_id, name, description, is_live, questions")
+						.eq("id", data.id)
+						.eq("project_id", projectId)
+						.single();
+					if (result.error && isRetryableSurveyMutationError(result.error)) {
+						throw result.error;
+					}
+					return result;
+				},
+			});
 
 			if (persistedError || !persistedSurvey) {
 				return {

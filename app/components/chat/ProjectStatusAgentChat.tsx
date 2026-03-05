@@ -42,6 +42,7 @@ import {
 import { cn } from "~/lib/utils";
 import type { UpsightMessage } from "~/mastra/message-types";
 import { HOST, PRODUCTION_HOST } from "~/paths";
+import { extractSurveyQuestionUpdateDetails } from "./survey-question-sync";
 
 function WizardIcon({ className }: { className?: string }) {
 	return (
@@ -247,6 +248,20 @@ function formatProgressLabel(name: string): string {
 		.replace(/([A-Z])/g, " $1")
 		.replace(/^./, (str: string) => str.toUpperCase())
 		.trim();
+}
+
+function formatAssistantTransportError(error: unknown): string {
+	const raw = error instanceof Error ? error.message : String(error);
+	const normalized = raw.toLowerCase();
+	const isRateLimit =
+		normalized.includes("rate limit") ||
+		normalized.includes("rate_limit") ||
+		normalized.includes("429") ||
+		normalized.includes("too many requests");
+	if (isRateLimit) {
+		return "Assistant hit a rate limit. No update was completed. Retry in about a minute.";
+	}
+	return "Assistant request failed before completion. No update was confirmed.";
 }
 
 type NetworkStep = {
@@ -804,6 +819,8 @@ interface ProjectStatusAgentChatProps {
 	onCollapsedChange?: (collapsed: boolean) => void;
 	/** When true, hides the card header/chrome - used when embedded in AIAssistantPanel */
 	embedded?: boolean;
+	/** Embedded tone: dark for floating panel, light for split/inline embeds */
+	embeddedTone?: "dark" | "light";
 	/** Ref callback to expose clearChat to parent (used by AIAssistantPanel) */
 	onClearChatRef?: (clearFn: (() => void) | null) => void;
 	/** Ref callback to expose loadThread to parent (used by AIAssistantPanel) */
@@ -897,16 +914,14 @@ export function ProjectStatusAgentChat({
 	systemContext,
 	onCollapsedChange,
 	embedded,
+	embeddedTone = "dark",
 	onClearChatRef,
 	onLoadThreadRef,
 	onTTSStateRef,
 }: ProjectStatusAgentChatProps) {
 	const { isMobile } = useDeviceDetection();
 	const [input, setInput] = useState("");
-	const [isCollapsed, setIsCollapsed] = useState(() => {
-		if (typeof window === "undefined") return false;
-		return localStorage.getItem("project-chat-collapsed") === "true";
-	});
+	const [isCollapsed, setIsCollapsed] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
 	// Use stick-to-bottom for auto-scrolling chat messages
@@ -1011,6 +1026,7 @@ export function ProjectStatusAgentChat({
 
 	const activeThreadIdRef = useRef(activeThreadId);
 	activeThreadIdRef.current = activeThreadId;
+	const [chatErrorMessage, setChatErrorMessage] = useState<string | null>(null);
 
 	const { messages, sendMessage, status, addToolResult, stop, setMessages } = useChat<UpsightMessage>({
 		transport: new DefaultChatTransport({
@@ -1025,6 +1041,16 @@ export function ProjectStatusAgentChat({
 		// We load history for display but don't need to send it back since the server
 		// already includes it via the memory thread.
 		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+		onError: (error) => {
+			const message = formatAssistantTransportError(error);
+			setChatErrorMessage(message);
+			consola.error("project-status-chat: transport error", {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			toast.error("Assistant request failed", {
+				description: message,
+			});
+		},
 		onToolCall: async ({ toolCall }) => {
 			if (toolCall.dynamic) return;
 
@@ -1498,6 +1524,12 @@ export function ProjectStatusAgentChat({
 	const isError = status === "error";
 	const awaitingAssistant = isBusy;
 
+	useEffect(() => {
+		if (isBusy) {
+			setChatErrorMessage(null);
+		}
+	}, [isBusy]);
+
 	// Map voice states to VoiceButton states
 	const voiceButtonState: VoiceButtonState = voiceError
 		? "error"
@@ -1509,7 +1541,8 @@ export function ProjectStatusAgentChat({
 
 	// Voice-only status message (errors and recording state)
 	const statusMessage =
-		voiceError || (isError ? "Something went wrong. Try again." : isVoiceRecording ? "Recording..." : null);
+		voiceError ||
+		(isError ? chatErrorMessage || "Something went wrong. Try again." : isVoiceRecording ? "Recording..." : null);
 
 	const displayableMessages = useMemo(() => {
 		if (!messages) return [];
@@ -1536,14 +1569,18 @@ export function ProjectStatusAgentChat({
 
 	// Auto-focus the textarea when component mounts
 	useEffect(() => {
-		if (typeof window !== "undefined") {
-			localStorage.setItem("project-chat-collapsed", String(isCollapsed));
+		if (import.meta.env.DEV) {
+			consola.debug("project-status-chat: collapse state changed", {
+				isCollapsed,
+				embedded: Boolean(embedded),
+				pathname: location.pathname,
+			});
 		}
 		if (textareaRef.current && !isCollapsed) {
 			textareaRef.current.focus();
 		}
 		onCollapsedChange?.(isCollapsed);
-	}, [isCollapsed, onCollapsedChange]);
+	}, [embedded, isCollapsed, location.pathname, onCollapsedChange]);
 
 	// State for LLM-generated suggestions (fallback)
 	const [generatedSuggestions, setGeneratedSuggestions] = useState<string[]>([]);
@@ -1690,6 +1727,19 @@ export function ProjectStatusAgentChat({
 			if (hasCompletedTool) {
 				revalidatedToolMsgIdsRef.current.add(msg.id);
 				shouldRevalidate = true;
+				const surveyQuestionUpdates = extractSurveyQuestionUpdateDetails(msg);
+				for (const update of surveyQuestionUpdates) {
+					window.dispatchEvent(
+						new CustomEvent("upsight:survey-questions-updated", {
+							detail: {
+								messageId: msg.id,
+								surveyId: update.surveyId,
+								action: update.action,
+								updatedCount: update.updatedCount,
+							},
+						})
+					);
+				}
 			}
 		}
 
@@ -1778,6 +1828,8 @@ export function ProjectStatusAgentChat({
 		navigate(normalizedPath, { preventScrollReset: true });
 	};
 
+	const isEmbeddedDark = Boolean(embedded && embeddedTone === "dark");
+
 	// Shared chat content renderer (used by both embedded and card modes)
 	const chatContent = (
 		<>
@@ -1813,7 +1865,10 @@ export function ProjectStatusAgentChat({
 			<div className="min-h-0 flex-1 overflow-hidden">
 				{visibleMessages.length === 0 ? (
 					<div
-						className={cn("flex flex-row gap-2 text-xs sm:text-sm", embedded ? "text-slate-400" : "text-foreground/70")}
+						className={cn(
+							"flex flex-row gap-2 text-xs sm:text-sm",
+							embedded ? (isEmbeddedDark ? "text-slate-400" : "text-muted-foreground") : "text-foreground/70"
+						)}
 					>
 						<Bot />
 						Hey, how can I help?
@@ -1846,7 +1901,11 @@ export function ProjectStatusAgentChat({
 											<div
 												className={cn(
 													"mb-1 text-[10px] uppercase tracking-wide",
-													embedded ? "text-slate-500" : "text-foreground/60"
+													embedded
+														? isEmbeddedDark
+															? "text-slate-500"
+															: "text-muted-foreground/80"
+														: "text-foreground/60"
 												)}
 											>
 												{isUser ? "You" : "Uppy Assistant"}
@@ -1857,9 +1916,12 @@ export function ProjectStatusAgentChat({
 													isUser
 														? "bg-blue-600 text-white"
 														: embedded
-															? "bg-slate-700/50 text-slate-200 ring-1 ring-white/[0.06]"
+															? isEmbeddedDark
+																? "bg-slate-700/50 text-slate-200 ring-1 ring-white/[0.06]"
+																: "bg-muted/70 text-foreground ring-1 ring-border/60"
 															: "bg-background text-foreground ring-1 ring-border/60",
-													isThisMessagePlaying && (embedded ? "ring-blue-500/30" : "ring-blue-300")
+													isThisMessagePlaying &&
+														(embedded ? (isEmbeddedDark ? "ring-blue-500/30" : "ring-blue-300/60") : "ring-blue-300")
 												)}
 												onClick={!isUser ? handleAssistantLinkClick : undefined}
 											>
@@ -2031,7 +2093,7 @@ export function ProjectStatusAgentChat({
 													isPlaying={isThisMessagePlaying}
 													onPlay={() => tts.playText(messageText, message.id)}
 													onStop={() => tts.stopPlayback()}
-													variant={embedded ? "dark" : "light"}
+													variant={embedded ? (isEmbeddedDark ? "dark" : "light") : "light"}
 												/>
 											</div>
 										)}
@@ -2070,7 +2132,9 @@ export function ProjectStatusAgentChat({
 							className={cn(
 								"min-h-[60px] resize-none rounded-xl pr-20 pl-10 shadow-sm focus-visible:ring-1",
 								embedded
-									? "border border-white/10 bg-slate-700/60 text-slate-100 placeholder:text-slate-400 focus-visible:border-blue-500/50 focus-visible:ring-blue-500/20"
+									? isEmbeddedDark
+										? "border border-white/10 bg-slate-700/60 text-slate-100 placeholder:text-slate-400 focus-visible:border-blue-500/50 focus-visible:ring-blue-500/20"
+										: "border border-border/70 bg-background text-foreground placeholder:text-muted-foreground focus-visible:border-primary/60 focus-visible:ring-primary/20"
 									: "border-2 border-border bg-white focus-visible:border-primary focus-visible:ring-primary/30 dark:bg-zinc-900"
 							)}
 						/>

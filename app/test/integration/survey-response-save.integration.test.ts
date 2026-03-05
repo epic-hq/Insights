@@ -197,19 +197,41 @@ describe("Survey Response Save Integration", () => {
 			expect(people ?? []).toHaveLength(0);
 		});
 
-		it("should create evidence only for text questions (not likert/single_select)", async () => {
+		it("should create evidence for each answered survey question", async () => {
 			const { data: evidence } = await adminDb
 				.from("evidence")
 				.select("id, verbatim, method")
 				.eq("research_link_response_id", ANON_RESPONSE_ID);
 
 			expect(evidence).toBeTruthy();
-			expect(evidence!.length).toBe(2);
+			expect(evidence!.length).toBe(4);
 
 			const verbatims = evidence!.map((e) => e.verbatim);
 			expect(verbatims.some((v) => v?.includes("favorite pizza topping"))).toBe(true);
 			expect(verbatims.some((v) => v?.includes("ideal pizza experience"))).toBe(true);
+			expect(verbatims.some((v) => v?.includes("How often do you eat pizza?"))).toBe(true);
+			expect(verbatims.some((v) => v?.includes("Rate your pizza satisfaction"))).toBe(true);
 			expect(evidence!.every((e) => e.method === "survey")).toBe(true);
+		});
+
+		it("should create survey_response evidence_facet rows for each answered question", async () => {
+			const { data: facets, error } = await adminDb
+				.from("evidence_facet")
+				.select("id, kind_slug, label, quote, person_id")
+				.eq("project_id", TEST_PROJECT_ID)
+				.eq("kind_slug", "survey_response")
+				.in(
+					"evidence_id",
+					(await adminDb.from("evidence").select("id").eq("research_link_response_id", ANON_RESPONSE_ID)).data?.map(
+						(row) => row.id
+					) ?? []
+				);
+
+			expect(error).toBeNull();
+			expect((facets ?? []).length).toBe(4);
+			expect((facets ?? []).every((row) => row.kind_slug === "survey_response")).toBe(true);
+			expect((facets ?? []).some((row) => row.label.includes("How often do you eat pizza"))).toBe(true);
+			expect((facets ?? []).some((row) => row.quote?.includes("Weekly"))).toBe(true);
 		});
 	});
 
@@ -260,7 +282,7 @@ describe("Survey Response Save Integration", () => {
 				.eq("research_link_response_id", IDENTIFIED_RESPONSE_ID);
 
 			expect(evidence).toBeTruthy();
-			expect(evidence!.length).toBe(2);
+			expect(evidence!.length).toBe(4);
 
 			for (const ev of evidence!) {
 				const { data: links } = await adminDb
@@ -272,6 +294,26 @@ describe("Survey Response Save Integration", () => {
 				expect(links!.length).toBe(1);
 				expect(links![0].role).toBe("respondent");
 			}
+		});
+
+		it("should set person_id on survey_response evidence_facet rows for identified respondents", async () => {
+			const { data: person } = await adminDb.from("people").select("id").eq("primary_email", TEST_EMAIL).maybeSingle();
+			expect(person?.id).toBeTruthy();
+
+			const evidenceIds =
+				(await adminDb.from("evidence").select("id").eq("research_link_response_id", IDENTIFIED_RESPONSE_ID)).data?.map(
+					(row) => row.id
+				) ?? [];
+
+			const { data: facets, error } = await adminDb
+				.from("evidence_facet")
+				.select("person_id, kind_slug")
+				.eq("kind_slug", "survey_response")
+				.in("evidence_id", evidenceIds);
+
+			expect(error).toBeNull();
+			expect((facets ?? []).length).toBe(4);
+			expect((facets ?? []).every((row) => row.person_id === person?.id)).toBe(true);
 		});
 	});
 

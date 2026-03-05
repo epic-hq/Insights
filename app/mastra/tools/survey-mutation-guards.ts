@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
 import { resolveProjectContext, validateUUID } from "./context-utils";
 
 type RequestContextLike = {
@@ -52,6 +53,77 @@ export function asQuestionArray(value: unknown): Array<Record<string, unknown>> 
 	return Array.isArray(value) ? (value as Array<Record<string, unknown>>) : [];
 }
 
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function extractErrorCode(error: unknown): string | null {
+	if (!error || typeof error !== "object") return null;
+	const code = (error as { code?: unknown }).code;
+	return typeof code === "string" ? code : null;
+}
+
+function extractErrorMessage(error: unknown): string {
+	if (!error || typeof error !== "object") return "";
+	const message = (error as { message?: unknown }).message;
+	return typeof message === "string" ? message : "";
+}
+
+export function isRetryableSurveyMutationError(error: unknown): boolean {
+	const code = extractErrorCode(error);
+	if (code && ["40001", "40P01", "55P03", "57014", "08006", "08000", "53300"].includes(code)) {
+		return true;
+	}
+
+	const message = extractErrorMessage(error).toLowerCase();
+	if (!message) return false;
+	return [
+		"timeout",
+		"timed out",
+		"temporar",
+		"network",
+		"connection",
+		"rate limit",
+		"too many requests",
+		"deadlock",
+		"could not serialize",
+		"service unavailable",
+	].some((pattern) => message.includes(pattern));
+}
+
+export async function withSurveyMutationRetry<T>(params: {
+	operation: string;
+	run: () => Promise<T>;
+	maxAttempts?: number;
+}): Promise<T> {
+	const { operation, run, maxAttempts = 2 } = params;
+	let attempt = 0;
+
+	while (attempt < maxAttempts) {
+		attempt += 1;
+		try {
+			return await run();
+		} catch (error) {
+			const retryable = isRetryableSurveyMutationError(error);
+			if (!retryable || attempt >= maxAttempts) {
+				throw error;
+			}
+			const waitMs = 120 * 2 ** (attempt - 1);
+			consola.warn("survey-mutation: transient failure, retrying", {
+				operation,
+				attempt,
+				maxAttempts,
+				waitMs,
+				error: extractErrorMessage(error) || String(error),
+			});
+			await sleep(waitMs);
+		}
+	}
+
+	// Unreachable, but keeps TypeScript satisfied.
+	throw new Error(`Failed ${operation} after ${maxAttempts} attempts`);
+}
+
 export async function resolveBoundSurveyTarget(options: ResolveBoundSurveyTargetOptions): Promise<{
 	survey: SurveyMutationTargetRow;
 	surveyId: string;
@@ -76,12 +148,21 @@ export async function resolveBoundSurveyTarget(options: ResolveBoundSurveyTarget
 		throw new Error("Missing surveyId. Open a survey canvas or provide a valid surveyId.");
 	}
 
-	const { data: survey, error } = await supabase
-		.from("research_links")
-		.select(select)
-		.eq("id", surveyId)
-		.eq("project_id", projectId)
-		.maybeSingle();
+	const { data: survey, error } = await withSurveyMutationRetry({
+		operation: `${toolName}.load-survey`,
+		run: async () => {
+			const result = await supabase
+				.from("research_links")
+				.select(select)
+				.eq("id", surveyId)
+				.eq("project_id", projectId)
+				.maybeSingle();
+			if (result.error && isRetryableSurveyMutationError(result.error)) {
+				throw result.error;
+			}
+			return result;
+		},
+	});
 
 	if (error) {
 		throw new Error(`Failed to load survey ${surveyId}: ${error.message}`);

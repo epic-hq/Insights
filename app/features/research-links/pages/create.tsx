@@ -724,7 +724,7 @@ export default function CreateResearchLinkPage() {
 															setShowClarifications(false);
 														}}
 													>
-														I'll review the skip logic below
+														I'll review the branching below
 													</Button>
 												</div>
 											</div>

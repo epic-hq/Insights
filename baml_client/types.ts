@@ -460,7 +460,7 @@ export interface Chapter {
 export interface CoachingNudge {
   questionIndex: number
   reasoning: string
-  issue: "leading" | "double_barreled" | "closed_ended" | "too_long" | "too_vague" | "biased" | "jargon" | "redundant" | "survey_fatigue"
+  issue: "leading" | "double_barreled" | "closed_ended" | "too_long" | "too_vague" | "biased" | "jargon" | "redundant" | "survey_fatigue" | "hypothetical" | "not_behavioral" | "too_complex"
   summary: string
   alternatives: string[]
   

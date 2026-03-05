@@ -66,12 +66,7 @@ export function LegacyFloatingPanelLayout({
 
 	const accounts = protectedData?.accounts?.filter(Boolean) ?? [];
 
-	const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
-
-	useEffect(() => {
-		const stored = localStorage.getItem("ai-panel-open");
-		if (stored === "true") setIsAIPanelOpen(true);
-	}, []);
+	const [isAIPanelOpen, setIsAIPanelOpen] = useState(true);
 
 	useEffect(() => {
 		if (isWelcomeFlow) {

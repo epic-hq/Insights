@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
-import { Link, useLoaderData } from "react-router-dom";
+import { Link, useLoaderData, useRevalidator } from "react-router-dom";
 import { toast } from "sonner";
 import { PicaConnectButton } from "~/components/integrations/PicaConnectButton";
 import { PageContainer } from "~/components/layout/PageContainer";
@@ -148,7 +148,24 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 		throw new Response("Ask link not found", { status: 404 });
 	}
 	const responseCount = responseCountResult.count ?? 0;
-	const questionsResult = ResearchLinkQuestionSchema.array().safeParse(data.questions);
+	const rawQuestions = Array.isArray(data.questions) ? data.questions : [];
+	const parsedQuestions: ResearchLinkQuestion[] = [];
+	let invalidQuestionCount = 0;
+	for (const rawQuestion of rawQuestions) {
+		const parsedQuestion = ResearchLinkQuestionSchema.safeParse(rawQuestion);
+		if (parsedQuestion.success) {
+			parsedQuestions.push(parsedQuestion.data);
+		} else {
+			invalidQuestionCount += 1;
+		}
+	}
+	if (invalidQuestionCount > 0) {
+		console.warn("edit.$listId loader: dropped invalid survey questions", {
+			listId,
+			invalidQuestionCount,
+			totalRawQuestions: rawQuestions.length,
+		});
+	}
 
 	// Generate signed URLs for walkthrough video + thumbnail if they exist
 	let walkthroughSignedUrl: string | null = null;
@@ -210,7 +227,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 		listId,
 		userId: userId ?? "",
 		list: data,
-		questions: questionsResult.success ? questionsResult.data : [],
+		questions: parsedQuestions,
 		walkthroughSignedUrl,
 		walkthroughThumbnailUrl,
 		gmailConnected,
@@ -353,7 +370,6 @@ export default function EditResearchLinkPage() {
 		peopleWithEmails,
 		responseCount,
 		aiAnalysis,
-		aiAnalysisUpdatedAt,
 	} = useLoaderData<typeof loader>();
 	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
 
@@ -363,8 +379,9 @@ export default function EditResearchLinkPage() {
 		[initialQuestions]
 	);
 	const loaderFields = useMemo(() => extractFormFields(list, questionsWithDefault), [list, questionsWithDefault]);
-	const { fields, setText, setImmediate, setDirtyOnly, setQuestions, flush, status, errors } =
+	const { fields, setText, setImmediate, setDirtyOnly, clearDirtyField, setQuestions, status, errors } =
 		useOptimisticForm(loaderFields);
+	const revalidator = useRevalidator();
 
 	// UI-only state (not form fields)
 	const [slugEdited, setSlugEdited] = useState(true);
@@ -410,6 +427,41 @@ export default function EditResearchLinkPage() {
 		if (typeof window === "undefined") return path;
 		return `${window.location.origin}${path}`;
 	}, [routes, fields.slug]);
+
+	const surveyCoachingContext = useMemo(() => {
+		const parts = [
+			`Survey name: ${fields.name || "Untitled survey"}`,
+			`Survey description: ${(list.description as string | null) ?? "Not provided"}`,
+			`Landing subtitle: ${fields.heroSubtitle || "Not provided"}`,
+			`Instructions: ${fields.instructions || "Not provided"}`,
+			`Identity mode: ${fields.identityType}`,
+			`Respondent fields: ${fields.respondentFields.join(", ") || "none"}`,
+			"Assume low-commitment respondents unless context says otherwise (new audience, no incentives).",
+		];
+		return parts.join("\n");
+	}, [
+		fields.name,
+		fields.heroSubtitle,
+		fields.instructions,
+		fields.identityType,
+		fields.respondentFields,
+		list.description,
+	]);
+
+	useEffect(() => {
+		const handleSurveyQuestionsUpdated = (event: Event) => {
+			const custom = event as CustomEvent<{ surveyId?: string }>;
+			const updatedSurveyId = custom.detail?.surveyId;
+			if (updatedSurveyId && updatedSurveyId !== listId) return;
+			clearDirtyField("questions");
+			revalidator.revalidate();
+		};
+
+		window.addEventListener("upsight:survey-questions-updated", handleSurveyQuestionsUpdated);
+		return () => {
+			window.removeEventListener("upsight:survey-questions-updated", handleSurveyQuestionsUpdated);
+		};
+	}, [listId, clearDirtyField, revalidator]);
 
 	const handleCopyLink = async () => {
 		try {
@@ -600,6 +652,7 @@ export default function EditResearchLinkPage() {
 											questions={fields.questions}
 											onChange={setQuestions}
 											listId={listId}
+											coachingContext={surveyCoachingContext}
 											aiAnalysis={aiAnalysis}
 											responseCount={responseCount}
 										/>
