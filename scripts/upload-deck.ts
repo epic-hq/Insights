@@ -4,9 +4,11 @@
  *
  * Usage:
  *   npx tsx scripts/upload-deck.ts <html-file> [assets-dir] [--title "Deck Title"]
+ *   npx tsx scripts/upload-deck.ts <html-file> [assets-dir] [--title "Deck Title"] --update <token>
  *
- * Example:
+ * Examples:
  *   npx tsx scripts/upload-deck.ts iwd-upsight-pitch.html iwd-assets --title "IWD Pitch"
+ *   npx tsx scripts/upload-deck.ts deck.html assets --update Xkh4gga79rw_ --title "Updated Deck"
  */
 import { readdir, readFile } from "node:fs/promises";
 import { basename, extname, join, resolve } from "node:path";
@@ -33,10 +35,13 @@ function parseArgs(args: string[]) {
 	let htmlPath = "";
 	let assetsDir = "";
 	let title = "";
+	let updateToken = "";
 
 	for (let i = 0; i < args.length; i++) {
 		if (args[i] === "--title" && args[i + 1]) {
 			title = args[++i];
+		} else if (args[i] === "--update" && args[i + 1]) {
+			updateToken = args[++i];
 		} else if (!htmlPath) {
 			htmlPath = args[i];
 		} else if (!assetsDir) {
@@ -44,14 +49,16 @@ function parseArgs(args: string[]) {
 		}
 	}
 
-	return { htmlPath, assetsDir, title };
+	return { htmlPath, assetsDir, title, updateToken };
 }
 
 async function main() {
-	const { htmlPath, assetsDir, title } = parseArgs(process.argv.slice(2));
+	const { htmlPath, assetsDir, title, updateToken } = parseArgs(process.argv.slice(2));
 
 	if (!htmlPath) {
-		console.error('Usage: npx tsx scripts/upload-deck.ts <html-file> [assets-dir] [--title "Title"]');
+		console.error(
+			'Usage: npx tsx scripts/upload-deck.ts <html-file> [assets-dir] [--title "Title"] [--update <token>]'
+		);
 		process.exit(1);
 	}
 
@@ -63,7 +70,7 @@ async function main() {
 	}
 
 	const supabase = createClient(supabaseUrl, supabaseKey);
-	const token = nanoid(12);
+	const token = updateToken || nanoid(12);
 	const prefix = `decks/${token}`;
 	let html = await readFile(resolve(htmlPath), "utf-8");
 	const deckTitle = title || basename(htmlPath, extname(htmlPath));
@@ -94,13 +101,11 @@ async function main() {
 		}
 	}
 
-	// Store HTML in database
-	console.log("  Saving deck to database...");
-	const { error } = await supabase.from("decks").insert({
-		token,
-		title: deckTitle,
-		html_content: html,
-	});
+	// Store HTML in database (upsert to support --update)
+	console.log(updateToken ? "  Updating existing deck..." : "  Saving deck to database...");
+	const { error } = await supabase
+		.from("decks")
+		.upsert({ token, title: deckTitle, html_content: html }, { onConflict: "token" });
 
 	if (error) {
 		console.error("Failed to save deck:", error.message);
