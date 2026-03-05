@@ -51,31 +51,29 @@ export const updateSurveyQuestionsTool = createTool({
 Use this when the user wants to modify individual questions rather than recreate the entire survey.
 Returns warnings if hiding/deleting questions that are branch targets.`,
 	inputSchema: z.object({
-		surveyId: z.string().optional().describe("The survey ID to modify (defaults to active survey in context)"),
+		surveyId: z.string().nullish().describe("The survey ID to modify (defaults to active survey in context)"),
 		action: z.enum(["update", "reorder", "hide", "unhide", "delete", "add"]).describe("The operation to perform"),
 		// For update: array of partial question updates
 		updates: z
 			.array(
 				z.object({
 					questionId: z.string(),
-					prompt: z.string().optional().nullable(),
-					type: z.string().optional().nullable(),
-					options: z.array(z.string()).optional().nullable(),
-					required: z.boolean().optional().nullable(),
-					helperText: z.string().optional().nullable(),
-					hidden: z.boolean().optional().nullable(),
-					sectionId: z.string().optional().nullable(),
-					sectionTitle: z.string().optional().nullable(),
-					taxonomyKey: z.string().optional().nullable(),
-					personFieldKey: z.string().optional().nullable(),
+					prompt: z.string().nullish(),
+					type: z.string().nullish(),
+					options: z.array(z.string()).nullish(),
+					required: z.boolean().nullish(),
+					helperText: z.string().nullish(),
+					hidden: z.boolean().nullish(),
+					taxonomyKey: z.string().nullish(),
+					personFieldKey: z.string().nullish(),
 				})
 			)
-			.optional()
+			.nullish()
 			.describe("For 'update' action: partial updates keyed by questionId"),
 		// For hide/unhide/delete: which questions
-		questionIds: z.array(z.string()).optional().describe("For hide/unhide/delete: question IDs to act on"),
+		questionIds: z.array(z.string()).nullish().describe("For hide/unhide/delete: question IDs to act on"),
 		// For reorder: full ordered list of question IDs
-		orderedIds: z.array(z.string()).optional().describe("For 'reorder': the complete ordered list of question IDs"),
+		orderedIds: z.array(z.string()).nullish().describe("For 'reorder': the complete ordered list of question IDs"),
 		// For add: new questions + insertion point
 		newQuestions: z
 			.array(
@@ -85,17 +83,15 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 					options: z.array(z.string()).optional(),
 					required: z.boolean().optional(),
 					helperText: z.string().optional(),
-					sectionId: z.string().optional(),
-					sectionTitle: z.string().optional(),
 					taxonomyKey: z.string().optional(),
 					personFieldKey: z.string().optional(),
 				})
 			)
-			.optional()
+			.nullish()
 			.describe("For 'add': new questions to insert"),
 		insertAfterQuestionId: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("For 'add': insert after this question ID (null = append at end)"),
 	}),
 	outputSchema: z.object({
@@ -166,8 +162,6 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 						if (upd.required != null) q.required = upd.required;
 						if (upd.helperText !== undefined) q.helperText = upd.helperText;
 						if (upd.hidden != null) q.hidden = upd.hidden;
-						if (upd.sectionId !== undefined) q.sectionId = upd.sectionId;
-						if (upd.sectionTitle !== undefined) q.sectionTitle = upd.sectionTitle;
 						if (upd.taxonomyKey !== undefined) q.taxonomyKey = upd.taxonomyKey;
 						if (upd.personFieldKey !== undefined) q.personFieldKey = upd.personFieldKey;
 						questions[idx] = q;
@@ -421,8 +415,6 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 						imageOptions: null,
 						mediaUrl: null,
 						videoUrl: null,
-						sectionId: nq.sectionId ?? null,
-						sectionTitle: nq.sectionTitle ?? null,
 						taxonomyKey: nq.taxonomyKey ?? null,
 						personFieldKey: nq.personFieldKey ?? null,
 						hidden: false,

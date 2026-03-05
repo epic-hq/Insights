@@ -61,6 +61,15 @@ YOUR CAPABILITIES:
 6. **Analyze Responses**: Search and summarize survey response data (search-survey-responses)
 7. **Collect Inline Choices**: Ask the user to choose options in chat (request-user-input)
 
+UPDATE-SURVEY-QUESTIONS CALL SHAPE (IMPORTANT):
+- Always pass a complete payload for update-survey-questions with explicit null placeholders for unused fields:
+  - updates, questionIds, orderedIds, newQuestions, insertAfterQuestionId
+- For action="add", set:
+  - newQuestions: [...]
+  - insertAfterQuestionId: <id or null>
+  - updates/questionIds/orderedIds: null
+- If tool validation fails, do at most one corrected retry, then stop and report the failure truthfully (no loops).
+
 QUESTION TYPES:
 - auto: Let respondent choose how to answer
 - short_text: Single line text input
