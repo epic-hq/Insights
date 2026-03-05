@@ -47,7 +47,22 @@ jobs:
       - name: Deploy to Fly.io (staging)
         if: success()
         run: |
-          flyctl deploy -c fly.staging.toml --remote-only
+          set -euo pipefail
+
+          max_attempts=3
+          for attempt in $(seq 1 "$max_attempts"); do
+            echo "Staging fly deploy attempt ${attempt}/${max_attempts} (Depot)..."
+            if flyctl deploy -c fly.staging.toml --remote-only; then
+              echo "Staging deploy succeeded on attempt ${attempt}."
+              exit 0
+            fi
+            if [ "$attempt" -lt "$max_attempts" ]; then
+              sleep 20
+            fi
+          done
+
+          echo "Staging depot deploy failed after ${max_attempts} attempts. Falling back to non-Depot remote builder..."
+          flyctl deploy -c fly.staging.toml --remote-only --depot=false
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 

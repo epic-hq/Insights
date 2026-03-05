@@ -18,7 +18,7 @@ coverage
 .mastra
 *.log
 *.local
-.gitignore
+# Keep .gitignore so Biome's vcs.useIgnoreFile works during Docker builds
 Dockerfile
 build-cache
 *.log
