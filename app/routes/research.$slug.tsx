@@ -30,7 +30,7 @@ import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button";
-import { getNextQuestionIndex } from "~/features/research-links/branching";
+import { getNextQuestionIndex, hasResponseValue } from "~/features/research-links/branching";
 import { VideoRecorder } from "~/features/research-links/components/VideoRecorder";
 import { type ResearchLinkQuestion, ResearchLinkQuestionSchema } from "~/features/research-links/schemas";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
@@ -1973,13 +1973,6 @@ function findNextQuestionIndex(responses: ResponseRecord, questions: ResearchLin
 		}
 	}
 	return questions.length;
-}
-
-function hasResponseValue(value: ResponseValue) {
-	if (Array.isArray(value)) return value.length > 0;
-	if (typeof value === "string") return value.trim().length > 0;
-	if (typeof value === "boolean") return true;
-	return false;
 }
 
 function responseValuesEqual(a: ResponseValue, b: ResponseValue) {

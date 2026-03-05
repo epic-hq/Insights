@@ -134,13 +134,14 @@ function normalizeValue(value: ResponseValue): string {
 }
 
 /**
- * Check if a response has a meaningful value
+ * Check if a response has a meaningful value.
+ * Shared by form mode and chat mode to keep branching behavior consistent.
  */
-function hasValue(value: ResponseValue): boolean {
-	if (value === null || value === undefined) return false;
-	if (typeof value === "string") return value.trim().length > 0;
+export function hasResponseValue(value: ResponseValue): boolean {
 	if (Array.isArray(value)) return value.length > 0;
-	return true;
+	if (typeof value === "string") return value.trim().length > 0;
+	if (typeof value === "boolean") return true;
+	return false;
 }
 
 /**
@@ -180,10 +181,10 @@ export function evaluateCondition(condition: Condition, responses: ResponseRecor
 			return !answer.includes(expectedValue as string);
 
 		case "answered":
-			return hasValue(answer);
+			return hasResponseValue(answer);
 
 		case "not_answered":
-			return !hasValue(answer);
+			return !hasResponseValue(answer);
 
 		default:
 			return false;
