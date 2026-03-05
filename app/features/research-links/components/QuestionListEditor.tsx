@@ -39,6 +39,7 @@ import { cn } from "~/lib/utils";
 import type { BranchRule } from "../branching";
 import type { ResearchLinkQuestion } from "../schemas";
 import { createEmptyQuestion } from "../schemas";
+import { buildSurveySectionGraph } from "../section-graph";
 import { DEFAULT_SECTION_ID, deriveSurveySections } from "../sections";
 import { formatFlowAverageLabel, formatPathBreakdown, summarizeSurveyFlow } from "../survey-flow";
 import { getMediaType, isR2Key } from "../utils";
@@ -308,6 +309,25 @@ function estimateQuestionSeconds(question: ResearchLinkQuestion): number {
 function formatEstimatedMinutes(totalSeconds: number): string {
 	if (totalSeconds <= 0) return "~0 min";
 	return `~${Math.max(1, Math.round(totalSeconds / 60))} min`;
+}
+
+function normalizeSectionTitleInput(value: string): string {
+	return value.replace(/\s+/g, " ").trim();
+}
+
+function buildSectionIdFromTitle(title: string, existingIds: Set<string>): string {
+	const base =
+		normalizeSectionTitleInput(title)
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "-")
+			.replace(/^-+|-+$/g, "") || "section";
+	let candidate = base;
+	let suffix = 2;
+	while (existingIds.has(candidate)) {
+		candidate = `${base}-${suffix}`;
+		suffix += 1;
+	}
+	return candidate;
 }
 
 type QuestionEditorAction =
@@ -630,6 +650,7 @@ function QuestionEditDrawer({
 	isOpen,
 	onClose,
 	updateQuestion,
+	reassignQuestionToSection,
 	removeQuestion,
 	moveQuestion,
 	aiInsight,
@@ -645,6 +666,7 @@ function QuestionEditDrawer({
 	isOpen: boolean;
 	onClose: () => void;
 	updateQuestion: (id: string, updates: Partial<ResearchLinkQuestion>) => void;
+	reassignQuestionToSection: (questionId: string, section: { id: string; title: string }) => void;
 	removeQuestion: (id: string) => void;
 	moveQuestion: (id: string, direction: -1 | 1) => void;
 	aiInsight?: AiQuestionInsight;
@@ -655,6 +677,8 @@ function QuestionEditDrawer({
 }) {
 	// Image upload state
 	const [uploadingImageKey, setUploadingImageKey] = useState<string | null>(null);
+	const [showCreateSectionInput, setShowCreateSectionInput] = useState(false);
+	const [newSectionTitle, setNewSectionTitle] = useState("");
 	const imageInputRef = useRef<HTMLInputElement>(null);
 	const pendingUploadRef = useRef<{
 		questionId: string;
@@ -717,12 +741,32 @@ function QuestionEditDrawer({
 		[commitQuestionUpdates, flushPendingQuestionUpdates]
 	);
 
+	const sectionOptions = useMemo(() => deriveSurveySections(questions), [questions]);
+
+	const assignSection = useCallback(
+		(section: { id: string; title: string }) => {
+			reassignQuestionToSection(question.id, section);
+			setDraft((prev) => {
+				const next = {
+					...prev,
+					sectionId: section.id === DEFAULT_SECTION_ID ? null : section.id,
+					sectionTitle: section.title,
+				};
+				draftRef.current = next;
+				return next;
+			});
+		},
+		[question.id, reassignQuestionToSection]
+	);
+
 	useEffect(() => {
 		const sessionKey = `${question.id}:${isOpen ? "open" : "closed"}`;
 		if (draftSessionKeyRef.current === sessionKey) return;
 		draftSessionKeyRef.current = sessionKey;
 		setDraft(question);
 		draftRef.current = question;
+		setShowCreateSectionInput(false);
+		setNewSectionTitle("");
 		pendingQuestionUpdateRef.current = null;
 		if (pendingQuestionUpdateTimerRef.current) {
 			clearTimeout(pendingQuestionUpdateTimerRef.current);
@@ -872,6 +916,91 @@ function QuestionEditDrawer({
 							rows={2}
 							className="resize-none text-sm"
 						/>
+					</div>
+
+					{/* Journey block assignment */}
+					<div className="space-y-1.5">
+						<Label className="text-xs">Journey block</Label>
+						<Select
+							value={draft.sectionId?.trim() || DEFAULT_SECTION_ID}
+							onValueChange={(value) => {
+								if (value === "__create__") {
+									setShowCreateSectionInput(true);
+									return;
+								}
+								const target =
+									sectionOptions.find((section) => section.id === value) ??
+									sectionOptions.find((section) => section.id === DEFAULT_SECTION_ID) ??
+									null;
+								if (!target) return;
+								assignSection({ id: target.id, title: target.title });
+							}}
+						>
+							<SelectTrigger className="h-9 text-xs">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								{sectionOptions.map((section) => (
+									<SelectItem key={section.id} value={section.id}>
+										{section.title}
+									</SelectItem>
+								))}
+								<SelectItem value="__create__">Create new block…</SelectItem>
+							</SelectContent>
+						</Select>
+						{showCreateSectionInput && (
+							<div className="flex items-center gap-2">
+								<Input
+									value={newSectionTitle}
+									onChange={(event) => setNewSectionTitle(event.target.value)}
+									onKeyDown={(event) => {
+										if (event.key === "Escape") {
+											setShowCreateSectionInput(false);
+											setNewSectionTitle("");
+										}
+										if (event.key !== "Enter") return;
+										event.preventDefault();
+										const nextTitle = normalizeSectionTitleInput(newSectionTitle);
+										if (!nextTitle) return;
+										const nextId = buildSectionIdFromTitle(nextTitle, new Set(sectionOptions.map((s) => s.id)));
+										assignSection({ id: nextId, title: nextTitle });
+										setShowCreateSectionInput(false);
+										setNewSectionTitle("");
+										toast.success(`Created block "${nextTitle}"`);
+									}}
+									placeholder="Block name (e.g., Shared close)"
+									className="h-8 text-xs"
+								/>
+								<Button
+									type="button"
+									size="sm"
+									className="h-8"
+									onClick={() => {
+										const nextTitle = normalizeSectionTitleInput(newSectionTitle);
+										if (!nextTitle) return;
+										const nextId = buildSectionIdFromTitle(nextTitle, new Set(sectionOptions.map((s) => s.id)));
+										assignSection({ id: nextId, title: nextTitle });
+										setShowCreateSectionInput(false);
+										setNewSectionTitle("");
+										toast.success(`Created block "${nextTitle}"`);
+									}}
+								>
+									Create
+								</Button>
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="h-8"
+									onClick={() => {
+										setShowCreateSectionInput(false);
+										setNewSectionTitle("");
+									}}
+								>
+									Cancel
+								</Button>
+							</div>
+						)}
 					</div>
 
 					{/* Type + Required */}
@@ -1507,6 +1636,39 @@ export function QuestionListEditor({
 		[dispatchQuestionAction]
 	);
 
+	const reassignQuestionToSection = useCallback(
+		(questionId: string, section: { id: string; title: string }) => {
+			const sectionId = section.id?.trim() || DEFAULT_SECTION_ID;
+			const sectionTitle = normalizeSectionTitleInput(section.title) || "Shared block";
+			onChange((previousQuestions) => {
+				const currentIndex = previousQuestions.findIndex((q) => q.id === questionId);
+				if (currentIndex < 0) return previousQuestions;
+
+				const nextQuestions = [...previousQuestions];
+				const [movingQuestion] = nextQuestions.splice(currentIndex, 1);
+				if (!movingQuestion) return previousQuestions;
+
+				const updatedQuestion: ResearchLinkQuestion = {
+					...movingQuestion,
+					sectionId: sectionId === DEFAULT_SECTION_ID ? null : sectionId,
+					sectionTitle,
+				};
+
+				let insertAt = nextQuestions.length;
+				for (let idx = 0; idx < nextQuestions.length; idx += 1) {
+					const candidateSectionId = nextQuestions[idx]?.sectionId?.trim() || DEFAULT_SECTION_ID;
+					if (candidateSectionId === sectionId) {
+						insertAt = idx + 1;
+					}
+				}
+
+				nextQuestions.splice(insertAt, 0, updatedQuestion);
+				return nextQuestions;
+			});
+		},
+		[onChange]
+	);
+
 	const moveRoutingDecisionPoint = useCallback(
 		(fromQuestionId: string, toQuestionId: string) => {
 			if (fromQuestionId === toQuestionId) return;
@@ -1744,6 +1906,40 @@ export function QuestionListEditor({
 		});
 	}, [questions]);
 
+	const sectionGraph = useMemo(() => buildSurveySectionGraph(questions), [questions]);
+
+	const journeyBlockSummaries = useMemo(() => {
+		const inboundPairs = new Map<string, Set<string>>();
+		const outboundPairs = new Map<string, Set<string>>();
+		for (const edge of sectionGraph.edges) {
+			if (!edge.targetSectionId || edge.targetSectionId === edge.fromSectionId) continue;
+			const outbound = outboundPairs.get(edge.fromSectionId) ?? new Set<string>();
+			outbound.add(edge.targetSectionId);
+			outboundPairs.set(edge.fromSectionId, outbound);
+
+			const inbound = inboundPairs.get(edge.targetSectionId) ?? new Set<string>();
+			inbound.add(edge.fromSectionId);
+			inboundPairs.set(edge.targetSectionId, inbound);
+		}
+
+		return sectionSummaries.map((section) => {
+			const inboundCount = inboundPairs.get(section.id)?.size ?? 0;
+			const outboundCount = outboundPairs.get(section.id)?.size ?? 0;
+			let roleLabel = "Path";
+			if (section.id === sectionGraph.entrySectionId) {
+				roleLabel = "Entry";
+			} else if (outboundCount > 1) {
+				roleLabel = "Branch";
+			} else if (inboundCount > 1) {
+				roleLabel = "Shared";
+			}
+			return {
+				...section,
+				roleLabel,
+			};
+		});
+	}, [sectionGraph, sectionSummaries]);
+
 	const sectionSummaryById = useMemo(
 		() => new Map(sectionSummaries.map((section) => [section.id, section] as const)),
 		[sectionSummaries]
@@ -1791,6 +1987,40 @@ export function QuestionListEditor({
 				) : undefined
 			}
 		>
+			{journeyBlockSummaries.length > 1 && (
+				<div className="mb-2 rounded-md border border-violet-500/20 bg-violet-500/[0.03]">
+					<div className="border-violet-500/15 border-b px-2 py-1 font-medium text-[10px] text-violet-600 uppercase tracking-wide dark:text-violet-300">
+						Journey blocks
+					</div>
+					<div className="flex flex-wrap gap-1.5 p-2">
+						{journeyBlockSummaries.map((block) => (
+							<button
+								key={`journey-${block.id}`}
+								type="button"
+								className="flex items-center gap-1 rounded-full border border-violet-500/30 bg-background/70 px-2 py-1 text-[10px] text-foreground transition-colors hover:border-violet-500/60 hover:bg-violet-500/[0.06]"
+								onClick={() => {
+									setCollapsedSectionIds((current) => {
+										const next = new Set(current);
+										next.delete(block.id);
+										return next;
+									});
+									setSelectedQuestionId(block.startQuestionId);
+								}}
+								title={`Open ${block.title}`}
+							>
+								<span className="rounded-full bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-700 dark:text-violet-200">
+									{block.roleLabel}
+								</span>
+								<span className="max-w-[170px] truncate">{block.title}</span>
+								<span className="text-muted-foreground">
+									{block.questionCount}q • {block.estimatedMinutes}
+								</span>
+							</button>
+						))}
+					</div>
+				</div>
+			)}
+
 			{/* Question rows */}
 			<AnimatePresence initial={false}>
 				{questions.map((question, index) => {
@@ -2139,6 +2369,7 @@ export function QuestionListEditor({
 					isOpen={selectedQuestionId !== null}
 					onClose={() => setSelectedQuestionId(null)}
 					updateQuestion={updateQuestion}
+					reassignQuestionToSection={reassignQuestionToSection}
 					removeQuestion={removeQuestion}
 					moveQuestion={moveQuestion}
 					aiInsight={getQuestionInsight(selectedQuestion, selectedIndex)}

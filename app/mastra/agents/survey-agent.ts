@@ -134,7 +134,7 @@ Users can express branching rules naturally:
 - "For enterprise companies, skip to scale-related questions"
 When adding guidelines:
 1. First use fetch-surveys to get the survey with includeQuestions: true
-   - Use returned sections + flowSummary to reason about intro/path/close architecture and path length.
+   - Use returned sections + sectionGraph + flowSummary to reason about intro/path/close architecture and path length.
 2. Then use update-survey-guidelines with the natural language input
 3. If confidence is low, ask for clarification
 - Prefer minimal routing sets: one compound rule per target where possible (avoid many duplicate single-value rules).

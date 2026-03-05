@@ -19,7 +19,7 @@ function normalizeSectionId(question: ResearchLinkQuestion): string {
 function normalizeSectionTitle(question: ResearchLinkQuestion, sectionId: string, order: number): string {
 	const raw = question.sectionTitle?.trim();
 	if (raw && raw.length > 0) return raw;
-	if (sectionId === DEFAULT_SECTION_ID) return "Main";
+	if (sectionId === DEFAULT_SECTION_ID) return "Shared block";
 	return `${DEFAULT_SECTION_TITLE} ${order + 1}`;
 }
 

@@ -64,6 +64,8 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 					required: z.boolean().optional().nullable(),
 					helperText: z.string().optional().nullable(),
 					hidden: z.boolean().optional().nullable(),
+					sectionId: z.string().optional().nullable(),
+					sectionTitle: z.string().optional().nullable(),
 					taxonomyKey: z.string().optional().nullable(),
 					personFieldKey: z.string().optional().nullable(),
 				})
@@ -83,6 +85,8 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 					options: z.array(z.string()).optional(),
 					required: z.boolean().optional(),
 					helperText: z.string().optional(),
+					sectionId: z.string().optional(),
+					sectionTitle: z.string().optional(),
 					taxonomyKey: z.string().optional(),
 					personFieldKey: z.string().optional(),
 				})
@@ -162,6 +166,8 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 						if (upd.required != null) q.required = upd.required;
 						if (upd.helperText !== undefined) q.helperText = upd.helperText;
 						if (upd.hidden != null) q.hidden = upd.hidden;
+						if (upd.sectionId !== undefined) q.sectionId = upd.sectionId;
+						if (upd.sectionTitle !== undefined) q.sectionTitle = upd.sectionTitle;
 						if (upd.taxonomyKey !== undefined) q.taxonomyKey = upd.taxonomyKey;
 						if (upd.personFieldKey !== undefined) q.personFieldKey = upd.personFieldKey;
 						questions[idx] = q;
@@ -415,6 +421,8 @@ Returns warnings if hiding/deleting questions that are branch targets.`,
 						imageOptions: null,
 						mediaUrl: null,
 						videoUrl: null,
+						sectionId: nq.sectionId ?? null,
+						sectionTitle: nq.sectionTitle ?? null,
 						taxonomyKey: nq.taxonomyKey ?? null,
 						personFieldKey: nq.personFieldKey ?? null,
 						hidden: false,

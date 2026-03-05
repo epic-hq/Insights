@@ -27,6 +27,11 @@ function makeQuestion(overrides: Partial<ResearchLinkQuestion> = {}): ResearchLi
 }
 
 describe("sections helpers", () => {
+	it("uses 'Shared block' title for default section", () => {
+		const sections = deriveSurveySections([makeQuestion({ id: "q1", sectionId: null, sectionTitle: null })]);
+		expect(sections[0]?.title).toBe("Shared block");
+	});
+
 	it("derives ordered section groups from questions", () => {
 		const questions = [
 			makeQuestion({ id: "q1", sectionId: "intro", sectionTitle: "Intro" }),
