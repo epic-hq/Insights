@@ -217,6 +217,32 @@ export default await createHonoServer({
 			})
 		);
 
+		// Handle stale asset requests after deployments.
+		// When a new deploy changes chunk hashes, clients with cached HTML still
+		// request old /assets/*.js files that no longer exist. Return a small JS
+		// snippet that forces a full page reload so the browser fetches fresh HTML
+		// with the correct asset references.
+		server.get("/assets/:filename{.+\\.(js|css)$}", (c) => {
+			const ext = c.req.path.endsWith(".css") ? "css" : "js";
+			consola.warn(`[assets] Stale asset requested: ${c.req.path} — triggering client reload`);
+			if (ext === "js") {
+				return c.body(
+					'window.__STALE_DEPLOY=true;window.location.reload();',
+					404,
+					{
+						"Content-Type": "application/javascript; charset=utf-8",
+						"Cache-Control": "no-store",
+					}
+				);
+			}
+			// For CSS, return empty stylesheet — the reload from a stale JS chunk
+			// will refresh everything anyway
+			return c.body("", 404, {
+				"Content-Type": "text/css; charset=utf-8",
+				"Cache-Control": "no-store",
+			});
+		});
+
 		// Let React Router handle 404s by not adding a custom notFound handler
 		// The server will fall through to React Router's $.tsx catch-all route
 	},
