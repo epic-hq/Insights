@@ -1232,7 +1232,7 @@ export function ProjectStatusAgentChat({
 		}
 	}, [messages, a2uiSurface]);
 
-	// Auto-navigate when the server sends a data part with { type: "navigate", path }.
+	// Auto-navigate when the server sends a typed data part with a path payload.
 	// Used by survey_quick_create to navigate to the editor without a fake tool call
 	// (which previously caused an infinite create loop via sendAutomatically).
 	const lastNavigateMessageIdRef = useRef<string | null>(null);
@@ -1242,16 +1242,24 @@ export function ProjectStatusAgentChat({
 			if (msg.id === lastNavigateMessageIdRef.current) break;
 			if (msg.role !== "assistant" || !msg.parts) continue;
 			for (const part of msg.parts) {
-				const anyPart = part as { type: string; data?: unknown[] };
+				const anyPart = part as { type: string; data?: unknown };
+
+				// Preferred AI SDK v5 typed data part shape.
+				if (anyPart.type === "data-navigate") {
+					const navData = anyPart.data as { path?: string } | undefined;
+					if (navData?.path) {
+						const { resolved } = ensureProjectScopedPath(navData.path, accountId, projectId);
+						if (resolved) navigate(resolved);
+					}
+				}
+
+				// Backward compatibility for older "data" wrapper shape.
 				if (anyPart.type === "data" && Array.isArray(anyPart.data)) {
 					for (const item of anyPart.data) {
 						const navItem = item as { type?: string; path?: string };
-						if (navItem.type === "navigate" && navItem.path) {
-							const { resolved } = ensureProjectScopedPath(navItem.path, accountId, projectId);
-							if (resolved) {
-								navigate(resolved);
-							}
-						}
+						if (navItem.type !== "navigate" || !navItem.path) continue;
+						const { resolved } = ensureProjectScopedPath(navItem.path, accountId, projectId);
+						if (resolved) navigate(resolved);
 					}
 				}
 			}

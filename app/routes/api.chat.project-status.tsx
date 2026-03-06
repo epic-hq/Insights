@@ -389,11 +389,11 @@ function streamSurveyQuickCreateResult(options: { text: string; navigatePath?: s
 			// NOTE: Do NOT emit a synthetic tool-input-available here.
 			// That causes the client to call addToolResult() → sendAutomatically re-triggers
 			// the server request → matches survey_quick_create again → infinite loop.
-			// Instead, emit a data part with the navigate path for the client to handle.
+			// Instead, emit a typed custom data part the client can handle directly.
 			if (options.navigatePath) {
 				writer.write({
-					type: "data",
-					data: [{ type: "navigate", path: options.navigatePath }],
+					type: "data-navigate",
+					data: { path: options.navigatePath },
 				});
 			}
 

@@ -684,6 +684,10 @@ describe("api.chat.project-status", () => {
 		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
 		const hasNavigateSignal = chunks.some((chunk) => {
 			if (chunk.type === "tool-input-available") return true;
+			if (chunk.type === "data-navigate") {
+				const data = (chunk as { data?: unknown }).data as { path?: string } | undefined;
+				return typeof data?.path === "string";
+			}
 			if (chunk.type !== "data") return false;
 			const data = (chunk as { data?: unknown }).data;
 			if (!Array.isArray(data)) return false;
