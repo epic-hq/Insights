@@ -15,8 +15,9 @@ import {
 } from "@tanstack/react-table";
 import { formatDistanceToNow } from "date-fns";
 import { ArrowUpDown, ExternalLink, Loader2, Play, Search, Trash2, User, Video } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useFetcher, useRevalidator } from "react-router-dom";
+import { toast } from "sonner";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -77,11 +78,28 @@ export function ResearchLinkResponsesDataTable({
 		email: "",
 	});
 
-	const deleteFetcher = useFetcher();
+	const deleteFetcher = useFetcher<{ success: boolean; message?: string; deleted?: number; requested?: number }>();
 	const revalidator = useRevalidator();
 	const isDeleting = deleteFetcher.state !== "idle";
+	const pendingDeleteRef = useRef<{ mode: "single" | "bulk"; count: number } | null>(null);
+
+	// Handle fetcher response — show feedback and revalidate on completion
+	useEffect(() => {
+		if (deleteFetcher.state !== "idle" || !deleteFetcher.data) return;
+		const pending = pendingDeleteRef.current;
+		pendingDeleteRef.current = null;
+
+		if (deleteFetcher.data.success) {
+			const count = deleteFetcher.data.deleted ?? pending?.count ?? 1;
+			toast.success(count === 1 ? "Response deleted" : `${count} responses deleted`);
+			revalidator.revalidate();
+		} else {
+			toast.error(deleteFetcher.data.message ?? "Failed to delete responses");
+		}
+	}, [deleteFetcher.state, deleteFetcher.data]);
 
 	const handleDeleteSingle = (responseId: string) => {
+		pendingDeleteRef.current = { mode: "single", count: 1 };
 		deleteFetcher.submit(null, {
 			method: "DELETE",
 			action: `/api/research-links/${listId}/responses/${responseId}/delete`,
@@ -93,10 +111,10 @@ export function ResearchLinkResponsesDataTable({
 			responseIds: [],
 			email: "",
 		});
-		setTimeout(() => revalidator.revalidate(), 100);
 	};
 
 	const handleDeleteBulk = (responseIds: string[]) => {
+		pendingDeleteRef.current = { mode: "bulk", count: responseIds.length };
 		deleteFetcher.submit(
 			{ responseIds },
 			{
@@ -113,7 +131,6 @@ export function ResearchLinkResponsesDataTable({
 			email: "",
 		});
 		setRowSelection({});
-		setTimeout(() => revalidator.revalidate(), 100);
 	};
 
 	const selectedRows = Object.keys(rowSelection).filter((key) => rowSelection[key]);

@@ -9,12 +9,12 @@ export const loader = () => Response.json({ message: "Method not allowed" }, { s
 
 export async function action({ request, params }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ message: "Method not allowed" }, { status: 405 });
+		return Response.json({ success: false, message: "Method not allowed" }, { status: 405 });
 	}
 
 	const { listId } = params;
 	if (!listId) {
-		return Response.json({ message: "Missing listId" }, { status: 400 });
+		return Response.json({ success: false, message: "Missing listId" }, { status: 400 });
 	}
 
 	// Get IDs from request body
@@ -25,11 +25,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			responseIds = body.responseIds;
 		}
 	} catch {
-		return Response.json({ message: "Invalid JSON body" }, { status: 400 });
+		return Response.json({ success: false, message: "Invalid JSON body" }, { status: 400 });
 	}
 
 	if (responseIds.length === 0) {
-		return Response.json({ message: "No response IDs provided" }, { status: 400 });
+		return Response.json({ success: false, message: "No response IDs provided" }, { status: 400 });
 	}
 
 	const { client: supabase } = getServerClient(request);
@@ -43,7 +43,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 	if (linkError || !researchLink) {
 		consola.error("[delete-responses-bulk] Access denied or link not found:", linkError);
-		return Response.json({ message: "Access denied or survey not found" }, { status: 403 });
+		return Response.json({ success: false, message: "Access denied or survey not found" }, { status: 403 });
 	}
 
 	// Verify all responses belong to this list using admin client
@@ -55,46 +55,55 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 	if (fetchError) {
 		consola.error("[delete-responses-bulk] Fetch error:", fetchError);
-		return Response.json({ message: fetchError.message }, { status: 500 });
+		return Response.json({ success: false, message: fetchError.message }, { status: 500 });
 	}
 
 	const validIds = responses?.map((r) => r.id) ?? [];
 	if (validIds.length === 0) {
-		return Response.json({ message: "No valid responses found" }, { status: 404 });
+		return Response.json({ success: false, message: "No valid responses found" }, { status: 404 });
 	}
 
 	// Delete the responses using admin client to bypass RLS
-	const {
-		data: deleteData,
-		error: deleteError,
-		count: deleteCount,
-	} = await supabaseAdmin.from("research_link_responses").delete().in("id", validIds);
+	const { error: deleteError } = await supabaseAdmin
+		.from("research_link_responses")
+		.delete()
+		.in("id", validIds);
 
 	if (deleteError) {
 		consola.error("[delete-responses-bulk] Delete error:", deleteError);
-		return Response.json({ message: deleteError.message }, { status: 500 });
+		return Response.json({ success: false, message: deleteError.message }, { status: 500 });
 	}
 
 	// Verify deletion by checking if records still exist
-	const { data: verifyData, count: remainingCount } = await supabaseAdmin
+	const { count: remainingCount } = await supabaseAdmin
 		.from("research_link_responses")
 		.select("id", { count: "exact", head: true })
 		.in("id", validIds);
 
+	const actuallyDeleted = validIds.length - (remainingCount ?? 0);
+
 	consola.info("[delete-responses-bulk] Delete result:", {
 		requestedIds: validIds,
-		deleteCount,
 		remainingCount,
-		actuallyDeleted: validIds.length - (remainingCount ?? 0),
+		actuallyDeleted,
 	});
 
 	if (remainingCount && remainingCount > 0) {
 		consola.warn("[delete-responses-bulk] Some responses were not deleted:", remainingCount);
+		return Response.json(
+			{
+				success: false,
+				message: `Only ${actuallyDeleted} of ${validIds.length} responses were deleted`,
+				deleted: actuallyDeleted,
+				requested: validIds.length,
+			},
+			{ status: 500 }
+		);
 	}
 
 	return Response.json({
 		success: true,
-		deleted: validIds.length - (remainingCount ?? 0),
+		deleted: actuallyDeleted,
 		requested: validIds.length,
 	});
 }
