@@ -71,6 +71,7 @@ vi.mock("~/mastra/memory", () => ({
 		createThread: vi.fn(),
 		updateThread: vi.fn().mockResolvedValue({}),
 		deleteThread: vi.fn(),
+		saveMessages: vi.fn().mockResolvedValue({ messages: [] }),
 	},
 }));
 
@@ -118,6 +119,7 @@ type MockedMemory = {
 	createThread: ReturnType<typeof vi.fn>;
 	updateThread: ReturnType<typeof vi.fn>;
 	deleteThread: ReturnType<typeof vi.fn>;
+	saveMessages: ReturnType<typeof vi.fn>;
 };
 
 const mockedMemory = memory as unknown as MockedMemory;
@@ -239,6 +241,7 @@ describe("api.chat.project-status", () => {
 		});
 		mockedMemory.createThread.mockResolvedValue({ id: "thread-created" });
 		mockedMemory.updateThread.mockResolvedValue({ id: "thread-1" });
+		mockedMemory.saveMessages.mockResolvedValue({ messages: [] });
 		mockedHandleChatStream.mockResolvedValue({
 			kind: "live-chat-stream",
 		} as any);
@@ -670,6 +673,7 @@ describe("api.chat.project-status", () => {
 		expect(response.status).toBe(200);
 		expect(mockedGenerateObject).toHaveBeenCalledTimes(1);
 		expect(mockedCreateSurveyTool.execute as any).toHaveBeenCalledTimes(1);
+		expect(mockedMemory.saveMessages).toHaveBeenCalledTimes(1);
 		expect(mockedHandleChatStream).not.toHaveBeenCalled();
 		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
 		expect(mockLangfuseGenerationEnd).toHaveBeenCalledWith(

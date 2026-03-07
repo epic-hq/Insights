@@ -901,6 +901,13 @@ const ensureProjectScopedPath = (
 		return { resolved: `${projectBase}${normalized}` };
 	}
 
+	const crossAccountProjectMatch = normalized.match(/^\/a\/[^/]+\/([^/]+)(\/.*)?$/);
+	if (crossAccountProjectMatch?.[1] === projectId) {
+		// Allow canonical account correction when the destination is still the current project.
+		// This unblocks navigation when server-side context resolves a different accountId than the current URL.
+		return { resolved: normalized };
+	}
+
 	if (normalized === projectBase || normalized.startsWith(`${projectBase}/`)) {
 		return { resolved: normalized };
 	}

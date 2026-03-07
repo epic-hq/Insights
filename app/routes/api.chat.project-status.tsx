@@ -1,5 +1,6 @@
 import { handleChatStream, handleNetworkStream } from "@mastra/ai-sdk";
 import { RequestContext } from "@mastra/core/di";
+import type { MastraDBMessage } from "@mastra/core/memory";
 import { createUIMessageStream, createUIMessageStreamResponse, generateObject } from "ai";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
@@ -415,6 +416,54 @@ function streamSurveyQuickCreateResult(options: {
 }
 
 type StreamChunk = Record<string, unknown>;
+
+function ensureSurveyEditPath(path: string): string {
+	const [beforeHash, hashFragment] = path.split("#", 2);
+	const [pathnameRaw, searchRaw] = beforeHash.split("?", 2);
+	const pathname = pathnameRaw.replace(/\/+$/, "");
+	const askMatch = pathname.match(/^(.*\/ask\/[^/]+)(\/edit)?$/);
+	if (!askMatch) return path;
+	const normalizedPathname = `${askMatch[1]}/edit`;
+	const search = typeof searchRaw === "string" && searchRaw.length > 0 ? `?${searchRaw}` : "";
+	const hash = typeof hashFragment === "string" && hashFragment.length > 0 ? `#${hashFragment}` : "";
+	return `${normalizedPathname}${search}${hash}`;
+}
+
+async function persistQuickCreateTurn(options: {
+	threadId: string;
+	threadResourceId: string;
+	userText: string;
+	assistantText: string;
+}) {
+	const now = new Date();
+	const baseTimestamp = now.getTime();
+	const messages: MastraDBMessage[] = [
+		{
+			id: `quick-user-${baseTimestamp.toString(36)}`,
+			role: "user",
+			createdAt: now,
+			threadId: options.threadId,
+			resourceId: options.threadResourceId,
+			content: {
+				format: 2,
+				parts: [{ type: "text", text: options.userText }],
+			},
+		},
+		{
+			id: `quick-assistant-${(baseTimestamp + 1).toString(36)}`,
+			role: "assistant",
+			createdAt: new Date(baseTimestamp + 1),
+			threadId: options.threadId,
+			resourceId: options.threadResourceId,
+			content: {
+				format: 2,
+				parts: [{ type: "text", text: options.assistantText }],
+			},
+		},
+	];
+
+	await memory.saveMessages({ messages });
+}
 
 function convertLegacyDataPayloadToTypedChunks(payload: unknown, inheritedId?: string): StreamChunk[] {
 	if (!payload) return [];
@@ -1223,7 +1272,7 @@ Requirements:
 		};
 	}
 
-	const editPath = created.editUrl;
+	const editPath = ensureSurveyEditPath(created.editUrl);
 	const editUrl = `${HOST}${editPath}`;
 	const publicUrl = created.publicUrl ?? editPath;
 	const surveyCardSurface = buildSingleComponentSurface({
@@ -1241,7 +1290,7 @@ Requirements:
 
 	return {
 		success: true,
-		text: `Created "${draft.object.name}" and prefilled the questions. Opening the editor now: [Open survey](${editUrl})`,
+		text: `Created "${draft.object.name}". Opening it in Edit mode now: [Open survey](${editUrl})`,
 		navigatePath: editPath,
 		a2uiMessages: surveyCardSurface.messages,
 		usage: draft.usage,
@@ -1614,58 +1663,81 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				});
 			}
 
-			requestGeneration?.end?.({
-				output: {
-					success: quickCreate.success,
-					text: quickCreate.text,
-					navigatePath: quickCreate.navigatePath ?? null,
-				},
-				usage: quickCreateLangfuseUsage.usage,
-				usageDetails: quickCreateLangfuseUsage.usageDetails,
-				costDetails: quickCreateCostDetails,
-			});
-			requestTrace?.update?.({
-				output: {
-					success: quickCreate.success,
-					text: quickCreate.text,
-					navigatePath: quickCreate.navigatePath ?? null,
-				},
-			});
-			requestTrace?.end?.();
+				requestGeneration?.end?.({
+					output: {
+						success: quickCreate.success,
+						text: quickCreate.text,
+						navigatePath: quickCreate.navigatePath ?? null,
+					},
+					usage: quickCreateLangfuseUsage.usage,
+					usageDetails: quickCreateLangfuseUsage.usageDetails,
+					costDetails: quickCreateCostDetails,
+				});
+				requestTrace?.update?.({
+					output: {
+						success: quickCreate.success,
+						text: quickCreate.text,
+						navigatePath: quickCreate.navigatePath ?? null,
+					},
+				});
+				requestTrace?.end?.();
+				await persistQuickCreateTurn({
+					threadId,
+					threadResourceId,
+					userText: lastUserText,
+					assistantText: quickCreate.text,
+				}).catch((error) => {
+					consola.warn("project-status: failed to persist survey quick-create turn", {
+						error: error instanceof Error ? error.message : String(error),
+						threadId,
+					});
+				});
 
-			return createUIMessageStreamResponse({
-				stream: streamSurveyQuickCreateResult({
-					text: quickCreate.text,
-					navigatePath: quickCreate.navigatePath,
-					a2uiMessages: quickCreate.a2uiMessages,
-				}),
-			});
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			consola.error("project-status: survey quick-create failed", {
-				error: errorMessage,
-				projectId,
-			});
-			requestTrace?.update?.({
-				output: {
-					success: false,
+				return createUIMessageStreamResponse({
+					stream: streamSurveyQuickCreateResult({
+						text: quickCreate.text,
+						navigatePath: quickCreate.navigatePath,
+						a2uiMessages: quickCreate.a2uiMessages,
+					}),
+				});
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				consola.error("project-status: survey quick-create failed", {
 					error: errorMessage,
-				},
-			});
-			requestGeneration?.end?.({
-				level: "ERROR",
-				statusMessage: errorMessage,
-				output: {
-					success: false,
-					error: errorMessage,
-				},
-			});
-			requestTrace?.end?.();
-			return createUIMessageStreamResponse({
-				stream: streamPlainAssistantText(`I couldn't create the survey yet: ${errorMessage}`),
-			});
+					projectId,
+				});
+				requestTrace?.update?.({
+					output: {
+						success: false,
+						error: errorMessage,
+					},
+				});
+				requestGeneration?.end?.({
+					level: "ERROR",
+					statusMessage: errorMessage,
+					output: {
+						success: false,
+						error: errorMessage,
+					},
+				});
+				requestTrace?.end?.();
+				const fallbackText = `I couldn't create the survey yet: ${errorMessage}`;
+				await persistQuickCreateTurn({
+					threadId,
+					threadResourceId,
+					userText: lastUserText,
+					assistantText: fallbackText,
+				}).catch((persistError) => {
+					consola.warn("project-status: failed to persist survey quick-create failure", {
+						error: persistError instanceof Error ? persistError.message : String(persistError),
+						threadId,
+					});
+				});
+				return createUIMessageStreamResponse({
+					stream: streamPlainAssistantText(fallbackText),
+				});
+			}
 		}
-	}
 
 	const fastGuidanceCacheKey =
 		isFastStandardized && !debugRequested
