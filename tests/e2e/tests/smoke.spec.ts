@@ -41,7 +41,7 @@ test.describe("Auth Redirect", () => {
     const context = await browser.newContext();
     const page = await context.newPage();
 
-    await page.goto("/projects", { timeout: STAGING_TIMEOUT });
+    await page.goto("/home", { timeout: STAGING_TIMEOUT });
     await page.waitForURL(/\/login/, { timeout: STAGING_TIMEOUT });
     expect(page.url()).toContain("/login");
 

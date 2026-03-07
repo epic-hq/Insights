@@ -15,6 +15,7 @@ import { getProjects } from "~/features/projects/db";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { provisionTrial } from "~/lib/billing/polar.server";
 import { buildFeatureGateContext, checkLimitAccess } from "~/lib/feature-gate/check-limit.server";
+import { isProjectRootPath, parseProjectRoute, writeLastProjectRoute } from "~/lib/last-project-route.client";
 import { resolvePosthogHost } from "~/lib/posthog/config";
 import { getAuthenticatedUser, getRlsClient, supabaseAdmin } from "~/lib/supabase/client.server";
 import { userContext } from "~/server/user-context";
@@ -451,6 +452,14 @@ export default function ProtectedLayout() {
 	const isProjectNew = location.pathname.includes("/projects/new");
 	const isRealtimePage = location.pathname.includes("/realtime");
 	const showJourneyNav = !isHomePage && !isProjectNew && !isRealtimePage;
+
+	// Persist last in-project location so project root can resume where the user was working.
+	useEffect(() => {
+		const parsed = parseProjectRoute(location.pathname);
+		if (!parsed) return;
+		if (isProjectRootPath(location.pathname)) return;
+		writeLastProjectRoute(`${location.pathname}${location.search}${location.hash}`);
+	}, [location.pathname, location.search, location.hash]);
 
 	useEffect(() => {
 		if (!posthogClient) return;
