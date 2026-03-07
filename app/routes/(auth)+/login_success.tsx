@@ -208,8 +208,8 @@ async function ensureDefaultAccountAndProject({
 			);
 		}
 
-		// New users go to project setup chat onboarding (Typeform-style flow)
-		return `/a/${accountId}/${projectId}/setup?onboarding=1`;
+		// New users start in centered agent-first chat, then transition to side-by-side as canvas appears.
+		return `/a/${accountId}/${projectId}/assistant?layout=split&onboarding=true`;
 	} catch (error) {
 		consola.warn("[LOGIN_SUCCESS] Error ensuring default account/project:", error);
 		return null;

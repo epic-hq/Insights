@@ -71,6 +71,7 @@ vi.mock("~/mastra/memory", () => ({
 		createThread: vi.fn(),
 		updateThread: vi.fn().mockResolvedValue({}),
 		deleteThread: vi.fn(),
+		saveMessages: vi.fn().mockResolvedValue({ messages: [] }),
 	},
 }));
 
@@ -118,6 +119,7 @@ type MockedMemory = {
 	createThread: ReturnType<typeof vi.fn>;
 	updateThread: ReturnType<typeof vi.fn>;
 	deleteThread: ReturnType<typeof vi.fn>;
+	saveMessages: ReturnType<typeof vi.fn>;
 };
 
 const mockedMemory = memory as unknown as MockedMemory;
@@ -239,6 +241,7 @@ describe("api.chat.project-status", () => {
 		});
 		mockedMemory.createThread.mockResolvedValue({ id: "thread-created" });
 		mockedMemory.updateThread.mockResolvedValue({ id: "thread-1" });
+		mockedMemory.saveMessages.mockResolvedValue({ messages: [] });
 		mockedHandleChatStream.mockResolvedValue({
 			kind: "live-chat-stream",
 		} as any);
@@ -670,6 +673,7 @@ describe("api.chat.project-status", () => {
 		expect(response.status).toBe(200);
 		expect(mockedGenerateObject).toHaveBeenCalledTimes(1);
 		expect(mockedCreateSurveyTool.execute as any).toHaveBeenCalledTimes(1);
+		expect(mockedMemory.saveMessages).toHaveBeenCalledTimes(1);
 		expect(mockedHandleChatStream).not.toHaveBeenCalled();
 		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
 		expect(mockLangfuseGenerationEnd).toHaveBeenCalledWith(
@@ -682,6 +686,11 @@ describe("api.chat.project-status", () => {
 
 		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
 		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+		const hasA2UISignal = chunks.some((chunk) => {
+			if (chunk.type !== "data-a2ui") return false;
+			const data = (chunk as { data?: unknown }).data as { messages?: unknown } | undefined;
+			return Array.isArray(data?.messages) && data.messages.length > 0;
+		});
 		const hasNavigateSignal = chunks.some((chunk) => {
 			if (chunk.type === "tool-input-available") return true;
 			if (chunk.type === "data-navigate") {
@@ -699,6 +708,7 @@ describe("api.chat.project-status", () => {
 					typeof (part as { path?: unknown }).path === "string"
 			);
 		});
+		expect(hasA2UISignal).toBe(true);
 		expect(hasNavigateSignal).toBe(true);
 	});
 
@@ -868,6 +878,77 @@ describe("api.chat.project-status", () => {
 			.map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""))
 			.join("\n");
 		expect(text).toContain("Sorry, I couldn't answer that just now. Please try again.");
+		expect(chunks.some((chunk) => chunk.type === "finish")).toBe(true);
+	});
+
+	it("normalizes legacy data chunks to typed data-* chunks for transport safety", async () => {
+		mockedHandleNetworkStream.mockResolvedValue(
+			new ReadableStream({
+				start(controller) {
+					controller.enqueue({ type: "start" });
+					controller.enqueue({
+						type: "data",
+						id: "legacy-nav",
+						data: [{ type: "navigate", path: "/a/acct-1/project-1/ask/survey-1/edit" }],
+					});
+					controller.enqueue({ type: "finish", finishReason: "stop" });
+					controller.close();
+				},
+			}) as any
+		);
+
+		const response = await action(
+			buildArgs({
+				message: "show top theme",
+				userId: "user-legacy-data-normalization",
+			})
+		);
+		expect(response.status).toBe(200);
+		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
+
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+
+		expect(chunks.some((chunk) => chunk.type === "data")).toBe(false);
+		expect(
+			chunks.some((chunk) => {
+				if (chunk.type !== "data-navigate") return false;
+				const data = (chunk as { data?: unknown }).data as { path?: string } | undefined;
+				return data?.path === "/a/acct-1/project-1/ask/survey-1/edit" && chunk.id === "legacy-nav";
+			})
+		).toBe(true);
+	});
+
+	it("drops unrecognized legacy data chunks instead of forwarding invalid transport payloads", async () => {
+		mockedHandleNetworkStream.mockResolvedValue(
+			new ReadableStream({
+				start(controller) {
+					controller.enqueue({ type: "start" });
+					controller.enqueue({
+						type: "data",
+						id: "legacy-unknown",
+						data: { foo: "bar" },
+					});
+					controller.enqueue({ type: "finish", finishReason: "stop" });
+					controller.close();
+				},
+			}) as any
+		);
+
+		const response = await action(
+			buildArgs({
+				message: "show top theme",
+				userId: "user-legacy-data-drop",
+			})
+		);
+		expect(response.status).toBe(200);
+		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
+
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+
+		expect(chunks.some((chunk) => chunk.type === "data")).toBe(false);
+		expect(chunks.some((chunk) => chunk.type === "data-navigate")).toBe(false);
 		expect(chunks.some((chunk) => chunk.type === "finish")).toBe(true);
 	});
 

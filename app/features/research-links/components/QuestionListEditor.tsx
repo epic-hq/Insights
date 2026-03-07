@@ -1669,50 +1669,6 @@ export function QuestionListEditor({
 		[onChange]
 	);
 
-	const moveRoutingDecisionPoint = useCallback(
-		(fromQuestionId: string, toQuestionId: string) => {
-			if (fromQuestionId === toQuestionId) return;
-			onChange((previousQuestions) => {
-				const fromIndex = previousQuestions.findIndex((q) => q.id === fromQuestionId);
-				const toIndex = previousQuestions.findIndex((q) => q.id === toQuestionId);
-				if (fromIndex < 0 || toIndex < 0) return previousQuestions;
-
-				const fromQuestion = previousQuestions[fromIndex];
-				const toQuestion = previousQuestions[toIndex];
-				if (!fromQuestion.branching) return previousQuestions;
-
-				const sourceBranching = fromQuestion.branching;
-				const targetExisting = toQuestion.branching;
-				const mergedRules = [...(targetExisting?.rules ?? []), ...sourceBranching.rules];
-				const mergedDefaultNext = sourceBranching.defaultNext ?? targetExisting?.defaultNext;
-
-				const nextQuestions = [...previousQuestions];
-				nextQuestions[fromIndex] = { ...fromQuestion, branching: null };
-				nextQuestions[toIndex] = {
-					...toQuestion,
-					branching: {
-						rules: mergedRules,
-						...(mergedDefaultNext ? { defaultNext: mergedDefaultNext } : {}),
-					},
-				};
-
-				if (import.meta.env.DEV) {
-					console.debug("[QuestionListEditor] moved routing decision point", {
-						fromQuestionId,
-						toQuestionId,
-						movedRuleCount: sourceBranching.rules.length,
-					});
-				}
-
-				return nextQuestions;
-			});
-
-			setExpandedBranchingQuestionId(toQuestionId);
-			toast.success("Routing decision point moved");
-		},
-		[onChange]
-	);
-
 	const updateBranchTargetForRuleGroup = useCallback(
 		(
 			sourceQuestionId: string,
@@ -2206,11 +2162,8 @@ export function QuestionListEditor({
 												<span className="rounded-full border border-violet-500/40 bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-700 dark:text-violet-200">
 													{branchSummaryLabel}
 												</span>
-												<span className="max-w-[420px] truncate text-foreground/75">
-													{groupedTargets.length} destination{groupedTargets.length === 1 ? "" : "s"}
-												</span>
 												<span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-1 py-0.5 font-medium text-[9px] text-violet-700 uppercase tracking-wide dark:text-violet-200">
-													Edit
+													Edit branch
 												</span>
 												<ChevronDownIcon
 													className={cn(
@@ -2224,7 +2177,7 @@ export function QuestionListEditor({
 											{isBranchingExpanded && (
 												<div className="mt-1 space-y-2 rounded-md border border-violet-500/20 bg-violet-500/[0.03] p-2">
 													<div className="flex items-center justify-between">
-														<div className="text-[11px] text-foreground/70">Simple branch view</div>
+														<div className="text-[11px] text-foreground/70">Quick branch editor</div>
 														<Button
 															type="button"
 															variant="link"
@@ -2232,7 +2185,7 @@ export function QuestionListEditor({
 															className="h-6 px-0 text-[11px] text-violet-600 dark:text-violet-300"
 															onClick={() => setSelectedQuestionId(question.id)}
 														>
-															Link to full editor
+															Open full branch editor
 														</Button>
 													</div>
 													{groupedTargets.map((group, rowIndex) => (
@@ -2245,27 +2198,6 @@ export function QuestionListEditor({
 															<div className="flex items-start gap-1">
 																<span className="min-w-[76px] font-medium text-muted-foreground">Branch:</span>
 																<span className="truncate text-foreground">to {group.targetLabel}</span>
-															</div>
-															<div className="flex flex-wrap items-center gap-2">
-																<span className="min-w-[76px] font-medium text-muted-foreground">Location:</span>
-																<Select
-																	value={question.id}
-																	onValueChange={(nextQuestionId) =>
-																		moveRoutingDecisionPoint(question.id, nextQuestionId)
-																	}
-																>
-																	<SelectTrigger className="h-6 min-w-[190px] border-violet-500/20 bg-background text-[11px]">
-																		<SelectValue />
-																	</SelectTrigger>
-																	<SelectContent>
-																		{questions.map((candidate, candidateIndex) => (
-																			<SelectItem key={candidate.id} value={candidate.id}>
-																				Q{candidateIndex + 1}: {candidate.prompt.slice(0, 40)}
-																				{candidate.prompt.length > 40 ? "…" : ""}
-																			</SelectItem>
-																		))}
-																	</SelectContent>
-																</Select>
 															</div>
 															<div className="flex items-start gap-1">
 																<span className="min-w-[76px] font-medium text-muted-foreground">Condition:</span>

@@ -1,5 +1,6 @@
 import { handleChatStream, handleNetworkStream } from "@mastra/ai-sdk";
 import { RequestContext } from "@mastra/core/di";
+import type { MastraDBMessage } from "@mastra/core/memory";
 import { createUIMessageStream, createUIMessageStreamResponse, generateObject } from "ai";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
@@ -23,6 +24,7 @@ import {
 	userBillingContext,
 } from "~/lib/billing/instrumented-openai.server";
 import { recordUsageOnly } from "~/lib/billing/usage.server";
+import { buildSingleComponentSurface } from "~/lib/gen-ui/tool-helpers";
 import { UI_EVENT_DISPATCH_TEXT, type UiEvent, uiEventBatchSchema } from "~/lib/gen-ui/ui-events";
 import { getLangfuseClient } from "~/lib/langfuse.server";
 import { getPostHogServerClient } from "~/lib/posthog.server";
@@ -372,7 +374,11 @@ function streamPlainAssistantText(text: string) {
 	});
 }
 
-function streamSurveyQuickCreateResult(options: { text: string; navigatePath?: string }) {
+function streamSurveyQuickCreateResult(options: {
+	text: string;
+	navigatePath?: string;
+	a2uiMessages?: Array<Record<string, unknown>>;
+}) {
 	return createUIMessageStream({
 		execute: async ({ writer }) => {
 			const messageChunkId = `survey-${Date.now().toString(36)}`;
@@ -390,6 +396,12 @@ function streamSurveyQuickCreateResult(options: { text: string; navigatePath?: s
 			// That causes the client to call addToolResult() → sendAutomatically re-triggers
 			// the server request → matches survey_quick_create again → infinite loop.
 			// Instead, emit a typed custom data part the client can handle directly.
+			if (options.a2uiMessages?.length) {
+				writer.write({
+					type: "data-a2ui",
+					data: { messages: options.a2uiMessages },
+				});
+			}
 			if (options.navigatePath) {
 				writer.write({
 					type: "data-navigate",
@@ -401,6 +413,114 @@ function streamSurveyQuickCreateResult(options: { text: string; navigatePath?: s
 			writer.write({ type: "finish", finishReason: "stop" });
 		},
 	});
+}
+
+type StreamChunk = Record<string, unknown>;
+
+function ensureSurveyEditPath(path: string): string {
+	const [beforeHash, hashFragment] = path.split("#", 2);
+	const [pathnameRaw, searchRaw] = beforeHash.split("?", 2);
+	const pathname = pathnameRaw.replace(/\/+$/, "");
+	const askMatch = pathname.match(/^(.*\/ask\/[^/]+)(\/edit)?$/);
+	if (!askMatch) return path;
+	const normalizedPathname = `${askMatch[1]}/edit`;
+	const search = typeof searchRaw === "string" && searchRaw.length > 0 ? `?${searchRaw}` : "";
+	const hash = typeof hashFragment === "string" && hashFragment.length > 0 ? `#${hashFragment}` : "";
+	return `${normalizedPathname}${search}${hash}`;
+}
+
+async function persistQuickCreateTurn(options: {
+	threadId: string;
+	threadResourceId: string;
+	userText: string;
+	assistantText: string;
+}) {
+	const now = new Date();
+	const baseTimestamp = now.getTime();
+	const messages: MastraDBMessage[] = [
+		{
+			id: `quick-user-${baseTimestamp.toString(36)}`,
+			role: "user",
+			createdAt: now,
+			threadId: options.threadId,
+			resourceId: options.threadResourceId,
+			content: {
+				format: 2,
+				parts: [{ type: "text", text: options.userText }],
+			},
+		},
+		{
+			id: `quick-assistant-${(baseTimestamp + 1).toString(36)}`,
+			role: "assistant",
+			createdAt: new Date(baseTimestamp + 1),
+			threadId: options.threadId,
+			resourceId: options.threadResourceId,
+			content: {
+				format: 2,
+				parts: [{ type: "text", text: options.assistantText }],
+			},
+		},
+	];
+
+	await memory.saveMessages({ messages });
+}
+
+function convertLegacyDataPayloadToTypedChunks(payload: unknown, inheritedId?: string): StreamChunk[] {
+	if (!payload) return [];
+
+	const toChunk = (type: string, data: unknown): StreamChunk | null => {
+		if (!type.startsWith("data-")) return null;
+		const normalized: StreamChunk = { type, data };
+		if (typeof inheritedId === "string" && inheritedId.length > 0) {
+			normalized.id = inheritedId;
+		}
+		return normalized;
+	};
+
+	const fromObject = (value: Record<string, unknown>): StreamChunk[] => {
+		const nestedType = typeof value.type === "string" ? value.type : null;
+
+		if (nestedType?.startsWith("data-")) {
+			const normalized = toChunk(nestedType, "data" in value ? value.data : value);
+			return normalized ? [normalized] : [];
+		}
+
+		if (nestedType === "navigate" && typeof value.path === "string") {
+			const normalized = toChunk("data-navigate", { path: value.path });
+			return normalized ? [normalized] : [];
+		}
+
+		if (nestedType === "a2ui" && Array.isArray(value.messages)) {
+			const normalized = toChunk("data-a2ui", { messages: value.messages });
+			return normalized ? [normalized] : [];
+		}
+
+		// Common legacy progress payload shape from writer.custom().
+		if ("tool" in value || "status" in value || "progress" in value || "message" in value) {
+			const normalized = toChunk("data-tool-progress", value);
+			return normalized ? [normalized] : [];
+		}
+
+		return [];
+	};
+
+	if (Array.isArray(payload)) {
+		return payload.flatMap((entry) => {
+			if (!entry || typeof entry !== "object") return [];
+			return fromObject(entry as Record<string, unknown>);
+		});
+	}
+
+	if (typeof payload === "object") {
+		return fromObject(payload as Record<string, unknown>);
+	}
+
+	return [];
+}
+
+function normalizeStreamChunk(chunk: StreamChunk): StreamChunk[] {
+	if (chunk?.type !== "data") return [chunk];
+	return convertLegacyDataPayloadToTypedChunks(chunk.data, typeof chunk.id === "string" ? chunk.id : undefined);
 }
 
 function stripDebugPrefix(prompt: string): string {
@@ -661,52 +781,59 @@ function augmentStreamForReliability(
 	const transformed = (stream as StreamLike).pipeThrough(
 		new TransformStream<Record<string, unknown>, Record<string, unknown>>({
 			transform(chunk, controller) {
-				if (chunk?.type === "text-delta" && typeof chunk.delta === "string" && chunk.delta.trim().length > 0) {
-					sawTextDelta = true;
-					accumulatedAssistantText += chunk.delta;
-				}
-
-				if (chunk?.type === "tool-input-available" && typeof chunk.toolName === "string") {
-					toolCalls.push(chunk.toolName);
-				}
-
-				// A2UI tool results count as valid output — don't show "Sorry" fallback.
-				// handleChatStream emits tool-result chunks; handleNetworkStream may emit tool-output-available.
-				if (chunk?.type === "tool-output-available" || chunk?.type === "tool-result") {
-					const payload = (chunk.output ?? chunk.result) as Record<string, unknown> | undefined;
-					if (typeof payload === "object" && payload && "a2ui" in payload) {
+				const normalizedChunks = normalizeStreamChunk(chunk);
+				for (const normalizedChunk of normalizedChunks) {
+					if (
+						normalizedChunk?.type === "text-delta" &&
+						typeof normalizedChunk.delta === "string" &&
+						normalizedChunk.delta.trim().length > 0
+					) {
 						sawTextDelta = true;
+						accumulatedAssistantText += normalizedChunk.delta;
 					}
 
-					const extractedResults = extractWebResearchResultsFromPayload(payload);
-					if (extractedResults.length > 0) {
-						const existing = new Set(
-							capturedWebResearchResults.map((item) => `${item.title.toLowerCase()}::${item.url.toLowerCase()}`)
-						);
-						for (const result of extractedResults) {
-							const key = `${result.title.toLowerCase()}::${result.url.toLowerCase()}`;
-							if (existing.has(key)) continue;
-							existing.add(key);
-							capturedWebResearchResults.push(result);
+					if (normalizedChunk?.type === "tool-input-available" && typeof normalizedChunk.toolName === "string") {
+						toolCalls.push(normalizedChunk.toolName);
+					}
+
+					// A2UI tool results count as valid output — don't show "Sorry" fallback.
+					// handleChatStream emits tool-result chunks; handleNetworkStream may emit tool-output-available.
+					if (normalizedChunk?.type === "tool-output-available" || normalizedChunk?.type === "tool-result") {
+						const payload = (normalizedChunk.output ?? normalizedChunk.result) as Record<string, unknown> | undefined;
+						if (typeof payload === "object" && payload && "a2ui" in payload) {
+							sawTextDelta = true;
+						}
+
+						const extractedResults = extractWebResearchResultsFromPayload(payload);
+						if (extractedResults.length > 0) {
+							const existing = new Set(
+								capturedWebResearchResults.map((item) => `${item.title.toLowerCase()}::${item.url.toLowerCase()}`)
+							);
+							for (const result of extractedResults) {
+								const key = `${result.title.toLowerCase()}::${result.url.toLowerCase()}`;
+								if (existing.has(key)) continue;
+								existing.add(key);
+								capturedWebResearchResults.push(result);
+							}
 						}
 					}
-				}
 
-				if (chunk?.type === "error") {
-					maybeEnqueueSafetyMessage(controller);
-				}
+					if (normalizedChunk?.type === "error") {
+						maybeEnqueueSafetyMessage(controller);
+					}
 
-				if (chunk?.type === "finish") {
-					sawFinishChunk = true;
-					maybeEnqueueSafetyMessage(controller);
-					maybeEnqueueHowtoContractPatch(controller);
-					maybeEnqueueCsvCorrection(controller);
-					maybeEnqueueQuickLinks(controller);
-					maybeEnqueueDebugTrace(controller);
-					maybeLogHowtoStreamTelemetry();
-				}
+					if (normalizedChunk?.type === "finish") {
+						sawFinishChunk = true;
+						maybeEnqueueSafetyMessage(controller);
+						maybeEnqueueHowtoContractPatch(controller);
+						maybeEnqueueCsvCorrection(controller);
+						maybeEnqueueQuickLinks(controller);
+						maybeEnqueueDebugTrace(controller);
+						maybeLogHowtoStreamTelemetry();
+					}
 
-				controller.enqueue(chunk);
+					controller.enqueue(normalizedChunk);
+				}
 			},
 			flush(controller) {
 				maybeEnqueueSafetyMessage(controller);
@@ -1102,6 +1229,7 @@ async function executeSurveyQuickCreate(options: {
 	success: boolean;
 	text: string;
 	navigatePath?: string;
+	a2uiMessages?: Array<Record<string, unknown>>;
 	usage?: { inputTokens?: number; outputTokens?: number };
 }> {
 	const draft = await generateObject({
@@ -1144,13 +1272,27 @@ Requirements:
 		};
 	}
 
-	const editPath = created.editUrl;
+	const editPath = ensureSurveyEditPath(created.editUrl);
 	const editUrl = `${HOST}${editPath}`;
+	const publicUrl = created.publicUrl ?? editPath;
+	const surveyCardSurface = buildSingleComponentSurface({
+		surfaceId: `survey-created-${created.surveyId ?? Date.now().toString(36)}`,
+		componentType: "SurveyCreated",
+		componentId: `survey-created-${created.surveyId ?? "new"}`,
+		data: {
+			surveyId: created.surveyId ?? "new-survey",
+			name: draft.object.name,
+			questionCount: created.questionCount ?? draft.object.questions.length,
+			editUrl: editPath,
+			publicUrl,
+		},
+	});
 
 	return {
 		success: true,
-		text: `Created "${draft.object.name}" and prefilled the questions. Opening the editor now: [Open survey](${editUrl})`,
+		text: `Created "${draft.object.name}". Opening it in Edit mode now: [Open survey](${editUrl})`,
 		navigatePath: editPath,
+		a2uiMessages: surveyCardSurface.messages,
 		usage: draft.usage,
 	};
 }
@@ -1521,57 +1663,81 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				});
 			}
 
-			requestGeneration?.end?.({
-				output: {
-					success: quickCreate.success,
-					text: quickCreate.text,
-					navigatePath: quickCreate.navigatePath ?? null,
-				},
-				usage: quickCreateLangfuseUsage.usage,
-				usageDetails: quickCreateLangfuseUsage.usageDetails,
-				costDetails: quickCreateCostDetails,
-			});
-			requestTrace?.update?.({
-				output: {
-					success: quickCreate.success,
-					text: quickCreate.text,
-					navigatePath: quickCreate.navigatePath ?? null,
-				},
-			});
-			requestTrace?.end?.();
+				requestGeneration?.end?.({
+					output: {
+						success: quickCreate.success,
+						text: quickCreate.text,
+						navigatePath: quickCreate.navigatePath ?? null,
+					},
+					usage: quickCreateLangfuseUsage.usage,
+					usageDetails: quickCreateLangfuseUsage.usageDetails,
+					costDetails: quickCreateCostDetails,
+				});
+				requestTrace?.update?.({
+					output: {
+						success: quickCreate.success,
+						text: quickCreate.text,
+						navigatePath: quickCreate.navigatePath ?? null,
+					},
+				});
+				requestTrace?.end?.();
+				await persistQuickCreateTurn({
+					threadId,
+					threadResourceId,
+					userText: lastUserText,
+					assistantText: quickCreate.text,
+				}).catch((error) => {
+					consola.warn("project-status: failed to persist survey quick-create turn", {
+						error: error instanceof Error ? error.message : String(error),
+						threadId,
+					});
+				});
 
-			return createUIMessageStreamResponse({
-				stream: streamSurveyQuickCreateResult({
-					text: quickCreate.text,
-					navigatePath: quickCreate.navigatePath,
-				}),
-			});
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			consola.error("project-status: survey quick-create failed", {
-				error: errorMessage,
-				projectId,
-			});
-			requestTrace?.update?.({
-				output: {
-					success: false,
+				return createUIMessageStreamResponse({
+					stream: streamSurveyQuickCreateResult({
+						text: quickCreate.text,
+						navigatePath: quickCreate.navigatePath,
+						a2uiMessages: quickCreate.a2uiMessages,
+					}),
+				});
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				consola.error("project-status: survey quick-create failed", {
 					error: errorMessage,
-				},
-			});
-			requestGeneration?.end?.({
-				level: "ERROR",
-				statusMessage: errorMessage,
-				output: {
-					success: false,
-					error: errorMessage,
-				},
-			});
-			requestTrace?.end?.();
-			return createUIMessageStreamResponse({
-				stream: streamPlainAssistantText(`I couldn't create the survey yet: ${errorMessage}`),
-			});
+					projectId,
+				});
+				requestTrace?.update?.({
+					output: {
+						success: false,
+						error: errorMessage,
+					},
+				});
+				requestGeneration?.end?.({
+					level: "ERROR",
+					statusMessage: errorMessage,
+					output: {
+						success: false,
+						error: errorMessage,
+					},
+				});
+				requestTrace?.end?.();
+				const fallbackText = `I couldn't create the survey yet: ${errorMessage}`;
+				await persistQuickCreateTurn({
+					threadId,
+					threadResourceId,
+					userText: lastUserText,
+					assistantText: fallbackText,
+				}).catch((persistError) => {
+					consola.warn("project-status: failed to persist survey quick-create failure", {
+						error: persistError instanceof Error ? persistError.message : String(persistError),
+						threadId,
+					});
+				});
+				return createUIMessageStreamResponse({
+					stream: streamPlainAssistantText(fallbackText),
+				});
+			}
 		}
-	}
 
 	const fastGuidanceCacheKey =
 		isFastStandardized && !debugRequested

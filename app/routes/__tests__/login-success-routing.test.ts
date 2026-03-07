@@ -97,8 +97,8 @@ describe("extractInviteToken", () => {
 describe("login_success redirect decision tree", () => {
 	// Document the expected routing logic as specifications
 
-	it("new user + no invite → /a/:accountId/:projectId/setup?onboarding=1", () => {
-		// New users should always be sent to project setup
+	it("new user + no invite → /a/:accountId/:projectId/assistant?layout=split&onboarding=true", () => {
+		// New users should start in centered agent-first onboarding chat
 		const isNewUser = true;
 		const hasInviteRedirect = false;
 		const shouldUseLastUsed = true; // default /home destination
