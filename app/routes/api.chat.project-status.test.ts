@@ -877,6 +877,77 @@ describe("api.chat.project-status", () => {
 		expect(chunks.some((chunk) => chunk.type === "finish")).toBe(true);
 	});
 
+	it("normalizes legacy data chunks to typed data-* chunks for transport safety", async () => {
+		mockedHandleNetworkStream.mockResolvedValue(
+			new ReadableStream({
+				start(controller) {
+					controller.enqueue({ type: "start" });
+					controller.enqueue({
+						type: "data",
+						id: "legacy-nav",
+						data: [{ type: "navigate", path: "/a/acct-1/project-1/ask/survey-1/edit" }],
+					});
+					controller.enqueue({ type: "finish", finishReason: "stop" });
+					controller.close();
+				},
+			}) as any
+		);
+
+		const response = await action(
+			buildArgs({
+				message: "show top theme",
+				userId: "user-legacy-data-normalization",
+			})
+		);
+		expect(response.status).toBe(200);
+		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
+
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+
+		expect(chunks.some((chunk) => chunk.type === "data")).toBe(false);
+		expect(
+			chunks.some((chunk) => {
+				if (chunk.type !== "data-navigate") return false;
+				const data = (chunk as { data?: unknown }).data as { path?: string } | undefined;
+				return data?.path === "/a/acct-1/project-1/ask/survey-1/edit" && chunk.id === "legacy-nav";
+			})
+		).toBe(true);
+	});
+
+	it("drops unrecognized legacy data chunks instead of forwarding invalid transport payloads", async () => {
+		mockedHandleNetworkStream.mockResolvedValue(
+			new ReadableStream({
+				start(controller) {
+					controller.enqueue({ type: "start" });
+					controller.enqueue({
+						type: "data",
+						id: "legacy-unknown",
+						data: { foo: "bar" },
+					});
+					controller.enqueue({ type: "finish", finishReason: "stop" });
+					controller.close();
+				},
+			}) as any
+		);
+
+		const response = await action(
+			buildArgs({
+				message: "show top theme",
+				userId: "user-legacy-data-drop",
+			})
+		);
+		expect(response.status).toBe(200);
+		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
+
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+
+		expect(chunks.some((chunk) => chunk.type === "data")).toBe(false);
+		expect(chunks.some((chunk) => chunk.type === "data-navigate")).toBe(false);
+		expect(chunks.some((chunk) => chunk.type === "finish")).toBe(true);
+	});
+
 	it("enforces top-N CSV contract by appending corrected CSV from web research results", async () => {
 		mockedGenerateObject.mockResolvedValue({
 			object: {

@@ -414,6 +414,66 @@ function streamSurveyQuickCreateResult(options: {
 	});
 }
 
+type StreamChunk = Record<string, unknown>;
+
+function convertLegacyDataPayloadToTypedChunks(payload: unknown, inheritedId?: string): StreamChunk[] {
+	if (!payload) return [];
+
+	const toChunk = (type: string, data: unknown): StreamChunk | null => {
+		if (!type.startsWith("data-")) return null;
+		const normalized: StreamChunk = { type, data };
+		if (typeof inheritedId === "string" && inheritedId.length > 0) {
+			normalized.id = inheritedId;
+		}
+		return normalized;
+	};
+
+	const fromObject = (value: Record<string, unknown>): StreamChunk[] => {
+		const nestedType = typeof value.type === "string" ? value.type : null;
+
+		if (nestedType?.startsWith("data-")) {
+			const normalized = toChunk(nestedType, "data" in value ? value.data : value);
+			return normalized ? [normalized] : [];
+		}
+
+		if (nestedType === "navigate" && typeof value.path === "string") {
+			const normalized = toChunk("data-navigate", { path: value.path });
+			return normalized ? [normalized] : [];
+		}
+
+		if (nestedType === "a2ui" && Array.isArray(value.messages)) {
+			const normalized = toChunk("data-a2ui", { messages: value.messages });
+			return normalized ? [normalized] : [];
+		}
+
+		// Common legacy progress payload shape from writer.custom().
+		if ("tool" in value || "status" in value || "progress" in value || "message" in value) {
+			const normalized = toChunk("data-tool-progress", value);
+			return normalized ? [normalized] : [];
+		}
+
+		return [];
+	};
+
+	if (Array.isArray(payload)) {
+		return payload.flatMap((entry) => {
+			if (!entry || typeof entry !== "object") return [];
+			return fromObject(entry as Record<string, unknown>);
+		});
+	}
+
+	if (typeof payload === "object") {
+		return fromObject(payload as Record<string, unknown>);
+	}
+
+	return [];
+}
+
+function normalizeStreamChunk(chunk: StreamChunk): StreamChunk[] {
+	if (chunk?.type !== "data") return [chunk];
+	return convertLegacyDataPayloadToTypedChunks(chunk.data, typeof chunk.id === "string" ? chunk.id : undefined);
+}
+
 function stripDebugPrefix(prompt: string): string {
 	const stripped = prompt.replace(DEBUG_PREFIX_REGEX, "").trim();
 	return stripped.length > 0 ? stripped : "what should I do next";
@@ -672,52 +732,59 @@ function augmentStreamForReliability(
 	const transformed = (stream as StreamLike).pipeThrough(
 		new TransformStream<Record<string, unknown>, Record<string, unknown>>({
 			transform(chunk, controller) {
-				if (chunk?.type === "text-delta" && typeof chunk.delta === "string" && chunk.delta.trim().length > 0) {
-					sawTextDelta = true;
-					accumulatedAssistantText += chunk.delta;
-				}
-
-				if (chunk?.type === "tool-input-available" && typeof chunk.toolName === "string") {
-					toolCalls.push(chunk.toolName);
-				}
-
-				// A2UI tool results count as valid output — don't show "Sorry" fallback.
-				// handleChatStream emits tool-result chunks; handleNetworkStream may emit tool-output-available.
-				if (chunk?.type === "tool-output-available" || chunk?.type === "tool-result") {
-					const payload = (chunk.output ?? chunk.result) as Record<string, unknown> | undefined;
-					if (typeof payload === "object" && payload && "a2ui" in payload) {
+				const normalizedChunks = normalizeStreamChunk(chunk);
+				for (const normalizedChunk of normalizedChunks) {
+					if (
+						normalizedChunk?.type === "text-delta" &&
+						typeof normalizedChunk.delta === "string" &&
+						normalizedChunk.delta.trim().length > 0
+					) {
 						sawTextDelta = true;
+						accumulatedAssistantText += normalizedChunk.delta;
 					}
 
-					const extractedResults = extractWebResearchResultsFromPayload(payload);
-					if (extractedResults.length > 0) {
-						const existing = new Set(
-							capturedWebResearchResults.map((item) => `${item.title.toLowerCase()}::${item.url.toLowerCase()}`)
-						);
-						for (const result of extractedResults) {
-							const key = `${result.title.toLowerCase()}::${result.url.toLowerCase()}`;
-							if (existing.has(key)) continue;
-							existing.add(key);
-							capturedWebResearchResults.push(result);
+					if (normalizedChunk?.type === "tool-input-available" && typeof normalizedChunk.toolName === "string") {
+						toolCalls.push(normalizedChunk.toolName);
+					}
+
+					// A2UI tool results count as valid output — don't show "Sorry" fallback.
+					// handleChatStream emits tool-result chunks; handleNetworkStream may emit tool-output-available.
+					if (normalizedChunk?.type === "tool-output-available" || normalizedChunk?.type === "tool-result") {
+						const payload = (normalizedChunk.output ?? normalizedChunk.result) as Record<string, unknown> | undefined;
+						if (typeof payload === "object" && payload && "a2ui" in payload) {
+							sawTextDelta = true;
+						}
+
+						const extractedResults = extractWebResearchResultsFromPayload(payload);
+						if (extractedResults.length > 0) {
+							const existing = new Set(
+								capturedWebResearchResults.map((item) => `${item.title.toLowerCase()}::${item.url.toLowerCase()}`)
+							);
+							for (const result of extractedResults) {
+								const key = `${result.title.toLowerCase()}::${result.url.toLowerCase()}`;
+								if (existing.has(key)) continue;
+								existing.add(key);
+								capturedWebResearchResults.push(result);
+							}
 						}
 					}
-				}
 
-				if (chunk?.type === "error") {
-					maybeEnqueueSafetyMessage(controller);
-				}
+					if (normalizedChunk?.type === "error") {
+						maybeEnqueueSafetyMessage(controller);
+					}
 
-				if (chunk?.type === "finish") {
-					sawFinishChunk = true;
-					maybeEnqueueSafetyMessage(controller);
-					maybeEnqueueHowtoContractPatch(controller);
-					maybeEnqueueCsvCorrection(controller);
-					maybeEnqueueQuickLinks(controller);
-					maybeEnqueueDebugTrace(controller);
-					maybeLogHowtoStreamTelemetry();
-				}
+					if (normalizedChunk?.type === "finish") {
+						sawFinishChunk = true;
+						maybeEnqueueSafetyMessage(controller);
+						maybeEnqueueHowtoContractPatch(controller);
+						maybeEnqueueCsvCorrection(controller);
+						maybeEnqueueQuickLinks(controller);
+						maybeEnqueueDebugTrace(controller);
+						maybeLogHowtoStreamTelemetry();
+					}
 
-				controller.enqueue(chunk);
+					controller.enqueue(normalizedChunk);
+				}
 			},
 			flush(controller) {
 				maybeEnqueueSafetyMessage(controller);
