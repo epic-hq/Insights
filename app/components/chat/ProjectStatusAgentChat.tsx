@@ -1232,6 +1232,27 @@ export function ProjectStatusAgentChat({
 		}
 	}, [messages, a2uiSurface]);
 
+	// A2UI: Support typed data parts that carry A2UI payloads (e.g. survey_quick_create fast path)
+	const lastA2UIDataMessageIdRef = useRef<string | null>(null);
+	useEffect(() => {
+		if (!a2uiSurface) return;
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const msg = messages[i];
+			if (msg.id === lastA2UIDataMessageIdRef.current) break;
+			if (msg.role !== "assistant" || !msg.parts) continue;
+			for (const part of msg.parts) {
+				const anyPart = part as { type?: string; data?: unknown };
+				if (anyPart.type !== "data-a2ui") continue;
+				const payload = anyPart.data as { messages?: unknown } | undefined;
+				if (!Array.isArray(payload?.messages)) continue;
+				a2uiSurface.applyMessages(payload.messages as Parameters<typeof a2uiSurface.applyMessages>[0]);
+			}
+		}
+		if (messages.length > 0) {
+			lastA2UIDataMessageIdRef.current = messages[messages.length - 1].id;
+		}
+	}, [messages, a2uiSurface]);
+
 	// Auto-navigate when the server sends a typed data part with a path payload.
 	// Used by survey_quick_create to navigate to the editor without a fake tool call
 	// (which previously caused an infinite create loop via sendAutomatically).

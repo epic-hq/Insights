@@ -23,6 +23,7 @@ import {
 	userBillingContext,
 } from "~/lib/billing/instrumented-openai.server";
 import { recordUsageOnly } from "~/lib/billing/usage.server";
+import { buildSingleComponentSurface } from "~/lib/gen-ui/tool-helpers";
 import { UI_EVENT_DISPATCH_TEXT, type UiEvent, uiEventBatchSchema } from "~/lib/gen-ui/ui-events";
 import { getLangfuseClient } from "~/lib/langfuse.server";
 import { getPostHogServerClient } from "~/lib/posthog.server";
@@ -372,7 +373,11 @@ function streamPlainAssistantText(text: string) {
 	});
 }
 
-function streamSurveyQuickCreateResult(options: { text: string; navigatePath?: string }) {
+function streamSurveyQuickCreateResult(options: {
+	text: string;
+	navigatePath?: string;
+	a2uiMessages?: Array<Record<string, unknown>>;
+}) {
 	return createUIMessageStream({
 		execute: async ({ writer }) => {
 			const messageChunkId = `survey-${Date.now().toString(36)}`;
@@ -390,6 +395,12 @@ function streamSurveyQuickCreateResult(options: { text: string; navigatePath?: s
 			// That causes the client to call addToolResult() → sendAutomatically re-triggers
 			// the server request → matches survey_quick_create again → infinite loop.
 			// Instead, emit a typed custom data part the client can handle directly.
+			if (options.a2uiMessages?.length) {
+				writer.write({
+					type: "data-a2ui",
+					data: { messages: options.a2uiMessages },
+				});
+			}
 			if (options.navigatePath) {
 				writer.write({
 					type: "data-navigate",
@@ -1102,6 +1113,7 @@ async function executeSurveyQuickCreate(options: {
 	success: boolean;
 	text: string;
 	navigatePath?: string;
+	a2uiMessages?: Array<Record<string, unknown>>;
 	usage?: { inputTokens?: number; outputTokens?: number };
 }> {
 	const draft = await generateObject({
@@ -1146,11 +1158,25 @@ Requirements:
 
 	const editPath = created.editUrl;
 	const editUrl = `${HOST}${editPath}`;
+	const publicUrl = created.publicUrl ?? editPath;
+	const surveyCardSurface = buildSingleComponentSurface({
+		surfaceId: `survey-created-${created.surveyId ?? Date.now().toString(36)}`,
+		componentType: "SurveyCreated",
+		componentId: `survey-created-${created.surveyId ?? "new"}`,
+		data: {
+			surveyId: created.surveyId ?? "new-survey",
+			name: draft.object.name,
+			questionCount: created.questionCount ?? draft.object.questions.length,
+			editUrl: editPath,
+			publicUrl,
+		},
+	});
 
 	return {
 		success: true,
 		text: `Created "${draft.object.name}" and prefilled the questions. Opening the editor now: [Open survey](${editUrl})`,
 		navigatePath: editPath,
+		a2uiMessages: surveyCardSurface.messages,
 		usage: draft.usage,
 	};
 }
@@ -1544,6 +1570,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				stream: streamSurveyQuickCreateResult({
 					text: quickCreate.text,
 					navigatePath: quickCreate.navigatePath,
+					a2uiMessages: quickCreate.a2uiMessages,
 				}),
 			});
 		} catch (error) {

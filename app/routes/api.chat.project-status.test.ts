@@ -682,6 +682,11 @@ describe("api.chat.project-status", () => {
 
 		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
 		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+		const hasA2UISignal = chunks.some((chunk) => {
+			if (chunk.type !== "data-a2ui") return false;
+			const data = (chunk as { data?: unknown }).data as { messages?: unknown } | undefined;
+			return Array.isArray(data?.messages) && data.messages.length > 0;
+		});
 		const hasNavigateSignal = chunks.some((chunk) => {
 			if (chunk.type === "tool-input-available") return true;
 			if (chunk.type === "data-navigate") {
@@ -699,6 +704,7 @@ describe("api.chat.project-status", () => {
 					typeof (part as { path?: unknown }).path === "string"
 			);
 		});
+		expect(hasA2UISignal).toBe(true);
 		expect(hasNavigateSignal).toBe(true);
 	});
 
