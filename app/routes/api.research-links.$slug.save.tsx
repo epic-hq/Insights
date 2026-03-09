@@ -17,7 +17,9 @@ type ExistingResearchLinkResponse = Pick<
 	"id" | "email" | "evidence_id" | "responses" | "response_mode" | "completed"
 >;
 
-type ExistingResearchLink = Pick<ResearchLink, "id" | "name" | "account_id" | "project_id" | "questions">;
+type ExistingResearchLink = Pick<ResearchLink, "id" | "name" | "account_id" | "project_id" | "questions"> & {
+	survey_owner_user_id: string | null;
+};
 
 type AdminSupabaseClient = ReturnType<typeof createSupabaseAdminClient>;
 const STRUCTURAL_QUESTION_TYPES = ["likert", "single_select", "multi_select", "image_select"];
@@ -53,7 +55,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	const supabase = createSupabaseAdminClient();
 	const { data: listRaw, error: listError } = await supabase
 		.from("research_links")
-		.select("id, name, account_id, project_id, questions")
+		.select("id, name, account_id, project_id, questions, survey_owner_user_id")
 		.eq("slug", slug)
 		.maybeSingle();
 
@@ -160,29 +162,35 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				return !STRUCTURAL_QUESTION_TYPES.includes(qType);
 			}).length;
 
-			// Use person_id if available, fallback to email, then responseId
-			const distinctId = personId ?? existing.email ?? responseId;
+			const sharedProperties = {
+				survey_id: list.id,
+				survey_name: list.name,
+				response_id: responseId,
+				person_id: personId,
+				account_id: list.account_id,
+				project_id: list.project_id,
+				survey_owner_user_id: list.survey_owner_user_id,
+				response_mode: (existing.response_mode as string | undefined) ?? "form",
+				question_count: questions.length,
+				text_questions: textQuestionCount,
+				has_person: !!personId,
+			};
 
 			// Fire and forget - don't block response
-			void Promise.resolve(
+			void Promise.allSettled([
+				// Capture on the respondent's identity for respondent-level funnels
 				posthog.capture({
-					distinctId,
+					distinctId: personId ?? existing.email ?? responseId,
 					event: "survey_response_received",
-					properties: {
-						survey_id: list.id,
-						survey_name: list.name,
-						response_id: responseId,
-						person_id: personId,
-						account_id: list.account_id,
-						project_id: list.project_id,
-						response_mode: (existing.response_mode as string | undefined) ?? "form",
-						question_count: questions.length,
-						text_questions: textQuestionCount,
-						has_person: !!personId,
-						completion_time: new Date().toISOString(),
-					},
-				})
-			).catch((error) => {
+					properties: sharedProperties,
+				}),
+				// Also capture on the workspace account so PLG nurture fires for the survey owner
+				posthog.capture({
+					distinctId: list.survey_owner_user_id ?? list.account_id,
+					event: "survey_response_received",
+					properties: sharedProperties,
+				}),
+			]).catch((error) => {
 				consola.error("[PostHog] Failed to track survey_response_received", error);
 			});
 		}

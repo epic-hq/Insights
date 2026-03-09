@@ -2,6 +2,7 @@
  * Start endpoint for Research Links (Ask links)
  * Handles different identity modes: anonymous, email-identified, phone-identified
  */
+import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import {
 	ResearchLinkAnonymousStartSchema,
@@ -10,6 +11,7 @@ import {
 	ResearchLinkResponseStartSchema,
 } from "~/features/research-links/schemas";
 import { checkLimitAccess, getAccountPlan } from "~/lib/feature-gate/check-limit.server";
+import { getPostHogServerClient } from "~/lib/posthog.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 
 export const loader = () => Response.json({ message: "Method not allowed" }, { status: 405 });
@@ -19,11 +21,13 @@ type IdentityField = "email" | "phone";
 
 interface ResearchLink {
 	id: string;
+	name: string;
 	is_live: boolean;
 	allow_chat: boolean;
 	default_response_mode: string | null;
 	account_id: string;
 	project_id: string | null;
+	survey_owner_user_id: string | null;
 	identity_mode: IdentityMode;
 	identity_field: IdentityField;
 }
@@ -50,7 +54,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	// Fetch the research link with identity settings
 	const { data: list, error: listError } = await supabase
 		.from("research_links")
-		.select("id, is_live, allow_chat, default_response_mode, account_id, project_id, identity_mode, identity_field")
+		.select(
+			"id, name, is_live, allow_chat, default_response_mode, account_id, project_id, survey_owner_user_id, identity_mode, identity_field"
+		)
 		.eq("slug", slug)
 		.maybeSingle();
 
@@ -166,6 +172,8 @@ async function handleAnonymousStart(
 		return Response.json({ message: insertError?.message ?? "Unable to start response" }, { status: 500 });
 	}
 
+	trackSurveyStarted({ list, responseId: inserted.id, responseMode, identityMode: "anonymous" });
+
 	return Response.json({
 		responseId: inserted.id,
 		responses: {},
@@ -273,6 +281,8 @@ async function handlePhoneStart(
 	if (insertError || !inserted) {
 		return Response.json({ message: insertError?.message ?? "Unable to start response" }, { status: 500 });
 	}
+
+	trackSurveyStarted({ list, responseId: inserted.id, responseMode, identityMode: "identified" });
 
 	return Response.json({
 		responseId: inserted.id,
@@ -440,6 +450,8 @@ async function handleEmailStart(
 		return Response.json({ message: insertError?.message ?? "Unable to start response" }, { status: 500 });
 	}
 
+	trackSurveyStarted({ list, responseId: inserted.id, responseMode, identityMode: "identified" });
+
 	return Response.json({
 		responseId: inserted.id,
 		responses: {},
@@ -586,5 +598,52 @@ async function handleCreatePersonAndContinue(
 		personId,
 		identityMode: "identified",
 		identityField: "email",
+	});
+}
+
+/**
+ * Fire-and-forget PostHog event when a new survey response is started.
+ * Only called on fresh inserts, not resumes, so start/complete rates are accurate.
+ */
+function trackSurveyStarted({
+	list,
+	responseId,
+	responseMode,
+	identityMode,
+}: {
+	list: ResearchLink;
+	responseId: string;
+	responseMode: string;
+	identityMode: IdentityMode;
+}) {
+	const posthog = getPostHogServerClient();
+	if (!posthog) return;
+
+	const properties = {
+		survey_id: list.id,
+		survey_name: list.name,
+		response_id: responseId,
+		account_id: list.account_id,
+		project_id: list.project_id,
+		survey_owner_user_id: list.survey_owner_user_id,
+		response_mode: responseMode,
+		identity_mode: identityMode,
+	};
+
+	void Promise.allSettled([
+		// Respondent-side: responseId as anonymous identity until person is resolved
+		posthog.capture({
+			distinctId: responseId,
+			event: "survey_started",
+			properties,
+		}),
+		// Owner-side: so the survey creator sees their start/complete funnel
+		posthog.capture({
+			distinctId: list.survey_owner_user_id ?? list.account_id,
+			event: "survey_started",
+			properties,
+		}),
+	]).catch(() => {
+		// Intentionally swallowed - tracking must never affect the response
 	});
 }
