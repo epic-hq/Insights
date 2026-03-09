@@ -104,12 +104,12 @@ function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) 
 	const options =
 		Array.isArray(input.options) && input.options.length > 0
 			? input.options
-					.map((option) => {
-						if (typeof option === "string") return option.trim();
-						if (option === null || option === undefined) return "";
-						return String(option).trim();
-					})
-					.filter((option) => option.length > 0)
+				.map((option) => {
+					if (typeof option === "string") return option.trim();
+					if (option === null || option === undefined) return "";
+					return String(option).trim();
+				})
+				.filter((option) => option.length > 0)
 			: null;
 
 	const rawLikertScale =
@@ -131,9 +131,9 @@ function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) 
 	let likertLabels =
 		rawLikertLabels !== null
 			? {
-					low: toNonEmptyString(rawLikertLabels.low),
-					high: toNonEmptyString(rawLikertLabels.high),
-				}
+				low: toNonEmptyString(rawLikertLabels.low),
+				high: toNonEmptyString(rawLikertLabels.high),
+			}
 			: null;
 
 	if (type === "likert") {
@@ -424,6 +424,9 @@ Question types:
 				accountId,
 			});
 
+			const contextUserId = context?.requestContext?.get?.('user_id');
+			const surveyOwnerUserId = typeof contextUserId === 'string' ? contextUserId : null;
+
 			const { data, error } = await withSurveyMutationRetry({
 				operation: "create-survey.insert",
 				run: async () => {
@@ -443,6 +446,7 @@ Question types:
 							hero_subtitle: surveyDescription,
 							hero_cta_label: "Start",
 							hero_cta_helper: null,
+							survey_owner_user_id: surveyOwnerUserId,
 						})
 						.select("id, slug")
 						.single();
