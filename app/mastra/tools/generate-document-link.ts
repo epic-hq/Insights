@@ -1,6 +1,5 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { HOST } from "../../paths";
 
 /**
  * Generate a shareable link for project documents stored in project_sections.
@@ -34,7 +33,7 @@ export const generateDocumentLinkTool = createTool({
 
 		// Route to the project edit page with query params to locate the document
 		const route = `/a/${accountId}/${projectId}/edit?document=${encodeURIComponent(kind)}&sectionId=${encodeURIComponent(sectionId)}`;
-		const absoluteRoute = `${HOST}${route}`;
+		const absoluteRoute = route;
 		return { success: true, route, absoluteRoute, error: null };
 	},
 });

@@ -1,4 +1,3 @@
-import { HOST } from "~/paths";
 import { createRouteDefinitions } from "~/utils/route-definitions";
 
 export const HOWTO_REQUIRED_SECTION_HEADERS = [
@@ -37,10 +36,10 @@ export function evaluateHowtoResponseContract(text: string): HowtoContractEvalua
 export function buildHowtoQuickLinks(accountId: string, projectId: string): string {
 	if (accountId && projectId) {
 		const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
-		return `- [People](${HOST}${routes.people.index()})\n- [Insights](${HOST}${routes.insights.index()})\n- [Ask](${HOST}${routes.ask.index()})`;
+		return `- [People](${routes.people.index()})\n- [Insights](${routes.insights.index()})\n- [Ask](${routes.ask.index()})`;
 	}
 	const routes = createRouteDefinitions("");
-	return `- [Docs](${HOST}${routes.docs()})\n- [Help](${HOST}${routes.help()})`;
+	return `- [Docs](${routes.docs()})\n- [Help](${routes.help()})`;
 }
 
 export function buildHowtoContractPatchText(existingText: string, accountId: string, projectId: string): string | null {

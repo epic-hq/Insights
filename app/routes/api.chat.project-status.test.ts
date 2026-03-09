@@ -9,7 +9,6 @@ import { recordUsageOnly } from "~/lib/billing/usage.server";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
 import { createSurveyTool } from "~/mastra/tools/create-survey";
-import { HOST } from "~/paths";
 import { action, buildQuickLinksMarkdown } from "./api.chat.project-status";
 
 const mockLangfuseGenerationEnd = vi.hoisted(() => vi.fn());
@@ -547,7 +546,7 @@ describe("api.chat.project-status", () => {
 		expect(text.toLowerCase()).toContain("prompt template");
 		expect(text.toLowerCase()).toContain("quick links");
 		expect(text.toLowerCase()).toContain("if stuck");
-		expect(text).toContain(`[People](${HOST}/a/acct-1/project-1/people)`);
+		expect(text).toContain("[People](/a/acct-1/project-1/people)");
 	});
 
 	it("injects a fallback message when stream finishes without assistant text", async () => {
@@ -603,7 +602,7 @@ describe("api.chat.project-status", () => {
 			.join("\n");
 		expect(text.length).toBeGreaterThan(0);
 		expect(text.toLowerCase()).toContain("quick links");
-		expect(text).toContain(`${HOST}/a/acct-1/project-1/`);
+		expect(text).toContain("/a/acct-1/project-1/");
 	});
 
 	it("supports /debug prefix, strips it from execution prompt, and appends a debug trace", async () => {
@@ -1134,7 +1133,7 @@ describe("api.chat.project-status", () => {
 		});
 
 		expect(quickLinks).toContain("Quick links:");
-		expect(quickLinks).toContain(`[People](${HOST}/a/acct-1/project-1/people)`);
-		expect(quickLinks).toContain(`[Insights](${HOST}/a/acct-1/project-1/insights/table)`);
+		expect(quickLinks).toContain("[People](/a/acct-1/project-1/people)");
+		expect(quickLinks).toContain("[Insights](/a/acct-1/project-1/insights/table)");
 	});
 });

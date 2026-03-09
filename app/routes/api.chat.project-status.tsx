@@ -34,7 +34,6 @@ import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
 import { createSurveyTool } from "~/mastra/tools/create-survey";
 import { navigateToPageTool } from "~/mastra/tools/navigate-to-page";
 import { switchAgentTool } from "~/mastra/tools/switch-agent";
-import { HOST } from "~/paths";
 import { userContext } from "~/server/user-context";
 import { createRouteDefinitions } from "~/utils/route-definitions";
 
@@ -418,11 +417,21 @@ function streamSurveyQuickCreateResult(options: {
 type StreamChunk = Record<string, unknown>;
 
 function ensureSurveyEditPath(path: string): string {
-	const [beforeHash, hashFragment] = path.split("#", 2);
+	const normalizedInput = (() => {
+		if (!path || path.startsWith("/")) return path;
+		try {
+			const parsed = new URL(path);
+			return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+		} catch {
+			return path;
+		}
+	})();
+
+	const [beforeHash, hashFragment] = normalizedInput.split("#", 2);
 	const [pathnameRaw, searchRaw] = beforeHash.split("?", 2);
 	const pathname = pathnameRaw.replace(/\/+$/, "");
 	const askMatch = pathname.match(/^(.*\/ask\/[^/]+)(\/edit)?$/);
-	if (!askMatch) return path;
+	if (!askMatch) return normalizedInput;
 	const normalizedPathname = `${askMatch[1]}/edit`;
 	const search = typeof searchRaw === "string" && searchRaw.length > 0 ? `?${searchRaw}` : "";
 	const hash = typeof hashFragment === "string" && hashFragment.length > 0 ? `#${hashFragment}` : "";
@@ -611,7 +620,6 @@ export function buildQuickLinksMarkdown(options: {
 
 	const projectPath = `/a/${accountId}/${projectId}`;
 	const routes = createRouteDefinitions(projectPath);
-	const withHost = (path: string) => `${HOST}${path}`;
 	const normalizedPrompt = lastUserText.toLowerCase();
 	const mentionsPeople = /\b(people|person|contact|contacts|icp)\b/.test(normalizedPrompt);
 	const mentionsSurvey = /\b(survey|ask link|ask|questionnaire|responses?)\b/.test(normalizedPrompt);
@@ -621,26 +629,25 @@ export function buildQuickLinksMarkdown(options: {
 	);
 
 	const links: string[] = [];
-	if (mentionsPeople) links.push(`[People](${withHost(routes.people.index())})`);
-	if (mentionsSurvey || targetAgentId === "researchAgent") links.push(`[Ask](${withHost(routes.ask.index())})`);
+	if (mentionsPeople) links.push(`[People](${routes.people.index()})`);
+	if (mentionsSurvey || targetAgentId === "researchAgent") links.push(`[Ask](${routes.ask.index()})`);
 	if (mentionsLens) {
 		// Link to specific lens if we can detect which one
 		if (/\b(jtbd|jobs.to.be.done)\b/.test(normalizedPrompt)) {
-			links.push(`[JTBD Lens](${withHost(routes.lenses.jtbdConversationPipeline())})`);
+			links.push(`[JTBD Lens](${routes.lenses.jtbdConversationPipeline()})`);
 		} else if (/\b(bant)\b/.test(normalizedPrompt)) {
-			links.push(`[Sales BANT](${withHost(routes.lenses.salesBant())})`);
+			links.push(`[Sales BANT](${routes.lenses.salesBant()})`);
 		} else if (/\b(customer.discovery)\b/.test(normalizedPrompt)) {
-			links.push(`[Customer Discovery](${withHost(routes.lenses.customerDiscovery())})`);
+			links.push(`[Customer Discovery](${routes.lenses.customerDiscovery()})`);
 		} else {
-			links.push(`[Lenses](${withHost(routes.lenses.library())})`);
+			links.push(`[Lenses](${routes.lenses.library()})`);
 		}
 	}
-	if (mentionsThemes || targetAgentId === "projectStatusAgent")
-		links.push(`[Insights](${withHost(routes.insights.table())})`);
+	if (mentionsThemes || targetAgentId === "projectStatusAgent") links.push(`[Insights](${routes.insights.table()})`);
 
 	if (links.length === 0) {
-		links.push(`[Insights](${withHost(routes.insights.table())})`);
-		links.push(`[People](${withHost(routes.people.index())})`);
+		links.push(`[Insights](${routes.insights.table()})`);
+		links.push(`[People](${routes.people.index()})`);
 	}
 
 	return `Quick links: ${links.join(" · ")}`;
@@ -1273,7 +1280,6 @@ Requirements:
 	}
 
 	const editPath = ensureSurveyEditPath(created.editUrl);
-	const editUrl = `${HOST}${editPath}`;
 	const publicUrl = created.publicUrl ?? editPath;
 	const surveyCardSurface = buildSingleComponentSurface({
 		surfaceId: `survey-created-${created.surveyId ?? Date.now().toString(36)}`,
@@ -1290,7 +1296,7 @@ Requirements:
 
 	return {
 		success: true,
-		text: `Created "${draft.object.name}". Opening it in Edit mode now: [Open survey](${editUrl})`,
+		text: `Created "${draft.object.name}". Opening it in Edit mode now: [Open survey](${editPath})`,
 		navigatePath: editPath,
 		a2uiMessages: surveyCardSurface.messages,
 		usage: draft.usage,
@@ -1663,81 +1669,81 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				});
 			}
 
-				requestGeneration?.end?.({
-					output: {
-						success: quickCreate.success,
-						text: quickCreate.text,
-						navigatePath: quickCreate.navigatePath ?? null,
-					},
-					usage: quickCreateLangfuseUsage.usage,
-					usageDetails: quickCreateLangfuseUsage.usageDetails,
-					costDetails: quickCreateCostDetails,
-				});
-				requestTrace?.update?.({
-					output: {
-						success: quickCreate.success,
-						text: quickCreate.text,
-						navigatePath: quickCreate.navigatePath ?? null,
-					},
-				});
-				requestTrace?.end?.();
-				await persistQuickCreateTurn({
+			requestGeneration?.end?.({
+				output: {
+					success: quickCreate.success,
+					text: quickCreate.text,
+					navigatePath: quickCreate.navigatePath ?? null,
+				},
+				usage: quickCreateLangfuseUsage.usage,
+				usageDetails: quickCreateLangfuseUsage.usageDetails,
+				costDetails: quickCreateCostDetails,
+			});
+			requestTrace?.update?.({
+				output: {
+					success: quickCreate.success,
+					text: quickCreate.text,
+					navigatePath: quickCreate.navigatePath ?? null,
+				},
+			});
+			requestTrace?.end?.();
+			await persistQuickCreateTurn({
+				threadId,
+				threadResourceId,
+				userText: lastUserText,
+				assistantText: quickCreate.text,
+			}).catch((error) => {
+				consola.warn("project-status: failed to persist survey quick-create turn", {
+					error: error instanceof Error ? error.message : String(error),
 					threadId,
-					threadResourceId,
-					userText: lastUserText,
-					assistantText: quickCreate.text,
-				}).catch((error) => {
-					consola.warn("project-status: failed to persist survey quick-create turn", {
-						error: error instanceof Error ? error.message : String(error),
-						threadId,
-					});
 				});
+			});
 
-				return createUIMessageStreamResponse({
-					stream: streamSurveyQuickCreateResult({
-						text: quickCreate.text,
-						navigatePath: quickCreate.navigatePath,
-						a2uiMessages: quickCreate.a2uiMessages,
-					}),
-				});
-			} catch (error) {
-				const errorMessage = error instanceof Error ? error.message : String(error);
-				consola.error("project-status: survey quick-create failed", {
+			return createUIMessageStreamResponse({
+				stream: streamSurveyQuickCreateResult({
+					text: quickCreate.text,
+					navigatePath: quickCreate.navigatePath,
+					a2uiMessages: quickCreate.a2uiMessages,
+				}),
+			});
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			consola.error("project-status: survey quick-create failed", {
+				error: errorMessage,
+				projectId,
+			});
+			requestTrace?.update?.({
+				output: {
+					success: false,
 					error: errorMessage,
-					projectId,
-				});
-				requestTrace?.update?.({
-					output: {
-						success: false,
-						error: errorMessage,
-					},
-				});
-				requestGeneration?.end?.({
-					level: "ERROR",
-					statusMessage: errorMessage,
-					output: {
-						success: false,
-						error: errorMessage,
-					},
-				});
-				requestTrace?.end?.();
-				const fallbackText = `I couldn't create the survey yet: ${errorMessage}`;
-				await persistQuickCreateTurn({
+				},
+			});
+			requestGeneration?.end?.({
+				level: "ERROR",
+				statusMessage: errorMessage,
+				output: {
+					success: false,
+					error: errorMessage,
+				},
+			});
+			requestTrace?.end?.();
+			const fallbackText = `I couldn't create the survey yet: ${errorMessage}`;
+			await persistQuickCreateTurn({
+				threadId,
+				threadResourceId,
+				userText: lastUserText,
+				assistantText: fallbackText,
+			}).catch((persistError) => {
+				consola.warn("project-status: failed to persist survey quick-create failure", {
+					error: persistError instanceof Error ? persistError.message : String(persistError),
 					threadId,
-					threadResourceId,
-					userText: lastUserText,
-					assistantText: fallbackText,
-				}).catch((persistError) => {
-					consola.warn("project-status: failed to persist survey quick-create failure", {
-						error: persistError instanceof Error ? persistError.message : String(persistError),
-						threadId,
-					});
 				});
-				return createUIMessageStreamResponse({
-					stream: streamPlainAssistantText(fallbackText),
-				});
-			}
+			});
+			return createUIMessageStreamResponse({
+				stream: streamPlainAssistantText(fallbackText),
+			});
 		}
+	}
 
 	const fastGuidanceCacheKey =
 		isFastStandardized && !debugRequested
