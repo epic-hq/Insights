@@ -35,7 +35,11 @@ vi.mock("~/lib/supabase/client.server", () => ({
 }));
 
 vi.mock("consola", () => ({
-	default: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+	default: {
+		error: vi.fn((...args: unknown[]) => console.error(...args)),
+		info: vi.fn((...args: unknown[]) => console.info(...args)),
+		warn: vi.fn((...args: unknown[]) => console.warn(...args)),
+	},
 }));
 
 // Test data IDs — unique per run to avoid collisions
@@ -367,6 +371,169 @@ describe("Survey Response Save Integration", () => {
 				context: {},
 			} as never);
 			expect((response as Response).status).toBe(404);
+		});
+	});
+
+	describe("embedding queue enqueue regressions", () => {
+		it("should enqueue facet embedding messages in pgmq after evidence_facet insert", async () => {
+			// Guards against the SECURITY DEFINER regression on enqueue_facet_embedding().
+			// If prosecdef=false, service_role gets "permission denied for table q_facet_embedding_queue"
+			// and embeddings silently never generate. Queue depth > 0 proves the trigger fired.
+			// Uses a narrow RPC (security definer) because pgmq schema is not exposed via PostgREST.
+			const { data: depth, error } = await adminDb.rpc("get_facet_embedding_queue_depth");
+
+			expect(error).toBeNull();
+			// At minimum the 4 facets from anonymous completion must have been enqueued
+			expect(Number(depth)).toBeGreaterThanOrEqual(4);
+		});
+
+		it("should enqueue evidence embedding messages in pgmq after evidence insert", async () => {
+			// Guards against enqueue_evidence_embedding() SECURITY DEFINER regression.
+			// Evidence rows use insights_embedding_queue with table='evidence'.
+			const { data: depth, error } = await adminDb.rpc("get_insights_embedding_queue_depth", {
+				filter_table: "evidence",
+			});
+
+			expect(error).toBeNull();
+			// At minimum the 4 evidence rows from anonymous completion must have been enqueued
+			expect(Number(depth)).toBeGreaterThanOrEqual(4);
+		});
+	});
+
+	describe("durability regressions", () => {
+		it("should merge partial saves by default without erasing existing answers", async () => {
+			const partialResponseId = crypto.randomUUID();
+			const { error: seedError } = await adminDb.from("research_link_responses").insert({
+				id: partialResponseId,
+				research_link_id: RESEARCH_LINK_ID,
+				email: null,
+				phone: null,
+				responses: {
+					"q-text": "Original long answer",
+					"q-select": "Weekly",
+				},
+				completed: false,
+			});
+			expect(seedError).toBeNull();
+
+			const { action } = await import("~/routes/api.research-links.$slug.save");
+			const request = new Request(`http://localhost/api/research-links/${RESEARCH_LINK_SLUG}/save`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					responseId: partialResponseId,
+					responses: {
+						"q-longtext": "New partial answer",
+					},
+				}),
+			});
+
+			const response = await action({
+				request,
+				params: { slug: RESEARCH_LINK_SLUG },
+				context: {},
+			} as never);
+			expect((response as { ok: boolean }).ok).toBe(true);
+
+			const { data } = await adminDb.from("research_link_responses").select("responses").eq("id", partialResponseId).single();
+			expect(data?.responses).toMatchObject({
+				"q-text": "Original long answer",
+				"q-select": "Weekly",
+				"q-longtext": "New partial answer",
+			});
+
+			await adminDb.from("research_link_responses").delete().eq("id", partialResponseId);
+		});
+
+		it("should not unset completed on autosave when completed is omitted", async () => {
+			const completedResponseId = crypto.randomUUID();
+			const { error: seedError } = await adminDb.from("research_link_responses").insert({
+				id: completedResponseId,
+				research_link_id: RESEARCH_LINK_ID,
+				email: null,
+				phone: null,
+				responses: {
+					"q-text": "Completed answer",
+				},
+				completed: true,
+			});
+			expect(seedError).toBeNull();
+
+			const { action } = await import("~/routes/api.research-links.$slug.save");
+			const request = new Request(`http://localhost/api/research-links/${RESEARCH_LINK_SLUG}/save`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					responseId: completedResponseId,
+					responses: {
+						"q-longtext": "Autosaved later answer",
+					},
+				}),
+			});
+
+			const response = await action({
+				request,
+				params: { slug: RESEARCH_LINK_SLUG },
+				context: {},
+			} as never);
+			expect((response as { ok: boolean }).ok).toBe(true);
+
+			const { data } = await adminDb
+				.from("research_link_responses")
+				.select("completed, responses")
+				.eq("id", completedResponseId)
+				.single();
+			expect(data?.completed).toBe(true);
+			expect(data?.responses).toMatchObject({
+				"q-text": "Completed answer",
+				"q-longtext": "Autosaved later answer",
+			});
+
+			await adminDb.from("research_link_responses").delete().eq("id", completedResponseId);
+		});
+
+		it("should allow explicit fullSnapshot saves to intentionally remove answers", async () => {
+			const snapshotResponseId = crypto.randomUUID();
+			const { error: seedError } = await adminDb.from("research_link_responses").insert({
+				id: snapshotResponseId,
+				research_link_id: RESEARCH_LINK_ID,
+				email: null,
+				phone: null,
+				responses: {
+					"q-text": "Answer to remove",
+					"q-select": "Weekly",
+				},
+				completed: false,
+			});
+			expect(seedError).toBeNull();
+
+			const { action } = await import("~/routes/api.research-links.$slug.save");
+			const request = new Request(`http://localhost/api/research-links/${RESEARCH_LINK_SLUG}/save`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					responseId: snapshotResponseId,
+					responses: {
+						"q-select": "Weekly",
+					},
+					fullSnapshot: true,
+					completed: false,
+				}),
+			});
+
+			const response = await action({
+				request,
+				params: { slug: RESEARCH_LINK_SLUG },
+				context: {},
+			} as never);
+			expect((response as { ok: boolean }).ok).toBe(true);
+
+			const { data } = await adminDb.from("research_link_responses").select("responses").eq("id", snapshotResponseId).single();
+			expect(data?.responses).toEqual({
+				"q-select": "Weekly",
+			});
+
+			await adminDb.from("research_link_responses").delete().eq("id", snapshotResponseId);
 		});
 	});
 });

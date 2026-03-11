@@ -53,11 +53,26 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	}
 
 	const supabase = createSupabaseAdminClient();
-	const { data: listRaw, error: listError } = await supabase
+	let { data: listRaw, error: listError } = await supabase
 		.from("research_links")
 		.select("id, name, account_id, project_id, questions, survey_owner_user_id")
 		.eq("slug", slug)
 		.maybeSingle();
+
+	if (listError?.message?.includes("survey_owner_user_id")) {
+		const fallbackResult = await supabase
+			.from("research_links")
+			.select("id, name, account_id, project_id, questions")
+			.eq("slug", slug)
+			.maybeSingle();
+		listRaw = fallbackResult.data
+			? {
+					...fallbackResult.data,
+					survey_owner_user_id: null,
+				}
+			: null;
+		listError = fallbackResult.error;
+	}
 
 	if (listError) {
 		return Response.json({ message: listError.message }, { status: 500 });
@@ -68,7 +83,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	}
 	const list = coerceSupabaseRow<ExistingResearchLink>(listRaw);
 
-	const { responseId, responses, completed, merge } = parsed.data;
+	const { responseId, responses, completed, fullSnapshot } = parsed.data;
 	const { data: existingRaw, error: existingError } = await supabase
 		.from("research_link_responses")
 		.select("id, email, evidence_id, responses, response_mode, completed")
@@ -85,30 +100,47 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	}
 	const existing = coerceSupabaseRow<ExistingResearchLinkResponse>(existingRaw);
 
-	// If merge is true, combine with existing responses instead of replacing
-	let nextResponses: ResearchLinkResponses = responses;
-	if (merge && existing.responses) {
-		const existingParsed = ResearchLinkResponseSaveSchema.safeParse({
-			responseId,
-			responses: existing.responses,
-			merge: false,
+	const existingParsed = ResearchLinkResponseSaveSchema.safeParse({
+		responseId,
+		responses: existing.responses,
+	});
+	const existingResponses: ResearchLinkResponses = existingParsed.success ? existingParsed.data.responses : {};
+
+	// Safe by default: partial saves are treated as patches so callers cannot accidentally
+	// wipe prior answers. Full replacement requires an explicit full snapshot from a trusted client.
+	const nextResponses: ResearchLinkResponses = fullSnapshot ? responses : { ...existingResponses, ...responses };
+
+	const was_completed = existing.completed ?? false;
+	const is_completion_transition = was_completed === false && completed === true;
+	if (was_completed === true && completed === true) {
+		consola.warn("[survey] duplicate completion save; already completed", {
+			response_id: responseId,
+			survey_id: list.id,
 		});
-		const existingResponses: ResearchLinkResponses = existingParsed.success ? existingParsed.data.responses : {};
-		nextResponses = { ...existingResponses, ...responses };
 	}
+
+	const update_payload: {
+		responses: ResearchLinkResponses;
+		completed?: boolean;
+	} = {
+		responses: nextResponses,
+	};
+	// Only set completed when the client explicitly provides it.
+	// This prevents autosaves (which omit completed) from flipping completed back to false.
+	if (typeof completed === "boolean") {
+		update_payload.completed = completed;
+	}
+
 	const { error: updateError } = await supabase
 		.from("research_link_responses")
-		.update({
-			responses: nextResponses,
-			completed: completed ?? false,
-		})
+		.update(update_payload)
 		.eq("id", responseId);
 
 	if (updateError) {
 		return Response.json({ message: updateError.message }, { status: 500 });
 	}
 
-	if (completed) {
+	if (is_completion_transition) {
 		// Find or create person record for this respondent (skip for anonymous responses)
 		let personId: string | null = null;
 		if (existing.email) {
@@ -305,6 +337,49 @@ function buildSurveyQuestionFacetSlug(questionId: string, prompt: string): strin
 	return base.slice(0, 63);
 }
 
+async function resolveSurveyResponseFacetKindId(supabase: AdminSupabaseClient): Promise<number | null> {
+	const { data: surveyKind, error: surveyKindError } = await supabase
+		.from("facet_kind_global")
+		.select("id")
+		.eq("slug", "survey_response")
+		.maybeSingle();
+
+	if (surveyKindError) {
+		consola.warn("[survey-response-facets] Failed loading survey_response kind", surveyKindError.message);
+		return null;
+	}
+
+	if (surveyKind?.id) {
+		return surveyKind.id;
+	}
+
+	const createResult = await supabase
+		.from("facet_kind_global")
+		.insert({
+			slug: "survey_response",
+			label: "Survey Response",
+			description: "Answer to a survey or form question",
+		})
+		.select("id")
+		.single();
+
+	if (createResult.error) {
+		if (createResult.error.code === "23505") {
+			const retryResult = await supabase.from("facet_kind_global").select("id").eq("slug", "survey_response").single();
+			if (retryResult.error) {
+				consola.warn("[survey-response-facets] Failed reloading survey_response kind", retryResult.error.message);
+				return null;
+			}
+			return retryResult.data?.id ?? null;
+		}
+
+		consola.warn("[survey-response-facets] Failed creating survey_response kind", createResult.error.message);
+		return null;
+	}
+
+	return createResult.data?.id ?? null;
+}
+
 async function resolveSurveyQuestionFacetAccountId({
 	supabase,
 	accountId,
@@ -348,7 +423,7 @@ async function resolveSurveyQuestionFacetAccountId({
 		return existing.id;
 	}
 
-	const { data: created, error: createError } = await supabase
+	let { data: created, error: createError } = await supabase
 		.from("facet_account")
 		.insert({
 			account_id: accountId,
@@ -359,6 +434,21 @@ async function resolveSurveyQuestionFacetAccountId({
 		})
 		.select("id")
 		.single();
+
+	if (createError?.message?.includes("is_active")) {
+		const fallbackCreateResult = await supabase
+			.from("facet_account")
+			.insert({
+				account_id: accountId,
+				kind_id: surveyKindId,
+				slug,
+				label: label.length > 0 ? label : questionId,
+			})
+			.select("id")
+			.single();
+		created = fallbackCreateResult.data;
+		createError = fallbackCreateResult.error;
+	}
 
 	if (createError || !created?.id) {
 		consola.warn("[survey-response-facets] Failed creating facet_account", {
@@ -394,21 +484,12 @@ async function emitSurveyQuestionEvidenceAndFacets({
 	questions: ResearchLinkQuestion[];
 	responses: ResearchLinkResponses;
 }): Promise<void> {
-	const { data: surveyKind, error: surveyKindError } = await supabase
-		.from("facet_kind_global")
-		.select("id")
-		.eq("slug", "survey_response")
-		.maybeSingle();
-
-	if (surveyKindError) {
-		consola.warn("[survey-response-facets] Failed loading survey_response kind", surveyKindError.message);
-	}
-
-	const surveyKindId = surveyKind?.id ?? null;
+	const surveyKindId = await resolveSurveyResponseFacetKindId(supabase);
 	const facetAccountCache = new Map<string, number>();
 	let evidenceCreated = 0;
 	let evidenceLinksCreated = 0;
 	let facetsCreated = 0;
+	const facet_diagnostics: Array<Record<string, unknown>> = [];
 
 	for (let i = 0; i < questions.length; i++) {
 		const question = questions[i];
@@ -442,6 +523,11 @@ async function emitSurveyQuestionEvidenceAndFacets({
 			.maybeSingle();
 
 		if (evidenceError) {
+			facet_diagnostics.push({
+				stage: "evidence",
+				question_id: question.id,
+				error: evidenceError.message,
+			});
 			consola.error("Failed to create evidence for question", {
 				questionId: question.id,
 				error: evidenceError,
@@ -463,6 +549,12 @@ async function emitSurveyQuestionEvidenceAndFacets({
 			);
 
 			if (linkError) {
+				facet_diagnostics.push({
+					stage: "evidence_people",
+					question_id: question.id,
+					evidence_id: evidence.id,
+					error: linkError.message,
+				});
 				consola.error("Failed to link evidence to person", {
 					evidenceId: evidence.id,
 					personId,
@@ -473,7 +565,16 @@ async function emitSurveyQuestionEvidenceAndFacets({
 			}
 		}
 
-		if (!surveyKindId || !evidence?.id) continue;
+		if (!surveyKindId || !evidence?.id) {
+			if (!surveyKindId) {
+				facet_diagnostics.push({
+					stage: "facet_kind",
+					question_id: question.id,
+					error: "survey_response kind unavailable",
+				});
+			}
+			continue;
+		}
 
 		const facetAccountId = await resolveSurveyQuestionFacetAccountId({
 			supabase,
@@ -484,9 +585,16 @@ async function emitSurveyQuestionEvidenceAndFacets({
 			cache: facetAccountCache,
 		});
 
-		if (!facetAccountId) continue;
+		if (!facetAccountId) {
+			facet_diagnostics.push({
+				stage: "facet_account",
+				question_id: question.id,
+				error: "facet account unavailable",
+			});
+			continue;
+		}
 
-		const { error: facetError } = await supabase.from("evidence_facet").insert({
+		let { error: facetError } = await supabase.from("evidence_facet").insert({
 			evidence_id: evidence.id,
 			account_id: accountId,
 			project_id: projectId,
@@ -499,7 +607,31 @@ async function emitSurveyQuestionEvidenceAndFacets({
 			confidence: 0.95,
 		});
 
+		if (facetError?.message?.includes("facet_account_id")) {
+			const legacyFacetRef = `a:${facetAccountId}`;
+			const legacyFacetResult = await supabase.from("evidence_facet").insert({
+				evidence_id: evidence.id,
+				account_id: accountId,
+				project_id: projectId,
+				person_id: personId,
+				kind_slug: "survey_response",
+				facet_ref: legacyFacetRef,
+				label: question.prompt,
+				quote: answerText,
+				source: "survey",
+				confidence: 0.95,
+			});
+			facetError = legacyFacetResult.error;
+		}
+
 		if (facetError) {
+			facet_diagnostics.push({
+				stage: "evidence_facet",
+				question_id: question.id,
+				evidence_id: evidence.id,
+				facet_account_id: facetAccountId,
+				error: facetError.message,
+			});
 			consola.error("Failed to create survey_response evidence_facet", {
 				questionId: question.id,
 				evidenceId: evidence.id,
@@ -511,7 +643,7 @@ async function emitSurveyQuestionEvidenceAndFacets({
 	}
 
 	if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
-		consola.debug("[survey-response-facets] emitted", {
+		consola.info("[survey-response-facets] emitted", {
 			responseId,
 			evidenceCreated,
 			evidenceLinksCreated,

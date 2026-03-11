@@ -9,7 +9,7 @@ set survey_owner_user_id = (
     from accounts.account_user m
     where m.account_id = rl.account_id
       and m.account_role = 'owner'
-    order by m.created_at asc
+    order by m.user_id asc
     limit 1
 )
 where rl.survey_owner_user_id is null;

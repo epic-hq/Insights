@@ -13,6 +13,7 @@ import {
 	TEST_INSIGHT_2_ID,
 	TEST_INTERVIEW_1_ID,
 	TEST_PERSON_1_ID,
+	TEST_PROJECT_ID,
 	TEST_TAG_1_ID,
 	TEST_TAG_3_ID,
 	testDb,
@@ -187,6 +188,59 @@ describe("Database Integration Tests", () => {
 
 			expect(error).toBeNull();
 			expect(tagCounts).toHaveLength(3);
+		});
+	});
+
+	describe("embedding queue enqueue regressions", () => {
+		it("should enqueue transcription message in pgmq after interview insert with media_url", async () => {
+			// Guards against enqueue_transcribe_interview() SECURITY DEFINER regression.
+			// Interviews with media_url fire trg_enqueue_transcribe_interview → pgmq.q_transcribe_interview_queue.
+			// If prosecdef=false, service_role gets "permission denied" and transcription jobs
+			// are silently never queued. Queue depth delta > 0 proves the trigger fired.
+			const { data: before } = await testDb.rpc("get_transcribe_queue_depth");
+			const depthBefore = Number(before ?? 0);
+
+			const probeId = crypto.randomUUID();
+			const { error } = await testDb.from("interviews").insert({
+				id: probeId,
+				account_id: TEST_ACCOUNT_ID,
+				project_id: TEST_PROJECT_ID,
+				title: "Queue regression probe interview",
+				status: "processing",
+				media_url: "https://example.com/probe-audio.mp3",
+			});
+			expect(error).toBeNull();
+
+			const { data: after, error: rpcError } = await testDb.rpc("get_transcribe_queue_depth");
+			expect(rpcError).toBeNull();
+			expect(Number(after)).toBeGreaterThan(depthBefore);
+
+			await testDb.from("interviews").delete().eq("id", probeId);
+		});
+
+		it("should enqueue evidence embedding message in pgmq after evidence insert", async () => {
+			// Guards against enqueue_evidence_embedding() SECURITY DEFINER regression.
+			// Evidence inserts fire trg_enqueue_evidence → pgmq.q_insights_embedding_queue (table='evidence').
+			const { data: before } = await testDb.rpc("get_insights_embedding_queue_depth", { filter_table: "evidence" });
+			const depthBefore = Number(before ?? 0);
+
+			const { data: ev, error } = await testDb
+				.from("evidence")
+				.insert({
+					account_id: TEST_ACCOUNT_ID,
+					project_id: TEST_PROJECT_ID,
+					method: "interview",
+					verbatim: "Queue regression probe evidence",
+				})
+				.select("id")
+				.single();
+			expect(error).toBeNull();
+
+			const { data: after, error: rpcError } = await testDb.rpc("get_insights_embedding_queue_depth", { filter_table: "evidence" });
+			expect(rpcError).toBeNull();
+			expect(Number(after)).toBeGreaterThan(depthBefore);
+
+			await testDb.from("evidence").delete().eq("id", ev!.id);
 		});
 	});
 });

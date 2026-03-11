@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { cleanupTestData, seedTestData, TEST_ACCOUNT_ID, TEST_PROJECT_ID, testDb } from "~/test/utils/testDb";
 
 /**
@@ -172,5 +172,32 @@ describe("Persona-Insight Integration Tests", () => {
 			.limit(1);
 		expect(linksError).toBeNull();
 		expect(Array.isArray(linkRows)).toBe(true);
+	});
+
+	describe("embedding queue enqueue regressions", () => {
+		afterAll(async () => {
+			await cleanupTestData();
+		});
+
+		it("should enqueue insight embedding message in pgmq after themes insert", async () => {
+			// Guards against enqueue_insight_embedding() SECURITY DEFINER regression.
+			// Themes inserts fire trg_enqueue_insight → pgmq.q_insights_embedding_queue.
+			// If prosecdef=false, service_role gets "permission denied" and theme embeddings
+			// are silently never generated. Queue depth > 0 proves the trigger fired.
+			const depthBefore = Number((await testDb.rpc("get_insights_embedding_queue_depth", { filter_table: null })).data ?? 0);
+
+			const { error } = await testDb.from("themes").insert({
+				account_id: TEST_ACCOUNT_ID,
+				project_id: TEST_PROJECT_ID,
+				name: "Queue regression probe theme",
+				pain: "Test pain to trigger enqueue",
+				category: "pain_point",
+			});
+			expect(error).toBeNull();
+
+			const { data: depthAfter, error: rpcError } = await testDb.rpc("get_insights_embedding_queue_depth", { filter_table: null });
+			expect(rpcError).toBeNull();
+			expect(Number(depthAfter)).toBeGreaterThan(depthBefore);
+		});
 	});
 });
