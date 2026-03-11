@@ -435,7 +435,11 @@ describe("Survey Response Save Integration", () => {
 			} as never);
 			expect((response as { ok: boolean }).ok).toBe(true);
 
-			const { data } = await adminDb.from("research_link_responses").select("responses").eq("id", partialResponseId).single();
+			const { data } = await adminDb
+				.from("research_link_responses")
+				.select("responses")
+				.eq("id", partialResponseId)
+				.single();
 			expect(data?.responses).toMatchObject({
 				"q-text": "Original long answer",
 				"q-select": "Weekly",
@@ -528,7 +532,11 @@ describe("Survey Response Save Integration", () => {
 			} as never);
 			expect((response as { ok: boolean }).ok).toBe(true);
 
-			const { data } = await adminDb.from("research_link_responses").select("responses").eq("id", snapshotResponseId).single();
+			const { data } = await adminDb
+				.from("research_link_responses")
+				.select("responses")
+				.eq("id", snapshotResponseId)
+				.single();
 			expect(data?.responses).toEqual({
 				"q-select": "Weekly",
 			});

@@ -29,6 +29,7 @@ describe("ResearchLinkResponseSaveSchema", () => {
 			expect(result.data.completed).toBe(true);
 			expect(result.data.responseId).toBe("22c66a0c-cfbb-4caf-a1c6-704ac5596bda");
 			expect(result.data.merge).toBe(false); // default
+			expect(result.data.fullSnapshot).toBe(false);
 		}
 	});
 
@@ -54,6 +55,19 @@ describe("ResearchLinkResponseSaveSchema", () => {
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data.merge).toBe(true);
+		}
+	});
+
+	it("should accept fullSnapshot flag", () => {
+		const payload = {
+			responseId: "22c66a0c-cfbb-4caf-a1c6-704ac5596bda",
+			responses: { q1: "Updated answer" },
+			fullSnapshot: true,
+		};
+		const result = ResearchLinkResponseSaveSchema.safeParse(payload);
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.fullSnapshot).toBe(true);
 		}
 	});
 

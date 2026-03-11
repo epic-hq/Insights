@@ -676,6 +676,7 @@ async function saveProgress(
 		responseId: string;
 		responses: ResponseRecord;
 		completed?: boolean;
+		fullSnapshot?: boolean;
 	}
 ) {
 	const response = await fetch(`/api/research-links/${slug}/save`, {
@@ -1280,6 +1281,7 @@ export default function ResearchLinkPage() {
 				responseId,
 				responses: nextResponses,
 				completed: isComplete,
+				fullSnapshot: true,
 			});
 			setResponses(nextResponses);
 			if (isComplete) {
@@ -1324,6 +1326,7 @@ export default function ResearchLinkPage() {
 				responseId,
 				responses: nextResponses,
 				completed: false,
+				fullSnapshot: true,
 			});
 		} catch (caught) {
 			console.warn("[survey] Failed to save draft while navigating", caught);

@@ -22,11 +22,11 @@ import { navigateToPageTool } from "../tools/navigate-to-page";
 import { requestUserInputTool } from "../tools/request-user-input";
 import { reviewSurveyQuestionsTool } from "../tools/review-survey-questions";
 import { searchSurveyResponsesTool } from "../tools/search-survey-responses";
+import { suggestActionsTool } from "../tools/suggest-actions-tool";
+import { suggestionTool } from "../tools/suggestion-tool";
 import { updateSurveyGuidelinesTool } from "../tools/update-survey-guidelines";
 import { updateSurveyQuestionsTool } from "../tools/update-survey-questions";
 import { updateSurveySettingsTool } from "../tools/update-survey-settings";
-import { suggestActionsTool } from "../tools/suggest-actions-tool";
-import { suggestionTool } from "../tools/suggestion-tool";
 
 export const surveyAgent = new Agent({
 	id: "survey-agent",

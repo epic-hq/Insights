@@ -465,6 +465,110 @@ interface DetailedAnalysisResult {
 	data_quality_notes: string[];
 }
 
+// ============================================================================
+// Route/Path Detection for Branched Surveys
+// ============================================================================
+
+interface SurveyRoute {
+	id: string;
+	label: string;
+	/** Question IDs that belong to this route (excluding shared questions) */
+	questionIds: string[];
+	/** How a respondent is identified as being on this route */
+	matchCondition: {
+		questionId: string;
+		values: string[];
+	};
+}
+
+/**
+ * Detect branching paths from survey question definitions.
+ * Returns route definitions if branching is detected, null otherwise.
+ */
+function detectSurveyRoutes(questions: ResearchLinkQuestion[]): SurveyRoute[] | null {
+	// Find questions with branching rules that use skip_to
+	const branchingQuestions = questions.filter((q) =>
+		q.branching?.rules?.some((r) => r.action === "skip_to" || r.action === "end_survey")
+	);
+	if (branchingQuestions.length === 0) return null;
+
+	// Find the primary branching question (first one with skip_to rules)
+	const primaryBranch = branchingQuestions.find((q) => q.branching?.rules?.some((r) => r.action === "skip_to"));
+	if (!primaryBranch?.branching) return null;
+
+	const routes: SurveyRoute[] = [];
+	const questionIdList = questions.map((q) => q.id);
+
+	for (const rule of primaryBranch.branching.rules) {
+		if (rule.action !== "skip_to" || !rule.targetQuestionId) continue;
+
+		// Determine which values trigger this route
+		const matchValues: string[] = [];
+		const matchQuestionId = rule.conditions?.conditions?.[0]?.questionId;
+		if (!matchQuestionId) continue;
+
+		for (const cond of rule.conditions?.conditions ?? []) {
+			if (cond.operator === "equals" && typeof cond.value === "string") {
+				matchValues.push(cond.value);
+			}
+		}
+
+		// Find question range for this route
+		const targetIdx = questionIdList.indexOf(rule.targetQuestionId);
+		if (targetIdx === -1) continue;
+
+		// Find where this route ends (next route's start or end of survey)
+		const routeQuestionIds: string[] = [];
+		for (let i = targetIdx; i < questions.length; i++) {
+			routeQuestionIds.push(questions[i].id);
+			// Check if this question has an end_survey rule for these same values
+			const endRule = questions[i].branching?.rules?.find((r) => r.action === "end_survey");
+			if (endRule) break;
+		}
+
+		// Extract a user-friendly label from the rule summary
+		let routeLabel = `Route ${routes.length + 1}`;
+		if (rule.summary) {
+			// Try to extract the target section name: "...proceed to the founder/employee section."
+			const sectionMatch = rule.summary.match(/proceed to (?:the )?(.+?)(?:\s+section)?\.?$/i);
+			if (sectionMatch?.[1]) {
+				routeLabel = sectionMatch[1].charAt(0).toUpperCase() + sectionMatch[1].slice(1);
+			}
+		}
+		// Build a short label from the matching values if we didn't extract one well
+		if (routeLabel.startsWith("Route ") && matchValues.length > 0) {
+			// Use first match value shortened: "Founder / Co-founder" → "Founder"
+			routeLabel = matchValues[0].split(/[/,]/)[0].trim();
+		}
+
+		routes.push({
+			id: rule.id || `route-${routes.length}`,
+			label: routeLabel,
+			questionIds: routeQuestionIds,
+			matchCondition: { questionId: matchQuestionId, values: matchValues },
+		});
+	}
+
+	return routes.length >= 2 ? routes : null;
+}
+
+/**
+ * Determine which route a response took based on its answers.
+ */
+function getResponseRoute(
+	response: { responses: Record<string, unknown> | null },
+	routes: SurveyRoute[]
+): SurveyRoute | null {
+	if (!response.responses) return null;
+	for (const route of routes) {
+		const answer = response.responses[route.matchCondition.questionId];
+		if (typeof answer === "string" && route.matchCondition.values.includes(answer)) {
+			return route;
+		}
+	}
+	return null;
+}
+
 function normalizeInsightText(value: string): string {
 	return value
 		.toLowerCase()
@@ -528,6 +632,7 @@ function QuestionBreakdown({
 	aiInsight,
 	hideHeader = false,
 	showTextSamples = true,
+	routeLabel,
 }: {
 	stat: QuestionStats;
 	idx: number;
@@ -538,15 +643,23 @@ function QuestionBreakdown({
 	aiInsight?: QuestionInsight;
 	hideHeader?: boolean;
 	showTextSamples?: boolean;
+	routeLabel?: string;
 }) {
 	return (
 		<div className={`space-y-3 ${showDivider ? "border-b pb-6 last:border-b-0 last:pb-0" : ""}`}>
 			{!hideHeader && (
 				<div className="flex items-start justify-between gap-2">
 					<div className="space-y-1">
-						<h4 className="font-semibold text-base">
-							{idx + 1}. {stat.questionText}
-						</h4>
+						<div className="flex items-center gap-2">
+							<h4 className="font-semibold text-base">
+								{idx + 1}. {stat.questionText}
+							</h4>
+							{routeLabel && (
+								<Badge variant="secondary" className="font-normal text-[10px]">
+									{routeLabel}
+								</Badge>
+							)}
+						</div>
 						<p className="text-muted-foreground text-xs">
 							{stat.responseCount}/{stat.totalResponses} answered
 						</p>
@@ -866,8 +979,36 @@ export default function ResearchLinkResponsesPage() {
 		videoResponses.length,
 	]);
 
+	// Detect branching routes
+	const surveyRoutes = detectSurveyRoutes(questions);
+	const sharedQuestionIds = surveyRoutes
+		? questions.filter((q) => !surveyRoutes.some((r) => r.questionIds.includes(q.id))).map((q) => q.id)
+		: [];
+
+	// Compute per-route response counts
+	const routeResponseCounts = surveyRoutes
+		? surveyRoutes.map((route) => ({
+				route,
+				count: responses.filter(
+					(r) =>
+						getResponseRoute(
+							{
+								responses: r.responses as Record<string, unknown> | null,
+							},
+							surveyRoutes
+						)?.id === route.id
+				).length,
+			}))
+		: [];
+
+	/** Get which route a question belongs to (null = shared) */
+	const getQuestionRoute = (questionId: string): SurveyRoute | null => {
+		if (!surveyRoutes) return null;
+		return surveyRoutes.find((r) => r.questionIds.includes(questionId)) ?? null;
+	};
+
 	return (
-		<PageContainer className="space-y-6">
+		<PageContainer className="space-y-6 pb-12">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div className="space-y-2">
 					<div className="flex items-center gap-2">
@@ -937,6 +1078,19 @@ export default function ResearchLinkResponsesPage() {
 							</Button>
 						)}
 					</div>
+
+					{/* Survey Routes - show path breakdown if branching detected */}
+					{surveyRoutes && routeResponseCounts.length > 0 && (
+						<div className="flex flex-wrap items-center gap-2">
+							<span className="text-muted-foreground text-sm">Routes:</span>
+							{routeResponseCounts.map(({ route, count }) => (
+								<Badge key={route.id} variant="outline" className="gap-1.5 text-xs">
+									{route.label}
+									<span className="font-semibold">{count}</span>
+								</Badge>
+							))}
+						</div>
+					)}
 
 					{/* Email Distribution Stats */}
 					{emailStats && (
@@ -1279,17 +1433,52 @@ export default function ResearchLinkResponsesPage() {
 							</div>
 							<Card>
 								<CardContent className="space-y-6 pt-6">
-									{questionStats.map((stat, idx) => (
-										<QuestionBreakdown
-											key={stat.questionId}
-											stat={stat}
-											idx={idx}
-											compact
-											onOpenFullScreen={openBreakdownModal}
-											showFullScreenTrigger
-											aiInsight={getQuestionInsight(stat.questionId, stat.questionText, idx)}
-										/>
-									))}
+									{questionStats.map((stat, idx) => {
+										const questionRoute = getQuestionRoute(stat.questionId);
+										const isFirstInRoute =
+											surveyRoutes &&
+											questionRoute &&
+											idx > 0 &&
+											getQuestionRoute(questionStats[idx - 1]?.questionId)?.id !== questionRoute.id;
+										const isFirstShared =
+											surveyRoutes &&
+											!questionRoute &&
+											idx > 0 &&
+											getQuestionRoute(questionStats[idx - 1]?.questionId) !== null;
+										return (
+											<div key={stat.questionId}>
+												{/* Route section header */}
+												{isFirstInRoute && (
+													<div className="mb-4 flex items-center gap-2 border-t pt-4">
+														<Badge variant="secondary" className="text-xs">
+															{questionRoute.label}
+														</Badge>
+														<span className="text-muted-foreground text-xs">
+															— {routeResponseCounts.find((rc) => rc.route.id === questionRoute.id)?.count ?? 0}{" "}
+															responses on this path
+														</span>
+													</div>
+												)}
+												{isFirstShared && (
+													<div className="mb-4 flex items-center gap-2 border-t pt-4">
+														<Badge variant="outline" className="text-xs">
+															Shared
+														</Badge>
+														<span className="text-muted-foreground text-xs">— all respondents</span>
+													</div>
+												)}
+												<QuestionBreakdown
+													stat={stat}
+													idx={idx}
+													compact
+													onOpenFullScreen={openBreakdownModal}
+													showFullScreenTrigger
+													routeLabel={questionRoute?.label}
+													aiInsight={getQuestionInsight(stat.questionId, stat.questionText, idx)}
+												/>
+											</div>
+										);
+									})}
 								</CardContent>
 							</Card>
 						</>
@@ -1432,7 +1621,9 @@ export default function ResearchLinkResponsesPage() {
 													<div className="space-y-2">
 														{responses
 															.map((r) => {
-																const answer = r.responses?.[activeBreakdown.questionId];
+																const answer = (r.responses as Record<string, unknown> | null)?.[
+																	activeBreakdown.questionId
+																];
 																if (typeof answer !== "string" || !answer.trim()) return null;
 																return {
 																	answer: answer.trim(),

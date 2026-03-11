@@ -248,6 +248,7 @@ export const ResearchLinkResponseSaveSchema = z.object({
 		.default({}),
 	completed: z.boolean().optional(),
 	merge: z.boolean().optional().default(false), // If true, merge responses with existing instead of replacing
+	fullSnapshot: z.boolean().optional().default(false),
 });
 
 export type ResearchLinkResponsePayload = z.infer<typeof ResearchLinkResponseSaveSchema>;
