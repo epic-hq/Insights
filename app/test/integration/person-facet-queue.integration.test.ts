@@ -18,11 +18,7 @@ describe("Person Facet Embedding Queue Enqueue Regressions", () => {
 		await seedTestData();
 
 		// Look up a valid facet_kind_global id to use for facet_account creation
-		const { data: kindRow, error: kindError } = await testDb
-			.from("facet_kind_global")
-			.select("id")
-			.limit(1)
-			.single();
+		const { data: kindRow, error: kindError } = await testDb.from("facet_kind_global").select("id").limit(1).single();
 		if (kindError || !kindRow) throw new Error(`No facet_kind_global rows found: ${kindError?.message}`);
 
 		// Create a facet_account to reference from person_facet

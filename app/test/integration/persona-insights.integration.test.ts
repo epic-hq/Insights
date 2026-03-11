@@ -184,7 +184,9 @@ describe("Persona-Insight Integration Tests", () => {
 			// Themes inserts fire trg_enqueue_insight → pgmq.q_insights_embedding_queue.
 			// If prosecdef=false, service_role gets "permission denied" and theme embeddings
 			// are silently never generated. Queue depth > 0 proves the trigger fired.
-			const depthBefore = Number((await testDb.rpc("get_insights_embedding_queue_depth", { filter_table: null })).data ?? 0);
+			const depthBefore = Number(
+				(await testDb.rpc("get_insights_embedding_queue_depth", { filter_table: null })).data ?? 0
+			);
 
 			const { error } = await testDb.from("themes").insert({
 				account_id: TEST_ACCOUNT_ID,
@@ -195,7 +197,9 @@ describe("Persona-Insight Integration Tests", () => {
 			});
 			expect(error).toBeNull();
 
-			const { data: depthAfter, error: rpcError } = await testDb.rpc("get_insights_embedding_queue_depth", { filter_table: null });
+			const { data: depthAfter, error: rpcError } = await testDb.rpc("get_insights_embedding_queue_depth", {
+				filter_table: null,
+			});
 			expect(rpcError).toBeNull();
 			expect(Number(depthAfter)).toBeGreaterThan(depthBefore);
 		});

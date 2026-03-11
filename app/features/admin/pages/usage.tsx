@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Separator } from "~/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { AdminNav } from "~/features/admin/components/admin-nav";
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server";
 
 type AccountUsage = {
@@ -275,6 +276,7 @@ export default function AdminUsagePage() {
 
 	return (
 		<div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10">
+			<AdminNav />
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div className="space-y-1">

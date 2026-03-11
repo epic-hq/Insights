@@ -155,7 +155,7 @@ export default function AboutPage() {
 
 				<div className="mt-10">
 					<a
-						href="mailto:careers@getupsight.com?subject=Joining%20the%20team"
+						href="mailto:hello@getupsight.com?subject=Joining%20the%20team"
 						className="inline-flex items-center gap-2 rounded-lg bg-amber-400 px-5 py-2.5 font-medium text-[#050508] text-sm transition-colors hover:bg-amber-300"
 					>
 						Join the team
