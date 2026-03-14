@@ -1,46 +1,36 @@
+/**
+ * Upload button that opens the multi-file upload modal.
+ *
+ * Replaces the old single-file UploadModal with MultiFileUploadModal
+ * to support batch uploads with background processing.
+ */
+
 import { useState } from "react";
-import { useNavigate, useRevalidator } from "react-router";
+import { useRevalidator } from "react-router";
 import { useCurrentProject } from "~/contexts/current-project-context";
 import { useNotification } from "~/contexts/NotificationContext";
-import type { ProcessingResult } from "~/features/upload/types";
+import type { BatchUploadResponse } from "~/features/upload/types";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
-import UploadModal from "./UploadModal";
+import MultiFileUploadModal from "./MultiFileUploadModal";
 
 export default function UploadButton() {
 	const [open, setOpen] = useState(false);
-	const navigate = useNavigate();
 	const revalidator = useRevalidator();
 	const { showNotification } = useNotification();
-	const { projectPath } = useCurrentProject();
-	const routes = useProjectRoutes(projectPath || "");
+	const { accountId, projectId, projectPath } = useCurrentProject();
+	const _routes = useProjectRoutes(projectPath || "");
 
-	const handleSuccess = (result: ProcessingResult) => {
-		// Handle successful upload and processing
-		// Store result for debugging (accessible via window object in dev tools)
-		if (typeof window !== "undefined") {
-			(window as Record<string, unknown>).lastInterviewResult = result;
-		}
-
-		// Show success notification
-		const insightCount = result.stored?.length || 0;
-		showNotification(
-			`Interview processed successfully! Generated ${insightCount} insights. Next: Review insights or add another interview.`,
-			"success",
-			5000
-		);
-
-		// Revalidate all route data to refresh dashboard/project status
+	const handleComplete = (response: BatchUploadResponse) => {
 		revalidator.revalidate();
 
-		// Close modal and navigate to the new interview
-		setOpen(false);
-
-		if (result.interview?.id) {
-			// Navigate to the newly created interview
-			navigate(routes.interviews.detail(result.interview.id));
+		if (response.queued > 0) {
+			showNotification(
+				`${response.queued} interview${response.queued !== 1 ? "s" : ""} queued for processing.${response.failed > 0 ? ` ${response.failed} failed.` : ""}`,
+				response.failed > 0 ? "error" : "success",
+				5000,
+			);
 		} else {
-			// Fallback: navigate to interviews list to show the new interview
-			navigate(routes.interviews.index());
+			showNotification("Upload failed. Please try again.", "error", 5000);
 		}
 	};
 
@@ -52,7 +42,13 @@ export default function UploadButton() {
 			>
 				Add interview
 			</button>
-			<UploadModal open={open} onClose={() => setOpen(false)} onSuccess={handleSuccess} />
+			<MultiFileUploadModal
+				open={open}
+				onClose={() => setOpen(false)}
+				onComplete={handleComplete}
+				projectId={projectId}
+				accountId={accountId}
+			/>
 		</>
 	);
 }

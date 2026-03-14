@@ -307,6 +307,7 @@ const routes = [
 
   // API routes
   route("api/upload-file", "./routes/api.upload-file.tsx"),
+  route("api/upload-files", "./routes/api.upload-files.tsx"),
   route("api/upload-from-url", "./routes/api.upload-from-url.tsx"),
   route("api/upload-image", "./routes/api.upload-image.tsx"),
   route("api/upload/presigned-url", "./routes/api.upload.presigned-url.tsx"),
