@@ -351,6 +351,10 @@ const routes = [
   ),
   route("api/agent-state/:agentId", "./routes/api.agent-state.$agentId.tsx"),
   route("api/media/signed-url", "./routes/api.media.signed-url.tsx"),
+  route(
+    "api/interviews/check-transcription",
+    "./routes/api.interviews.check-transcription.tsx",
+  ),
   route("api/user-profile", "./routes/api/user-profile.ts"),
   route("api.analysis-retry", "./routes/api.analysis-retry.tsx"),
   route("api/generate-themes", "./routes/api/generate-themes.tsx"),
