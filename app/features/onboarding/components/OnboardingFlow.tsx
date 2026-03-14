@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Button } from "~/components/ui/button";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
+import { optimizeMediaFile, shouldOptimize } from "~/utils/media-optimizer.client";
 import { type UploadProgress, uploadToR2WithProgress } from "~/utils/r2-upload.client";
 import ProcessingScreen from "./ProcessingScreen";
 import ProjectGoalsScreen from "./ProjectGoalsScreen";
@@ -314,11 +315,31 @@ export default function OnboardingFlow({
 					attachmentData?.sourceType === "audio_upload" ||
 					attachmentData?.sourceType === "video_upload";
 
+				// Optimize media files before upload (reduces upload time and storage)
+				let uploadFile = file;
+				if (isAudioVideo && shouldOptimize(file)) {
+					console.log("[Upload] Optimizing media file before upload:", file.name, `(${(file.size / 1024 / 1024).toFixed(1)} MB)`);
+					const result = await optimizeMediaFile(file, {
+						onProgress: (p) => {
+							setUploadProgress({
+								bytesSent: 0,
+								totalBytes: file.size,
+								percent: Math.round(p.percent * 0.3), // Optimization is ~30% of total progress
+								phase: "uploading",
+							});
+						},
+					});
+					uploadFile = result.file;
+					if (result.wasOptimized) {
+						console.log("[Upload] File optimized:", `${(file.size / 1024 / 1024).toFixed(1)} MB → ${(result.finalSize / 1024 / 1024).toFixed(1)} MB`);
+					}
+				}
+
 				let r2Key: string | null = null;
 
 				// Audio/video files MUST go through direct R2 upload — no server fallback
 				if (isAudioVideo && uploadProjectId) {
-					console.log("[Upload] Direct R2 upload for", file.name, "to project", uploadProjectId);
+					console.log("[Upload] Direct R2 upload for", uploadFile.name, "to project", uploadProjectId);
 
 					// Step 1: Get presigned upload URL from server
 					const presignedResponse = await fetch("/api/upload/presigned-url", {
@@ -326,9 +347,9 @@ export default function OnboardingFlow({
 						headers: { "Content-Type": "application/json" },
 						body: JSON.stringify({
 							projectId: uploadProjectId,
-							filename: file.name,
-							contentType: file.type || "application/octet-stream",
-							fileSize: file.size,
+							filename: uploadFile.name,
+							contentType: uploadFile.type || "application/octet-stream",
+							fileSize: uploadFile.size,
 						}),
 					});
 
@@ -348,9 +369,9 @@ export default function OnboardingFlow({
 						let lastPartCompleted = 0;
 						let loggedCompleting = false;
 						await uploadToR2WithProgress({
-							file,
+							file: uploadFile,
 							singlePartUrl: "", // Not used for multipart
-							contentType: file.type || "application/octet-stream",
+							contentType: uploadFile.type || "application/octet-stream",
 							multipartThresholdBytes: 0, // Force multipart
 							partSizeBytes: presignedData.partSize,
 							multipartHandlers: {
@@ -425,9 +446,9 @@ export default function OnboardingFlow({
 						// Small file - single PUT upload
 						console.log("[Upload] Starting single PUT upload");
 						await uploadToR2WithProgress({
-							file,
+							file: uploadFile,
 							singlePartUrl: presignedData.uploadUrl,
-							contentType: file.type || "application/octet-stream",
+							contentType: uploadFile.type || "application/octet-stream",
 							onProgress: handleUploadProgress,
 						});
 						r2Key = presignedData.key;

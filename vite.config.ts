@@ -113,6 +113,10 @@ export default defineConfig({
       "@boundaryml/baml-darwin-arm64",
       "@conform-to/zod",
       "zod/v4",
+      "@ffmpeg/ffmpeg",
+      "@ffmpeg/util",
+      "@ffmpeg/core",
+      "@ffmpeg/core-mt",
     ],
   },
   ssr: {
