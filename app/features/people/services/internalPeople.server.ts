@@ -119,6 +119,7 @@ function applyProfileUpdates({
 
 	setIfChanged("firstname", profile.firstName);
 	setIfChanged("lastname", profile.lastName);
+	setIfChanged("name", profile.fullName);
 	setIfChanged("primary_email", profile.email);
 	setIfChanged("image_url", profile.imageUrl);
 	setIfChanged("title", profile.title);
