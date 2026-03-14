@@ -80,36 +80,83 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Smart speaker swap: If the target person is already linked to another
 		// participant in this interview, swap them instead of just overwriting
-		let swappedWith: string | null = null;
+		const swappedWith: string | null = null;
 		const currentPersonId = participant.person_id;
 
 		if (finalPersonId) {
 			// Check if target person is already linked to another participant
 			const { data: existingLink } = await userDb
 				.from("interview_people")
-				.select("id, person_id")
+				.select("id, person_id, role, transcript_key, display_name, project_id")
 				.eq("interview_id", participant.interview_id)
 				.eq("person_id", finalPersonId)
 				.neq("id", participantId)
 				.maybeSingle();
 
 			if (existingLink) {
-				// Swap: assign current participant's person to the other participant
-				const { error: swapError } = await userDb
-					.from("interview_people")
-					.update({ person_id: currentPersonId || null })
-					.eq("id", existingLink.id);
+				// Swap via delete + reinsert to avoid the UNIQUE(interview_id, person_id) constraint
+				// violation that occurs when both rows temporarily share the same person_id.
+				// person_id is NOT NULL so we cannot use a null intermediate value.
+				const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server");
+				const adminDb = createSupabaseAdminClient();
 
-				if (swapError) {
+				// 1. Delete the conflicting row
+				const { error: deleteError } = await adminDb.from("interview_people").delete().eq("id", existingLink.id);
+
+				if (deleteError) {
 					return Response.json(
 						{
 							ok: false,
-							error: `Failed to swap participants: ${swapError.message}`,
+							error: `Failed to swap participants: ${deleteError.message}`,
 						},
 						{ status: 500 }
 					);
 				}
-				swappedWith = existingLink.id;
+
+				// 2. Update main participant to the target person
+				const { error: updateMainError } = await adminDb
+					.from("interview_people")
+					.update({ person_id: finalPersonId })
+					.eq("id", participantId);
+
+				if (updateMainError) {
+					return Response.json(
+						{
+							ok: false,
+							error: `Failed to swap participants: ${updateMainError.message}`,
+						},
+						{ status: 500 }
+					);
+				}
+
+				// 3. Re-insert the deleted row with the old person (if one existed)
+				if (currentPersonId) {
+					const { error: reinsertError } = await adminDb.from("interview_people").insert({
+						interview_id: participant.interview_id,
+						person_id: currentPersonId,
+						project_id: existingLink.project_id ?? null,
+						role: existingLink.role ?? null,
+						transcript_key: existingLink.transcript_key ?? null,
+						display_name: existingLink.display_name ?? null,
+						created_by: claims.sub,
+					});
+
+					if (reinsertError) {
+						return Response.json(
+							{
+								ok: false,
+								error: `Failed to swap participants: ${reinsertError.message}`,
+							},
+							{ status: 500 }
+						);
+					}
+				}
+
+				return Response.json({
+					ok: true,
+					swapped: true,
+					message: "Speakers swapped successfully",
+				});
 			}
 		}
 

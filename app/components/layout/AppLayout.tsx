@@ -110,7 +110,7 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 		<SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
 			{showMainNav && !isMobile && <AppSidebar />}
 			<SidebarInset>
-				<main className={cn("flex min-h-screen flex-1 flex-col", showMobileNav ? "pb-[72px]" : "")}>
+				<main className={cn("flex min-h-0 flex-1 flex-col", showMobileNav ? "pb-[72px]" : "")}>
 					<Outlet />
 				</main>
 

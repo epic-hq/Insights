@@ -2312,6 +2312,7 @@ export async function extractEvidenceAndPeopleCore({
           } else {
             internalPersonLinked = true;
             internalPersonHasTranscriptKey = true;
+            existingTranscriptKeys.add(internalTranscriptKey);
             consola.info(
               `  ✅ Linked internal person to speaker "${preferredInternalSpeaker}"`,
             );
@@ -2319,15 +2320,72 @@ export async function extractEvidenceAndPeopleCore({
         }
       }
 
-      // NOTE: We intentionally do NOT auto-create placeholder people records for
-      // unidentified transcript speakers. This prevents polluting the people table
-      // with generic "Speaker A", "Speaker B" entries when diarization over-segments.
-      // The transcript display shows raw speaker labels, and users can manually
-      // add participants via "Add Participant" in the UI when they know who's who.
-      if (missingSpeakers.length > 1) {
-        consola.info(
-          `🎙️  Remaining unlinked speakers: ${missingSpeakers.join(", ")}. Users can manually add via "Add Participant".`,
+      // Create placeholder interview_people rows for remaining unlinked speakers
+      // so the UI can show "Anon" entries and users know to go identify them.
+      // Filter out the speaker we just assigned to internalPerson above.
+      const remainingSpeakers = missingSpeakers.filter((speaker) => {
+        const normalized = speaker.toUpperCase();
+        // Skip the speaker we just linked to the internal person
+        return (
+          !existingTranscriptKeys.has(normalized) &&
+          !existingTranscriptKeys.has(`SPEAKER ${normalized}`)
         );
+      });
+
+      for (const speaker of remainingSpeakers) {
+        const transcriptKey = speaker.toUpperCase().startsWith("SPEAKER ")
+          ? speaker.toUpperCase()
+          : `SPEAKER ${speaker}`.toUpperCase();
+
+        // Re-check in case the internal person link above covered this speaker
+        const { data: alreadyLinked } = await db
+          .from("interview_people")
+          .select("id")
+          .eq("interview_id", interviewRecord.id)
+          .eq("transcript_key", transcriptKey)
+          .maybeSingle();
+
+        if (alreadyLinked) continue;
+
+        // Create a placeholder person for this unlinked speaker
+        const placeholderName = `Unknown Participant`;
+        const { data: placeholderPerson, error: personError } = await db
+          .from("people")
+          .insert({
+            name: placeholderName,
+            project_id: projectId,
+            account_id: accountId,
+          })
+          .select("id")
+          .single();
+
+        if (personError || !placeholderPerson) {
+          consola.warn(
+            `Failed to create placeholder person for speaker "${speaker}":`,
+            personError?.message,
+          );
+          continue;
+        }
+
+        const { error: linkError } = await db.from("interview_people").insert({
+          interview_id: interviewRecord.id,
+          person_id: placeholderPerson.id,
+          project_id: projectId ?? null,
+          role: "participant",
+          transcript_key: transcriptKey,
+          display_name: null,
+        });
+
+        if (linkError) {
+          consola.warn(
+            `Failed to link placeholder person to speaker "${speaker}":`,
+            linkError.message,
+          );
+        } else {
+          consola.info(
+            `  ✅ Created placeholder person + interview_people for unlinked speaker "${speaker}"`,
+          );
+        }
       }
     }
   }

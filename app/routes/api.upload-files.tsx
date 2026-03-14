@@ -33,30 +33,67 @@ interface FileResult {
 	error: string | null;
 }
 
-function detectSourceType(file: File): string {
-	const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
+interface BatchUploadFile {
+	uploadFile: File;
+	originalFilename: string;
+	originalContentType: string;
+	originalFileSize: number;
+}
+
+function getFileExtension(filename: string): string {
+	return filename.split(".").pop()?.toLowerCase() || "";
+}
+
+function parseOriginalFileSize(value: FormDataEntryValue | undefined, fallback: number): number {
+	if (typeof value !== "string") return fallback;
+	const parsed = Number(value);
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function collectBatchUploadFiles(formData: FormData): BatchUploadFile[] {
+	const uploadFiles = formData.getAll("files").filter((value): value is File => value instanceof File);
+	const originalFilenames = formData.getAll("originalFilenames");
+	const originalContentTypes = formData.getAll("originalContentTypes");
+	const originalFileSizes = formData.getAll("originalFileSizes");
+
+	return uploadFiles.map((uploadFile, index) => ({
+		uploadFile,
+		originalFilename:
+			typeof originalFilenames[index] === "string" && originalFilenames[index].trim().length > 0
+				? originalFilenames[index].trim()
+				: uploadFile.name,
+		originalContentType:
+			typeof originalContentTypes[index] === "string" && originalContentTypes[index].trim().length > 0
+				? originalContentTypes[index].trim()
+				: uploadFile.type || "application/octet-stream",
+		originalFileSize: parseOriginalFileSize(originalFileSizes[index], uploadFile.size),
+	}));
+}
+
+function detectSourceType(file: Pick<BatchUploadFile, "originalFilename" | "originalContentType">): string {
+	const fileExtension = getFileExtension(file.originalFilename);
 	const isTextFile =
-		file.type.startsWith("text/") ||
-		file.name.endsWith(".txt") ||
-		file.name.endsWith(".md") ||
-		file.name.endsWith(".markdown");
-	const isPdfFile = file.type === "application/pdf" || file.name.endsWith(".pdf");
+		file.originalContentType.startsWith("text/") ||
+		file.originalFilename.endsWith(".txt") ||
+		file.originalFilename.endsWith(".md") ||
+		file.originalFilename.endsWith(".markdown");
+	const isPdfFile = file.originalContentType === "application/pdf" || file.originalFilename.endsWith(".pdf");
 
 	if (isTextFile || isPdfFile) return "transcript";
-	if (file.type.startsWith("video/")) return "video_upload";
-	if (file.type.startsWith("audio/")) return "audio_upload";
+	if (file.originalContentType.startsWith("video/")) return "video_upload";
+	if (file.originalContentType.startsWith("audio/")) return "audio_upload";
 	if (["mp4", "mov", "avi", "mkv", "m4v"].includes(fileExtension)) return "video_upload";
 	return "audio_upload";
 }
 
-function isDocumentFile(file: File): boolean {
+function isDocumentFile(file: Pick<BatchUploadFile, "originalFilename" | "originalContentType">): boolean {
 	return (
-		file.type.startsWith("text/") ||
-		file.name.endsWith(".txt") ||
-		file.name.endsWith(".md") ||
-		file.name.endsWith(".markdown") ||
-		file.type === "application/pdf" ||
-		file.name.endsWith(".pdf")
+		file.originalContentType.startsWith("text/") ||
+		file.originalFilename.endsWith(".txt") ||
+		file.originalFilename.endsWith(".md") ||
+		file.originalFilename.endsWith(".markdown") ||
+		file.originalContentType === "application/pdf" ||
+		file.originalFilename.endsWith(".pdf")
 	);
 }
 
@@ -76,23 +113,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		return Response.json({ error: "No projectId provided" }, { status: 400 });
 	}
 
-	// Collect all files from formData
-	const files: File[] = [];
-	for (const [key, value] of formData.entries()) {
-		if (key === "files" && value instanceof File) {
-			files.push(value);
-		}
-	}
+	const files = collectBatchUploadFiles(formData);
 
 	if (files.length === 0) {
 		return Response.json({ error: "No files uploaded" }, { status: 400 });
 	}
 
 	if (files.length > MAX_BATCH_SIZE) {
-		return Response.json(
-			{ error: `Maximum ${MAX_BATCH_SIZE} files per upload` },
-			{ status: 400 },
-		);
+		return Response.json({ error: `Maximum ${MAX_BATCH_SIZE} files per upload` }, { status: 400 });
 	}
 
 	// Resolve account
@@ -122,7 +150,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					limit: limitCheck.limit,
 					upgradeUrl: limitCheck.upgradeUrl,
 				},
-				{ status: 403 },
+				{ status: 403 }
 			);
 		}
 		// Check if remaining quota covers the batch
@@ -136,7 +164,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					remaining: limitCheck.remaining,
 					upgradeUrl: limitCheck.upgradeUrl,
 				},
-				{ status: 403 },
+				{ status: 403 }
 			);
 		}
 	}
@@ -144,7 +172,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	consola.info(`[upload-files] Processing batch of ${files.length} files`, {
 		projectId,
 		accountId,
-		filenames: files.map((f) => f.name),
+		filenames: files.map((file) => file.originalFilename),
 	});
 
 	// Process each file: create record, store in R2, trigger background processing
@@ -153,10 +181,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 	for (let i = 0; i < files.length; i++) {
 		const file = files[i];
-		const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
+		const { uploadFile, originalFilename, originalContentType, originalFileSize } = file;
+		const fileExtension = getFileExtension(originalFilename);
 		const sourceType = detectSourceType(file);
 		const isDocument = isDocumentFile(file);
-		const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
+		const isPdf = originalContentType === "application/pdf" || originalFilename.endsWith(".pdf");
 
 		try {
 			// Create interview record
@@ -171,7 +200,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					project_id: projectId,
 					title,
 					status: "uploading",
-					original_filename: file.name,
+					original_filename: originalFilename,
 					source_type: sourceType,
 					file_extension: fileExtension,
 				})
@@ -179,8 +208,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				.single();
 
 			if (insertError || !interview) {
-				consola.error(`[upload-files] Failed to create interview for ${file.name}`, insertError);
-				results.push({ index: i, filename: file.name, interviewId: null, error: "Failed to create interview record" });
+				consola.error(`[upload-files] Failed to create interview for ${originalFilename}`, insertError);
+				results.push({
+					index: i,
+					filename: originalFilename,
+					interviewId: null,
+					error: "Failed to create interview record",
+				});
 				continue;
 			}
 
@@ -210,21 +244,26 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					// Dynamic import — pdf-parse has inconsistent default export across ESM/CJS
 					const pdfMod = (await import("pdf-parse")) as Record<string, unknown>;
 					const pdfParse = (pdfMod.default || pdfMod) as (buf: Buffer) => Promise<{ text: string; numpages: number }>;
-					const buffer = Buffer.from(await file.arrayBuffer());
+					const buffer = Buffer.from(await uploadFile.arrayBuffer());
 					const pdfData = await pdfParse(buffer);
 					textContent = pdfData.text;
 
 					if (!textContent?.trim()) {
-						results.push({ index: i, filename: file.name, interviewId, error: "PDF appears to be scanned/image-based" });
+						results.push({
+							index: i,
+							filename: originalFilename,
+							interviewId,
+							error: "PDF appears to be scanned/image-based",
+						});
 						await supabase.from("interviews").update({ status: "error" }).eq("id", interviewId);
 						continue;
 					}
 				} else {
-					textContent = await file.text();
+					textContent = await uploadFile.text();
 				}
 
 				if (!textContent?.trim()) {
-					results.push({ index: i, filename: file.name, interviewId, error: "File is empty" });
+					results.push({ index: i, filename: originalFilename, interviewId, error: "File is empty" });
 					await supabase.from("interviews").update({ status: "error" }).eq("id", interviewId);
 					continue;
 				}
@@ -233,7 +272,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					full_transcript: textContent.trim(),
 					audio_duration: null,
 					file_type: isPdf ? "pdf" : "text",
-					original_filename: file.name,
+					original_filename: originalFilename,
 				});
 
 				let mediaUrl = "";
@@ -241,9 +280,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					const { mediaUrl: storedUrl } = await storeAudioFile({
 						projectId,
 						interviewId,
-						source: file,
-						originalFilename: file.name,
-						contentType: file.type,
+						source: uploadFile,
+						originalFilename: uploadFile.name,
+						contentType: uploadFile.type || originalContentType,
 					});
 					if (storedUrl) mediaUrl = storedUrl;
 				}
@@ -266,7 +305,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 						accountId,
 						projectId,
 						userId: userId ?? undefined,
-						fileName: file.name,
+						fileName: originalFilename,
 						interviewTitle: title,
 					},
 					transcriptData,
@@ -280,23 +319,20 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				const { mediaUrl: storedMediaUrl, error: storageError } = await storeAudioFile({
 					projectId,
 					interviewId,
-					source: file,
-					originalFilename: file.name,
-					contentType: file.type,
+					source: uploadFile,
+					originalFilename: uploadFile.name,
+					contentType: uploadFile.type || originalContentType,
 				});
 
 				if (storageError || !storedMediaUrl) {
-					consola.error(`[upload-files] R2 storage failed for ${file.name}`, storageError);
-					results.push({ index: i, filename: file.name, interviewId, error: `Storage failed: ${storageError}` });
+					consola.error(`[upload-files] R2 storage failed for ${originalFilename}`, storageError);
+					results.push({ index: i, filename: originalFilename, interviewId, error: `Storage failed: ${storageError}` });
 					await supabase.from("interviews").update({ status: "error" }).eq("id", interviewId);
 					continue;
 				}
 
 				// Update interview with media URL
-				await supabase
-					.from("interviews")
-					.update({ media_url: storedMediaUrl })
-					.eq("id", interviewId);
+				await supabase.from("interviews").update({ media_url: storedMediaUrl }).eq("id", interviewId);
 
 				// Trigger full orchestrator — transcription happens in background
 				await tasks.trigger("interview.v2.orchestrator", {
@@ -305,8 +341,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 						accountId,
 						projectId,
 						userId: userId ?? undefined,
-						fileName: file.name,
+						fileName: originalFilename,
 						interviewTitle: `Interview - ${format(new Date(), "yyyy-MM-dd")} (${i + 1})`,
+						originalFileSize,
 					},
 					transcriptData: { needs_transcription: true },
 					mediaUrl: storedMediaUrl,
@@ -314,12 +351,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				});
 			}
 
-			results.push({ index: i, filename: file.name, interviewId, error: null });
-			consola.info(`[upload-files] Queued ${file.name} → interview ${interviewId}`);
+			results.push({ index: i, filename: originalFilename, interviewId, error: null });
+			consola.info(`[upload-files] Queued ${originalFilename} → interview ${interviewId}`);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Unknown error";
-			consola.error(`[upload-files] Error processing ${file.name}:`, message);
-			results.push({ index: i, filename: file.name, interviewId: null, error: message });
+			consola.error(`[upload-files] Error processing ${originalFilename}:`, message);
+			results.push({ index: i, filename: originalFilename, interviewId: null, error: message });
 		}
 	}
 

@@ -5,7 +5,7 @@ import type { ActionFunctionArgs } from "react-router";
 import { createProject } from "~/features/projects/db";
 import { userContext } from "~/server/user-context";
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function action({ request, context, params }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return new Response(JSON.stringify({ error: "Method not allowed" }), {
 			status: 405,
@@ -21,6 +21,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		});
 	}
 
+	// Use accountId from URL params (team account), not ctx.account_id (personal account)
+	const accountId = params.accountId ?? ctx.account_id;
+
 	try {
 		const timestamp = format(new Date(), "MMM d, yyyy HH:mm");
 		const projectName = `Sales Workspace ${timestamp}`;
@@ -30,17 +33,22 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			data: {
 				name: projectName,
 				description: "Discovery-to-CRM hygiene workspace",
-				account_id: ctx.account_id,
+				account_id: accountId,
 				workflow_type: "sales",
 			},
 		});
 
 		if (error || !data) {
 			consola.error("Failed to create sales workspace", error);
-			return new Response(JSON.stringify({ error: error?.message ?? "Unable to create workspace" }), {
-				status: 500,
-				headers: { "Content-Type": "application/json" },
-			});
+			return new Response(
+				JSON.stringify({
+					error: error?.message ?? "Unable to create workspace",
+				}),
+				{
+					status: 500,
+					headers: { "Content-Type": "application/json" },
+				}
+			);
 		}
 
 		return new Response(JSON.stringify({ projectId: data.id }), {

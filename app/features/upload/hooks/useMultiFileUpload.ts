@@ -19,6 +19,13 @@ const ACCEPTED_TYPES: Record<string, string[]> = {
 
 const MAX_FILES = 20;
 
+interface PreparedBatchFile {
+	uploadFile: File;
+	originalFilename: string;
+	originalContentType: string;
+	originalFileSize: number;
+}
+
 interface UseMultiFileUploadOptions {
 	projectId: string;
 	accountId: string;
@@ -65,6 +72,10 @@ function isAcceptedFile(file: File): boolean {
 		}
 	}
 	return false;
+}
+
+function createAbortError(): DOMException {
+	return new DOMException("Upload aborted", "AbortError");
 }
 
 export function useMultiFileUpload({
@@ -139,18 +150,68 @@ export function useMultiFileUpload({
 				...f,
 				status: "uploading" as MultiFileStatus,
 				error: null,
-			})),
+			}))
 		);
 
 		const controller = new AbortController();
 		abortRef.current = controller;
 
 		try {
+			const { optimizeMediaFile, shouldOptimize } = await import("~/utils/media-optimizer.client");
+			const preparedFiles: PreparedBatchFile[] = [];
+
+			for (const item of files) {
+				if (controller.signal.aborted) {
+					throw createAbortError();
+				}
+
+				const needsOptimization = shouldOptimize(item.file);
+				if (needsOptimization) {
+					setFiles((prev) =>
+						prev.map((current) =>
+							current.id === item.id
+								? {
+										...current,
+										status: "optimizing" as MultiFileStatus,
+										error: null,
+									}
+								: current
+						)
+					);
+				}
+
+				const optimizationResult = needsOptimization
+					? await optimizeMediaFile(item.file, {
+							signal: controller.signal,
+						})
+					: {
+							file: item.file,
+						};
+
+				preparedFiles.push({
+					uploadFile: optimizationResult.file,
+					originalFilename: item.file.name,
+					originalContentType: item.file.type || "application/octet-stream",
+					originalFileSize: item.file.size,
+				});
+			}
+
+			setFiles((prev) =>
+				prev.map((current) => ({
+					...current,
+					status: "uploading" as MultiFileStatus,
+					error: null,
+				}))
+			);
+
 			const formData = new FormData();
 			formData.append("projectId", projectId);
 			formData.append("accountId", accountId);
-			for (const item of files) {
-				formData.append("files", item.file);
+			for (const preparedFile of preparedFiles) {
+				formData.append("files", preparedFile.uploadFile, preparedFile.uploadFile.name);
+				formData.append("originalFilenames", preparedFile.originalFilename);
+				formData.append("originalContentTypes", preparedFile.originalContentType);
+				formData.append("originalFileSizes", String(preparedFile.originalFileSize));
 			}
 
 			const response = await fetch("/api/upload-files", {
@@ -178,7 +239,7 @@ export function useMultiFileUpload({
 						interviewId: fileResult.interviewId,
 						error: fileResult.error,
 					};
-				}),
+				})
 			);
 
 			onComplete?.(result);
@@ -194,7 +255,7 @@ export function useMultiFileUpload({
 						...f,
 						status: "error" as MultiFileStatus,
 						error: message,
-					})),
+					}))
 				);
 			}
 		} finally {

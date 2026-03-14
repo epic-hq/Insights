@@ -4,8 +4,8 @@ import { useDropzone } from "react-dropzone";
 import { OptimizationProgress } from "~/components/ui/OptimizationProgress";
 import { useCurrentProject } from "~/contexts/current-project-context";
 import { useNotification } from "~/contexts/NotificationContext";
-import { useMediaOptimizer } from "~/hooks/useMediaOptimizer";
 import type { ProcessingResult } from "~/features/upload/types";
+import { useMediaOptimizer } from "~/hooks/useMediaOptimizer";
 
 interface UploadModalProps {
 	open: boolean;
@@ -54,7 +54,10 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 			);
 
 			const formData = new FormData();
-			formData.append("file", fileToUpload);
+			formData.append("file", fileToUpload, fileToUpload.name);
+			formData.append("originalFilename", file.name);
+			formData.append("originalContentType", file.type || "application/octet-stream");
+			formData.append("originalFileSize", String(file.size));
 			formData.append("accountId", accountId);
 			formData.append("projectId", projectId);
 
@@ -212,11 +215,7 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 
 							{/* Media Optimization Progress */}
 							{optimizer.state.status !== "idle" && (
-								<OptimizationProgress
-									state={optimizer.state}
-									onSkip={optimizer.skip}
-									className="mb-4"
-								/>
+								<OptimizationProgress state={optimizer.state} onSkip={optimizer.skip} className="mb-4" />
 							)}
 
 							{/* Processing Status */}

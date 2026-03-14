@@ -8,7 +8,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	try {
 		const ctx = context.get(userContext);
 		const supabase = ctx.supabase;
-		const accountId = ctx.account_id;
+		// Use accountId from URL params (team account), not ctx.account_id (personal account)
+		const accountId = params.accountId ?? ctx.account_id;
 		const { projectId } = params;
 
 		if (!projectId) {

@@ -89,32 +89,42 @@ export function useMediaOptimizer(): UseMediaOptimizerReturn {
 		});
 
 		const optimizePromise = (async () => {
-			const result = await optimizeMediaFile(file, {
-				onProgress: (progress) => {
-					setState((prev) => ({
-						...prev,
-						progress,
-					}));
-				},
-				signal: controller.signal,
-			});
+			try {
+				const result = await optimizeMediaFile(file, {
+					onProgress: (progress) => {
+						setState((prev) => ({
+							...prev,
+							progress,
+						}));
+					},
+					signal: controller.signal,
+				});
 
-			setState({
-				status: result.wasOptimized ? "done" : "skipped",
-				progress: {
-					phase: "done",
-					percent: 100,
-					message: result.wasOptimized
-						? `Optimized: ${formatBytesInline(result.originalSize)} → ${formatBytesInline(result.finalSize)}`
-						: "Original file is already well-optimized",
-					originalSize: result.originalSize,
-					optimizedSize: result.finalSize,
-					multiThreaded: result.multiThreaded,
-				},
-				result,
-			});
+				resolveSkipRef.current = null;
+				setState({
+					status: result.wasOptimized ? "done" : "skipped",
+					progress: {
+						phase: "done",
+						percent: 100,
+						message: result.wasOptimized
+							? `Optimized: ${formatBytesInline(result.originalSize)} → ${formatBytesInline(result.finalSize)}`
+							: "Original file is already well-optimized",
+						originalSize: result.originalSize,
+						optimizedSize: result.finalSize,
+						multiThreaded: result.multiThreaded,
+					},
+					result,
+				});
 
-			return result.file;
+				return result.file;
+			} catch (error) {
+				if (error instanceof DOMException && error.name === "AbortError") {
+					return originalFileRef.current ?? file;
+				}
+				throw error;
+			} finally {
+				abortRef.current = null;
+			}
 		})();
 
 		// Race between optimization completing and user clicking skip

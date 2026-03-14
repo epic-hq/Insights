@@ -39,6 +39,8 @@ export const getInterviews = async ({
 					id,
 					name,
 					segment,
+					person_type,
+					default_organization:organizations!default_organization_id(name),
 					people_personas (
 						persona_id,
 						personas (

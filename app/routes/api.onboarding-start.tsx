@@ -11,7 +11,7 @@ import { createPlannedAnswersForInterview } from "~/lib/database/project-answers
 import { getLangfuseClient } from "~/lib/langfuse.server";
 import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server";
 import type { InterviewInsert } from "~/types";
-import { createDomain } from "~/utils/http";
+
 import { storeAudioFile } from "~/utils/storeAudioFile.server";
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
@@ -95,6 +95,12 @@ export async function action({ request }: ActionFunctionArgs) {
 		const onboardingDataStr = formData.get("onboardingData") as string;
 		const projectId = formData.get("projectId") as UUID;
 		const personId = formData.get("personId") as string | null;
+
+		// Prefer accountId from form data (URL team account) over user settings (personal account)
+		const formAccountId = formData.get("accountId") as string | null;
+		if (formAccountId) {
+			teamAccountId = formAccountId;
+		}
 		const _attachType = formData.get("attachType") as string | null;
 		const entityId = formData.get("entityId") as string | null;
 		const fileExtension = formData.get("fileExtension") as string | null;
@@ -652,8 +658,8 @@ Please extract insights that specifically address these research questions and h
 
 		// Path 4: Audio/video files for voice memos - transcribe only, no analysis
 		if (isAudioVideo && mediaTypeInput === "voice_memo") {
-			consola.info("🎤 [ONBOARDING] Voice memo audio/video - transcribe only without analysis", {
-				fileName: file.name,
+			consola.info("🎤 [ONBOARDING] Voice memo audio/video - transcribe via Trigger.dev", {
+				fileName: file?.name || originalFilename,
 				sourceType,
 			});
 
@@ -664,124 +670,122 @@ Please extract insights that specifically address these research questions and h
 					projectId: finalProjectId,
 				},
 				input: {
-					fileName: file.name,
-					size: file.size,
-					type: file.type,
+					fileName: file?.name || originalFilename,
+					size: file?.size || originalFileSize,
+					type: file?.type || originalContentType,
+					directR2Upload: !!r2Key,
 				},
 			});
 
-			// Store audio file in R2
-			const fileBuffer = await file.arrayBuffer();
-			const fileBlob = new Blob([fileBuffer], { type: file.type });
+			let finalR2Key: string;
 
-			const storageResult = await storeAudioFile({
-				projectId: finalProjectId,
-				interviewId: interview.id,
-				source: fileBlob,
-				originalFilename: file.name,
-				contentType: file.type,
-				langfuseParent: audioSpan ?? trace,
-			});
+			if (r2Key) {
+				finalR2Key = r2Key;
+			} else if (file) {
+				// Store audio file in R2
+				const fileBuffer = await file.arrayBuffer();
+				const fileBlob = new Blob([fileBuffer], { type: file.type });
 
-			if (storageResult.error || !storageResult.mediaUrl || !storageResult.presignedUrl) {
-				audioSpan?.end?.({
-					level: "ERROR",
-					statusMessage: storageResult.error ?? "Failed to store audio file",
+				const storageResult = await storeAudioFile({
+					projectId: finalProjectId,
+					interviewId: interview.id,
+					source: fileBlob,
+					originalFilename: file.name,
+					contentType: file.type,
+					langfuseParent: audioSpan ?? trace,
 				});
-				traceEndPayload = {
-					level: "ERROR",
-					statusMessage: `Failed to store audio file: ${storageResult.error}`,
-				};
-				return Response.json({ error: `Failed to store audio file: ${storageResult.error}` }, { status: 500 });
+
+				if (storageResult.error || !storageResult.mediaUrl) {
+					audioSpan?.end?.({
+						level: "ERROR",
+						statusMessage: storageResult.error ?? "Failed to store audio file",
+					});
+					traceEndPayload = {
+						level: "ERROR",
+						statusMessage: `Failed to store audio file: ${storageResult.error}`,
+					};
+					return Response.json({ error: `Failed to store audio file: ${storageResult.error}` }, { status: 500 });
+				}
+
+				finalR2Key = storageResult.mediaUrl;
+			} else {
+				audioSpan?.end?.({ level: "ERROR", statusMessage: "No file or r2Key" });
+				return Response.json({ error: "No file or r2Key provided" }, { status: 500 });
 			}
 
 			// Update interview with R2 key
 			await supabase
 				.from("interviews")
 				.update({
-					media_url: storageResult.mediaUrl,
-					status: "uploaded",
+					media_url: finalR2Key,
+					status: "processing",
 				})
 				.eq("id", interview.id);
 
-			// Submit to AssemblyAI for transcription (no analysis after)
-			const apiKey = process.env.ASSEMBLYAI_API_KEY;
-			if (!apiKey) {
-				audioSpan?.end?.({
-					level: "ERROR",
-					statusMessage: "ASSEMBLYAI_API_KEY not configured",
+			// Trigger orchestrator - transcribe only, skip all analysis steps
+			try {
+				const handle = await tasks.trigger("interview.v2.orchestrator", {
+					analysisJobId: interview.id,
+					metadata: {
+						accountId: teamAccountId,
+						projectId: finalProjectId,
+						userId: user.sub,
+						interviewTitle: interview.title ?? undefined,
+						fileName: effectiveFilename,
+					},
+					transcriptData: {
+						needs_transcription: true,
+						file_type: "media",
+					},
+					mediaUrl: finalR2Key,
+					existingInterviewId: interview.id,
+					userCustomInstructions: "",
+					resumeFrom: "upload",
+					skipSteps: ["evidence", "enrich-person", "personas", "answers"],
 				});
-				traceEndPayload = {
-					level: "ERROR",
-					statusMessage: "Transcription service not configured",
-				};
-				return Response.json({ error: "Transcription service not configured" }, { status: 500 });
-			}
 
-			const baseUrl = process.env.PUBLIC_TUNNEL_URL
-				? `https://${process.env.PUBLIC_TUNNEL_URL}`
-				: createDomain(request);
-			const webhookUrl = `${baseUrl}/api/assemblyai-webhook?voiceMemoOnly=true`;
+				triggerRunInfo = { runId: handle.id, publicToken: null };
 
-			const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
-				method: "POST",
-				headers: {
-					authorization: apiKey,
-					"content-type": "application/json",
-				},
-				body: JSON.stringify({
-					audio_url: storageResult.presignedUrl,
-					webhook_url: webhookUrl,
-					speech_model: "slam-1",
-					speaker_labels: true,
-					format_text: true,
-					punctuate: true,
-					sentiment_analysis: false,
-				}),
-			});
-
-			if (!transcriptResponse.ok) {
-				const _errorText = await transcriptResponse.text();
-				audioSpan?.end?.({
-					level: "ERROR",
-					statusMessage: `AssemblyAI failed: ${transcriptResponse.status}`,
+				consola.info("✅ [ONBOARDING] Voice memo orchestrator triggered", {
+					runId: handle.id,
+					interviewId: interview.id,
 				});
-				traceEndPayload = {
-					level: "ERROR",
-					statusMessage: "Transcription failed",
-				};
-				return Response.json({ error: "Transcription failed" }, { status: 500 });
+
+				audioSpan?.end?.({
+					output: {
+						runId: handle.id,
+						mediaUrl: finalR2Key,
+					},
+				});
+			} catch (triggerError) {
+				const message = triggerError instanceof Error ? triggerError.message : "Failed to start transcription";
+				consola.error("[ONBOARDING] Voice memo trigger failed:", triggerError);
+				audioSpan?.end?.({ level: "ERROR", statusMessage: message });
+				traceEndPayload = { level: "ERROR", statusMessage: message };
+				return Response.json({ error: message }, { status: 500 });
 			}
-
-			const transcriptData = await transcriptResponse.json();
-			consola.info("✅ [ONBOARDING] Voice memo transcription queued", {
-				transcriptId: transcriptData.id,
-				interviewId: interview.id,
-			});
-
-			audioSpan?.end?.({
-				output: {
-					transcriptId: transcriptData.id,
-					mediaUrl: storageResult.mediaUrl,
-				},
-			});
 
 			traceEndPayload = {
 				level: "DEFAULT",
-				statusMessage: "Voice memo transcription queued",
+				statusMessage: "Voice memo transcription started via Trigger.dev",
 			};
 			return Response.json({
 				success: true,
 				interviewId: interview.id,
 				projectId: finalProjectId,
-				status: "transcribing",
+				status: "processing",
 				message: "Voice memo is being transcribed",
+				triggerRun: triggerRunInfo
+					? {
+							id: triggerRunInfo.runId,
+							publicToken: triggerRunInfo.publicToken,
+						}
+					: null,
 			});
 		}
 
-		// Path 5: Audio/video files for interviews - full processing with transcription and analysis
+		// Path 5: Audio/video files for interviews - full processing via Trigger.dev orchestrator
 		if (isAudioVideo) {
-			// Handle audio/video files - store file first (if not direct upload), then trigger AssemblyAI transcription
 			const audioSpan = trace?.span?.({
 				name: "ingest.audio",
 				metadata: {
@@ -797,39 +801,15 @@ Please extract insights that specifically address these research questions and h
 			});
 
 			let finalR2Key: string;
-			let presignedUrl: string;
 
 			// Check if file was already uploaded directly to R2
 			if (r2Key) {
-				// Direct R2 upload path - file is already in R2
 				consola.info("⚡ [ONBOARDING] Using direct R2 upload - skipping server upload", {
 					r2Key,
 					elapsedMs: Date.now() - startTime,
 				});
 				finalR2Key = r2Key;
-
-				// Generate presigned URL for AssemblyAI to access the file
-				const { createR2PresignedReadUrl } = await import("~/utils/r2.server");
-				const presignedResult = createR2PresignedReadUrl(r2Key, 3600); // 1 hour
-				if (!presignedResult) {
-					audioSpan?.end?.({
-						level: "ERROR",
-						statusMessage: "Failed to generate presigned URL for R2 object",
-					});
-					traceEndPayload = {
-						level: "ERROR",
-						statusMessage: "Failed to generate presigned URL",
-					};
-					return Response.json({ error: "Failed to generate presigned URL for uploaded file" }, { status: 500 });
-				}
-				presignedUrl = presignedResult;
-
-				audioSpan?.event?.({
-					name: "r2.direct-upload-used",
-					metadata: { r2Key, presignedUrlGenerated: true },
-				});
 			} else if (file) {
-				// Legacy upload path - file needs to be uploaded to R2 via server
 				consola.info("💾 [ONBOARDING] Converting file to buffer...", {
 					fileName: effectiveFilename,
 					fileSize: `${(effectiveFileSize / 1024 / 1024).toFixed(2)}MB`,
@@ -838,18 +818,10 @@ Please extract insights that specifically address these research questions and h
 				const fileBuffer = await file.arrayBuffer();
 				const fileBlob = new Blob([fileBuffer], { type: file.type });
 
-				consola.info("✅ [ONBOARDING] Buffer conversion complete", {
-					bufferSize: `${(fileBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`,
-					elapsedMs: Date.now() - startTime,
-				});
-
 				consola.info("☁️ [ONBOARDING] Starting R2 upload...", {
-					fileName: effectiveFilename,
-					fileSize: `${(effectiveFileSize / 1024 / 1024).toFixed(2)}MB`,
 					elapsedMs: Date.now() - startTime,
 				});
 
-				// Upload to R2 first (with multipart + retry for large files)
 				const storageResult = await storeAudioFile({
 					projectId: finalProjectId,
 					interviewId: interview.id,
@@ -859,174 +831,97 @@ Please extract insights that specifically address these research questions and h
 					langfuseParent: audioSpan ?? trace,
 				});
 
-				const storageError = storageResult.error;
-
-				if (storageError || !storageResult.mediaUrl || !storageResult.presignedUrl) {
-					consola.error("❌ [ONBOARDING] R2 upload failed:", storageError, {
+				if (storageResult.error || !storageResult.mediaUrl) {
+					consola.error("❌ [ONBOARDING] R2 upload failed:", storageResult.error, {
 						elapsedMs: Date.now() - startTime,
 					});
 					audioSpan?.end?.({
 						level: "ERROR",
-						statusMessage: storageError ?? "Failed to store audio file",
+						statusMessage: storageResult.error ?? "Failed to store audio file",
 					});
 					traceEndPayload = {
 						level: "ERROR",
-						statusMessage: `Failed to store audio file: ${storageError}`,
+						statusMessage: `Failed to store audio file: ${storageResult.error}`,
 					};
-					return Response.json({ error: `Failed to store audio file: ${storageError}` }, { status: 500 });
+					return Response.json({ error: `Failed to store audio file: ${storageResult.error}` }, { status: 500 });
 				}
 
 				finalR2Key = storageResult.mediaUrl;
-				presignedUrl = storageResult.presignedUrl;
 
 				consola.info("✅ [ONBOARDING] R2 upload complete", {
 					r2Key: finalR2Key,
 					elapsedMs: Date.now() - startTime,
 				});
 
-				// Update interview with R2 key (not presigned URL)
+				// Update interview with R2 key
 				await supabase.from("interviews").update({ media_url: finalR2Key }).eq("id", interview.id);
 			} else {
-				// This shouldn't happen due to earlier validation, but handle it
 				audioSpan?.end?.({
 					level: "ERROR",
 					statusMessage: "No file or r2Key provided",
 				});
-				traceEndPayload = {
-					level: "ERROR",
-					statusMessage: "No file or r2Key provided",
-				};
 				return Response.json({ error: "No file or r2Key provided" }, { status: 500 });
 			}
 
 			audioSpan?.end?.({
-				output: {
-					r2Key: finalR2Key,
-					presignedUrl: presignedUrl.substring(0, 50) + "...",
-				},
+				output: { r2Key: finalR2Key },
 			});
 			trace?.update?.({
-				metadata: {
-					r2Key: finalR2Key,
-				},
+				metadata: { r2Key: finalR2Key },
 			});
 
-			// Submit to Assembly AI for async transcription with webhook
-			const assemblySpan = trace?.span?.({
-				name: "assemblyai.submit",
-				metadata: {
-					interviewId: interview.id,
-				},
-			});
-
+			// Trigger orchestrator for transcription + full analysis via Trigger.dev
+			// The uploadAndTranscribe task handles AssemblyAI polling internally (no webhook needed)
 			try {
-				const apiKey = process.env.ASSEMBLYAI_API_KEY;
-				if (!apiKey) {
-					throw new Error("ASSEMBLYAI_API_KEY not configured");
-				}
+				const metadata = {
+					accountId: teamAccountId,
+					projectId: finalProjectId,
+					userId: user.sub,
+					interviewTitle: interview.title ?? undefined,
+					fileName: effectiveFilename,
+					participantName: linkedPerson?.name ?? undefined,
+				};
 
-				// Use PUBLIC_TUNNEL_URL for local dev, otherwise infer from request
-				const baseUrl = process.env.PUBLIC_TUNNEL_URL
-					? `https://${process.env.PUBLIC_TUNNEL_URL}`
-					: createDomain(request);
-
-				const webhookUrl = `${baseUrl}/api/assemblyai-webhook`;
-
-				consola.info("🎙️ [ONBOARDING] Submitting to Assembly AI...", {
-					webhookUrl,
-					presignedUrl: `${presignedUrl.substring(0, 100)}...`,
-					elapsedMs: Date.now() - startTime,
-				});
-
-				const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
-					method: "POST",
-					headers: {
-						authorization: apiKey,
-						"content-type": "application/json",
+				const handle = await tasks.trigger("interview.v2.orchestrator", {
+					analysisJobId: interview.id,
+					metadata,
+					transcriptData: {
+						needs_transcription: true,
+						file_type: "media",
 					},
-					body: JSON.stringify({
-						audio_url: presignedUrl,
-						webhook_url: webhookUrl,
-						speech_model: "slam-1",
-						speaker_labels: true,
-						format_text: true,
-						punctuate: true,
-						sentiment_analysis: false,
-					}),
+					mediaUrl: finalR2Key,
+					existingInterviewId: interview.id,
+					userCustomInstructions: customInstructions,
+					resumeFrom: "upload",
+					skipSteps: [],
 				});
 
-				if (!transcriptResponse.ok) {
-					const errorText = await transcriptResponse.text();
-					consola.error("❌ [ONBOARDING] Assembly AI submission failed:", {
-						status: transcriptResponse.status,
-						error: errorText,
-						elapsedMs: Date.now() - startTime,
-					});
-					throw new Error(`AssemblyAI request failed: ${transcriptResponse.status} ${errorText}`);
-				}
+				triggerRunInfo = { runId: handle.id, publicToken: null };
 
-				const transcriptData = await transcriptResponse.json();
-				consola.info("✅ [ONBOARDING] Assembly AI job created", {
-					transcriptId: transcriptData.id,
-					status: transcriptData.status,
-					elapsedMs: Date.now() - startTime,
-				});
-
-				// Update interview with conversation_analysis metadata
-				// (upload_jobs and analysis_jobs tables consolidated into interviews.conversation_analysis)
-				const { error: updateError } = await supabaseAdmin
+				// Update interview status with trigger run ID for frontend tracking
+				await supabaseAdmin
 					.from("interviews")
 					.update({
 						status: "processing" as const,
 						conversation_analysis: {
-							current_step: "transcription",
-							transcript_data: {
-								status: "pending_transcription",
-								assemblyai_id: transcriptData.id,
-								file_name: effectiveFilename,
-								file_type: effectiveContentType,
-								external_url: presignedUrl,
-							},
+							current_step: "upload",
 							custom_instructions: customInstructions,
-							status_detail: "Transcribing with Assembly AI",
+							status_detail: "Processing audio via Trigger.dev",
+							trigger_run_id: handle.id,
 						},
 					})
 					.eq("id", interview.id);
 
-				if (updateError) {
-					throw new Error(`Failed to update interview: ${updateError.message}`);
-				}
-
-				assemblySpan?.end?.({
-					output: {
-						assemblyaiId: transcriptData.id,
-						interviewId: interview.id,
-					},
+				consola.info("✅ [ONBOARDING] Orchestrator triggered", {
+					runId: handle.id,
+					interviewId: interview.id,
+					elapsedMs: Date.now() - startTime,
 				});
-
-				// Return interview info for frontend tracking
-				triggerRunInfo = {
-					runId: interview.id, // Use interview ID for tracking
-					publicToken: null, // Will be set when orchestrator starts
-				};
-
-				consola.success("Transcription job queued, webhook will trigger processing when complete");
-			} catch (analysisError) {
-				const message = analysisError instanceof Error ? analysisError.message : "Failed to submit for transcription";
-				consola.error("Assembly AI submission failed:", analysisError);
-				assemblySpan?.end?.({
-					level: "ERROR",
-					statusMessage: message,
-				});
-				audioSpan?.event?.({
-					name: "assemblyai.error",
-					metadata: {
-						interviewId: interview.id,
-						message,
-					},
-				});
+			} catch (triggerError) {
+				const message = triggerError instanceof Error ? triggerError.message : "Failed to start processing";
+				consola.error("[ONBOARDING] Trigger failed:", triggerError);
 				traceEndPayload = { level: "ERROR", statusMessage: message };
-				return Response.json({ error: "Failed to submit for transcription" }, { status: 500 });
+				return Response.json({ error: "Failed to start processing" }, { status: 500 });
 			}
 		}
 

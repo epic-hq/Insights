@@ -28,6 +28,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	if (!file) {
 		return Response.json({ error: "No file uploaded" }, { status: 400 });
 	}
+	const originalFilename = formData.get("originalFilename")?.toString().trim() || file.name;
+	const originalContentType = formData.get("originalContentType")?.toString().trim() || file.type;
+	const originalFileSizeValue = formData.get("originalFileSize")?.toString();
+	const originalFileSize = originalFileSizeValue ? Number(originalFileSizeValue) || file.size : file.size;
 	// const body = formData.get("body") as string | null
 	const projectId = formData.get("projectId") as UUID;
 	const participant_name = formData.get("participantName")?.toString() || null;
@@ -82,12 +86,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	try {
 		// Check if file is text/markdown - handle directly without AssemblyAI
 		const isTextFile =
-			file.type.startsWith("text/") ||
-			file.name.endsWith(".txt") ||
-			file.name.endsWith(".md") ||
-			file.name.endsWith(".markdown");
+			originalContentType.startsWith("text/") ||
+			originalFilename.endsWith(".txt") ||
+			originalFilename.endsWith(".md") ||
+			originalFilename.endsWith(".markdown");
 
-		const isPdfFile = file.type === "application/pdf" || file.name.endsWith(".pdf");
+		const isPdfFile = originalContentType === "application/pdf" || originalFilename.endsWith(".pdf");
 
 		const isDocumentFile = isTextFile || isPdfFile;
 
@@ -96,12 +100,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 		// Detect file type for source_type field up front
 		// Use MIME type as primary signal, fall back to extension
-		const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
+		const fileExtension = originalFilename.split(".").pop()?.toLowerCase() || "";
 		let sourceType = "audio_upload";
-		if (file.type.startsWith("video/")) {
+		if (originalContentType.startsWith("video/")) {
 			// MIME type is the most reliable signal
 			sourceType = "video_upload";
-		} else if (file.type.startsWith("audio/")) {
+		} else if (originalContentType.startsWith("audio/")) {
 			// Explicitly audio MIME type
 			sourceType = "audio_upload";
 		} else if (["mp4", "mov", "avi", "mkv", "m4v"].includes(fileExtension)) {
@@ -123,7 +127,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					? `${isPdfFile ? "PDF" : "Text"} Transcript - ${format(new Date(), "yyyy-MM-dd")}`
 					: interviewTitle,
 				status: "uploading",
-				original_filename: file.name,
+				original_filename: originalFilename,
 				source_type: sourceType,
 				file_extension: fileExtension,
 			})
@@ -158,7 +162,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			let textContent: string;
 
 			if (isPdfFile) {
-				consola.log("Extracting text from PDF:", file.name);
+				consola.log("Extracting text from PDF:", originalFilename);
 				const { default: pdfParse } = await import("pdf-parse");
 				const buffer = Buffer.from(await file.arrayBuffer());
 				const pdfData = await pdfParse(buffer);
@@ -175,7 +179,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 				consola.log(`PDF extracted: ${pdfData.numpages} pages, ${textContent.length} characters`);
 			} else {
-				consola.log("Processing text/markdown file:", file.name);
+				consola.log("Processing text/markdown file:", originalFilename);
 				textContent = await file.text();
 			}
 
@@ -187,7 +191,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				full_transcript: textContent.trim(),
 				audio_duration: null,
 				file_type: isPdfFile ? "pdf" : "text",
-				original_filename: file.name,
+				original_filename: originalFilename,
 			});
 			mediaUrl = "";
 
@@ -252,12 +256,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			accountId,
 			projectId,
 			userId: userId ?? undefined,
-			fileName: file?.name,
+			fileName: originalFilename,
 			interviewTitle: isDocumentFile
 				? `${isPdfFile ? "PDF" : "Text"} Transcript - ${format(new Date(), "yyyy-MM-dd")}`
 				: interviewTitle,
 			participantName: participant_name ?? "Anonymous",
 			participantOrganization: participant_organization ?? undefined,
+			originalFileSize,
 			segment: segment ?? "Unknown",
 		};
 

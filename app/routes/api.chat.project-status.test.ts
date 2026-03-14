@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { handleChatStream, handleNetworkStream } from "@mastra/ai-sdk";
+import { handleChatStream } from "@mastra/ai-sdk";
 import { createUIMessageStream, createUIMessageStreamResponse, generateObject } from "ai";
 import type { ActionFunctionArgs } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,7 +17,7 @@ const mockLangfuseTraceEnd = vi.hoisted(() => vi.fn());
 
 vi.mock("@mastra/ai-sdk", () => ({
 	handleChatStream: vi.fn(),
-	handleNetworkStream: vi.fn(),
+	// handleNetworkStream removed — all agents now use handleChatStream
 }));
 
 vi.mock("ai", () => ({
@@ -103,7 +103,6 @@ vi.mock("~/server/user-context", () => ({
 }));
 
 const mockedHandleChatStream = vi.mocked(handleChatStream);
-const mockedHandleNetworkStream = vi.mocked(handleNetworkStream);
 const mockedGenerateObject = vi.mocked(generateObject);
 const mockedCreateUIMessageStream = vi.mocked(createUIMessageStream);
 const mockedCreateUIMessageStreamResponse = vi.mocked(createUIMessageStreamResponse);
@@ -244,7 +243,7 @@ describe("api.chat.project-status", () => {
 		mockedHandleChatStream.mockResolvedValue({
 			kind: "live-chat-stream",
 		} as any);
-		mockedHandleNetworkStream.mockResolvedValue({
+		mockedHandleChatStream.mockResolvedValue({
 			kind: "network-stream",
 		} as any);
 		mockedGenerateObject.mockResolvedValue({
@@ -374,9 +373,9 @@ describe("api.chat.project-status", () => {
 		const response = await action(buildArgs({ message: "status update please" }));
 		expect(response.status).toBe(200);
 
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
-		expect(mockedHandleChatStream).not.toHaveBeenCalled();
-		const call = mockedHandleNetworkStream.mock.calls[0][0] as any;
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+		const call = mockedHandleChatStream.mock.calls[0][0] as any;
 		expect(call.agentId).toBe("projectStatusAgent");
 		expect(call.params.maxSteps).toBe(6);
 		expect(mockedCreateUIMessageStreamResponse).toHaveBeenCalled();
@@ -395,8 +394,7 @@ describe("api.chat.project-status", () => {
 		const response = await action(buildArgs({ message: "what are top 2 themes and who has them?" }));
 		expect(response.status).toBe(200);
 		expect(mockedGenerateObject).not.toHaveBeenCalled();
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
-		expect(mockedHandleChatStream).not.toHaveBeenCalled();
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
 	});
 
 	it("routes 'show top theme' through deterministic theme snapshot mode", async () => {
@@ -408,9 +406,9 @@ describe("api.chat.project-status", () => {
 		);
 		expect(response.status).toBe(200);
 		expect(mockedGenerateObject).not.toHaveBeenCalled();
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
-		expect(mockedHandleChatStream).not.toHaveBeenCalled();
-		const call = mockedHandleNetworkStream.mock.calls[0][0] as any;
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+		const call = mockedHandleChatStream.mock.calls[0][0] as any;
 		expect(call.agentId).toBe("projectStatusAgent");
 		expect(call.params.requestContext.get("response_mode")).toBe("theme_people_snapshot");
 	});
@@ -456,7 +454,6 @@ describe("api.chat.project-status", () => {
 				selectedIds: ["icp-high"],
 			}),
 		]);
-		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
 	});
 
 	it("routes people-comparison prompts through normal flow when classifier selects normal mode", async () => {
@@ -475,9 +472,9 @@ describe("api.chat.project-status", () => {
 			})
 		);
 		expect(response.status).toBe(200);
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
-		expect(mockedHandleChatStream).not.toHaveBeenCalled();
-		const call = mockedHandleNetworkStream.mock.calls[0][0] as any;
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+		const call = mockedHandleChatStream.mock.calls[0][0] as any;
 		expect(call.agentId).toBe("projectStatusAgent");
 		expect(call.params.requestContext.get("response_mode")).toBe("normal");
 		const routingPrompt = (mockedGenerateObject.mock.calls.at(-1)?.[0] as any)?.prompt as string;
@@ -498,9 +495,9 @@ describe("api.chat.project-status", () => {
 		expect(response.status).toBe(200);
 
 		expect(mockedGenerateObject).not.toHaveBeenCalled();
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
-		expect(mockedHandleChatStream).not.toHaveBeenCalled();
-		const call = mockedHandleNetworkStream.mock.calls[0][0] as any;
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+		const call = mockedHandleChatStream.mock.calls[0][0] as any;
 		expect(call.agentId).toBe("projectStatusAgent");
 	});
 
@@ -510,7 +507,7 @@ describe("api.chat.project-status", () => {
 
 		expect(mockedGenerateObject).not.toHaveBeenCalled();
 		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
-		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
+
 		const call = mockedHandleChatStream.mock.calls[0][0] as any;
 		expect(call.agentId).toBe("howtoAgent");
 		expect(call.params.requestContext.get("response_mode")).toBe("ux_research_mode");
@@ -673,8 +670,7 @@ describe("api.chat.project-status", () => {
 		expect(mockedGenerateObject).toHaveBeenCalledTimes(1);
 		expect(mockedCreateSurveyTool.execute as any).toHaveBeenCalledTimes(1);
 		expect(mockedMemory.saveMessages).toHaveBeenCalledTimes(1);
-		expect(mockedHandleChatStream).not.toHaveBeenCalled();
-		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
+
 		expect(mockLangfuseGenerationEnd).toHaveBeenCalledWith(
 			expect.objectContaining({
 				usage: { input: 100, output: 40, total: 140 },
@@ -822,7 +818,7 @@ describe("api.chat.project-status", () => {
 				rationale: "people/task operational request",
 			},
 		} as any);
-		mockedHandleNetworkStream.mockResolvedValue(
+		mockedHandleChatStream.mockResolvedValue(
 			makeTextStream({
 				text: "Found 5 people missing title or company and queued 2 follow-up tasks.",
 				toolName: "fetchProjectStatusContext",
@@ -837,10 +833,10 @@ describe("api.chat.project-status", () => {
 		);
 		expect(peopleResponse.status).toBe(200);
 		expect(mockedGenerateObject).not.toHaveBeenCalled();
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
-		expect((mockedHandleNetworkStream.mock.calls[0][0] as any).agentId).toBe("projectStatusAgent");
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+		expect((mockedHandleChatStream.mock.calls[0][0] as any).agentId).toBe("projectStatusAgent");
 
-		mockedHandleNetworkStream.mockResolvedValue(
+		mockedHandleChatStream.mockResolvedValue(
 			makeTextStream({
 				text: "Created a follow-up task for Mona with due date tomorrow.",
 				toolName: "taskAgent",
@@ -853,8 +849,8 @@ describe("api.chat.project-status", () => {
 			})
 		);
 		expect(taskResponse.status).toBe(200);
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(2);
-		expect((mockedHandleNetworkStream.mock.calls[1][0] as any).agentId).toBe("projectStatusAgent");
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(2);
+		expect((mockedHandleChatStream.mock.calls[1][0] as any).agentId).toBe("projectStatusAgent");
 	});
 
 	it("injects fallback even when upstream stream closes without finish chunk", async () => {
@@ -881,14 +877,19 @@ describe("api.chat.project-status", () => {
 	});
 
 	it("normalizes legacy data chunks to typed data-* chunks for transport safety", async () => {
-		mockedHandleNetworkStream.mockResolvedValue(
+		mockedHandleChatStream.mockResolvedValue(
 			new ReadableStream({
 				start(controller) {
 					controller.enqueue({ type: "start" });
 					controller.enqueue({
 						type: "data",
 						id: "legacy-nav",
-						data: [{ type: "navigate", path: "/a/acct-1/project-1/ask/survey-1/edit" }],
+						data: [
+							{
+								type: "navigate",
+								path: "/a/acct-1/project-1/ask/survey-1/edit",
+							},
+						],
 					});
 					controller.enqueue({ type: "finish", finishReason: "stop" });
 					controller.close();
@@ -903,7 +904,7 @@ describe("api.chat.project-status", () => {
 			})
 		);
 		expect(response.status).toBe(200);
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
 
 		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
 		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
@@ -919,7 +920,7 @@ describe("api.chat.project-status", () => {
 	});
 
 	it("drops unrecognized legacy data chunks instead of forwarding invalid transport payloads", async () => {
-		mockedHandleNetworkStream.mockResolvedValue(
+		mockedHandleChatStream.mockResolvedValue(
 			new ReadableStream({
 				start(controller) {
 					controller.enqueue({ type: "start" });
@@ -941,7 +942,7 @@ describe("api.chat.project-status", () => {
 			})
 		);
 		expect(response.status).toBe(200);
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
 
 		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
 		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);

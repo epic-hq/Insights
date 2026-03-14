@@ -1,4 +1,4 @@
-import { parseWithZod } from "@conform-to/zod";
+import { parseWithZod } from "@conform-to/zod/v4";
 import consola from "consola";
 import { formatDistanceToNow } from "date-fns";
 import { AlertTriangle, Check, Clock4, Copy, DoorOpen, LinkIcon, RefreshCw, ShieldOff, UserMinus } from "lucide-react";

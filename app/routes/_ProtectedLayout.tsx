@@ -14,7 +14,7 @@ import { CurrentProjectProvider } from "~/contexts/current-project-context";
 import { getProjects } from "~/features/projects/db";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { provisionTrial } from "~/lib/billing/polar.server";
-import { buildFeatureGateContext, checkLimitAccess } from "~/lib/feature-gate/check-limit.server";
+import { buildFeatureGateContext, checkLimitAccess, getAccountPlan } from "~/lib/feature-gate/check-limit.server";
 import { isProjectRootPath, parseProjectRoute, writeLastProjectRoute } from "~/lib/last-project-route.client";
 import { resolvePosthogHost } from "~/lib/posthog/config";
 import { getAuthenticatedUser, getRlsClient, supabaseAdmin } from "~/lib/supabase/client.server";
@@ -345,7 +345,32 @@ export async function loader({ context }: Route.LoaderArgs) {
 			accountId: currentAccountId,
 		};
 		try {
-			const gateCtx = await buildFeatureGateContext(currentAccountId, user.claims.sub);
+			// Resolve billing account: find the best subscription across all user accounts.
+			// A user should never see free-tier limits just because the current URL account
+			// has no subscription — their plan follows them across all accounts they belong to.
+			const allTeamAccounts = (user.accounts || []).filter((acc: any) => !acc.personal_account);
+			const planResults = await Promise.all(
+				allTeamAccounts.map((acc: any) =>
+					getAccountPlan(acc.account_id).then((plan) => ({
+						accountId: acc.account_id as string,
+						plan,
+					}))
+				)
+			);
+			// Pick the highest-tier account: prefer active Team > Pro > Starter > free
+			const planRank: Record<string, number> = {
+				free: 0,
+				starter: 1,
+				pro: 2,
+				team: 3,
+			};
+			const best = planResults.reduce(
+				(best, cur) => ((planRank[cur.plan] ?? 0) > (planRank[best.plan] ?? 0) ? cur : best),
+				{ accountId: currentAccountId, plan: "free" as string }
+			);
+			const billingAccountId = best.accountId;
+
+			const gateCtx = await buildFeatureGateContext(billingAccountId, user.claims.sub);
 			const aiCheck = await checkLimitAccess(gateCtx, "ai_analyses");
 
 			if (!aiCheck.allowed && aiCheck.reason === "limit_exceeded") {
@@ -354,7 +379,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 					limitName: "AI Analyses",
 					currentUsage: aiCheck.currentUsage ?? 0,
 					limit: aiCheck.limit ?? 0,
-					accountId: currentAccountId,
+					accountId: billingAccountId,
 					requiredPlan: aiCheck.requiredPlan,
 				};
 			} else if (aiCheck.reason === "limit_approaching" && aiCheck.percentUsed) {
@@ -364,7 +389,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 					currentUsage: aiCheck.currentUsage ?? 0,
 					limit: aiCheck.limit ?? 0,
 					percentUsed: Math.round(aiCheck.percentUsed),
-					accountId: currentAccountId,
+					accountId: billingAccountId,
 				};
 			}
 		} catch (limitError) {
@@ -515,7 +540,7 @@ export default function ProtectedLayout() {
 
 						{/* Pending Invite Banner */}
 						{showInviteBanner && (
-							<div className="border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-950/50">
+							<div className="shrink-0 border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-950/50">
 								<div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
 									<div className="flex items-center gap-2 text-emerald-800 text-sm dark:text-emerald-200">
 										<Mail className="h-4 w-4" />

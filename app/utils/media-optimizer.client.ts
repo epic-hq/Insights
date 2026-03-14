@@ -12,6 +12,8 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
 
+const FFMPEG_CORE_VERSION = "0.12.10";
+
 /** Minimum file size to bother optimizing (default 10 MB) */
 const DEFAULT_MIN_SIZE_BYTES = 10 * 1024 * 1024;
 
@@ -67,6 +69,8 @@ let ffmpegReady = false;
 let ffmpegMultiThreaded = false;
 let loadingPromise: Promise<void> | null = null;
 
+type MediaKind = "audio" | "video";
+
 /**
  * Check if cross-origin isolation is enabled (required for SharedArrayBuffer / multi-threaded).
  */
@@ -77,10 +81,7 @@ function isCrossOriginIsolated(): boolean {
 /**
  * Load the FFmpeg WASM instance. Tries multi-threaded first, falls back to single-threaded.
  */
-async function ensureFFmpeg(
-	onProgress?: (progress: OptimizationProgress) => void,
-	originalSize = 0,
-): Promise<FFmpeg> {
+async function ensureFFmpeg(onProgress?: (progress: OptimizationProgress) => void, originalSize = 0): Promise<FFmpeg> {
 	if (ffmpegInstance && ffmpegReady) return ffmpegInstance;
 
 	if (loadingPromise) {
@@ -115,7 +116,7 @@ async function ensureFFmpeg(
 			try {
 				reportLoading("Loading optimizer (multi-threaded)...");
 
-				const baseURL = "https://unpkg.com/@ffmpeg/core-mt@0.12.9/dist/esm";
+				const baseURL = `https://unpkg.com/@ffmpeg/core-mt@${FFMPEG_CORE_VERSION}/dist/esm`;
 				await ffmpeg.load({
 					coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
 					wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
@@ -134,7 +135,7 @@ async function ensureFFmpeg(
 		// Single-threaded fallback
 		reportLoading("Loading optimizer...");
 
-		const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.9/dist/esm";
+		const baseURL = `https://unpkg.com/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/esm`;
 		await ffmpeg.load({
 			coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
 			wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
@@ -173,6 +174,12 @@ function isMediaFile(file: File): boolean {
 	return isAudioFile(file) || isVideoFile(file);
 }
 
+function getMediaKind(file: File): MediaKind | null {
+	if (isVideoFile(file)) return "video";
+	if (isAudioFile(file)) return "audio";
+	return null;
+}
+
 /**
  * Determine the input filename extension for FFmpeg.
  */
@@ -188,6 +195,14 @@ function getInputExtension(file: File): string {
 	return "mp4";
 }
 
+function getOutputExtension(mediaKind: MediaKind): string {
+	return mediaKind === "video" ? "mp4" : "m4a";
+}
+
+function getOutputMimeType(mediaKind: MediaKind): string {
+	return mediaKind === "video" ? "video/mp4" : "audio/mp4";
+}
+
 // ── Progress parsing ───────────────────────────────────────────────────
 
 /**
@@ -197,7 +212,7 @@ function getInputExtension(file: File): string {
 function setupProgressTracking(
 	ffmpeg: FFmpeg,
 	onProgress: (progress: OptimizationProgress) => void,
-	originalSize: number,
+	originalSize: number
 ): () => void {
 	let duration = 0;
 
@@ -251,10 +266,7 @@ export function shouldOptimize(file: File, minSizeBytes = DEFAULT_MIN_SIZE_BYTES
 /**
  * Optimize a media file. Returns the optimized file or the original if skipped.
  */
-export async function optimizeMediaFile(
-	file: File,
-	options: OptimizeOptions = {},
-): Promise<OptimizationResult> {
+export async function optimizeMediaFile(file: File, options: OptimizeOptions = {}): Promise<OptimizationResult> {
 	const { minSizeBytes = DEFAULT_MIN_SIZE_BYTES, onProgress, signal } = options;
 
 	const originalSize = file.size;
@@ -306,35 +318,42 @@ export async function optimizeMediaFile(
 			multiThreaded: ffmpegMultiThreaded,
 		});
 
+		const mediaKind = getMediaKind(file);
+		if (!mediaKind) {
+			throw new Error("Unsupported media type");
+		}
+
 		const inputExt = getInputExtension(file);
 		const inputFile = `input.${inputExt}`;
-		const outputFile = isVideoFile(file) ? "output.mp4" : "output.mp4"; // AAC in MP4 container for both
+		const outputFile = `output.${getOutputExtension(mediaKind)}`;
+		const outputMimeType = getOutputMimeType(mediaKind);
 
-		// Write input file to FFmpeg virtual filesystem
-		const fileData = await fetchFile(file);
-		await ffmpeg.writeFile(inputFile, fileData);
+		let outputData: Uint8Array | string;
+		try {
+			// Write input file to FFmpeg virtual filesystem
+			const fileData = await fetchFile(file);
+			await ffmpeg.writeFile(inputFile, fileData);
 
-		// Build FFmpeg arguments
-		const args = buildFFmpegArgs(inputFile, outputFile, file);
+			// Build FFmpeg arguments
+			const args = buildFFmpegArgs(inputFile, outputFile, file);
 
-		// Run FFmpeg
-		await ffmpeg.exec(args);
+			// Run FFmpeg
+			await ffmpeg.exec(args);
 
-		// Read output
-		const outputData = await ffmpeg.readFile(outputFile);
-
-		// Clean up virtual filesystem
-		await ffmpeg.deleteFile(inputFile).catch(() => {});
-		await ffmpeg.deleteFile(outputFile).catch(() => {});
-
-		cleanupProgress?.();
+			// Read output
+			outputData = await ffmpeg.readFile(outputFile);
+		} finally {
+			cleanupProgress?.();
+			await ffmpeg.deleteFile(inputFile).catch(() => {});
+			await ffmpeg.deleteFile(outputFile).catch(() => {});
+		}
 
 		// Ensure output is a Uint8Array
 		if (typeof outputData === "string") {
 			throw new Error("FFmpeg produced string output instead of binary data");
 		}
 
-		const optimizedBlob = new Blob([outputData], { type: "video/mp4" });
+		const optimizedBlob = new Blob([outputData], { type: outputMimeType });
 		const optimizedSize = optimizedBlob.size;
 
 		// If the "optimized" file is larger or barely smaller, use the original
@@ -357,10 +376,10 @@ export async function optimizeMediaFile(
 			};
 		}
 
-		// Build optimized File object with same name but .mp4 extension
+		// Build optimized File object with a stable extension that matches the new codec/container.
 		const baseName = file.name.replace(/\.[^.]+$/, "");
-		const optimizedFile = new File([optimizedBlob], `${baseName}.mp4`, {
-			type: "video/mp4",
+		const optimizedFile = new File([optimizedBlob], `${baseName}.${getOutputExtension(mediaKind)}`, {
+			type: outputMimeType,
 			lastModified: Date.now(),
 		});
 
@@ -415,19 +434,29 @@ export async function optimizeMediaFile(
 function buildFFmpegArgs(inputFile: string, outputFile: string, file: File): string[] {
 	if (isVideoFile(file)) {
 		return [
-			"-i", inputFile,
+			"-i",
+			inputFile,
 			// Video: scale down to 720p max height, preserve aspect ratio, ensure even dimensions
-			"-vf", `scale=-2:'min(${VIDEO_MAX_HEIGHT},ih)'`,
-			"-c:v", "libx264",
-			"-preset", "fast",
-			"-b:v", VIDEO_BITRATE,
-			"-maxrate", VIDEO_BITRATE,
-			"-bufsize", `${Number.parseInt(VIDEO_BITRATE) * 2}k`,
+			"-vf",
+			`scale=-2:'min(${VIDEO_MAX_HEIGHT},ih)'`,
+			"-c:v",
+			"libx264",
+			"-preset",
+			"fast",
+			"-b:v",
+			VIDEO_BITRATE,
+			"-maxrate",
+			VIDEO_BITRATE,
+			"-bufsize",
+			`${Number.parseInt(VIDEO_BITRATE, 10) * 2}k`,
 			// Audio: AAC 128 kbps
-			"-c:a", "aac",
-			"-b:a", AUDIO_BITRATE,
+			"-c:a",
+			"aac",
+			"-b:a",
+			AUDIO_BITRATE,
 			// MP4 faststart for streaming
-			"-movflags", "+faststart",
+			"-movflags",
+			"+faststart",
 			// Overwrite output
 			"-y",
 			outputFile,
@@ -435,14 +464,7 @@ function buildFFmpegArgs(inputFile: string, outputFile: string, file: File): str
 	}
 
 	// Audio optimization
-	return [
-		"-i", inputFile,
-		"-c:a", "aac",
-		"-b:a", AUDIO_BITRATE,
-		"-movflags", "+faststart",
-		"-y",
-		outputFile,
-	];
+	return ["-i", inputFile, "-c:a", "aac", "-b:a", AUDIO_BITRATE, "-movflags", "+faststart", "-y", outputFile];
 }
 
 // ── Utilities ──────────────────────────────────────────────────────────

@@ -4,8 +4,8 @@ import { useDropzone } from "react-dropzone";
 import { useNavigate } from "react-router-dom";
 import { OptimizationProgress } from "~/components/ui/OptimizationProgress";
 import { useNotification } from "~/contexts/NotificationContext";
-import { useMediaOptimizer } from "~/hooks/useMediaOptimizer";
 import type { ProcessingResult } from "~/features/upload/types";
+import { useMediaOptimizer } from "~/hooks/useMediaOptimizer";
 
 interface AddInterviewProps {
 	open: boolean;
@@ -49,7 +49,10 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 			}
 
 			const formData = new FormData();
-			formData.append("file", fileToUpload);
+			formData.append("file", fileToUpload, fileToUpload.name);
+			formData.append("originalFilename", file.name);
+			formData.append("originalContentType", file.type || "application/octet-stream");
+			formData.append("originalFileSize", String(file.size));
 
 			formData.append("accountId", accountId);
 			formData.append("projectId", projectId);
@@ -192,11 +195,7 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 
 							{/* Media Optimization Progress */}
 							{optimizer.state.status !== "idle" && (
-								<OptimizationProgress
-									state={optimizer.state}
-									onSkip={optimizer.skip}
-									className="mb-4"
-								/>
+								<OptimizationProgress state={optimizer.state} onSkip={optimizer.skip} className="mb-4" />
 							)}
 
 							{/* Processing Status */}

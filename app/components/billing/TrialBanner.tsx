@@ -37,7 +37,7 @@ export function TrialBanner({ trial }: TrialBannerProps) {
 
 	if (isExpired) {
 		return (
-			<div className="border-red-200 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-950/50">
+			<div className="shrink-0 border-red-200 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-950/50">
 				<div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
 					<div className="flex items-center gap-2 text-red-800 text-sm dark:text-red-200">
 						<Clock className="h-4 w-4" />
@@ -60,7 +60,7 @@ export function TrialBanner({ trial }: TrialBannerProps) {
 
 	if (isExpiringSoon) {
 		return (
-			<div className="border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/50">
+			<div className="shrink-0 border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/50">
 				<div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
 					<div className="flex items-center gap-2 text-amber-800 text-sm dark:text-amber-200">
 						<Clock className="h-4 w-4" />
@@ -92,7 +92,7 @@ export function TrialBanner({ trial }: TrialBannerProps) {
 
 	// Normal trial state - subtle, centered banner
 	return (
-		<div className="bg-blue-50/80 px-4 py-1.5 dark:bg-blue-950/30">
+		<div className="shrink-0 bg-blue-50/80 px-4 py-1.5 dark:bg-blue-950/30">
 			<div className="relative mx-auto flex max-w-7xl items-center justify-center gap-1.5 text-blue-700 text-xs dark:text-blue-300">
 				<Sparkles className="h-3 w-3" />
 				<span>

@@ -25,7 +25,25 @@ export async function loader({ context }: LoaderFunctionArgs) {
 		null;
 
 	consola.log("OAuth avatar from user_metadata:", oauthAvatar);
-	return { user_settings, userId: claims.sub, oauthAvatar };
+
+	// Load the user's internal person record (for linking to profile)
+	const { supabase } = ctx;
+	const { data: internalPerson } = await supabase
+		.from("people")
+		.select("id, name")
+		.eq("account_id", ctx.account_id)
+		.eq("user_id", claims.sub)
+		.eq("person_type", "internal")
+		.maybeSingle();
+
+	return {
+		user_settings,
+		userId: claims.sub,
+		oauthAvatar,
+		internalPerson: internalPerson ?? null,
+		accountId: ctx.account_id,
+		lastUsedProjectId: user_settings?.last_used_project_id ?? null,
+	};
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -104,10 +122,25 @@ export async function action({ request, context }: ActionFunctionArgs) {
 }
 
 export default function Profile() {
-	const { user_settings, oauthAvatar } = useLoaderData<typeof loader>();
-	consola.log("user_settings", user_settings);
+	const { user_settings, oauthAvatar, internalPerson, accountId, lastUsedProjectId } = useLoaderData<typeof loader>();
+	const personUrl =
+		internalPerson && accountId && lastUsedProjectId
+			? `/a/${accountId}/${lastUsedProjectId}/people/${internalPerson.id}`
+			: null;
+
 	return (
 		<PageContainer size="sm" padded={false} className="max-w-3xl p-6">
+			{personUrl && (
+				<div className="mb-4 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm dark:border-blue-800 dark:bg-blue-950">
+					<span className="text-blue-700 dark:text-blue-300">Your profile is synced to your person record:</span>
+					<a
+						href={personUrl}
+						className="font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-100"
+					>
+						{internalPerson.name || "View record →"}
+					</a>
+				</div>
+			)}
 			<UserSettings settings={user_settings || {}} oauthAvatar={oauthAvatar} />
 		</PageContainer>
 	);

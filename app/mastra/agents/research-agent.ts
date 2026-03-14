@@ -14,10 +14,10 @@ import { importPeopleFromTableTool } from "../tools/import-people-from-table";
 import { importVideoFromUrlTool } from "../tools/import-video-from-url";
 import { manageDocumentsTool } from "../tools/manage-documents";
 import {
-  createInterviewPromptTool,
-  deleteInterviewPromptTool,
-  fetchInterviewPromptsTool,
-  updateInterviewPromptTool,
+	createInterviewPromptTool,
+	deleteInterviewPromptTool,
+	fetchInterviewPromptsTool,
+	updateInterviewPromptTool,
 } from "../tools/manage-interview-prompts";
 import { manageInterviewsTool } from "../tools/manage-interviews";
 import { navigateToPageTool } from "../tools/navigate-to-page";
@@ -28,16 +28,15 @@ import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 import { updateTableAssetTool } from "../tools/update-table-asset";
 
 export const researchAgent = new Agent({
-  id: "research-agent",
-  name: "researchAgent",
-  description:
-    "Specialist for research operations: interviews, interview prompts, documents, and web research.",
-  instructions: async ({ requestContext }) => {
-    try {
-      const projectId = requestContext.get("project_id");
-      const accountId = requestContext.get("account_id");
+	id: "research-agent",
+	name: "researchAgent",
+	description: "Specialist for research operations: interviews, interview prompts, documents, and web research.",
+	instructions: async ({ requestContext }) => {
+		try {
+			const projectId = requestContext.get("project_id");
+			const accountId = requestContext.get("account_id");
 
-      return `
+			return `
 You are a Research specialist that EXECUTES actions using tools. You do NOT describe what you would do - you DO it.
 
 Project: ${projectId}, Account: ${accountId}
@@ -84,37 +83,37 @@ When the user asks about interview prep, open questions, follow-ups, or "how do 
 - ALWAYS use tools to take action. Never just describe what you would do.
 - After creating anything, use navigateToPage to take the user there.
 `;
-    } catch (error) {
-      consola.error("Error in research agent instructions:", error);
-      return "You are a Research specialist for interviews and surveys.";
-    }
-  },
-  model: openai("gpt-4o"),
-  memory: new Memory({
-    storage: getSharedPostgresStore(),
-    options: {
-      lastMessages: 20,
-      observationalMemory: true,
-    },
-  }),
-  tools: wrapToolsWithStatusEvents({
-    fetchInterviewContext: fetchInterviewContextTool,
-    manageInterviews: manageInterviewsTool,
-    fetchInterviewPrompts: fetchInterviewPromptsTool,
-    createInterviewPrompt: createInterviewPromptTool,
-    updateInterviewPrompt: updateInterviewPromptTool,
-    deleteInterviewPrompt: deleteInterviewPromptTool,
-    fetchWebContent: fetchWebContentTool,
-    importVideoFromUrl: importVideoFromUrlTool,
-    webResearch: webResearchTool,
-    findSimilarPages: findSimilarPagesTool,
-    manageDocuments: manageDocumentsTool,
-    parseSpreadsheet: parseSpreadsheetTool,
-    importPeopleFromTable: importPeopleFromTableTool,
-    saveTableToAssets: saveTableToAssetsTool,
-    updateTableAsset: updateTableAssetTool,
-    navigateToPage: navigateToPageTool,
-    generateProjectRoutes: generateProjectRoutesTool,
-  }),
-  outputProcessors: [new TokenLimiterProcessor(20_000)],
+		} catch (error) {
+			consola.error("Error in research agent instructions:", error);
+			return "You are a Research specialist for interviews and surveys.";
+		}
+	},
+	model: openai("gpt-4o"),
+	memory: new Memory({
+		storage: getSharedPostgresStore(),
+		options: {
+			lastMessages: 20,
+			observationalMemory: true,
+		},
+	}),
+	tools: wrapToolsWithStatusEvents({
+		fetchInterviewContext: fetchInterviewContextTool,
+		manageInterviews: manageInterviewsTool,
+		fetchInterviewPrompts: fetchInterviewPromptsTool,
+		createInterviewPrompt: createInterviewPromptTool,
+		updateInterviewPrompt: updateInterviewPromptTool,
+		deleteInterviewPrompt: deleteInterviewPromptTool,
+		fetchWebContent: fetchWebContentTool,
+		importVideoFromUrl: importVideoFromUrlTool,
+		webResearch: webResearchTool,
+		findSimilarPages: findSimilarPagesTool,
+		manageDocuments: manageDocumentsTool,
+		parseSpreadsheet: parseSpreadsheetTool,
+		importPeopleFromTable: importPeopleFromTableTool,
+		saveTableToAssets: saveTableToAssetsTool,
+		updateTableAsset: updateTableAssetTool,
+		navigateToPage: navigateToPageTool,
+		generateProjectRoutes: generateProjectRoutesTool,
+	}),
+	outputProcessors: [new TokenLimiterProcessor(20_000)],
 });
