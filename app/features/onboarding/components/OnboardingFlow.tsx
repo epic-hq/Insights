@@ -621,7 +621,7 @@ export default function OnboardingFlow({
 
           const interviewUrl = `/a/${finalAccountId}/${result.project.id}/interviews/${result.interview.id}`;
           console.log("Redirecting to:", interviewUrl);
-          window.location.href = interviewUrl;
+          navigate(interviewUrl, { replace: true });
           return;
         }
 
@@ -677,6 +677,134 @@ export default function OnboardingFlow({
       }
     },
     [data, accountId, handleUploadProgress],
+  );
+
+  const handleUploadNextBatch = useCallback(
+    async (files: File[]) => {
+      setCurrentStep("processing");
+      setIsUploading(true);
+      const uploadProjectId = data.projectId || projectId;
+
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+
+          setUploadProgress({
+            bytesSent: i,
+            totalBytes: files.length,
+            percent: Math.round((i / files.length) * 100),
+            phase: "uploading",
+          });
+
+          // Step 1: Get presigned URL
+          const presignedResponse = await fetch("/api/upload/presigned-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              projectId: uploadProjectId,
+              filename: file.name,
+              contentType: file.type || "application/octet-stream",
+              fileSize: file.size,
+            }),
+          });
+
+          if (!presignedResponse.ok) {
+            const errorData = await presignedResponse.json().catch(() => ({}));
+            throw new Error(
+              errorData.error ||
+                `Failed to get upload URL for ${file.name} (${presignedResponse.status})`,
+            );
+          }
+
+          const presignedData = await presignedResponse.json();
+
+          // Step 2: Upload directly to R2 (single PUT only for batch)
+          const putResponse = await fetch(presignedData.uploadUrl, {
+            method: "PUT",
+            body: file,
+            headers: {
+              "Content-Type": file.type || "application/octet-stream",
+            },
+          });
+
+          if (!putResponse.ok) {
+            throw new Error(`Failed to upload ${file.name} to storage`);
+          }
+
+          const r2Key = presignedData.key;
+
+          // Step 3: Call onboarding-start to trigger processing
+          const formData = new FormData();
+          formData.append("r2Key", r2Key);
+          formData.append("originalFilename", file.name);
+          formData.append("originalFileSize", String(file.size));
+          formData.append("originalContentType", file.type);
+          formData.append(
+            "onboardingData",
+            JSON.stringify({
+              target_orgs: [],
+              target_roles: [],
+              research_goal: "",
+              research_goal_details: "",
+              decision_questions: [],
+              assumptions: [],
+              unknowns: [],
+              custom_instructions: "",
+              questions: [],
+              mediaType: "interview",
+            }),
+          );
+          if (uploadProjectId) {
+            formData.append("projectId", uploadProjectId);
+          }
+          if (accountId) {
+            formData.append("accountId", accountId);
+          }
+          formData.append("attachType", "skip");
+          formData.append(
+            "sourceType",
+            file.type.startsWith("audio/") ? "audio_upload" : "video_upload",
+          );
+
+          const startResponse = await fetch("/api/onboarding-start", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!startResponse.ok) {
+            const errorData = await startResponse.json().catch(() => ({}));
+            throw new Error(
+              errorData.error || `Failed to start processing for ${file.name}`,
+            );
+          }
+
+          setUploadProgress({
+            bytesSent: i + 1,
+            totalBytes: files.length,
+            percent: Math.round(((i + 1) / files.length) * 100),
+            phase: "uploading",
+          });
+        }
+
+        setIsUploading(false);
+        setUploadProgress(null);
+
+        // Redirect to interviews list after all files are uploaded
+        const finalAccountId = accountId;
+        if (finalAccountId && uploadProjectId) {
+          window.location.href = `/a/${finalAccountId}/${uploadProjectId}/interviews`;
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Batch upload failed";
+        console.error("[BatchUpload] Failed:", errorMessage, error);
+        setIsUploading(false);
+        setUploadProgress(null);
+        setData((prev) => ({ ...prev, error: errorMessage }));
+        setCurrentStep("upload");
+      }
+    },
+    [data.projectId, projectId, accountId],
   );
 
   const handleProcessingComplete = useCallback(() => {
@@ -867,6 +995,7 @@ export default function OnboardingFlow({
         return (
           <UploadScreen
             onNext={handleUploadNext}
+            onNextBatch={handleUploadNextBatch}
             onUploadFromUrl={handleUploadFromUrl}
             onBack={handleBack}
             projectId={currentProjectId}
@@ -913,6 +1042,7 @@ export default function OnboardingFlow({
     handleQuestionsNext,
     handleBack,
     handleUploadNext,
+    handleUploadNextBatch,
     handleUploadFromUrl,
     handleProcessingComplete,
     getProjectName,
