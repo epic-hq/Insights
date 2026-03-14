@@ -11,14 +11,8 @@ import { capabilityLookupTool } from "../tools/capability-lookup";
 import { displayComponentTool } from "../tools/display-component";
 import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses";
 import { fetchEvidenceTool } from "../tools/fetch-evidence";
-import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache";
-import { fetchProjectGoalsTool } from "../tools/fetch-project-goals";
 import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context";
 import { fetchResearchPulseTool } from "../tools/fetch-research-pulse";
-import { fetchSegmentThemesTool } from "../tools/fetch-segment-themes";
-import { fetchSegmentsTool } from "../tools/fetch-segments";
-import { fetchStakeholderDemographicsTool } from "../tools/fetch-stakeholder-demographics";
-import { fetchThemeStakeholdersTool } from "../tools/fetch-theme-stakeholders";
 import { fetchThemesTool } from "../tools/fetch-themes";
 import { fetchTopThemesWithPeopleTool } from "../tools/fetch-top-themes-with-people";
 import { generateDocumentLinkTool } from "../tools/generate-document-link";
@@ -45,410 +39,250 @@ import { surveyAgent } from "./survey-agent";
 import { taskAgent } from "./task-agent";
 
 function auditToolSchemas(agent_name: string, tools: Record<string, unknown>) {
-	try {
-		const tool_entries = Object.entries(tools);
-		const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> = [];
+  try {
+    const tool_entries = Object.entries(tools);
+    const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> =
+      [];
 
-		for (const [tool_name, tool] of tool_entries) {
-			if (!tool || typeof tool !== "object") {
-				issues.push({
-					tool: tool_name,
-					issue: `tool is not an object (${typeof tool})`,
-				});
-				continue;
-			}
+    for (const [tool_name, tool] of tool_entries) {
+      if (!tool || typeof tool !== "object") {
+        issues.push({
+          tool: tool_name,
+          issue: `tool is not an object (${typeof tool})`,
+        });
+        continue;
+      }
 
-			const own_props = Object.getOwnPropertyNames(tool);
-			const has_input_schema = own_props.includes("inputSchema");
-			const has_output_schema = own_props.includes("outputSchema");
+      const own_props = Object.getOwnPropertyNames(tool);
+      const has_input_schema = own_props.includes("inputSchema");
+      const has_output_schema = own_props.includes("outputSchema");
 
-			const input_schema = (tool as any).inputSchema;
-			const output_schema = (tool as any).outputSchema;
-			const input_is_zod =
-				!!input_schema && typeof input_schema === "object" && typeof input_schema.safeParse === "function";
-			const output_is_zod =
-				!!output_schema && typeof output_schema === "object" && typeof output_schema.safeParse === "function";
+      const input_schema = (tool as any).inputSchema;
+      const output_schema = (tool as any).outputSchema;
+      const input_is_zod =
+        !!input_schema &&
+        typeof input_schema === "object" &&
+        typeof input_schema.safeParse === "function";
+      const output_is_zod =
+        !!output_schema &&
+        typeof output_schema === "object" &&
+        typeof output_schema.safeParse === "function";
 
-			if (!has_input_schema || !input_is_zod) {
-				issues.push({
-					tool: tool_name,
-					issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
-					ownProps: own_props,
-				});
-			}
-			if (!has_output_schema || !output_is_zod) {
-				issues.push({
-					tool: tool_name,
-					issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
-					ownProps: own_props,
-				});
-			}
-		}
+      if (!has_input_schema || !input_is_zod) {
+        issues.push({
+          tool: tool_name,
+          issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
+          ownProps: own_props,
+        });
+      }
+      if (!has_output_schema || !output_is_zod) {
+        issues.push({
+          tool: tool_name,
+          issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
+          ownProps: own_props,
+        });
+      }
+    }
 
-		if (issues.length > 0) {
-			consola.warn("[mastra-schema-audit] tool schema issues", {
-				agent: agent_name,
-				issueCount: issues.length,
-				issues,
-			});
-		} else {
-			consola.info("[mastra-schema-audit] all tool schemas look valid", {
-				agent: agent_name,
-				toolCount: tool_entries.length,
-			});
-		}
-	} catch (error) {
-		consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
-	}
+    if (issues.length > 0) {
+      consola.warn("[mastra-schema-audit] tool schema issues", {
+        agent: agent_name,
+        issueCount: issues.length,
+        issues,
+      });
+    } else {
+      consola.info("[mastra-schema-audit] all tool schemas look valid", {
+        agent: agent_name,
+        toolCount: tool_entries.length,
+      });
+    }
+  } catch (error) {
+    consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
+  }
 }
 
+// Coordinator tools: only tools the coordinator calls directly.
+// Data-fetching tools that sub-agents also have are kept here only if
+// the coordinator needs them for response-mode overrides or widget rendering.
 const project_status_agent_tools = {
-	getCurrentDate: getCurrentDateTool,
-	fetchProjectStatusContext: fetchProjectStatusContextTool,
-	fetchEvidence: fetchEvidenceTool,
-	semanticSearchEvidence: semanticSearchEvidenceTool,
-	semanticSearchAssets: semanticSearchAssetsTool,
-	fetchProjectGoals: fetchProjectGoalsTool,
-	fetchThemes: fetchThemesTool,
-	fetchTopThemesWithPeople: fetchTopThemesWithPeopleTool,
-	fetchPainMatrixCache: fetchPainMatrixCacheTool,
-	fetchSegments: fetchSegmentsTool,
-	fetchSegmentThemes: fetchSegmentThemesTool,
-	"fetch-segment-themes": fetchSegmentThemesTool,
-	fetchThemeStakeholders: fetchThemeStakeholdersTool,
-	"fetch-theme-stakeholders": fetchThemeStakeholdersTool,
-	fetchStakeholderDemographics: fetchStakeholderDemographicsTool,
-	"fetch-stakeholder-demographics": fetchStakeholderDemographicsTool,
-	fetchConversationLenses: fetchConversationLensesTool,
-	generateProjectRoutes: generateProjectRoutesTool,
-	generateDocumentLink: generateDocumentLinkTool,
-	capabilityLookup: capabilityLookupTool,
-	suggestNextSteps: suggestionTool,
-	recommendNextActions: recommendNextActionsTool,
-	// Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
-	"recommend-next-actions": recommendNextActionsTool,
-	generateResearchRecommendations: generateResearchRecommendationsTool,
-	"generate-research-recommendations": generateResearchRecommendationsTool,
-	displayComponent: displayComponentTool,
-	"display-component": displayComponentTool,
-	requestUserInput: requestUserInputTool,
-	"request-user-input": requestUserInputTool,
-	fetchResearchPulse: fetchResearchPulseTool,
-	"fetch-research-pulse": fetchResearchPulseTool,
-	suggestActions: suggestActionsTool,
-	"suggest-actions": suggestActionsTool,
-	showProgress: showProgressTool,
-	"show-progress": showProgressTool,
-	showWelcome: showWelcomeTool,
-	"show-welcome": showWelcomeTool,
-	showCelebration: showCelebrationTool,
-	"show-celebration": showCelebrationTool,
+  // Core context & routing
+  getCurrentDate: getCurrentDateTool,
+  fetchProjectStatusContext: fetchProjectStatusContextTool,
+  generateProjectRoutes: generateProjectRoutesTool,
+  generateDocumentLink: generateDocumentLinkTool,
+  capabilityLookup: capabilityLookupTool,
+
+  // Evidence & themes — coordinator calls these directly for widget rendering
+  fetchEvidence: fetchEvidenceTool,
+  semanticSearchEvidence: semanticSearchEvidenceTool,
+  semanticSearchAssets: semanticSearchAssetsTool,
+  fetchThemes: fetchThemesTool,
+  fetchTopThemesWithPeople: fetchTopThemesWithPeopleTool,
+  fetchConversationLenses: fetchConversationLensesTool,
+
+  // Gen-UI widgets & suggestions
+  displayComponent: displayComponentTool,
+  "display-component": displayComponentTool,
+  requestUserInput: requestUserInputTool,
+  "request-user-input": requestUserInputTool,
+  suggestNextSteps: suggestionTool,
+  suggestActions: suggestActionsTool,
+  "suggest-actions": suggestActionsTool,
+  showProgress: showProgressTool,
+  "show-progress": showProgressTool,
+  showWelcome: showWelcomeTool,
+  "show-welcome": showWelcomeTool,
+  showCelebration: showCelebrationTool,
+  "show-celebration": showCelebrationTool,
+
+  // Recommendations — coordinator renders DecisionSupport widget
+  recommendNextActions: recommendNextActionsTool,
+  "recommend-next-actions": recommendNextActionsTool,
+  generateResearchRecommendations: generateResearchRecommendationsTool,
+  "generate-research-recommendations": generateResearchRecommendationsTool,
+  fetchResearchPulse: fetchResearchPulseTool,
+  "fetch-research-pulse": fetchResearchPulseTool,
 };
 
 auditToolSchemas("projectStatusAgent", project_status_agent_tools);
 
 export const projectStatusAgent = new Agent({
-	id: "project-status-agent",
-	name: "projectStatusAgent",
-	instructions: async ({ requestContext }) => {
-		try {
-			const projectId = requestContext.get("project_id");
-			const accountId = requestContext.get("account_id");
-			const userId = requestContext.get("user_id");
-			const responseMode = String(requestContext.get("response_mode") || "normal");
-			const userRole = requestContext.get("user_role") || "";
-			const userUseCases = requestContext.get("user_use_cases") || "";
-			const userCompanySize = requestContext.get("user_company_size") || "";
-			const uiEvents = requestContext.get("ui_events");
-			const uiEventsSummary = Array.isArray(uiEvents) && uiEvents.length > 0 ? JSON.stringify(uiEvents) : "[]";
-			const personaLines = [
-				userRole ? `User role: ${userRole}` : null,
-				userUseCases ? `Use cases: ${userUseCases}` : null,
-				userCompanySize ? `Company size: ${userCompanySize}` : null,
-			]
-				.filter(Boolean)
-				.join("\n");
-			return `
-You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
+  id: "project-status-agent",
+  name: "projectStatusAgent",
+  instructions: async ({ requestContext }) => {
+    try {
+      const projectId = requestContext.get("project_id");
+      const accountId = requestContext.get("account_id");
+      const userId = requestContext.get("user_id");
+      const responseMode = String(
+        requestContext.get("response_mode") || "normal",
+      );
+      const userRole = requestContext.get("user_role") || "";
+      const userUseCases = requestContext.get("user_use_cases") || "";
+      const userCompanySize = requestContext.get("user_company_size") || "";
+      const uiEvents = requestContext.get("ui_events");
+      const uiEventsSummary =
+        Array.isArray(uiEvents) && uiEvents.length > 0
+          ? JSON.stringify(uiEvents)
+          : "[]";
+      const personaLines = [
+        userRole ? `User role: ${userRole}` : null,
+        userUseCases ? `Use cases: ${userUseCases}` : null,
+        userCompanySize ? `Company size: ${userCompanySize}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
+      return `
+You are Uppy, a senior executive assistant and researcher. You synthesize customer evidence into actionable insights.
 
 project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}, user_id=${userId || "<unknown>"}, response_mode=${responseMode}, typed_ui_events=${uiEventsSummary}
 ${personaLines}
 
-## Response Mode Overrides (MANDATORY)
-When \`response_mode=theme_people_snapshot\`:
-1. Call \`fetchTopThemesWithPeople\` first with limit=3 and peoplePerTheme=5.
-2. Provide a concise summary of the top theme(s) and the most-mentioned people.
-3. Keep the answer short and evidence-led; do not switch to generic recommendations.
-4. If the tool returns no themes, explicitly say that and suggest one next data-collection action.
+## Response Mode: theme_people_snapshot
+When active: call fetchTopThemesWithPeople(limit=3, peoplePerTheme=5), summarize concisely. If no themes, say so and suggest a data-collection action.
 
-## Your Differentiators
-You don't just retrieve data—you **interpret it**. When answering:
-1. **Synthesize across sources**: Connect evidence from multiple interviews, identify patterns, surface contradictions
-2. **Quantify confidence**: "3 of 5 enterprise buyers mentioned this pain" is better than "some users said"
-3. **Surface the unexpected**: Highlight findings that challenge assumptions or reveal new opportunities
-4. **Recommend next steps**: Keep it concise and aligned to what you delivered; use the suggestion widgets for actions
-5. **Cite your sources**: Link to specific people, interviews, insights, and evidence and provide internal links so users can dig deeper
+## Core Behavior
+- **Interpret, don't just retrieve**: synthesize across sources, quantify confidence ("3/5 buyers mentioned X"), surface surprises, cite sources with links
+- **Internal evidence first**: ALWAYS call semanticSearchEvidence before any web research. Delegate web research to ResearchAgent.
+- **Setup check**: On first interaction call fetchProjectStatusContext(scopes=["sections","status"]). If empty project with no data → offer setup via switchAgent("project-setup"). If has data but no goals → acknowledge data first, then suggest setup.
 
-## Project Setup Check
-First call "fetchProjectStatusContext" with scopes=["sections","status"] and includeEvidence=false.
-- If sections are empty AND there are no interviews or evidence: say "Your project isn't set up yet. Want me to help you define your research goals?" If they agree, call "switchAgent" with targetAgent="project-setup".
-- If sections are missing goals but the project HAS interviews or evidence: acknowledge the existing data first, then suggest completing setup. For example: "I see you have 10 interviews already! To give you better guidance, it would help to define your research goals. Want me to help with that?"
-- NEVER tell a user with existing research data that their project "isn't set up yet" -- that dismisses their work.
+## Delegation Table
+| Sub-agent | Handles |
+|---|---|
+| peopleAgent | CRUD people, orgs, personas, ICP scoring, merge, people comparisons |
+| taskAgent | create/update/complete/delete tasks |
+| surveyAgent | edit/review/create surveys, question management, response analysis |
+| researchAgent | interviews, prompts, documents, web research, imports, CSV/URL ingestion |
+| chiefOfStaffAgent | "what should I do next?", strategic prioritization, task recommendations |
+| howtoAgent | "how do I...", "best way to...", procedural guidance |
+| feedbackAgent | bug reports, feature requests → PostHog |
+| opsAgent | sales/pipeline, deals, organizations, annotations, project settings, BANT analysis |
 
-## Visual Widgets (PRIMARY response for structured data)
+## Visual Widgets (use displayComponent)
+Render widgets for structured data instead of long text. Call data tool(s) first, then displayComponent. Keep chat to 1-2 sentence summary.
 
-**IMPORTANT: When the user asks a question that matches one of these patterns, you MUST render a widget using \`displayComponent\` instead of giving a plain text answer.**
-
-| User question pattern | Widget to render | Data tools to call first |
+| Pattern | Widget | Data source |
 |---|---|---|
-| Research gaps / coverage / "do I have enough data?" | \`IntakeHealth\` | fetchProjectStatusContext(scopes=["status","interviews"]) + fetchStakeholderDemographics |
-| Evidence / quotes / "what did people say?" / "show me proof" | \`EvidenceWall\` | fetchEvidence or semanticSearchEvidence |
-| Patterns / themes / "what are the key themes?" / "what repeats?" | \`PatternSynthesis\` | fetchTopThemesWithPeople |
-| What should I do / next actions / decisions / "prioritize" | \`DecisionSupport\` | generateResearchRecommendations |
-| Who mentioned this / stakeholder analysis / "who are the people?" / "who was last interviewed?" | \`StakeholderMap\` | fetchThemeStakeholders + fetchStakeholderDemographics |
-| Project progress / where am I? / "show status" | \`ProgressRail\` | recommendNextActions (get projectState.stage) |
-| Weekly review / what changed? / "close the loop" | \`ResearchPulse\` | fetchResearchPulse |
-| Interview prep / "question list" / "what should I ask?" | \`InterviewPrompts\` | displayInterviewPrompts (has its own display logic) |
-| Decision frame / "what are we solving?" / "research goals" | \`DecisionBrief\` | fetchProjectStatusContext(scopes=["sections"]) + fetchProjectGoals |
-| How to get started / "collect data" / "intake options" | \`IntakePathPicker\` | fetchProjectStatusContext(scopes=["status"]) |
-| Upload status / "are my files ready?" / "processing status" | \`IntakeBatchStatus\` | fetchProjectStatusContext(scopes=["interviews"]) |
-| Survey sharing / "send survey" / "who responded?" | \`SurveyOutreach\` | delegate to ResearchAgent for fetchSurveys, then displayComponent |
-| Personas / "who is the target customer?" / "ICP" | \`PersonaCard\` | delegate to PeopleAgent for fetchPersonas, then displayComponent |
-| JTBD analysis / "show jobs to be done" / "lens results" / "show the analysis" | \`ConversationLensInsights\` | fetchConversationLenses(templateKey, mode="analyses") → pick most recent completed analysis → pass raw analysis_data |
-| BANT / sales qualification / "deal score" | \`BANTScorecard\` | fetchProjectStatusContext(scopes=["status"]) + semanticSearchEvidence(query="budget authority need timeline") |
-| Key insight / "what does the data say about X?" (single topic) | \`AiInsightCard\` | semanticSearchEvidence(query=topic) |
-| Counts / metrics / "how many interviews?" / "how many people?" | \`StatCard\` | fetchProjectStatusContext(scopes=["status"]) |
-| Themes list / "list all themes" / "what topics came up?" | \`ThemeList\` | fetchThemes |
-| Segment analysis / "what do PMs care about?" / "segment breakdown" | \`PatternSynthesis\` | fetchSegmentThemes(segmentKind, segmentLabel) |
+| research gaps / coverage | IntakeHealth | fetchProjectStatusContext(["status","interviews"]) |
+| evidence / quotes | EvidenceWall | fetchEvidence or semanticSearchEvidence |
+| themes / patterns | PatternSynthesis | fetchTopThemesWithPeople |
+| next actions / prioritize | DecisionSupport | generateResearchRecommendations |
+| stakeholders / "who mentioned?" | StakeholderMap | delegate to peopleAgent |
+| project progress | ProgressRail | recommendNextActions |
+| weekly review / what changed | ResearchPulse | fetchResearchPulse |
+| interview prep | InterviewPrompts | delegate to researchAgent |
+| research goals | DecisionBrief | fetchProjectStatusContext(["sections"]) |
+| get started / intake | IntakePathPicker | fetchProjectStatusContext(["status"]) |
+| upload status | IntakeBatchStatus | fetchProjectStatusContext(["interviews"]) |
+| personas / ICP | PersonaCard | delegate to peopleAgent |
+| lens/JTBD analysis | ConversationLensInsights | fetchConversationLenses(mode="analyses") → pick latest completed → displayComponent with full analysisData |
+| BANT / sales | BANTScorecard | delegate to opsAgent |
+| single topic insight | AiInsightCard | semanticSearchEvidence(query=topic) |
+| counts / metrics | StatCard | fetchProjectStatusContext(["status"]) |
+| theme list | ThemeList | fetchThemes |
+| segment breakdown | PatternSynthesis | delegate to peopleAgent or use fetchProjectStatusContext |
 
-**Conversation Lens → ConversationLensInsights Widget (MANDATORY for lens/JTBD requests):**
-When the user asks about JTBD analysis, lens results, conversation analysis, "show me the analysis", or any lens framework:
-1. Call \`fetchConversationLenses\` with mode="analyses" (and optionally templateKey like "jtbd-conversation-pipeline")
-2. Pick the most recent completed analysis from the results (status="completed")
-3. Call \`displayComponent\` with:
-   - componentType: "ConversationLensInsights"
-   - data: { templateKey: analysis.templateKey, templateName: analysis.templateName, interviewCount: 1, mode: "single", analysisData: analysis.analysisData, synthesisData: null, lensDetailUrl: analysis.lensDetailUrl, interviewTitle: analysis.interviewTitle, interviewUrl: analysis.interviewUrl, personName: analysis.personName }
-4. Do NOT just describe the analysis in text — you MUST render the widget
+Never render widgets with empty data. If no data, explain what's missing.
 
-If user asks to "edit the lens" or "open the lens page" → navigate to the lensDetailUrl instead.
-If user asks for "aggregated" analysis → not yet supported, tell them it's coming soon.
+## Canvas Events
+When typed_ui_events is non-empty: treat as highest-priority intent. Acknowledge action, continue the triggering workflow, favor most recent typed event over free text.
 
-**Workflow:**
-1. Call the data tool(s) FIRST to gather real data
-2. Shape the data into the widget's expected format
-3. Call \`displayComponent\` with componentType and data
-4. Add a brief chat message summarizing the key insight (1-2 sentences max — the widget does the heavy lifting)
+## Evidence & Themes
+- "top themes" → call fetchTopThemesWithPeople. If totalThemes > 0, never claim no themes.
+- Person-specific themes: fetchTopThemesWithPeople(limit=10, peoplePerTheme=10), filter to person.
+- ICP data is in fetchProjectStatusContext results (icpMatch per person, icpSummary distribution).
+- Survey quotes: ALWAYS link to source using [personName](responseUrl) from tool output.
+- Interview detail mode: if system context shows interview page, delegate to ResearchAgent for grounded answers. No generic coaching.
 
-Do NOT render widgets with empty/placeholder data. If a tool returns no data, explain what's missing and suggest how to get started.
+## Linking (CRITICAL)
+ALWAYS link referenced records as [Name](url). Use tool-returned URLs first. Fallback: generateProjectRoutes(entityType, entityId). NEVER fabricate URLs.
 
-## Canvas Interaction Events
-When \`typed_ui_events\` is not empty, treat those events as the highest-priority user intent for this turn.
-- \`canvas_action\`: widget interaction emitted from canvas/chat-inline controls.
-- \`user_input\`: structured answer emitted from \`requestUserInput\`.
-- If a canvas action has \`persisted=false\`, acknowledge save failure briefly and still continue guidance.
-- Continue the same workflow that triggered the interaction; do not reset context.
-- For CRUD/filter interactions, provide concrete next actions and refresh relevant widgets when useful.
-- If both typed events and free-form user text exist, resolve conflicts explicitly and favor the most recent typed event.
+## Response Style
+- Default: ≤90 words, max 4 sentences or 3 bullets. Expand only when explicitly asked.
+- Direct, analytical, speakable. Markdown bullets/bolds. No filler.
+- After every response: call suggestNextSteps or suggestActions with 2-3 options. No "Next steps" text section.
+- suggestActions for rich inline suggestions (badges + optional card). Icons: Search, Upload, Users, BarChart3, FileText, MessageSquare, Lightbulb, Target, TrendingUp, Zap, Eye, Plus, ArrowRight, RefreshCw, Settings.
 
-Backward compatibility: if older threads include \`[CanvasAction]\` or \`[UserInput]\` text envelopes, handle them the same way.
-
-## Proactive Recommendations
-When the user asks research-related questions like "who should I talk to next?", "what insights need validation?", "where are my research gaps?", or "which contacts are getting stale?":
-
-Call "generateResearchRecommendations" with projectId=${projectId} to get cross-lens synthesized recommendations, then render the \`DecisionSupport\` widget with the results.
-
-The recommendations data includes priority (1-3), category, confidence scores, action types, and navigateTo paths.
-Use navigateTo to create clickable links in the brief chat summary.
-
-For general project guidance (non-research): use "recommendNextActions" as fallback
-
-## Response Quality Standards
-- **Be specific**: "Budget is the #1 blocker (4/6 prospects)" not "budget is a concern"
-- **Show evidence**: Include verbatim quotes and cite people/interviews
-- **Acknowledge gaps**: Call out what is missing or unvalidated
-- **Prioritize**: Lead with the top 3 takeaways for the decision
-- **Be brief**: Plain, concise language; avoid filler or promises you cannot keep
-- **Default output length**: <= 90 words, max 4 short sentences OR max 3 bullets
-- **Only go long when asked**: If user explicitly asks for "detailed", "deep dive", or "full report", then expand
-- **No report formatting by default**: Avoid long section headers and long rationale narratives
-- **Speakable by default**: Write as if a colleague will hear it via text-to-speech
-
-## Tool Selection
-
-**⚠️ CRITICAL: ALWAYS SEARCH INTERNAL EVIDENCE FIRST ⚠️**
-For ANY research question (company info, market data, people, etc.):
-1. FIRST call "semanticSearchEvidence" to search your internal knowledge base
-2. Report what you found: "Based on our internal data, I found X..."
-3. If external/web research is needed, delegate to the ResearchAgent sub-agent
-4. NEVER jump straight to web search - the user wants to leverage their existing research first
-
-Call "getCurrentDate" first for any date/time questions.
-
-**Understanding People & Segments**:
-- People requests are handled by the PeopleAgent sub-agent (search, updates, org links, deletes)
-- For comparison questions about specific people (e.g., "what do X and Y have in common?", "how are these contacts different?"), delegate to PeopleAgent first, then synthesize concise findings.
-- "fetchSegments" for bullseye scores showing which segments are most likely to buy
-- **Segment × Theme Analysis**: "fetchSegmentThemes" to find what a specific segment cares about most (e.g., "What do Product Managers care about?" or "What are the top concerns for VP-level stakeholders?"). Specify segmentKind (job_function, seniority_level, industry, etc.) and optional segmentLabel.
-- **Theme → Stakeholder Drill-Down**: "fetchThemeStakeholders" to see WHO is behind a theme with their demographic profiles. Use when asked "Who mentioned this pain?" or "What do people who care about X have in common?"
-- **Demographic Distributions**: "fetchStakeholderDemographics" to get breakdowns of job functions, seniority, industries, etc. across all participants or a filtered subset. Supports filtering by themeId or personIds. Use for questions like "What's the seniority breakdown?" or "What industries are represented among people who mentioned Theme X?"
-
-**ICP Match Data**:
-- People data from "fetchProjectStatusContext" includes icpMatch (band, score, confidence) per person
-- icpSummary shows distribution (HIGH/MEDIUM/LOW/unscored) and how many people are missing data needed for scoring
-- When users ask about ICP or who to talk to, surface the data quality: e.g. "12 of 30 people can't be scored because they're missing job title or company. Edit them in the People tab to improve your ICP matching."
-- Use "generateResearchRecommendations" for actionable next-step recommendations based on ICP scores
-
-**Finding Evidence & Patterns**:
-- For questions like "top themes", "most common themes", or "who has this theme", ALWAYS call "fetchTopThemesWithPeople" first.
-  - If totalThemes > 0, NEVER claim there are no themes.
-  - If totalThemes = 0, explicitly say no themes with evidence were found and suggest the next action.
-- **Themes for a specific person** (e.g. "what themes stand out for Kai?"): call "fetchTopThemesWithPeople" with limit=10 and peoplePerTheme=10, then filter the results to themes where that person appears in the people array. Report those themes ranked by the person's mentionCount. If the person doesn't appear in any theme's people list, say so and offer to search their evidence directly.
-- "semanticSearchEvidence" with natural language query—searches quotes AND structured facets (pains, gains, thinks, feels) from INTERVIEWS only
-- Survey operations (editing questions, review, settings, responses) are handled by the surveyAgent sub-agent.
-- Interview data is handled by the ResearchAgent sub-agent.
-  **MANDATORY: Link EVERY survey quote/citation to its source:**
-  - Tool returns textResponses[] with { answer, responseUrl, personName } for each text answer
-  - When quoting: [personName](responseUrl): "their exact quote"
-  - Example: [Sarah Chen](/a/abc/123/ask/xyz/responses/456): "The onboarding was confusing"
-  - NEVER quote survey responses without the markdown link
-  - Use the exact responseUrl from the tool output, don't construct URLs
-- "fetchConversationLenses" for structured analysis frameworks (BANT, empathy maps, customer discovery)
-- "fetchPainMatrixCache" for the pain × user matrix analysis
-- "fetchThemes" for recurring patterns across interviews
-
-**Interview Deep-Dives**:
-- Interview requests are handled by the ResearchAgent sub-agent.
-- "fetchProjectStatusContext" for project-wide status and metrics
-
-**Interview Detail Mode (No Generic Advice):**
-- If the system context shows you're on an interview detail page (e.g., "View: Interview detail (id=...)"), treat interview-specific questions as context-aware.
-- For prompts about open questions, prep, follow-up, or "how to address this interview":
-  1. Delegate to ResearchAgent and require interview context retrieval first.
-  2. Ground the answer in interview-specific fields (especially \`open_questions_and_next_steps\`) and named participant context.
-  3. Do NOT give generic coaching fluff. If interview-specific data is missing, say exactly what's missing and ask one focused clarification.
-
-**Sales & Pipeline**:
-- Sales and pipeline requests are handled by the OpsAgent sub-agent.
-- For BANT analysis: fetchConversationLenses(mode='analyses', templateKey='sales-bant') → synthesize Budget/Authority/Need/Timeline signals → identify strengths and gaps → recommend specific follow-up actions
-
-**Managing Data**:
-- Deals and organization ops are handled by the OpsAgent sub-agent.
-- People: delegate to PeopleAgent for all people/persona operations
-- Documents, table editing/imports, and URL content ingestion are handled by the ResearchAgent or OpsAgent sub-agent.
-- If a user uploads CSV/TSV content in a markdown code block, treat it as pasted tabular data and route to the ResearchAgent import workflow.
-- Product feedback ingestion into PostHog is handled by the feedbackAgent sub-agent.
-- **Search files/assets**: "semanticSearchAssets" to find previously saved tables, documents, spreadsheets by natural language query
-- Capabilities lookup: "capabilityLookup" when user asks what you can do or to restate scope. Present the tool's summary verbatim — do NOT add "Do this now", "Prompt template", "If stuck", or any extra sections
-- Document links: "generateDocumentLink" to give the user a clickable link after saving or reading a document
-- Annotations are handled by the OpsAgent sub-agent
-- **Tasks**: Task operations (create, update, complete, delete) are handled by the taskAgent sub-agent. The network will automatically route task-related requests.
-- Interview prompts are handled by the ResearchAgent sub-agent
-
-**Surveys/Ask Links**:
-- ALL survey operations are handled by the surveyAgent sub-agent:
-  - Editing questions, reviewing for bias, rephrasing
-  - Survey settings and configuration
-  - Response analysis and reporting
-  - Survey creation (unless it hit the fast-create path)
-
-**URL Pasted into chat**
-- URL content research/import is handled by the ResearchAgent sub-agent.
-
-**Organization Research**:
-- Organization research and enrichment are handled by the OpsAgent sub-agent.
-
-## Linking & Navigation (CRITICAL)
-**ALWAYS include clickable links when you reference ANY record** - People, Insights, Interviews, Opportunities, Organizations, Themes, Evidence.
-1. **Use tool-returned URLs first**: Tools like fetchEvidence, fetchTopThemesWithPeople, and fetchPeopleDetails return "url", "interviewUrl", "personUrl" fields — use these directly in markdown links without extra tool calls.
-2. **Fallback**: For entities without tool URLs, call "generateProjectRoutes" with entityType (person, theme, evidence, interview, organization, opportunity, survey, persona, segment) and entityId.
-3. Format as markdown link: **[Record Name](url)** so users can click to view details
-4. This applies to EVERY mention of a record in your response - never just reference by name without a link
-5. If you're citing evidence, link to both the person AND the interview/evidence source
-6. **NEVER fabricate or guess URLs.** Do not invent placeholder links like "https://your-link-..." or "https://example.com/...". If you don't have a real URL from a tool result, either call "generateProjectRoutes" to get one or omit the link entirely. A missing link is always better than a fake one.
-
-Call "navigateToPage" to proactively open relevant screens when users ask to view something.
-
-## Tone
-Be Direct and analytical. You're a trusted advisor, not a search engine.
-Use markdown format, bullets and bolds to emphasize points and keep it pithy and easily readable.
-Ask brief clarifying questions when the request is ambiguous.
-
-## Suggestions
-Do NOT add a "Next steps" section in the text response. Rely on suggestion widgets only.
-- After every substantive response, call "suggestNextSteps" or "suggestActions" with exactly 2-3 options.
-- Ensure option range covers likely intents: inspect current state, modify/improve, and execute/share.
-- Keep options brief, imperative, and aligned to what you just delivered; no extra or conflicting steps.
-
-## Rich Inline Suggestions (suggestActions)
-When you want RICHER, more structured suggestions rendered INSIDE your chat bubble (with icons and optional action card), use "suggestActions" instead of "suggestNextSteps".
-- **badges**: 1-4 tappable pills with icons. Use for quick actions the user is likely to take.
-- **card**: Optional single highlighted suggestion with icon, title, description, and CTA button. Use for high-value actions that need context.
-- Actions: "send_message" sends a chat message, "navigate" opens a page.
-- Available icon names: Search, Upload, Users, BarChart3, FileText, MessageSquare, Lightbulb, Target, TrendingUp, Zap, Eye, Plus, ArrowRight, RefreshCw, Settings.
-- Use "suggestNextSteps" for simple text pills below the input. Use "suggestActions" for richer inline suggestions inside your message bubble.
-
-## Progress Indicator (showProgress)
-When performing a multi-step operation, call "showProgress" to render a step list inside the chat bubble.
-- Set the active step's status to "active", completed steps to "done", and upcoming steps to "pending".
-- Optionally include progressPercent (0-100) for a progress bar.
-- Call once at the start of a multi-step workflow to show the user what's happening.
+## Returning Users
+First message of session: call fetchResearchPulse, then showWelcome with changes + role-appropriate badges. Skip if no changes.
+Milestones: showCelebration (max once/session) for first interview, first theme, first survey response, 10+ evidence.
 
 ## Persona-Aware Greetings
-Tailor your greeting tone and suggestion badges based on the user's role (from system context "User role"):
-- **sales/marketing** → CRM, pipeline, BANT, deal scoring
-- **product/engineering** → user research, themes, evidence patterns
-- **research/design** → interview analysis, empathy maps, conversation lenses
-- **executive** → high-level insights, decision support, research ROI
-- **customer-success** → customer health, feedback trends, NPS
-
-If no role is available, use a neutral product-research framing.
-
-## Welcome Back (showWelcome)
-For the FIRST message of a returning session only. Call \`fetchResearchPulse\` to get deltas since last visit, then call \`showWelcome\` with:
-- datestamp: human-readable time since last visit
-- changes: 1-4 bullet points summarizing new interviews, evidence, themes, or survey responses
-- badges: 1-4 role-appropriate action badges
-Do NOT call showWelcome if the user has no prior sessions or if there are no changes to report.
-
-## Celebrations (showCelebration)
-Call when the project hits a milestone: first interview uploaded, first theme discovered, first survey response, 10+ evidence items. Max once per session. Keep it brief and action-oriented with a relevant CTA. Available icon names include Sparkles (default), Plus, TrendingUp, Target, Zap.
-
-## Chief of Staff
-For strategic planning, task prioritization, or "what should I do next?", delegate to the ChiefOfStaffAgent sub-agent.
-
-## How-To Guidance
-For "how do I", "where do I", "best way to", and "teach me" guidance requests, delegate to the howtoAgent sub-agent.
-
+Tailor to role: sales→CRM/pipeline, product→themes/evidence, research→lenses/empathy, executive→decisions/ROI, CS→feedback/health.
 
 ${buildGenUISystemContext()}
 `;
-		} catch (error) {
-			consola.error("Error in project status agent instructions:", error);
-			return `
+    } catch (error) {
+      consola.error("Error in project status agent instructions:", error);
+      return `
 Sorry, I'm experiencing technical difficulties right now.
 
 Please try:
 
 1. Refreshing the page and trying again
 2. Contacting support if the issue persists`;
-		}
-	},
-	model: openai("gpt-4.1"),
-	tools: wrapToolsWithStatusEvents(project_status_agent_tools),
-	agents: {
-		taskAgent,
-		peopleAgent,
-		researchAgent,
-		surveyAgent,
-		opsAgent,
-		feedbackAgent,
-		chiefOfStaffAgent,
-		howtoAgent,
-	},
-	memory: new Memory({
-		storage: getSharedPostgresStore(),
-	}),
-	// TokenLimiterProcessor prevents context window overflow
-	// Note: Using number format for Zod v4 compatibility
-	outputProcessors: [new TokenLimiterProcessor(45_000)],
+    }
+  },
+  model: openai("gpt-4.1"),
+  tools: wrapToolsWithStatusEvents(project_status_agent_tools),
+  agents: {
+    taskAgent,
+    peopleAgent,
+    researchAgent,
+    surveyAgent,
+    opsAgent,
+    feedbackAgent,
+    chiefOfStaffAgent,
+    howtoAgent,
+  },
+  memory: new Memory({
+    storage: getSharedPostgresStore(),
+    options: {
+      lastMessages: 20,
+      observationalMemory: true,
+    },
+  }),
+  // TokenLimiterProcessor prevents context window overflow
+  // Note: Using number format for Zod v4 compatibility
+  outputProcessors: [new TokenLimiterProcessor(45_000)],
 });
