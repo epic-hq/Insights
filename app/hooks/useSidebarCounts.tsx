@@ -157,7 +157,7 @@ export function useSidebarCounts(
           ).size;
 
           setCounts({
-            encounters: interview_count,
+            encounters: conversations_count,
             personas: personasResult.count || 0,
             themes: themesResult.count || 0,
             insights: insight_count,
