@@ -1,4 +1,4 @@
-import { handleChatStream, handleNetworkStream } from "@mastra/ai-sdk";
+import { handleChatStream } from "@mastra/ai-sdk";
 import { RequestContext } from "@mastra/core/di";
 import type { MastraDBMessage } from "@mastra/core/memory";
 import {
@@ -742,9 +742,7 @@ export function buildQuickLinksMarkdown(options: {
 type StreamLike = ReadableStream<Record<string, unknown>>;
 
 function augmentStreamForReliability(
-  stream:
-    | Awaited<ReturnType<typeof handleNetworkStream>>
-    | Awaited<ReturnType<typeof handleChatStream>>,
+  stream: Awaited<ReturnType<typeof handleChatStream>>,
   options: {
     debugRequested: boolean;
     targetAgentId: RoutingTargetAgent;
@@ -2235,25 +2233,20 @@ The user requested CSV output with exactly ${csvListContract.requestedRows} data
     },
   });
 
-  let stream:
-    | Awaited<ReturnType<typeof handleNetworkStream>>
-    | Awaited<ReturnType<typeof handleChatStream>>
-    | undefined;
+  // Use handleChatStream for ALL agents, including projectStatusAgent.
+  // Previously projectStatusAgent used handleNetworkStream (agent.network()),
+  // but that emits internal "Completion Check Results" text into the response stream.
+  // handleChatStream still supports sub-agent delegation via the agents: {} config
+  // on the agent definition — Mastra makes sub-agents available as callable tools.
+  let stream: Awaited<ReturnType<typeof handleChatStream>> | undefined;
   try {
-    stream =
-      targetAgentId === "projectStatusAgent"
-        ? await handleNetworkStream({
-            mastra,
-            agentId: targetAgentId,
-            params: buildAgentParams(threadId),
-          })
-        : await handleChatStream({
-            mastra,
-            agentId: targetAgentId,
-            params: buildAgentParams(threadId),
-            sendReasoning: false,
-            sendSources: !isFastStandardized,
-          });
+    stream = await handleChatStream({
+      mastra,
+      agentId: targetAgentId,
+      params: buildAgentParams(threadId),
+      sendReasoning: false,
+      sendSources: !isFastStandardized,
+    });
   } catch (error) {
     // Check if this is the "No tool call found" error from corrupted memory
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -2263,20 +2256,13 @@ The user requested CSV output with exactly ${csvListContract.requestedRows} data
       errorMessage.includes("Duplicate item found")
     ) {
       threadId = await handleCorruptedThread(threadId, errorMessage);
-      stream =
-        targetAgentId === "projectStatusAgent"
-          ? await handleNetworkStream({
-              mastra,
-              agentId: targetAgentId,
-              params: buildAgentParams(threadId),
-            })
-          : await handleChatStream({
-              mastra,
-              agentId: targetAgentId,
-              params: buildAgentParams(threadId),
-              sendReasoning: false,
-              sendSources: !isFastStandardized,
-            });
+      stream = await handleChatStream({
+        mastra,
+        agentId: targetAgentId,
+        params: buildAgentParams(threadId),
+        sendReasoning: false,
+        sendSources: !isFastStandardized,
+      });
     } else {
       consola.error("project-status: failed to initialize stream", {
         error: errorMessage,
