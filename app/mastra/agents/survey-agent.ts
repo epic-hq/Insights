@@ -29,16 +29,15 @@ import { updateSurveyQuestionsTool } from "../tools/update-survey-questions";
 import { updateSurveySettingsTool } from "../tools/update-survey-settings";
 
 export const surveyAgent = new Agent({
-  id: "survey-agent",
-  name: "surveyAgent",
-  description:
-    "Specialist for survey editing, question review, survey settings, and response analysis.",
-  instructions: async ({ requestContext }) => {
-    const projectId = requestContext?.get("project_id") ?? "";
-    const accountId = requestContext?.get("account_id") ?? "";
-    const surveyId = requestContext?.get("survey_id") ?? "";
+	id: "survey-agent",
+	name: "surveyAgent",
+	description: "Specialist for survey editing, question review, survey settings, and response analysis.",
+	instructions: async ({ requestContext }) => {
+		const projectId = requestContext?.get("project_id") ?? "";
+		const accountId = requestContext?.get("account_id") ?? "";
+		const surveyId = requestContext?.get("survey_id") ?? "";
 
-    return `You are a survey design assistant helping users create and manage research surveys (called "Ask Links" in Upsight).
+		return `You are a survey design assistant helping users create and manage research surveys (called "Ask Links" in Upsight).
 
 PROJECT CONTEXT:
 - Project ID: ${projectId}
@@ -47,12 +46,12 @@ ${surveyId ? `- Active Survey ID: ${surveyId} (user is currently viewing/editing
 
 CONTEXT-AWARE BEHAVIOR:
 ${
-  surveyId
-    ? `- The user is currently viewing survey ${surveyId}. Use this surveyId for ALL operations by default.
+	surveyId
+		? `- The user is currently viewing survey ${surveyId}. Use this surveyId for ALL operations by default.
 - Do NOT ask "which survey?" — the user is already looking at it.
 - For "my questions", "the questions", "this survey" — use surveyId ${surveyId}.
 - Do NOT create a brand new survey to satisfy an edit request unless the user explicitly asks to create/duplicate a survey.`
-    : `- No active survey detected. If the user refers to "my survey" without context, use fetch-surveys to list options and ask which one.`
+		: `- No active survey detected. If the user refers to "my survey" without context, use fetch-surveys to list options and ask which one.`
 }
 
 	YOUR CAPABILITIES:
@@ -188,29 +187,29 @@ LINKING & NAVIGATION:
 - After modifications, offer to navigate to the survey editor
 - Use generate-project-routes for entity URLs
 - Never fabricate URLs — only use tool-returned URLs`;
-  },
-  model: openai("gpt-4o-mini"),
-  memory: new Memory({
-    storage: getSharedPostgresStore(),
-    options: {
-      lastMessages: 20,
-      observationalMemory: true,
-    },
-  }),
-  tools: {
-    "create-survey": createSurveyTool,
-    "fetch-surveys": fetchSurveysTool,
-    "delete-survey": deleteSurveyTool,
-    "request-user-input": requestUserInputTool,
-    "update-survey-questions": updateSurveyQuestionsTool,
-    "review-survey-questions": reviewSurveyQuestionsTool,
-    "update-survey-settings": updateSurveySettingsTool,
-    "update-survey-guidelines": updateSurveyGuidelinesTool,
-    "search-survey-responses": searchSurveyResponsesTool,
-    suggestNextSteps: suggestionTool,
-    suggestActions: suggestActionsTool,
-    "navigate-to-page": navigateToPageTool,
-    "generate-project-routes": generateProjectRoutesTool,
-  },
-  outputProcessors: [new TokenLimiterProcessor(45_000)],
+	},
+	model: openai("gpt-4o-mini"),
+	memory: new Memory({
+		storage: getSharedPostgresStore(),
+		options: {
+			lastMessages: 20,
+			observationalMemory: true,
+		},
+	}),
+	tools: {
+		"create-survey": createSurveyTool,
+		"fetch-surveys": fetchSurveysTool,
+		"delete-survey": deleteSurveyTool,
+		"request-user-input": requestUserInputTool,
+		"update-survey-questions": updateSurveyQuestionsTool,
+		"review-survey-questions": reviewSurveyQuestionsTool,
+		"update-survey-settings": updateSurveySettingsTool,
+		"update-survey-guidelines": updateSurveyGuidelinesTool,
+		"search-survey-responses": searchSurveyResponsesTool,
+		suggestNextSteps: suggestionTool,
+		suggestActions: suggestActionsTool,
+		"navigate-to-page": navigateToPageTool,
+		"generate-project-routes": generateProjectRoutesTool,
+	},
+	outputProcessors: [new TokenLimiterProcessor(45_000)],
 });

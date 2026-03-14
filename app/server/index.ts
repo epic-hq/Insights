@@ -226,14 +226,10 @@ export default await createHonoServer({
 			const ext = c.req.path.endsWith(".css") ? "css" : "js";
 			consola.warn(`[assets] Stale asset requested: ${c.req.path} — triggering client reload`);
 			if (ext === "js") {
-				return c.body(
-					'window.__STALE_DEPLOY=true;window.location.reload();',
-					404,
-					{
-						"Content-Type": "application/javascript; charset=utf-8",
-						"Cache-Control": "no-store",
-					}
-				);
+				return c.body("window.__STALE_DEPLOY=true;window.location.reload();", 404, {
+					"Content-Type": "application/javascript; charset=utf-8",
+					"Cache-Control": "no-store",
+				});
 			}
 			// For CSS, return empty stylesheet — the reload from a stale JS chunk
 			// will refresh everything anyway

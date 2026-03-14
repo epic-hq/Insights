@@ -17,20 +17,20 @@ import { suggestionTool } from "../tools/suggestion-tool";
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 
 export const chiefOfStaffAgent = new Agent({
-  id: "chief-of-staff-agent",
-  name: "chiefOfStaffAgent",
-  description:
-    "Strategic advisor that reviews current project status and tasks to recommend the next 2-3 concrete actions.",
-  instructions: async ({ requestContext }) => {
-    try {
-      const projectId = requestContext.get("project_id");
-      const accountId = requestContext.get("account_id");
-      const userId = requestContext.get("user_id");
-      const responseMode = requestContext.get("response_mode");
-      const isFastStandardized = responseMode === "fast_standardized";
+	id: "chief-of-staff-agent",
+	name: "chiefOfStaffAgent",
+	description:
+		"Strategic advisor that reviews current project status and tasks to recommend the next 2-3 concrete actions.",
+	instructions: async ({ requestContext }) => {
+		try {
+			const projectId = requestContext.get("project_id");
+			const accountId = requestContext.get("account_id");
+			const userId = requestContext.get("user_id");
+			const responseMode = requestContext.get("response_mode");
+			const isFastStandardized = responseMode === "fast_standardized";
 
-      if (isFastStandardized) {
-        return `
+			if (isFastStandardized) {
+				return `
 You are the Chief of Staff for project ${projectId}. Produce a fast, standardized answer for broad "what should I do next?" guidance.
 
 # Fast Mode Rules
@@ -52,9 +52,9 @@ You are the Chief of Staff for project ${projectId}. Produce a fast, standardize
 - Project: ${projectId}
 - User: ${userId}
 `;
-      }
+			}
 
-      return `
+			return `
 You are the Chief of Staff for project ${projectId}. Your job is to orient the user and recommend the next 2-3 concrete actions based on real project data.
 
 # Workflow (MANDATORY)
@@ -72,30 +72,30 @@ Step 2: Write a 1-2 sentence chat summary. The widget does the heavy lifting —
 - Project: ${projectId}
 - User: ${userId}
 `;
-    } catch (error) {
-      consola.error("Error in chief of staff instructions:", error);
-      return "You are a Chief of Staff. Use project data to recommend next actions.";
-    }
-  },
-  model: openai("gpt-4o-mini"),
-  tools: wrapToolsWithStatusEvents({
-    fetchProjectStatusContext: fetchProjectStatusContextTool,
-    fetchTasks: fetchTasksTool,
-    recommendNextActions: recommendNextActionsTool,
-    // Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
-    "recommend-next-actions": recommendNextActionsTool,
-    suggestNextSteps: suggestionTool,
-    generateProjectRoutes: generateProjectRoutesTool,
-    requestUserInput: requestUserInputTool,
-    displayComponent: displayComponentTool,
-    "display-component": displayComponentTool,
-  }),
-  memory: new Memory({
-    storage: getSharedPostgresStore(),
-    options: {
-      lastMessages: 20,
-      observationalMemory: true,
-    },
-  }),
-  outputProcessors: [new TokenLimiterProcessor(20_000)],
+		} catch (error) {
+			consola.error("Error in chief of staff instructions:", error);
+			return "You are a Chief of Staff. Use project data to recommend next actions.";
+		}
+	},
+	model: openai("gpt-4o-mini"),
+	tools: wrapToolsWithStatusEvents({
+		fetchProjectStatusContext: fetchProjectStatusContextTool,
+		fetchTasks: fetchTasksTool,
+		recommendNextActions: recommendNextActionsTool,
+		// Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
+		"recommend-next-actions": recommendNextActionsTool,
+		suggestNextSteps: suggestionTool,
+		generateProjectRoutes: generateProjectRoutesTool,
+		requestUserInput: requestUserInputTool,
+		displayComponent: displayComponentTool,
+		"display-component": displayComponentTool,
+	}),
+	memory: new Memory({
+		storage: getSharedPostgresStore(),
+		options: {
+			lastMessages: 20,
+			observationalMemory: true,
+		},
+	}),
+	outputProcessors: [new TokenLimiterProcessor(20_000)],
 });

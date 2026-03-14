@@ -19,131 +19,119 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 import { cn } from "~/lib/utils";
 import { SplitPaneLayout } from "./SplitPaneLayout";
 
-const LegacyFloatingPanelLayout = lazy(
-  () => import("./LegacyFloatingPanelLayout"),
-);
+const LegacyFloatingPanelLayout = lazy(() => import("./LegacyFloatingPanelLayout"));
 
 interface AppLayoutProps {
-  showJourneyNav?: boolean;
+	showJourneyNav?: boolean;
 }
 
 export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
-  const { isMobile } = useDeviceDetection();
-  const [searchParams] = useSearchParams();
-  const { accountId, projectPath } = useCurrentProject();
-  const routes = useProjectRoutes(projectPath || "");
+	const { isMobile } = useDeviceDetection();
+	const [searchParams] = useSearchParams();
+	const { accountId, projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
-  const persistSidebarPreference = useCallback((openState: boolean) => {
-    if (typeof window === "undefined") return;
-    const serializedState = openState ? "expanded" : "collapsed";
-    const cookieStoreCandidate = (
-      window as typeof window & {
-        cookieStore?: {
-          set?: (options: {
-            name: string;
-            value: string;
-            expires?: number;
-            path?: string;
-          }) => Promise<void>;
-        };
-      }
-    ).cookieStore;
-    if (cookieStoreCandidate?.set) {
-      void cookieStoreCandidate.set({
-        name: "sidebar_state",
-        value: serializedState,
-        expires: Date.now() + 60 * 60 * 24 * 7 * 1000,
-        path: "/",
-      });
-      return;
-    }
-    try {
-      window.localStorage.setItem("sidebar_state", serializedState);
-    } catch {
-      return;
-    }
-  }, []);
+	const persistSidebarPreference = useCallback((openState: boolean) => {
+		if (typeof window === "undefined") return;
+		const serializedState = openState ? "expanded" : "collapsed";
+		const cookieStoreCandidate = (
+			window as typeof window & {
+				cookieStore?: {
+					set?: (options: { name: string; value: string; expires?: number; path?: string }) => Promise<void>;
+				};
+			}
+		).cookieStore;
+		if (cookieStoreCandidate?.set) {
+			void cookieStoreCandidate.set({
+				name: "sidebar_state",
+				value: serializedState,
+				expires: Date.now() + 60 * 60 * 24 * 7 * 1000,
+				path: "/",
+			});
+			return;
+		}
+		try {
+			window.localStorage.setItem("sidebar_state", serializedState);
+		} catch {
+			return;
+		}
+	}, []);
 
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    if (typeof window === "undefined") return true;
-    try {
-      return window.localStorage.getItem("sidebar_state") !== "collapsed";
-    } catch {
-      return true;
-    }
-  });
+	const [sidebarOpen, setSidebarOpen] = useState(() => {
+		if (typeof window === "undefined") return true;
+		try {
+			return window.localStorage.getItem("sidebar_state") !== "collapsed";
+		} catch {
+			return true;
+		}
+	});
 
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+	const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const isOnboarding = searchParams.get("onboarding") === "true";
-  const showMainNav = !isOnboarding;
-  const showMobileNav = isMobile && showJourneyNav && showMainNav;
+	const isOnboarding = searchParams.get("onboarding") === "true";
+	const showMainNav = !isOnboarding;
+	const showMobileNav = isMobile && showJourneyNav && showMainNav;
 
-  const handleSidebarOpenChange = useCallback(
-    (nextOpen: boolean) => {
-      setSidebarOpen(nextOpen);
-      persistSidebarPreference(nextOpen);
-    },
-    [persistSidebarPreference],
-  );
+	const handleSidebarOpenChange = useCallback(
+		(nextOpen: boolean) => {
+			setSidebarOpen(nextOpen);
+			persistSidebarPreference(nextOpen);
+		},
+		[persistSidebarPreference]
+	);
 
-  const layoutMode = searchParams.get("layout");
+	const layoutMode = searchParams.get("layout");
 
-  // Default: floating/collapsible panel layout
-  if (!layoutMode) {
-    return (
-      <Suspense fallback={null}>
-        <LegacyFloatingPanelLayout showJourneyNav={showJourneyNav} />
-      </Suspense>
-    );
-  }
+	// Default: floating/collapsible panel layout
+	if (!layoutMode) {
+		return (
+			<Suspense fallback={null}>
+				<LegacyFloatingPanelLayout showJourneyNav={showJourneyNav} />
+			</Suspense>
+		);
+	}
 
-  // Split-pane layout (explicit opt-in via ?layout=split)
-  if (layoutMode === "split") {
-    return <SplitPaneLayout showJourneyNav={showJourneyNav} />;
-  }
+	// Split-pane layout (explicit opt-in via ?layout=split)
+	if (layoutMode === "split") {
+		return <SplitPaneLayout showJourneyNav={showJourneyNav} />;
+	}
 
-  // Backward-compatible alias for floating layout
-  if (layoutMode === "legacy") {
-    return (
-      <Suspense fallback={null}>
-        <LegacyFloatingPanelLayout showJourneyNav={showJourneyNav} />
-      </Suspense>
-    );
-  }
+	// Backward-compatible alias for floating layout
+	if (layoutMode === "legacy") {
+		return (
+			<Suspense fallback={null}>
+				<LegacyFloatingPanelLayout showJourneyNav={showJourneyNav} />
+			</Suspense>
+		);
+	}
 
-  // Legacy sidebar layout (accessible via ?layout=sidebar)
-  return (
-    <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
-      {showMainNav && !isMobile && <AppSidebar />}
-      <SidebarInset>
-        <main
-          className={cn(
-            "flex min-h-0 flex-1 flex-col",
-            showMobileNav ? "pb-[72px]" : "",
-          )}
-        >
-          <Outlet />
-        </main>
+	// Legacy sidebar layout (accessible via ?layout=sidebar)
+	return (
+		<SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
+			{showMainNav && !isMobile && <AppSidebar />}
+			<SidebarInset>
+				<main className={cn("flex min-h-0 flex-1 flex-col", showMobileNav ? "pb-[72px]" : "")}>
+					<Outlet />
+				</main>
 
-        {showMobileNav && (
-          <BottomTabBar
-            routes={{
-              chat: `${projectPath}/assistant`,
-              upload: routes.interviews.upload(),
-              people: routes.people.index(),
-            }}
-          />
-        )}
-      </SidebarInset>
+				{showMobileNav && (
+					<BottomTabBar
+						routes={{
+							chat: `${projectPath}/assistant`,
+							upload: routes.interviews.upload(),
+							people: routes.people.index(),
+						}}
+					/>
+				)}
+			</SidebarInset>
 
-      {isMobile && (
-        <ProfileSheet
-          open={isProfileOpen}
-          onOpenChange={setIsProfileOpen}
-          accountSettingsHref={`/a/${accountId}/settings`}
-        />
-      )}
-    </SidebarProvider>
-  );
+			{isMobile && (
+				<ProfileSheet
+					open={isProfileOpen}
+					onOpenChange={setIsProfileOpen}
+					accountSettingsHref={`/a/${accountId}/settings`}
+				/>
+			)}
+		</SidebarProvider>
+	);
 }

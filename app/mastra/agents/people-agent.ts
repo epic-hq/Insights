@@ -5,8 +5,8 @@ import { Agent } from "@mastra/core/agent";
 import { TokenLimiterProcessor } from "@mastra/core/processors";
 import { Memory } from "@mastra/memory";
 import consola from "consola";
-import { getSharedPostgresStore } from "../storage/postgres-singleton";
 import { openai } from "../../lib/billing/instrumented-openai.server";
+import { getSharedPostgresStore } from "../storage/postgres-singleton";
 import { fetchPeopleDetailsTool } from "../tools/fetch-people-details";
 import { fetchPersonasTool } from "../tools/fetch-personas";
 import { generateProjectRoutesTool } from "../tools/generate-project-routes";
@@ -14,24 +14,24 @@ import { importPeopleFromTableTool } from "../tools/import-people-from-table";
 import { managePeopleTool } from "../tools/manage-people";
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations";
 import { navigateToPageTool } from "../tools/navigate-to-page";
+import { requestUserInputTool } from "../tools/request-user-input";
 import { semanticSearchPeopleTool } from "../tools/semantic-search-people";
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 import { upsertPersonTool } from "../tools/upsert-person";
-import { requestUserInputTool } from "../tools/request-user-input";
 import { upsertPersonFacetsTool } from "../tools/upsert-person-facets";
 
 export const peopleAgent = new Agent({
-  id: "people-agent",
-  name: "peopleAgent",
-  description:
-    "Specialist for people and persona data: searching people, updating contact details and facets, managing org links, and safe deletion.",
-  instructions: async ({ requestContext }) => {
-    try {
-      const projectId = requestContext.get("project_id");
-      const accountId = requestContext.get("account_id");
-      const userId = requestContext.get("user_id");
+	id: "people-agent",
+	name: "peopleAgent",
+	description:
+		"Specialist for people and persona data: searching people, updating contact details and facets, managing org links, and safe deletion.",
+	instructions: async ({ requestContext }) => {
+		try {
+			const projectId = requestContext.get("project_id");
+			const accountId = requestContext.get("account_id");
+			const userId = requestContext.get("user_id");
 
-      return `
+			return `
 You are a focused People specialist for project ${projectId}.
 
 # Scope
@@ -74,31 +74,31 @@ After any create, update, or delete operation, call navigateToPage to refresh th
 - Project: ${projectId}
 - User: ${userId}
 `;
-    } catch (error) {
-      consola.error("Error in people agent instructions:", error);
-      return "You are a People specialist. Handle people-related requests only.";
-    }
-  },
-  model: openai("gpt-4o-mini"),
-  tools: wrapToolsWithStatusEvents({
-    fetchPeopleDetails: fetchPeopleDetailsTool,
-    semanticSearchPeople: semanticSearchPeopleTool,
-    fetchPersonas: fetchPersonasTool,
-    importPeopleFromTable: importPeopleFromTableTool,
-    upsertPerson: upsertPersonTool,
-    upsertPersonFacets: upsertPersonFacetsTool,
-    managePersonOrganizations: managePersonOrganizationsTool,
-    managePeople: managePeopleTool,
-    requestUserInput: requestUserInputTool,
-    navigateToPage: navigateToPageTool,
-    generateProjectRoutes: generateProjectRoutesTool,
-  }),
-  memory: new Memory({
-    storage: getSharedPostgresStore(),
-    options: {
-      lastMessages: 20,
-      observationalMemory: true,
-    },
-  }),
-  outputProcessors: [new TokenLimiterProcessor(20_000)],
+		} catch (error) {
+			consola.error("Error in people agent instructions:", error);
+			return "You are a People specialist. Handle people-related requests only.";
+		}
+	},
+	model: openai("gpt-4o-mini"),
+	tools: wrapToolsWithStatusEvents({
+		fetchPeopleDetails: fetchPeopleDetailsTool,
+		semanticSearchPeople: semanticSearchPeopleTool,
+		fetchPersonas: fetchPersonasTool,
+		importPeopleFromTable: importPeopleFromTableTool,
+		upsertPerson: upsertPersonTool,
+		upsertPersonFacets: upsertPersonFacetsTool,
+		managePersonOrganizations: managePersonOrganizationsTool,
+		managePeople: managePeopleTool,
+		requestUserInput: requestUserInputTool,
+		navigateToPage: navigateToPageTool,
+		generateProjectRoutes: generateProjectRoutesTool,
+	}),
+	memory: new Memory({
+		storage: getSharedPostgresStore(),
+		options: {
+			lastMessages: 20,
+			observationalMemory: true,
+		},
+	}),
+	outputProcessors: [new TokenLimiterProcessor(20_000)],
 });

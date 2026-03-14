@@ -14,344 +14,321 @@ import { tasks } from "@trigger.dev/sdk";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import type { Json } from "~/../supabase/types";
-import {
-  createSupabaseAdminClient,
-  getAuthenticatedUser,
-} from "~/lib/supabase/client.server";
+import { createSupabaseAdminClient, getAuthenticatedUser } from "~/lib/supabase/client.server";
 
 export async function action({ request }: ActionFunctionArgs) {
-  if (request.method !== "POST") {
-    return Response.json({ error: "Method not allowed" }, { status: 405 });
-  }
+	if (request.method !== "POST") {
+		return Response.json({ error: "Method not allowed" }, { status: 405 });
+	}
 
-  let interviewIdForError: string | undefined;
-  let conversationAnalysisForError: Record<string, unknown> = {};
+	let interviewIdForError: string | undefined;
+	let conversationAnalysisForError: Record<string, unknown> = {};
 
-  try {
-    // Auth check
-    const { user } = await getAuthenticatedUser(request);
-    if (!user?.sub) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
+	try {
+		// Auth check
+		const { user } = await getAuthenticatedUser(request);
+		if (!user?.sub) {
+			return Response.json({ error: "Unauthorized" }, { status: 401 });
+		}
 
-    const { interviewId } = await request.json();
-    if (!interviewId) {
-      return Response.json({ error: "interviewId required" }, { status: 400 });
-    }
-    interviewIdForError = interviewId;
+		const { interviewId } = await request.json();
+		if (!interviewId) {
+			return Response.json({ error: "interviewId required" }, { status: 400 });
+		}
+		interviewIdForError = interviewId;
 
-    const supabase = createSupabaseAdminClient();
+		const supabase = createSupabaseAdminClient();
 
-    // Get full interview state
-    const { data: interview, error: fetchError } = await supabase
-      .from("interviews")
-      .select(
-        "id, title, status, media_url, transcript, transcript_formatted, source_type, account_id, project_id, participant_pseudonym, conversation_analysis",
-      )
-      .eq("id", interviewId)
-      .single();
+		// Get full interview state
+		const { data: interview, error: fetchError } = await supabase
+			.from("interviews")
+			.select(
+				"id, title, status, media_url, transcript, transcript_formatted, source_type, account_id, project_id, participant_pseudonym, conversation_analysis"
+			)
+			.eq("id", interviewId)
+			.single();
 
-    if (fetchError || !interview) {
-      return Response.json({ error: "Interview not found" }, { status: 404 });
-    }
+		if (fetchError || !interview) {
+			return Response.json({ error: "Interview not found" }, { status: 404 });
+		}
 
-    consola.info("[interview-restart] Current state:", {
-      id: interview.id,
-      status: interview.status,
-      hasMedia: !!interview.media_url,
-      hasTranscript: !!interview.transcript,
-      sourceType: interview.source_type,
-    });
+		consola.info("[interview-restart] Current state:", {
+			id: interview.id,
+			status: interview.status,
+			hasMedia: !!interview.media_url,
+			hasTranscript: !!interview.transcript,
+			sourceType: interview.source_type,
+		});
 
-    const conversationAnalysis =
-      (interview.conversation_analysis as Record<string, unknown>) || {};
-    conversationAnalysisForError = conversationAnalysis;
-    const transcriptFormatted =
-      (interview.transcript_formatted as Record<string, unknown> | null) ||
-      null;
-    const speakerTranscripts = Array.isArray(
-      transcriptFormatted?.speaker_transcripts,
-    )
-      ? (transcriptFormatted.speaker_transcripts as unknown[])
-      : [];
-    const utterances = Array.isArray(transcriptFormatted?.utterances)
-      ? (transcriptFormatted.utterances as unknown[])
-      : [];
-    const chapters = Array.isArray(transcriptFormatted?.chapters)
-      ? (transcriptFormatted.chapters as unknown[])
-      : [];
-    const autoChapters = Array.isArray(transcriptFormatted?.auto_chapters)
-      ? (transcriptFormatted.auto_chapters as unknown[])
-      : [];
-    const hasStructuredTranscript =
-      speakerTranscripts.length > 0 || utterances.length > 0;
-    const hasChapterData = chapters.length > 0 || autoChapters.length > 0;
+		const conversationAnalysis = (interview.conversation_analysis as Record<string, unknown>) || {};
+		conversationAnalysisForError = conversationAnalysis;
+		const transcriptFormatted = (interview.transcript_formatted as Record<string, unknown> | null) || null;
+		const speakerTranscripts = Array.isArray(transcriptFormatted?.speaker_transcripts)
+			? (transcriptFormatted.speaker_transcripts as unknown[])
+			: [];
+		const utterances = Array.isArray(transcriptFormatted?.utterances)
+			? (transcriptFormatted.utterances as unknown[])
+			: [];
+		const chapters = Array.isArray(transcriptFormatted?.chapters) ? (transcriptFormatted.chapters as unknown[]) : [];
+		const autoChapters = Array.isArray(transcriptFormatted?.auto_chapters)
+			? (transcriptFormatted.auto_chapters as unknown[])
+			: [];
+		const hasStructuredTranscript = speakerTranscripts.length > 0 || utterances.length > 0;
+		const hasChapterData = chapters.length > 0 || autoChapters.length > 0;
 
-    consola.info("[interview-restart] Transcript structure check:", {
-      hasStructuredTranscript,
-      hasChapterData,
-      speakerTranscripts: speakerTranscripts.length,
-      utterances: utterances.length,
-      chapters: chapters.length,
-      autoChapters: autoChapters.length,
-    });
+		consola.info("[interview-restart] Transcript structure check:", {
+			hasStructuredTranscript,
+			hasChapterData,
+			speakerTranscripts: speakerTranscripts.length,
+			utterances: utterances.length,
+			chapters: chapters.length,
+			autoChapters: autoChapters.length,
+		});
 
-    // Case 1: Already completed
-    if (interview.status === "ready" && interview.transcript) {
-      return Response.json({
-        success: true,
-        action: "none",
-        status: "ready",
-        message: "Interview is already complete",
-      });
-    }
+		// Case 1: Already completed
+		if (interview.status === "ready" && interview.transcript) {
+			return Response.json({
+				success: true,
+				action: "none",
+				status: "ready",
+				message: "Interview is already complete",
+			});
+		}
 
-    // Case 2: Has media, needs transcription — use Trigger.dev orchestrator (no webhook)
-    const isAudioVideo =
-      interview.source_type === "audio_upload" ||
-      interview.source_type === "video_upload";
+		// Case 2: Has media, needs transcription — use Trigger.dev orchestrator (no webhook)
+		const isAudioVideo = interview.source_type === "audio_upload" || interview.source_type === "video_upload";
 
-    if (interview.media_url && isAudioVideo && !interview.transcript) {
-      consola.info(
-        "[interview-restart] Triggering orchestrator for transcription...",
-      );
+		if (interview.media_url && isAudioVideo && !interview.transcript) {
+			consola.info("[interview-restart] Triggering orchestrator for transcription...");
 
-      await supabase
-        .from("interviews")
-        .update({
-          status: "processing" as const,
-          conversation_analysis: {
-            ...conversationAnalysis,
-            current_step: "upload",
-            status_detail: "Starting transcription...",
-            completed_steps: [],
-          } as Json,
-        })
-        .eq("id", interviewId);
+			await supabase
+				.from("interviews")
+				.update({
+					status: "processing" as const,
+					conversation_analysis: {
+						...conversationAnalysis,
+						current_step: "upload",
+						status_detail: "Starting transcription...",
+						completed_steps: [],
+					} as Json,
+				})
+				.eq("id", interviewId);
 
-      const handle = await tasks.trigger("interview.v2.orchestrator", {
-        analysisJobId: interviewId,
-        metadata: {
-          accountId: interview.account_id,
-          projectId: interview.project_id || undefined,
-          userId: user.sub,
-          interviewTitle: interview.title || undefined,
-          participantName: interview.participant_pseudonym || undefined,
-        },
-        transcriptData: {
-          needs_transcription: true,
-          file_type: "media",
-        },
-        mediaUrl: interview.media_url,
-        existingInterviewId: interviewId,
-        userCustomInstructions: "",
-        resumeFrom: "upload",
-        skipSteps: [],
-      });
+			const handle = await tasks.trigger("interview.v2.orchestrator", {
+				analysisJobId: interviewId,
+				metadata: {
+					accountId: interview.account_id,
+					projectId: interview.project_id || undefined,
+					userId: user.sub,
+					interviewTitle: interview.title || undefined,
+					participantName: interview.participant_pseudonym || undefined,
+				},
+				transcriptData: {
+					needs_transcription: true,
+					file_type: "media",
+				},
+				mediaUrl: interview.media_url,
+				existingInterviewId: interviewId,
+				userCustomInstructions: "",
+				resumeFrom: "upload",
+				skipSteps: [],
+			});
 
-      await supabase
-        .from("interviews")
-        .update({
-          conversation_analysis: {
-            ...conversationAnalysis,
-            trigger_run_id: handle.id,
-            current_step: "upload",
-            status_detail: "Transcription started...",
-          } as Json,
-        })
-        .eq("id", interviewId);
+			await supabase
+				.from("interviews")
+				.update({
+					conversation_analysis: {
+						...conversationAnalysis,
+						trigger_run_id: handle.id,
+						current_step: "upload",
+						status_detail: "Transcription started...",
+					} as Json,
+				})
+				.eq("id", interviewId);
 
-      consola.info("[interview-restart] Orchestrator triggered:", handle.id);
+			consola.info("[interview-restart] Orchestrator triggered:", handle.id);
 
-      return Response.json({
-        success: true,
-        action: "transcription_started",
-        status: "processing",
-        statusDetail: "Transcribing audio...",
-        runId: handle.id,
-        message: "Transcription started",
-      });
-    }
+			return Response.json({
+				success: true,
+				action: "transcription_started",
+				status: "processing",
+				statusDetail: "Transcribing audio...",
+				runId: handle.id,
+				message: "Transcription started",
+			});
+		}
 
-    const canResumeFromTranscript =
-      hasStructuredTranscript && (hasChapterData || !interview.media_url);
+		const canResumeFromTranscript = hasStructuredTranscript && (hasChapterData || !interview.media_url);
 
-    // Case 3: Has structured transcript, needs analysis
-    // If media exists but chapter structure is missing, fall through to full reprocess (Case 4)
-    if (
-      interview.transcript &&
-      interview.status !== "ready" &&
-      canResumeFromTranscript
-    ) {
-      consola.info("[interview-restart] Starting analysis...");
+		// Case 3: Has structured transcript, needs analysis
+		// If media exists but chapter structure is missing, fall through to full reprocess (Case 4)
+		if (interview.transcript && interview.status !== "ready" && canResumeFromTranscript) {
+			consola.info("[interview-restart] Starting analysis...");
 
-      // Update status first
-      await supabase
-        .from("interviews")
-        .update({
-          status: "processing" as const,
-          conversation_analysis: {
-            ...conversationAnalysis,
-            current_step: "evidence",
-            status_detail: "Analyzing transcript...",
-            completed_steps: ["transcription"],
-          } as Json,
-        })
-        .eq("id", interviewId);
+			// Update status first
+			await supabase
+				.from("interviews")
+				.update({
+					status: "processing" as const,
+					conversation_analysis: {
+						...conversationAnalysis,
+						current_step: "evidence",
+						status_detail: "Analyzing transcript...",
+						completed_steps: ["transcription"],
+					} as Json,
+				})
+				.eq("id", interviewId);
 
-      // Trigger orchestrator
-      const handle = await tasks.trigger("interview.v2.orchestrator", {
-        analysisJobId: interviewId,
-        metadata: {
-          accountId: interview.account_id,
-          projectId: interview.project_id || undefined,
-          userId: user.sub,
-          interviewTitle: interview.title || undefined,
-          participantName: interview.participant_pseudonym || undefined,
-        },
-        transcriptData: {
-          full_transcript: interview.transcript,
-          confidence: 0.9,
-          file_type: "text",
-        },
-        mediaUrl: interview.media_url || "",
-        existingInterviewId: interviewId,
-        userCustomInstructions: "",
-        resumeFrom: "evidence",
-        skipSteps: ["upload"],
-      });
+			// Trigger orchestrator
+			const handle = await tasks.trigger("interview.v2.orchestrator", {
+				analysisJobId: interviewId,
+				metadata: {
+					accountId: interview.account_id,
+					projectId: interview.project_id || undefined,
+					userId: user.sub,
+					interviewTitle: interview.title || undefined,
+					participantName: interview.participant_pseudonym || undefined,
+				},
+				transcriptData: {
+					full_transcript: interview.transcript,
+					confidence: 0.9,
+					file_type: "text",
+				},
+				mediaUrl: interview.media_url || "",
+				existingInterviewId: interviewId,
+				userCustomInstructions: "",
+				resumeFrom: "evidence",
+				skipSteps: ["upload"],
+			});
 
-      // Store trigger run ID
-      await supabase
-        .from("interviews")
-        .update({
-          conversation_analysis: {
-            ...conversationAnalysis,
-            trigger_run_id: handle.id,
-            current_step: "evidence",
-            status_detail: "Analyzing transcript...",
-            completed_steps: ["transcription"],
-          } as Json,
-        })
-        .eq("id", interviewId);
+			// Store trigger run ID
+			await supabase
+				.from("interviews")
+				.update({
+					conversation_analysis: {
+						...conversationAnalysis,
+						trigger_run_id: handle.id,
+						current_step: "evidence",
+						status_detail: "Analyzing transcript...",
+						completed_steps: ["transcription"],
+					} as Json,
+				})
+				.eq("id", interviewId);
 
-      return Response.json({
-        success: true,
-        action: "analysis_started",
-        status: "processing",
-        statusDetail: "Analyzing transcript...",
-        runId: handle.id,
-        message: "Analysis started",
-      });
-    }
+			return Response.json({
+				success: true,
+				action: "analysis_started",
+				status: "processing",
+				statusDetail: "Analyzing transcript...",
+				runId: handle.id,
+				message: "Analysis started",
+			});
+		}
 
-    // Case 4: Has media, use orchestrator for full re-processing (re-transcribe if transcript structure is missing)
-    if (interview.media_url) {
-      consola.info("[interview-restart] Full reprocess via orchestrator...", {
-        reason:
-          interview.transcript && !canResumeFromTranscript
-            ? "Transcript exists but missing chapter structure needed for reliable evidence extraction"
-            : "No transcript available",
-      });
+		// Case 4: Has media, use orchestrator for full re-processing (re-transcribe if transcript structure is missing)
+		if (interview.media_url) {
+			consola.info("[interview-restart] Full reprocess via orchestrator...", {
+				reason:
+					interview.transcript && !canResumeFromTranscript
+						? "Transcript exists but missing chapter structure needed for reliable evidence extraction"
+						: "No transcript available",
+			});
 
-      await supabase
-        .from("interviews")
-        .update({
-          status: "processing" as const,
-          conversation_analysis: {
-            ...conversationAnalysis,
-            current_step: "upload",
-            status_detail:
-              interview.transcript && !canResumeFromTranscript
-                ? "Re-transcribing to rebuild chapters and speaker segments..."
-                : "Starting processing...",
-            completed_steps: [],
-          } as Json,
-        })
-        .eq("id", interviewId);
+			await supabase
+				.from("interviews")
+				.update({
+					status: "processing" as const,
+					conversation_analysis: {
+						...conversationAnalysis,
+						current_step: "upload",
+						status_detail:
+							interview.transcript && !canResumeFromTranscript
+								? "Re-transcribing to rebuild chapters and speaker segments..."
+								: "Starting processing...",
+						completed_steps: [],
+					} as Json,
+				})
+				.eq("id", interviewId);
 
-      const handle = await tasks.trigger("interview.v2.orchestrator", {
-        analysisJobId: interviewId,
-        metadata: {
-          accountId: interview.account_id,
-          projectId: interview.project_id || undefined,
-          userId: user.sub,
-          interviewTitle: interview.title || undefined,
-          participantName: interview.participant_pseudonym || undefined,
-        },
-        transcriptData: {
-          needs_transcription: true,
-          file_type: "media",
-        },
-        mediaUrl: interview.media_url,
-        existingInterviewId: interviewId,
-        userCustomInstructions: "",
-        resumeFrom: "upload",
-        skipSteps: [],
-      });
+			const handle = await tasks.trigger("interview.v2.orchestrator", {
+				analysisJobId: interviewId,
+				metadata: {
+					accountId: interview.account_id,
+					projectId: interview.project_id || undefined,
+					userId: user.sub,
+					interviewTitle: interview.title || undefined,
+					participantName: interview.participant_pseudonym || undefined,
+				},
+				transcriptData: {
+					needs_transcription: true,
+					file_type: "media",
+				},
+				mediaUrl: interview.media_url,
+				existingInterviewId: interviewId,
+				userCustomInstructions: "",
+				resumeFrom: "upload",
+				skipSteps: [],
+			});
 
-      await supabase
-        .from("interviews")
-        .update({
-          conversation_analysis: {
-            ...conversationAnalysis,
-            trigger_run_id: handle.id,
-            current_step: "upload",
-            status_detail: "Processing started...",
-          } as Json,
-        })
-        .eq("id", interviewId);
+			await supabase
+				.from("interviews")
+				.update({
+					conversation_analysis: {
+						...conversationAnalysis,
+						trigger_run_id: handle.id,
+						current_step: "upload",
+						status_detail: "Processing started...",
+					} as Json,
+				})
+				.eq("id", interviewId);
 
-      return Response.json({
-        success: true,
-        action: "full_reprocess_started",
-        status: "processing",
-        statusDetail: "Processing started...",
-        runId: handle.id,
-        message: "Processing restarted",
-      });
-    }
+			return Response.json({
+				success: true,
+				action: "full_reprocess_started",
+				status: "processing",
+				statusDetail: "Processing started...",
+				runId: handle.id,
+				message: "Processing restarted",
+			});
+		}
 
-    // Case 5: Nothing to work with
-    return Response.json({
-      success: false,
-      action: "none",
-      status: interview.status,
-      message: "No media or transcript available to process",
-    });
-  } catch (error) {
-    consola.error("[interview-restart] Error:", error);
-    const message = error instanceof Error ? error.message : "Restart failed";
+		// Case 5: Nothing to work with
+		return Response.json({
+			success: false,
+			action: "none",
+			status: interview.status,
+			message: "No media or transcript available to process",
+		});
+	} catch (error) {
+		consola.error("[interview-restart] Error:", error);
+		const message = error instanceof Error ? error.message : "Restart failed";
 
-    if (interviewIdForError) {
-      try {
-        const supabase = createSupabaseAdminClient();
-        await supabase
-          .from("interviews")
-          .update({
-            status: "error" as const,
-            conversation_analysis: {
-              ...conversationAnalysisForError,
-              last_error: message,
-              status_detail: "Restart failed",
-              failed_at: new Date().toISOString(),
-            } as Json,
-            processing_metadata: {
-              current_step: "restart",
-              progress: 0,
-              error: message,
-              failed_at: new Date().toISOString(),
-            } as Json,
-          })
-          .eq("id", interviewIdForError);
-      } catch (updateError) {
-        consola.error(
-          "[interview-restart] Failed to write error status:",
-          updateError,
-        );
-      }
-    }
+		if (interviewIdForError) {
+			try {
+				const supabase = createSupabaseAdminClient();
+				await supabase
+					.from("interviews")
+					.update({
+						status: "error" as const,
+						conversation_analysis: {
+							...conversationAnalysisForError,
+							last_error: message,
+							status_detail: "Restart failed",
+							failed_at: new Date().toISOString(),
+						} as Json,
+						processing_metadata: {
+							current_step: "restart",
+							progress: 0,
+							error: message,
+							failed_at: new Date().toISOString(),
+						} as Json,
+					})
+					.eq("id", interviewIdForError);
+			} catch (updateError) {
+				consola.error("[interview-restart] Failed to write error status:", updateError);
+			}
+		}
 
-    return Response.json({ error: message }, { status: 500 });
-  }
+		return Response.json({ error: message }, { status: 500 });
+	}
 }

@@ -236,7 +236,9 @@ describe("Database Integration Tests", () => {
 				.single();
 			expect(error).toBeNull();
 
-			const { data: after, error: rpcError } = await testDb.rpc("get_insights_embedding_queue_depth", { filter_table: "evidence" });
+			const { data: after, error: rpcError } = await testDb.rpc("get_insights_embedding_queue_depth", {
+				filter_table: "evidence",
+			});
 			expect(rpcError).toBeNull();
 			expect(Number(after)).toBeGreaterThan(depthBefore);
 
