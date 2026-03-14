@@ -1230,7 +1230,7 @@ export default function UploadScreen({
                 Launch App
               </a>
               <a
-                href="https://getupsight.com/download"
+                href="/download/desktop"
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}

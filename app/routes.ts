@@ -489,6 +489,9 @@ const routes = [
   // Calendar OAuth callback (public - redirected from Google OAuth)
   route("api/calendar/callback", "./routes/api.calendar.callback.tsx"),
 
+  // Download redirects
+  route("download/desktop", "./routes/download.desktop.ts"),
+
   // Resource routes
   route("/link", "./routes/link.tsx"),
   route("s/:token", "./routes/s.$token.tsx"), // Public share links
