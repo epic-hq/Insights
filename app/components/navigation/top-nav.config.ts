@@ -130,8 +130,7 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
         title: "Top Themes",
         description: "Patterns emerging from your research",
         icon: Lightbulb,
-        to: () =>
-          "https://getupsight.com/a/d7b69d5e-a952-41a6-931f-e2fed1d82e85/6dbcbb68-0662-4ebc-9f84-dd13b8ff758d/insights/themes",
+        to: (routes) => routes.insights.themes(),
         countKey: "themes",
       },
       {
