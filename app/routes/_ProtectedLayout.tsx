@@ -410,26 +410,33 @@ export async function loader({ context }: Route.LoaderArgs) {
       accountId: currentAccountId,
     };
     try {
-      // Resolve billing account: use the account that actually has the user's subscription.
-      // When browsing a guest/invited account, the user's own plan should still apply —
-      // they shouldn't see free-tier limits just because the current account has no subscription.
-      let billingAccountId = currentAccountId;
-      const currentPlan = await getAccountPlan(currentAccountId);
-      if (currentPlan === "free") {
-        // Current account has no subscription — check user's owned accounts for one
-        const ownedWithSub = (user.accounts || []).find(
-          (acc: any) =>
-            !acc.personal_account &&
-            acc.is_primary_owner &&
-            acc.account_id !== currentAccountId,
-        );
-        if (ownedWithSub) {
-          const ownedPlan = await getAccountPlan(ownedWithSub.account_id);
-          if (ownedPlan !== "free") {
-            billingAccountId = ownedWithSub.account_id;
-          }
-        }
-      }
+      // Resolve billing account: find the best subscription across all user accounts.
+      // A user should never see free-tier limits just because the current URL account
+      // has no subscription — their plan follows them across all accounts they belong to.
+      const allTeamAccounts = (user.accounts || []).filter(
+        (acc: any) => !acc.personal_account,
+      );
+      const planResults = await Promise.all(
+        allTeamAccounts.map((acc: any) =>
+          getAccountPlan(acc.account_id).then((plan) => ({
+            accountId: acc.account_id as string,
+            plan,
+          })),
+        ),
+      );
+      // Pick the highest-tier account: prefer active Team > Pro > Starter > free
+      const planRank: Record<string, number> = {
+        free: 0,
+        starter: 1,
+        pro: 2,
+        team: 3,
+      };
+      const best = planResults.reduce(
+        (best, cur) =>
+          (planRank[cur.plan] ?? 0) > (planRank[best.plan] ?? 0) ? cur : best,
+        { accountId: currentAccountId, plan: "free" as string },
+      );
+      const billingAccountId = best.accountId;
 
       const gateCtx = await buildFeatureGateContext(
         billingAccountId,
