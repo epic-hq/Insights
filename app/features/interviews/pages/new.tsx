@@ -15,7 +15,7 @@ import { createInterview } from "~/features/interviews/db";
 import { createPerson, getPeople } from "~/features/people/db";
 import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server";
 import { buildFeatureGateContext, checkLimitAccess } from "~/lib/feature-gate/check-limit.server";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 export const handle = { hideProjectStatusAgent: true } as const;
 
@@ -25,7 +25,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	const accountId = params.accountId;
 	const projectId = params.projectId;
@@ -48,7 +48,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;

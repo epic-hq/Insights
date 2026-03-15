@@ -12,7 +12,7 @@ import { MediaPlayer } from "~/components/ui/MediaPlayer";
 import { Textarea } from "~/components/ui/textarea";
 import { deleteInterview, getInterviewById, updateInterview } from "~/features/interviews/db";
 import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import { createProjectRoutes } from "~/utils/routes.server";
 
 export const handle = { hideProjectStatusAgent: true } as const;
@@ -26,7 +26,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;
@@ -68,7 +68,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;

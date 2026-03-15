@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import type { Database } from "~/../supabase/types";
+import type { Database } from "~/types";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 

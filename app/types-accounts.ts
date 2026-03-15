@@ -1,4 +1,4 @@
-import type { Database } from "supabase/types";
+import type { Database } from "~/../supabase/types";
 
 type CurrentUserAccountRoleResponse = {
 	account_role: Database["accounts"]["Tables"]["account_user"]["Row"]["account_role"];

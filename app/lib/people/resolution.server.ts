@@ -13,7 +13,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "~/../supabase/types";
+import type { Database } from "~/types";
 import { upsertPersonWithOrgAwareConflict } from "~/features/interviews/peopleNormalization.server";
 
 type PeopleInsert = Database["public"]["Tables"]["people"]["Insert"];

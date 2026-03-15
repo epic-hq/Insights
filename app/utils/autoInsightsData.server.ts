@@ -71,12 +71,95 @@ interface InterviewSummary {
 	insight_count: number;
 }
 
+type InsightRow = {
+	id: string;
+	name: string;
+	category: string;
+	pain: string | null;
+	desired_outcome: string | null;
+	evidence: string | null;
+	impact: number | null;
+	novelty: number | null;
+	jtbd: string | null;
+	emotional_response: string | null;
+	journey_stage: string | null;
+	confidence: string | null;
+	priority: number | null;
+};
+
+type InsightTagRow = {
+	insight_id: string | null;
+	tags: { tag?: string | null } | null;
+};
+
+type InsightPersonaRow = {
+	insight_id: string | null;
+	personas: { name?: string | null } | null;
+};
+
+type PersonaRow = {
+	id: string;
+	name: string;
+	description: string | null;
+	percentage: number | null;
+};
+
+type PersonaInsightLinkRow = {
+	insight_id: string | null;
+};
+
+type ThemeDetailRow = {
+	id: string;
+	pain: string | null;
+	desired_outcome: string | null;
+};
+
+type OpportunityRow = {
+	id: string;
+	title: string;
+	kanban_status: string | null;
+};
+
+type OpportunityInsightRow = {
+	insight_id: string | null;
+};
+
+type ThemeNameRow = {
+	id: string;
+	name: string | null;
+};
+
+type TagFrequencyRow = {
+	tag: string;
+	insight_tags: unknown[] | null;
+	interview_tags: unknown[] | null;
+};
+
+type TagCategoryLinkRow = {
+	tag_id: string | null;
+	insight_id: string | null;
+};
+
+type ThemeCategoryRow = {
+	id: string;
+	category: string | null;
+};
+
+type InterviewRow = {
+	id: string;
+	title: string | null;
+	segment: string | null;
+	high_impact_themes: string[] | null;
+	interview_date: string | null;
+};
+
 /**
  * Aggregates and summarizes all user research data for Auto-Insights generation
  * Optimized for LLM context window (~8k tokens) with strategic data selection
  */
 export async function aggregateAutoInsightsData(request: Request, accountId: string): Promise<AutoInsightsData> {
 	const { client: db } = getServerClient(request);
+	const queryDb = db as any;
 
 	// 1. Get data summary statistics
 	const [insightsCount, interviewsCount, peopleCount, opportunitiesCount] = await Promise.all([
@@ -111,7 +194,7 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 	};
 
 	// 2. Get high-impact insights with tags and personas
-	const { data: insightsData, error: insightsError } = await db
+	const { data: rawInsightsData, error: insightsError } = await queryDb
 		.from("insights_with_priority")
 		.select(`
 	     id,
@@ -138,8 +221,9 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 	}
 
 	// Get tags for insights via junction table
-	const insightIds = insightsData?.map((i) => i.id) || [];
-	const { data: insightTagsData } = await db
+	const insightsData = (rawInsightsData ?? []) as InsightRow[];
+	const insightIds = insightsData.map((i) => i.id);
+	const { data: rawInsightTagsData } = await queryDb
 		.from("insight_tags")
 		.select(`
       insight_id,
@@ -148,7 +232,8 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 		.in("insight_id", insightIds);
 
 	// Get personas for insights via junction table
-	const { data: insightPersonasData } = await db
+	const insightTagsData = (rawInsightTagsData ?? []) as InsightTagRow[];
+	const { data: rawInsightPersonasData } = await queryDb
 		.from("persona_insights")
 		.select(`
       insight_id,
@@ -157,7 +242,8 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 		.in("insight_id", insightIds);
 
 	// Build insight summaries with tags and personas
-	const insights: InsightSummary[] = (insightsData || []).map((insight) => {
+	const insightPersonasData = (rawInsightPersonasData ?? []) as InsightPersonaRow[];
+	const insights: InsightSummary[] = insightsData.map((insight) => {
 		const tags =
 			insightTagsData
 				?.filter((it) => it.insight_id === insight.id)
@@ -190,7 +276,7 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 	});
 
 	// 3. Get persona summaries with insight statistics
-	const { data: personasData, error: personasError } = await db
+	const { data: rawPersonasData, error: personasError } = await queryDb
 		.from("personas")
 		.select(`
       id,
@@ -205,33 +291,29 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 	}
 
 	// Get persona insight counts and top pain points
+	const personasData = (rawPersonasData ?? []) as PersonaRow[];
 	const personas: PersonaSummary[] = await Promise.all(
-		(personasData || []).map(async (persona) => {
+		personasData.map(async (persona) => {
 			const { data: personaInsights } = await db
 				.from("persona_insights")
 				.select("insight_id")
 				.eq("persona_id", persona.id);
 
-			const insightIds = personaInsights?.map((pi) => pi.insight_id).filter((id): id is string => Boolean(id)) || [];
+			const personaInsightRows = (personaInsights ?? []) as PersonaInsightLinkRow[];
+			const insightIds =
+				personaInsightRows.map((pi) => pi.insight_id).filter((id): id is string => typeof id === "string") || [];
 			let insightCount = insightIds.length;
 			let topPainPoints: string[] = [];
 			let topDesiredOutcomes: string[] = [];
 
 			if (insightIds.length) {
-				const { data: themeDetails } = await db.from("themes").select("id, pain, desired_outcome").in("id", insightIds);
+					const { data: themeDetails } = await db.from("themes").select("id, pain, desired_outcome").in("id", insightIds);
+					const typedThemeDetails = (themeDetails ?? []) as ThemeDetailRow[];
+					const themeMap = new Map(typedThemeDetails.map((row) => [row.id, row]));
 
-				const themeMap = new Map(themeDetails?.map((row) => [row.id, row]));
-
-				const orderedDetails = insightIds
-					.map((id) => themeMap.get(id) ?? null)
-					.filter(
-						(
-							value
-						): value is {
-							pain: string | null;
-							desired_outcome: string | null;
-						} => Boolean(value)
-					);
+					const orderedDetails = insightIds
+						.map((id) => themeMap.get(id) ?? null)
+						.filter((value): value is ThemeDetailRow => value !== null);
 
 				insightCount = orderedDetails.length;
 				topPainPoints = orderedDetails
@@ -258,7 +340,7 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 	);
 
 	// 4. Get opportunity summaries with supporting insights
-	const { data: opportunitiesData, error: opportunitiesError } = await db
+	const { data: rawOpportunitiesData, error: opportunitiesError } = await queryDb
 		.from("opportunities")
 		.select(`
       id,
@@ -271,23 +353,26 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 		throw new Error(`Failed to fetch opportunities: ${opportunitiesError.message}`);
 	}
 
+	const opportunitiesData = (rawOpportunitiesData ?? []) as OpportunityRow[];
 	const opportunities: OpportunitySummary[] = await Promise.all(
-		(opportunitiesData || []).map(async (opportunity) => {
+		opportunitiesData.map(async (opportunity) => {
 			const { data: supportingRows } = await db
 				.from("opportunity_insights")
 				.select("insight_id")
 				.eq("opportunity_id", opportunity.id);
 
-			const supportingIds =
-				supportingRows?.map((row) => row.insight_id).filter((id): id is string => Boolean(id)) || [];
-			let supportingNames: string[] = [];
+				const supportingIds =
+					((supportingRows ?? []) as OpportunityInsightRow[])
+						.map((row) => row.insight_id)
+						.filter((id): id is string => typeof id === "string") || [];
+				let supportingNames: string[] = [];
 
-			if (supportingIds.length) {
-				const { data: themeNames } = await db.from("themes").select("id, name").in("id", supportingIds);
-
-				const nameMap = new Map(themeNames?.map((row) => [row.id, row.name || ""]));
-				supportingNames = supportingIds.map((id) => nameMap.get(id) || "").filter((name) => name.length > 0);
-			}
+				if (supportingIds.length) {
+					const { data: themeNames } = await db.from("themes").select("id, name").in("id", supportingIds);
+					const typedThemeNames = (themeNames ?? []) as ThemeNameRow[];
+					const nameMap = new Map(typedThemeNames.map((row) => [row.id, row.name || ""]));
+					supportingNames = supportingIds.map((id) => nameMap.get(id) || "").filter((name) => name.length > 0);
+				}
 
 			return {
 				id: opportunity.id,
@@ -300,7 +385,7 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 	);
 
 	// 5. Get tag frequency analysis
-	const { data: tagFrequency } = await db
+	const { data: rawTagFrequency } = await queryDb
 		.from("tags")
 		.select(`
       tag,
@@ -309,28 +394,34 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
     `)
 		.eq("account_id", accountId);
 
-	const tagIds = (tagFrequency || []).map((t) => t.tag);
+	const tagFrequency = (rawTagFrequency ?? []) as TagFrequencyRow[];
+	const tagIds = tagFrequency.map((t) => t.tag);
 	const { data: tagCategoryLinks } = tagIds.length
 		? await db.from("insight_tags").select("tag_id, insight_id").in("tag_id", tagIds)
-		: { data: [], error: null };
+		: { data: [] };
 
 	const insightIdsForTags = Array.from(
-		new Set((tagCategoryLinks || []).map((link) => link.insight_id).filter((id): id is string => Boolean(id)))
+		new Set(
+			((tagCategoryLinks ?? []) as TagCategoryLinkRow[])
+				.map((link) => link.insight_id)
+				.filter((id): id is string => typeof id === "string")
+		)
 	);
 
 	const { data: themeCategoryRows } = insightIdsForTags.length
 		? await db.from("themes").select("id, category").in("id", insightIdsForTags)
-		: { data: [], error: null };
+		: { data: [] };
 
-	const categoryMap = new Map(themeCategoryRows?.map((row) => [row.id, row.category || null]));
+	const typedThemeCategoryRows = (themeCategoryRows ?? []) as ThemeCategoryRow[];
+	const categoryMap = new Map(typedThemeCategoryRows.map((row) => [row.id, row.category || null]));
 
 	const tagToInsightIds = new Map<string, string[]>();
-	(tagCategoryLinks || []).forEach((link) => {
+	((tagCategoryLinks ?? []) as TagCategoryLinkRow[]).forEach((link) => {
 		if (!link.tag_id || !link.insight_id) return;
 		tagToInsightIds.set(link.tag_id, [...(tagToInsightIds.get(link.tag_id) || []), link.insight_id]);
 	});
 
-	const tags: TagSummary[] = (tagFrequency || [])
+	const tags: TagSummary[] = tagFrequency
 		.map((tag) => {
 			const insightCount = (tag.insight_tags as any[])?.length || 0;
 			const interviewCount = (tag.interview_tags as any[])?.length || 0;
@@ -352,7 +443,7 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 		.slice(0, 20); // Top 20 tags
 
 	// 6. Get recent interview summaries
-	const { data: interviewsData, error: interviewsError } = await db
+	const { data: rawInterviewsData, error: interviewsError } = await queryDb
 		.from("interviews")
 		.select(`
       id,
@@ -369,23 +460,24 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 		throw new Error(`Failed to fetch interviews: ${interviewsError.message}`);
 	}
 
+	const interviewsData = (rawInterviewsData ?? []) as InterviewRow[];
 	const interviews: InterviewSummary[] = await Promise.all(
-		(interviewsData || []).map(async (interview) => {
+		interviewsData.map(async (interview) => {
 			// Get insight count for this interview
 			const { data: interviewInsights } = await db
 				.from("themes")
 				.select("id", { count: "exact" })
 				.eq("interview_id", interview.id);
 
-			return {
+				return {
 				id: interview.id,
 				title: interview.title,
 				segment: interview.segment,
 				high_impact_themes: interview.high_impact_themes,
 				interview_date: interview.interview_date,
-				insight_count: interviewInsights.count || 0,
-			};
-		})
+					insight_count: interviewInsights?.length || 0,
+				};
+			})
 	);
 
 	return {

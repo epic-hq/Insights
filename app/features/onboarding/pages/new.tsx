@@ -3,7 +3,7 @@ import { useLoaderData, useNavigate, useRevalidator } from "react-router-dom";
 import OnboardingFlow, { type OnboardingData } from "~/features/onboarding/components/OnboardingFlow";
 import { getProjectById, getProjectSections } from "~/features/projects/db";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import { createRouteDefinitions } from "~/utils/route-definitions";
 
 export async function loader({ context, params }: LoaderFunctionArgs) {

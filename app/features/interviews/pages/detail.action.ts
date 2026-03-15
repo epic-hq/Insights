@@ -6,12 +6,12 @@ import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { getPeopleOptions, verifyPersonBelongsToProject } from "~/features/people/db";
 import { syncTitleToJobTitleFacet } from "~/features/people/syncTitleToFacet.server";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import { parseFullName } from "../lib/interviewDetailHelpers";
 
 export async function action({ context, params, request }: ActionFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 	const accountId = params.accountId;
 	const projectId = params.projectId;
 	const interviewId = params.interviewId;

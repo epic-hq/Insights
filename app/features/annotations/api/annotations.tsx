@@ -2,7 +2,7 @@ import consola from "consola";
 import type { ActionFunction, LoaderFunction } from "react-router";
 import { getPostHogServerClient } from "~/lib/posthog.server";
 import { currentProjectContext } from "~/server/current-project-context";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import {
 	type AnnotationType,
 	createAnnotation,
@@ -15,7 +15,7 @@ import {
 // GET /api/annotations - Fetch annotations for an entity
 export const loader: LoaderFunction = async ({ context, request, params }) => {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	const ctx_project = context.get(currentProjectContext);
 	const accountId = ctx_project.accountId ?? params?.accountId ?? ctx.account_id;
@@ -61,7 +61,7 @@ export const loader: LoaderFunction = async ({ context, request, params }) => {
 // POST /api/annotations - Handle annotation actions
 export const action: ActionFunction = async ({ context, request, params }) => {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 	const userId = ctx.claims?.sub;
 
 	const ctx_project = context.get(currentProjectContext);

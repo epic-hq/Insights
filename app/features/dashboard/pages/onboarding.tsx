@@ -1,5 +1,5 @@
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router";
-import type { Database } from "~/../supabase/types";
+import type { Database } from "~/types";
 import type { TreeNode } from "~/components/charts/TreeMap";
 import Dashboard from "~/features/dashboard/components/Dashboard";
 import type { KPI } from "~/features/dashboard/components/KPIBar";

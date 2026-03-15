@@ -13,7 +13,7 @@
 import { tasks } from "@trigger.dev/sdk";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
-import type { Json } from "~/../supabase/types";
+import type { Json } from "~/types";
 import { createSupabaseAdminClient, getAuthenticatedUser } from "~/lib/supabase/client.server";
 
 export async function action({ request }: ActionFunctionArgs) {

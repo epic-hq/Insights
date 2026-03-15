@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/u
 import { EmotionBadge, EmotionsMap } from "~/components/ui/emotion-badge";
 import { Input } from "~/components/ui/input";
 import { getInsights } from "~/features/insights/db";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import type { Insight } from "~/types";
 
 export const meta: MetaFunction = () => {
@@ -19,7 +19,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	const accountId = params.accountId;
 	const projectId = params.projectId;

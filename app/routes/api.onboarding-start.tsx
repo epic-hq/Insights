@@ -10,7 +10,8 @@ import { createProject } from "~/features/projects/db";
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server";
 import { getLangfuseClient } from "~/lib/langfuse.server";
 import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server";
-import type { InterviewInsert } from "~/types";
+import type { UserAccount } from "~/server/user-context";
+import type { InterviewInsert, UserSettings } from "~/types";
 import { createDomain } from "~/utils/http";
 import { storeAudioFile } from "~/utils/storeAudioFile.server";
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
@@ -39,7 +40,20 @@ type NewOnboardingData = {
 
 type OnboardingData = LegacyOnboardingData | NewOnboardingData;
 
-type TraceEndPayload = Parameters<LangfuseTraceClient["end"]>[0];
+type TraceEndPayload = Record<string, unknown>;
+
+function isUserAccount(value: unknown): value is UserAccount {
+	if (!value || typeof value !== "object") return false;
+	return typeof (value as { account_id?: unknown }).account_id === "string";
+}
+
+function endTrace(trace: LangfuseTraceClient | undefined, payload: TraceEndPayload | undefined) {
+	if (!trace || !payload) return;
+	const traceWithEnd = trace as LangfuseTraceClient & {
+		end?: (input?: TraceEndPayload) => void;
+	};
+	traceWithEnd.end?.(payload);
+}
 
 export async function action({ request }: ActionFunctionArgs) {
 	const startTime = Date.now();
@@ -70,20 +84,21 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Get team account and user settings from database
 		// Fetch all fields needed for internal person resolution
-		const { data: userSettings } = await supabase
-			.from("user_settings")
-			.select("last_used_account_id, first_name, last_name, email, image_url, title, role, company_name, industry")
-			.eq("user_id", user.sub)
-			.single();
+			const { data: userSettings } = await supabase
+				.from("user_settings")
+				.select("*")
+				.eq("user_id", user.sub)
+				.single();
 
 		let teamAccountId = userSettings?.last_used_account_id;
 
 		// Fallback: get first available team account if no preference set
-		if (!teamAccountId) {
-			const { data: accounts } = await supabase.rpc("get_user_accounts");
-			const teamAccount = accounts?.find((acc: any) => !acc.personal_account) || accounts?.[0];
-			teamAccountId = teamAccount?.account_id;
-		}
+			if (!teamAccountId) {
+				const { data: accounts } = await supabase.rpc("get_user_accounts");
+				const availableAccounts = Array.isArray(accounts) ? accounts.filter(isUserAccount) : [];
+				const teamAccount = availableAccounts.find((acc) => !acc.personal_account) || availableAccounts[0];
+				teamAccountId = teamAccount?.account_id;
+			}
 
 		if (!teamAccountId) {
 			return Response.json({ error: "No team account found" }, { status: 500 });
@@ -384,13 +399,13 @@ Please extract insights that specifically address these research questions and h
 
 		// Determine appropriate media_type based on source_type and context
 		// Documents, transcripts should not be "interview" or "voice_memo" by default
-		let finalMediaType = mediaTypeInput;
-		if (sourceType === "document") {
-			finalMediaType = "document";
-		} else if (sourceType === "transcript" && mediaTypeInput === "interview") {
-			// Text files uploaded as interviews keep "interview", but standalone text notes should be "voice_memo"
-			finalMediaType = mediaTypeInput === "voice_memo" ? "voice_memo" : "interview";
-		}
+			let finalMediaType = mediaTypeInput;
+			if (sourceType === "document") {
+				finalMediaType = "document";
+			} else if (sourceType === "transcript" && mediaTypeInput === "interview") {
+				// Text transcripts uploaded for interviews should stay typed as interviews.
+				finalMediaType = "interview";
+			}
 
 		const interviewData: InterviewInsert = {
 			account_id: teamAccountId,
@@ -452,10 +467,19 @@ Please extract insights that specifically address these research questions and h
 			},
 		});
 
-		await createPlannedAnswersForInterview(supabase, {
-			projectId: finalProjectId,
-			interviewId: interview.id,
-		});
+			await createPlannedAnswersForInterview(supabase, {
+				projectId: finalProjectId,
+				interviewId: interview.id,
+			});
+
+			const metadata = {
+				accountId: teamAccountId,
+				projectId: finalProjectId,
+				interviewId: interview.id,
+				sourceType: sourceType ?? null,
+				mediaType: mediaTypeInput,
+				fileName: effectiveFilename,
+			};
 
 		// Create interview_people junction record for linked person
 		// Note: transcript_key will be set later during BAML extraction when we know which speaker this person is
@@ -485,7 +509,7 @@ Please extract insights that specifically address these research questions and h
 				projectId: finalProjectId,
 				interviewId: interview.id,
 				userId: user.sub,
-				userSettings: userSettings || null,
+				userSettings: (userSettings as UserSettings | null) ?? null,
 				userMetadata: null, // Not available in API routes without middleware
 			});
 		}
@@ -505,11 +529,19 @@ Please extract insights that specifically address these research questions and h
 			sourceType === "audio_upload" ||
 			sourceType === "video_upload";
 
-		// Path 1: Documents (PDFs, spreadsheets, etc.) - just save, no processing
-		if (sourceType === "document" && !isTextFile) {
-			consola.info("📄 [ONBOARDING] Document file detected - saving without processing", {
-				fileName: file.name,
-				sourceType,
+			// Path 1: Documents (PDFs, spreadsheets, etc.) - just save, no processing
+			if (sourceType === "document" && !isTextFile) {
+				if (!file) {
+					traceEndPayload = {
+						level: "ERROR",
+						statusMessage: "Document upload is missing file content",
+					};
+					return Response.json({ error: "Document upload is missing file content" }, { status: 400 });
+				}
+
+				consola.info("📄 [ONBOARDING] Document file detected - saving without processing", {
+					fileName: file.name,
+					sourceType,
 			});
 
 			// Store the file in R2 for future access
@@ -548,11 +580,19 @@ Please extract insights that specifically address these research questions and h
 			});
 		}
 
-		// Path 2: Text files for voice memos - save to transcript only, no analysis
-		if (isTextFile && mediaTypeInput === "voice_memo") {
-			consola.info("📝 [ONBOARDING] Voice memo text file - saving to transcript without analysis", {
-				fileName: file.name,
-			});
+			// Path 2: Text files for voice memos - save to transcript only, no analysis
+			if (isTextFile && mediaTypeInput === "voice_memo") {
+				if (!file) {
+					traceEndPayload = {
+						level: "ERROR",
+						statusMessage: "Text upload is missing file content",
+					};
+					return Response.json({ error: "Text upload is missing file content" }, { status: 400 });
+				}
+
+				consola.info("📝 [ONBOARDING] Voice memo text file - saving to transcript without analysis", {
+					fileName: file.name,
+				});
 
 			const textContent = await file.text();
 			if (!textContent || textContent.trim().length === 0) {
@@ -583,10 +623,18 @@ Please extract insights that specifically address these research questions and h
 			});
 		}
 
-		// Path 3: Text files for interviews - save and run full analysis
-		if (isTextFile) {
-			// Handle text files immediately - no upload needed
-			const textContent = await file.text();
+			// Path 3: Text files for interviews - save and run full analysis
+			if (isTextFile) {
+				if (!file) {
+					traceEndPayload = {
+						level: "ERROR",
+						statusMessage: "Text upload is missing file content",
+					};
+					return Response.json({ error: "Text upload is missing file content" }, { status: 400 });
+				}
+
+				// Handle text files immediately - no upload needed
+				const textContent = await file.text();
 			const textSpan = trace?.span?.({
 				name: "ingest.text",
 				metadata: {
@@ -650,11 +698,19 @@ Please extract insights that specifically address these research questions and h
 			}
 		}
 
-		// Path 4: Audio/video files for voice memos - transcribe only, no analysis
-		if (isAudioVideo && mediaTypeInput === "voice_memo") {
-			consola.info("🎤 [ONBOARDING] Voice memo audio/video - transcribe only without analysis", {
-				fileName: file.name,
-				sourceType,
+			// Path 4: Audio/video files for voice memos - transcribe only, no analysis
+			if (isAudioVideo && mediaTypeInput === "voice_memo") {
+				if (!file) {
+					traceEndPayload = {
+						level: "ERROR",
+						statusMessage: "Voice memo upload is missing file content",
+					};
+					return Response.json({ error: "Voice memo upload is missing file content" }, { status: 400 });
+				}
+
+				consola.info("🎤 [ONBOARDING] Voice memo audio/video - transcribe only without analysis", {
+					fileName: file.name,
+					sourceType,
 			});
 
 			const audioSpan = trace?.span?.({
@@ -1084,6 +1140,6 @@ Please extract insights that specifically address these research questions and h
 		traceEndPayload = { level: "ERROR", statusMessage: message };
 		return Response.json({ error: message }, { status: 500 });
 	} finally {
-		trace?.end?.(traceEndPayload);
+		endTrace(trace, traceEndPayload);
 	}
 }

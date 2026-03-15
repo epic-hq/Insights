@@ -5,7 +5,7 @@ import { PageContainer } from "~/components/layout/PageContainer";
 import { resolveInternalPerson } from "~/features/people/services/internalPeople.server";
 import UserSettings from "~/features/users/components/UserSettings";
 import { getAuthenticatedUser } from "~/lib/supabase/client.server";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 export async function loader({ context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);

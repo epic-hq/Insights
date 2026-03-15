@@ -8,7 +8,7 @@ import type {
 	PersonFacetObservation,
 	PersonScaleObservation,
 } from "~/../baml_client/types";
-import type { Database } from "~/../supabase/types";
+import type { Database } from "~/types";
 
 const GLOBAL_PREFIX = "g:";
 const ACCOUNT_PREFIX = "a:";

@@ -5,7 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from "vitest";
-import type { Database } from "~/../supabase/types";
+import type { Database } from "~/types";
 import { backfillMissingPeople, getInterviewPeopleStats } from "./backfillPeople.server";
 
 // Mock dependencies

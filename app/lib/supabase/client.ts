@@ -1,6 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "~/../supabase/types";
+import type { Database } from "~/types";
 
 let supabaseClient: SupabaseClient<Database> | undefined;
 let ssrFallbackClient: SupabaseClient<Database> | undefined;

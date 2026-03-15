@@ -9,7 +9,7 @@ import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { deleteProject, getProjectById, updateProject } from "~/features/projects/db";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -20,7 +20,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;
@@ -49,7 +49,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;

@@ -6,7 +6,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { getFacetCatalog } from "~/lib/database/facets.server";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 interface FacetRow {
 	id: number;
@@ -23,7 +23,7 @@ interface LoaderData {
 }
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const { supabase } = context.get(userContext);
+	const supabase = requireUserSupabase(context.get(userContext));
 	const accountId = params.accountId;
 	if (!accountId) {
 		throw new Response("Missing account context", { status: 400 });
@@ -59,7 +59,7 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 		return { ok: false, error: "Unsupported method" };
 	}
 
-	const { supabase } = context.get(userContext);
+	const supabase = requireUserSupabase(context.get(userContext));
 	const accountId = params.accountId;
 	if (!accountId) {
 		return { ok: false, error: "Missing account context" };

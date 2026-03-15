@@ -4,7 +4,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "~/../supabase/types";
+import type { Database } from "~/types";
 
 // Get environment variables with browser/server compatibility
 const getEnvVar = (key: string): string => {

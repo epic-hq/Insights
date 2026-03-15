@@ -6,7 +6,7 @@ import { convertMessages } from "@mastra/core/agent";
 import consola from "consola";
 import type { LoaderFunctionArgs } from "react-router";
 import { redirect } from "react-router";
-import type { Database } from "~/../supabase/types";
+import type { Database } from "~/types";
 import { getVoteCountsForEntities } from "~/features/annotations/db";
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db";
 import {
@@ -19,7 +19,7 @@ import { getPeopleOptions } from "~/features/people/db";
 import { getPostHogServerClient } from "~/lib/posthog.server";
 import { memory } from "~/mastra/memory";
 import type { UpsightMessage } from "~/mastra/message-types";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server";
 import type { EvidenceRecord } from "../lib/interviewDetailHelpers";
 import { extractAnalysisFromInterview, matchTakeawaysToEvidence, parseFullName } from "../lib/interviewDetailHelpers";
@@ -32,7 +32,7 @@ import { type EvidenceRow, processEmpathyMap } from "../lib/processEmpathyMap.se
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;

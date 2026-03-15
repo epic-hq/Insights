@@ -46,7 +46,7 @@ import { syncTitleToJobTitleFacet } from "~/features/people/syncTitleToFacet.ser
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 import { COMPANY_SIZE_RANGES, COMPANY_TYPES, FUNDING_STAGES } from "~/lib/constants/options";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import type { Database, Interview, Opportunity, Organization, Person } from "~/types";
 import { createProjectRoutes } from "~/utils/routes.server";
 
@@ -76,7 +76,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 	const accountId = params.accountId;
 	const projectId = params.projectId;
 	const organizationId = params.organizationId;
@@ -152,7 +152,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 	const accountId = params.accountId;
 	const projectId = params.projectId;
 	const organizationId = params.organizationId;

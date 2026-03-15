@@ -10,7 +10,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import type { ConversationAnalysis } from "~/lib/conversation-analyses/schema";
-import type { Database } from "~/types/supabase.types";
+import type { Database } from "~/types";
 
 export const CONVERSATION_OVERVIEW_TEMPLATE_KEY = "conversation-overview";
 

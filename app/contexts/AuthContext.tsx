@@ -1,10 +1,10 @@
-import type { JwtPayload } from "@supabase/supabase-js";
 import { createContext, useContext } from "react";
 import { PATHS } from "~/paths";
 import type { AccountSettings, UserSettings } from "~/types";
+import type { AuthClaims } from "~/server/user-context";
 
 interface AuthContextType {
-	user: JwtPayload | null;
+	user: AuthClaims | null;
 	loading: boolean;
 	signOut: () => Promise<void>;
 	account_settings: AccountSettings | null;
@@ -29,7 +29,7 @@ export const useAuth = () => {
 
 interface AuthProviderProps {
 	children: React.ReactNode;
-	user?: JwtPayload | null;
+	user?: AuthClaims | null;
 	organizations?: unknown;
 	account_settings?: AccountSettings;
 	user_settings?: UserSettings;

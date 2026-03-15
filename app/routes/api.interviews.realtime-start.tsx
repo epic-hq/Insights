@@ -2,12 +2,12 @@ import consola from "consola";
 import { format } from "date-fns";
 import type { ActionFunctionArgs } from "react-router";
 import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
 	try {
 		const ctx = context.get(userContext);
-		const supabase = ctx.supabase;
+		const supabase = requireUserSupabase(ctx);
 		const accountId = ctx.account_id;
 		const { projectId } = params;
 

@@ -1,6 +1,7 @@
 import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr";
 import { getServerEnv } from "../../env.server";
 import type { Database } from "../../types";
+import type { AuthClaims } from "../../server/user-context";
 
 const { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: _SUPABASE_SERVICE_ROLE_KEY } = getServerEnv();
 
@@ -56,6 +57,36 @@ function extractBearerToken(request: Request): string | null {
 	return token.length > 0 ? token : null;
 }
 
+function normalizeAuthClaims(value: unknown, accessToken?: string | null): AuthClaims | null {
+	if (!value || typeof value !== "object") return null;
+
+	const claims = value as Record<string, unknown>;
+	if (typeof claims.sub !== "string" || claims.sub.length === 0) {
+		return null;
+	}
+
+	const email = typeof claims.email === "string" ? claims.email : null;
+	const user_metadata =
+		claims.user_metadata && typeof claims.user_metadata === "object"
+			? (claims.user_metadata as AuthClaims["user_metadata"])
+			: undefined;
+	const app_metadata =
+		claims.app_metadata && typeof claims.app_metadata === "object"
+			? (claims.app_metadata as Record<string, unknown>)
+			: null;
+
+	return {
+		...claims,
+		sub: claims.sub,
+		email,
+		user_metadata,
+		app_metadata,
+		jwt: typeof claims.jwt === "string" ? claims.jwt : accessToken ?? null,
+		access_token:
+			typeof claims.access_token === "string" ? claims.access_token : typeof accessToken === "string" ? accessToken : null,
+	};
+}
+
 export function createSupabaseAdminClient() {
 	return createServerClient<Database, "public">(SUPABASE_URL, _SUPABASE_SERVICE_ROLE_KEY, {
 		db: { schema: "public" },
@@ -80,18 +111,17 @@ export async function getAuthenticatedUser(request: Request) {
 	if (bearerToken) {
 		try {
 			const supabaseBearer = getRlsClient(bearerToken);
-			const { data: claimsData, error: claimsError } = await supabaseBearer.auth.getClaims();
-			if (claimsData?.claims && !claimsError) {
-				const claimRecord = claimsData.claims as Record<string, unknown>;
-				return {
-					user: {
-						...claimRecord,
-						jwt: bearerToken,
-						access_token: bearerToken,
-					},
-					headers: new Headers(),
-				};
-			}
+				const { data: claimsData, error: claimsError } = await supabaseBearer.auth.getClaims();
+				if (claimsData?.claims && !claimsError) {
+					const normalizedClaims = normalizeAuthClaims(claimsData.claims, bearerToken);
+					if (!normalizedClaims) {
+						return { user: null, headers: new Headers() };
+					}
+					return {
+						user: normalizedClaims,
+						headers: new Headers(),
+					};
+				}
 
 			const {
 				data: { user: bearerUser },
@@ -119,12 +149,12 @@ export async function getAuthenticatedUser(request: Request) {
 
 	try {
 		// Prefer JWT claims when available
-		const { data: claims, error } = await supabase.auth.getClaims();
-		// consola.log("getAuthenticatedUser claims", claims)
-		if (claims?.claims && !error) {
-			return { user: claims.claims as Record<string, unknown>, headers };
-		}
-		// Fallback to user/session for broader compatibility
+			const { data: claims, error } = await supabase.auth.getClaims();
+			// consola.log("getAuthenticatedUser claims", claims)
+			if (claims?.claims && !error) {
+				return { user: normalizeAuthClaims(claims.claims), headers };
+			}
+			// Fallback to user/session for broader compatibility
 		const { data: sessionData } = await supabase.auth.getSession();
 		if (sessionData?.session?.user) {
 			const u = sessionData.session.user;

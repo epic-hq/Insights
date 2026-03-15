@@ -7,7 +7,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
-import type { Database } from "~/database.types";
+import type { Database } from "~/types";
 
 type DbClient = SupabaseClient<Database>;
 

@@ -18,7 +18,9 @@ import { buildFeatureGateContext, checkLimitAccess } from "~/lib/feature-gate/ch
 import { isProjectRootPath, parseProjectRoute, writeLastProjectRoute } from "~/lib/last-project-route.client";
 import { resolvePosthogHost } from "~/lib/posthog/config";
 import { getAuthenticatedUser, getRlsClient, supabaseAdmin } from "~/lib/supabase/client.server";
+import type { UserAccount } from "~/server/user-context";
 import { userContext } from "~/server/user-context";
+import type { UserSettings } from "~/types";
 import type { Route } from "../+types/root";
 
 // Server-side Authentication Middleware
@@ -38,8 +40,9 @@ export const middleware: Route.MiddlewareFunction[] = [
 				});
 			}
 
-			// Extract JWT from user claims (assumes JWT is available as user?.jwt or similar)
-			const jwt = user?.jwt || user?.access_token || null;
+			// Extract JWT from normalized claims when available.
+			const jwt =
+				typeof user.jwt === "string" ? user.jwt : typeof user.access_token === "string" ? user.access_token : null;
 
 			// Use RLS client if JWT is present, otherwise fallback to anon client
 			const supabase = jwt
@@ -52,8 +55,9 @@ export const middleware: Route.MiddlewareFunction[] = [
 				supabase.rpc("get_user_accounts"),
 			]);
 
-			const { data: user_settings } = userSettingsResult;
-			const { data: accounts, error: accountsError } = userAccountsResult;
+			const user_settings = (userSettingsResult.data ?? null) as UserSettings | null;
+			const { data: rawAccounts, error: accountsError } = userAccountsResult;
+			const accounts = Array.isArray(rawAccounts) ? rawAccounts.filter(isUserAccount) : [];
 
 			if (accountsError) {
 				consola.error("Get user accounts error in middleware:", accountsError);
@@ -64,8 +68,8 @@ export const middleware: Route.MiddlewareFunction[] = [
 			consola.debug("[AUTH MIDDLEWARE] User accounts:", {
 				userId: user.sub,
 				email: user.email,
-				accountCount: accounts?.length || 0,
-				accounts: accounts?.map((acc: any) => ({
+				accountCount: accounts.length,
+				accounts: accounts.map((acc) => ({
 					accountId: acc.account_id,
 					name: acc.name,
 					personal: acc.personal_account,
@@ -77,22 +81,22 @@ export const middleware: Route.MiddlewareFunction[] = [
 			// 1. URL accountId param (if user has access)
 			// 2. last_used_account_id from user_settings
 			// 3. First non-personal account, or first account
-			let currentAccount = null;
+			let currentAccount: UserAccount | null = null;
 
 			// First priority: URL accountId param
 			const urlAccountId = params.accountId;
-			if (urlAccountId && Array.isArray(accounts)) {
-				currentAccount = accounts.find((acc: any) => acc.account_id === urlAccountId);
+			if (urlAccountId) {
+				currentAccount = accounts.find((acc) => acc.account_id === urlAccountId) ?? null;
 			}
 
 			// Second priority: last_used_account_id from user_settings
-			if (!currentAccount && user_settings?.last_used_account_id && Array.isArray(accounts)) {
-				currentAccount = accounts.find((acc: any) => acc.account_id === user_settings.last_used_account_id);
+			if (!currentAccount && user_settings?.last_used_account_id) {
+				currentAccount = accounts.find((acc) => acc.account_id === user_settings.last_used_account_id) ?? null;
 			}
 
 			// Fallback: first non-personal account, or first account if only personal
-			if (!currentAccount && Array.isArray(accounts)) {
-				currentAccount = accounts.find((acc: any) => !acc.personal_account) || accounts[0];
+			if (!currentAccount) {
+				currentAccount = accounts.find((acc) => !acc.personal_account) || accounts[0] || null;
 			}
 
 			if (!currentAccount) {
@@ -104,12 +108,12 @@ export const middleware: Route.MiddlewareFunction[] = [
 			context.set(userContext, {
 				claims: user,
 				account_id: currentAccount.account_id, // Use team account, not user.sub
-				user_metadata: user.user_metadata,
+				user_metadata: (user.user_metadata ?? {}) as Record<string, unknown>,
 				supabase,
 				headers: request.headers,
 				authHeaders, // Include auth headers for token refresh
-				user_settings: user_settings || {},
-				accounts: accounts || [],
+				user_settings: user_settings ?? undefined,
+				accounts,
 				currentAccount,
 			});
 			// consola.log(
@@ -123,7 +127,7 @@ export const middleware: Route.MiddlewareFunction[] = [
 			// )
 
 			// Check if signup process is completed
-			const signupCompleted = user_settings?.signup_data?.completed === true;
+			const signupCompleted = getSignupCompleted(user_settings);
 			const signupChatRequired = process.env.SIGNUP_CHAT_REQUIRED === "true";
 			if (signupChatRequired && !signupCompleted) {
 				consola.log("Signup not completed. Redirecting to signup-chat.", {
@@ -181,11 +185,45 @@ type PendingInvite = {
 	token: string;
 };
 
+function isUserAccount(value: unknown): value is UserAccount {
+	if (!value || typeof value !== "object") return false;
+	return typeof (value as { account_id?: unknown }).account_id === "string";
+}
+
+function getSignupCompleted(userSettings: UserSettings | null): boolean {
+	const signupData = userSettings?.signup_data;
+	if (!signupData || typeof signupData !== "object" || Array.isArray(signupData)) {
+		return false;
+	}
+
+	return signupData.completed === true;
+}
+
+function getUserJobFunction(userSettings: UserSettings | null): string | null {
+	const metadata = userSettings?.metadata;
+	if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
+		const metadataJobFunction = (metadata as Record<string, unknown>).job_function;
+		if (typeof metadataJobFunction === "string" && metadataJobFunction.length > 0) {
+			return metadataJobFunction;
+		}
+	}
+
+	if (typeof userSettings?.role === "string" && userSettings.role.length > 0) {
+		return userSettings.role;
+	}
+
+	return null;
+}
+
 export async function loader({ context }: Route.LoaderArgs) {
 	try {
 		// const loadContextInstance = context.get(loadContext)
 		// const { lang } = loadContextInstance
 		const user = context.get(userContext);
+		if (!user.claims) {
+			throw redirect("/login");
+		}
+		const userClaims = user.claims;
 
 		// Use the current account from middleware context (respects last_used_account_id priority)
 		const currentAccountId = user.currentAccount?.account_id || user.account_id;
@@ -250,9 +288,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 				if (!trialProvisioned) {
 					// IMPORTANT: Provision trial to user's OWNED team account, not current account
 					// This ensures trials go to the team the user owns, not to invited teams
-					const ownedTeamAccount = (user.accounts || []).find(
-						(acc: any) => !acc.personal_account && acc.is_primary_owner
-					);
+					const ownedTeamAccount = (user.accounts || []).find((acc) => !acc.personal_account && acc.is_primary_owner);
 
 					if (ownedTeamAccount) {
 						// Check if owned team already has subscription
@@ -268,12 +304,12 @@ export async function loader({ context }: Route.LoaderArgs) {
 								ownedTeamAccountId: ownedTeamAccount.account_id,
 								ownedTeamName: ownedTeamAccount.name,
 								currentAccountId,
-								userEmail: user.claims?.email,
+								userEmail: userClaims.email,
 							});
 
 							const trial = await provisionTrial({
 								accountId: ownedTeamAccount.account_id,
-								email: user.claims?.email,
+								email: typeof userClaims.email === "string" ? userClaims.email : undefined,
 								planId: "pro", // Give new users Pro trial
 							});
 
@@ -284,7 +320,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 									.update({
 										legacy_trial_provisioned_at: new Date().toISOString(),
 									})
-									.eq("user_id", user.claims.sub);
+									.eq("user_id", userClaims.sub);
 
 								// Only show trial info if the owned team is the current account
 								if (ownedTeamAccount.account_id === currentAccountId) {
@@ -311,11 +347,11 @@ export async function loader({ context }: Route.LoaderArgs) {
 								.update({
 									legacy_trial_provisioned_at: new Date().toISOString(),
 								})
-								.eq("user_id", user.claims.sub);
+								.eq("user_id", userClaims.sub);
 						}
 					} else {
 						consola.debug("[PROTECTED_LAYOUT] User has no owned team account, skipping trial provisioning", {
-							userId: user.claims.sub,
+							userId: userClaims.sub,
 						});
 					}
 				} else {
@@ -345,7 +381,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 			accountId: currentAccountId,
 		};
 		try {
-			const gateCtx = await buildFeatureGateContext(currentAccountId, user.claims.sub);
+			const gateCtx = await buildFeatureGateContext(currentAccountId, userClaims.sub);
 			const aiCheck = await checkLimitAccess(gateCtx, "ai_analyses");
 
 			if (!aiCheck.allowed && aiCheck.reason === "limit_exceeded") {
@@ -374,11 +410,11 @@ export async function loader({ context }: Route.LoaderArgs) {
 		const responseData = {
 			// lang,
 			auth: {
-				user: user.claims,
+				user: userClaims,
 				accountId: currentAccountId, // Use team account ID, not user ID
 			},
 			accounts: user.accounts || [],
-			user_settings: user.user_settings || {},
+			user_settings: user.user_settings || null,
 			pendingInvites,
 			trialInfo,
 			usageLimitInfo,
@@ -412,6 +448,11 @@ export default function ProtectedLayout() {
 		children: React.ReactNode;
 	}> | null>(null);
 	const [posthogClient, setPosthogClient] = useState<typeof import("posthog-js") | null>(null);
+
+	if (!auth.user) {
+		return null;
+	}
+	const authUser = auth.user;
 
 	const posthogKey =
 		typeof window !== "undefined" &&
@@ -474,18 +515,19 @@ export default function ProtectedLayout() {
 
 		// Identify user with person properties
 		const identifyProps: Record<string, unknown> = {
-			email: auth.user.email,
-			full_name: auth.user.user_metadata?.full_name,
+			email: authUser.email,
+			full_name: authUser.user_metadata?.full_name,
 		};
 
-		if (user_settings?.job_function) {
-			identifyProps.job_function = user_settings.job_function;
+		const jobFunction = getUserJobFunction(user_settings);
+		if (jobFunction) {
+			identifyProps.job_function = jobFunction;
 		}
 		if (user_settings?.company_name) {
 			identifyProps.company_name = user_settings.company_name;
 		}
 
-		ph.identify(auth.user.sub, identifyProps);
+		ph.identify(authUser.sub, identifyProps);
 
 		if (auth.accountId) {
 			ph.group("account", auth.accountId, {
@@ -493,10 +535,10 @@ export default function ProtectedLayout() {
 				seats: accounts?.length || 1,
 			});
 		}
-	}, [posthogClient, auth.user, auth.accountId, user_settings, accounts]);
+	}, [posthogClient, authUser, auth.accountId, user_settings, accounts]);
 
 	const content = (
-		<AuthProvider user={auth.user} organizations={accounts} user_settings={user_settings}>
+		<AuthProvider user={authUser} organizations={accounts} user_settings={user_settings ?? undefined}>
 			<CurrentProjectProvider>
 				<OnboardingProvider>
 					<div className="flex h-screen flex-col overflow-hidden bg-background">

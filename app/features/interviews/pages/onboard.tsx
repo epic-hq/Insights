@@ -2,7 +2,7 @@ import type { LoaderFunctionArgs } from "react-router";
 import { useLoaderData, useNavigate } from "react-router-dom";
 import { getProjectById, getProjectSections } from "~/features/projects/db";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import OnboardingFlow, { type OnboardingData } from "../../onboarding/components/OnboardingFlow";
 
 export const handle = { hideProjectStatusAgent: true } as const;

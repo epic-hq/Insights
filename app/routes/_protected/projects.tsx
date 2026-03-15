@@ -10,7 +10,7 @@ import consola from "consola";
 import { useEffect, useRef, useState } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 import { Outlet, redirect, useLoaderData, useMatches, useParams } from "react-router";
-import type { Database as ProjectsDatabase } from "supabase/types";
+import type { Database as ProjectsDatabase } from "~/types";
 import { z } from "zod";
 import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "~/components/ui/resizable";

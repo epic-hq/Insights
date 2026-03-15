@@ -11,7 +11,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { createOpportunity } from "~/features/opportunities/db";
 import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server";
 import { ensureStageValue } from "~/features/opportunities/stage-config";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 export const meta: MetaFunction = () => {
 	return [{ title: "New Opportunity | Insights" }, { name: "description", content: "Create a new opportunity" }];
@@ -19,7 +19,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 	const projectId = params.projectId;
 	const accountId = params.accountId;
 
@@ -34,7 +34,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;

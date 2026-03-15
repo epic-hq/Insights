@@ -15,7 +15,7 @@ import {
 	useSearchParams,
 } from "react-router";
 import { toast } from "sonner";
-import type { Database } from "~/../supabase/types";
+import type { Database } from "~/types";
 import {
 	AlertDialog,
 	AlertDialogAction,

@@ -3,7 +3,7 @@ import { useLoaderData } from "react-router";
 import ProjectStatusScreen from "~/features/onboarding/components/ProjectStatusScreen";
 import { getProjectById } from "~/features/projects/db";
 import { getProjectContextGeneric } from "~/features/questions/db";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import { getProjectStatusData } from "~/utils/project-status.server";
 
 export const meta: MetaFunction = () => {
@@ -12,7 +12,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 	const accountId = params.accountId;
 	const projectId = params.projectId;
 

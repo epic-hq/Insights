@@ -3,7 +3,7 @@ import type { LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router-dom";
 import ProjectGoalsScreen from "~/features/onboarding/components/ProjectGoalsScreen";
 import { getProjectById } from "~/features/projects/db";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 type TemplatePrefill = {
 	template_key: string;

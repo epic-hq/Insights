@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { Database } from "~/../supabase/types";
+import type { Database } from "~/types";
 
 // Integration test using real Supabase instance (requires environment variables)
 const supabaseUrl = typeof process !== "undefined" ? process.env.SUPABASE_URL : undefined;

@@ -11,7 +11,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { deleteOpportunity, getOpportunityById, updateOpportunity } from "~/features/opportunities/db";
 import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server";
 import { ensureStageValue } from "~/features/opportunities/stage-config";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -22,7 +22,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;
@@ -55,7 +55,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;

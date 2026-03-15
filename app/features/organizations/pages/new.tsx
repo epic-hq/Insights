@@ -5,7 +5,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { createOrganization } from "~/features/organizations/db";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import { createProjectRoutes } from "~/utils/routes.server";
 
 export const meta: MetaFunction = () => {
@@ -25,7 +25,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 	const accountId = params.accountId;
 	const projectId = params.projectId;
 

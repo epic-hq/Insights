@@ -14,13 +14,13 @@ import { NavLink, useLoaderData } from "react-router";
 import { getInsights } from "~/features/insights/db";
 import AddInterviewButton from "~/features/upload/components/AddInterviewButton";
 import { currentProjectContext } from "~/server/current-project-context";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import type { Insight } from "~/types";
 import ChatSheet from "../components/ChatSheet";
 
 export async function loader({ context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	const ctx_project = context.get(currentProjectContext);
 	const projectId = ctx_project.projectId || "";

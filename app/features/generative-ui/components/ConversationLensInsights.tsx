@@ -128,15 +128,20 @@ function parseJobMapSteps(value: unknown): JobMapStep[] {
 							: typeof c.step === "string"
 								? c.step
 								: `Step ${index + 1}`;
-				return {
-					step_key: typeof c.step_key === "string" ? c.step_key : undefined,
+				const step: JobMapStep = {
 					step_name: stepName.trim(),
-					summary: typeof c.summary === "string" ? c.summary : typeof c.detail === "string" ? c.detail : undefined,
 					pains: normalizeStringArray(c.pains),
 					workarounds: normalizeStringArray(c.workarounds),
 					metrics: normalizeStringArray(c.metrics),
 					evidence_ids: normalizeStringArray(c.evidence_ids),
 				};
+				if (typeof c.step_key === "string") step.step_key = c.step_key;
+				if (typeof c.summary === "string") {
+					step.summary = c.summary;
+				} else if (typeof c.detail === "string") {
+					step.summary = c.detail;
+				}
+				return step;
 			})
 			.filter((step): step is JobMapStep => !!step && !!step.step_name);
 
@@ -147,11 +152,12 @@ function parseJobMapSteps(value: unknown): JobMapStep[] {
 		return normalizeStringArray(value).map((line, index) => {
 			const [head, ...rest] = line.split(":");
 			const detail = rest.join(":").trim();
-			return {
+			const step: JobMapStep = {
 				step_key: `step_${index + 1}`,
 				step_name: head?.trim() || `Step ${index + 1}`,
-				summary: detail || line,
 			};
+			if (detail || line) step.summary = detail || line;
+			return step;
 		});
 	}
 
@@ -163,11 +169,12 @@ function parseJobMapSteps(value: unknown): JobMapStep[] {
 	return normalizeStringArray(value).map((line, index) => {
 		const [head, ...rest] = line.split(":");
 		const detail = rest.join(":").trim();
-		return {
+		const step: JobMapStep = {
 			step_key: `step_${index + 1}`,
 			step_name: head?.trim() || `Step ${index + 1}`,
-			summary: detail || line,
 		};
+		if (detail || line) step.summary = detail || line;
+		return step;
 	});
 }
 

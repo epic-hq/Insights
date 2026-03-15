@@ -12,7 +12,7 @@ import { getOpportunities } from "~/features/opportunities/db";
 import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server";
 import { ensureStageValue, normalizeStageId } from "~/features/opportunities/stage-config";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Opportunities" }, { name: "description", content: "Manage business opportunities" }];
@@ -20,7 +20,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 	const accountId = params.accountId;
 	const projectId = params.projectId;
 

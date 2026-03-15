@@ -8,7 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { type AccountSettingsMetadata, PLATFORM_DEFAULT_LENS_KEYS } from "~/features/opportunities/stage-config";
-import type { Database } from "~/types/supabase.types";
+import type { Database } from "~/types";
 import { getImageUrl } from "~/utils/storeImage.server";
 import type { LensTemplate } from "./loadLensAnalyses.server";
 

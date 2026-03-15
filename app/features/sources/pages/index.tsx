@@ -20,7 +20,7 @@ import { useCurrentProject } from "~/contexts/current-project-context";
 import NoteCard from "~/features/interviews/components/NoteCard";
 import { getInterviews } from "~/features/interviews/db";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import type { InterviewWithPeople } from "~/types";
 
 export const meta: MetaFunction = () => {
@@ -29,7 +29,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	const accountId = params.accountId;
 	const projectId = params.projectId;

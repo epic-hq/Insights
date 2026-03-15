@@ -6,6 +6,8 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const mockPdfParse = vi.fn();
+
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
 vi.mock("consola", () => ({
@@ -61,18 +63,16 @@ vi.mock("@trigger.dev/sdk", () => ({
 
 // Dynamic import mock for pdf-parse
 vi.mock("pdf-parse", () => ({
-	default: vi.fn(),
+	default: mockPdfParse,
 }));
 
 // ── Imports (after mocks) ────────────────────────────────────────────────────
 
 import { tasks } from "@trigger.dev/sdk";
-import pdfParse from "pdf-parse";
 import { storeAudioFile } from "~/utils/storeAudioFile.server";
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 import { action } from "./api.upload-file";
 
-const mockPdfParse = vi.mocked(pdfParse);
 const mockStoreAudioFile = vi.mocked(storeAudioFile);
 const mockTrigger = vi.mocked(tasks.trigger);
 const mockSanitize = vi.mocked(safeSanitizeTranscriptPayload);
@@ -170,6 +170,22 @@ function makeFormData(file: File, projectId = TEST_PROJECT_ID) {
 	return fd;
 }
 
+function invokeAction({
+	request,
+	context,
+	params,
+}: {
+	request: Request;
+	context?: ReturnType<typeof createMockContext>;
+	params?: Record<string, string>;
+}) {
+	return action({
+		request,
+		context: (context ?? createMockContext()) as unknown as Parameters<typeof action>[0]["context"],
+		params: (params ?? {}) as Parameters<typeof action>[0]["params"],
+	} as Parameters<typeof action>[0]);
+}
+
 // ── Sample content ───────────────────────────────────────────────────────────
 
 const SAMPLE_TRANSCRIPT_TEXT = `Interviewer: Tell me about the onboarding experience.
@@ -229,7 +245,7 @@ describe("api/upload-file", () => {
 			const request = new Request("http://localhost/api/upload-file", {
 				method: "GET",
 			});
-			const response = await action({
+			const response = await invokeAction({
 				request,
 				context: createMockContext() as any,
 				params: {},
@@ -240,7 +256,7 @@ describe("api/upload-file", () => {
 		it("rejects requests with no file", async () => {
 			const fd = new FormData();
 			fd.set("projectId", TEST_PROJECT_ID);
-			const response = await action({
+			const response = await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -253,7 +269,7 @@ describe("api/upload-file", () => {
 		it("rejects requests with no projectId", async () => {
 			const fd = new FormData();
 			fd.set("file", new File(["hello"], "test.txt", { type: "text/plain" }));
-			const response = await action({
+			const response = await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -273,7 +289,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			const response = await action({
+			const response = await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -313,7 +329,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			const response = await action({
+			const response = await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -327,7 +343,7 @@ describe("api/upload-file", () => {
 			const file = new File([""], "empty.txt", { type: "text/plain" });
 			const fd = makeFormData(file);
 
-			const response = await action({
+			const response = await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -344,7 +360,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			const response = await action({
+			const response = await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -360,7 +376,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			await action({
+			await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext(supabase) as any,
 				params: {},
@@ -381,7 +397,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			await action({
+			await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext(supabase) as any,
 				params: {},
@@ -404,7 +420,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			const response = await action({
+			const response = await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -443,7 +459,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			await action({
+			await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -467,7 +483,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			const response = await action({
+			const response = await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -484,7 +500,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			await action({
+			await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext(supabase) as any,
 				params: {},
@@ -504,7 +520,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			await action({
+			await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext(supabase) as any,
 				params: {},
@@ -532,7 +548,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			const response = await action({
+			const response = await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -558,7 +574,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			const response = await action({
+			const response = await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -575,7 +591,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			const response = await action({
+			const response = await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -594,7 +610,7 @@ describe("api/upload-file", () => {
 			const file = new File(["content"], "notes.txt", { type: "text/plain" });
 			const fd = makeFormData(file);
 
-			await action({
+			await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -610,7 +626,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			await action({
+			await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -632,7 +648,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			await action({
+			await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -647,17 +663,17 @@ describe("api/upload-file", () => {
 
 	describe("orchestrator trigger", () => {
 		it("passes mediaUrl from R2 storage for PDF uploads", async () => {
-			mockStoreAudioFile.mockResolvedValueOnce({
-				mediaUrl: "https://r2.example.com/stored-transcript.pdf",
-				error: null,
-			});
+				mockStoreAudioFile.mockResolvedValueOnce({
+					mediaUrl: "https://r2.example.com/stored-transcript.pdf",
+					error: undefined,
+				});
 
 			const file = new File([MINIMAL_PDF_BYTES], "transcript.pdf", {
 				type: "application/pdf",
 			});
 			const fd = makeFormData(file);
 
-			await action({
+			await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},
@@ -677,7 +693,7 @@ describe("api/upload-file", () => {
 			});
 			const fd = makeFormData(file);
 
-			await action({
+			await invokeAction({
 				request: makeRequest(fd),
 				context: createMockContext() as any,
 				params: {},

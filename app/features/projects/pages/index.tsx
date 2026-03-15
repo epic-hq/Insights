@@ -10,7 +10,7 @@ import { useCurrentProject } from "~/contexts/current-project-context";
 import { getProjects } from "~/features/projects/db";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Projects" }, { name: "description", content: "Manage research and product projects" }];
@@ -18,7 +18,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ context, request, params }: LoaderFunctionArgs) {
 	const user = context.get(userContext);
-	const supabase = user.supabase;
+	const supabase = requireUserSupabase(user);
 
 	// Use accountId from URL - this is the canonical team account ID
 	// Best practice for multi-tenant SaaS: account context comes from URL

@@ -3,7 +3,7 @@ import { tasks } from "@trigger.dev/sdk";
 import consola from "consola";
 import type { processInterviewOrchestratorV2 } from "~/../../src/trigger/interview/v2/orchestrator";
 import type { InterviewMetadata } from "~/../../src/trigger/interview/v2/types";
-import type { Database } from "~/../supabase/types";
+import type { Database } from "~/types";
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
 interface RegenerateEvidenceOptions {

@@ -22,6 +22,48 @@ import type { UpsightMessage } from "~/mastra/message-types";
 import { SignupDataWatcher } from "../components/SignupDataWatcher";
 import type { Route } from "./+types/ai-sdk-chat";
 
+type SignupData = Record<string, unknown> & {
+	completed?: boolean;
+};
+
+type ToolPartView = {
+	type: string;
+	text?: string;
+	state?: string;
+	input?: Record<string, unknown>;
+	output?: Record<string, unknown>;
+};
+
+function asSignupData(value: unknown): SignupData | undefined {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+	return value as SignupData;
+}
+
+function asToolPartView(value: unknown): ToolPartView {
+	return (value ?? {}) as ToolPartView;
+}
+
+function getQuestions(part: ToolPartView): string[] {
+	const questions = part.input?.questions;
+	return Array.isArray(questions) ? questions.filter((question): question is string => typeof question === "string") : [];
+}
+
+function getOutputData(part: ToolPartView): Record<string, unknown> | null {
+	const data = part.output?.data;
+	if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+	return data as Record<string, unknown>;
+}
+
+function getStringValue(data: Record<string, unknown> | null, key: string): string | null {
+	const value = data?.[key];
+	return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function getBooleanValue(data: Record<string, unknown> | null, key: string): boolean | null {
+	const value = data?.[key];
+	return typeof value === "boolean" ? value : null;
+}
+
 export async function loader({ context, request }: LoaderFunctionArgs) {
 	const { user } = await getAuthenticatedUser(request);
 	if (!user) {
@@ -68,7 +110,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 		.eq("user_id", user.sub)
 		.single();
 
-	const existingChatData = userSettings?.signup_data;
+	const existingChatData = asSignupData(userSettings?.signup_data);
 
 	return data({
 		messages: aiv5Messages,
@@ -102,9 +144,12 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 				return;
 			}
 
-			if (toolCall.toolName === "navigateToPage") {
-				consola.log("Navigating to page: ", toolCall.input);
-				navigate(toolCall?.input?.path);
+				if (toolCall.toolName === "navigateToPage") {
+					consola.log("Navigating to page: ", toolCall.input);
+					const toolInput = toolCall.input as { path?: string } | undefined;
+					const path = typeof toolInput?.path === "string" ? toolInput.path : undefined;
+					if (!path) return;
+					navigate(path);
 				// No await - avoids potential deadlocks
 				addToolResult({
 					tool: "navigateToPage",
@@ -116,9 +161,10 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 	});
 
 	// Onboarding data
-	const [_onboardingData, setOnboardingData] = useState(existingChatData);
-	const [chatCompleted, setChatCompleted] = useState(Boolean(existingChatData?.completed || false));
-	const { clientEnv } = useRouteLoaderData("root");
+	const [_onboardingData, setOnboardingData] = useState<SignupData | undefined>(existingChatData);
+	const [chatCompleted, setChatCompleted] = useState(Boolean(existingChatData?.completed === true));
+	const rootData = useRouteLoaderData("root") as { clientEnv?: Record<string, unknown> } | undefined;
+	const clientEnv = rootData?.clientEnv;
 	const chatRequired = Boolean(clientEnv?.SIGNUP_CHAT_REQUIRED === "true");
 	// If signup chat is not required, or it's already completed, send users home immediately.
 	useEffect(() => {
@@ -167,33 +213,33 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 						{messages?.map((message) => (
 							<Message from={message.role} key={message.id}>
 								<MessageContent>
-									{message?.parts?.map((part, i) => {
-										switch (part.type) {
-											// @ts-expect-error - this is mastra built in tool
-											case "tool-updateWorkingMemory":
-												return (
-													<Task key={i}>
-														<TaskTrigger title="Update Working Memory" icon={<Brain className="size-4" />} />
-														<TaskContent>
-															{/* @ts-expect-error - this is mastra built in tool */}
-															<Streamdown className="rounded-2xl bg-white p-2">
-																{(part?.input?.memory as string) || ""}
-															</Streamdown>
-														</TaskContent>
-													</Task>
-												);
-											case "tool-displayUserQuestions":
-												switch (part.state) {
-													case "input-streaming":
-														return <Loader />;
-													case "input-available":
+										{message?.parts?.map((part, i) => {
+											const toolPart = asToolPartView(part);
+											const outputData = getOutputData(toolPart);
+											switch (toolPart.type) {
+												case "tool-updateWorkingMemory":
+													return (
+														<Task key={i}>
+															<TaskTrigger title="Update Working Memory" icon={<Brain className="size-4" />} />
+															<TaskContent>
+																<Streamdown className="rounded-2xl bg-white p-2">
+																	{typeof toolPart.input?.memory === "string" ? toolPart.input.memory : ""}
+																</Streamdown>
+															</TaskContent>
+														</Task>
+													);
+												case "tool-displayUserQuestions":
+													switch (toolPart.state) {
+														case "input-streaming":
+															return <Loader />;
+														case "input-available":
 														return (
 															<Card>
 																<CardHeader>
 																	<CardTitle>Research Questions</CardTitle>
 																</CardHeader>
 																<CardContent>
-																	{part.input?.questions?.map((question, i) => (
+																	{getQuestions(toolPart).map((question, i) => (
 																		<div key={i}>{question}</div>
 																	))}
 																</CardContent>
@@ -209,7 +255,7 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 																	</CardTitle>
 																</CardHeader>
 																<CardContent>
-																	{part.input?.questions?.map((question, i) => (
+																	{getQuestions(toolPart).map((question, i) => (
 																		<div key={i}>{question}</div>
 																	))}
 																</CardContent>
@@ -217,55 +263,53 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 														);
 												}
 											case "tool-saveUserSettingsData":
-												return (
-													<Task className="rounded-lg border p-4">
-														<TaskTrigger title="Saved details" icon={<Pencil className="size-4" />} />
-														<TaskContent>
-															{/* {part?.output?.message} */}
-															{part?.output?.data?.challenges && (
-																<div>
-																	<span className="font-bold">Challenges:</span> {part?.output?.data?.challenges}
-																</div>
-															)}
-															{part?.output?.data?.content_types && (
-																<div>
-																	<span className="font-bold">Content Types:</span> {part?.output?.data?.content_types}
-																</div>
-															)}
-															{part?.output?.data?.goal && (
-																<div>
-																	<span className="font-bold">Goal:</span> {part?.output?.data?.goal}
-																</div>
-															)}
-															{part?.output?.data?.other_feedback && (
-																<div>
-																	<span className="font-bold">Other Feedback:</span>{" "}
-																	{part?.output?.data?.other_feedback}
-																</div>
-															)}
-															{part?.output?.data?.completed && (
-																<div className="flex items-center gap-2">
-																	<span className="font-bold">Completed:</span>{" "}
-																	{part?.output?.data?.completed ? (
-																		<Check className="size-4 text-emerald-500" />
-																	) : (
-																		<X className="size-4" />
-																	)}
-																</div>
-															)}
-															{/* {process.env.NODE_ENV === "development" && JSON.stringify(part?.output?.data)} */}
-														</TaskContent>
-													</Task>
-												);
-											case "tool-saveProjectSectionsData":
-												return (
-													<Task className="rounded-lg border p-4">
-														<TaskTrigger title="Save sections" icon={<Pencil className="size-4" />} />
-														<TaskContent>{part?.output?.message}</TaskContent>
-													</Task>
-												);
-											case "text": // we don't use any reasoning or tool calls in this example
-												return <AiResponse key={`${message.id}-${i}`}>{part.text}</AiResponse>;
+													return (
+														<Task className="rounded-lg border p-4">
+															<TaskTrigger title="Saved details" icon={<Pencil className="size-4" />} />
+															<TaskContent>
+																{getStringValue(outputData, "challenges") && (
+																	<div>
+																		<span className="font-bold">Challenges:</span> {getStringValue(outputData, "challenges")}
+																	</div>
+																)}
+																{getStringValue(outputData, "content_types") && (
+																	<div>
+																		<span className="font-bold">Content Types:</span> {getStringValue(outputData, "content_types")}
+																	</div>
+																)}
+																{getStringValue(outputData, "goal") && (
+																	<div>
+																		<span className="font-bold">Goal:</span> {getStringValue(outputData, "goal")}
+																	</div>
+																)}
+																{getStringValue(outputData, "other_feedback") && (
+																	<div>
+																		<span className="font-bold">Other Feedback:</span>{" "}
+																		{getStringValue(outputData, "other_feedback")}
+																	</div>
+																)}
+																{getBooleanValue(outputData, "completed") !== null && (
+																	<div className="flex items-center gap-2">
+																		<span className="font-bold">Completed:</span>{" "}
+																		{getBooleanValue(outputData, "completed") ? (
+																			<Check className="size-4 text-emerald-500" />
+																		) : (
+																			<X className="size-4" />
+																		)}
+																	</div>
+																)}
+															</TaskContent>
+														</Task>
+													);
+												case "tool-saveProjectSectionsData":
+													return (
+														<Task className="rounded-lg border p-4">
+															<TaskTrigger title="Save sections" icon={<Pencil className="size-4" />} />
+															<TaskContent>{getStringValue(toolPart.output ?? null, "message") ?? ""}</TaskContent>
+														</Task>
+													);
+												case "text": // we don't use any reasoning or tool calls in this example
+													return <AiResponse key={`${message.id}-${i}`}>{toolPart.text ?? ""}</AiResponse>;
 											default:
 												return null;
 										}

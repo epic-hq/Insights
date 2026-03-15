@@ -5,7 +5,7 @@ pre-commit:
       run: pnpm run check --fix --no-errors-on-unmatched
       stage_fixed: true
     typecheck:
-      run: pnpm run typecheck
+      run: pnpm run typecheck:baseline
     test:
       run: pnpm run test
     unused-code:

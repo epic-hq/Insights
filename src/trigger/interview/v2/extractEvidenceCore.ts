@@ -15,10 +15,10 @@ import type {
   FacetMention,
   InterviewExtraction,
   PersonFacetInput,
-  PersonFacetObservation,
   PersonScaleInput,
+  SpeakerUtterance,
 } from "~/../baml_client/types";
-import type { Json } from "~/../supabase/types";
+import type { Json } from "~/types";
 import {
   ensureInterviewInterviewerLink,
   resolveInternalPerson,
@@ -341,6 +341,49 @@ interface ExtractEvidenceResult {
   rawPeople?: EvidenceParticipant[];
 }
 
+interface EvidenceParticipant {
+  person_key?: string | null;
+  speaker_label?: string | null;
+  display_name?: string | null;
+  inferred_name?: string | null;
+  person_name?: string | null;
+  job_title?: string | null;
+  job_function?: string | null;
+  organization?: string | null;
+  summary?: string | null;
+  segments?: unknown[];
+  personas?: unknown[];
+  facets?: unknown[];
+  scales?: unknown[];
+}
+
+interface PersonFacetObservation {
+  kind_slug: string;
+  value: string;
+  source?: string;
+  evidence_unit_index?: number;
+  confidence?: number;
+  notes?: string[];
+  facet_account_id?: number;
+  candidate?: {
+    kind_slug: string;
+    label: string;
+    synonyms: string[];
+    notes?: string[];
+  };
+}
+
+interface LangfuseGenerationLike {
+  end?: (payload?: Record<string, unknown>) => void;
+  update?: (payload?: Record<string, unknown>) => void;
+}
+
+interface LangfuseTraceLike {
+  update?: (payload?: Record<string, unknown>) => void;
+  end?: (payload?: Record<string, unknown>) => void;
+  generation?: (options: Record<string, unknown>) => LangfuseGenerationLike;
+}
+
 function normalizeSpeakerLabelKey(
   value: string | null | undefined,
 ): string | null {
@@ -543,17 +586,7 @@ export async function extractEvidenceAndPeopleCore({
   let evidenceUnits: EvidenceFromBaml["evidence"] = [];
   let insertedEvidenceIds: string[] = [];
   const evidenceFacetKinds: string[][] = [];
-  const evidenceFacetRowsToInsert: Array<{
-    account_id: string;
-    project_id: string | null;
-    evidence_index: number;
-    kind_slug: string;
-    facet_account_id: number;
-    label: string;
-    source: string;
-    confidence: number;
-    quote: string | null;
-  }> = [];
+  const evidenceFacetRowsToInsert: EvidenceFacetRow[] = [];
   const facetMentionsByPersonKey = new Map<
     string,
     Array<{
@@ -617,7 +650,7 @@ export async function extractEvidenceAndPeopleCore({
   const langfuse = getLangfuseClient();
   const lfTrace = (
     langfuse as unknown as {
-      trace?: (options: Record<string, unknown>) => unknown;
+      trace?: (options: Record<string, unknown>) => LangfuseTraceLike;
     }
   )?.trace?.({
     name: "baml.extract-evidence",
@@ -643,7 +676,7 @@ export async function extractEvidenceAndPeopleCore({
   };
   let traceOutputSummary: Record<string, unknown> | null = null;
   let traceStatusMessage: string | null = null;
-  (lfTrace as any)?.update?.({ input: traceInputSummary });
+  lfTrace?.update?.({ input: traceInputSummary });
   consola.info(`📊 Extracting evidence with ${chapters.length} chapters`, {
     chapterSample: chapters.slice(0, 3),
     transcriptLength: fullTranscript?.length ?? 0,
@@ -709,22 +742,18 @@ export async function extractEvidenceAndPeopleCore({
     // Get speaker transcripts from sanitized data
     const speakerTranscriptsRaw = (transcriptData as Record<string, unknown>)
       .speaker_transcripts;
-    const speakerTranscripts = Array.isArray(speakerTranscriptsRaw)
+    const speakerTranscripts: SpeakerUtterance[] = Array.isArray(
+      speakerTranscriptsRaw,
+    )
       ? (speakerTranscriptsRaw as Array<Record<string, unknown>>).map((u) => ({
           speaker: typeof u.speaker === "string" ? u.speaker : "",
           text: typeof u.text === "string" ? u.text : "",
-          start:
-            typeof u.start === "number" || typeof u.start === "string"
-              ? u.start
-              : null,
-          end:
-            typeof u.end === "number" || typeof u.end === "string"
-              ? u.end
-              : null,
+          start: coerceSeconds(u.start),
+          end: coerceSeconds(u.end),
         }))
       : [];
     traceInputSummary.speakerUtteranceCount = speakerTranscripts.length;
-    (lfTrace as any)?.update?.({ input: traceInputSummary });
+    lfTrace?.update?.({ input: traceInputSummary });
 
     if (speakerTranscripts.length === 0) {
       traceStatusMessage =
@@ -970,10 +999,7 @@ export async function extractEvidenceAndPeopleCore({
   // Phase 2: Derive Persona Facets from Evidence
   // ═══════════════════════════════════════════════════════════════
   let personaSynthesis: PersonaSynthesisFromBaml | null = null;
-  const personaFacetsByPersonKey = new Map<
-    string,
-    PersonaSynthesisFromBaml["persona_facets"]
-  >();
+  const personaFacetsByPersonKey = new Map<string, PersonaFacet[]>();
 
   try {
     // Progress checkpoint: Starting persona synthesis
@@ -1015,7 +1041,7 @@ export async function extractEvidenceAndPeopleCore({
         : ((evidenceResponse as any)?.context_reasoning ?? "not provided");
 
     const safeEvidenceResponse = {
-      ...((evidenceResponse as Record<string, unknown>) || {}),
+      ...((evidenceResponse as unknown as Record<string, unknown>) || {}),
       interaction_context: fallbackInteraction,
       context_confidence: fallbackConfidence,
       context_reasoning: fallbackReasoning,
@@ -1072,11 +1098,23 @@ export async function extractEvidenceAndPeopleCore({
     if (personaSynthesis?.persona_facets) {
       for (const facet of personaSynthesis.persona_facets) {
         if (!facet.person_key) continue;
-        const facets = personaFacetsByPersonKey.get(facet.person_key) ?? [];
-        if (!personaFacetsByPersonKey.has(facet.person_key)) {
-          personaFacetsByPersonKey.set(facet.person_key, facets);
+        const normalizedFacet: PersonaFacet = {
+          person_key: facet.person_key,
+          kind_slug: facet.kind_slug,
+          value: facet.value,
+          evidence_refs: Array.isArray(facet.evidence_refs)
+            ? facet.evidence_refs
+            : [],
+          confidence: facet.confidence,
+          frequency: facet.frequency,
+          reasoning: facet.reasoning ?? undefined,
+        };
+        const facets =
+          personaFacetsByPersonKey.get(normalizedFacet.person_key) ?? [];
+        if (!personaFacetsByPersonKey.has(normalizedFacet.person_key)) {
+          personaFacetsByPersonKey.set(normalizedFacet.person_key, facets);
         }
-        facets.push(facet);
+        facets.push(normalizedFacet);
       }
       consola.log(
         `✅ Phase 2 complete: Synthesized ${personaSynthesis.persona_facets.length} persona facets for ${personaFacetsByPersonKey.size} people`,
@@ -1289,8 +1327,8 @@ export async function extractEvidenceAndPeopleCore({
       summary,
       segments,
       personas,
-      facets,
-      scales,
+      facets: facets as unknown as PersonFacetInput[],
+      scales: scales as unknown as PersonScaleInput[],
     };
     participants.push(normalized);
     participantByKey.set(person_key, normalized);
@@ -1336,7 +1374,9 @@ export async function extractEvidenceAndPeopleCore({
     primaryParticipant?.person_key ?? participants[0]?.person_key ?? "person-0";
 
   for (const participant of participants) {
-    if (participant.facets.length) {
+    const participantFacets =
+      participant.facets as unknown as PersonFacetObservation[];
+    if (participantFacets.length) {
       const observationList =
         facetObservationsByPersonKey.get(participant.person_key) ?? [];
       const dedupeSet =
@@ -1348,7 +1388,7 @@ export async function extractEvidenceAndPeopleCore({
         );
         facetObservationDedup.set(participant.person_key, dedupeSet);
       }
-      for (const facet of participant.facets) {
+      for (const facet of participantFacets) {
         const dedupeKey = `${facet.kind_slug.toLowerCase()}|${facet.value.toLowerCase()}|${facet.evidence_unit_index ?? -1}`;
         if (dedupeSet.has(dedupeKey)) continue;
         dedupeSet.add(dedupeKey);
@@ -1881,13 +1921,13 @@ export async function extractEvidenceAndPeopleCore({
     // First, try word-level text search for precise timing (best for single-speaker content)
     const snippetForTiming = chunk || gist || verb;
     if (snippetForTiming?.length && wordTimeline.length > 0) {
-      anchorSeconds = findStartSecondsForSnippet({
-        snippet: snippetForTiming,
-        wordTimeline,
-        segmentTimeline,
-        fullTranscript,
-        durationSeconds,
-      });
+        anchorSeconds = findStartSecondsForSnippet({
+          snippet: snippetForTiming,
+          wordTimeline,
+          segmentTimeline,
+          fullTranscript,
+          durationSeconds: durationSeconds ?? null,
+        });
       if (anchorSeconds !== null) {
         timingSource = "word-level";
       }
@@ -1904,7 +1944,7 @@ export async function extractEvidenceAndPeopleCore({
         wordTimeline: [], // Already tried word-level
         segmentTimeline,
         fullTranscript,
-        durationSeconds,
+        durationSeconds: durationSeconds ?? null,
       });
       if (anchorSeconds !== null) {
         timingSource = "segment-level";
@@ -2031,6 +2071,9 @@ export async function extractEvidenceAndPeopleCore({
       insertedEvidenceIds,
       evidenceUnits,
       evidenceFacetKinds,
+      interactionContext: null,
+      contextConfidence: null,
+      contextReasoning: null,
     };
   }
 
@@ -2479,7 +2522,9 @@ export async function extractEvidenceAndPeopleCore({
           notes: mention.quote ? [mention.quote] : undefined,
         });
       }
-      const scaleObservations = participantByKey.get(personKey)?.scales ?? [];
+      const scaleObservations =
+        (participantByKey.get(personKey)?.scales as unknown as PersonScaleObservation[]) ??
+        [];
       if (facetObservations.length || scaleObservations.length) {
         observationInputs.push({
           personId,

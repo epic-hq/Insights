@@ -12,7 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
 import { InsightCardV3 } from "~/features/insights/components/InsightCardV3";
 import { getInsights } from "~/features/insights/db";
 import { currentProjectContext } from "~/server/current-project-context";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import type { Insight } from "~/types";
 
 type ViewMode = "flat" | "grouped";
@@ -23,7 +23,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	const ctx_project = context.get(currentProjectContext);
 	const projectId = ctx_project.projectId ?? params.projectId ?? null;

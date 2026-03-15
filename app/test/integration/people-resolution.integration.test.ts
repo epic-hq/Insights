@@ -4,7 +4,7 @@
  */
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import type { Database } from "~/../supabase/types";
+import type { Database } from "~/types";
 import { type PersonResolutionInput, resolveOrCreatePerson } from "~/lib/people/resolution.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 

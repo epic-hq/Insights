@@ -5,6 +5,30 @@ import type { ActionFunctionArgs } from "react-router";
 import { getServerClient } from "~/lib/supabase/client.server";
 import { userContext } from "~/server/user-context";
 
+type PersonaProjectRow = {
+	id: string;
+	name: string | null;
+	description: string | null;
+};
+
+type PersonaInsightDetailRow = {
+	id: string;
+	name: string | null;
+	details: string | null;
+	pain: string | null;
+	desired_outcome: string | null;
+	emotional_response: string | null;
+	journey_stage: string | null;
+	category: string | null;
+	evidence: string | null;
+	priority: number | null;
+};
+
+type PersonaInsightJoinRow = {
+	persona_id: string | null;
+	insight: PersonaInsightDetailRow | null;
+};
+
 const toStringArray = (value: unknown): string[] => {
 	if (Array.isArray(value)) {
 		return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
@@ -34,7 +58,7 @@ const splitEvidence = (text: string | null | undefined): string[] => {
 
 export async function action({ request, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext);
-	const userId = ctx.userId;
+	const userId = ctx.claims?.sub;
 	consola.debug("Persona Advisor requested", { userId });
 	const formData = await request.formData();
 	const accountId = formData.get("accountId")?.toString();
@@ -45,18 +69,19 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		return Response.json({ ok: false, error: "Missing account or project" }, { status: 400 });
 	}
 
-	const { client: supabase } = getServerClient(request);
+		const { client: supabase } = getServerClient(request);
+		const querySupabase = supabase as any;
 
 	try {
-		const [{ data: project, error: projectError }, { data: personas, error: personasError }] = await Promise.all([
-			supabase
-				.from("projects")
-				.select("id, name, description")
+			const [{ data: rawProject, error: projectError }, { data: rawPersonas, error: personasError }] = await Promise.all([
+				querySupabase
+					.from("projects")
+					.select("id, name, description")
 				.eq("id", projectId)
 				.eq("account_id", accountId)
 				.single(),
-			supabase
-				.from("personas")
+				querySupabase
+					.from("personas")
 				.select("*")
 				.eq("project_id", projectId)
 				.eq("account_id", accountId)
@@ -72,7 +97,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			return Response.json({ ok: false, error: personasError.message }, { status: 500 });
 		}
 
-		if (!personas || personas.length === 0) {
+			const project = (rawProject ?? null) as PersonaProjectRow | null;
+			const personas = (rawPersonas ?? []) as Array<Record<string, any>>;
+
+			if (personas.length === 0) {
 			return Response.json({ ok: false, message: "No personas available yet" });
 		}
 
@@ -108,8 +136,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 		const personIds = Array.from(personIdsSet);
 
-		const facetPromise = personIds.length
-			? supabase
+			const facetPromise = personIds.length
+				? querySupabase
 					.from("person_facet")
 					.select(`
 					person_id,
@@ -130,8 +158,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					.eq("account_id", accountId)
 			: Promise.resolve({ data: [], error: null });
 
-		const scalePromise = personIds.length
-			? supabase
+			const scalePromise = personIds.length
+				? querySupabase
 					.from("person_scale")
 					.select("person_id, kind_slug, score, band, source, confidence")
 					.in("person_id", personIds)
@@ -139,8 +167,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					.eq("account_id", accountId)
 			: Promise.resolve({ data: [], error: null });
 
-		const personaInsightsPromise = personIds.length
-			? supabase
+			const personaInsightsPromise = personIds.length
+				? querySupabase
 					.from("persona_insights")
 					.select(`
 					persona_id,
@@ -162,7 +190,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					.eq("account_id", accountId)
 			: Promise.resolve({ data: [], error: null });
 
-		const researchPromise = supabase
+			const researchPromise = querySupabase
 			.from("insights_with_priority")
 			.select(
 				"id, name, details, pain, desired_outcome, emotional_response, journey_stage, category, evidence, priority"
@@ -172,12 +200,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			.order("created_at", { ascending: false })
 			.limit(3);
 
-		const [
-			{ data: facetRows = [], error: facetError },
-			{ data: scaleRows = [], error: scaleError },
-			{ data: personaInsightsRows = [], error: personaInsightsError },
-			{ data: researchRows = [], error: researchError },
-		] = await Promise.all([facetPromise, scalePromise, personaInsightsPromise, researchPromise]);
+			const [
+				{ data: rawFacetRows = [], error: facetError },
+				{ data: rawScaleRows = [], error: scaleError },
+				{ data: rawPersonaInsightsRows = [], error: personaInsightsError },
+				{ data: rawResearchRows = [], error: researchError },
+			] = await Promise.all([facetPromise, scalePromise, personaInsightsPromise, researchPromise]);
+			const facetRows = rawFacetRows as Array<Record<string, any>>;
+			const scaleRows = rawScaleRows as Array<Record<string, any>>;
+			const personaInsightsRows = rawPersonaInsightsRows as PersonaInsightJoinRow[];
+			const researchRows = rawResearchRows as PersonaInsightDetailRow[];
 
 		if (facetError) consola.warn("Persona Advisor facet query error", facetError);
 		if (scaleError) consola.warn("Persona Advisor scale query error", scaleError);
@@ -335,7 +367,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				persona_count: entry.personas.size,
 			}));
 
-		const researchInsights = (researchRows ?? [])
+			const researchInsights = researchRows
 			.map((insight) => {
 				const summaryCandidate = (insight.details ?? insight.pain ?? insight.desired_outcome ?? "").trim();
 				return {

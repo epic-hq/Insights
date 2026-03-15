@@ -15,11 +15,13 @@ import type { SupabaseClient as UntypedSupabaseClient } from "@supabase/supabase
 // Supabase CLI. They include generic helper utilities
 // `Tables`, `TablesInsert`, `TablesUpdate`, `Enums`, etc.
 import type { Database as SupabaseDB } from "~/types-db-override"; // NOTE: WE ARE USING THE OVERRIDDEN TYPES HERE
+import type { Json as SupabaseJson } from "~/../supabase/types";
 
 // Helper generics --------------------------------------------------
 // Narrow helpers to the "public" schema for brevity. Extend if you
 // ever need other schemas.
 export type Database = SupabaseDB;
+export type Json = SupabaseJson;
 export type SupabaseClient = UntypedSupabaseClient<Database>;
 
 export type Tables<TName extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][TName]["Row"];

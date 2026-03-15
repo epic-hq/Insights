@@ -39,7 +39,7 @@ import {
 } from "~/features/opportunities/stage-config";
 import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 // Validation schemas
 const amountSchema = z.string().refine(
@@ -91,7 +91,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;

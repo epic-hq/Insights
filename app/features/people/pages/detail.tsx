@@ -19,7 +19,7 @@ import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopl
 import { BulkGenerateSurveys } from "~/features/research-links/components/BulkGenerateSurveys";
 import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
 import { getFacetCatalog } from "~/lib/database/facets.server";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import { createProjectRoutes } from "~/utils/routes.server";
 import { getImageUrl } from "~/utils/storeImage.server";
 // New single-scroll section components
@@ -40,7 +40,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;
@@ -373,7 +373,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	const accountId = params.accountId;
 	const projectId = params.projectId;

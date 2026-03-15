@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Textarea } from "~/components/ui/textarea";
 import { createPerson } from "~/features/people/db";
 import { getPersonas } from "~/features/personas/db";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import { createProjectRoutes } from "~/utils/routes.server";
 
 export const meta: MetaFunction = () => {
@@ -20,7 +20,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;
@@ -35,7 +35,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 	const accountId = params.accountId;
 	const projectId = params.projectId;
 	if (!accountId || !projectId) {

@@ -22,6 +22,33 @@ import { schedules } from "@trigger.dev/sdk/v3";
 import consola from "consola";
 import { getPostHogServerClient } from "~/lib/posthog.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { asQueryClient, asRow, asRows } from "../_shared/queryBoundary";
+
+type UserRow = {
+  id: string;
+  email: string;
+  account_id: string;
+  created_at: string;
+};
+
+type AccountRow = {
+  name: string | null;
+};
+
+type SubscriptionRow = {
+  status: string | null;
+  plan_name: string | null;
+  trial_start: string | null;
+  trial_end: string | null;
+};
+
+type UpdatedAtRow = {
+  updated_at: string;
+};
+
+type UserIdRow = {
+  id: string;
+};
 
 interface UserMetrics {
   userId: string;
@@ -52,13 +79,15 @@ interface UserMetrics {
  */
 async function calculateMetrics(userId: string): Promise<UserMetrics | null> {
   const supabase = createSupabaseAdminClient();
+  const querySupabase = asQueryClient(supabase);
 
   // Get user info
-  const { data: user, error: userError } = await supabase
+  const { data: rawUser, error: userError } = await querySupabase
     .from("users")
     .select("id, email, account_id, created_at")
     .eq("id", userId)
     .single();
+  const user = asRow<UserRow>(rawUser);
 
   if (userError || !user) {
     consola.warn(`User not found: ${userId}`);
@@ -66,11 +95,12 @@ async function calculateMetrics(userId: string): Promise<UserMetrics | null> {
   }
 
   // Get account info (name for Brevo personalization)
-  const { data: account } = await supabase
+  const { data: rawAccount } = await querySupabase
     .from("accounts")
     .select("name")
     .eq("id", user.account_id)
     .single();
+  const account = asRow<AccountRow>(rawAccount);
 
   // Count interviews
   const { count: interviewCount } = await supabase
@@ -110,19 +140,20 @@ async function calculateMetrics(userId: string): Promise<UserMetrics | null> {
     .eq("account_id", user.account_id);
 
   // Count team members (for team_size and expansion cohort)
-  const { count: teamSize } = await supabase
+  const { count: teamSize } = await querySupabase
     .from("account_user")
     .select("*", { count: "exact", head: true })
     .eq("account_id", user.account_id);
 
   // Get subscription/billing info (for trial cohorts)
-  const { data: subscription } = await supabase
+  const { data: rawSubscription } = await querySupabase
     .from("billing_subscriptions")
     .select("status, plan_name, trial_start, trial_end")
     .eq("account_id", user.account_id)
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
+  const subscription = asRow<SubscriptionRow>(rawSubscription);
 
   // Determine plan and trial status
   let plan: "free" | "starter" | "pro" | "team" = "free";
@@ -163,21 +194,23 @@ async function calculateMetrics(userId: string): Promise<UserMetrics | null> {
 
   // Calculate last activity date from PostHog events would be ideal
   // For now, use last updated interview or task as proxy
-  const { data: lastInterview } = await supabase
+  const { data: rawLastInterview } = await querySupabase
     .from("interviews")
     .select("updated_at")
     .eq("created_by", userId)
     .order("updated_at", { ascending: false })
     .limit(1)
     .single();
+  const lastInterview = asRow<UpdatedAtRow>(rawLastInterview);
 
-  const { data: lastTask } = await supabase
+  const { data: rawLastTask } = await querySupabase
     .from("tasks")
     .select("updated_at")
     .eq("created_by", userId)
     .order("updated_at", { ascending: false })
     .limit(1)
     .single();
+  const lastTask = asRow<UpdatedAtRow>(rawLastTask);
 
   const lastActivityDate =
     lastInterview?.updated_at || lastTask?.updated_at
@@ -281,6 +314,7 @@ export const updateUserMetricsTask = schedules.task({
     );
 
     const supabase = createSupabaseAdminClient();
+    const querySupabase = asQueryClient(supabase);
     const posthog = getPostHogServerClient();
 
     if (!posthog) {
@@ -294,9 +328,10 @@ export const updateUserMetricsTask = schedules.task({
     }
 
     // Get all users
-    const { data: users, error: usersError } = await supabase
+    const { data: rawUsers, error: usersError } = await querySupabase
       .from("users")
       .select("id");
+    const users = asRows<UserIdRow>(rawUsers);
 
     if (usersError || !users) {
       consola.error(

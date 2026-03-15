@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { Database } from "supabase/types";
+import type { Database } from "~/types";
 import { salesConversationExtractionSchema } from "./schema";
 
 type DbClient = SupabaseClient<Database>;

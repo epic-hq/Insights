@@ -1,14 +1,14 @@
 import consola from "consola";
 import type { ActionFunction, LoaderFunction } from "react-router";
 import { currentProjectContext } from "~/server/current-project-context";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import { type EntityType, type FlagType, getUserFlagsForEntity, setEntityFlag } from "../db";
 
 // GET /api/entity-flags - Fetch user flags for an entity
 export const loader: LoaderFunction = async ({ context, request, params }) => {
 	const ctx = context.get(userContext);
 	const _projectCtx = context.get(currentProjectContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 	const userId = ctx.claims?.sub;
 	const _accountId = params?.accountId;
 	const projectId = params?.projectId;
@@ -59,7 +59,7 @@ export const loader: LoaderFunction = async ({ context, request, params }) => {
 // POST /api/entity-flags - Handle flag actions
 export const action: ActionFunction = async ({ context, request, params }) => {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 	const accountId = ctx.account_id || params?.accountId;
 	const userId = ctx.claims?.sub;
 	const projectId = params?.projectId;

@@ -8,20 +8,10 @@
 
 import { heartbeats } from "@trigger.dev/sdk";
 import consola from "consola";
+import { InteractionContext } from "~/../baml_client/types";
+import type { Extraction, SpeakerUtterance } from "~/../baml_client/types";
 
-type SpeakerUtterance = {
-	speaker: string;
-	text: string;
-	start: number | string | null;
-	end: number | string | null;
-};
-
-type EvidenceResult = {
-	people: any[];
-	evidence: any[];
-	facet_mentions?: any[];
-	scenes: any[];
-};
+type EvidenceResult = Extraction;
 
 function normalizeSpeakerKey(value: unknown): string | null {
 	if (typeof value !== "string") return null;
@@ -269,8 +259,10 @@ export async function batchExtractEvidence(
 	return {
 		people: mergedPeople,
 		evidence: mergedEvidence,
-		facet_mentions: mergedFacetMentions,
 		scenes: mergedScenes,
+		interaction_context: InteractionContext.Internal,
+		context_confidence: 0.5,
+		context_reasoning: "Merged batched extraction output.",
 	};
 }
 

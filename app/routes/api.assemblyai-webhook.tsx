@@ -1,7 +1,7 @@
 import consola from "consola";
 import type { LangfuseTraceClient } from "langfuse";
 import type { ActionFunctionArgs } from "react-router";
-import type { Database, Json } from "~/../supabase/types";
+import type { Database, Json } from "~/types";
 import { getLangfuseClient } from "~/lib/langfuse.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";

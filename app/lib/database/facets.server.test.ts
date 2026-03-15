@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Database } from "~/../supabase/types";
+import type { Database } from "~/types";
 import { getFacetCatalog, persistFacetObservations } from "./facets.server";
 
 type MockDb = SupabaseClient<Database>;

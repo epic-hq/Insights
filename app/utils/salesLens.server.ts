@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 
-import type { Database } from "supabase/types";
+import type { Database } from "~/types";
 import {
 	type SalesConversationExtraction,
 	type SalesFrameworkPayload,
@@ -91,6 +91,7 @@ export async function buildInitialSalesLensExtraction(
 	db: DbClient,
 	interviewId: string
 ): Promise<SalesConversationExtraction> {
+	const queryDb = db as any;
 	type InterviewRecord = Pick<
 		Tables<"interviews">,
 		| "id"
@@ -103,13 +104,12 @@ export async function buildInitialSalesLensExtraction(
 		| "observations_and_notes"
 	>;
 
-	const { data: interview, error: interviewError } = await db
+	const { data: rawInterview, error: interviewError } = await queryDb
 		.from("interviews")
-		.select<InterviewRecord>(
-			"id, account_id, project_id, open_questions_and_next_steps, high_impact_themes, interview_date, title, observations_and_notes"
-		)
+		.select("id, account_id, project_id, open_questions_and_next_steps, high_impact_themes, interview_date, title, observations_and_notes")
 		.eq("id", interviewId)
 		.maybeSingle();
+	const interview = (rawInterview ?? null) as InterviewRecord | null;
 
 	if (interviewError) {
 		throw new Error(`Failed to load interview ${interviewId}: ${interviewError.message}`);
@@ -120,10 +120,11 @@ export async function buildInitialSalesLensExtraction(
 
 	type InterviewPersonRow = Pick<Tables<"interview_people">, "person_id" | "role" | "display_name">;
 
-	const { data: attendeeRows, error: attendeeError } = await db
+	const { data: rawAttendeeRows, error: attendeeError } = await queryDb
 		.from("interview_people")
-		.select<InterviewPersonRow>("person_id, role, display_name")
+		.select("person_id, role, display_name")
 		.eq("interview_id", interviewId);
+	const attendeeRows = (rawAttendeeRows ?? []) as InterviewPersonRow[];
 
 	if (attendeeError) {
 		throw new Error(`Failed to load interview attendees: ${attendeeError.message}`);
@@ -135,16 +136,16 @@ export async function buildInitialSalesLensExtraction(
 
 	type PeopleRow = Pick<
 		Tables<"people">,
-		"id" | "name" | "role" | "title" | "company" | "primary_email" | "default_organization_id"
+		"id" | "name" | "role" | "title" | "primary_email" | "default_organization_id"
 	>;
 	// Cache the mini-CRM contact attributes we need for stakeholder linkage and evidence.
 	const peopleById = new Map<
 		string,
-		Pick<PeopleRow, "name" | "role" | "title" | "company" | "primary_email" | "default_organization_id">
+		Pick<PeopleRow, "name" | "role" | "title" | "primary_email" | "default_organization_id"> & { company: string | null }
 	>();
 	if (personIds.length > 0) {
-		const { data: people, error: peopleError } = await db
-			.from("people")
+			const { data: people, error: peopleError } = await queryDb
+				.from("people")
 			.select(
 				"id, name, role, title, primary_email, default_organization_id, default_organization:organizations!default_organization_id(name)"
 			)
@@ -170,12 +171,13 @@ export async function buildInitialSalesLensExtraction(
 
 	type EvidenceRow = Pick<Tables<"evidence">, "id" | "anchors" | "verbatim">;
 
-	const { data: evidenceRecords, error: evidenceError } = await db
+	const { data: rawEvidenceRecords, error: evidenceError } = await queryDb
 		.from("evidence")
-		.select<EvidenceRow>("id, anchors, verbatim")
+		.select("id, anchors, verbatim")
 		.eq("interview_id", interviewId)
 		.order("created_at", { ascending: true })
 		.limit(12);
+	const evidenceRecords = (rawEvidenceRecords ?? []) as EvidenceRow[];
 
 	if (evidenceError) {
 		consola.warn("Failed to load evidence for sales lens", evidenceError);

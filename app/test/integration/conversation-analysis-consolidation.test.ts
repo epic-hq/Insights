@@ -45,6 +45,14 @@ vi.mock("~/utils/r2.server", () => ({
 }));
 
 describe("Conversation Analysis Consolidation - Critical Path", () => {
+	function requireInterview<T>(value: T | null): T {
+		expect(value).toBeDefined();
+		if (!value) {
+			throw new Error("Expected interview record to be created");
+		}
+		return value;
+	}
+
 	beforeEach(async () => {
 		await seedTestData();
 	});
@@ -67,7 +75,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.select()
 				.single();
 
-			expect(interview).toBeDefined();
+			const createdInterview = requireInterview(interview);
 
 			// Simulate upload flow update (as done in api.onboarding-start.tsx)
 			const assemblyAiId = "assemblyai_test_123";
@@ -88,12 +96,12 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 						status_detail: "Transcribing with Assembly AI",
 					},
 				})
-				.eq("id", interview.id);
+				.eq("id", createdInterview.id);
 
 			expect(updateError).toBeNull();
 
 			// Verify data was stored correctly
-			const { data: updated } = await testDb.from("interviews").select("*").eq("id", interview.id).single();
+			const { data: updated } = await testDb.from("interviews").select("*").eq("id", createdInterview.id).single();
 
 			expect(updated?.status).toBe("processing");
 			const analysis = updated?.conversation_analysis as any;
@@ -128,7 +136,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.select()
 				.single();
 
-			expect(interview).toBeDefined();
+			const createdInterview = requireInterview(interview);
 
 			// Query using JSONB contains (as done in webhook handler)
 			const { data: found, error } = await testDb
@@ -138,7 +146,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.single();
 
 			expect(error).toBeNull();
-			expect(found?.id).toBe(interview.id);
+			expect(found?.id).toBe(createdInterview.id);
 			const analysis = found?.conversation_analysis as any;
 			expect(analysis?.transcript_data?.assemblyai_id).toBe(assemblyAiId);
 		});
@@ -172,7 +180,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 
 			// Simulate saveWorkflowState
 			const workflowState = {
-				interviewId: interview.id,
+				interviewId: requireInterview(interview).id,
 				evidenceIds: ["ev1", "ev2", "ev3"],
 				evidenceUnits: [{ gist: "test evidence", verbatim: "exact quote", person_key: "person1" }],
 				personId: "person1",
@@ -191,7 +199,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 					},
 					updated_at: new Date().toISOString(),
 				})
-				.eq("id", interview.id);
+				.eq("id", requireInterview(interview).id);
 
 			expect(saveError).toBeNull();
 
@@ -206,7 +214,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 			const analysis = loaded?.conversation_analysis as any;
 			const state = analysis?.workflow_state;
 
-			expect(state?.interviewId).toBe(interview.id);
+			expect(state?.interviewId).toBe(requireInterview(interview).id);
 			expect(state?.evidenceIds).toHaveLength(3);
 			expect(state?.completedSteps).toEqual(["upload", "evidence"]);
 			expect(state?.currentStep).toBe("insights");
@@ -235,7 +243,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 			const { data: current } = await testDb
 				.from("interviews")
 				.select("conversation_analysis")
-				.eq("id", interview.id)
+				.eq("id", requireInterview(interview).id)
 				.single();
 
 			const existingAnalysis = (current?.conversation_analysis as any) || {};
@@ -247,7 +255,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 					conversation_analysis: {
 						...existingAnalysis,
 						workflow_state: {
-							interviewId: interview.id,
+							interviewId: requireInterview(interview).id,
 							completedSteps: ["upload"],
 							currentStep: "evidence",
 							lastUpdated: new Date().toISOString(),
@@ -256,7 +264,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 						current_step: "evidence",
 					},
 				})
-				.eq("id", interview.id);
+				.eq("id", requireInterview(interview).id);
 
 			expect(updateError).toBeNull();
 
@@ -264,7 +272,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 			const { data: updated } = await testDb
 				.from("interviews")
 				.select("conversation_analysis")
-				.eq("id", interview.id)
+				.eq("id", requireInterview(interview).id)
 				.single();
 
 			const analysis = updated?.conversation_analysis as any;
@@ -296,7 +304,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.single();
 
 			// Simulate cancel operation
-			const existingAnalysis = (interview?.conversation_analysis as any) || {};
+			const existingAnalysis = requireInterview(interview).conversation_analysis as any;
 			const { error: cancelError } = await testDb
 				.from("interviews")
 				.update({
@@ -309,7 +317,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 					},
 					updated_at: new Date().toISOString(),
 				})
-				.eq("id", interview.id);
+				.eq("id", requireInterview(interview).id);
 
 			expect(cancelError).toBeNull();
 
@@ -346,7 +354,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.single();
 
 			// Simulate frontend hook extracting progress
-			const analysis = interview?.conversation_analysis as any;
+			const analysis = requireInterview(interview).conversation_analysis as any;
 
 			expect(analysis?.current_step).toBe("insights");
 			expect(analysis?.progress).toBe(75);
@@ -355,7 +363,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 			expect(analysis?.trigger_run_id).toBe("run_progress_123");
 
 			// Verify canCancel logic
-			const isActiveJob = interview?.status === "processing";
+			const isActiveJob = requireInterview(interview).status === "processing";
 			const canCancel = isActiveJob && Boolean(analysis?.trigger_run_id);
 			expect(canCancel).toBe(true);
 		});
@@ -409,7 +417,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.select()
 				.single();
 
-			const existingAnalysis = (interview?.conversation_analysis as any) || {};
+			const existingAnalysis = requireInterview(interview).conversation_analysis as any;
 
 			// Simulate reprocess-evidence update
 			const { error: reprocessError } = await testDb
@@ -423,7 +431,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 						current_step: "evidence",
 					},
 				})
-				.eq("id", interview.id);
+				.eq("id", requireInterview(interview).id);
 
 			expect(reprocessError).toBeNull();
 
@@ -456,15 +464,16 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 
 			// Set up subscription (simplified, actual hook uses supabase.channel)
 			const updates: any[] = [];
+			const createdInterview = requireInterview(interview);
 			const channel = testDb
-				.channel(`test-interview-${interview.id}`)
+				.channel(`test-interview-${createdInterview.id}`)
 				.on(
 					"postgres_changes",
 					{
 						event: "UPDATE",
 						schema: "public",
 						table: "interviews",
-						filter: `id=eq.${interview.id}`,
+						filter: `id=eq.${createdInterview.id}`,
 					},
 					(payload) => {
 						updates.push(payload.new);
@@ -482,7 +491,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 						status_detail: "Extracting evidence",
 					},
 				})
-				.eq("id", interview.id);
+				.eq("id", createdInterview.id);
 
 			// Wait for subscription to process
 			await new Promise((resolve) => setTimeout(resolve, 100));

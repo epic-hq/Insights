@@ -1,7 +1,7 @@
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { getServerClient } from "~/lib/supabase/client.server";
-import type { Json } from "~/types/supabase.types";
+import type { Json } from "~/types";
 
 /**
  * API endpoint for updating an entity within a conversation lens analysis.

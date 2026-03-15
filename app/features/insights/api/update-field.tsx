@@ -1,7 +1,7 @@
 import consola from "consola";
 import type { ActionFunction } from "react-router";
 import { syncTitleToJobTitleFacet } from "~/features/people/syncTitleToFacet.server";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 interface Payload {
 	table: string;
@@ -12,7 +12,7 @@ interface Payload {
 
 export const action: ActionFunction = async ({ context, request }) => {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 	const accountId = ctx.account_id;
 
 	try {

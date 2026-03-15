@@ -41,6 +41,10 @@ function getInitials(source: string) {
 		.toUpperCase();
 }
 
+function getMetadataString(value: unknown): string | null {
+	return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
 interface UserProfileProps {
 	collapsed?: boolean;
 	className?: string;
@@ -59,9 +63,12 @@ export function UserProfile({ collapsed: collapsedProp, className }: UserProfile
 
 	if (!user) return null;
 
-	const displayName = user.user_metadata?.full_name?.trim() || user.email || "User";
+	const fullName = getMetadataString(user.user_metadata?.full_name);
+	const avatarFromMetadata =
+		getMetadataString(user.user_metadata?.avatar_url) ?? getMetadataString(user.user_metadata?.picture);
+	const displayName = fullName ?? user.email ?? "User";
 	const email = user.email ?? "";
-	const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || user_settings?.image_url || "";
+	const avatarUrl = avatarFromMetadata ?? user_settings?.image_url ?? "";
 	const initials = getInitials(displayName || email || "U");
 	const accountSettingsPath = accountId ? `/a/${accountId}/settings` : null;
 	const billingPath = accountId ? `/a/${accountId}/billing` : null;

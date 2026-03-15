@@ -14,6 +14,38 @@ import { Input } from "~/components/ui/input";
 import { generateEmbedding } from "~/lib/embeddings/openai.server";
 import { userContext } from "~/server/user-context";
 
+type LoaderFacet = {
+	id: number;
+	label: string;
+	slug: string;
+	synonyms: string[] | null;
+	is_active: boolean | null;
+	facet_kind_global: {
+		slug: string | null;
+		label: string | null;
+	} | null;
+	evidence_count: Array<{ count: number | null }> | null;
+	person_count: Array<{ count: number | null }> | null;
+};
+
+type FacetGroup = {
+	kindSlug: string;
+	kindLabel: string;
+	facets: Array<
+		LoaderFacet & {
+			_semanticOnly?: boolean;
+			_similarity?: number;
+		}
+	>;
+	totalCount: number;
+};
+
+type SemanticMatch = {
+	kindSlug: string;
+	label: string;
+	similarity: number;
+};
+
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext);
 	const accountId = params.accountId;
@@ -39,8 +71,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	if (error) throw error;
 
-	const byKind = new Map<string, typeof facets>();
-	for (const facet of facets ?? []) {
+	const typedFacets = (facets ?? []) as LoaderFacet[];
+	const byKind = new Map<string, LoaderFacet[]>();
+	for (const facet of typedFacets) {
 		const kindSlug = facet.facet_kind_global?.slug ?? "unknown";
 		if (!byKind.has(kindSlug)) {
 			byKind.set(kindSlug, []);
@@ -48,7 +81,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		byKind.get(kindSlug)?.push(facet);
 	}
 
-	const grouped = Array.from(byKind.entries()).map(([kindSlug, facets]) => ({
+	const grouped: FacetGroup[] = Array.from(byKind.entries()).map(([kindSlug, facets]) => ({
 		kindSlug,
 		kindLabel: facets[0]?.facet_kind_global?.label ?? kindSlug,
 		facets,
@@ -84,7 +117,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	});
 
 	// Dedupe by kind_slug + label, keep max similarity
-	const byKey = new Map<string, { kindSlug: string; label: string; similarity: number }>();
+	const byKey = new Map<string, SemanticMatch>();
 	for (const row of data ?? []) {
 		const key = `${row.kind_slug}|${row.label}`;
 		const existing = byKey.get(key);
@@ -105,7 +138,7 @@ export default function FacetExplorer() {
 	const [search, setSearch] = useState("");
 	const [expandedKinds, setExpandedKinds] = useState<Set<string>>(new Set());
 	const fetcher = useFetcher<typeof action>();
-	const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const toggleKind = (kindSlug: string) => {
 		setExpandedKinds((prev) => {
@@ -136,7 +169,7 @@ export default function FacetExplorer() {
 	// Build semantic match lookup: "kindSlug|label" -> similarity
 	const semanticMatchMap = useMemo(() => {
 		const map = new Map<string, number>();
-		for (const m of fetcher.data?.semanticMatches ?? []) {
+		for (const m of ((fetcher.data?.semanticMatches ?? []) as SemanticMatch[])) {
 			map.set(`${m.kindSlug}|${m.label}`, m.similarity);
 		}
 		return map;
@@ -149,15 +182,9 @@ export default function FacetExplorer() {
 
 		return grouped
 			.map((group) => {
-				const matchedFacets = group.facets.reduce<
-					Array<
-						(typeof group.facets)[number] & {
-							_semanticOnly?: boolean;
-							_similarity?: number;
-						}
-					>
-				>((acc, f) => {
-					const textMatch = f.label.toLowerCase().includes(q) || f.synonyms?.some((s) => s.toLowerCase().includes(q));
+				const matchedFacets = group.facets.reduce<FacetGroup["facets"]>((acc, f) => {
+					const textMatch =
+						f.label.toLowerCase().includes(q) || f.synonyms?.some((s: string) => s.toLowerCase().includes(q));
 					const kindSlug = f.facet_kind_global?.slug ?? "unknown";
 					const semanticKey = `${kindSlug}|${f.label}`;
 					const similarity = semanticMatchMap.get(semanticKey);
@@ -174,7 +201,7 @@ export default function FacetExplorer() {
 				}, []);
 
 				// Sort: text matches first, then semantic by similarity
-				matchedFacets.sort((a, b) => {
+				matchedFacets.sort((a: FacetGroup["facets"][number], b: FacetGroup["facets"][number]) => {
 					if (a._semanticOnly && !b._semanticOnly) return 1;
 					if (!a._semanticOnly && b._semanticOnly) return -1;
 					if (a._semanticOnly && b._semanticOnly) {
@@ -185,7 +212,7 @@ export default function FacetExplorer() {
 
 				return { ...group, facets: matchedFacets };
 			})
-			.filter((g) => g.facets.length > 0);
+			.filter((g: FacetGroup) => g.facets.length > 0);
 	}, [search, grouped, semanticMatchMap]);
 
 	const effectiveExpanded = useMemo(() => {
@@ -193,9 +220,13 @@ export default function FacetExplorer() {
 		return expandedKinds;
 	}, [search, filtered, expandedKinds]);
 
-	const totalFacets = grouped.reduce((sum, g) => sum + g.totalCount, 0);
+	const totalFacets = grouped.reduce((sum: number, g: FacetGroup) => sum + g.totalCount, 0);
 	const semanticCount = useMemo(
-		() => filtered.reduce((sum, g) => sum + g.facets.filter((f) => f._semanticOnly).length, 0),
+		() =>
+			filtered.reduce(
+				(sum: number, g: FacetGroup) => sum + g.facets.filter((f: FacetGroup["facets"][number]) => f._semanticOnly).length,
+				0
+			),
 		[filtered]
 	);
 

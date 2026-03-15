@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import type { Database } from "~/../supabase/types";
+import type { Database } from "~/types";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion";
 import { Badge } from "~/components/ui/badge";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";

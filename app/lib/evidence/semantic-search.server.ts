@@ -6,7 +6,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "supabase/types";
+import type { Database } from "~/types";
 import { generateEmbeddingOrThrow, SIMILARITY_THRESHOLDS } from "~/lib/embeddings/openai.server";
 
 type DbClient = SupabaseClient<Database>;

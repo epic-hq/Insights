@@ -8,7 +8,7 @@ import { useCurrentProject } from "~/contexts/current-project-context";
 import { FlowDiagram } from "~/features/projects/components/Flow";
 import { getProjectById } from "~/features/projects/db";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -19,7 +19,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// From URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;

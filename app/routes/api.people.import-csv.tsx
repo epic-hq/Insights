@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { z } from "zod";
-import type { Database } from "~/database.types";
+import type { Database } from "~/types";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
 import { importPeopleFromTableTool } from "~/mastra/tools/import-people-from-table";

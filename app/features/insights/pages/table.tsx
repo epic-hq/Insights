@@ -4,7 +4,7 @@ import { useLoaderData, useSearchParams } from "react-router-dom";
 import { type InsightSegmentData, InsightsDataTable } from "~/features/insights/components/InsightsDataTableTS";
 import { getInsights } from "~/features/insights/db";
 import { currentProjectContext } from "~/server/current-project-context";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 // Map facet kind slugs to display labels
 const FACET_KIND_TO_SEGMENT: Record<string, string> = {
@@ -57,7 +57,7 @@ function inferSeniority(title: string): string | null {
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	const ctx_project = context.get(currentProjectContext);
 	const projectId = ctx_project.projectId || params.projectId || "";

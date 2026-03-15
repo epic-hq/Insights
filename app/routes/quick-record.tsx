@@ -5,7 +5,7 @@
 
 import { type LoaderFunctionArgs, redirect } from "react-router";
 import { createProject } from "~/features/projects/db";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 
 export async function loader({ context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);

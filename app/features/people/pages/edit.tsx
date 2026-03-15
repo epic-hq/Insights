@@ -48,7 +48,7 @@ import {
 import { deletePerson, getPersonById, updatePerson } from "~/features/people/db";
 import { getPersonas } from "~/features/personas/db";
 import { getFacetCatalog } from "~/lib/database/facets.server";
-import { userContext } from "~/server/user-context";
+import { requireUserSupabase, userContext } from "~/server/user-context";
 import { createProjectRoutes } from "~/utils/routes.server";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -60,7 +60,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;
@@ -105,7 +105,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const supabase = requireUserSupabase(ctx);
 
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId;

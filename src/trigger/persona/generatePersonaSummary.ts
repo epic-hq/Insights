@@ -7,6 +7,7 @@ import {
 	systemBillingContext,
 } from "~/lib/billing/instrumented-baml.server";
 import type { Tables } from "~/types";
+import { asQueryClient, asRows } from "../_shared/queryBoundary";
 import { workflowRetryConfig } from "../interview/v2/config";
 
 /** Payload for the persona summary generation task. */
@@ -15,6 +16,31 @@ type Payload = {
 	projectId: string;
 	accountId: string;
 };
+
+type PeoplePersonaWithPerson = {
+	person_id: string | null;
+	people: Tables<"people"> | null;
+};
+
+type PersonaInsightWithTheme = {
+	insight_id: string | null;
+	insights: Tables<"themes"> | null;
+};
+
+type InterviewPersonLink = {
+	interview_id: string | null;
+	person_id: string | null;
+};
+
+type PersonaExtractResult = Partial<Tables<"personas">> & Record<string, unknown>;
+
+function asPersonaExtractResult(value: unknown): PersonaExtractResult {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		throw new Error("ExtractPersona returned an invalid payload");
+	}
+
+	return value as PersonaExtractResult;
+}
 
 /**
  * Trigger.dev task: regenerates a persona's summary from its linked data.
@@ -38,35 +64,24 @@ export const generatePersonaSummaryTask = task({
 	retry: workflowRetryConfig,
 	run: async ({ personaId, projectId, accountId }: Payload) => {
 		const supabase = createSupabaseAdminClient();
+		const querySupabase = asQueryClient(supabase);
 
-		type PeoplePersonaRow = Pick<
-			Tables<"people_personas">,
-			"person_id" | "persona_id"
-		> & {
-			people: Tables<"people"> | null;
-		};
-
-		const { data: people, error: peopleError } = await supabase
+		const { data: rawPeople, error: peopleError } = await querySupabase
 			.from("people_personas")
-			.select<PeoplePersonaRow>("person_id, people(*)")
+			.select("person_id, people(*)")
 			.eq("persona_id", personaId);
+		const people = asRows<PeoplePersonaWithPerson>(rawPeople);
 		if (peopleError) {
 			throw new Error(
 				`Failed to fetch people for persona: ${peopleError.message}`,
 			);
 		}
 
-		type PersonaInsightRow = Pick<
-			Tables<"persona_insights">,
-			"insight_id" | "persona_id"
-		> & {
-			insights: Tables<"themes"> | null;
-		};
-
-		const { data: personaInsights, error: insightsError } = await supabase
+		const { data: rawPersonaInsights, error: insightsError } = await querySupabase
 			.from("persona_insights")
-			.select<PersonaInsightRow>("insight_id, insights:themes(*)")
+			.select("insight_id, insights:themes(*)")
 			.eq("persona_id", personaId);
+		const personaInsights = asRows<PersonaInsightWithTheme>(rawPersonaInsights);
 		if (insightsError) {
 			throw new Error(
 				`Failed to fetch persona insights: ${insightsError.message}`,
@@ -79,16 +94,12 @@ export const generatePersonaSummaryTask = task({
 
 		let interviewsRecords: Tables<"interviews">[] = [];
 		if (peopleIds.length > 0) {
-			type InterviewPeopleRow = Pick<
-				Tables<"interview_people">,
-				"interview_id" | "person_id"
-			>;
-
-			const { data: interviewPeopleData, error: interviewPeopleError } =
-				await supabase
-					.from("interview_people")
-					.select<InterviewPeopleRow>("interview_id, person_id")
-					.in("person_id", peopleIds);
+			const { data: rawInterviewPeopleData, error: interviewPeopleError } =
+				await querySupabase
+						.from("interview_people")
+						.select("interview_id, person_id")
+						.in("person_id", peopleIds);
+			const interviewPeopleData = asRows<InterviewPersonLink>(rawInterviewPeopleData);
 			if (interviewPeopleError) {
 				throw new Error(
 					`Failed to fetch interview_people: ${interviewPeopleError.message}`,
@@ -97,30 +108,31 @@ export const generatePersonaSummaryTask = task({
 
 			const interviewIds = (interviewPeopleData ?? [])
 				.map((record) => record.interview_id)
-				.filter((value): value is string => Boolean(value));
-			if (interviewIds.length > 0) {
-				const { data: interviewsData, error: interviewsError } = await supabase
-					.from("interviews")
-					.select<Tables<"interviews">>("*")
-					.in("id", interviewIds);
-				if (interviewsError) {
-					throw new Error(
-						`Failed to fetch interviews: ${interviewsError.message}`,
-					);
+					.filter((value): value is string => Boolean(value));
+				if (interviewIds.length > 0) {
+					const { data: rawInterviewsData, error: interviewsError } = await querySupabase
+						.from("interviews")
+						.select("*")
+						.in("id", interviewIds);
+					if (interviewsError) {
+						throw new Error(
+							`Failed to fetch interviews: ${interviewsError.message}`,
+						);
+					}
+					interviewsRecords = asRows<Tables<"interviews">>(rawInterviewsData);
 				}
-				interviewsRecords = interviewsData ?? [];
 			}
-		}
 
-		const { data: evidenceData, error: evidenceError } = await supabase
-			.from("evidence")
-			.select<Tables<"evidence">>("*")
-			.eq("project_id", projectId)
-			.is("deleted_at", null)
-			.eq("is_archived", false);
-		if (evidenceError) {
-			throw new Error(
-				`Failed to fetch evidence for persona refresh: ${evidenceError.message}`,
+			const { data: rawEvidenceData, error: evidenceError } = await querySupabase
+				.from("evidence")
+				.select("*")
+				.eq("project_id", projectId)
+				.is("deleted_at", null)
+				.eq("is_archived", false);
+			const evidenceData = asRows<Tables<"evidence">>(rawEvidenceData);
+			if (evidenceError) {
+				throw new Error(
+					`Failed to fetch evidence for persona refresh: ${evidenceError.message}`,
 			);
 		}
 
@@ -159,41 +171,42 @@ export const generatePersonaSummaryTask = task({
 					),
 			},
 			`persona:${personaId}:generate-summary`,
-		);
+			);
+			const personaResult = asPersonaExtractResult(bamlResult);
 
-		const { error: updateError } = await supabase
-			.from("personas")
-			.update({
-				name: bamlResult.name,
-				description: bamlResult.description,
-				age: bamlResult.age,
-				gender: bamlResult.gender,
-				location: bamlResult.location,
-				education: bamlResult.education,
-				occupation: bamlResult.occupation,
-				income: bamlResult.income,
-				languages: bamlResult.languages,
-				segment: bamlResult.segment,
-				role: bamlResult.role,
-				color_hex: bamlResult.color_hex,
-				image_url: bamlResult.image_url,
-				motivations: bamlResult.motivations,
-				values: bamlResult.values,
-				frustrations: bamlResult.frustrations,
-				preferences: bamlResult.preferences,
-				learning_style: bamlResult.learning_style,
-				tech_comfort_level: bamlResult.tech_comfort_level,
-				frequency_of_purchase: bamlResult.frequency_of_purchase,
-				frequency_of_use: bamlResult.frequency_of_use,
-				key_tasks: bamlResult.key_tasks,
-				tools_used: bamlResult.tools_used,
-				primary_goal: bamlResult.primary_goal,
-				secondary_goals: bamlResult.secondary_goals,
-				sources: bamlResult.sources,
-				quotes: bamlResult.quotes,
-				percentage: bamlResult.percentage,
-				updated_at: new Date().toISOString(),
-			})
+			const { error: updateError } = await supabase
+				.from("personas")
+				.update({
+					name: personaResult.name,
+					description: personaResult.description,
+					age: personaResult.age,
+					gender: personaResult.gender,
+					location: personaResult.location,
+					education: personaResult.education,
+					occupation: personaResult.occupation,
+					income: personaResult.income,
+					languages: personaResult.languages,
+					segment: personaResult.segment,
+					role: personaResult.role,
+					color_hex: personaResult.color_hex,
+					image_url: personaResult.image_url,
+					motivations: personaResult.motivations,
+					values: personaResult.values,
+					frustrations: personaResult.frustrations,
+					preferences: personaResult.preferences,
+					learning_style: personaResult.learning_style,
+					tech_comfort_level: personaResult.tech_comfort_level,
+					frequency_of_purchase: personaResult.frequency_of_purchase,
+					frequency_of_use: personaResult.frequency_of_use,
+					key_tasks: personaResult.key_tasks,
+					tools_used: personaResult.tools_used,
+					primary_goal: personaResult.primary_goal,
+					secondary_goals: personaResult.secondary_goals,
+					sources: personaResult.sources,
+					quotes: personaResult.quotes,
+					percentage: personaResult.percentage,
+					updated_at: new Date().toISOString(),
+				})
 			.eq("id", personaId)
 			.eq("account_id", accountId);
 
@@ -203,9 +216,9 @@ export const generatePersonaSummaryTask = task({
 
 		consola.info(`[Persona] refreshed persona ${personaId}`);
 
-		return {
-			personaId,
-			updatedFields: Object.keys(bamlResult ?? {}),
-		};
-	},
-});
+			return {
+				personaId,
+				updatedFields: Object.keys(personaResult),
+			};
+		},
+	});

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
-import type { Database } from "supabase/types";
+import type { Database } from "~/types";
 
 // Type aliases for better readability
 type ProjectInsert = Database["public"]["Tables"]["projects"]["Insert"];
