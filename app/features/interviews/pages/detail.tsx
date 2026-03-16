@@ -777,6 +777,29 @@ export default function InterviewDetail({
     }
   }, [progressInfo.isComplete, revalidator]);
 
+  // Catch race condition: if we land on the page after processing already completed
+  // but the loader ran while it was still in-flight, the data is stale.
+  // Detect this by checking if status is "ready" but we have no evidence/analysis yet.
+  const initialRevalidateRef = useRef(false);
+  useEffect(() => {
+    if (initialRevalidateRef.current) return;
+    if (
+      currentStatus === "ready" &&
+      evidence.length === 0 &&
+      !conversationAnalysis?.summary
+    ) {
+      initialRevalidateRef.current = true;
+      consola.info(
+        "[detail] Stale data detected (ready but no evidence), revalidating",
+      );
+      setTimeout(() => {
+        if (revalidatorRef.current.state === "idle") {
+          revalidatorRef.current.revalidate();
+        }
+      }, 500);
+    }
+  }, [currentStatus, evidence.length, conversationAnalysis?.summary]);
+
   // Fallback polling: periodically revalidate while processing to catch completion
   // when realtime subscriptions (Supabase / Trigger.dev) fail to deliver updates
   useEffect(() => {

@@ -20,6 +20,83 @@ import ProjectStatusScreen from "./ProjectStatusScreen";
 import QuestionsScreen from "./QuestionsScreen";
 import UploadScreen from "./UploadScreen";
 
+/**
+ * Capture a thumbnail frame from a video file using a hidden video element + canvas.
+ * Seeks to 1 second (or 0 if short) and captures a 640px-wide JPEG.
+ */
+async function captureVideoThumbnail(file: File): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+
+    const url = URL.createObjectURL(file);
+    let resolved = false;
+
+    const cleanup = () => {
+      URL.revokeObjectURL(url);
+      video.removeAttribute("src");
+      video.load();
+    };
+
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        resolve(null);
+      }
+    }, 10000);
+
+    video.onloadedmetadata = () => {
+      // Seek to 1 second or 10% of duration, whichever is smaller
+      video.currentTime = Math.min(1, video.duration * 0.1);
+    };
+
+    video.onseeked = () => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeout);
+
+      try {
+        const canvas = document.createElement("canvas");
+        const scale = Math.min(1, 640 / video.videoWidth);
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          cleanup();
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(
+          (blob) => {
+            cleanup();
+            resolve(blob);
+          },
+          "image/jpeg",
+          0.8,
+        );
+      } catch {
+        cleanup();
+        resolve(null);
+      }
+    };
+
+    video.onerror = () => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        cleanup();
+        resolve(null);
+      }
+    };
+
+    video.src = url;
+  });
+}
+
 type OnboardingStep =
   | "welcome"
   | "questions"
@@ -577,6 +654,7 @@ export default function OnboardingFlow({
         // - Audio files: re-encode to 128k AAC if large (fast in WASM)
         let uploadFile = file;
         let originalVideoR2Key: string | null = null;
+        let thumbnailR2Key: string | null = null;
 
         if (isAudioVideo && isVideoFile(file)) {
           // Video: extract audio track (near-instant, no re-encoding)
@@ -591,6 +669,21 @@ export default function OnboardingFlow({
             percent: 0,
             phase: "optimizing",
           });
+
+          // Generate thumbnail from video before we discard it
+          let thumbnailBlob: Blob | null = null;
+          try {
+            thumbnailBlob = await captureVideoThumbnail(file);
+            if (thumbnailBlob) {
+              console.log(
+                "[Upload] Thumbnail captured:",
+                `${(thumbnailBlob.size / 1024).toFixed(1)} KB`,
+              );
+            }
+          } catch (thumbErr) {
+            console.warn("[Upload] Thumbnail capture failed:", thumbErr);
+          }
+
           const audioResult = await extractAudioOnly(file, {
             onProgress: (p) => {
               setUploadProgress({
@@ -607,10 +700,32 @@ export default function OnboardingFlow({
             `${(file.size / 1024 / 1024).toFixed(1)} MB → ${(audioResult.finalSize / 1024 / 1024).toFixed(1)} MB`,
           );
 
-          // Paid accounts: also upload original video for server-side optimization
-          if (isPaidPlan(accountPlanId) && uploadProjectId) {
+          // Upload thumbnail to R2 if we captured one
+          if (thumbnailBlob && uploadProjectId) {
+            try {
+              const thumbFile = new File([thumbnailBlob], "thumbnail.jpg", {
+                type: "image/jpeg",
+              });
+              const thumbPresigned = await requestPresignedUpload({
+                projectId: uploadProjectId,
+                file: thumbFile,
+              });
+              const thumbR2Key = await uploadFileWithPresignedUrl({
+                file: thumbFile,
+                presignedData: thumbPresigned,
+                onProgress: () => {},
+              });
+              thumbnailR2Key = thumbR2Key;
+              console.log("[Upload] Thumbnail uploaded:", thumbR2Key);
+            } catch (thumbUploadErr) {
+              console.warn("[Upload] Thumbnail upload failed:", thumbUploadErr);
+            }
+          }
+
+          // Upload original video for server-side optimization + playback
+          if (uploadProjectId) {
             console.log(
-              "[Upload] Paid account — uploading original video for server-side optimization",
+              "[Upload] Uploading original video for server-side optimization",
             );
             try {
               const videoPresigned = await requestPresignedUpload({
@@ -730,6 +845,9 @@ export default function OnboardingFlow({
           formData.append("originalContentType", file.type);
           if (originalVideoR2Key) {
             formData.append("originalVideoR2Key", originalVideoR2Key);
+          }
+          if (thumbnailR2Key) {
+            formData.append("thumbnailR2Key", thumbnailR2Key);
           }
         } else if (isAudioVideo) {
           // Should never reach here — R2 upload is mandatory for audio/video
@@ -958,8 +1076,8 @@ export default function OnboardingFlow({
             });
             uploadFile = audioResult.file;
 
-            // Paid: upload original video for server-side optimization
-            if (isPaidPlan(accountPlanId)) {
+            // Upload original video for server-side optimization + playback
+            {
               try {
                 const videoPresigned = await requestPresignedUpload({
                   projectId: uploadProjectId,

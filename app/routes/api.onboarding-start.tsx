@@ -121,6 +121,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const originalVideoR2Key = formData.get("originalVideoR2Key") as
       | string
       | null;
+    const thumbnailR2Key = formData.get("thumbnailR2Key") as string | null;
     const originalFilename = formData.get("originalFilename") as string | null;
     const originalFileSize = formData.get("originalFileSize") as string | null;
     const originalContentType = formData.get("originalContentType") as
@@ -455,6 +456,7 @@ Please extract insights that specifically address these research questions and h
       participant_pseudonym: linkedPerson?.name ?? "Participant 1",
       segment: null,
       media_url: r2Key || null, // Set immediately if direct R2 upload, otherwise set by upload worker
+      thumbnail_url: thumbnailR2Key || null, // Client-generated thumbnail for video uploads
       media_type: finalMediaType, // Determined based on source type and context
       transcript: null, // Will be set by transcription
       transcript_formatted: null,
