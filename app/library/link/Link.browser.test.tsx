@@ -4,6 +4,14 @@ import { useLocation } from "react-router";
 import type { StubRouteEntry } from "tests/setup.browser";
 import { Link, type LinkProps } from "./link";
 
+type BrowserQuery = {
+	element(): HTMLElement;
+};
+
+type BrowserRenderResult = {
+	getByText(text: string): BrowserQuery;
+};
+
 const getEntries: (linkProps?: LinkProps) => StubRouteEntry[] = (linkProps) => [
 	{
 		path: "/first",
@@ -37,16 +45,23 @@ const getEntries: (linkProps?: LinkProps) => StubRouteEntry[] = (linkProps) => [
 		},
 	},
 ];
+
+function asBrowserRenderResult(value: unknown): BrowserRenderResult {
+	return value as BrowserRenderResult;
+}
+
 describe("Link", () => {
 	it("if the url is /first and you redirect to  /second nothing is added to the url", async ({ renderStub }) => {
-		const { getByText } = await renderStub({
-			entries: getEntries(),
-			props: {
-				initialEntries: ["/first"],
-			},
-		});
+		const { getByText } = asBrowserRenderResult(
+			await renderStub({
+				entries: getEntries(),
+				props: {
+					initialEntries: ["/first"],
+				},
+			})
+		);
 		const link = getByText("go");
-		await userEvent.click(link);
+		await userEvent.click(link.element());
 		const url = getByText("/second");
 		expect(url).toBeDefined();
 		await waitFor(() => {
@@ -58,14 +73,16 @@ describe("Link", () => {
 	it("if the url is /first?a=1 and you redirect to /second without keepSearchParams nothing is added to the url", async ({
 		renderStub,
 	}) => {
-		const { getByText } = await renderStub({
-			entries: getEntries(),
-			props: {
-				initialEntries: ["/first?a=1"],
-			},
-		});
+		const { getByText } = asBrowserRenderResult(
+			await renderStub({
+				entries: getEntries(),
+				props: {
+					initialEntries: ["/first?a=1"],
+				},
+			})
+		);
 		const link = getByText("go");
-		await userEvent.click(link);
+		await userEvent.click(link.element());
 		const url = getByText("/second");
 		await waitFor(() => {
 			expect(url.element()).toBeDefined();
@@ -76,14 +93,16 @@ describe("Link", () => {
 	it("if the url is /first?a=1 and you redirect to /second with keepSearchParams search params are kept", async ({
 		renderStub,
 	}) => {
-		const { getByText } = await renderStub({
-			entries: getEntries({ keepSearchParams: true, to: "/second" }),
-			props: {
-				initialEntries: ["/first?a=1"],
-			},
-		});
+		const { getByText } = asBrowserRenderResult(
+			await renderStub({
+				entries: getEntries({ keepSearchParams: true, to: "/second" }),
+				props: {
+					initialEntries: ["/first?a=1"],
+				},
+			})
+		);
 		const link = getByText("go");
-		await userEvent.click(link);
+		await userEvent.click(link.element());
 		const url = getByText("/second");
 		await waitFor(() => {
 			expect(url.element()).toBeDefined();
@@ -94,14 +113,16 @@ describe("Link", () => {
 	it("if the url is /first?a=1&lng=en and you redirect to /second with keepSearchParams search params and language are kept", async ({
 		renderStub,
 	}) => {
-		const { getByText } = await renderStub({
-			entries: getEntries({ keepSearchParams: true, to: "/second" }),
-			props: {
-				initialEntries: ["/first?a=1&lng=en"],
-			},
-		});
+		const { getByText } = asBrowserRenderResult(
+			await renderStub({
+				entries: getEntries({ keepSearchParams: true, to: "/second" }),
+				props: {
+					initialEntries: ["/first?a=1&lng=en"],
+				},
+			})
+		);
 		const link = getByText("go");
-		await userEvent.click(link);
+		await userEvent.click(link.element());
 		const url = getByText("/second");
 		await waitFor(() => {
 			expect(url.element()).toBeDefined();
@@ -112,14 +133,16 @@ describe("Link", () => {
 	it("if the url is /first?a=1&lng=en and you redirect to /second without keepSearchParams language is kept", async ({
 		renderStub,
 	}) => {
-		const { getByText } = await renderStub({
-			entries: getEntries({ to: "/second" }),
-			props: {
-				initialEntries: ["/first?lng=en"],
-			},
-		});
+		const { getByText } = asBrowserRenderResult(
+			await renderStub({
+				entries: getEntries({ to: "/second" }),
+				props: {
+					initialEntries: ["/first?lng=en"],
+				},
+			})
+		);
 		const link = getByText("go");
-		await userEvent.click(link);
+		await userEvent.click(link.element());
 		const url = getByText("/second");
 		await waitFor(() => {
 			expect(url.element()).toBeDefined();
@@ -130,14 +153,16 @@ describe("Link", () => {
 	it("if the url is /first?a=1&lng=en and you redirect to /second with a language override it is changed and search params are removed", async ({
 		renderStub,
 	}) => {
-		const { getByText } = await renderStub({
-			entries: getEntries({ to: "/second", language: "en" }),
-			props: {
-				initialEntries: ["/first?lng=en"],
-			},
-		});
+		const { getByText } = asBrowserRenderResult(
+			await renderStub({
+				entries: getEntries({ to: "/second", language: "en" }),
+				props: {
+					initialEntries: ["/first?lng=en"],
+				},
+			})
+		);
 		const link = getByText("go");
-		await userEvent.click(link);
+		await userEvent.click(link.element());
 		const url = getByText("/second");
 		await waitFor(() => {
 			expect(url.element()).toBeDefined();
@@ -148,14 +173,16 @@ describe("Link", () => {
 	it("if the url is /first?a=1&lng=en and you redirect to /second with a language override it is changed and search params are kept with keepSearchParams", async ({
 		renderStub,
 	}) => {
-		const { getByText } = await renderStub({
-			entries: getEntries({ to: "/second", language: "en", keepSearchParams: true }),
-			props: {
-				initialEntries: ["/first?a=a&lng=en"],
-			},
-		});
+		const { getByText } = asBrowserRenderResult(
+			await renderStub({
+				entries: getEntries({ to: "/second", language: "en", keepSearchParams: true }),
+				props: {
+					initialEntries: ["/first?a=a&lng=en"],
+				},
+			})
+		);
 		const link = getByText("go");
-		await userEvent.click(link);
+		await userEvent.click(link.element());
 		const url = getByText("/second");
 		await waitFor(() => {
 			expect(url.element()).toBeDefined();

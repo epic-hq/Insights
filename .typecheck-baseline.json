@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-03-16T07:26:45.741Z",
-  "totalDiagnostics": 1192,
+  "generatedAt": "2026-03-16T07:30:13.506Z",
+  "totalDiagnostics": 1185,
   "diagnostics": {
     "agents/livekit/agent.ts|TS2305|Module '\"@livekit/agents\"' has no exported member 'llm'.": 1,
     "agents/livekit/agent.ts|TS2503|Cannot find namespace 'metrics'.": 1,
@@ -384,7 +384,6 @@
     "app/lib/unified-context.server.ts|TS2339|Property 'website_url' does not exist on type 'SelectQueryError<\"column 'website_url' does not exist on 'projects'.\"> | SelectQueryError<\"column 'website_url' does not exist on 'themes'.\"> | ... 106 more ... | SelectQueryError<...>'.": 1,
     "app/lib/unified-context.server.ts|TS2769|No overload matches this call.": 1,
     "app/lib/validation/baml-validation.ts|TS2322|Type 'objectOutputType<{ person_key: ZodString; kind_slug: ZodString; value: ZodString; quote: ZodEffects<ZodOptional<ZodUnion<[ZodString, ZodNumber, ZodNull]>>, string | undefined, string | ... 2 more ... | undefined>; }, ZodTypeAny, \"passthrough\">[]' is not assignable to type 'FacetMention[]'.": 1,
-    "app/library/link/Link.browser.test.tsx|TS2339|Property 'getByText' does not exist on type 'RenderResult'.": 7,
     "app/mastra/agents/interview-status-agent.ts|TS2353|Object literal may only specify known properties, and 'generateTitle' does not exist in type 'Omit<SharedMemoryConfig, \"working\">'.": 1,
     "app/mastra/agents/project-setup-agent.ts|TS2322|Type 'SelectQueryError<\"column 'company_description' does not exist on 'projects'.\"> | SelectQueryError<\"column 'company_description' does not exist on 'themes'.\"> | ... 107 more ... | null' is not assignable to type 'Record<string, unknown> | null'.": 1,
     "app/mastra/agents/project-setup-agent.ts|TS2345|Argument of type 'unknown' is not assignable to parameter of type 'string'.": 2,
