@@ -37,15 +37,47 @@ import { createInvitation } from "~/features/teams/db/invitations";
 
 const mockSendEmail = vi.mocked(sendEmail);
 const mockCreateInvitation = vi.mocked(createInvitation);
+type ShareInviteActionArgs = Parameters<typeof action>[0];
+type ShareInviteContext = ShareInviteActionArgs["context"];
+type CreateInvitationResult = Awaited<ReturnType<typeof createInvitation>>;
+
+function createInvitationResult(
+	overrides?: Partial<NonNullable<CreateInvitationResult["data"]>>
+): CreateInvitationResult {
+	return {
+		data: {
+			token: "test-invite-token-123",
+			...overrides,
+		},
+		error: null,
+	} as CreateInvitationResult;
+}
+
+function createInvitationError(message: string): NonNullable<CreateInvitationResult["error"]> {
+	return {
+		name: "PostgrestError",
+		message,
+		details: "",
+		hint: "",
+		code: "P0001",
+	};
+}
+
+function createInvitationFailure(message: string): CreateInvitationResult {
+	return {
+		data: null,
+		error: createInvitationError(message),
+	} as CreateInvitationResult;
+}
 
 // Helper to create mock context
 function createMockContext(
 	overrides: Partial<{
-		supabase: any;
-		claims: any;
-		user_metadata: any;
+		supabase: unknown;
+		claims: Record<string, unknown> | null;
+		user_metadata: Record<string, unknown> | null;
 	}> = {}
-) {
+): ShareInviteContext {
 	// Use 'in' check to allow explicit null values
 	const mockSupabase =
 		"supabase" in overrides
@@ -76,7 +108,19 @@ function createMockContext(
 			},
 			account_id: "test-account-id",
 		}),
+		set: vi.fn(),
 	};
+}
+
+function createActionArgs(
+	request: Request,
+	contextOverrides?: Parameters<typeof createMockContext>[0]
+): ShareInviteActionArgs {
+	return {
+		request,
+		context: createMockContext(contextOverrides),
+		params: {},
+	} as ShareInviteActionArgs;
 }
 
 // Helper to create form data
@@ -102,10 +146,7 @@ describe("api/share-invite", () => {
 		vi.clearAllMocks();
 
 		// Default mock for createInvitation
-		mockCreateInvitation.mockResolvedValue({
-			data: { token: "test-invite-token-123" },
-			error: null,
-		});
+		mockCreateInvitation.mockResolvedValue(createInvitationResult());
 
 		// Default mock for sendEmail (success)
 		mockSendEmail.mockResolvedValue(undefined);
@@ -117,11 +158,7 @@ describe("api/share-invite", () => {
 				method: "GET",
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			const response = await action(createActionArgs(request));
 
 			expect(response.status).toBe(405);
 			const data = await response.json();
@@ -134,11 +171,7 @@ describe("api/share-invite", () => {
 				body: createFormData(validFormData),
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			const response = await action(createActionArgs(request));
 
 			expect(response.status).toBe(405);
 		});
@@ -151,11 +184,7 @@ describe("api/share-invite", () => {
 				body: createFormData(validFormData),
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext({ supabase: null }),
-				params: {},
-			});
+			const response = await action(createActionArgs(request, { supabase: null }));
 
 			expect(response.status).toBe(401);
 			const data = await response.json();
@@ -165,19 +194,14 @@ describe("api/share-invite", () => {
 
 	describe("Form Validation", () => {
 		it("should return 400 for missing targetEmail", async () => {
-			const formData = { ...validFormData };
-			delete (formData as any).targetEmail;
+			const { targetEmail: _targetEmail, ...formData } = validFormData;
 
 			const request = new Request("http://localhost/api/share-invite", {
 				method: "POST",
 				body: createFormData(formData),
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			const response = await action(createActionArgs(request));
 
 			expect(response.status).toBe(400);
 			const data = await response.json();
@@ -190,11 +214,7 @@ describe("api/share-invite", () => {
 				body: createFormData({ ...validFormData, targetEmail: "not-an-email" }),
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			const response = await action(createActionArgs(request));
 
 			expect(response.status).toBe(400);
 		});
@@ -205,11 +225,7 @@ describe("api/share-invite", () => {
 				body: createFormData({ ...validFormData, accountId: "not-a-uuid" }),
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			const response = await action(createActionArgs(request));
 
 			expect(response.status).toBe(400);
 		});
@@ -220,11 +236,7 @@ describe("api/share-invite", () => {
 				body: createFormData({ ...validFormData, resourceLink: "not-a-url" }),
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			const response = await action(createActionArgs(request));
 
 			expect(response.status).toBe(400);
 		});
@@ -235,11 +247,7 @@ describe("api/share-invite", () => {
 				body: createFormData({ ...validFormData, resourceName: "" }),
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			const response = await action(createActionArgs(request));
 
 			expect(response.status).toBe(400);
 		});
@@ -250,11 +258,7 @@ describe("api/share-invite", () => {
 				body: createFormData({ ...validFormData, resourceType: "" }),
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			const response = await action(createActionArgs(request));
 
 			expect(response.status).toBe(400);
 		});
@@ -272,11 +276,7 @@ describe("api/share-invite", () => {
 				body: formData,
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			const response = await action(createActionArgs(request));
 
 			expect(response.status).toBe(200);
 		});
@@ -289,11 +289,7 @@ describe("api/share-invite", () => {
 				body: createFormData(validFormData),
 			});
 
-			await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			await action(createActionArgs(request));
 
 			expect(mockCreateInvitation).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -306,21 +302,14 @@ describe("api/share-invite", () => {
 		});
 
 		it("should return 500 when invitation creation fails", async () => {
-			mockCreateInvitation.mockResolvedValue({
-				data: null,
-				error: { message: "Database error" },
-			});
+			mockCreateInvitation.mockResolvedValue(createInvitationFailure("Database error"));
 
 			const request = new Request("http://localhost/api/share-invite", {
 				method: "POST",
 				body: createFormData(validFormData),
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			const response = await action(createActionArgs(request));
 
 			expect(response.status).toBe(500);
 			const data = await response.json();
@@ -328,21 +317,14 @@ describe("api/share-invite", () => {
 		});
 
 		it("should return 500 when no token is returned", async () => {
-			mockCreateInvitation.mockResolvedValue({
-				data: {}, // No token
-				error: null,
-			});
+			mockCreateInvitation.mockResolvedValue(createInvitationResult({ token: "" }));
 
 			const request = new Request("http://localhost/api/share-invite", {
 				method: "POST",
 				body: createFormData(validFormData),
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			const response = await action(createActionArgs(request));
 
 			expect(response.status).toBe(500);
 			const data = await response.json();
@@ -357,11 +339,7 @@ describe("api/share-invite", () => {
 				body: createFormData(validFormData),
 			});
 
-			await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			await action(createActionArgs(request));
 
 			expect(mockSendEmail).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -383,11 +361,7 @@ describe("api/share-invite", () => {
 				body: createFormData(formDataWithNote),
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			const response = await action(createActionArgs(request));
 
 			expect(response.status).toBe(200);
 			expect(mockSendEmail).toHaveBeenCalled();
@@ -401,11 +375,7 @@ describe("api/share-invite", () => {
 				body: createFormData(validFormData),
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			const response = await action(createActionArgs(request));
 
 			expect(response.status).toBe(500);
 			const data = await response.json();
@@ -420,11 +390,7 @@ describe("api/share-invite", () => {
 				body: createFormData(validFormData),
 			});
 
-			const response = await action({
-				request,
-				context: createMockContext(),
-				params: {},
-			});
+			const response = await action(createActionArgs(request));
 
 			expect(response.status).toBe(200);
 			const data = await response.json();
@@ -439,14 +405,12 @@ describe("api/share-invite", () => {
 				body: createFormData(validFormData),
 			});
 
-			await action({
-				request,
-				context: createMockContext({
+			await action(
+				createActionArgs(request, {
 					user_metadata: { name: "John Doe" },
 					claims: { email: "john@example.com" },
-				}),
-				params: {},
-			});
+				})
+			);
 
 			expect(mockSendEmail).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -461,14 +425,12 @@ describe("api/share-invite", () => {
 				body: createFormData(validFormData),
 			});
 
-			await action({
-				request,
-				context: createMockContext({
+			await action(
+				createActionArgs(request, {
 					user_metadata: {},
 					claims: { email: "fallback@example.com" },
-				}),
-				params: {},
-			});
+				})
+			);
 
 			expect(mockSendEmail).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -483,14 +445,12 @@ describe("api/share-invite", () => {
 				body: createFormData(validFormData),
 			});
 
-			await action({
-				request,
-				context: createMockContext({
+			await action(
+				createActionArgs(request, {
 					user_metadata: {},
 					claims: {},
-				}),
-				params: {},
-			});
+				})
+			);
 
 			expect(mockSendEmail).toHaveBeenCalledWith(
 				expect.objectContaining({

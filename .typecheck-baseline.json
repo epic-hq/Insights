@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-03-16T02:45:16.334Z",
-  "totalDiagnostics": 1259,
+  "generatedAt": "2026-03-16T02:52:38.308Z",
+  "totalDiagnostics": 1236,
   "diagnostics": {
     "agents/livekit/agent.ts|TS2305|Module '\"@livekit/agents\"' has no exported member 'llm'.": 1,
     "agents/livekit/agent.ts|TS2503|Cannot find namespace 'metrics'.": 1,
@@ -590,10 +590,6 @@
     "app/routes/api.research-links.$slug.start.tsx|TS2322|Type 'string' is not assignable to type '\"form\" | \"chat\" | undefined'.": 6,
     "app/routes/api.research-links.$slug.start.tsx|TS2769|No overload matches this call.": 4,
     "app/routes/api.save-project-goals.tsx|TS2339|Property 'error' does not exist on type 'never'.": 1,
-    "app/routes/api.share-invite.test.ts|TS2322|Type '{}' is not assignable to type '{ token: string; } | { [x: string]: string | number | boolean | Json[] | { [x: string]: string | number | boolean | Json[] | ... | null | undefined; } | null | undefined; token: string; } | null'.": 1,
-    "app/routes/api.share-invite.test.ts|TS2345|Argument of type '{ data: { token: string; }; error: null; }' is not assignable to parameter of type 'PostgrestSingleResponse<{ token: string; } | { [x: string]: string | number | boolean | Json[] | { [x: string]: string | number | boolean | Json[] | ... | null | undefined; } | null | undefined; token: string; }>'.": 1,
-    "app/routes/api.share-invite.test.ts|TS2739|Type '{ message: string; }' is missing the following properties from type 'PostgrestError': details, hint, code, name": 1,
-    "app/routes/api.share-invite.test.ts|TS2741|Property 'set' is missing in type '{ get: Mock<Procedure>; }' but required in type 'Readonly<RouterContextProvider>'.": 20,
     "app/routes/api.share-invite.tsx|TS5097|An import path can only end with a '.tsx' extension when 'allowImportingTsExtensions' is enabled.": 1,
     "app/routes/api.share.enable.tsx|TS18047|'ctx.claims' is possibly 'null'.": 1,
     "app/routes/api.signup-next-turn.tsx|TS2339|Property 'createRunAsync' does not exist on type 'Workflow<DefaultEngineType, Step<string, unknown, unknown, unknown, unknown, unknown, any, unknown>[], \"signupOnboardingWorkflow\", unknown, { message: string; user_id?: string | undefined; state?: { name?: string | undefined; ... 4 more ...; need_to_learn?: string | undefined; } | undefined; }, { ...; }, { ...; }, u...'.": 1,
