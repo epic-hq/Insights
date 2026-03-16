@@ -56,7 +56,7 @@ export default function ProcessingScreen({
   // Build stage text with part info if multipart upload
   const displayStage = (() => {
     if (!showUploadProgress) return processingStage;
-    if (uploadProgress.phase === "optimizing") return "Reducing file size...";
+    if (uploadProgress.phase === "optimizing") return "Extracting audio...";
     if (uploadProgress.phase === "completing") return "Finalizing upload...";
     if (uploadProgress.part) {
       return `Uploading part ${uploadProgress.part.index} of ${uploadProgress.part.total}`;
@@ -182,8 +182,7 @@ export default function ProcessingScreen({
           <p className="text-muted-foreground text-sm">{fileName}</p>
           {isOptimizing && (
             <p className="text-muted-foreground/70 text-xs">
-              Compressing {formatBytes(uploadProgress.totalBytes)} for faster
-              upload
+              Preparing {formatBytes(uploadProgress.totalBytes)} for analysis
             </p>
           )}
         </div>

@@ -3,7 +3,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Button } from "~/components/ui/button";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
+import { isPaidPlan, useAccountPlan } from "~/hooks/useAccountPlan";
 import {
+  extractAudioOnly,
+  isVideoFile,
   optimizeMediaFile,
   shouldOptimize,
 } from "~/utils/media-optimizer.client";
@@ -444,6 +447,7 @@ export default function OnboardingFlow({
   accountId,
   existingProject,
 }: OnboardingFlowProps) {
+  const accountPlanId = useAccountPlan();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isMobile } = useDeviceDetection();
@@ -567,11 +571,73 @@ export default function OnboardingFlow({
           getUploadSourceType(file);
         const isAudioVideo = isAudioVideoSourceType(sourceType);
 
-        // Optimize media files before upload (reduces upload time and storage)
+        // Smart media optimization:
+        // - Video files: extract audio only (instant) for transcription
+        //   Paid accounts also upload original video for server-side optimization
+        // - Audio files: re-encode to 128k AAC if large (fast in WASM)
         let uploadFile = file;
-        if (isAudioVideo && shouldOptimize(file)) {
+        let originalVideoR2Key: string | null = null;
+
+        if (isAudioVideo && isVideoFile(file)) {
+          // Video: extract audio track (near-instant, no re-encoding)
           console.log(
-            "[Upload] Optimizing media file before upload:",
+            "[Upload] Extracting audio from video:",
+            file.name,
+            `(${(file.size / 1024 / 1024).toFixed(1)} MB)`,
+          );
+          setUploadProgress({
+            bytesSent: 0,
+            totalBytes: file.size,
+            percent: 0,
+            phase: "optimizing",
+          });
+          const audioResult = await extractAudioOnly(file, {
+            onProgress: (p) => {
+              setUploadProgress({
+                bytesSent: 0,
+                totalBytes: file.size,
+                percent: Math.round(p.percent),
+                phase: "optimizing",
+              });
+            },
+          });
+          uploadFile = audioResult.file;
+          console.log(
+            "[Upload] Audio extracted:",
+            `${(file.size / 1024 / 1024).toFixed(1)} MB → ${(audioResult.finalSize / 1024 / 1024).toFixed(1)} MB`,
+          );
+
+          // Paid accounts: also upload original video for server-side optimization
+          if (isPaidPlan(accountPlanId) && uploadProjectId) {
+            console.log(
+              "[Upload] Paid account — uploading original video for server-side optimization",
+            );
+            try {
+              const videoPresigned = await requestPresignedUpload({
+                projectId: uploadProjectId,
+                file,
+              });
+              originalVideoR2Key = await uploadFileWithPresignedUrl({
+                file,
+                presignedData: videoPresigned,
+                onProgress: handleUploadProgress,
+              });
+              console.log(
+                "[Upload] Original video uploaded:",
+                originalVideoR2Key,
+              );
+            } catch (videoUploadError) {
+              // Non-fatal: analysis still works from audio
+              console.warn(
+                "[Upload] Video upload failed, continuing with audio-only:",
+                videoUploadError,
+              );
+            }
+          }
+        } else if (isAudioVideo && shouldOptimize(file)) {
+          // Audio: re-encode to 128k AAC (fast in WASM)
+          console.log(
+            "[Upload] Optimizing audio before upload:",
             file.name,
             `(${(file.size / 1024 / 1024).toFixed(1)} MB)`,
           );
@@ -594,7 +660,7 @@ export default function OnboardingFlow({
           uploadFile = result.file;
           if (result.wasOptimized) {
             console.log(
-              "[Upload] File optimized:",
+              "[Upload] Audio optimized:",
               `${(file.size / 1024 / 1024).toFixed(1)} MB → ${(result.finalSize / 1024 / 1024).toFixed(1)} MB`,
             );
           }
@@ -662,6 +728,9 @@ export default function OnboardingFlow({
           formData.append("originalFilename", file.name);
           formData.append("originalFileSize", String(file.size));
           formData.append("originalContentType", file.type);
+          if (originalVideoR2Key) {
+            formData.append("originalVideoR2Key", originalVideoR2Key);
+          }
         } else if (isAudioVideo) {
           // Should never reach here — R2 upload is mandatory for audio/video
           throw new Error(
@@ -867,8 +936,51 @@ export default function OnboardingFlow({
           const formData = new FormData();
           let uploadFile = file;
           let r2Key: string | null = null;
+          let batchOriginalVideoR2Key: string | null = null;
 
-          if (isAudioVideo && shouldOptimize(file)) {
+          if (isAudioVideo && isVideoFile(file)) {
+            // Video: extract audio (instant)
+            setUploadProgress({
+              bytesSent: 0,
+              totalBytes: file.size,
+              percent: 0,
+              phase: "optimizing",
+            });
+            const audioResult = await extractAudioOnly(file, {
+              onProgress: (progress) => {
+                setUploadProgress({
+                  bytesSent: 0,
+                  totalBytes: file.size,
+                  percent: Math.round(progress.percent),
+                  phase: "optimizing",
+                });
+              },
+            });
+            uploadFile = audioResult.file;
+
+            // Paid: upload original video for server-side optimization
+            if (isPaidPlan(accountPlanId)) {
+              try {
+                const videoPresigned = await requestPresignedUpload({
+                  projectId: uploadProjectId,
+                  file,
+                });
+                batchOriginalVideoR2Key = await uploadFileWithPresignedUrl({
+                  file,
+                  presignedData: videoPresigned,
+                  onProgress: (progress) => {
+                    setBatchProgress(i, progress.percent * 0.3);
+                  },
+                });
+              } catch {
+                console.warn(
+                  "[BatchUpload] Video upload failed for",
+                  file.name,
+                );
+              }
+            }
+          } else if (isAudioVideo && shouldOptimize(file)) {
+            // Audio: re-encode to 128k AAC
             setUploadProgress({
               bytesSent: 0,
               totalBytes: file.size,
@@ -909,6 +1021,9 @@ export default function OnboardingFlow({
               "originalContentType",
               file.type || "application/octet-stream",
             );
+            if (batchOriginalVideoR2Key) {
+              formData.append("originalVideoR2Key", batchOriginalVideoR2Key);
+            }
           } else {
             formData.append("file", file);
           }
