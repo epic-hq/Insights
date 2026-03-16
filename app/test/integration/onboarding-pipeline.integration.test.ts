@@ -1,8 +1,10 @@
 import { tasks } from "@trigger.dev/sdk";
+import type { ActionFunctionArgs } from "react-router";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { action as webhookAction } from "~/routes/api.assemblyai-webhook";
 import { action as onboardingAction } from "~/routes/api.onboarding-start";
 import { mockTestAuth, seedTestData, TEST_ACCOUNT_ID, TEST_PROJECT_ID, testDb } from "~/test/utils/testDb";
+import type { Database } from "~/types";
 
 // Mock dependencies that require external services
 vi.mock("~/lib/supabase/client.server", () => ({
@@ -27,19 +29,72 @@ vi.mock("@trigger.dev/sdk", () => ({
 global.fetch = vi.fn();
 const originalRpc = testDb.rpc.bind(testDb);
 
+const mockContext = {
+	get: vi.fn(),
+	set: vi.fn(),
+} as unknown as ActionFunctionArgs["context"];
+
+function createOnboardingArgs(request: Request): Parameters<typeof onboardingAction>[0] {
+	return {
+		request,
+		context: mockContext,
+		params: {},
+		unstable_pattern: "",
+	} as Parameters<typeof onboardingAction>[0];
+}
+
+function createWebhookArgs(request: Request): Parameters<typeof webhookAction>[0] {
+	return {
+		request,
+		context: mockContext,
+		params: {},
+		unstable_pattern: "",
+	} as Parameters<typeof webhookAction>[0];
+}
+
+function requireId(value: string | undefined, label: string): string {
+	if (!value) {
+		throw new Error(`Expected ${label} to be defined in test setup`);
+	}
+	return value;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		return null;
+	}
+	return value as Record<string, unknown>;
+}
+
+type RpcName = keyof Database["public"]["Functions"];
+type ConversationAnalysisStub = {
+	transcript_data?: {
+		assemblyai_id?: string;
+	};
+};
+type RpcMockResult = Awaited<ReturnType<typeof testDb.rpc>>;
+
+function createConversationAnalysisStub(assemblyaiId: string): ConversationAnalysisStub {
+	return {
+		transcript_data: {
+			assemblyai_id: assemblyaiId,
+		},
+	};
+}
+
 describe("Onboarding Pipeline Integration", () => {
 	beforeEach(async () => {
 		await seedTestData();
 		vi.clearAllMocks();
-		vi.spyOn(testDb, "rpc").mockImplementation((fn: string, args?: Record<string, unknown>) => {
+		vi.spyOn(testDb, "rpc").mockImplementation(((fn: RpcName, args?: Record<string, unknown>) => {
 			if (fn === "get_user_accounts") {
 				return Promise.resolve({
 					data: [{ account_id: TEST_ACCOUNT_ID, personal_account: false }],
 					error: null,
-				}) as any;
+				}) as unknown as RpcMockResult;
 			}
-			return originalRpc(fn, args as any);
-		});
+			return originalRpc(fn, args);
+		}) as typeof testDb.rpc);
 		await testDb.from("user_settings").upsert(
 			{
 				user_id: "test-user-123",
@@ -90,7 +145,7 @@ describe("Onboarding Pipeline Integration", () => {
 				body: formData,
 			});
 
-			const onboardingResponse = await onboardingAction({ request: onboardingRequest });
+			const onboardingResponse = await onboardingAction(createOnboardingArgs(onboardingRequest));
 			const onboardingResult = await onboardingResponse.json();
 			expect(onboardingResponse.status).toBe(200);
 			expect(onboardingResult.success).toBe(true);
@@ -102,7 +157,9 @@ describe("Onboarding Pipeline Integration", () => {
 			const { data: interview } = await testDb.from("interviews").select("*").eq("id", interviewId).single();
 
 			expect(interview?.status).toBe("processing");
-			expect((interview?.conversation_analysis as any)?.transcript_data?.assemblyai_id).toBe("transcript-123");
+			expect(asRecord(asRecord(interview?.conversation_analysis)?.transcript_data)?.assemblyai_id).toBe(
+				"transcript-123"
+			);
 
 			// Verify onboarding completion flag
 			const { data: userSettings } = await testDb
@@ -142,7 +199,7 @@ describe("Onboarding Pipeline Integration", () => {
 				body: JSON.stringify(webhookPayload),
 			});
 
-			const webhookResponse = await webhookAction({ request: webhookRequest });
+			const webhookResponse = await webhookAction(createWebhookArgs(webhookRequest));
 			expect(webhookResponse.status).toBe(200);
 
 			const webhookResult = await webhookResponse.json();
@@ -154,7 +211,7 @@ describe("Onboarding Pipeline Integration", () => {
 			expect(finalInterview?.status).toBe("processing");
 			expect(finalInterview?.transcript).toBe("This is a test transcript about user research and insights.");
 			expect(finalInterview?.duration_sec).toBe(180);
-			expect((finalInterview?.conversation_analysis as any)?.trigger_run_id).toBe("run-test-123");
+			expect(asRecord(finalInterview?.conversation_analysis)?.trigger_run_id).toBe("run-test-123");
 			expect(vi.mocked(tasks.trigger)).toHaveBeenCalled();
 		});
 
@@ -170,11 +227,7 @@ describe("Onboarding Pipeline Integration", () => {
 					title: "Idempotency Test",
 					status: "ready",
 					transcript: "Existing transcript",
-					conversation_analysis: {
-						transcript_data: {
-							assemblyai_id: "transcript-456",
-						},
-					} as any,
+					conversation_analysis: createConversationAnalysisStub("transcript-456"),
 				})
 				.select()
 				.single();
@@ -192,7 +245,7 @@ describe("Onboarding Pipeline Integration", () => {
 				body: JSON.stringify(webhookPayload),
 			});
 
-			const webhookResponse = await webhookAction({ request: webhookRequest });
+			const webhookResponse = await webhookAction(createWebhookArgs(webhookRequest));
 			expect(webhookResponse.status).toBe(200);
 
 			const webhookResult = await webhookResponse.json();
@@ -200,7 +253,11 @@ describe("Onboarding Pipeline Integration", () => {
 			expect(webhookResult.message).toBe("Already processed");
 
 			// Verify original transcript was not overwritten
-			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interview?.id).single();
+			const { data: finalInterview } = await testDb
+				.from("interviews")
+				.select("*")
+				.eq("id", requireId(interview?.id, "interview.id"))
+				.single();
 
 			expect(finalInterview?.transcript).toBe("Existing transcript");
 			expect(finalInterview?.status).toBe("ready");
@@ -218,11 +275,7 @@ describe("Onboarding Pipeline Integration", () => {
 					project_id: TEST_PROJECT_ID,
 					title: "Status Test",
 					status: "uploaded",
-					conversation_analysis: {
-						transcript_data: {
-							assemblyai_id: "transcript-789",
-						},
-					} as any,
+					conversation_analysis: createConversationAnalysisStub("transcript-789"),
 				})
 				.select()
 				.single();
@@ -240,7 +293,11 @@ describe("Onboarding Pipeline Integration", () => {
 
 			// Track status changes by querying before and after
 			const getStatus = async () => {
-				const { data } = await testDb.from("interviews").select("status").eq("id", interview?.id).single();
+				const { data } = await testDb
+					.from("interviews")
+					.select("status")
+					.eq("id", requireId(interview?.id, "interview.id"))
+					.single();
 				return data?.status;
 			};
 
@@ -259,7 +316,7 @@ describe("Onboarding Pipeline Integration", () => {
 				body: JSON.stringify(webhookPayload),
 			});
 
-			const webhookResponse = await webhookAction({ request: webhookRequest });
+			const webhookResponse = await webhookAction(createWebhookArgs(webhookRequest));
 			expect(webhookResponse.status).toBe(200);
 
 			// Webhook now leaves interview in processing while orchestrator runs asynchronously
@@ -280,11 +337,7 @@ describe("Onboarding Pipeline Integration", () => {
 					project_id: TEST_PROJECT_ID,
 					title: "Error Test",
 					status: "uploaded",
-					conversation_analysis: {
-						transcript_data: {
-							assemblyai_id: "transcript-error",
-						},
-					} as any,
+					conversation_analysis: createConversationAnalysisStub("transcript-error"),
 				})
 				.select()
 				.single();
@@ -305,13 +358,19 @@ describe("Onboarding Pipeline Integration", () => {
 			expect(webhookResponse.status).toBe(200);
 
 			// Verify error status was set
-			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interview?.id).single();
+			const { data: finalInterview } = await testDb
+				.from("interviews")
+				.select("*")
+				.eq("id", requireId(interview?.id, "interview.id"))
+				.single();
 
 			expect(finalInterview?.status).toBe("error");
-			expect(String((finalInterview?.conversation_analysis as any)?.status_detail ?? "").toLowerCase()).toContain(
+			expect(String(asRecord(finalInterview?.conversation_analysis)?.status_detail ?? "").toLowerCase()).toContain(
 				"failed"
 			);
-			expect((finalInterview?.conversation_analysis as any)?.last_error).toContain("AssemblyAI transcription failed");
+			expect(String(asRecord(finalInterview?.conversation_analysis)?.last_error ?? "")).toContain(
+				"AssemblyAI transcription failed"
+			);
 		});
 	});
 });

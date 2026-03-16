@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-03-16T03:55:40.792Z",
-  "totalDiagnostics": 1209,
+  "generatedAt": "2026-03-16T07:24:52.953Z",
+  "totalDiagnostics": 1201,
   "diagnostics": {
     "agents/livekit/agent.ts|TS2305|Module '\"@livekit/agents\"' has no exported member 'llm'.": 1,
     "agents/livekit/agent.ts|TS2503|Cannot find namespace 'metrics'.": 1,
@@ -638,9 +638,7 @@
     "app/test/integration/conversation-analysis-consolidation.test.ts|TS18047|'interview' is possibly 'null'.": 3,
     "app/test/integration/interview-upload.integration.test.ts|TS2345|Argument of type '\"get_insights_embedding_queue_depth\"' is not assignable to parameter of type '\"accept_invitation\" | \"auto_generate_themes_from_clusters\" | \"auto_link_persona_insights\" | \"cleanup_expired_invitations\" | \"create_account\" | \"create_account_id\" | \"create_invitation\" | ... 68 more ... | \"user_has_response_for_link\"'.": 2,
     "app/test/integration/interview-upload.integration.test.ts|TS2345|Argument of type '\"get_transcribe_queue_depth\"' is not assignable to parameter of type '\"accept_invitation\" | \"auto_generate_themes_from_clusters\" | \"auto_link_persona_insights\" | \"cleanup_expired_invitations\" | \"create_account\" | \"create_account_id\" | \"create_invitation\" | ... 68 more ... | \"user_has_response_for_link\"'.": 2,
-    "app/test/integration/onboarding-pipeline.integration.test.ts|TS2345|Argument of type '{ request: Request; }' is not assignable to parameter of type 'ActionFunctionArgs<Readonly<RouterContextProvider>>'.": 5,
-    "app/test/integration/onboarding-pipeline.integration.test.ts|TS2345|Argument of type 'string | undefined' is not assignable to parameter of type 'string'.": 3,
-    "app/test/integration/onboarding-pipeline.integration.test.ts|TS2345|Argument of type 'string' is not assignable to parameter of type '\"accept_invitation\" | \"auto_generate_themes_from_clusters\" | \"auto_link_persona_insights\" | \"cleanup_expired_invitations\" | \"create_account\" | \"create_account_id\" | \"create_invitation\" | ... 68 more ... | \"user_has_response_for_link\"'.": 1,
+    "app/test/integration/onboarding-pipeline.integration.test.ts|TS2345|Argument of type '{ request: Request; }' is not assignable to parameter of type 'ActionFunctionArgs<Readonly<RouterContextProvider>>'.": 1,
     "app/test/integration/people-resolution.integration.test.ts|TS2339|Property 'company' does not exist on type 'Partial<{ account_id?: string | null | undefined; age?: number | null | undefined; age_range?: string | null | undefined; contact_info?: string | number | boolean | Json[] | { [x: string]: string | ... 5 more ... | undefined; } | null | undefined; ... 32 more ...; website_url?: string | ... 1 more ... | undefined; }>'.": 1,
     "app/test/integration/people-resolution.integration.test.ts|TS2353|Object literal may only specify known properties, and 'company' does not exist in type 'Partial<{ account_id?: string | null | undefined; age?: number | null | undefined; age_range?: string | null | undefined; contact_info?: string | number | boolean | Json[] | { [x: string]: string | ... 5 more ... | undefined; } | null | undefined; ... 32 more ...; website_url?: string | ... 1 more ... | undefined; }>'.": 4,
     "app/test/integration/person-attribution.integration.test.ts|TS2683|'this' implicitly has type 'any' because it does not have a type annotation.": 1,
