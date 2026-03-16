@@ -208,6 +208,7 @@
     "build-storybook": "storybook build",
     "check": "biome check .",
     "check:fix": "biome check --write --unsafe .",
+    "check:staged": "node scripts/biome-staged.mjs",
     "check:fix:chunks": "biome check app/components --write --unsafe && biome check app/features --write --unsafe && biome check app/routes --write --unsafe && biome check scripts --write --unsafe",
     "check:unused": "knip --max-issues 100 --no-exit-code",
     "check:unused:fix": "knip --fix",

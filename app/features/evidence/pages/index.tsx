@@ -44,8 +44,11 @@ type EvidenceListItem = (Pick<
 	| "method"
 	| "anchors"
 	| "interview_id"
+	| "source_type"
+	| "thumbnail_url"
 > & {
 	context_summary?: string | null;
+	similarity?: number;
 	interview?: {
 		id: string;
 		title: string | null;
@@ -58,6 +61,22 @@ type EvidenceListItem = (Pick<
 };
 
 type EvidenceRow = Omit<EvidenceListItem, "people" | "facets">;
+
+type RegenerateActionResult =
+	| { ok: false; error?: string }
+	| ({ ok: true } & Awaited<ReturnType<typeof regenerateEvidenceForProject>>);
+
+type SemanticSearchResult = EvidenceListItem[];
+
+function isRegenerateSuccess(
+	data: RegenerateActionResult | undefined
+): data is Extract<RegenerateActionResult, { ok: true }> {
+	return Boolean(data?.ok && "processed" in data && "skipped" in data && "errors" in data);
+}
+
+function hasNoEvidenceIds(value: string[] | undefined): boolean {
+	return (value?.length ?? 0) === 0;
+}
 
 export async function action({ context, params, request }: ActionFunctionArgs) {
 	if (request.method.toUpperCase() !== "POST") {
@@ -127,7 +146,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			...new Set(
 				idsParam
 					.split(",")
-					.map((id) => id.trim())
+					.map((id: string) => id.trim())
 					.filter(Boolean)
 			),
 		];
@@ -149,9 +168,12 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			.eq("person_id", filterPersonId);
 
 		if (peErr) throw new Error(`Failed to load evidence for person: ${peErr.message}`);
-		evidenceIdFilter = personEvidence?.map((pe) => pe.evidence_id) || [];
+		evidenceIdFilter =
+			personEvidence
+				?.map((pe: { evidence_id: string | null }) => pe.evidence_id)
+				.filter((id: string | null): id is string => Boolean(id)) || [];
 
-		if (evidenceIdFilter.length === 0) {
+		if (hasNoEvidenceIds(evidenceIdFilter)) {
 			return {
 				evidence: [],
 				filteredByPerson: filterPersonId,
@@ -170,7 +192,10 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 		if (linkError) throw new Error(`Failed to load evidence links: ${linkError.message}`);
 
-		const rqEvidenceIds = evidenceIds?.map((link) => link.evidence_id).filter((id): id is string => Boolean(id)) || [];
+		const rqEvidenceIds =
+			evidenceIds
+				?.map((link: { evidence_id: string | null }) => link.evidence_id)
+				.filter((id: string | null): id is string => Boolean(id)) || [];
 
 		// Intersect with person filter if both are present
 		if (evidenceIdFilter) {
@@ -179,7 +204,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			evidenceIdFilter = rqEvidenceIds;
 		}
 
-		if (evidenceIdFilter.length === 0) {
+		if (hasNoEvidenceIds(evidenceIdFilter)) {
 			return {
 				evidence: [],
 				filteredByRQ: rqId,
@@ -199,7 +224,10 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 		if (themeErr) throw new Error(`Failed to load evidence for theme: ${themeErr.message}`);
 
-		const themeEvidenceIds = themeEvidence?.map((te) => te.evidence_id).filter((id): id is string => Boolean(id)) || [];
+		const themeEvidenceIds =
+			themeEvidence
+				?.map((te: { evidence_id: string | null }) => te.evidence_id)
+				.filter((id: string | null): id is string => Boolean(id)) || [];
 
 		// Intersect with existing filters if present
 		if (evidenceIdFilter) {
@@ -208,7 +236,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			evidenceIdFilter = themeEvidenceIds;
 		}
 
-		if (evidenceIdFilter.length === 0) {
+		if (hasNoEvidenceIds(evidenceIdFilter)) {
 			return {
 				evidence: [],
 				filteredByTheme: themeId,
@@ -231,7 +259,10 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 		if (starredErr) throw new Error(`Failed to load starred evidence: ${starredErr.message}`);
 
-		const starredIds = starredFlags?.map((f) => f.entity_id).filter((id): id is string => Boolean(id)) || [];
+		const starredIds =
+			starredFlags
+				?.map((f: { entity_id: string | null }) => f.entity_id)
+				.filter((id: string | null): id is string => Boolean(id)) || [];
 
 		// Intersect with existing filters if present
 		if (evidenceIdFilter) {
@@ -240,7 +271,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			evidenceIdFilter = starredIds;
 		}
 
-		if (evidenceIdFilter.length === 0) {
+		if (hasNoEvidenceIds(evidenceIdFilter)) {
 			return {
 				evidence: [],
 				filteredByStarred: true,
@@ -283,7 +314,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			evidenceIdFilter = upvotedIds;
 		}
 
-		if (evidenceIdFilter.length === 0) {
+		if (hasNoEvidenceIds(evidenceIdFilter)) {
 			return {
 				evidence: [],
 				filteredByUpvoted: true,
@@ -306,7 +337,10 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 		if (facetErr) throw new Error(`Failed to load evidence for facet kind: ${facetErr.message}`);
 
-		const facetEvidenceIds = facetEvidence?.map((f) => f.evidence_id).filter((id): id is string => Boolean(id)) || [];
+		const facetEvidenceIds =
+			facetEvidence
+				?.map((f: { evidence_id: string | null }) => f.evidence_id)
+				.filter((id: string | null): id is string => Boolean(id)) || [];
 
 		// Intersect with existing filters if present
 		if (evidenceIdFilter) {
@@ -315,7 +349,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			evidenceIdFilter = facetEvidenceIds;
 		}
 
-		if (evidenceIdFilter.length === 0) {
+		if (hasNoEvidenceIds(evidenceIdFilter)) {
 			return {
 				evidence: [],
 				filteredByFacetKind: filterFacetKind,
@@ -339,6 +373,8 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				chunk,
 				topic,
 				context_summary,
+				source_type,
+				thumbnail_url,
 				support,
 				confidence,
 				created_at,
@@ -555,7 +591,7 @@ export default function EvidenceIndex() {
 		filteredByStarred,
 		filteredByUpvoted,
 	} = useLoaderData<typeof loader>();
-	const fetcher = useFetcher<typeof action>();
+	const fetcher = useFetcher<RegenerateActionResult>();
 	const isRegenerating = fetcher.state !== "idle";
 	const [viewMode, setViewMode] = useState<"mini" | "expanded">("mini");
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -575,14 +611,16 @@ export default function EvidenceIndex() {
 	// Controlled select helpers
 	const sortBy = searchParams.get("sort_by") || "created_at";
 	const sortDir = searchParams.get("sort_dir") || "desc";
-	const support = searchParams.get("support") || "";
+	const _support = searchParams.get("support") || "";
 	const confidence = searchParams.get("confidence") || "";
 	const method = searchParams.get("method") || "";
 	const facetKind = searchParams.get("facet_kind") || "";
 	const [searchQuery, setSearchQuery] = useState("");
-	const [semanticResults, setSemanticResults] = useState<typeof evidence>([]);
+	const [semanticResults, setSemanticResults] = useState<SemanticSearchResult>([]);
 	const [isSearching, setIsSearching] = useState(false);
 	const [selectedEvidenceId, setSelectedEvidenceId] = useState<string | null>(null);
+	const projectPath = currentProject?.projectPath;
+	const projectId = currentProject?.projectId;
 
 	const updateParam = (key: string, value: string) => {
 		const next = new URLSearchParams(searchParams);
@@ -603,11 +641,11 @@ export default function EvidenceIndex() {
 		const timer = setTimeout(async () => {
 			try {
 				console.log("[Semantic Search] Starting search for:", searchQuery);
-				if (!currentProject?.projectPath || !currentProject?.projectId) {
+				if (!projectPath || !projectId) {
 					console.error("[Semantic Search] No project context available");
 					return;
 				}
-				const url = `${currentProject.projectPath}/api/evidence/semantic-search?query=${encodeURIComponent(searchQuery)}&projectId=${currentProject.projectId}&matchThreshold=0.3&matchCount=20`;
+				const url = `${projectPath}/api/evidence/semantic-search?query=${encodeURIComponent(searchQuery)}&projectId=${projectId}&matchThreshold=0.3&matchCount=20`;
 				console.log("[Semantic Search] URL:", url);
 
 				const response = await fetch(url, {
@@ -619,13 +657,13 @@ export default function EvidenceIndex() {
 					console.log("[Semantic Search] Results received:", {
 						totalCount: data.totalCount,
 						threshold: data.threshold,
-						resultsPreview: data.evidence?.slice(0, 3).map((e: any) => ({
-							id: e.id,
-							similarity: e.similarity,
-							verbatim: e.verbatim?.substring(0, 100),
+						resultsPreview: data.evidence?.slice(0, 3).map((item: EvidenceListItem) => ({
+							id: item.id,
+							similarity: item.similarity,
+							verbatim: item.verbatim?.substring(0, 100),
 						})),
 					});
-					setSemanticResults(data.evidence || []);
+					setSemanticResults((data.evidence || []) as SemanticSearchResult);
 				} else {
 					const errorData = await response.json();
 					console.error("[Semantic Search] API error:", response.status, errorData);
@@ -638,7 +676,7 @@ export default function EvidenceIndex() {
 		}, 500); // 500ms debounce
 
 		return () => clearTimeout(timer);
-	}, [searchQuery, currentProject?.projectId]);
+	}, [projectId, projectPath, searchQuery]);
 
 	// Client-side keyword filtering (instant)
 	const keywordMatches = searchQuery
@@ -657,7 +695,7 @@ export default function EvidenceIndex() {
 	const filteredEvidence = searchQuery
 		? (() => {
 				const seenIds = new Set(keywordMatches.map((e) => e.id));
-				const semanticOnly = semanticResults.filter((e) => !seenIds.has(e.id));
+				const semanticOnly = semanticResults.filter((item) => !seenIds.has(item.id));
 				// console.log("[Evidence Filter] Merging results:", {
 				// 	keywordMatches: keywordMatches.length,
 				// 	semanticResults: semanticResults.length,
@@ -931,7 +969,7 @@ export default function EvidenceIndex() {
 				</div>
 			)}
 
-			{fetcher.data?.ok && (
+			{isRegenerateSuccess(fetcher.data) && (
 				<p className="text-muted-foreground text-xs">
 					Refreshed {fetcher.data.processed} interview
 					{fetcher.data.processed === 1 ? "" : "s"}
