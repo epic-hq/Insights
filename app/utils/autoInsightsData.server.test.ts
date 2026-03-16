@@ -10,11 +10,12 @@ const mockSupabase = {
 };
 
 const mockGetServerClient = vi.mocked(getServerClient);
+type AutoInsightsDataInput = Parameters<typeof formatDataForLLM>[0];
 
 describe("Auto-Insights Data Aggregation", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockGetServerClient.mockReturnValue({ client: mockSupabase } as any);
+		mockGetServerClient.mockReturnValue({ client: mockSupabase } as unknown as ReturnType<typeof getServerClient>);
 	});
 
 	describe("aggregateAutoInsightsData", () => {
@@ -164,9 +165,57 @@ describe("Auto-Insights Data Aggregation", () => {
 
 		it("should prioritize high-impact insights", async () => {
 			const mockInsights = [
-				{ id: "1", name: "Low Impact", impact: 2, novelty: 1 },
-				{ id: "2", name: "High Impact", impact: 5, novelty: 4 },
-				{ id: "3", name: "Medium Impact", impact: 3, novelty: 3 },
+				{
+					id: "1",
+					name: "Low Impact",
+					category: "Test",
+					pain: null,
+					desired_outcome: null,
+					evidence: null,
+					impact: 2,
+					novelty: 1,
+					jtbd: null,
+					emotional_response: null,
+					journey_stage: null,
+					confidence: null,
+					priority: 0,
+					tags: [],
+					personas: [],
+				},
+				{
+					id: "2",
+					name: "High Impact",
+					category: "Test",
+					pain: null,
+					desired_outcome: null,
+					evidence: null,
+					impact: 5,
+					novelty: 4,
+					jtbd: null,
+					emotional_response: null,
+					journey_stage: null,
+					confidence: null,
+					priority: 0,
+					tags: [],
+					personas: [],
+				},
+				{
+					id: "3",
+					name: "Medium Impact",
+					category: "Test",
+					pain: null,
+					desired_outcome: null,
+					evidence: null,
+					impact: 3,
+					novelty: 3,
+					jtbd: null,
+					emotional_response: null,
+					journey_stage: null,
+					confidence: null,
+					priority: 0,
+					tags: [],
+					personas: [],
+				},
 			];
 
 			mockSupabase.from.mockImplementation((table) => {
@@ -241,7 +290,7 @@ describe("Auto-Insights Data Aggregation", () => {
 	});
 
 	describe("formatDataForLLM", () => {
-		const mockData = {
+		const mockData: AutoInsightsDataInput = {
 			summary: {
 				total_insights: 54,
 				total_interviews: 15,
@@ -264,6 +313,7 @@ describe("Auto-Insights Data Aggregation", () => {
 					emotional_response: "High",
 					journey_stage: "Planning",
 					confidence: "High",
+					priority: 0,
 					tags: ["time_management", "productivity"],
 					personas: ["Busy Professional"],
 				},
@@ -321,7 +371,7 @@ describe("Auto-Insights Data Aggregation", () => {
 		});
 
 		it("should handle empty data gracefully", () => {
-			const emptyData = {
+			const emptyData: AutoInsightsDataInput = {
 				summary: {
 					total_insights: 0,
 					total_interviews: 0,
@@ -359,11 +409,12 @@ describe("Auto-Insights Data Aggregation", () => {
 				emotional_response: "High",
 				journey_stage: "Planning",
 				confidence: "High",
+				priority: 0,
 				tags: [],
 				personas: [],
 			}));
 
-			const dataWithManyInsights = {
+			const dataWithManyInsights: AutoInsightsDataInput = {
 				...mockData,
 				insights: manyInsights,
 			};
@@ -376,7 +427,7 @@ describe("Auto-Insights Data Aggregation", () => {
 		});
 
 		it("should handle null/undefined values gracefully", () => {
-			const dataWithNulls = {
+			const dataWithNulls: AutoInsightsDataInput = {
 				...mockData,
 				insights: [
 					{
@@ -384,7 +435,7 @@ describe("Auto-Insights Data Aggregation", () => {
 						name: "Test Insight",
 						category: "Test",
 						pain: null,
-						desired_outcome: undefined,
+						desired_outcome: null,
 						evidence: null,
 						impact: null,
 						novelty: null,
@@ -392,6 +443,7 @@ describe("Auto-Insights Data Aggregation", () => {
 						emotional_response: null,
 						journey_stage: null,
 						confidence: null,
+						priority: 0,
 						tags: [],
 						personas: [],
 					},

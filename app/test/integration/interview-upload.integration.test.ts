@@ -19,6 +19,17 @@ import {
 	testDb,
 } from "~/test/utils/testDb";
 
+function callQueueRpc(name: string, args?: Record<string, unknown>) {
+	return testDb.rpc(name as never, args as never);
+}
+
+function requireId(value: string | undefined, label: string): string {
+	if (!value) {
+		throw new Error(`Expected ${label} to be defined in test setup`);
+	}
+	return value;
+}
+
 // Mock only Supabase server client for auth context
 vi.mock("~/lib/supabase/client.server", () => ({
 	getServerClient: () => mockTestAuth(),
@@ -197,7 +208,7 @@ describe("Database Integration Tests", () => {
 			// Interviews with media_url fire trg_enqueue_transcribe_interview → pgmq.q_transcribe_interview_queue.
 			// If prosecdef=false, service_role gets "permission denied" and transcription jobs
 			// are silently never queued. Queue depth delta > 0 proves the trigger fired.
-			const { data: before } = await testDb.rpc("get_transcribe_queue_depth");
+			const { data: before } = await callQueueRpc("get_transcribe_queue_depth");
 			const depthBefore = Number(before ?? 0);
 
 			const probeId = crypto.randomUUID();
@@ -211,7 +222,7 @@ describe("Database Integration Tests", () => {
 			});
 			expect(error).toBeNull();
 
-			const { data: after, error: rpcError } = await testDb.rpc("get_transcribe_queue_depth");
+			const { data: after, error: rpcError } = await callQueueRpc("get_transcribe_queue_depth");
 			expect(rpcError).toBeNull();
 			expect(Number(after)).toBeGreaterThan(depthBefore);
 
@@ -221,7 +232,7 @@ describe("Database Integration Tests", () => {
 		it("should enqueue evidence embedding message in pgmq after evidence insert", async () => {
 			// Guards against enqueue_evidence_embedding() SECURITY DEFINER regression.
 			// Evidence inserts fire trg_enqueue_evidence → pgmq.q_insights_embedding_queue (table='evidence').
-			const { data: before } = await testDb.rpc("get_insights_embedding_queue_depth", { filter_table: "evidence" });
+			const { data: before } = await callQueueRpc("get_insights_embedding_queue_depth", { filter_table: "evidence" });
 			const depthBefore = Number(before ?? 0);
 
 			const { data: ev, error } = await testDb
@@ -236,11 +247,13 @@ describe("Database Integration Tests", () => {
 				.single();
 			expect(error).toBeNull();
 
-			const { data: after, error: rpcError } = await testDb.rpc("get_insights_embedding_queue_depth", { filter_table: "evidence" });
+			const { data: after, error: rpcError } = await callQueueRpc("get_insights_embedding_queue_depth", {
+				filter_table: "evidence",
+			});
 			expect(rpcError).toBeNull();
 			expect(Number(after)).toBeGreaterThan(depthBefore);
 
-			await testDb.from("evidence").delete().eq("id", ev!.id);
+			await testDb.from("evidence").delete().eq("id", requireId(ev?.id, "evidence.id"));
 		});
 	});
 });

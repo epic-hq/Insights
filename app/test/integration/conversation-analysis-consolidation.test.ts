@@ -53,6 +53,39 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 		return value;
 	}
 
+	function asRecord(value: unknown): Record<string, unknown> | null {
+		if (!value || typeof value !== "object" || Array.isArray(value)) {
+			return null;
+		}
+		return value as Record<string, unknown>;
+	}
+
+	function asTranscriptData(value: unknown): { assemblyai_id?: string; file_name?: string } | null {
+		const record = asRecord(value);
+		if (!record) return null;
+		return {
+			assemblyai_id: typeof record.assemblyai_id === "string" ? record.assemblyai_id : undefined,
+			file_name: typeof record.file_name === "string" ? record.file_name : undefined,
+		};
+	}
+
+	function asWorkflowState(
+		value: unknown
+	): { interviewId?: string; evidenceIds?: string[]; completedSteps?: string[]; currentStep?: string } | null {
+		const record = asRecord(value);
+		if (!record) return null;
+		return {
+			interviewId: typeof record.interviewId === "string" ? record.interviewId : undefined,
+			evidenceIds: Array.isArray(record.evidenceIds)
+				? record.evidenceIds.filter((item): item is string => typeof item === "string")
+				: undefined,
+			completedSteps: Array.isArray(record.completedSteps)
+				? record.completedSteps.filter((item): item is string => typeof item === "string")
+				: undefined,
+			currentStep: typeof record.currentStep === "string" ? record.currentStep : undefined,
+		};
+	}
+
 	beforeEach(async () => {
 		await seedTestData();
 	});
@@ -104,9 +137,9 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 			const { data: updated } = await testDb.from("interviews").select("*").eq("id", createdInterview.id).single();
 
 			expect(updated?.status).toBe("processing");
-			const analysis = updated?.conversation_analysis as any;
+			const analysis = asRecord(updated?.conversation_analysis);
 			expect(analysis?.current_step).toBe("transcription");
-			expect(analysis?.transcript_data?.assemblyai_id).toBe(assemblyAiId);
+			expect(asTranscriptData(analysis?.transcript_data)?.assemblyai_id).toBe(assemblyAiId);
 			expect(analysis?.custom_instructions).toBe("Test instructions");
 		});
 	});
@@ -147,8 +180,8 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 
 			expect(error).toBeNull();
 			expect(found?.id).toBe(createdInterview.id);
-			const analysis = found?.conversation_analysis as any;
-			expect(analysis?.transcript_data?.assemblyai_id).toBe(assemblyAiId);
+			const analysis = asRecord(found?.conversation_analysis);
+			expect(asTranscriptData(analysis?.transcript_data)?.assemblyai_id).toBe(assemblyAiId);
 		});
 
 		it("should fail gracefully when assemblyai_id not found", async () => {
@@ -204,15 +237,16 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 			expect(saveError).toBeNull();
 
 			// Simulate loadWorkflowState
+			const loadedInterview = requireInterview(interview);
 			const { data: loaded, error: loadError } = await testDb
 				.from("interviews")
 				.select("conversation_analysis")
-				.eq("id", interview.id)
+				.eq("id", loadedInterview.id)
 				.single();
 
 			expect(loadError).toBeNull();
-			const analysis = loaded?.conversation_analysis as any;
-			const state = analysis?.workflow_state;
+			const analysis = asRecord(loaded?.conversation_analysis);
+			const state = asWorkflowState(analysis?.workflow_state);
 
 			expect(state?.interviewId).toBe(requireInterview(interview).id);
 			expect(state?.evidenceIds).toHaveLength(3);
@@ -246,7 +280,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.eq("id", requireInterview(interview).id)
 				.single();
 
-			const existingAnalysis = (current?.conversation_analysis as any) || {};
+			const existingAnalysis = asRecord(current?.conversation_analysis) || {};
 
 			// Update workflow state while preserving existing data
 			const { error: updateError } = await testDb
@@ -275,9 +309,9 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.eq("id", requireInterview(interview).id)
 				.single();
 
-			const analysis = updated?.conversation_analysis as any;
+			const analysis = asRecord(updated?.conversation_analysis);
 			expect(analysis?.custom_instructions).toBe("Keep this");
-			expect(analysis?.transcript_data?.file_name).toBe("keep-this-too.mp3");
+			expect(asTranscriptData(analysis?.transcript_data)?.file_name).toBe("keep-this-too.mp3");
 			expect(analysis?.trigger_run_id).toBe("run_existing");
 			expect(analysis?.current_step).toBe("evidence");
 		});
@@ -304,7 +338,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.single();
 
 			// Simulate cancel operation
-			const existingAnalysis = requireInterview(interview).conversation_analysis as any;
+			const existingAnalysis = asRecord(requireInterview(interview).conversation_analysis) || {};
 			const { error: cancelError } = await testDb
 				.from("interviews")
 				.update({
@@ -322,10 +356,11 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 			expect(cancelError).toBeNull();
 
 			// Verify cancellation was recorded
-			const { data: canceled } = await testDb.from("interviews").select("*").eq("id", interview.id).single();
+			const canceledInterview = requireInterview(interview);
+			const { data: canceled } = await testDb.from("interviews").select("*").eq("id", canceledInterview.id).single();
 
 			expect(canceled?.status).toBe("error");
-			const analysis = canceled?.conversation_analysis as any;
+			const analysis = asRecord(canceled?.conversation_analysis);
 			expect(["Canceled by user", "Interview processing failed"]).toContain(analysis?.status_detail);
 			expect(["Analysis canceled by user", "Interview processing failed"]).toContain(analysis?.last_error);
 			expect(analysis?.canceled_at).toBeDefined();
@@ -354,7 +389,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.single();
 
 			// Simulate frontend hook extracting progress
-			const analysis = requireInterview(interview).conversation_analysis as any;
+			const analysis = asRecord(requireInterview(interview).conversation_analysis);
 
 			expect(analysis?.current_step).toBe("insights");
 			expect(analysis?.progress).toBe(75);
@@ -381,7 +416,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.single();
 
 			// Frontend hook should handle null conversation_analysis
-			const analysis = interview?.conversation_analysis as any;
+			const analysis = asRecord(interview?.conversation_analysis);
 			expect(analysis).toBeNull();
 
 			// Should be able to provide defaults
@@ -417,7 +452,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.select()
 				.single();
 
-			const existingAnalysis = requireInterview(interview).conversation_analysis as any;
+			const existingAnalysis = asRecord(requireInterview(interview).conversation_analysis) || {};
 
 			// Simulate reprocess-evidence update
 			const { error: reprocessError } = await testDb
@@ -435,10 +470,15 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 
 			expect(reprocessError).toBeNull();
 
-			const { data: reprocessing } = await testDb.from("interviews").select("*").eq("id", interview.id).single();
+			const reprocessingInterview = requireInterview(interview);
+			const { data: reprocessing } = await testDb
+				.from("interviews")
+				.select("*")
+				.eq("id", reprocessingInterview.id)
+				.single();
 
 			expect(reprocessing?.status).toBe("processing");
-			const analysis = reprocessing?.conversation_analysis as any;
+			const analysis = asRecord(reprocessing?.conversation_analysis);
 			expect(analysis?.custom_instructions).toBe("Original instructions"); // Preserved
 			expect(analysis?.current_step).toBe("evidence"); // Updated
 			expect(analysis?.status_detail).toBe("Re-extracting evidence from transcript");
@@ -463,7 +503,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 				.single();
 
 			// Set up subscription (simplified, actual hook uses supabase.channel)
-			const updates: any[] = [];
+			const updates: Array<Record<string, unknown>> = [];
 			const createdInterview = requireInterview(interview);
 			const channel = testDb
 				.channel(`test-interview-${createdInterview.id}`)

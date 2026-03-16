@@ -10,6 +10,17 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { seedTestData, TEST_ACCOUNT_ID, TEST_PERSON_1_ID, TEST_PROJECT_ID, testDb } from "~/test/utils/testDb";
 
+function callQueueRpc(name: string) {
+	return testDb.rpc(name as never);
+}
+
+function requireId(value: number | undefined, label: string): number {
+	if (typeof value !== "number") {
+		throw new Error(`Expected ${label} to be defined in test setup`);
+	}
+	return value;
+}
+
 describe("Person Facet Embedding Queue Enqueue Regressions", () => {
 	let facetAccountId: number;
 	const cleanupFacetAccountIds: number[] = [];
@@ -49,7 +60,7 @@ describe("Person Facet Embedding Queue Enqueue Regressions", () => {
 		// → pgmq.q_person_facet_embedding_queue.
 		// If prosecdef=false, service_role gets "permission denied" and person facet
 		// embeddings are silently never generated.
-		const { data: before, error: beforeError } = await testDb.rpc("get_person_facet_embedding_queue_depth");
+		const { data: before, error: beforeError } = await callQueueRpc("get_person_facet_embedding_queue_depth");
 		expect(beforeError).toBeNull();
 		const depthBefore = Number(before ?? 0);
 
@@ -63,14 +74,14 @@ describe("Person Facet Embedding Queue Enqueue Regressions", () => {
 		});
 		expect(error).toBeNull();
 
-		const { data: after, error: rpcError } = await testDb.rpc("get_person_facet_embedding_queue_depth");
+		const { data: after, error: rpcError } = await callQueueRpc("get_person_facet_embedding_queue_depth");
 		expect(rpcError).toBeNull();
 		expect(Number(after)).toBeGreaterThan(depthBefore);
 	});
 
 	it("should NOT enqueue when person_facet is inserted with an existing embedding", async () => {
 		// Verifies the trigger guard: embedding already set means no re-enqueue needed.
-		const { data: before } = await testDb.rpc("get_person_facet_embedding_queue_depth");
+		const { data: before } = await callQueueRpc("get_person_facet_embedding_queue_depth");
 		const depthBefore = Number(before ?? 0);
 
 		// Use a different slug to avoid pk conflict
@@ -78,7 +89,10 @@ describe("Person Facet Embedding Queue Enqueue Regressions", () => {
 			.from("facet_account")
 			.insert({
 				account_id: TEST_ACCOUNT_ID,
-				kind_id: (await testDb.from("facet_kind_global").select("id").limit(1).single()).data!.id,
+				kind_id: requireId(
+					(await testDb.from("facet_kind_global").select("id").limit(1).single()).data?.id,
+					"facet_kind_global.id"
+				),
 				slug: `queue-probe-embed-${Date.now()}`,
 				label: "Queue Probe Facet With Embedding",
 			})
@@ -98,7 +112,7 @@ describe("Person Facet Embedding Queue Enqueue Regressions", () => {
 		});
 		expect(error).toBeNull();
 
-		const { data: after } = await testDb.rpc("get_person_facet_embedding_queue_depth");
+		const { data: after } = await callQueueRpc("get_person_facet_embedding_queue_depth");
 		// Depth should be unchanged — trigger should not fire when embedding is already set
 		expect(Number(after)).toBe(depthBefore);
 

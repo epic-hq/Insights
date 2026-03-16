@@ -4,8 +4,30 @@
  */
 
 import { describe, expect, it } from "vitest";
+import type { ResearchLinkResponse } from "../../types";
 import type { ResearchLinkQuestion } from "./schemas";
 import { buildResponsesCsv, extractAnswer, getMediaType, isR2Key } from "./utils";
+
+function createResponse(responses: ResearchLinkResponse["responses"], email = ""): ResearchLinkResponse {
+	return {
+		id: "response-1",
+		research_link_id: "link-1",
+		email,
+		completed: false,
+		created_at: new Date().toISOString(),
+		evidence_count: null,
+		evidence_extracted: null,
+		evidence_id: null,
+		person_id: null,
+		personalized_survey_id: null,
+		phone: null,
+		response_mode: "form",
+		responses,
+		updated_at: new Date().toISOString(),
+		utm_params: null,
+		video_url: null,
+	};
+}
 
 describe("getMediaType", () => {
 	it("should detect image extensions", () => {
@@ -70,6 +92,7 @@ describe("extractAnswer", () => {
 	const makeQuestion = (id: string): ResearchLinkQuestion => ({
 		id,
 		prompt: "Test",
+		hidden: false,
 		required: false,
 		type: "short_text",
 		placeholder: null,
@@ -84,30 +107,30 @@ describe("extractAnswer", () => {
 	});
 
 	it("should extract a string answer", () => {
-		const response = { responses: { q1: "Hello" } } as any;
+		const response = createResponse({ q1: "Hello" });
 		expect(extractAnswer(response, makeQuestion("q1"))).toBe("Hello");
 	});
 
 	it("should join array answers with comma", () => {
-		const response = { responses: { q1: ["A", "B", "C"] } } as any;
+		const response = createResponse({ q1: ["A", "B", "C"] });
 		expect(extractAnswer(response, makeQuestion("q1"))).toBe("A, B, C");
 	});
 
 	it("should return Yes/No for booleans", () => {
-		const responseTrue = { responses: { q1: true } } as any;
+		const responseTrue = createResponse({ q1: true });
 		expect(extractAnswer(responseTrue, makeQuestion("q1"))).toBe("Yes");
 
-		const responseFalse = { responses: { q1: false } } as any;
+		const responseFalse = createResponse({ q1: false });
 		expect(extractAnswer(responseFalse, makeQuestion("q1"))).toBe("No");
 	});
 
 	it("should return empty string for missing answers", () => {
-		const response = { responses: {} } as any;
+		const response = createResponse({});
 		expect(extractAnswer(response, makeQuestion("q1"))).toBe("");
 	});
 
 	it("should return empty string for null responses", () => {
-		const response = { responses: null } as any;
+		const response = createResponse(null);
 		expect(extractAnswer(response, makeQuestion("q1"))).toBe("");
 	});
 });
@@ -117,6 +140,7 @@ describe("buildResponsesCsv", () => {
 		{
 			id: "q1",
 			prompt: "Favorite color",
+			hidden: false,
 			required: false,
 			type: "short_text",
 			placeholder: null,
@@ -137,7 +161,7 @@ describe("buildResponsesCsv", () => {
 	});
 
 	it("should include response rows", () => {
-		const responses = [{ email: "a@b.com", responses: { q1: "Blue" } }] as any[];
+		const responses = [createResponse({ q1: "Blue" }, "a@b.com")];
 		const csv = buildResponsesCsv(questions, responses);
 		const lines = csv.split("\n");
 		expect(lines).toHaveLength(2);
@@ -145,7 +169,7 @@ describe("buildResponsesCsv", () => {
 	});
 
 	it("should escape commas in values", () => {
-		const responses = [{ email: "a@b.com", responses: { q1: "Red, Blue" } }] as any[];
+		const responses = [createResponse({ q1: "Red, Blue" }, "a@b.com")];
 		const csv = buildResponsesCsv(questions, responses);
 		expect(csv).toContain('"Red, Blue"');
 	});

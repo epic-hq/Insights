@@ -1,6 +1,17 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { cleanupTestData, seedTestData, TEST_ACCOUNT_ID, TEST_PROJECT_ID, testDb } from "~/test/utils/testDb";
 
+function callQueueRpc(name: string, args?: Record<string, unknown>) {
+	return testDb.rpc(name as never, args as never);
+}
+
+function requireRecord<T>(value: T | null, label: string): T {
+	if (!value) {
+		throw new Error(`Expected ${label} to be defined in test setup`);
+	}
+	return value;
+}
+
 /**
  * Integration tests for persona-insight relationships against normalized schema.
  * Uses people_personas junction (not people.persona_id).
@@ -28,6 +39,7 @@ describe("Persona-Insight Integration Tests", () => {
 			.single();
 		expect(personaError).toBeNull();
 		expect(persona).toBeTruthy();
+		const createdPersona = requireRecord(persona, "persona");
 
 		const { data: person, error: personError } = await supabase
 			.from("people")
@@ -41,6 +53,7 @@ describe("Persona-Insight Integration Tests", () => {
 			.single();
 		expect(personError).toBeNull();
 		expect(person).toBeTruthy();
+		const createdPerson = requireRecord(person, "person");
 
 		const { error: interviewError } = await supabase.from("interviews").insert({
 			id: interviewId,
@@ -53,14 +66,14 @@ describe("Persona-Insight Integration Tests", () => {
 
 		const { error: interviewPersonError } = await supabase.from("interview_people").insert({
 			interview_id: interviewId,
-			person_id: person!.id,
+			person_id: createdPerson.id,
 		});
 		expect(interviewPersonError).toBeNull();
 
 		const { error: peoplePersonaError } = await supabase.from("people_personas").insert({
 			interview_id: interviewId,
-			person_id: person!.id,
-			persona_id: persona!.id,
+			person_id: createdPerson.id,
+			persona_id: createdPersona.id,
 			project_id: TEST_PROJECT_ID,
 		});
 		expect(peoplePersonaError).toBeNull();
@@ -78,9 +91,10 @@ describe("Persona-Insight Integration Tests", () => {
 			.single();
 		expect(insightError).toBeNull();
 		expect(insight).toBeTruthy();
+		const createdInsight = requireRecord(insight, "insight");
 
 		const { data: personaInsights, error } = await supabase.rpc("auto_link_persona_insights", {
-			p_insight_id: insight!.id,
+			p_insight_id: createdInsight.id,
 		});
 
 		expect(error).toBeNull();
@@ -89,12 +103,12 @@ describe("Persona-Insight Integration Tests", () => {
 		const { data: junctionRecords, error: junctionError } = await supabase
 			.from("persona_insights")
 			.select("*")
-			.eq("insight_id", insight!.id);
+			.eq("insight_id", createdInsight.id);
 
 		expect(junctionError).toBeNull();
 		expect(junctionRecords).toBeTruthy();
-		expect(junctionRecords!.length).toBeGreaterThan(0);
-		expect(junctionRecords![0].persona_id).toBe(persona!.id);
+		expect(junctionRecords?.length).toBeGreaterThan(0);
+		expect(junctionRecords?.[0].persona_id).toBe(createdPersona.id);
 	});
 
 	it("should handle people without persona links gracefully", async () => {
@@ -113,6 +127,7 @@ describe("Persona-Insight Integration Tests", () => {
 			.single();
 		expect(personError).toBeNull();
 		expect(person).toBeTruthy();
+		const createdPerson = requireRecord(person, "person");
 
 		const { error: interviewError } = await supabase.from("interviews").insert({
 			id: interviewId,
@@ -125,7 +140,7 @@ describe("Persona-Insight Integration Tests", () => {
 
 		const { error: interviewPersonError } = await supabase.from("interview_people").insert({
 			interview_id: interviewId,
-			person_id: person!.id,
+			person_id: createdPerson.id,
 		});
 		expect(interviewPersonError).toBeNull();
 
@@ -141,20 +156,21 @@ describe("Persona-Insight Integration Tests", () => {
 			.select()
 			.single();
 		expect(insightError).toBeNull();
+		const createdInsight = requireRecord(insight, "insight");
 
 		const { error } = await supabase.rpc("auto_link_persona_insights", {
-			p_insight_id: insight!.id,
+			p_insight_id: createdInsight.id,
 		});
 		expect(error).toBeNull();
 
 		const { data: junctionRecords, error: junctionError } = await supabase
 			.from("persona_insights")
 			.select("*")
-			.eq("insight_id", insight!.id);
+			.eq("insight_id", createdInsight.id);
 
 		expect(junctionError).toBeNull();
 		expect(junctionRecords).toBeTruthy();
-		expect(junctionRecords!.length).toBe(0);
+		expect(junctionRecords?.length).toBe(0);
 	});
 
 	it("should validate schema expectations for normalized persona links", async () => {
@@ -185,7 +201,7 @@ describe("Persona-Insight Integration Tests", () => {
 			// If prosecdef=false, service_role gets "permission denied" and theme embeddings
 			// are silently never generated. Queue depth > 0 proves the trigger fired.
 			const depthBefore = Number(
-				(await testDb.rpc("get_insights_embedding_queue_depth", { filter_table: null })).data ?? 0
+				(await callQueueRpc("get_insights_embedding_queue_depth", { filter_table: null })).data ?? 0
 			);
 
 			const { error } = await testDb.from("themes").insert({
@@ -197,7 +213,7 @@ describe("Persona-Insight Integration Tests", () => {
 			});
 			expect(error).toBeNull();
 
-			const { data: depthAfter, error: rpcError } = await testDb.rpc("get_insights_embedding_queue_depth", {
+			const { data: depthAfter, error: rpcError } = await callQueueRpc("get_insights_embedding_queue_depth", {
 				filter_table: null,
 			});
 			expect(rpcError).toBeNull();
