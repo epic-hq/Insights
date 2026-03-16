@@ -9,7 +9,7 @@
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { userContext } from "~/server/user-context";
-import type { Database } from "~/types";
+import type { Database, SupabaseClient } from "~/types";
 
 export interface OnboardingData {
 	jobFunction: string;
@@ -120,7 +120,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
  */
 export async function loader({ context }: { context: Map<symbol, unknown> }) {
 	const ctx = context.get(userContext) as {
-		supabase: ReturnType<typeof import("~/lib/supabase/client.server").createSupabaseServerClient>;
+		supabase: SupabaseClient;
 		claims?: { sub?: string };
 	};
 	const supabase = ctx.supabase;

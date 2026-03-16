@@ -159,10 +159,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 			if (isPdfFile) {
 				consola.log("Extracting text from PDF:", file.name);
-				const { default: pdfParse } = await import("pdf-parse");
+				const { PDFParse } = await import("pdf-parse");
 				const buffer = Buffer.from(await file.arrayBuffer());
-				const pdfData = await pdfParse(buffer);
+				const pdfParser = new PDFParse({ data: buffer });
+				const pdfData = await pdfParser.getText();
 				textContent = pdfData.text;
+				await pdfParser.destroy();
 
 				if (!textContent || textContent.trim().length === 0) {
 					return Response.json(
@@ -173,7 +175,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					);
 				}
 
-				consola.log(`PDF extracted: ${pdfData.numpages} pages, ${textContent.length} characters`);
+				consola.log(`PDF extracted: ${pdfData.total} pages, ${textContent.length} characters`);
 			} else {
 				consola.log("Processing text/markdown file:", file.name);
 				textContent = await file.text();

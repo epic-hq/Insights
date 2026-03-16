@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loader as validationLoader } from "~/features/projects/pages/ValidationStatus";
+import { loader as validationLoader } from "~/features/projects/pages/validationStatus";
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server";
 import { userContext } from "~/server/user-context";
 import {

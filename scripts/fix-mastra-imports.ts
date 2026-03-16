@@ -9,13 +9,32 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import { glob } from "glob";
+
+async function findTypeScriptFiles(rootDir: string): Promise<string[]> {
+	const entries = await fs.readdir(rootDir, { withFileTypes: true });
+	const files: string[] = [];
+
+	for (const entry of entries) {
+		if (entry.name === "node_modules") continue;
+		if (entry.name.includes(".bak")) continue;
+
+		const fullPath = path.join(rootDir, entry.name);
+		if (entry.isDirectory()) {
+			files.push(...(await findTypeScriptFiles(fullPath)));
+			continue;
+		}
+
+		if (entry.isFile() && fullPath.endsWith(".ts")) {
+			files.push(fullPath);
+		}
+	}
+
+	return files;
+}
 
 async function fixMastraImports() {
 	const mastraToolsDir = path.join(process.cwd(), "app/mastra");
-	const files = await glob(`${mastraToolsDir}/**/*.ts`, {
-		ignore: ["**/*.bak*", "**/node_modules/**"],
-	});
+	const files = await findTypeScriptFiles(mastraToolsDir);
 
 	console.log(`Found ${files.length} TypeScript files in app/mastra`);
 

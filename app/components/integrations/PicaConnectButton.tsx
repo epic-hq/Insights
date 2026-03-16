@@ -14,8 +14,8 @@ import { Button } from "~/components/ui/button";
 
 /** Pica connection record returned from AuthKit
  * Note: Pica SDK types say `_id` but actual API returns `id` — handle both */
-interface ConnectionRecord {
-	_id?: string;
+type ConnectionRecord = {
+	_id: string;
 	id?: string;
 	key: string;
 	platform: string;
@@ -24,7 +24,7 @@ interface ConnectionRecord {
 	identity?: string;
 	identityType?: "user" | "team" | "organization" | "project";
 	[key: string]: unknown;
-}
+};
 
 interface PicaConnectButtonProps {
 	/** User ID for token generation */
@@ -98,7 +98,7 @@ export function PicaConnectButton({
 				}
 			);
 
-			onSuccess?.(connection);
+			onSuccess?.(connection as ConnectionRecord);
 		},
 		[accountId, saveAction, onSuccess, saveFetcher]
 	);
@@ -123,7 +123,15 @@ export function PicaConnectButton({
 			},
 		},
 		selectedConnection: platform,
-		onSuccess: handleSuccess,
+		onSuccess: handleSuccess as (connection: {
+			_id: string;
+			key: string;
+			platform: string;
+			name: string;
+			environment: string;
+			identity?: string;
+			identityType?: "user" | "team" | "organization" | "project";
+		}) => void,
 		onError: handleError,
 		onClose: () => setIsConnecting(false),
 	});

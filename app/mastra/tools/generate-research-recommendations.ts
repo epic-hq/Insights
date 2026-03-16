@@ -19,6 +19,36 @@ import { createTool } from "@mastra/core/tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
+import type { Database } from "../../types";
+
+type ResearchQuestionSummaryRow = {
+	research_question_id: string | null;
+	research_question_text: string | null;
+	open_answer_count: number | null;
+};
+
+type InterviewPersonRow = {
+	person_id: string;
+	created_at: string;
+	people: {
+		id: string;
+		name: string | null;
+		title: string | null;
+		default_organization: { name: string | null } | null;
+	} | null;
+};
+
+type IcpScoreRow = {
+	person_id: string;
+	score: number;
+	confidence: number | null;
+	people: {
+		id: string;
+		name: string | null;
+		title: string | null;
+		default_organization: { name: string | null } | null;
+	} | null;
+};
 
 const RecommendationSchema = z.object({
 	id: z.string(),
@@ -78,7 +108,6 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 	execute: async (input, context?) => {
 		// Dynamic imports to avoid static ~/  imports (Mastra pattern)
 		const { supabaseAdmin } = await import("../../lib/supabase/client.server");
-		const { Database } = await import("../../types");
 
 		const supabase = supabaseAdmin as SupabaseClient<Database>;
 		const projectId = input.projectId;
@@ -94,6 +123,18 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 			return {
 				success: false,
 				message: "Missing projectId parameter",
+				recommendations: [],
+				metadata: {
+					total_potential_recommendations: 0,
+					returned_top_n: 0,
+					computation_timestamp: new Date().toISOString(),
+				},
+			};
+		}
+		if (!accountId) {
+			return {
+				success: false,
+				message: "Missing accountId parameter",
 				recommendations: [],
 				metadata: {
 					total_potential_recommendations: 0,
@@ -122,6 +163,7 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 			if (questionsError) {
 				consola.warn("Failed to fetch unanswered questions:", questionsError);
 			}
+			const unansweredQuestionRows = (unansweredQuestions ?? []) as ResearchQuestionSummaryRow[];
 
 			// Query stale contacts (14+ days since last interview)
 			const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
@@ -133,8 +175,7 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 					created_at,
 					people (
 						id,
-						firstname,
-						lastname,
+						name,
 						title,
 						default_organization:organizations!default_organization_id(name)
 					)
@@ -146,6 +187,7 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 			if (interviewPeopleError) {
 				consola.warn("Failed to fetch interview people:", interviewPeopleError);
 			}
+			const recentInterviewPeopleRows = (recentInterviewPeople ?? []) as InterviewPersonRow[];
 
 			// Find stale contacts (people with last interview > 14 days ago)
 			const staleContacts: Array<{
@@ -157,10 +199,10 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 				last_interview_date: string;
 			}> = [];
 
-			if (recentInterviewPeople) {
+			if (recentInterviewPeopleRows.length > 0) {
 				const personLastInterviewMap = new Map<string, Date>();
 
-				for (const ip of recentInterviewPeople) {
+				for (const ip of recentInterviewPeopleRows) {
 					const personId = ip.person_id;
 					const interviewDate = new Date(ip.created_at);
 
@@ -174,13 +216,13 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 					const daysSince = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
 
 					if (daysSince >= 14) {
-						const personData = recentInterviewPeople.find((ip) => ip.person_id === personId)?.people;
+						const personData = recentInterviewPeopleRows.find((ip) => ip.person_id === personId)?.people;
 						if (personData) {
 							staleContacts.push({
 								person_id: personId,
-								name: `${personData.firstname} ${personData.lastname}`.trim(),
+								name: personData.name?.trim() || "Unknown",
 								title: personData.title || undefined,
-								company: (personData as any).default_organization?.name || undefined,
+								company: personData.default_organization?.name || undefined,
 								days_since: daysSince,
 								last_interview_date: lastDate.toISOString(),
 							});
@@ -202,10 +244,9 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 					confidence,
 					people (
 						id,
-						firstname,
-						lastname,
+						name,
 						title,
-						company
+						default_organization:organizations!default_organization_id(name)
 					)
 				`
 				)
@@ -218,6 +259,7 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 			if (icpError) {
 				consola.warn("Failed to fetch ICP scores:", icpError);
 			}
+			const icpScoreRows = (icpScores ?? []) as IcpScoreRow[];
 
 			// ======================================================================
 			// STEP 3: Fetch Theme/Insight Data (Value Priorities)
@@ -271,23 +313,26 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 			// ======================================================================
 
 			// RULE 1: Unanswered Questions (Priority 1 - Critical)
-			if (unansweredQuestions && unansweredQuestions.length > 0) {
-				const topQuestion = unansweredQuestions[0];
+			if (unansweredQuestionRows.length > 0) {
+				const topQuestion = unansweredQuestionRows[0];
+				const questionId = topQuestion.research_question_id;
+				if (questionId) {
 
-				recommendations.push({
-					id: `rec-unanswered-${topQuestion.id}`,
-					priority: 1,
-					category: "research_coverage",
-					title: `Answer research question with ${topQuestion.open_answer_count} gaps`,
-					description: `This research question has ${topQuestion.open_answer_count} unanswered sub-questions. Interview people who can provide these insights.`,
-					reasoning: `Decision questions without answers block confident decisions. This question needs ${topQuestion.open_answer_count} more responses to be fully covered.`,
-					action_type: "schedule_interview",
-					action_data: {
-						question_id: topQuestion.id,
-						needed_responses: topQuestion.open_answer_count,
-					},
-					navigateTo: `/questions/${topQuestion.id}`,
-				});
+					recommendations.push({
+						id: `rec-unanswered-${questionId}`,
+						priority: 1,
+						category: "research_coverage",
+						title: `Answer research question with ${topQuestion.open_answer_count ?? 0} gaps`,
+						description: `This research question has ${topQuestion.open_answer_count ?? 0} unanswered sub-questions. Interview people who can provide these insights.`,
+						reasoning: `Decision questions without answers block confident decisions. This question needs ${topQuestion.open_answer_count ?? 0} more responses to be fully covered.`,
+						action_type: "schedule_interview",
+						action_data: {
+							question_id: questionId,
+							needed_responses: topQuestion.open_answer_count ?? 0,
+						},
+						navigateTo: `/questions/${questionId}`,
+					});
+				}
 			}
 
 			// RULE 2: Low-Confidence Themes (Priority 2 - Important)
@@ -319,13 +364,13 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 
 			// RULE 3: Stale High-ICP Contacts (Priority 2 - Re-engagement)
 			const staleHighICPContacts = staleContacts.filter((contact) => {
-				const icpScore = icpScores?.find((s) => s.person_id === contact.person_id);
+				const icpScore = icpScoreRows.find((s) => s.person_id === contact.person_id);
 				return icpScore && icpScore.score >= 0.8;
 			});
 
 			if (staleHighICPContacts.length > 0) {
 				const topStaleContact = staleHighICPContacts[0];
-				const icpScore = icpScores?.find((s) => s.person_id === topStaleContact.person_id);
+				const icpScore = icpScoreRows.find((s) => s.person_id === topStaleContact.person_id);
 
 				recommendations.push({
 					id: `rec-follow-up-${topStaleContact.person_id}`,
@@ -348,10 +393,10 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 			}
 
 			// RULE 4: High ICP Matches Never Interviewed (Priority 3 - Opportunity)
-			if (icpScores && icpScores.length > 0) {
+			if (icpScoreRows.length > 0) {
 				// Find ICP matches that have NO interview_people records
-				const neverInterviewedHighICP = icpScores.filter((icp) => {
-					const hasInterview = recentInterviewPeople?.some((ip) => ip.person_id === icp.person_id);
+				const neverInterviewedHighICP = icpScoreRows.filter((icp) => {
+					const hasInterview = recentInterviewPeopleRows.some((ip) => ip.person_id === icp.person_id);
 					return !hasInterview;
 				});
 
@@ -363,14 +408,14 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 						id: `rec-icp-match-${topMatch.person_id}`,
 						priority: 3,
 						category: "icp_validation",
-						title: `Interview ${person?.firstname} ${person?.lastname} (${Math.round(topMatch.score * 100)}% ICP match)`,
+						title: `Interview ${person?.name ?? "this contact"} (${Math.round(topMatch.score * 100)}% ICP match)`,
 						description: `This person is a strong ICP match but hasn't been interviewed yet. Great opportunity to validate your assumptions.`,
 						reasoning:
 							"High ICP scores indicate this person fits your target profile. Interviewing them can validate product-market fit and generate high-quality insights.",
 						action_type: "schedule_interview",
 						action_data: {
 							person_id: topMatch.person_id,
-							person_name: `${person?.firstname} ${person?.lastname}`,
+							person_name: person?.name ?? "",
 							icp_score: topMatch.score,
 							icp_confidence: topMatch.confidence,
 						},

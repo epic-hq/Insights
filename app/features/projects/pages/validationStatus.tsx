@@ -57,6 +57,50 @@ interface ValidationParticipant {
 	validationDetails: Partial<Record<ValidationDetailKey, ValidationGateDetail>>;
 }
 
+type ValidationPersonRow = {
+	id: string;
+	name: string | null;
+	company: string | null;
+	contact_info: Record<string, unknown> | null;
+	default_organization: { name: string | null } | null;
+};
+
+type ProjectSectionRow = {
+	kind: string | null;
+	meta: Record<string, unknown> | null;
+	content_md: string | null;
+};
+
+type ProjectAnswerRow = {
+	id: string;
+	respondent_person_id: string | null;
+	research_question_id: string | null;
+	question_text: string | null;
+	answer_text: string | null;
+	analysis_summary: string | null;
+	analysis_rationale: string | null;
+	analysis_next_steps: string | null;
+	confidence: number | null;
+	interview_id: string | null;
+	updated_at: string | null;
+	status: string | null;
+};
+
+type InterviewPersonLinkRow = {
+	interview_id: string;
+	person_id: string;
+};
+
+type QuestionAnalysisRow = {
+	question_id: string;
+	question_type: string | null;
+	summary: string | null;
+	confidence: number | null;
+	next_steps: string | null;
+	goal_achievement_summary: string | null;
+	created_at: string | null;
+};
+
 const outcomeConfig = {
 	1: {
 		label: "No Signal",
@@ -170,7 +214,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	if (interviewPeopleError) console.error("Error loading interview_people:", interviewPeopleError);
 	if (questionAnalysisError) console.error("Error loading project_question_analysis:", questionAnalysisError);
 
-	const questionSection = projectSections?.find((section) => section.kind === "questions");
+	const typedProjectSections = (projectSections ?? []) as ProjectSectionRow[];
+	const questionSection = typedProjectSections.find((section: ProjectSectionRow) => section.kind === "questions");
 	const questionSectionMeta = (questionSection?.meta as Record<string, any> | null) ?? null;
 	const researchMode = (questionSectionMeta?.settings?.research_mode as string | undefined) ?? "exploratory";
 	const validationGateMeta = questionSectionMeta?.validation_gate_map as
@@ -198,13 +243,25 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		5: "Taking Action",
 	};
 
-	const peopleMap = new Map(
-		(people ?? []).map((person) => [
+	const typedPeople = (people ?? []) as ValidationPersonRow[];
+	const typedProjectAnswers = (projectAnswers ?? []) as ProjectAnswerRow[];
+	const typedInterviewPeopleRows = (interviewPeopleRows ?? []) as InterviewPersonLinkRow[];
+	const typedQuestionAnalysisRows = (questionAnalysisRows ?? []) as QuestionAnalysisRow[];
+
+	const peopleMap = new Map<
+		string,
+		{
+			name: string;
+			company: string;
+			contactInfo: Record<string, unknown> | null;
+		}
+	>(
+		typedPeople.map((person) => [
 			person.id,
 			{
 				name: person.name || "Unknown",
-				company: (person as any).default_organization?.name || "",
-				contactInfo: person.contact_info as Record<string, unknown> | null,
+				company: person.company || person.default_organization?.name || "",
+				contactInfo: person.contact_info,
 			},
 		])
 	);
@@ -239,7 +296,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		return participantsAccumulator.get(personId)!;
 	};
 
-	for (const person of people ?? []) {
+	for (const person of typedPeople) {
 		ensureParticipant(person.id);
 	}
 
@@ -266,14 +323,14 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	}
 
 	const interviewPersonMap = new Map<string, string>();
-	for (const row of interviewPeopleRows ?? []) {
+	for (const row of typedInterviewPeopleRows) {
 		if (!interviewPersonMap.has(row.interview_id)) {
 			interviewPersonMap.set(row.interview_id, row.person_id);
 		}
 	}
 
 	if (researchMode === "validation" && gateByQuestionId.size > 0) {
-		for (const answer of projectAnswers ?? []) {
+		for (const answer of typedProjectAnswers) {
 			const slug = gateByQuestionId.get(answer.research_question_id ?? "");
 			if (!slug) continue;
 			const detailKey = slugToDetailKey[slug];
@@ -297,9 +354,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	const legacyParticipants = () => {
 		const participants: ValidationParticipant[] = [];
-		for (const person of people ?? []) {
-			const contactInfo = person.contact_info as Record<string, unknown> | null;
-			const personAnswers = (projectAnswers || []).filter((a) => a.respondent_person_id === person.id);
+		for (const person of typedPeople) {
+			const contactInfo = person.contact_info;
+			const personAnswers = typedProjectAnswers.filter((answer: ProjectAnswerRow) => answer.respondent_person_id === person.id);
 
 			if (contactInfo?.validation_outcome) {
 				const manualOutcome = Number(contactInfo.validation_outcome) as 1 | 2 | 3 | 4 | 5;
@@ -340,10 +397,12 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				continue;
 			}
 
-			const answerTexts = personAnswers.map((a) => (a.answer_text || "").toLowerCase()).join(" ");
-			const summaries = personAnswers.map((a) => (a.analysis_summary || "").toLowerCase()).join(" ");
+			const answerTexts = personAnswers.map((answer: ProjectAnswerRow) => (answer.answer_text || "").toLowerCase()).join(" ");
+			const summaries = personAnswers.map((answer: ProjectAnswerRow) => (answer.analysis_summary || "").toLowerCase()).join(" ");
 			const allText = `${answerTexts} ${summaries}`;
-			const avgConfidence = personAnswers.reduce((sum, a) => sum + (a.confidence || 0), 0) / personAnswers.length;
+			const avgConfidence =
+				personAnswers.reduce((sum: number, answer: ProjectAnswerRow) => sum + (answer.confidence || 0), 0) /
+				personAnswers.length;
 
 			const hasPainMention = /pain|problem|frustrat|challeng|difficult|struggle/i.test(allText);
 			const hasAwareness = /aware|know|understand|talk about|complain/i.test(allText);
@@ -351,9 +410,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			const hasAction = /pay|bought|purchas|subscri|tool|solution|using|current|hired|built/i.test(allText);
 
 			const extractText = (regex: RegExp): string => {
-				const match = personAnswers.find((a) => regex.test(a.answer_text || ""));
+				const match = personAnswers.find((answer: ProjectAnswerRow) => regex.test(answer.answer_text || ""));
 				if (match?.answer_text) return match.answer_text;
-				const summaryMatch = personAnswers.find((a) => regex.test(a.analysis_summary || ""));
+				const summaryMatch = personAnswers.find((answer: ProjectAnswerRow) => regex.test(answer.analysis_summary || ""));
 				if (summaryMatch?.analysis_summary) return summaryMatch.analysis_summary;
 				return "";
 			};
@@ -468,9 +527,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 	>();
 
-	if (questionAnalysisRows && questionAnalysisRows.length > 0 && gateDefinitions.length > 0) {
-		const latestByQuestion = new Map<string, (typeof questionAnalysisRows)[number]>();
-		for (const row of questionAnalysisRows) {
+	if (typedQuestionAnalysisRows.length > 0 && gateDefinitions.length > 0) {
+		const latestByQuestion = new Map<string, (typeof typedQuestionAnalysisRows)[number]>();
+		for (const row of typedQuestionAnalysisRows) {
 			if (row.question_type !== "research") continue;
 			if (latestByQuestion.has(row.question_id)) continue;
 			latestByQuestion.set(row.question_id, row);
@@ -530,7 +589,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	);
 
 	const participantsWithEvidence = participants.filter((p) => p.outcome > 1).length;
-	const totalInterviews = people?.length ?? participants.length;
+	const totalInterviews = typedPeople.length || participants.length;
 	const progressPercentage = totalInterviews > 0 ? Math.round((participantsWithEvidence / totalInterviews) * 100) : 0;
 
 	return {
@@ -570,7 +629,7 @@ export function AnalyzeStageValidation() {
 	const [selectedOutcome, setSelectedOutcome] = useState<number>(5);
 
 	const getGoalSections = () =>
-		projectSections?.filter((section) => section.kind === "goal" || section.kind === "research_goal");
+		projectSections?.filter((section: (typeof projectSections)[number]) => section.kind === "goal" || section.kind === "research_goal");
 
 	const researchGoalText = (() => {
 		const gs = getGoalSections();
@@ -585,14 +644,15 @@ export function AnalyzeStageValidation() {
 	const progressPercentage = progress?.percentage || 0;
 
 	const outcomeCounts = (participants || []).reduce(
-		(acc, participant) => {
+		(acc: Record<number, number>, participant: ValidationParticipant) => {
 			acc[participant.outcome] = (acc[participant.outcome] || 0) + 1;
 			return acc;
 		},
 		{} as Record<number, number>
 	);
 
-	const getParticipantsByOutcome = (outcome: number) => (participants || []).filter((p) => p.outcome === outcome);
+	const getParticipantsByOutcome = (outcome: number) =>
+		(participants || []).filter((participant: ValidationParticipant) => participant.outcome === outcome);
 
 	const qualifiedProspects = getParticipantsByOutcome(5);
 	const takingActionCount = gateTotals?.acting ?? 0;
@@ -600,7 +660,7 @@ export function AnalyzeStageValidation() {
 	const awarenessCount = gateTotals?.awareness ?? 0;
 	const painCount = gateTotals?.pain_exists ?? 0;
 
-	const gateSummaryBySlug = new Map(gateSummaries.map((item) => [item.slug, item]));
+	const gateSummaryBySlug = new Map(gateSummaries.map((item: (typeof gateSummaries)[number]) => [item.slug, item]));
 	const gateHighlights = VALIDATION_GATE_ORDER.map((slug) => {
 		const data = gateSummaryBySlug.get(slug);
 		if (!data || !data.summary?.trim()) return null;

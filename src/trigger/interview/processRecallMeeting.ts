@@ -195,10 +195,20 @@ export const processRecallMeetingTask = task({
 
       if (videoUrl) {
         consola.info(`[ProcessRecallMeeting] Downloading video from Recall.ai`);
-        const { uploadMediaToR2 } = await import("~/utils/r2.server");
+        const { storeAudioFile } = await import("~/utils/storeAudioFile.server");
 
-        const r2Key = `media/${accountId}/${projectId}/${recordingId}.mp4`;
-        r2MediaUrl = await uploadMediaToR2(videoUrl, r2Key);
+        const uploadResult = await storeAudioFile({
+          projectId,
+          interviewId,
+          source: videoUrl,
+          originalFilename: `${recordingId}.mp4`,
+          contentType: "video/mp4",
+        });
+
+        if (!uploadResult.mediaUrl) {
+          throw new Error(uploadResult.error ?? "Failed to store Recall video");
+        }
+        r2MediaUrl = uploadResult.mediaUrl;
 
         // Update interview with R2 URL
         await client
@@ -206,7 +216,9 @@ export const processRecallMeetingTask = task({
           .update({ media_url: r2MediaUrl })
           .eq("id", interviewId);
 
-        consola.info(`[ProcessRecallMeeting] Video uploaded to R2: ${r2Key}`);
+        consola.info(
+          `[ProcessRecallMeeting] Video uploaded to R2: ${r2MediaUrl}`,
+        );
       }
 
       metadata.set("stageLabel", "Triggering analysis orchestrator");
