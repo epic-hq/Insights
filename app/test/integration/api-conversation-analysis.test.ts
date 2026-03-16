@@ -7,7 +7,11 @@
  * 3. Cancel Analysis Run API
  */
 
+import type { ActionFunctionArgs } from "react-router";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { action as CancelAnalysisAction } from "~/routes/api.cancel-analysis-run";
+import type { action as ReanalyzeThemesAction } from "~/routes/api.reanalyze-themes";
+import type { action as ReprocessEvidenceAction } from "~/routes/api.reprocess-evidence";
 import { seedTestData, TEST_ACCOUNT_ID, TEST_PROJECT_ID, testDb } from "~/test/utils/testDb";
 
 const { mockTrigger, mockRunsCancel } = vi.hoisted(() => ({
@@ -48,9 +52,49 @@ vi.mock("~/utils/transcript/sanitizeTranscriptData.server", () => ({
 }));
 
 describe("API Routes - Conversation Analysis Consolidation", () => {
-	let cancelAnalysisAction: (args: unknown) => Promise<Response>;
-	let reanalyzeThemesAction: (args: unknown) => Promise<Response>;
-	let reprocessEvidenceAction: (args: unknown) => Promise<Response>;
+	let cancelAnalysisAction: typeof CancelAnalysisAction;
+	let reanalyzeThemesAction: typeof ReanalyzeThemesAction;
+	let reprocessEvidenceAction: typeof ReprocessEvidenceAction;
+	type RouteActionArgs = Parameters<typeof ReprocessEvidenceAction>[0];
+
+	const mockContext = {
+		get: vi.fn(),
+		set: vi.fn(),
+	} as unknown as ActionFunctionArgs["context"];
+
+	function createActionArgs(request: Request): RouteActionArgs {
+		return {
+			request,
+			params: {},
+			context: mockContext,
+			unstable_pattern: "",
+		} as RouteActionArgs;
+	}
+
+	function requireId(value: string | undefined, label: string): string {
+		if (!value) {
+			throw new Error(`Expected ${label} to be defined in test setup`);
+		}
+		return value;
+	}
+
+	function asRecord(value: unknown): Record<string, unknown> | null {
+		if (!value || typeof value !== "object" || Array.isArray(value)) {
+			return null;
+		}
+		return value as Record<string, unknown>;
+	}
+
+	function asWorkflowState(value: unknown): { interviewId?: string; evidenceIds?: string[] } | null {
+		const record = asRecord(value);
+		if (!record) return null;
+		return {
+			interviewId: typeof record.interviewId === "string" ? record.interviewId : undefined,
+			evidenceIds: Array.isArray(record.evidenceIds)
+				? record.evidenceIds.filter((item): item is string => typeof item === "string")
+				: undefined,
+		};
+	}
 
 	beforeAll(async () => {
 		({ action: cancelAnalysisAction } = await import("~/routes/api.cancel-analysis-run"));
@@ -90,14 +134,15 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 				.single();
 
 			const formData = new FormData();
-			formData.append("interview_id", interview?.id);
+			const interviewId = requireId(interview?.id, "interview.id");
+			formData.append("interview_id", interviewId);
 
 			const request = new Request("http://localhost/api/reprocess-evidence", {
 				method: "POST",
 				body: formData,
 			});
 
-			const response = await reprocessEvidenceAction({ request, params: {}, context: {} } as any);
+			const response = await reprocessEvidenceAction(createActionArgs(request));
 			const result = await response.json();
 
 			expect(result.success).toBe(true);
@@ -107,11 +152,11 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 			const { data: updated } = await testDb
 				.from("interviews")
 				.select("status, conversation_analysis")
-				.eq("id", interview?.id)
+				.eq("id", interviewId)
 				.single();
 
 			expect(updated?.status).toBe("processing");
-			const analysis = updated?.conversation_analysis as any;
+			const analysis = asRecord(updated?.conversation_analysis);
 			expect(analysis?.status_detail).toBeDefined();
 			expect(analysis?.trigger_run_id).toBe("run_test123");
 
@@ -119,8 +164,8 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 			expect(mockTrigger).toHaveBeenCalledWith(
 				expect.stringContaining("orchestrator"),
 				expect.objectContaining({
-					analysisJobId: interview?.id,
-					existingInterviewId: interview?.id,
+					analysisJobId: interviewId,
+					existingInterviewId: interviewId,
 					resumeFrom: "evidence",
 				})
 			);
@@ -139,14 +184,14 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 				.single();
 
 			const formData = new FormData();
-			formData.append("interview_id", interview?.id);
+			formData.append("interview_id", requireId(interview?.id, "interview.id"));
 
 			const request = new Request("http://localhost/api/reprocess-evidence", {
 				method: "POST",
 				body: formData,
 			});
 
-			const response = await reprocessEvidenceAction({ request, params: {}, context: {} } as any);
+			const response = await reprocessEvidenceAction(createActionArgs(request));
 			const result = await response.json();
 
 			expect(response.status).toBe(400);
@@ -200,22 +245,26 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 				.select("id")
 				.single();
 
+			const interviewId = requireId(interview?.id, "interview.id");
+			const evidenceId = requireId(evidence?.id, "evidence.id");
+			const personId = requireId(person?.id, "person.id");
+
 			await testDb.from("interview_people").insert({
-				interview_id: interview?.id,
-				person_id: person?.id,
+				interview_id: interviewId,
+				person_id: personId,
 				project_id: TEST_PROJECT_ID,
 				role: "participant",
 			});
 
 			const formData = new FormData();
-			formData.append("interview_id", interview?.id);
+			formData.append("interview_id", interviewId);
 
 			const request = new Request("http://localhost/api/reanalyze-themes", {
 				method: "POST",
 				body: formData,
 			});
 
-			const response = await reanalyzeThemesAction({ request, params: {}, context: {} } as any);
+			const response = await reanalyzeThemesAction(createActionArgs(request));
 			const result = await response.json();
 
 			expect(result.success).toBe(true);
@@ -225,18 +274,19 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 			const { data: updated } = await testDb
 				.from("interviews")
 				.select("status, conversation_analysis")
-				.eq("id", interview?.id)
+				.eq("id", interviewId)
 				.single();
 
 			expect(updated?.status).toBe("processing");
-			const analysis = updated?.conversation_analysis as any;
+			const analysis = asRecord(updated?.conversation_analysis);
 			expect(analysis?.status_detail).toBeDefined();
 			expect(analysis?.trigger_run_id).toBe("run_test123");
 
 			// Verify workflow_state was stored
-			if (analysis?.workflow_state) {
-				expect(analysis?.workflow_state?.interviewId).toBe(interview?.id);
-				expect(analysis?.workflow_state?.evidenceIds).toContain(evidence?.id);
+			const workflowState = asWorkflowState(analysis?.workflow_state);
+			if (workflowState) {
+				expect(workflowState.interviewId).toBe(interviewId);
+				expect(workflowState.evidenceIds).toContain(evidenceId);
 			}
 		});
 
@@ -256,14 +306,14 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 				.single();
 
 			const formData = new FormData();
-			formData.append("interview_id", interview?.id);
+			formData.append("interview_id", requireId(interview?.id, "interview.id"));
 
 			const request = new Request("http://localhost/api/reanalyze-themes", {
 				method: "POST",
 				body: formData,
 			});
 
-			const response = await reanalyzeThemesAction({ request, params: {}, context: {} } as any);
+			const response = await reanalyzeThemesAction(createActionArgs(request));
 			const result = await response.json();
 
 			expect(response.status).toBe(400);
@@ -291,10 +341,12 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 				.single();
 
 			// Create evidence
+			const interviewId = requireId(interview?.id, "interview.id");
+
 			await testDb.from("evidence").insert({
 				account_id: TEST_ACCOUNT_ID,
 				project_id: TEST_PROJECT_ID,
-				interview_id: interview?.id,
+				interview_id: interviewId,
 				verbatim: "Test evidence",
 				gist: "Test",
 			});
@@ -310,22 +362,24 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 				.select("id")
 				.single();
 
+			const personId = requireId(person?.id, "person.id");
+
 			await testDb.from("interview_people").insert({
-				interview_id: interview?.id,
-				person_id: person?.id,
+				interview_id: interviewId,
+				person_id: personId,
 				project_id: TEST_PROJECT_ID,
 				role: "participant",
 			});
 
 			const formData = new FormData();
-			formData.append("interview_id", interview?.id);
+			formData.append("interview_id", interviewId);
 
 			const request = new Request("http://localhost/api/reanalyze-themes", {
 				method: "POST",
 				body: formData,
 			});
 
-			await reanalyzeThemesAction({ request, params: {}, context: {} } as any);
+			await reanalyzeThemesAction(createActionArgs(request));
 
 			// Verify custom instructions were preserved and passed to trigger
 			expect(mockTrigger).toHaveBeenCalledWith(
@@ -338,10 +392,10 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 			const { data: updated } = await testDb
 				.from("interviews")
 				.select("conversation_analysis")
-				.eq("id", interview?.id)
+				.eq("id", interviewId)
 				.single();
 
-			const analysis = updated?.conversation_analysis as any;
+			const analysis = asRecord(updated?.conversation_analysis);
 			expect(analysis?.custom_instructions).toBe(customInstructions);
 		});
 	});
@@ -369,14 +423,15 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 
 			const formData = new FormData();
 			formData.append("runId", triggerRunId);
-			formData.append("analysisJobId", interview?.id);
+			const interviewId = requireId(interview?.id, "interview.id");
+			formData.append("analysisJobId", interviewId);
 
 			const request = new Request("http://localhost/api/cancel-analysis-run", {
 				method: "POST",
 				body: formData,
 			});
 
-			const response = await cancelAnalysisAction({ request, params: {}, context: {} } as any);
+			const response = await cancelAnalysisAction(createActionArgs(request));
 			const result = await response.json();
 
 			expect(result.success).toBe(true);
@@ -385,11 +440,11 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 			const { data: canceled } = await testDb
 				.from("interviews")
 				.select("status, conversation_analysis")
-				.eq("id", interview?.id)
+				.eq("id", interviewId)
 				.single();
 
 			expect(canceled?.status).toBe("error");
-			const analysis = canceled?.conversation_analysis as any;
+			const analysis = asRecord(canceled?.conversation_analysis);
 			expect(["Canceled by user", "Interview processing failed"]).toContain(analysis?.status_detail);
 			expect(["Analysis canceled by user", "Interview processing failed"]).toContain(analysis?.last_error);
 			expect(analysis?.canceled_at).toBeDefined();
@@ -413,14 +468,14 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 
 			const formData = new FormData();
 			formData.append("runId", "run_wrong_456");
-			formData.append("analysisJobId", interview?.id);
+			formData.append("analysisJobId", requireId(interview?.id, "interview.id"));
 
 			const request = new Request("http://localhost/api/cancel-analysis-run", {
 				method: "POST",
 				body: formData,
 			});
 
-			const response = await cancelAnalysisAction({ request, params: {}, context: {} } as any);
+			const response = await cancelAnalysisAction(createActionArgs(request));
 			const result = await response.json();
 
 			expect(response.status).toBe(400);
@@ -444,14 +499,14 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 
 			const formData = new FormData();
 			formData.append("runId", "run_complete_123");
-			formData.append("analysisJobId", interview?.id);
+			formData.append("analysisJobId", requireId(interview?.id, "interview.id"));
 
 			const request = new Request("http://localhost/api/cancel-analysis-run", {
 				method: "POST",
 				body: formData,
 			});
 
-			const response = await cancelAnalysisAction({ request, params: {}, context: {} } as any);
+			const response = await cancelAnalysisAction(createActionArgs(request));
 			const result = await response.json();
 
 			expect(response.status).toBe(400);
@@ -481,20 +536,21 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 				.single();
 
 			const formData = new FormData();
-			formData.append("interview_id", interview?.id);
+			const interviewId = requireId(interview?.id, "interview.id");
+			formData.append("interview_id", interviewId);
 
 			const request = new Request("http://localhost/api/reprocess-evidence", {
 				method: "POST",
 				body: formData,
 			});
 
-			await reprocessEvidenceAction({ request, params: {}, context: {} } as any);
+			await reprocessEvidenceAction(createActionArgs(request));
 
 			// Verify v2 orchestrator was called
 			expect(mockTrigger).toHaveBeenCalledWith(
 				"interview.v2.orchestrator",
 				expect.objectContaining({
-					analysisJobId: interview?.id,
+					analysisJobId: interviewId,
 					resumeFrom: "evidence",
 				})
 			);
