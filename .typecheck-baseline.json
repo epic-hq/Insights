@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-03-16T07:30:13.506Z",
-  "totalDiagnostics": 1185,
+  "generatedAt": "2026-03-16T17:05:13.495Z",
+  "totalDiagnostics": 1183,
   "diagnostics": {
     "agents/livekit/agent.ts|TS2305|Module '\"@livekit/agents\"' has no exported member 'llm'.": 1,
     "agents/livekit/agent.ts|TS2503|Cannot find namespace 'metrics'.": 1,
@@ -567,8 +567,6 @@
     "app/routes/api.opportunity-advisor.tsx|TS2345|Argument of type '(string | null)[]' is not assignable to parameter of type 'readonly string[]'.": 1,
     "app/routes/api.opportunity-advisor.tsx|TS2353|Object literal may only specify known properties, and 'accountId' does not exist in type '{ supabase: SupabaseClient<{ __InternalSupabase: { PostgrestVersion: \"12.2.3 (519615d)\"; }; accounts: { Tables: { account_user: { Row: { account_id: string; account_role: \"owner\" | \"member\" | \"viewer\"; user_id: string; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 5 more ...; invitations: { ......'.": 1,
     "app/routes/api.opportunity-advisor.tsx|TS2353|Object literal may only specify known properties, and 'supersedesAnnotationId' does not exist in type '{ supabase: SupabaseClient<{ __InternalSupabase: { PostgrestVersion: \"12.2.3 (519615d)\"; }; accounts: { Tables: { account_user: { Row: { account_id: string; account_role: \"owner\" | \"member\" | \"viewer\"; user_id: string; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 5 more ...; invitations: { ......'.": 1,
-    "app/routes/api.people.import-csv.test.tsx|TS2345|Argument of type '{ success: true; message: string; assetId: string; headers: string[]; rowCount: number; columnCount: number; }' is not assignable to parameter of type 'ValidationError<unknown> | { success: boolean; headers: string[]; message: string; columnCount: number; rowCount: number; markdownTable: string; error?: string | undefined; assetId?: string | ... 1 more ... | undefined; ... 12 more ...; duplicateCheck?: { ...; } | ... 1 more ... | undefined; }'.": 1,
-    "app/routes/api.people.import-csv.test.tsx|TS2345|Argument of type '{ success: true; message: string; assetId: string; headers: string[]; rowCount: number; columnCount: number; columnMapping: { name: string; email: string; }; suggestedFacets: { column: string; facetKind: string; reason: string; sampleValues: string[]; }[]; }' is not assignable to parameter of type 'ValidationError<unknown> | { success: boolean; headers: string[]; message: string; columnCount: number; rowCount: number; markdownTable: string; error?: string | undefined; assetId?: string | ... 1 more ... | undefined; ... 12 more ...; duplicateCheck?: { ...; } | ... 1 more ... | undefined; }'.": 1,
     "app/routes/api.people.import-csv.test.tsx|TS2532|Object is possibly 'undefined'.": 4,
     "app/routes/api.people.import-csv.tsx|TS18048|'importPeopleFromTableTool.execute' is possibly 'undefined'.": 1,
     "app/routes/api.people.import-csv.tsx|TS18048|'parseSpreadsheetTool.execute' is possibly 'undefined'.": 1,

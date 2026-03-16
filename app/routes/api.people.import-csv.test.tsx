@@ -23,6 +23,72 @@ vi.mock("~/lib/supabase/client.server", () => ({
 	createSupabaseAdminClient: vi.fn(),
 }));
 
+type ParseSpreadsheetResult = Awaited<ReturnType<NonNullable<typeof parseSpreadsheetTool.execute>>>;
+type ImportPeopleResult = Awaited<ReturnType<NonNullable<typeof importPeopleFromTableTool.execute>>>;
+
+function createParseSpreadsheetResult(overrides?: Record<string, unknown>) {
+	return {
+		success: true,
+		message: "Parsed",
+		assetId: "11111111-1111-4111-8111-111111111111",
+		headers: ["full_name", "email"],
+		rowCount: 1,
+		columnCount: 2,
+		markdownTable: "| full_name | email |\n| --- | --- |\n| Test User | test@example.com |",
+		...(overrides ?? {}),
+	} as Extract<ParseSpreadsheetResult, { success: true }>;
+}
+
+function createImportPeopleResult(overrides?: Record<string, unknown>) {
+	return {
+		success: true,
+		message: "Imported",
+		imported: {
+			people: 1,
+			updated: 0,
+			organizations: 0,
+			facets: 0,
+			surveyResponses: 0,
+			skipped: 0,
+		},
+		...(overrides ?? {}),
+	} as Extract<ImportPeopleResult, { success: true }>;
+}
+
+function createActionArgs(request: Request, params: ActionFunctionArgs["params"]): ActionFunctionArgs {
+	return {
+		request,
+		context: {
+			get: vi.fn((key) =>
+				key === userContext
+					? {
+							supabase: {},
+							claims: { sub: "user-1" },
+							account_id: "account-ctx",
+						}
+					: null
+			),
+			set: vi.fn(),
+		} as unknown as ActionFunctionArgs["context"],
+		params,
+		unstable_pattern: "",
+	} as ActionFunctionArgs;
+}
+
+function hasParseAssetId(body: unknown): body is {
+	success: boolean;
+	parse: { assetId: string };
+	import: { imported: { people: number } };
+	verification: null;
+} {
+	if (!body || typeof body !== "object") return false;
+	const record = body as Record<string, unknown>;
+	const parse = record.parse as Record<string, unknown> | undefined;
+	const importRecord = record.import as Record<string, unknown> | undefined;
+	const imported = importRecord?.imported as Record<string, unknown> | undefined;
+	return typeof parse?.assetId === "string" && typeof imported?.people === "number" && record.verification === null;
+}
+
 function buildMockAdminClient() {
 	return {
 		from: vi.fn((table: string) => {
@@ -75,8 +141,10 @@ describe("api.people.import-csv", () => {
 			request,
 			context: {
 				get: vi.fn(() => ({ supabase: null, claims: null, account_id: "" })),
+				set: vi.fn(),
 			},
 			params: { projectId: "project-1", accountId: "account-1" },
+			unstable_pattern: "",
 		} as unknown as ActionFunctionArgs;
 		const response = await action(args);
 
@@ -90,21 +158,7 @@ describe("api.people.import-csv", () => {
 			headers: { "Content-Type": "application/json" },
 		});
 
-		const args = {
-			request,
-			context: {
-				get: vi.fn((key) =>
-					key === userContext
-						? {
-								supabase: {},
-								claims: { sub: "user-1" },
-								account_id: "account-ctx",
-							}
-						: null
-				),
-			},
-			params: { projectId: "project-1", accountId: "account-1" },
-		} as unknown as ActionFunctionArgs;
+		const args = createActionArgs(request, { projectId: "project-1", accountId: "account-1" });
 		const response = await action(args);
 
 		expect(response.status).toBe(400);
@@ -113,26 +167,9 @@ describe("api.people.import-csv", () => {
 	});
 
 	it("accepts projectId from JSON body when route has no project param", async () => {
-		vi.mocked(parseSpreadsheetTool.execute).mockResolvedValue({
-			success: true,
-			message: "Parsed",
-			assetId: "11111111-1111-4111-8111-111111111111",
-			headers: ["full_name", "email"],
-			rowCount: 1,
-			columnCount: 2,
-		});
+		vi.mocked(parseSpreadsheetTool.execute).mockResolvedValue(createParseSpreadsheetResult());
 
-		vi.mocked(importPeopleFromTableTool.execute).mockResolvedValue({
-			success: true,
-			message: "Imported",
-			imported: {
-				people: 1,
-				updated: 0,
-				organizations: 0,
-				facets: 0,
-				skipped: 0,
-			},
-		});
+		vi.mocked(importPeopleFromTableTool.execute).mockResolvedValue(createImportPeopleResult());
 
 		const request = new Request("http://localhost/api/people/import-csv", {
 			method: "POST",
@@ -144,65 +181,51 @@ describe("api.people.import-csv", () => {
 			headers: { "Content-Type": "application/json" },
 		});
 
-		const args = {
-			request,
-			context: {
-				get: vi.fn((key) =>
-					key === userContext
-						? {
-								supabase: {},
-								claims: { sub: "user-1" },
-								account_id: "account-ctx",
-							}
-						: null
-				),
-			},
-			params: {},
-		} as unknown as ActionFunctionArgs;
+		const args = createActionArgs(request, {});
 
 		const response = await action(args);
 		expect(response.status).toBe(200);
 	});
 
 	it("imports CSV via parse+import tools and returns summary", async () => {
-		vi.mocked(parseSpreadsheetTool.execute).mockResolvedValue({
-			success: true,
-			message: "Parsed",
-			assetId: "11111111-1111-4111-8111-111111111111",
-			headers: ["full_name", "email", "tools_used"],
-			rowCount: 2,
-			columnCount: 3,
-			columnMapping: {
-				name: "full_name",
-				email: "email",
-			},
-			suggestedFacets: [
-				{ column: "tools_used", facetKind: "tool", reason: "security stack", sampleValues: ["Splunk"] },
-			],
-		});
-
-		vi.mocked(importPeopleFromTableTool.execute).mockResolvedValue({
-			success: true,
-			message: "Imported",
-			imported: {
-				people: 2,
-				updated: 0,
-				organizations: 1,
-				facets: 3,
-				skipped: 0,
-			},
-			details: [
-				{
-					personId: "person-1",
-					name: "Test User",
-					organizationId: "org-1",
-					organizationName: "Acme",
-					rowIndex: 0,
+		vi.mocked(parseSpreadsheetTool.execute).mockResolvedValue(
+			createParseSpreadsheetResult({
+				headers: ["full_name", "email", "tools_used"],
+				rowCount: 2,
+				columnCount: 3,
+				columnMapping: {
+					name: "full_name",
+					email: "email",
 				},
-			],
-			detectedMapping: { name: "full_name", email: "email" },
-			skipReasons: [],
-		});
+				suggestedFacets: [
+					{ column: "tools_used", facetKind: "tool", reason: "security stack", sampleValues: ["Splunk"] },
+				],
+			})
+		);
+
+		vi.mocked(importPeopleFromTableTool.execute).mockResolvedValue(
+			createImportPeopleResult({
+				imported: {
+					people: 2,
+					updated: 0,
+					organizations: 1,
+					facets: 3,
+					surveyResponses: 0,
+					skipped: 0,
+				},
+				details: [
+					{
+						personId: "person-1",
+						name: "Test User",
+						organizationId: "org-1",
+						organizationName: "Acme",
+						rowIndex: 0,
+					},
+				],
+				detectedMapping: { name: "full_name", email: "email" },
+				skipReasons: [],
+			})
+		);
 
 		const request = new Request("http://localhost/test", {
 			method: "POST",
@@ -215,26 +238,16 @@ describe("api.people.import-csv", () => {
 			headers: { "Content-Type": "application/json" },
 		});
 
-		const args = {
-			request,
-			context: {
-				get: vi.fn((key) =>
-					key === userContext
-						? {
-								supabase: {},
-								claims: { sub: "user-1" },
-								account_id: "account-ctx",
-							}
-						: null
-				),
-			},
-			params: { projectId: "project-1", accountId: "account-1" },
-		} as unknown as ActionFunctionArgs;
+		const args = createActionArgs(request, { projectId: "project-1", accountId: "account-1" });
 		const response = await action(args);
 
 		expect(response.status).toBe(200);
 
 		const body = await response.json();
+		expect(hasParseAssetId(body)).toBe(true);
+		if (!hasParseAssetId(body)) {
+			throw new Error("Expected successful parse/import response");
+		}
 		expect(body.success).toBe(true);
 		expect(body.parse.assetId).toBe("11111111-1111-4111-8111-111111111111");
 		expect(body.import.imported.people).toBe(2);
