@@ -4,11 +4,15 @@
  */
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import type { Database } from "~/types";
 import { type PersonResolutionInput, resolveOrCreatePerson } from "~/lib/people/resolution.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
 
 type PeopleInsert = Database["public"]["Tables"]["people"]["Insert"];
+type PeopleSeed = Partial<PeopleInsert> & {
+	name?: string | null;
+	company?: string | null;
+};
 
 describe("resolveOrCreatePerson", () => {
 	const supabase = createSupabaseAdminClient();
@@ -52,7 +56,7 @@ describe("resolveOrCreatePerson", () => {
 		};
 	}
 
-	async function createPerson(payload: Partial<PeopleInsert>): Promise<{ id: string; name: string | null }> {
+	async function createPerson(payload: PeopleSeed): Promise<{ id: string; name: string | null }> {
 		const { name, firstname, lastname, ...rest } = payload;
 		const derivedName = splitName(name || "Test Person");
 		const { data, error } = await supabase
@@ -149,7 +153,7 @@ describe("resolveOrCreatePerson", () => {
 				primary_email: "priority@example.com",
 			});
 
-			const platformMatch = await createPerson({
+			const _platformMatch = await createPerson({
 				name: "Platform Match Person",
 				contact_info: { zoom: { user_id: "zoom-99999" } },
 			});
@@ -328,7 +332,10 @@ describe("resolveOrCreatePerson", () => {
 
 			// All should return SAME person ID
 			const ids = results
-				.filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled")
+				.filter(
+					(r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof resolveOrCreatePerson>>> =>
+						r.status === "fulfilled"
+				)
 				.map((r) => r.value.person.id);
 
 			expect(new Set(ids).size).toBe(1);
