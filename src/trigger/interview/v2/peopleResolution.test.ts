@@ -220,9 +220,10 @@ describe("resolveName", () => {
 	const baseParticipant: NormalizedParticipant = {
 		person_key: "speaker-a",
 		speaker_label: "SPEAKER A",
-		role: "participant",
 		display_name: null,
 		inferred_name: null,
+		job_title: null,
+		job_function: null,
 		organization: null,
 		summary: null,
 		segments: [],

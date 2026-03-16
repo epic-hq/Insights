@@ -6,9 +6,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 describe("extractEvidenceCore - person_id attribution", () => {
+  type ParticipantRef = { person_key: string; role: string };
+  type FacetRow = { evidence_index: number; person_id: string | null; verbatim?: string };
+
   // Mock data structures that mirror the actual code
   let personIdByKey: Map<string, string>;
-  let participantByKey: Map<string, any>;
+  let participantByKey: Map<string, ParticipantRef>;
 
   beforeEach(() => {
     personIdByKey = new Map();
@@ -64,7 +67,7 @@ describe("extractEvidenceCore - person_id attribution", () => {
     // Person resolution MUST happen BEFORE the evidence loop
 
     // Arrange: Build personIdByKey map FIRST (the fix moved this before evidence loop)
-    const participants = [
+    const participants: ParticipantRef[] = [
       { person_key: "participant-1", role: "interviewee" },
       { person_key: "participant-2", role: "interviewer" },
     ];
@@ -74,7 +77,7 @@ describe("extractEvidenceCore - person_id attribution", () => {
     });
 
     // Act: Now build facet rows (this happens in evidence loop)
-    const facetRows = [];
+    const facetRows: FacetRow[] = [];
     const evidenceUnits = [
       { person_key: "participant-1", verbatim: "Quote 1" },
       { person_key: "participant-2", verbatim: "Quote 2" },
@@ -109,7 +112,7 @@ describe("extractEvidenceCore - person_id attribution", () => {
     // 3. UPDATE to backfill person_id
     // PROBLEM: Time window with NULL, UPDATE can fail silently
 
-    const facetRowsOld = [
+    const facetRowsOld: Array<{ evidence_id: string; person_id: string | null }> = [
       { evidence_id: "ev-1", person_id: null }, // Inserted with NULL
       { evidence_id: "ev-2", person_id: null }, // Inserted with NULL
     ];
@@ -136,7 +139,7 @@ describe("extractEvidenceCore - person_id attribution", () => {
     personIdByKey.set("participant-1", "person-uuid-1");
     personIdByKey.set("participant-2", "person-uuid-2");
 
-    const facetRowsNew = [
+    const facetRowsNew: FacetRow[] = [
       {
         evidence_index: 0,
         person_id: personIdByKey.get("participant-1") || null, // Set at INSERT!

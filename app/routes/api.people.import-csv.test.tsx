@@ -26,6 +26,11 @@ vi.mock("~/lib/supabase/client.server", () => ({
 type ParseSpreadsheetResult = Awaited<ReturnType<NonNullable<typeof parseSpreadsheetTool.execute>>>;
 type ImportPeopleResult = Awaited<ReturnType<NonNullable<typeof importPeopleFromTableTool.execute>>>;
 
+const mockParseSpreadsheetExecute = vi.mocked(parseSpreadsheetTool.execute as NonNullable<typeof parseSpreadsheetTool.execute>);
+const mockImportPeopleExecute = vi.mocked(
+	importPeopleFromTableTool.execute as NonNullable<typeof importPeopleFromTableTool.execute>
+);
+
 function createParseSpreadsheetResult(overrides?: Record<string, unknown>) {
 	return {
 		success: true,
@@ -167,9 +172,9 @@ describe("api.people.import-csv", () => {
 	});
 
 	it("accepts projectId from JSON body when route has no project param", async () => {
-		vi.mocked(parseSpreadsheetTool.execute).mockResolvedValue(createParseSpreadsheetResult());
+		mockParseSpreadsheetExecute.mockResolvedValue(createParseSpreadsheetResult());
 
-		vi.mocked(importPeopleFromTableTool.execute).mockResolvedValue(createImportPeopleResult());
+		mockImportPeopleExecute.mockResolvedValue(createImportPeopleResult());
 
 		const request = new Request("http://localhost/api/people/import-csv", {
 			method: "POST",
@@ -188,7 +193,7 @@ describe("api.people.import-csv", () => {
 	});
 
 	it("imports CSV via parse+import tools and returns summary", async () => {
-		vi.mocked(parseSpreadsheetTool.execute).mockResolvedValue(
+		mockParseSpreadsheetExecute.mockResolvedValue(
 			createParseSpreadsheetResult({
 				headers: ["full_name", "email", "tools_used"],
 				rowCount: 2,
@@ -203,7 +208,7 @@ describe("api.people.import-csv", () => {
 			})
 		);
 
-		vi.mocked(importPeopleFromTableTool.execute).mockResolvedValue(
+		mockImportPeopleExecute.mockResolvedValue(
 			createImportPeopleResult({
 				imported: {
 					people: 2,

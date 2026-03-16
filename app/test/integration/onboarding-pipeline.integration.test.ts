@@ -354,7 +354,7 @@ describe("Onboarding Pipeline Integration", () => {
 				body: JSON.stringify(webhookPayload),
 			});
 
-			const webhookResponse = await webhookAction({ request: webhookRequest });
+			const webhookResponse = await webhookAction(createWebhookArgs(webhookRequest));
 			expect(webhookResponse.status).toBe(200);
 
 			// Verify error status was set

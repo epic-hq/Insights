@@ -81,7 +81,7 @@ describe("facets.server", () => {
 				}),
 			} as unknown as MockDb;
 
-			const catalog = await getFacetCatalog({ db: mockDb, accountId: "account-1", projectId: null });
+			const catalog = await getFacetCatalog({ db: mockDb, accountId: "account-1" });
 
 			expect(eqCalls).toEqual({ facetAccount: "account-1" });
 			expect(catalog.kinds).toEqual([

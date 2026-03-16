@@ -15,6 +15,10 @@ import {
 } from "~/test/utils/testDb";
 import { backfillMissingPeople, getInterviewPeopleStats } from "~/utils/backfillPeople.server";
 
+function callCreateAccountIdRpc(args: { primary_owner_user_id: string; slug: string; name: string }) {
+	return testDb.rpc("create_account_id" as never, args as never);
+}
+
 // Mock only external services, not DB operations
 vi.mock("~/lib/supabase/client.server", () => ({
 	getServerClient: () => mockTestAuth(),
@@ -45,7 +49,7 @@ describe("Backfill Integration Tests", () => {
 
 		it("should handle empty database", async () => {
 			// Clear all test data
-			await testDb.from("interview_people").delete().neq("id", "none");
+			await testDb.from("interview_people").delete().neq("id", 0);
 			await testDb.from("people").delete().eq("account_id", TEST_ACCOUNT_ID);
 			await testDb.from("interviews").delete().eq("account_id", TEST_ACCOUNT_ID);
 
@@ -186,7 +190,7 @@ describe("Backfill Integration Tests", () => {
 				throw new Error("Missing owner user for isolation test");
 			}
 
-			const { data: OTHER_ACCOUNT_ID, error: accountError } = await testDb.rpc("create_account_id", {
+			const { data: OTHER_ACCOUNT_ID, error: accountError } = await callCreateAccountIdRpc({
 				primary_owner_user_id: ownerUserId,
 				slug: `other-${crypto.randomUUID().slice(0, 8)}`,
 				name: "Other Account For Isolation Test",

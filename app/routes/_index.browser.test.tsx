@@ -2,7 +2,7 @@ import Page from "./dashboard";
 
 describe("Dashboard route", () => {
 	it("renders the dashboard layout", async ({ renderStub }) => {
-		const { getByText } = await renderStub({
+		const rendered = await renderStub({
 			entries: [
 				{
 					id: "dashboard",
@@ -12,7 +12,7 @@ describe("Dashboard route", () => {
 			],
 		});
 
-		expect(getByText("Building Your Application")).not.toBeNull();
-		expect(getByText("Data Fetching")).not.toBeNull();
+		expect(rendered.container.textContent).toContain("Building Your Application");
+		expect(rendered.container.textContent).toContain("Data Fetching");
 	});
 });

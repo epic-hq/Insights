@@ -26,7 +26,7 @@ import { cleanupTestData, seedTestData, TEST_ACCOUNT_ID, TEST_PROJECT_ID, testDb
 // Mock BAML client
 vi.mock("~/../baml_client", () => ({
 	b: {
-		withOptions: vi.fn(function withOptions() {
+		withOptions: vi.fn(function withOptions(this: unknown) {
 			return this;
 		}),
 		ExtractEvidenceFromTranscriptV2: vi.fn(),

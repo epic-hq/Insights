@@ -1,3 +1,4 @@
+import type { LoaderFunctionArgs } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loader as validationLoader } from "~/features/projects/pages/validationStatus";
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server";
@@ -23,6 +24,28 @@ const mockLinkEvidence = b.LinkEvidenceToResearchStructure as ReturnType<typeof 
 
 const VALIDATION_GATES = ["pain_exists", "awareness", "quantified", "acting"] as const;
 type ValidationGateSlug = (typeof VALIDATION_GATES)[number];
+
+function createLoaderArgs(request: Request): LoaderFunctionArgs {
+	return {
+		context: {
+			get(token: unknown) {
+				if (token === userContext) {
+					return {
+						claims: {},
+						account_id: TEST_ACCOUNT_ID,
+						supabase: testDb,
+						headers: new Headers(),
+						user_metadata: {},
+					};
+				}
+				return undefined;
+			},
+			set: vi.fn(),
+		} as unknown as LoaderFunctionArgs["context"],
+		params: { accountId: TEST_ACCOUNT_ID, projectId: TEST_PROJECT_ID },
+		request,
+	} as unknown as LoaderFunctionArgs;
+}
 
 describe("Validation Flow Integration", () => {
 	beforeEach(async () => {
@@ -123,24 +146,7 @@ describe("Validation Flow Integration", () => {
 			projectId: TEST_PROJECT_ID,
 		});
 
-		const loaderResult = await validationLoader({
-			context: {
-				get(token: unknown) {
-					if (token === userContext) {
-						return {
-							claims: {},
-							account_id: TEST_ACCOUNT_ID,
-							supabase: testDb,
-							headers: new Headers(),
-							user_metadata: {},
-						};
-					}
-					return undefined;
-				},
-			} as any,
-			params: { accountId: TEST_ACCOUNT_ID, projectId: TEST_PROJECT_ID } as any,
-			request: new Request("http://localhost/validation"),
-		});
+		const loaderResult = await validationLoader(createLoaderArgs(new Request("http://localhost/validation")));
 
 		expect(loaderResult.participants.length).toBeGreaterThan(0);
 		const participant = loaderResult.participants[0];

@@ -23,10 +23,17 @@ function makeQuestion(overrides: Partial<ResearchLinkQuestion> = {}): ResearchLi
 		placeholder: null,
 		helperText: null,
 		options: null,
+		allowOther: true,
 		likertScale: null,
 		likertLabels: null,
 		imageOptions: null,
+		mediaUrl: null,
 		videoUrl: null,
+		sectionId: null,
+		sectionTitle: null,
+		taxonomyKey: null,
+		personFieldKey: null,
+		hidden: false,
 		...overrides,
 	};
 }
