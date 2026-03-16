@@ -2,14 +2,38 @@
  * Tests for the realtime evidence extraction API route.
  * Validates input handling, BAML integration, and error cases.
  */
+import type { ActionFunctionArgs } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { b } from "~/../baml_client";
+import { InteractionContext } from "~/../baml_client/types";
 import { action } from "./api.realtime-evidence";
 
 vi.mock("~/../baml_client");
 vi.mock("consola");
 
 const mockBAML = vi.mocked(b);
+type ExtractEvidenceResult = Awaited<ReturnType<typeof b.ExtractEvidenceFromTranscriptV2>>;
+
+const mockContext = {
+	get: vi.fn(),
+	set: vi.fn(),
+} as unknown as ActionFunctionArgs["context"];
+
+function createActionArgs(request: Request): Parameters<typeof action>[0] {
+	return {
+		request,
+		params: {},
+		context: mockContext,
+		unstable_pattern: "",
+	} as Parameters<typeof action>[0];
+}
+
+function createExtractionResult(overrides?: Record<string, unknown>): ExtractEvidenceResult {
+	return {
+		...MOCK_EXTRACTION_RESULT,
+		...overrides,
+	} as unknown as ExtractEvidenceResult;
+}
 
 function createRequest(body: unknown, method = "POST"): Request {
 	return new Request("http://localhost/api/realtime-evidence", {
@@ -76,7 +100,7 @@ describe("Realtime Evidence API", () => {
 				method: "GET",
 			});
 
-			const response = await action({ request, params: {}, context: {} });
+			const response = await action(createActionArgs(request));
 			expect(response.status).toBe(405);
 
 			const data = await response.json();
@@ -85,7 +109,7 @@ describe("Realtime Evidence API", () => {
 
 		it("should reject empty utterances", async () => {
 			const request = createRequest({ utterances: [], language: "en" });
-			const response = await action({ request, params: {}, context: {} });
+			const response = await action(createActionArgs(request));
 			expect(response.status).toBe(400);
 
 			const data = await response.json();
@@ -94,14 +118,14 @@ describe("Realtime Evidence API", () => {
 
 		it("should reject missing utterances field", async () => {
 			const request = createRequest({ language: "en" });
-			const response = await action({ request, params: {}, context: {} });
+			const response = await action(createActionArgs(request));
 			expect(response.status).toBe(400);
 		});
 	});
 
 	describe("evidence extraction", () => {
 		it("should call BAML with correct parameters", async () => {
-			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any);
+			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(createExtractionResult());
 
 			const utterances = [
 				{ speaker: "SPEAKER A", text: "What tools do you use?", start: 0, end: 3000 },
@@ -109,7 +133,7 @@ describe("Realtime Evidence API", () => {
 			];
 			const request = createRequest({ utterances, language: "en" });
 
-			await action({ request, params: {}, context: {} });
+			await action(createActionArgs(request));
 
 			expect(mockBAML.ExtractEvidenceFromTranscriptV2).toHaveBeenCalledTimes(1);
 			const [speakerUtterances, chapters, language] = mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0];
@@ -133,12 +157,12 @@ describe("Realtime Evidence API", () => {
 		});
 
 		it("should handle null start/end timestamps", async () => {
-			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any);
+			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(createExtractionResult());
 
 			const utterances = [{ speaker: "A", text: "Hello" }];
 			const request = createRequest({ utterances });
 
-			await action({ request, params: {}, context: {} });
+			await action(createActionArgs(request));
 
 			const [speakerUtterances] = mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0];
 			expect(speakerUtterances[0].start).toBeNull();
@@ -146,22 +170,22 @@ describe("Realtime Evidence API", () => {
 		});
 
 		it("should default language to 'en' when not provided", async () => {
-			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any);
+			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(createExtractionResult());
 
 			const request = createRequest({ utterances: [{ speaker: "A", text: "test" }] });
-			await action({ request, params: {}, context: {} });
+			await action(createActionArgs(request));
 
 			const [, , language] = mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0];
 			expect(language).toBe("en");
 		});
 
 		it("should return evidence, people, scenes, and context", async () => {
-			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any);
+			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(createExtractionResult());
 
 			const utterances = [{ speaker: "A", text: "test", start: 0, end: 1000 }];
 			const request = createRequest({ utterances, language: "en" });
 
-			const response = await action({ request, params: {}, context: {} });
+			const response = await action(createActionArgs(request));
 			expect(response.status).toBe(200);
 
 			const data = await response.json();
@@ -183,7 +207,7 @@ describe("Realtime Evidence API", () => {
 			const utterances = [{ speaker: "A", text: "test" }];
 			const request = createRequest({ utterances });
 
-			const response = await action({ request, params: {}, context: {} });
+			const response = await action(createActionArgs(request));
 			expect(response.status).toBe(500);
 
 			const data = await response.json();
@@ -191,20 +215,22 @@ describe("Realtime Evidence API", () => {
 		});
 
 		it("should handle BAML returning empty arrays", async () => {
-			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue({
-				evidence: [],
-				people: [],
-				scenes: [],
-				facet_mentions: [],
-				interaction_context: "Research",
-				context_confidence: 0.5,
-				context_reasoning: "Insufficient data",
-			} as any);
+			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(
+				createExtractionResult({
+					evidence: [],
+					people: [],
+					scenes: [],
+					facet_mentions: [],
+					interaction_context: InteractionContext.Research,
+					context_confidence: 0.5,
+					context_reasoning: "Insufficient data",
+				})
+			);
 
 			const utterances = [{ speaker: "A", text: "hi" }];
 			const request = createRequest({ utterances });
 
-			const response = await action({ request, params: {}, context: {} });
+			const response = await action(createActionArgs(request));
 			expect(response.status).toBe(200);
 
 			const data = await response.json();

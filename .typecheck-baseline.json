@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-03-16T03:50:27.952Z",
-  "totalDiagnostics": 1218,
+  "generatedAt": "2026-03-16T03:55:40.792Z",
+  "totalDiagnostics": 1209,
   "diagnostics": {
     "agents/livekit/agent.ts|TS2305|Module '\"@livekit/agents\"' has no exported member 'llm'.": 1,
     "agents/livekit/agent.ts|TS2503|Cannot find namespace 'metrics'.": 1,
@@ -576,7 +576,6 @@
     "app/routes/api.people.import-csv.tsx|TS2322|Type '{ column: string; facetKind: string; reason?: string | null | undefined; sampleValues?: string[] | null | undefined; }[] | undefined' is not assignable to type '{ column: string; facetKind: string; sampleValues?: string[] | undefined; reason?: string | undefined; }[] | undefined'.": 2,
     "app/routes/api.people.import-csv.tsx|TS2722|Cannot invoke an object which is possibly 'undefined'.": 2,
     "app/routes/api.people.search.tsx|TS7006|Parameter 'person' implicitly has an 'any' type.": 1,
-    "app/routes/api.realtime-evidence.test.ts|TS2739|Type '{}' is missing the following properties from type 'Readonly<RouterContextProvider>': get, set": 9,
     "app/routes/api.reanalyze-themes.tsx|TS2322|Type '{ transcript_data: SanitizedTranscriptPayload; custom_instructions: string | null; status_detail: string; current_step: string; progress: number; }' is not assignable to type 'string | number | boolean | Json[] | { [x: string]: string | number | boolean | Json[] | ... | null | undefined; } | null | undefined'.": 1,
     "app/routes/api.reanalyze-themes.tsx|TS2322|Type '{ workflow_state: { interviewId: string; evidenceIds: string[]; evidenceUnits: z.objectOutputType<{ person_key: z.ZodString; speaker_label: z.ZodEffects<z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodNumber, z.ZodNull]>>, string | undefined, string | ... 2 more ... | undefined>; ... 12 more ...; gains: z.ZodEffects<......' is not assignable to type 'string | number | boolean | Json[] | { [x: string]: string | number | boolean | Json[] | ... | null | undefined; } | null | undefined'.": 1,
     "app/routes/api.recall-webhook.ts|TS2339|Property 'download_url' does not exist on type '{ status: { code: string; }; data?: { download_url: string; } | undefined; }'.": 2,
