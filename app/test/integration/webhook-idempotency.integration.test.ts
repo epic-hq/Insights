@@ -10,6 +10,13 @@ vi.mock("consola", () => ({ default: { log: vi.fn(), error: vi.fn() } }));
 
 const adminClient = testDb;
 
+function requireId(value: string | undefined, label: string): string {
+	if (!value) {
+		throw new Error(`Expected ${label} to be defined in test setup`);
+	}
+	return value;
+}
+
 describe("Webhook Idempotency Integration Tests", () => {
 	beforeEach(async () => {
 		await seedTestData();
@@ -91,7 +98,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 						audio_duration: 120,
 					},
 				})
-				.eq("id", interview?.id);
+				.eq("id", requireId(interview?.id, "interview.id"));
 
 			expect(updateError).toBeNull();
 
@@ -104,14 +111,14 @@ describe("Webhook Idempotency Integration Tests", () => {
 						status_detail: "Processing with AI",
 					},
 				})
-				.eq("id", interview?.id);
+				.eq("id", requireId(interview?.id, "interview.id"));
 
 			expect(markProcessingError).toBeNull();
 
 			const { data: finalInterview } = await adminClient
 				.from("interviews")
 				.select("*")
-				.eq("id", interview?.id)
+				.eq("id", requireId(interview?.id, "interview.id"))
 				.single();
 
 			expect(["transcribed", "processing"]).toContain(finalInterview?.status);
@@ -142,25 +149,25 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status: "transcribed",
 					transcript: "Transcription completed",
 				})
-				.eq("id", interview?.id);
+				.eq("id", requireId(interview?.id, "interview.id"));
 			expect(transcribedError).toBeNull();
 
 			const { error: processingError } = await adminClient
 				.from("interviews")
 				.update({ status: "processing" })
-				.eq("id", interview?.id);
+				.eq("id", requireId(interview?.id, "interview.id"));
 			expect(processingError).toBeNull();
 
 			const { error: readyError } = await adminClient
 				.from("interviews")
 				.update({ status: "ready" })
-				.eq("id", interview?.id);
+				.eq("id", requireId(interview?.id, "interview.id"));
 			expect(readyError).toBeNull();
 
 			const { data: finalInterview } = await adminClient
 				.from("interviews")
 				.select("status")
-				.eq("id", interview?.id)
+				.eq("id", requireId(interview?.id, "interview.id"))
 				.single();
 			expect(finalInterview?.status).toBe("ready");
 		});
@@ -210,7 +217,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { data: insightWithAudit, error: auditError } = await adminClient
 				.from("themes")
 				.insert({
-					interview_id: interview?.id,
+					interview_id: requireId(interview?.id, "interview.id"),
 					account_id: TEST_ACCOUNT_ID,
 					project_id: TEST_PROJECT_ID,
 					name: "Test Insight With Audit",
@@ -254,7 +261,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { data: childTheme, error: childThemeError } = await adminClient
 				.from("themes")
 				.insert({
-					interview_id: interview?.id,
+					interview_id: requireId(interview?.id, "interview.id"),
 					account_id: TEST_ACCOUNT_ID,
 					project_id: TEST_PROJECT_ID,
 					name: "Cascade Test Theme",
@@ -262,12 +269,18 @@ describe("Webhook Idempotency Integration Tests", () => {
 				.select()
 				.single();
 			expect(childThemeError).toBeNull();
-			expect(childTheme?.interview_id).toBe(interview?.id);
+			expect(childTheme?.interview_id).toBe(requireId(interview?.id, "interview.id"));
 
-			const { error: deleteError } = await adminClient.from("interviews").delete().eq("id", interview?.id);
+			const { error: deleteError } = await adminClient
+				.from("interviews")
+				.delete()
+				.eq("id", requireId(interview?.id, "interview.id"));
 			expect(deleteError).toBeNull();
 
-			const { data: orphanedThemes } = await adminClient.from("themes").select("*").eq("interview_id", interview?.id);
+			const { data: orphanedThemes } = await adminClient
+				.from("themes")
+				.select("*")
+				.eq("interview_id", requireId(interview?.id, "interview.id"));
 			expect(orphanedThemes).toHaveLength(0);
 		});
 	});

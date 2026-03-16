@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-03-16T07:24:52.953Z",
-  "totalDiagnostics": 1201,
+  "generatedAt": "2026-03-16T07:26:45.741Z",
+  "totalDiagnostics": 1192,
   "diagnostics": {
     "agents/livekit/agent.ts|TS2305|Module '\"@livekit/agents\"' has no exported member 'llm'.": 1,
     "agents/livekit/agent.ts|TS2503|Cannot find namespace 'metrics'.": 1,
@@ -645,7 +645,6 @@
     "app/test/integration/person-facet-queue.integration.test.ts|TS2345|Argument of type '\"get_person_facet_embedding_queue_depth\"' is not assignable to parameter of type '\"accept_invitation\" | \"auto_generate_themes_from_clusters\" | \"auto_link_persona_insights\" | \"cleanup_expired_invitations\" | \"create_account\" | \"create_account_id\" | \"create_invitation\" | ... 68 more ... | \"user_has_response_for_link\"'.": 4,
     "app/test/integration/persona-insights.integration.test.ts|TS2345|Argument of type '\"get_insights_embedding_queue_depth\"' is not assignable to parameter of type '\"accept_invitation\" | \"auto_generate_themes_from_clusters\" | \"auto_link_persona_insights\" | \"cleanup_expired_invitations\" | \"create_account\" | \"create_account_id\" | \"create_invitation\" | ... 68 more ... | \"user_has_response_for_link\"'.": 2,
     "app/test/integration/validation-flow.integration.test.ts|TS2345|Argument of type '{ context: any; params: any; request: Request; }' is not assignable to parameter of type 'LoaderFunctionArgs<Readonly<RouterContextProvider>>'.": 1,
-    "app/test/integration/webhook-idempotency.integration.test.ts|TS2345|Argument of type 'string | undefined' is not assignable to parameter of type 'string'.": 9,
     "app/test/utils/testDb.ts|TS2769|No overload matches this call.": 1,
     "app/types.ts|TS2304|Cannot find name 'EntityFlag'.": 1,
     "app/types.ts|TS2304|Cannot find name 'Tag'.": 1,
