@@ -10,10 +10,17 @@ import { AlertCircle, CheckCircle2, FileAudio, FileText, FileVideo, Loader2, Upl
 import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "~/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "~/components/ui/dialog";
 import { Progress } from "~/components/ui/progress";
-import type { BatchUploadResponse, MultiFileItem, MultiFileStatus } from "~/features/upload/types";
 import { useMultiFileUpload } from "~/features/upload/hooks/useMultiFileUpload";
+import type { BatchUploadResponse, MultiFileItem, MultiFileStatus } from "~/features/upload/types";
 
 interface MultiFileUploadModalProps {
 	open: boolean;
@@ -44,7 +51,11 @@ function getFileIcon(file: File) {
 function getStatusBadge(status: MultiFileStatus, error: string | null) {
 	switch (status) {
 		case "pending":
-			return <span className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-600 text-xs dark:bg-gray-700 dark:text-gray-400">Ready</span>;
+			return (
+				<span className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-600 text-xs dark:bg-gray-700 dark:text-gray-400">
+					Ready
+				</span>
+			);
 		case "optimizing":
 			return (
 				<span className="flex items-center gap-1 rounded-full bg-yellow-50 px-2 py-0.5 text-xs text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
@@ -65,7 +76,10 @@ function getStatusBadge(status: MultiFileStatus, error: string | null) {
 			);
 		case "error":
 			return (
-				<span className="flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-red-700 text-xs dark:bg-red-900/30 dark:text-red-400" title={error || undefined}>
+				<span
+					className="flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-red-700 text-xs dark:bg-red-900/30 dark:text-red-400"
+					title={error || undefined}
+				>
 					<AlertCircle className="h-3 w-3" /> Failed
 				</span>
 			);
@@ -112,21 +126,12 @@ export default function MultiFileUploadModal({
 	projectId,
 	accountId,
 }: MultiFileUploadModalProps) {
-	const {
-		files,
-		isUploading,
-		error,
-		addFiles,
-		removeFile,
-		reset,
-		upload,
-		acceptedTypes,
-		maxFiles,
-	} = useMultiFileUpload({
-		projectId,
-		accountId,
-		onComplete,
-	});
+	const { files, isUploading, error, addFiles, removeFile, reset, upload, acceptedTypes, maxFiles } =
+		useMultiFileUpload({
+			projectId,
+			accountId,
+			onComplete,
+		});
 
 	const { getRootProps, getInputProps, isDragActive } = useDropzone({
 		onDrop: addFiles,
@@ -218,18 +223,11 @@ export default function MultiFileUploadModal({
 						</div>
 
 						{/* Upload progress bar */}
-						{isUploading && (
-							<Progress className="h-1.5" />
-						)}
+						{isUploading && <Progress className="h-1.5" />}
 
 						<div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
 							{files.map((item) => (
-								<FileListItem
-									key={item.id}
-									item={item}
-									onRemove={removeFile}
-									disabled={isUploading || allQueued}
-								/>
+								<FileListItem key={item.id} item={item} onRemove={removeFile} disabled={isUploading || allQueued} />
 							))}
 						</div>
 					</div>
@@ -255,10 +253,7 @@ export default function MultiFileUploadModal({
 						{allQueued ? "Close" : "Cancel"}
 					</Button>
 					{!allQueued && (
-						<Button
-							onClick={upload}
-							disabled={files.length === 0 || isUploading}
-						>
+						<Button onClick={upload} disabled={files.length === 0 || isUploading}>
 							{isUploading ? (
 								<>
 									<Loader2 className="mr-2 h-4 w-4 animate-spin" />

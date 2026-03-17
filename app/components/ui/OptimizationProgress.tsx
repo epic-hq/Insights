@@ -6,8 +6,8 @@
  */
 
 import { Loader2, SkipForward, Sparkles, Zap } from "lucide-react";
-import { cn } from "~/lib/utils";
 import type { MediaOptimizerState } from "~/hooks/useMediaOptimizer";
+import { cn } from "~/lib/utils";
 import { formatBytes } from "~/utils/media-optimizer.client";
 
 interface OptimizationProgressProps {
@@ -39,15 +39,13 @@ export function OptimizationProgress({ state, onSkip, className }: OptimizationP
 				isDone && "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30",
 				isSkipped && "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50",
 				isError && "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30",
-				className,
+				className
 			)}
 		>
 			<div className="flex items-center justify-between gap-3">
 				{/* Left: icon + text */}
 				<div className="flex min-w-0 flex-1 items-center gap-2">
-					{isOptimizing && (
-						<Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-600 dark:text-blue-400" />
-					)}
+					{isOptimizing && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-600 dark:text-blue-400" />}
 					{isDone && <Sparkles className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />}
 					{isSkipped && <SkipForward className="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />}
 					{isError && <Zap className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />}
@@ -58,9 +56,7 @@ export function OptimizationProgress({ state, onSkip, className }: OptimizationP
 							{isDone && (
 								<>
 									{formatBytes(progress.originalSize)} → {formatBytes(progress.optimizedSize)}
-									<span className="ml-1 font-bold text-green-700 dark:text-green-400">
-										({savings}% smaller)
-									</span>
+									<span className="ml-1 font-bold text-green-700 dark:text-green-400">({savings}% smaller)</span>
 								</>
 							)}
 							{isSkipped && progress.message}

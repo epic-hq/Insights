@@ -270,11 +270,7 @@ export function UploadRecording({ data }: { data: UploadRecordingData; isStreami
 						</div>
 
 						{optimizer.state.status !== "idle" && (
-							<OptimizationProgress
-								state={optimizer.state}
-								onSkip={optimizer.skip}
-								className="mt-3"
-							/>
+							<OptimizationProgress state={optimizer.state} onSkip={optimizer.skip} className="mt-3" />
 						)}
 
 						{isWorking && (

@@ -27,7 +27,7 @@ export default function UploadButton() {
 			showNotification(
 				`${response.queued} interview${response.queued !== 1 ? "s" : ""} queued for processing.${response.failed > 0 ? ` ${response.failed} failed.` : ""}`,
 				response.failed > 0 ? "error" : "success",
-				5000,
+				5000
 			);
 		} else {
 			showNotification("Upload failed. Please try again.", "error", 5000);
