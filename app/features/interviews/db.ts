@@ -1,6 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
+import { z } from "zod";
 import type { Database, InterviewWithPeople } from "~/types";
+
+const uuidSchema = z.string().uuid();
+
+export function isValidInterviewUuid(value: string): boolean {
+	return uuidSchema.safeParse(value).success;
+}
 
 export const getInterviews = async ({
 	supabase,
@@ -113,6 +120,13 @@ export const getInterviewById = async ({
 }) => {
 	// Fetch interview without nested relations (participants fetched separately)
 	consola.log("getInterviewById", projectId, id);
+	if (!isValidInterviewUuid(id)) {
+		consola.warn("getInterviewById: invalid interview id", { id });
+		return {
+			data: null,
+			error: { message: "Interview not found", code: "PGRST116" },
+		};
+	}
 	const { data, error } = await supabase
 		.from("interviews")
 		.select(
@@ -172,6 +186,10 @@ export const getInterviewParticipants = async ({
 	projectId: string;
 	interviewId: string;
 }) => {
+	if (!isValidInterviewUuid(interviewId)) {
+		consola.warn("getInterviewParticipants: invalid interview id", { interviewId });
+		return { data: [], error: null };
+	}
 	// Fetch participant data separately to avoid junction table query issues
 	return await supabase
 		.from("interview_people")
@@ -214,6 +232,10 @@ export const getInterviewInsights = async ({
 	interviewId: string;
 	minConfidence?: number;
 }) => {
+	if (!isValidInterviewUuid(interviewId)) {
+		consola.warn("getInterviewInsights: invalid interview id", { interviewId });
+		return { data: [], error: null };
+	}
 	// Fetch themes related to this interview via theme_evidence junction and evidence table
 	// Note: Themes are now project-level entities, not directly linked to interviews
 	let query = supabase
