@@ -124,6 +124,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					mediaUrl: mediaUrlForTask,
 					existingInterviewId: interviewId,
 					resumeFrom: "evidence", // Skip upload/transcription, start from evidence extraction
+					includeDeferredSteps: true,
 				});
 			}
 

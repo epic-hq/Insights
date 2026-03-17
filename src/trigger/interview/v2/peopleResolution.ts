@@ -87,12 +87,23 @@ export function parseFullName(fullName: string): {
 export function generateFallbackPersonName(
   metadata: InterviewMetadataForPeople,
 ): string {
-  // Only use explicitly provided participant name
-  if (metadata.participantName?.trim()) {
-    return metadata.participantName.trim();
+  // Only use explicitly provided participant name when it looks real.
+  const participantName = metadata.participantName?.trim();
+  if (participantName && !isGenericPersonLabel(participantName)) {
+    return participantName;
   }
   // Generic fallback - never use interview title, filename, or dates as person names
   return "Unknown Participant";
+}
+
+function getMeaningfulName(
+  value: string | null | undefined,
+): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed.length) return null;
+  if (isGenericPersonLabel(trimmed)) return null;
+  return trimmed;
 }
 
 /**
@@ -170,28 +181,32 @@ export function resolveName(
   index: number,
   metadata: InterviewMetadataForPeople,
 ): { name: string; source: NameResolutionSource } {
+  const fallbackName = generateFallbackPersonName(metadata);
   const candidates: Array<{
-    value: string | null | undefined;
+    value: string | null;
     source: NameResolutionSource;
   }> = [
-    { value: participant.display_name, source: "display" },
-    { value: participant.inferred_name, source: "inferred" },
+    { value: getMeaningfulName(participant.display_name), source: "display" },
+    { value: getMeaningfulName(participant.inferred_name), source: "inferred" },
     {
-      value: participant.person_key
-        ? humanizeKey(participant.person_key)
-        : null,
+      value: getMeaningfulName(
+        participant.person_key ? humanizeKey(participant.person_key) : null,
+      ),
       source: "person_key",
     },
-    { value: metadata.participantName, source: "metadata" },
-    { value: metadata.interviewerName, source: "metadata" },
+    {
+      value: getMeaningfulName(metadata.participantName),
+      source: "metadata",
+    },
+    {
+      value: getMeaningfulName(metadata.interviewerName),
+      source: "metadata",
+    },
   ];
   for (const candidate of candidates) {
-    if (typeof candidate.value === "string") {
-      const trimmed = candidate.value.trim();
-      if (trimmed.length) {
-        return { name: trimmed, source: candidate.source };
-      }
+    if (candidate.value) {
+      return { name: candidate.value, source: candidate.source };
     }
   }
-  return { name: `Participant ${index + 1}`, source: "fallback" };
+  return { name: fallbackName, source: "fallback" };
 }
