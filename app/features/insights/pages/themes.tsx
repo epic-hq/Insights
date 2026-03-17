@@ -230,6 +230,8 @@ export default function ThemesPage() {
 		return actions;
 	}, [allThemes, weakSignals]);
 
+	const remainingThemes = useMemo(() => allThemes.slice(3), [allThemes]);
+
 	return (
 		<div className="space-y-6">
 			{/* Lens toggle (no sub-view toggle here; it moves next to "All Themes") */}
@@ -265,68 +267,72 @@ export default function ThemesPage() {
 					{/* ── Divider ── */}
 					<Separator />
 
-					{/* ── Layer 2: All Themes (collapsed by default) ── */}
-					<Collapsible open={showAllThemes} onOpenChange={setShowAllThemes}>
-						<div className="flex items-center justify-between">
-							<CollapsibleTrigger asChild>
-								<button
-									type="button"
-									className="flex items-center gap-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider transition-colors hover:text-foreground"
-								>
-									<ChevronDown className={`h-4 w-4 transition-transform ${showAllThemes ? "rotate-180" : ""}`} />
-									All Themes ({allThemes.length})
-								</button>
-							</CollapsibleTrigger>
-							{showAllThemes && (
-								<ToggleGroup
-									type="single"
-									value={subView}
-									onValueChange={(v) => v && setSubView(v as "cards" | "table")}
-									size="sm"
-									className="shrink-0"
-								>
-									<ToggleGroupItem value="cards" aria-label="Cards view" className="gap-1.5">
-										<LayoutGrid className="h-3.5 w-3.5" />
-										Cards
-									</ToggleGroupItem>
-									<ToggleGroupItem value="table" aria-label="Table view" className="gap-1.5">
-										<Rows className="h-3.5 w-3.5" />
-										Table
-									</ToggleGroupItem>
-								</ToggleGroup>
-							)}
-						</div>
-						<CollapsibleContent className="mt-4">
-							{subView === "cards" ? (
-								<div className="grid gap-4 md:grid-cols-2">
-									{allThemes.map((theme) => (
-										<ThemeCard key={theme.id} theme={theme} totalPeople={totalPeople} />
-									))}
+					{/* ── Layer 2: Remaining Themes (collapsed by default) ── */}
+					{remainingThemes.length > 0 && (
+						<>
+							<Collapsible open={showAllThemes} onOpenChange={setShowAllThemes}>
+								<div className="flex items-center justify-between">
+									<CollapsibleTrigger asChild>
+										<button
+											type="button"
+											className="flex items-center gap-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider transition-colors hover:text-foreground"
+										>
+											<ChevronDown className={`h-4 w-4 transition-transform ${showAllThemes ? "rotate-180" : ""}`} />
+											Show Remaining Themes ({remainingThemes.length})
+										</button>
+									</CollapsibleTrigger>
+									{showAllThemes && (
+										<ToggleGroup
+											type="single"
+											value={subView}
+											onValueChange={(v) => v && setSubView(v as "cards" | "table")}
+											size="sm"
+											className="shrink-0"
+										>
+											<ToggleGroupItem value="cards" aria-label="Cards view" className="gap-1.5">
+												<LayoutGrid className="h-3.5 w-3.5" />
+												Cards
+											</ToggleGroupItem>
+											<ToggleGroupItem value="table" aria-label="Table view" className="gap-1.5">
+												<Rows className="h-3.5 w-3.5" />
+												Table
+											</ToggleGroupItem>
+										</ToggleGroup>
+									)}
 								</div>
-							) : (
-								<p className="text-muted-foreground text-sm">
-									Table view coming soon — use the existing Table route for now.
-								</p>
-							)}
+								<CollapsibleContent className="mt-4">
+									{subView === "cards" ? (
+										<div className="grid gap-4 md:grid-cols-2">
+											{remainingThemes.map((theme) => (
+												<ThemeCard key={theme.id} theme={theme} totalPeople={totalPeople} />
+											))}
+										</div>
+									) : (
+										<p className="text-muted-foreground text-sm">
+											Table view coming soon — use the existing Table route for now.
+										</p>
+									)}
 
-							{/* Load more */}
-							{hasMore && (
-								<div className="mt-6 flex justify-center">
-									<button
-										type="button"
-										onClick={() => loadMoreFetcher.load(loadMoreHref)}
-										disabled={loadMoreFetcher.state !== "idle"}
-										className="rounded border border-border bg-background px-4 py-2 text-foreground text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-									>
-										{loadMoreFetcher.state === "loading" ? "Loading..." : "Load more"}
-									</button>
-								</div>
-							)}
-						</CollapsibleContent>
-					</Collapsible>
+									{/* Load more */}
+									{hasMore && (
+										<div className="mt-6 flex justify-center">
+											<button
+												type="button"
+												onClick={() => loadMoreFetcher.load(loadMoreHref)}
+												disabled={loadMoreFetcher.state !== "idle"}
+												className="rounded border border-border bg-background px-4 py-2 text-foreground text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+											>
+												{loadMoreFetcher.state === "loading" ? "Loading..." : "Load more"}
+											</button>
+										</div>
+									)}
+								</CollapsibleContent>
+							</Collapsible>
 
-					{/* ── Divider ── */}
-					<Separator />
+							{/* ── Divider ── */}
+							<Separator />
+						</>
+					)}
 
 					{/* ── Layer 3: Blind Spots & Weak Signals ── */}
 					<GapsPanel weakSignals={weakSignals} />
