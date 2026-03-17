@@ -46,6 +46,10 @@ type SalesLensSummaryRow = Tables<"sales_lens_summaries"> & {
 };
 
 type SalesLensHygieneEventRow = Tables<"sales_lens_hygiene_events">;
+type SalesLensHygieneEventSummaryRow = Pick<
+	SalesLensHygieneEventRow,
+	"id" | "summary_id" | "slot_id" | "code" | "severity" | "message"
+>;
 
 type PeopleLookup = Map<string, { name: string | null }>;
 
@@ -66,7 +70,7 @@ export async function loadInterviewSalesLens({
 
 	const { data: summaryRows, error: summaryError } = await db
 		.from("sales_lens_summaries")
-		.select<SalesLensSummaryRow>(
+		.select(
 			`id, framework, computed_at, attendee_person_ids, attendee_person_keys, attendee_unlinked, hygiene_summary, metadata,
         sales_lens_slots (id, slot, label, description, text_value, numeric_value, date_value, status, confidence, owner_person_id, owner_person_key, related_person_ids, related_organization_ids, evidence_refs, hygiene, position),
         sales_lens_stakeholders (id, display_name, role, influence, labels, confidence, person_id, person_key, candidate_person_key, organization_id, email, evidence_refs)`
@@ -79,7 +83,7 @@ export async function loadInterviewSalesLens({
 		throw new Error(`Failed to load sales lens summaries: ${summaryError.message}`);
 	}
 
-	const summaries = summaryRows ?? [];
+	const summaries = ((summaryRows ?? []) as unknown) as SalesLensSummaryRow[];
 	if (summaries.length === 0) {
 		return null;
 	}
@@ -87,22 +91,20 @@ export async function loadInterviewSalesLens({
 	const summaryIds = summaries.map((summary) => summary.id);
 	const hygieneEventsBySummary = new Map<
 		string,
-		Array<Pick<SalesLensHygieneEventRow, "id" | "summary_id" | "slot_id" | "code" | "severity" | "message">>
+		SalesLensHygieneEventSummaryRow[]
 	>();
 
 	if (summaryIds.length > 0) {
 		const { data: hygieneRows, error: hygieneError } = await db
 			.from("sales_lens_hygiene_events")
-			.select<Pick<SalesLensHygieneEventRow, "id" | "summary_id" | "slot_id" | "code" | "severity" | "message">>(
-				"id, summary_id, slot_id, code, severity, message"
-			)
+			.select("id, summary_id, slot_id, code, severity, message")
 			.in("summary_id", summaryIds);
 
 		if (hygieneError) {
 			throw new Error(`Failed to load sales lens hygiene events: ${hygieneError.message}`);
 		}
 
-		for (const event of hygieneRows ?? []) {
+		for (const event of ((hygieneRows ?? []) as unknown as SalesLensHygieneEventSummaryRow[])) {
 			const list = hygieneEventsBySummary.get(event.summary_id) ?? [];
 			list.push(event);
 			hygieneEventsBySummary.set(event.summary_id, list);
@@ -260,7 +262,7 @@ export async function loadInterviewSalesLens({
 		frameworks.push(frameworkView);
 	}
 
-	const stakeholders = (summaries[0]?.sales_lens_stakeholders ?? []).map<LensStakeholder>((stakeholder) => ({
+	const stakeholders = ((summaries[0]?.sales_lens_stakeholders ?? []) as SalesLensStakeholderRow[]).map((stakeholder) => ({
 		id: stakeholder.id,
 		displayName: stakeholder.display_name,
 		role: stakeholder.role ?? null,
@@ -276,7 +278,7 @@ export async function loadInterviewSalesLens({
 		email: stakeholder.email ?? null,
 		organizationName: stakeholder.organization_id ? (organizationsById.get(stakeholder.organization_id) ?? null) : null,
 		evidence: mapEvidence(stakeholder.evidence_refs),
-	}));
+	})) as LensStakeholder[];
 
 	return {
 		frameworks,
@@ -323,7 +325,7 @@ function mapSlotHygiene(items: SalesLensSlotRow["hygiene"], slotLabel: string): 
 				slotLabel,
 			};
 		})
-		.filter((value): value is LensHygieneItem => value !== null);
+		.filter(Boolean) as LensHygieneItem[];
 }
 
 function mapSummaryHygiene(value: unknown): LensHygieneItem[] {
@@ -343,7 +345,7 @@ function mapSummaryHygiene(value: unknown): LensHygieneItem[] {
 				slotLabel: typeof entry.slot === "string" ? entry.slot : null,
 			};
 		})
-		.filter((value): value is LensHygieneItem => value !== null);
+		.filter(Boolean) as LensHygieneItem[];
 }
 
 type ExtractExecutionArgs = {

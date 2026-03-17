@@ -17,6 +17,29 @@ interface ResearchGoalData {
 	unknowns: string[];
 }
 
+type GeneratedQuestion = {
+	text: string;
+	categoryId: string;
+	rationale?: string | null;
+	scores: {
+		importance: number;
+	};
+};
+
+type QuestionSetLike = {
+	questions: GeneratedQuestion[];
+};
+
+function parseStringArrayJson(value: string | null | undefined): string[] {
+	if (!value) return [];
+	try {
+		const parsed = JSON.parse(value) as unknown;
+		return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+	} catch {
+		return [];
+	}
+}
+
 /**
  * Extract research goal from project sections (stored during onboarding)
  */
@@ -32,9 +55,9 @@ function extractResearchGoal(sections: Project_Section[]): ResearchGoalData {
 		icp: icpSection?.content_md || "Unknown target customer",
 		role: roleSection?.content_md || "Unknown role",
 		goal: goalSection?.content_md || "Research user needs",
-		questions: questionsSection?.content_md ? JSON.parse(questionsSection.content_md) : [],
-		assumptions: assumptionsSection?.content_md ? JSON.parse(assumptionsSection.content_md) : [],
-		unknowns: unknownsSection?.content_md ? JSON.parse(unknownsSection.content_md) : [],
+		questions: parseStringArrayJson(questionsSection?.content_md),
+		assumptions: parseStringArrayJson(assumptionsSection?.content_md),
+		unknowns: parseStringArrayJson(unknownsSection?.content_md),
 	};
 }
 
@@ -86,7 +109,7 @@ export async function generateQuestionSetCanonical(params: {
 	} = params;
 
 	// Create billing context if not provided
-	const billingCtx = billingContext || systemBillingContext(accountId || "system", "question_generation");
+	const billingCtx = billingContext || systemBillingContext(accountId || "system", "research_agent");
 
 	consola.log("[generateQuestionSetCanonical] Calling BAML GenerateQuestionSet with canonical params");
 
@@ -136,7 +159,7 @@ export async function generateQuestionSetCanonical(params: {
 	consola.log("[BAML DEBUG] GenerateQuestionSet inputs:", bamlInputs);
 
 	try {
-		const { result: questionSet } = await runBamlWithBilling(
+		const { result } = await runBamlWithBilling(
 			billingCtx,
 			{
 				functionName: "GenerateQuestionSet",
@@ -146,6 +169,7 @@ export async function generateQuestionSetCanonical(params: {
 			},
 			`question-set:${accountId || "system"}:${session_id || Date.now()}`
 		);
+		const questionSet = result as QuestionSetLike;
 		consola.log("[BAML DEBUG] GenerateQuestionSet result:", {
 			success: true,
 			hasQuestions: Array.isArray(questionSet?.questions),
@@ -179,7 +203,7 @@ export async function generateFollowUpQuestions(
 		consola.log("Generating follow-up questions for:", originalQuestion);
 
 		// Create billing context if not provided
-		const billingCtx = billingContext || systemBillingContext(accountId || "system", "follow_up_questions");
+		const billingCtx = billingContext || systemBillingContext(accountId || "system", "question_improvement");
 
 		const { result: followUpSet } = await runBamlWithBilling(
 			billingCtx,
@@ -246,7 +270,7 @@ async function _analyzeProjectInsights(
 		};
 
 		// Create billing context if not provided
-		const billingCtx = billingContext || systemBillingContext(accountId || "system", "project_analysis");
+		const billingCtx = billingContext || systemBillingContext(accountId || "system", "research_agent");
 
 		consola.log("Analyzing project insights with BAML...");
 
@@ -307,7 +331,7 @@ async function _generateExecutiveSummary(
 		}));
 
 		// Create billing context if not provided
-		const billingCtx = billingContext || systemBillingContext(accountId || "system", "executive_summary");
+		const billingCtx = billingContext || systemBillingContext(accountId || "system", "project_status_agent");
 
 		consola.log("Generating executive summary...");
 
@@ -404,13 +428,13 @@ async function _generateResearchQuestions(
 		});
 
 		// Create billing context if not provided
-		const billingCtx = billingContext || systemBillingContext(accountId || "system", "research_questions");
+		const billingCtx = billingContext || systemBillingContext(accountId || "system", "research_agent");
 
 		const ensure = (v: unknown, fallback = "unspecified") => {
 			const s = typeof v === "string" ? v : String(v ?? "");
 			return s.trim().length > 0 ? s : fallback;
 		};
-		const { result: questionSet } = await runBamlWithBilling(
+		const { result } = await runBamlWithBilling(
 			billingCtx,
 			{
 				functionName: "GenerateQuestionSet",
@@ -435,11 +459,12 @@ async function _generateResearchQuestions(
 			},
 			`research-questions:${accountId || "system"}:${Date.now()}`
 		);
+		const questionSet = result as QuestionSetLike;
 
 		// Convert new QuestionSet format to legacy format for backward compatibility
 		const suggestions = {
 			core_questions: questionSet.questions
-				.filter((q) => q.categoryId === "goals" || q.categoryId === "core")
+				.filter((q: GeneratedQuestion) => q.categoryId === "goals" || q.categoryId === "core")
 				.map((q) => ({
 					question: q.text,
 					rationale: q.rationale || "Core question for research goals",
@@ -447,7 +472,7 @@ async function _generateResearchQuestions(
 					priority: Math.round(q.scores.importance * 3) || 1,
 				})),
 			behavioral_questions: questionSet.questions
-				.filter((q) => q.categoryId === "workflow" || q.categoryId === "behavior")
+				.filter((q: GeneratedQuestion) => q.categoryId === "workflow" || q.categoryId === "behavior")
 				.map((q) => ({
 					question: q.text,
 					rationale: q.rationale || "Understanding user behavior",
@@ -455,7 +480,7 @@ async function _generateResearchQuestions(
 					priority: Math.round(q.scores.importance * 3) || 2,
 				})),
 			pain_point_questions: questionSet.questions
-				.filter((q) => q.categoryId === "pain" || q.categoryId === "challenges")
+				.filter((q: GeneratedQuestion) => q.categoryId === "pain" || q.categoryId === "challenges")
 				.map((q) => ({
 					question: q.text,
 					rationale: q.rationale || "Identifying pain points",
@@ -463,7 +488,7 @@ async function _generateResearchQuestions(
 					priority: Math.round(q.scores.importance * 3) || 2,
 				})),
 			solution_questions: questionSet.questions
-				.filter((q) => q.categoryId === "willingness" || q.categoryId === "solutions")
+				.filter((q: GeneratedQuestion) => q.categoryId === "willingness" || q.categoryId === "solutions")
 				.map((q) => ({
 					question: q.text,
 					rationale: q.rationale || "Validating solutions",
@@ -471,7 +496,7 @@ async function _generateResearchQuestions(
 					priority: Math.round(q.scores.importance * 3) || 2,
 				})),
 			context_questions: questionSet.questions
-				.filter((q) => q.categoryId === "context" || q.categoryId === "constraints")
+				.filter((q: GeneratedQuestion) => q.categoryId === "context" || q.categoryId === "constraints")
 				.map((q) => ({
 					question: q.text,
 					rationale: q.rationale || "Understanding context",
