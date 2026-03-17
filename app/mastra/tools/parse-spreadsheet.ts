@@ -17,6 +17,10 @@ type ProjectAsset = Database["public"]["Tables"]["project_assets"]["Row"];
 
 type ParsedRow = Record<string, string>;
 
+function nullishToUndefined<T>(value: T | null | undefined): T | undefined {
+	return value ?? undefined;
+}
+
 function detectDelimiter(content: string): string {
 	const firstLine = content.split("\n")[0] || "";
 	const tabCount = (firstLine.match(/\t/g) || []).length;
@@ -63,7 +67,7 @@ function parseCSVLine(line: string, delimiter: string): string[] {
 	return result;
 }
 
-function parseTabularContent(content: string, delimiter?: string): { headers: string[]; rows: ParsedRow[] } {
+function parseTabularContent(content: string, delimiter?: string | null): { headers: string[]; rows: ParsedRow[] } {
 	const lines = content
 		.split(/\r?\n/)
 		.map((line) => line.trim())
@@ -93,7 +97,7 @@ function parseTabularContent(content: string, delimiter?: string): { headers: st
 	return { headers, rows };
 }
 
-function generateMarkdownTable(headers: string[], rows: ParsedRow[], maxRows?: number): string {
+function generateMarkdownTable(headers: string[], rows: ParsedRow[], maxRows?: number | null): string {
 	if (headers.length === 0) return "*No data to display*";
 
 	const displayRows = maxRows ? rows.slice(0, maxRows) : rows;
@@ -418,33 +422,33 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 					// IMPORTANT: Only include fields that have actual mappings
 					// Do NOT include null values - omit unmapped fields entirely
 					// This ensures importPeopleFromTable only updates fields present in the spreadsheet
-					const rawMapping: Record<string, string | undefined> = {
-						name: analysis.column_mapping.name,
-						firstname: analysis.column_mapping.firstname,
-						lastname: analysis.column_mapping.lastname,
-						email: analysis.column_mapping.email,
-						phone: analysis.column_mapping.phone,
-						website: analysis.column_mapping.website,
-						address: analysis.column_mapping.address,
-						linkedin: analysis.column_mapping.linkedin,
-						twitter: analysis.column_mapping.twitter,
-						instagram: analysis.column_mapping.instagram,
-						tiktok: analysis.column_mapping.tiktok,
-						title: analysis.column_mapping.title,
-						company: analysis.column_mapping.company,
-						role: analysis.column_mapping.role,
-						industry: analysis.column_mapping.industry,
-						location: analysis.column_mapping.location,
-						company_stage: analysis.column_mapping.company_stage,
-						company_size: analysis.column_mapping.company_size,
-						company_url: analysis.column_mapping.company_url,
-						annual_revenue: analysis.column_mapping.annual_revenue,
-						market_cap: analysis.column_mapping.market_cap,
-						funding_stage: analysis.column_mapping.funding_stage,
-						total_funding: analysis.column_mapping.total_funding,
-						segment: analysis.column_mapping.segment,
-						lifecycle_stage: analysis.column_mapping.lifecycle_stage,
-					};
+						const rawMapping: Record<string, string | undefined> = {
+							name: nullishToUndefined(analysis.column_mapping.name),
+							firstname: nullishToUndefined(analysis.column_mapping.firstname),
+							lastname: nullishToUndefined(analysis.column_mapping.lastname),
+							email: nullishToUndefined(analysis.column_mapping.email),
+							phone: nullishToUndefined(analysis.column_mapping.phone),
+							website: nullishToUndefined(analysis.column_mapping.website),
+							address: nullishToUndefined(analysis.column_mapping.address),
+							linkedin: nullishToUndefined(analysis.column_mapping.linkedin),
+							twitter: nullishToUndefined(analysis.column_mapping.twitter),
+							instagram: nullishToUndefined(analysis.column_mapping.instagram),
+							tiktok: nullishToUndefined(analysis.column_mapping.tiktok),
+							title: nullishToUndefined(analysis.column_mapping.title),
+							company: nullishToUndefined(analysis.column_mapping.company),
+							role: nullishToUndefined(analysis.column_mapping.role),
+							industry: nullishToUndefined(analysis.column_mapping.industry),
+							location: nullishToUndefined(analysis.column_mapping.location),
+							company_stage: nullishToUndefined(analysis.column_mapping.company_stage),
+							company_size: nullishToUndefined(analysis.column_mapping.company_size),
+							company_url: nullishToUndefined(analysis.column_mapping.company_url),
+							annual_revenue: nullishToUndefined(analysis.column_mapping.annual_revenue),
+							market_cap: nullishToUndefined(analysis.column_mapping.market_cap),
+							funding_stage: nullishToUndefined(analysis.column_mapping.funding_stage),
+							total_funding: nullishToUndefined(analysis.column_mapping.total_funding),
+							segment: nullishToUndefined(analysis.column_mapping.segment),
+							lifecycle_stage: nullishToUndefined(analysis.column_mapping.lifecycle_stage),
+						};
 					// Filter out undefined/null values - only keep actual mappings
 					columnMapping = Object.fromEntries(
 						Object.entries(rawMapping).filter(([_, v]) => v != null && v !== "")

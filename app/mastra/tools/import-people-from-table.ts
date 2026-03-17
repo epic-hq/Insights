@@ -80,6 +80,10 @@ interface ImportResult {
 	rowIndex: number;
 }
 
+function nullishToUndefined<T>(value: T | null | undefined): T | undefined {
+	return value ?? undefined;
+}
+
 async function ensurePersonOrganizationLink(params: {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	supabase: any;
@@ -205,7 +209,7 @@ function autoDetectMappings(headers: string[]): ColumnMapping {
 /**
  * Extract value from row using column mapping
  */
-function getValue(row: TableRow, columnName: string | undefined): string | null {
+function getValue(row: TableRow, columnName: string | null | undefined): string | null {
 	if (!columnName) return null;
 	const value = row[columnName];
 	if (value === null || value === undefined || value === "") return null;
@@ -434,9 +438,11 @@ The tool will:
 
 			// Merge suggestedFacets into facetColumns for unified processing
 			// suggestedFacets comes from LLM analysis in parseSpreadsheet
-			const allFacetColumns = [
-				...facetColumns,
-				...suggestedFacets.map((sf) => ({
+			const normalizedFacetColumns = facetColumns ?? [];
+			const normalizedSuggestedFacets = suggestedFacets ?? [];
+			const allFacetColumns: Array<{ column: string; facetKind: string }> = [
+				...normalizedFacetColumns,
+				...normalizedSuggestedFacets.map((sf) => ({
 					column: sf.column,
 					facetKind: sf.facetKind,
 				})),
@@ -895,8 +901,8 @@ The tool will:
 							lifecycle_stage: getValue(row, mapping.lifecycle_stage),
 							default_organization_id: organizationId,
 							// Store flexible contact info (social profiles, website, address)
-							contact_info: Object.keys(contactInfo).length > 0 ? contactInfo : undefined,
-						})
+								contact_info: Object.keys(contactInfo).length > 0 ? contactInfo : undefined,
+							})
 						.select("*")
 						.single()) as {
 						data: Person | null;
@@ -928,8 +934,8 @@ The tool will:
 							organizationId,
 							accountId,
 							projectId,
-							jobTitle: getValue(row, mapping.title) || getValue(row, mapping.role),
-						});
+								jobTitle: getValue(row, mapping.title) || getValue(row, mapping.role),
+							});
 					}
 
 					if (email) {
@@ -1231,10 +1237,10 @@ The tool will:
 								} else if (insertedEvidence && insertedEvidence.length > 0) {
 									const evidenceIds = insertedEvidence.map((e: { id: string }) => e.id);
 
-									// Create evidence_people links (proper junction table for evidence<->person relationship)
-									const evidencePeopleRows = evidenceIds.map((evidenceId, idx) => ({
-										evidence_id: evidenceId,
-										person_id: evidencePersonIds[idx],
+										// Create evidence_people links (proper junction table for evidence<->person relationship)
+										const evidencePeopleRows = evidenceIds.map((evidenceId: string, idx: number) => ({
+											evidence_id: evidenceId,
+											person_id: evidencePersonIds[idx],
 										account_id: accountId,
 										project_id: projectId,
 										role: "respondent",
