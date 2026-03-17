@@ -45,8 +45,18 @@ import { switchAgentTool } from "~/mastra/tools/switch-agent";
 import { userContext } from "~/server/user-context";
 import { createRouteDefinitions } from "~/utils/route-definitions";
 
+type MessageLike = {
+  role?: string;
+  content?: unknown;
+  parts?: unknown[];
+};
+
+function isMessageLike(value: unknown): value is MessageLike {
+  return Boolean(value) && typeof value === "object";
+}
+
 function getLastUserText(
-  messages: Array<{ role?: string; content?: unknown; parts?: unknown[] }>,
+  messages: MessageLike[],
 ): string {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
@@ -186,6 +196,21 @@ const surveyQuickCreateDraftSchema = z.object({
   name: z.string().min(2),
   description: z.string().nullish(),
   questions: z.array(surveyQuestionDraftSchema).min(3).max(8),
+});
+
+const surveyQuickCreateResultSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  editUrl: z.string().nullable().nullish(),
+  publicUrl: z.string().nullable().nullish(),
+  surveyId: z.string().nullish(),
+  questionCount: z.number().nullish(),
+  error: z
+    .object({
+      code: z.string(),
+      message: z.string(),
+    })
+    .optional(),
 });
 
 function mapUsageToLangfuse(usage?: {
@@ -347,33 +372,33 @@ function extractWebResearchResultsFromPayload(
   const candidate = (payload as { results?: unknown }).results;
   if (!Array.isArray(candidate)) return [];
 
-  return candidate
-    .map((row) => {
-      if (!row || typeof row !== "object") return null;
-      const candidateRow = row as Record<string, unknown>;
-      if (typeof candidateRow.title !== "string") return null;
-      if (typeof candidateRow.url !== "string") return null;
+  const results: WebResearchStructuredResult[] = [];
+  for (const row of candidate) {
+    if (!row || typeof row !== "object") continue;
+    const candidateRow = row as Record<string, unknown>;
+    if (typeof candidateRow.title !== "string") continue;
+    if (typeof candidateRow.url !== "string") continue;
 
-      return {
-        title: candidateRow.title,
-        url: candidateRow.url,
-        summary:
-          typeof candidateRow.summary === "string"
-            ? candidateRow.summary
-            : "No summary available",
-        relevanceScore:
-          typeof candidateRow.relevanceScore === "number"
-            ? candidateRow.relevanceScore
-            : null,
-        publishedDate:
-          typeof candidateRow.publishedDate === "string"
-            ? candidateRow.publishedDate
-            : null,
-        author:
-          typeof candidateRow.author === "string" ? candidateRow.author : null,
-      } satisfies WebResearchStructuredResult;
-    })
-    .filter((row): row is WebResearchStructuredResult => Boolean(row));
+    results.push({
+      title: candidateRow.title,
+      url: candidateRow.url,
+      summary:
+        typeof candidateRow.summary === "string"
+          ? candidateRow.summary
+          : "No summary available",
+      relevanceScore:
+        typeof candidateRow.relevanceScore === "number"
+          ? candidateRow.relevanceScore
+          : null,
+      publishedDate:
+        typeof candidateRow.publishedDate === "string"
+          ? candidateRow.publishedDate
+          : null,
+      author:
+        typeof candidateRow.author === "string" ? candidateRow.author : null,
+    });
+  }
+  return results;
 }
 
 function extractCsvLines(text: string): string[] {
@@ -1439,7 +1464,7 @@ Requirements:
 - Survey must be immediately usable without follow-up.`,
   });
 
-  const created = await createSurveyTool.execute(
+  const createdRaw = await createSurveyTool.execute!(
     {
       projectId: options.projectId,
       name: draft.object.name,
@@ -1449,27 +1474,37 @@ Requirements:
     },
     { requestContext: options.requestContext },
   );
+  const created = surveyQuickCreateResultSchema.safeParse(createdRaw);
 
-  if (!created.success || !created.editUrl) {
+  if (!created.success || !created.data.success || !created.data.editUrl) {
     return {
       success: false,
       text:
-        created.message ||
+        (created.success ? created.data.message : null) ||
         "I couldn't create the survey yet. Please try again.",
       usage: draft.usage,
     };
   }
 
-  const editPath = ensureSurveyEditPath(created.editUrl);
-  const publicUrl = created.publicUrl ?? editPath;
+  const createdData = created.data;
+  const editUrl = createdData.editUrl;
+  if (!editUrl) {
+    return {
+      success: false,
+      text: createdData.message || "I couldn't create the survey yet. Please try again.",
+      usage: draft.usage,
+    };
+  }
+  const editPath = ensureSurveyEditPath(editUrl);
+  const publicUrl = createdData.publicUrl ?? editPath;
   const surveyCardSurface = buildSingleComponentSurface({
-    surfaceId: `survey-created-${created.surveyId ?? Date.now().toString(36)}`,
+    surfaceId: `survey-created-${createdData.surveyId ?? Date.now().toString(36)}`,
     componentType: "SurveyCreated",
-    componentId: `survey-created-${created.surveyId ?? "new"}`,
+    componentId: `survey-created-${createdData.surveyId ?? "new"}`,
     data: {
-      surveyId: created.surveyId ?? "new-survey",
+      surveyId: createdData.surveyId ?? "new-survey",
       name: draft.object.name,
-      questionCount: created.questionCount ?? draft.object.questions.length,
+      questionCount: createdData.questionCount ?? draft.object.questions.length,
       editUrl: editPath,
       publicUrl,
     },
@@ -1531,9 +1566,9 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
       errorCount: parsedUiEvents.error.issues.length,
     });
   }
-  const sanitizedMessages = Array.isArray(messages)
+  const sanitizedMessages: MessageLike[] = Array.isArray(messages)
     ? messages.map((message) => {
-        if (!message || typeof message !== "object") return message;
+        if (!isMessageLike(message)) return {};
         const cloned = { ...message };
         if ("id" in cloned) {
           delete (cloned as Record<string, unknown>).id;
@@ -1544,8 +1579,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
   // Validate that we have at least one user message
   const hasUserMessage = sanitizedMessages.some(
-    (message: { role?: string }) =>
-      message && typeof message === "object" && message.role === "user",
+    (message) => message.role === "user",
   );
 
   if (!hasUserMessage) {
@@ -1560,7 +1594,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
   // This prevents duplicate messages when both client history and memory are present.
   // We look for the last user message and include it (the new turn).
   const lastUserIndex = sanitizedMessages.findLastIndex(
-    (m: { role?: string }) => m?.role === "user",
+    (m) => m.role === "user",
   );
 
   // If we have a user message, start from there. Otherwise use all messages.
@@ -1747,7 +1781,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
         const betterTitle = buildShortThreadTitle(threadTitleSeed);
         if (betterTitle !== "New Chat") {
           memory
-            .updateThread({ id: threadId, title: betterTitle })
+            .updateThread({ id: threadId, title: betterTitle, metadata: {} })
             .catch((err: unknown) =>
               consola.warn(
                 "project-status: failed to update thread title",
@@ -2245,12 +2279,12 @@ The user requested CSV output with exactly ${csvListContract.requestedRows} data
         ? await handleNetworkStream({
             mastra,
             agentId: targetAgentId,
-            params: buildAgentParams(threadId),
+            params: buildAgentParams(threadId) as never,
           })
         : await handleChatStream({
             mastra,
             agentId: targetAgentId,
-            params: buildAgentParams(threadId),
+            params: buildAgentParams(threadId) as never,
             sendReasoning: false,
             sendSources: !isFastStandardized,
           });
@@ -2268,12 +2302,12 @@ The user requested CSV output with exactly ${csvListContract.requestedRows} data
           ? await handleNetworkStream({
               mastra,
               agentId: targetAgentId,
-              params: buildAgentParams(threadId),
+              params: buildAgentParams(threadId) as never,
             })
           : await handleChatStream({
               mastra,
               agentId: targetAgentId,
-              params: buildAgentParams(threadId),
+              params: buildAgentParams(threadId) as never,
               sendReasoning: false,
               sendSources: !isFastStandardized,
             });
@@ -2328,5 +2362,5 @@ The user requested CSV output with exactly ${csvListContract.requestedRows} data
     csvListContract,
   });
 
-  return createUIMessageStreamResponse({ stream: reliableStream });
+  return createUIMessageStreamResponse({ stream: reliableStream as never });
 }

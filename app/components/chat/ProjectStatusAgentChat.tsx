@@ -264,6 +264,10 @@ function formatAssistantTransportError(error: unknown): string {
 	return "Assistant request failed before completion. No update was confirmed.";
 }
 
+function isToolMessage(message: UpsightMessage): boolean {
+	return (message as { role?: string }).role === "tool";
+}
+
 type NetworkStep = {
 	name?: string;
 	status?: string;
@@ -344,7 +348,7 @@ function isNetworkDebugText(text: string): boolean {
 }
 
 function extractToolResultText(message: UpsightMessage): string | null {
-	if (message.role !== "tool" || !message.parts) return null;
+	if (!isToolMessage(message) || !message.parts) return null;
 	for (const part of message.parts) {
 		const anyPart = part as {
 			type: string;
@@ -364,7 +368,7 @@ function extractToolResultText(message: UpsightMessage): string | null {
 }
 
 function extractToolResultTaskId(message: UpsightMessage): string | null {
-	if (message.role !== "tool" || !message.parts) return null;
+	if (!isToolMessage(message) || !message.parts) return null;
 	for (const part of message.parts) {
 		const anyPart = part as {
 			type: string;
@@ -1060,22 +1064,27 @@ export function ProjectStatusAgentChat({
 		},
 		onToolCall: async ({ toolCall }) => {
 			if (toolCall.dynamic) return;
+			const anyToolCall = toolCall as {
+				toolName?: string;
+				input?: unknown;
+				toolCallId?: string;
+			};
 
-			if (toolCall.toolName === "navigateToPage") {
-				const rawPath = (toolCall.input as { path?: string })?.path || null;
+			if (anyToolCall.toolName === "navigateToPage") {
+				const rawPath = (anyToolCall.input as { path?: string })?.path || null;
 				const { resolved: normalizedPath, reason } = ensureProjectScopedPath(rawPath, accountId, projectId);
 
 				if (normalizedPath) {
 					navigate(normalizedPath);
 					addToolResult({
 						tool: "navigateToPage",
-						toolCallId: toolCall.toolCallId,
+						toolCallId: anyToolCall.toolCallId ?? "",
 						output: { success: true, path: normalizedPath },
 					});
 				} else {
 					addToolResult({
 						tool: "navigateToPage",
-						toolCallId: toolCall.toolCallId,
+						toolCallId: anyToolCall.toolCallId ?? "",
 						output: {
 							success: false,
 							error: reason || "Unsupported navigation target",
@@ -1085,8 +1094,8 @@ export function ProjectStatusAgentChat({
 			}
 
 			// Handle agent switching for handoff pattern
-			if (toolCall.toolName === "switchAgent") {
-				const input = toolCall.input as {
+			if (anyToolCall.toolName === "switchAgent") {
+				const input = anyToolCall.input as {
 					targetAgent?: string;
 					reason?: string;
 				};
@@ -1101,29 +1110,29 @@ export function ProjectStatusAgentChat({
 					navigate(setupPath);
 					addToolResult({
 						tool: "switchAgent",
-						toolCallId: toolCall.toolCallId,
+						toolCallId: anyToolCall.toolCallId ?? "",
 						output: { success: true, targetAgent, message: reason },
-					});
+					} as never);
 				} else if (targetAgent === "project-status") {
 					// Already on status agent, just acknowledge
 					addToolResult({
 						tool: "switchAgent",
-						toolCallId: toolCall.toolCallId,
+						toolCallId: anyToolCall.toolCallId ?? "",
 						output: {
 							success: true,
 							targetAgent,
 							message: "Already using project status agent.",
 						},
-					});
+					} as never);
 				} else {
 					addToolResult({
 						tool: "switchAgent",
-						toolCallId: toolCall.toolCallId,
+						toolCallId: anyToolCall.toolCallId ?? "",
 						output: {
 							success: false,
 							error: `Unknown agent: ${targetAgent}`,
 						},
-					});
+					} as never);
 				}
 			}
 		},
@@ -1585,7 +1594,7 @@ export function ProjectStatusAgentChat({
 		const lastMessage = messages[messages.length - 1];
 		return messages.filter((message) => {
 			if (isInternalUiDispatchMessage(message)) return false;
-			if (message.role === "tool") {
+			if (isToolMessage(message)) {
 				return Boolean(extractToolResultText(message));
 			}
 			if (message.role !== "assistant") return true;
@@ -1915,7 +1924,7 @@ export function ProjectStatusAgentChat({
 							{visibleMessages.map((message, index) => {
 								const key = message.id || `${message.role}-${index}`;
 								const isUser = message.role === "user";
-								const isTool = message.role === "tool";
+								const isTool = isToolMessage(message);
 								const textParts = message.parts?.filter((part) => part.type === "text").map((part) => part.text) ?? [];
 								const filteredTextParts = textParts.filter(
 									(part) => typeof part === "string" && !isNetworkDebugText(part)
