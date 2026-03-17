@@ -1,5 +1,6 @@
 import type { QueryData, SupabaseClient } from "@supabase/supabase-js";
 import type { CommonGround, StakeholderSummary } from "~/features/insights/types";
+import { getProjectAnalysisSettings } from "~/features/projects/utils/analysisSettings";
 import type { Database, InsightInsert } from "~/types";
 
 // This is our pattern for defining typed queries and returning results.
@@ -10,13 +11,25 @@ export const getInsights = async ({
 	projectId,
 	offset,
 	limit,
+	minConfidence,
+	interviewId,
 }: {
 	supabase: SupabaseClient<Database>;
 	accountId: string;
 	projectId: string;
 	offset?: number;
 	limit?: number;
+	minConfidence?: number;
+	interviewId?: string | null;
 }) => {
+	const { data: projectData } = await supabase
+		.from("projects")
+		.select("project_settings")
+		.eq("id", projectId)
+		.maybeSingle();
+	const analysisSettings = getProjectAnalysisSettings(projectData?.project_settings);
+	const evidenceLinkThreshold = minConfidence ?? analysisSettings.evidence_link_threshold;
+
 	const baseQuery = supabase
 		.from("themes")
 		.select(
@@ -55,12 +68,19 @@ export const getInsights = async ({
 	const insightIds = data?.map((i) => i.id) || [];
 
 	// Get interview IDs via theme_evidence junction table
-	const { data: evidenceLinks } = insightIds.length
-		? await supabase
+	let evidenceLinksQuery = insightIds.length
+		? supabase
 				.from("theme_evidence")
-				.select("theme_id, evidence_id, evidence:evidence_id(interview_id)")
+				.select("theme_id, evidence_id, confidence, evidence:evidence_id(interview_id)")
 				.in("theme_id", insightIds)
-		: { data: null };
+		: null;
+	if (evidenceLinksQuery && evidenceLinkThreshold > 0) {
+		evidenceLinksQuery = evidenceLinksQuery.or(`confidence.is.null,confidence.gte.${evidenceLinkThreshold}`);
+	}
+	if (evidenceLinksQuery && interviewId) {
+		evidenceLinksQuery = evidenceLinksQuery.eq("evidence.interview_id", interviewId);
+	}
+	const { data: evidenceLinks } = evidenceLinksQuery ? await evidenceLinksQuery : { data: null };
 
 	const interviewIds =
 		Array.from(
@@ -270,25 +290,31 @@ export const getInsights = async ({
 		}
 	}
 
-	const transformedData = data?.map((insight: any) => ({
-		...insight,
-		// Use priority from themes table directly, fall back to view for backwards compat
-		priority: insight.priority ?? priorityMap.get(insight.id) ?? 3,
-		vote_count: voteCountMap.get(insight.id) ?? 0,
-		evidence_count: Array.isArray(insight.theme_evidence) ? (insight.theme_evidence[0]?.count ?? 0) : 0,
-		person_count: themePersonCounts.get(insight.id) ?? 0,
-		persona_insights: personasMap.get(insight.id)?.map((person) => ({ personas: person })) ?? [],
-		interviews: (themeInterviewsMap.get(insight.id) || []).map((id) => interviewsMap.get(id)).filter(Boolean),
-		insight_tags:
-			tagsMap.get(insight.id)?.map((tag) => ({
-				tag: tag.tag,
-				term: tag.term,
-				definition: tag.definition,
-			})) || [],
-		linked_themes: [], // Themes are top-level now, not nested
-		// Add backward compatibility field for interview_id
-		interview_id: themeInterviewsMap.get(insight.id)?.[0] || null, // Use first interview for backwards compat
-	}));
+	const transformedData = (data || [])
+		.map((insight: any) => {
+			const filteredEvidenceCount = themeEvidenceMap.get(insight.id)?.size ?? 0;
+
+			return {
+				...insight,
+				// Use priority from themes table directly, fall back to view for backwards compat
+				priority: insight.priority ?? priorityMap.get(insight.id) ?? 3,
+				vote_count: voteCountMap.get(insight.id) ?? 0,
+				evidence_count: filteredEvidenceCount,
+				person_count: themePersonCounts.get(insight.id) ?? 0,
+				persona_insights: personasMap.get(insight.id)?.map((person) => ({ personas: person })) ?? [],
+				interviews: (themeInterviewsMap.get(insight.id) || []).map((id) => interviewsMap.get(id)).filter(Boolean),
+				insight_tags:
+					tagsMap.get(insight.id)?.map((tag) => ({
+						tag: tag.tag,
+						term: tag.term,
+						definition: tag.definition,
+					})) || [],
+				linked_themes: [], // Themes are top-level now, not nested
+				// Add backward compatibility field for interview_id
+				interview_id: themeInterviewsMap.get(insight.id)?.[0] || null, // Use first interview for backwards compat
+			};
+		})
+		.filter((insight) => insight.evidence_count > 0);
 	return { data: transformedData, error };
 };
 

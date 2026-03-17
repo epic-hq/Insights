@@ -446,17 +446,13 @@ export function InterviewDetailHeader({
 						</Link>
 					</>
 				)}
-				{insightCount > 0 && (
-					<>
-						<span>&middot;</span>
-						<Link to={insightsFilterLink} className="inline-flex items-center gap-1 text-primary hover:text-primary/80">
-							<span>
-								{insightCount} {insightCount === 1 ? "theme" : "themes"}
-							</span>
-							<ArrowUpRight className="h-3.5 w-3.5" />
-						</Link>
-					</>
-				)}
+				<span>&middot;</span>
+				<Link to={insightsFilterLink} className="inline-flex items-center gap-1 text-primary hover:text-primary/80">
+					<span>
+						{insightCount} {insightCount === 1 ? "theme" : "themes"}
+					</span>
+					<ArrowUpRight className="h-3.5 w-3.5" />
+				</Link>
 			</div>
 		</div>
 	);

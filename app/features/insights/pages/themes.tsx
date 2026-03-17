@@ -9,7 +9,7 @@
 import { ChevronDown, LayoutGrid, Rows, X, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { LoaderFunctionArgs } from "react-router";
-import { Link, useFetcher, useLoaderData, useLocation, useSearchParams } from "react-router-dom";
+import { useFetcher, useLoaderData, useLocation, useSearchParams } from "react-router-dom";
 import { Badge } from "~/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
 import { Separator } from "~/components/ui/separator";
@@ -48,7 +48,11 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	// Fetch insights + trending + total people in parallel
 	const [insightsResult, trendingMap, totalPeopleResult] = await Promise.all([
-		getInsights({ supabase, accountId, projectId, offset, limit: limit + 1 }),
+		getInsights(
+			filterInterviewId
+				? { supabase, accountId, projectId, interviewId: filterInterviewId }
+				: { supabase, accountId, projectId, offset, limit: limit + 1 }
+		),
 		getTrendingData({ supabase, projectId }),
 		supabase.from("people").select("*", { count: "exact", head: true }).eq("project_id", projectId).is("user_id", null),
 	]);
@@ -56,8 +60,8 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	if (insightsResult.error) throw new Response("Failed to load insights", { status: 500 });
 
 	const allInsights = insightsResult.data || [];
-	const insights = allInsights.slice(0, limit);
-	const hasMore = allInsights.length > limit;
+	const insights = filterInterviewId ? allInsights : allInsights.slice(0, limit);
+	const hasMore = filterInterviewId ? false : allInsights.length > limit;
 	const nextOffset = offset + insights.length;
 	const totalPeople = totalPeopleResult.count ?? 0;
 
@@ -106,7 +110,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	let filteredThemes = sorted;
 	let filterInterviewTitle: string | null = null;
 	if (filterInterviewId) {
-		filteredThemes = sorted.filter((t: any) => t.interviews?.some((i: any) => i.id === filterInterviewId));
+		filteredThemes = sorted.filter((theme) =>
+			theme.interviews?.some((interview) => interview?.id === filterInterviewId)
+		);
 		// Fetch interview title for the filter badge
 		const { data: interviewRow } = await supabase
 			.from("interviews")

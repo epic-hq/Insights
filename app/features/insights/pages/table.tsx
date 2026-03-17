@@ -3,6 +3,7 @@ import type { LoaderFunctionArgs } from "react-router";
 import { useLoaderData, useSearchParams } from "react-router-dom";
 import { type InsightSegmentData, InsightsDataTable } from "~/features/insights/components/InsightsDataTableTS";
 import { getInsights } from "~/features/insights/db";
+import { getProjectAnalysisSettings } from "~/features/projects/utils/analysisSettings";
 import { currentProjectContext } from "~/server/current-project-context";
 import { userContext } from "~/server/user-context";
 
@@ -75,6 +76,12 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	const insights = data || [];
 	const insightIds = insights.map((i) => i.id);
+	const { data: projectData } = await supabase
+		.from("projects")
+		.select("project_settings")
+		.eq("id", projectId)
+		.maybeSingle();
+	const analysisSettings = getProjectAnalysisSettings(projectData?.project_settings);
 
 	// Build segment data for each insight
 	const insightSegments: Record<string, InsightSegmentData> = {};
@@ -83,8 +90,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// Get theme_evidence for insights
 		const { data: themeEvidence } = await supabase
 			.from("theme_evidence")
-			.select("theme_id, evidence_id")
+			.select("theme_id, evidence_id, confidence")
 			.eq("project_id", projectId)
+			.or(`confidence.is.null,confidence.gte.${analysisSettings.evidence_link_threshold}`)
 			.in("theme_id", insightIds);
 
 		if (themeEvidence && themeEvidence.length > 0) {
