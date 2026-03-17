@@ -41,7 +41,7 @@ const RecommendationSchema = z.object({
 		.nullish()
 		.describe("Supporting evidence with traceability"),
 	action_type: z.enum(["schedule_interview", "create_survey", "validate_theme", "follow_up_contact", "review_data"]),
-	action_data: z.record(z.unknown()).nullish().describe("Data needed to execute action"),
+	action_data: z.record(z.string(), z.unknown()).nullish().describe("Data needed to execute action"),
 	navigateTo: z.string().nullish().describe("Route to navigate user to"),
 });
 

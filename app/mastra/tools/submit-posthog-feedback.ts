@@ -69,7 +69,7 @@ export const submitPosthogFeedbackTool = createTool({
 			.describe("Where this feedback came from, e.g. project_chat, support_call, interview."),
 		userId: z.string().max(120).nullish().describe("Optional explicit user id override for PostHog distinctId."),
 		url: z.string().max(500).nullish().describe("Optional URL where the feedback was observed."),
-		metadata: z.record(z.unknown()).nullish().describe("Optional extra metadata to attach to the event."),
+		metadata: z.record(z.string(), z.unknown()).nullish().describe("Optional extra metadata to attach to the event."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

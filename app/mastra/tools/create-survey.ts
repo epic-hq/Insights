@@ -208,7 +208,7 @@ Question types:
 			name: z.string().describe("Survey name/title"),
 			description: z.string().nullish().default(null).describe("Brief description of the survey purpose"),
 			questions: z
-				.array(z.record(z.unknown()))
+				.array(z.record(z.string(), z.unknown()))
 				.min(1)
 				.describe(
 					"Array of question objects. Missing fields are normalized server-side (type/required/options/likertScale/likertLabels). Optional metadata: taxonomyKey and personFieldKey for canonical response mapping."

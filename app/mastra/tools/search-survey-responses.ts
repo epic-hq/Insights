@@ -140,8 +140,8 @@ MANDATORY LINKING RULES:
 						stats: z
 							.object({
 								average: z.number().optional(),
-								distribution: z.record(z.number()).optional(),
-								percentages: z.record(z.number()).optional(),
+								distribution: z.record(z.string(), z.number()).optional(),
+								percentages: z.record(z.string(), z.number()).optional(),
 							})
 							.optional(),
 						textResponses: z

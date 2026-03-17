@@ -9,6 +9,7 @@ import {
   Briefcase,
   ChevronLeft,
   Edit2,
+  Film,
   Loader2,
   MoreVertical,
   RefreshCw,
@@ -260,6 +261,30 @@ export function InterviewDetailHeader({
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Re-run Analysis
               </DropdownMenuItem>
+              {interview.media_url && (
+                <DropdownMenuItem
+                  onClick={async () => {
+                    try {
+                      const response = await fetch("/api/optimize-video", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ interviewId: interview.id }),
+                      });
+                      const result = await response.json();
+                      if (!result.success) {
+                        consola.error("Optimize video failed:", result.error);
+                      }
+                    } catch (e) {
+                      consola.error("Optimize video failed", e);
+                    }
+                  }}
+                  disabled={fetcher.state !== "idle"}
+                  className="text-violet-600 focus:text-violet-600"
+                >
+                  <Film className="mr-2 h-4 w-4" />
+                  Optimize Video
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onClick={() => {
                   try {

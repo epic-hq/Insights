@@ -91,7 +91,7 @@ Operations:
 				id: z.string(),
 				kind: z.string(),
 				content: z.string(),
-				metadata: z.record(z.any()).nullable(),
+				metadata: z.record(z.string(), z.any()).nullable(),
 				created_at: z.string(),
 				updated_at: z.string(),
 			})
@@ -103,7 +103,7 @@ Operations:
 					id: z.string(),
 					kind: z.string(),
 					content: z.string(),
-					metadata: z.record(z.any()).nullable(),
+					metadata: z.record(z.string(), z.any()).nullable(),
 					created_at: z.string(),
 					updated_at: z.string(),
 				})
