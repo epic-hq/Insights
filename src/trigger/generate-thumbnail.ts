@@ -89,6 +89,9 @@ const GenerateThumbnailPayload = z.object({
 export const generateThumbnail = schemaTask({
   id: "generate-thumbnail",
   schema: GenerateThumbnailPayload,
+  machine: {
+    preset: "small-1x", // 1GB RAM — ffmpeg needs headroom even for fast-seek thumbnail
+  },
   retry: {
     maxAttempts: 3,
     factor: 2,
@@ -103,12 +106,11 @@ export const generateThumbnail = schemaTask({
     // ffmpeg will stream directly from this URL - no need to download the whole file
     const signedSourceUrl = await makeSignedReadUrl(normalizedMediaKey, 3600); // 1 hour TTL
 
-    // First, probe the file to check if it has video streams
-    // Use ffmpeg to get stream info - if no video stream, skip thumbnail generation
+    // Probe just the first 10 seconds to detect video streams without reading the whole file
     try {
       const probeResult = await execa(
         "ffmpeg",
-        ["-hide_banner", "-i", signedSourceUrl, "-f", "null", "-"],
+        ["-hide_banner", "-t", "10", "-i", signedSourceUrl, "-f", "null", "-"],
         { timeout: 30000, reject: false },
       );
       // ffmpeg outputs stream info to stderr

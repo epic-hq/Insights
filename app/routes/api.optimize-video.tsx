@@ -1,9 +1,11 @@
 /**
- * Trigger video optimization for an existing interview.
- * Looks up the interview's media_url and fires interview.optimize-video.
+ * Trigger video optimization or thumbnail extraction for an existing interview.
  *
  * POST /api/optimize-video
- * Body: { interviewId: string }
+ * Body: { interviewId: string, thumbnailOnly?: boolean }
+ *
+ * thumbnailOnly=true: just extract thumbnail (fast, no re-encoding)
+ * thumbnailOnly=false (default): full video re-encode + thumbnail
  */
 
 import { tasks } from "@trigger.dev/sdk";
@@ -24,7 +26,7 @@ export async function action({ request }: ActionFunctionArgs) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { interviewId } = await request.json();
+  const { interviewId, thumbnailOnly = false } = await request.json();
   if (!interviewId) {
     return Response.json({ error: "interviewId required" }, { status: 400 });
   }
@@ -41,20 +43,41 @@ export async function action({ request }: ActionFunctionArgs) {
     return Response.json({ error: "Interview not found" }, { status: 404 });
   }
 
-  // Use original video key if available, otherwise current media_url
   const metadata = (interview.processing_metadata ?? {}) as Record<
     string,
     unknown
   >;
-  const sourceR2Key =
-    (metadata.original_video_r2_key as string | undefined) ??
-    interview.media_url;
+  // For thumbnails, prefer the already-optimized mp4 if available (faster seek)
+  const optimizedKey = metadata.original_video_r2_key
+    ? interview.media_url // media_url now points to optimized mp4
+    : null;
+  const sourceR2Key = interview.media_url;
 
   if (!sourceR2Key) {
     return Response.json(
       { error: "No video file found for this interview" },
       { status: 400 },
     );
+  }
+
+  if (thumbnailOnly) {
+    const mediaKey = optimizedKey ?? sourceR2Key;
+    const handle = await tasks.trigger("generate-thumbnail", {
+      mediaKey,
+      interviewId: interview.id,
+      timestampSec: 1,
+      accountId: interview.account_id,
+    });
+    consola.info("[optimize-video] Triggered thumbnail-only", {
+      interviewId,
+      mediaKey,
+      runId: handle.id,
+    });
+    return Response.json({
+      success: true,
+      mode: "thumbnail",
+      runId: handle.id,
+    });
   }
 
   const handle = await tasks.trigger("interview.optimize-video", {
@@ -64,11 +87,15 @@ export async function action({ request }: ActionFunctionArgs) {
     projectId: interview.project_id ?? "",
   });
 
-  consola.info("[optimize-video] Triggered", {
+  consola.info("[optimize-video] Triggered full optimization", {
     interviewId,
     sourceR2Key,
     runId: handle.id,
   });
-
-  return Response.json({ success: true, runId: handle.id, sourceR2Key });
+  return Response.json({
+    success: true,
+    mode: "optimize",
+    runId: handle.id,
+    sourceR2Key,
+  });
 }

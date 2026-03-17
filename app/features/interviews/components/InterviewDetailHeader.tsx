@@ -262,28 +262,47 @@ export function InterviewDetailHeader({
                 Re-run Analysis
               </DropdownMenuItem>
               {interview.media_url && (
-                <DropdownMenuItem
-                  onClick={async () => {
-                    try {
-                      const response = await fetch("/api/optimize-video", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ interviewId: interview.id }),
-                      });
-                      const result = await response.json();
-                      if (!result.success) {
-                        consola.error("Optimize video failed:", result.error);
+                <>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      try {
+                        await fetch("/api/optimize-video", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            interviewId: interview.id,
+                            thumbnailOnly: true,
+                          }),
+                        });
+                      } catch (e) {
+                        consola.error("Extract thumbnail failed", e);
                       }
-                    } catch (e) {
-                      consola.error("Optimize video failed", e);
-                    }
-                  }}
-                  disabled={fetcher.state !== "idle"}
-                  className="text-violet-600 focus:text-violet-600"
-                >
-                  <Film className="mr-2 h-4 w-4" />
-                  Optimize Video
-                </DropdownMenuItem>
+                    }}
+                    disabled={fetcher.state !== "idle"}
+                    className="text-violet-600 focus:text-violet-600"
+                  >
+                    <Film className="mr-2 h-4 w-4" />
+                    Extract Thumbnail
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      try {
+                        await fetch("/api/optimize-video", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ interviewId: interview.id }),
+                        });
+                      } catch (e) {
+                        consola.error("Optimize video failed", e);
+                      }
+                    }}
+                    disabled={fetcher.state !== "idle"}
+                    className="text-muted-foreground focus:text-foreground"
+                  >
+                    <Film className="mr-2 h-4 w-4" />
+                    Optimize Video
+                  </DropdownMenuItem>
+                </>
               )}
               <DropdownMenuItem
                 onClick={() => {
