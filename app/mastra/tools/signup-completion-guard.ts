@@ -20,7 +20,7 @@ export const signupCompletionGuardTool = createTool({
 	description: "Checks if core signup fields are filled and returns the next question if not.",
 	inputSchema: InputSchema,
 	outputSchema: OutputSchema,
-	execute: async (input) => {
+	execute: async (input, _context) => {
 		const { problem, need_to_learn, challenges, content_types } = input;
 
 		const missing: string[] = [];
@@ -50,7 +50,7 @@ export const signupCompletionGuardTool = createTool({
 		return {
 			completed: false,
 			missing,
-			next_question_key: nextKey,
+			next_question_key: nextKey as "problem" | "need_to_learn" | "challenges" | "content_types",
 			next_question: questions[nextKey],
 		};
 	},

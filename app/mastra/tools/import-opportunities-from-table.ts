@@ -114,12 +114,25 @@ function autoDetectMappings(headers: string[]): ColumnMapping {
 /**
  * Extract value from row using column mapping
  */
-function getValue(row: TableRow, columnName: string | undefined): string | null {
+function getValue(row: TableRow, columnName: string | null | undefined): string | null {
 	if (!columnName) return null;
 	const value = row[columnName];
 	if (value === null || value === undefined || value === "") return null;
 	return String(value).trim();
 }
+
+function toOptionalString(value: string | null | undefined): string | undefined {
+	return value ?? undefined;
+}
+
+type ProjectAssetRow = {
+	id: string;
+	title: string | null;
+	table_data: {
+		headers: string[];
+		rows: TableRow[];
+	} | null;
+};
 
 /**
  * Parse amount string to number
@@ -246,13 +259,14 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 			}
 
 			const supabaseAdmin = createSupabaseAdminClient();
+			const querySupabase = supabaseAdmin as any;
 
 			// Fetch the asset with table data
-			const { data: asset, error: assetError } = await supabaseAdmin
+			const { data: asset, error: assetError } = (await querySupabase
 				.from("project_assets" as any)
 				.select("id, title, table_data")
 				.eq("id" as any, assetId)
-				.single();
+				.single()) as { data: ProjectAssetRow | null; error: { message: string } | null };
 
 			if (assetError || !asset) {
 				return {
@@ -265,10 +279,7 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 				};
 			}
 
-			const tableData = (asset as any).table_data as {
-				headers: string[];
-				rows: TableRow[];
-			} | null;
+			const tableData = asset.table_data;
 			if (!tableData || !tableData.headers || !tableData.rows) {
 				return {
 					success: false,
@@ -387,7 +398,7 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 							organizationName = accountName;
 						} else {
 							// Look up or create organization
-							const { data: existingOrg } = await supabaseAdmin
+							const { data: existingOrg } = await querySupabase
 								.from("organizations" as any)
 								.select("id")
 								.eq("project_id" as any, projectId)
@@ -398,10 +409,12 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 							if (existingOrg) {
 								organizationId = (existingOrg as any).id;
 								organizationName = accountName;
-								orgCache.set(accountName, organizationId);
+								if (organizationId) {
+									orgCache.set(accountName, organizationId);
+								}
 							} else {
 								// Create new organization
-								const { data: newOrg, error: orgError } = await supabaseAdmin
+								const { data: newOrg, error: orgError } = await querySupabase
 									.from("organizations" as any)
 									.insert({
 										project_id: projectId,
@@ -413,7 +426,9 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 								if (newOrg && !orgError) {
 									organizationId = (newOrg as any).id;
 									organizationName = accountName;
-									orgCache.set(accountName, organizationId);
+									if (organizationId) {
+										orgCache.set(accountName, organizationId);
+									}
 									organizationsCreated++;
 									consola.debug(`[import-opportunities] Created organization: ${accountName}`);
 								}
@@ -454,9 +469,9 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 							opportunityId: opportunity.id,
 							title,
 							amount: amount || undefined,
-							stage: stage || undefined,
-							organizationId: organizationId || undefined,
-							organizationName: organizationName || undefined,
+							stage: toOptionalString(stage),
+							organizationId: toOptionalString(organizationId),
+							organizationName: toOptionalString(organizationName),
 							rowIndex: i,
 						});
 

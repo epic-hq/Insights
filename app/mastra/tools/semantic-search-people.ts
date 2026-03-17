@@ -8,6 +8,10 @@ import type { Database } from "../../types";
 const DEFAULT_MATCH_COUNT = 10;
 const DEFAULT_MATCH_THRESHOLD = 0.5;
 
+function getContextString(value: unknown): string | undefined {
+	return typeof value === "string" && value.trim() ? value : undefined;
+}
+
 export const semanticSearchPeopleTool = createTool({
 	id: "semantic-search-people",
 	description:
@@ -59,9 +63,9 @@ export const semanticSearchPeopleTool = createTool({
 		totalCount: z.number(),
 		threshold: z.number(),
 	}),
-	execute: async (input, context?) => {
+	execute: async (input, context) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>;
-		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const runtimeProjectId = getContextString(context?.requestContext?.get?.("project_id"));
 
 		const projectId = input.projectId ?? runtimeProjectId ?? null;
 		const query = input.query?.trim();
@@ -140,11 +144,11 @@ export const semanticSearchPeopleTool = createTool({
 
 				const { data, error } = await supabase.rpc("find_similar_person_facets", {
 					query_embedding: `[${queryEmbedding.join(",")}]`,
-					project_id_param: projectId,
-					match_threshold: threshold,
-					match_count: matchCount * 3,
-					kind_slug_filter: kindSlugFilter ?? null,
-				});
+						project_id_param: projectId,
+						match_threshold: threshold,
+						match_count: matchCount * 3,
+						kind_slug_filter: kindSlugFilter ?? undefined,
+					});
 
 				consola.debug("semantic-search-people: RPC response", {
 					threshold,

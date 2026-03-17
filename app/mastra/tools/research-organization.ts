@@ -36,6 +36,10 @@ function delay(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function getContextString(context: unknown): string | undefined {
+	return typeof context === "string" && context.trim() ? context : undefined;
+}
+
 /**
  * Extract structured company data from research text using pattern matching
  */
@@ -214,7 +218,7 @@ Use this when:
 		peopleEnriched: z.number().optional(),
 		sources: z.array(z.object({ title: z.string(), url: z.string() })).optional(),
 	}),
-	execute: async (input, context?) => {
+	execute: async (input, context) => {
 		const apiKey = process.env.EXA_API_KEY;
 		if (!apiKey) {
 			return {
@@ -223,8 +227,8 @@ Use this when:
 			};
 		}
 
-		const projectId = context?.requestContext?.get?.("project_id");
-		const accountId = context?.requestContext?.get?.("account_id");
+		const projectId = getContextString(context?.requestContext?.get?.("project_id"));
+		const accountId = getContextString(context?.requestContext?.get?.("account_id"));
 
 		if (!projectId || !accountId) {
 			return {
@@ -236,6 +240,7 @@ Use this when:
 		const { organizationId, organizationName, additionalQueries, createIfNotFound = true } = input;
 
 		try {
+			const querySupabase = supabaseAdmin as any;
 			// Find or verify the organization
 			let orgId = organizationId;
 			let orgRecord: { id: string; name: string } | null = null;
@@ -350,8 +355,8 @@ Use this when:
 				if (extracted.headquarters_location) insertData.headquarters_location = extracted.headquarters_location;
 				if (extracted.description) insertData.description = extracted.description;
 
-				const { data: newOrg, error: insertError } = await supabaseAdmin
-					.from("organizations")
+					const { data: newOrg, error: insertError } = await querySupabase
+						.from("organizations")
 					.insert(insertData)
 					.select("id")
 					.single();
@@ -377,8 +382,8 @@ Use this when:
 				if (extracted.description) updateData.description = extracted.description;
 
 				if (Object.keys(updateData).length > 0) {
-					const { error: updateError } = await supabaseAdmin
-						.from("organizations")
+						const { error: updateError } = await querySupabase
+							.from("organizations")
 						.update(updateData)
 						.eq("id", orgId)
 						.eq("project_id", projectId);
@@ -433,8 +438,8 @@ Use this when:
 			let annotationId: string | undefined;
 
 			if (orgId) {
-				const { data: annotation, error: annotationError } = await supabaseAdmin
-					.from("annotations")
+					const { data: annotation, error: annotationError } = await querySupabase
+						.from("annotations")
 					.insert({
 						account_id: accountId,
 						project_id: projectId,
@@ -478,7 +483,7 @@ Use this when:
 						resourceType: "evidence",
 					});
 
-					const { error: evidenceError } = await supabaseAdmin.from("evidence").insert({
+						const { error: evidenceError } = await querySupabase.from("evidence").insert({
 						account_id: accountId,
 						project_id: projectId,
 						verbatim: result.highlights?.join(" ") || result.text?.slice(0, 500) || result.title,
@@ -522,11 +527,11 @@ Use this when:
 				message = `Researched "${organizationName}" but could not create organization. Created ${evidenceCount} evidence records.`;
 			}
 
-			return {
-				success: true,
-				message,
-				organizationId: orgId,
-				wasCreated,
+				return {
+					success: true,
+					message,
+					organizationId: orgId ?? undefined,
+					wasCreated,
 				extractedData: {
 					size_range: extracted.size_range,
 					industry: extracted.industry,

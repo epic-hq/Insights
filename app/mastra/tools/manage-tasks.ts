@@ -8,6 +8,8 @@ import {
 	deleteTask,
 	getTasks,
 	getTopFocusTasks,
+	type TaskLinkEntityType,
+	type TaskLinkType,
 	updateTask,
 } from "../../features/tasks/db";
 import type {
@@ -16,6 +18,7 @@ import type {
 	HumanAssignee,
 	PersonAssignee,
 	Task,
+	TaskPriority,
 	TaskStatus,
 	TaskUpdate,
 } from "../../features/tasks/types";
@@ -120,6 +123,42 @@ type ProjectPerson = {
 
 function normalizeName(name?: string | null) {
 	return (name || "").trim().toLowerCase();
+}
+
+function toOptionalString(value: string | null | undefined): string | undefined {
+	return value ?? undefined;
+}
+
+function toOptionalStringArray(value: string[] | null | undefined): string[] | undefined {
+	return value ?? undefined;
+}
+
+function toOptionalPriority(value: number | null | undefined): TaskPriority | undefined {
+	return value === 1 || value === 2 || value === 3 ? value : undefined;
+}
+
+function toOptionalTaskStatus(value: TaskStatus | null | undefined): TaskStatus | undefined {
+	return value ?? undefined;
+}
+
+function toAssigneeInput(candidate: {
+	userId?: string | null;
+	email?: string | null;
+	name?: string | null;
+	personId?: string | null;
+	personName?: string | null;
+	personCompany?: string | null;
+	agentType?: AgentType | null;
+}): AssigneeInput {
+	return {
+		userId: toOptionalString(candidate.userId),
+		email: toOptionalString(candidate.email),
+		name: toOptionalString(candidate.name),
+		personId: toOptionalString(candidate.personId),
+		personName: toOptionalString(candidate.personName),
+		personCompany: toOptionalString(candidate.personCompany),
+		agentType: candidate.agentType ?? undefined,
+	};
 }
 
 async function fetchAccountMembers(accountId: string, supabase: SupabaseClient<Database>): Promise<AccountMember[]> {
@@ -230,7 +269,7 @@ async function resolveAssignees({
 		return matches[0];
 	};
 
-	const resolved: Assignee[] = assignees.flatMap((candidate) => {
+	const resolved = assignees.flatMap<Assignee>((candidate) => {
 		if (candidate.agentType) {
 			return [{ type: "agent" as const, agent_type: candidate.agentType }];
 		}
@@ -302,8 +341,8 @@ function mapTask(task: Task, projectPath: string) {
 		title: task.title,
 		description: task.description ?? null,
 		cluster: task.cluster,
-		status: task.status,
-		priority: task.priority,
+		status: toOptionalTaskStatus(task.status) ?? null,
+		priority: toOptionalPriority(task.priority) ?? null,
 		benefit: task.benefit ?? null,
 		segments: task.segments ?? null,
 		impact: task.impact ?? null,
@@ -365,10 +404,10 @@ export const fetchTasksTool = createTool({
 				options: {
 					filters: {
 						status: input?.status as TaskStatus[] | undefined,
-						cluster: input?.cluster,
+						cluster: input?.cluster ?? undefined,
 						priority: input?.priority as 1 | 2 | 3 | undefined,
 						search: input?.search?.trim(),
-						assigned_to: input?.assigneeId,
+						assigned_to: input?.assigneeId ?? undefined,
 					},
 					limit: input?.limit ?? 100,
 				},
@@ -615,11 +654,11 @@ export const createTaskTool = createTool({
 			}
 
 			const projectPath = buildProjectPath(accountId, projectId);
-			const assigneesInput =
+			const assigneesInput: AssigneeInput[] =
 				input.assignees && input.assignees.length > 0
-					? input.assignees
+					? input.assignees.map(toAssigneeInput)
 					: input.assignee
-						? [input.assignee]
+						? [toAssigneeInput(input.assignee)]
 						: [{ userId }];
 			const { resolved: resolvedAssignees, warnings } = await resolveAssignees({
 				accountId,
@@ -632,9 +671,9 @@ export const createTaskTool = createTool({
 			const source_theme_id = input.source?.entityType === "insight" ? input.source.entityId : null;
 
 			// Fetch available clusters from account settings
-			const { data: account } = await supabase.from("accounts").select("metadata").eq("id", accountId).single();
-
-			const priorityClusters = (account?.metadata as Record<string, unknown>)?.priority_clusters as
+			const { data: account } = await (supabase as any).from("accounts").select("metadata").eq("id", accountId).single();
+			const accountMetadata = (account?.metadata ?? null) as Record<string, unknown> | null;
+			const priorityClusters = accountMetadata?.priority_clusters as
 				| Array<{ id: string; label: string }>
 				| undefined;
 			const availableClusters = priorityClusters?.map((c) => c.label) ?? [];
@@ -664,7 +703,7 @@ export const createTaskTool = createTool({
 					cluster,
 					parent_task_id: input.parentTaskId ?? null,
 					status: input.status ?? "backlog",
-					priority: (input.priority ?? 3) as 1 | 2 | 3,
+					priority: (input.priority ?? 3) as TaskPriority,
 					benefit: input.benefit ?? null,
 					segments: input.segments ?? null,
 					impact: input.impact ? (input.impact as 1 | 2 | 3) : null,
@@ -681,7 +720,12 @@ export const createTaskTool = createTool({
 				},
 			});
 
-			const link_specs = [
+			const linkSpecs: Array<{
+				entityType: TaskLinkEntityType;
+				entityId: string;
+				linkType?: TaskLinkType;
+				description?: string | null;
+			}> = [
 				...(input.source
 					? [
 							{
@@ -692,10 +736,20 @@ export const createTaskTool = createTool({
 							},
 						]
 					: []),
-				...(input.links ?? []),
+				...((input.links ?? []).map((link) => ({
+					entityType: link.entityType,
+					entityId: link.entityId,
+					linkType: link.linkType ?? undefined,
+					description: link.description ?? undefined,
+				})) as Array<{
+					entityType: TaskLinkEntityType;
+					entityId: string;
+					linkType?: TaskLinkType;
+					description?: string | null;
+				}>),
 			];
 
-			for (const spec of link_specs) {
+			for (const spec of linkSpecs) {
 				try {
 					await createTaskLink({
 						supabase,
@@ -705,7 +759,7 @@ export const createTaskTool = createTool({
 							entity_type: spec.entityType,
 							entity_id: spec.entityId,
 							link_type: spec.linkType,
-							description: spec.description,
+							description: toOptionalString(spec.description),
 						},
 					});
 				} catch (error) {
@@ -792,12 +846,12 @@ export const updateTaskTool = createTool({
 			const projectPath = buildProjectPath(accountId, projectId);
 			const warnings: string[] = [];
 			let resolvedAssignees: Assignee[] | undefined;
-			if (input.assignees !== undefined) {
+			if (input.assignees != null) {
 				const resolved = await resolveAssignees({
 					accountId,
 					projectId,
 					supabase,
-					assignees: input.assignees,
+					assignees: input.assignees.map(toAssigneeInput),
 				});
 				resolvedAssignees = resolved.resolved;
 				warnings.push(...resolved.warnings);
@@ -805,22 +859,22 @@ export const updateTaskTool = createTool({
 
 			// Build updates object with only provided fields
 			const updates: TaskUpdate = {};
-			if (input.title !== undefined) updates.title = input.title;
+			if (input.title !== undefined) updates.title = toOptionalString(input.title);
 			if (input.description !== undefined) updates.description = input.description;
-			if (input.cluster !== undefined) updates.cluster = input.cluster;
-			if (input.status !== undefined) updates.status = input.status;
-			if (input.priority !== undefined) updates.priority = input.priority;
+			if (input.cluster !== undefined) updates.cluster = toOptionalString(input.cluster);
+			if (input.status !== undefined) updates.status = toOptionalTaskStatus(input.status);
+			if (input.priority !== undefined) updates.priority = input.priority as TaskPriority;
 			if (input.benefit !== undefined) updates.benefit = input.benefit;
 			if (input.segments !== undefined) updates.segments = input.segments;
 			if (input.impact !== undefined) updates.impact = input.impact;
 			if (input.stage !== undefined) updates.stage = input.stage;
 			if (input.reason !== undefined) updates.reason = input.reason;
-			if (input.tags !== undefined) updates.tags = input.tags;
+			if (input.tags !== undefined) updates.tags = toOptionalStringArray(input.tags);
 			if (input.dueDate !== undefined) updates.due_date = input.dueDate;
 			if (input.estimatedEffort !== undefined) updates.estimated_effort = input.estimatedEffort;
 			if (input.parentTaskId !== undefined) updates.parent_task_id = input.parentTaskId;
-			if (input.dependsOnTaskIds !== undefined) updates.depends_on_task_ids = input.dependsOnTaskIds;
-			if (input.blocksTaskIds !== undefined) updates.blocks_task_ids = input.blocksTaskIds;
+			if (input.dependsOnTaskIds !== undefined) updates.depends_on_task_ids = toOptionalStringArray(input.dependsOnTaskIds);
+			if (input.blocksTaskIds !== undefined) updates.blocks_task_ids = toOptionalStringArray(input.blocksTaskIds);
 			if (input.actualHours !== undefined) updates.actual_hours = input.actualHours;
 			if (resolvedAssignees !== undefined) updates.assigned_to = resolvedAssignees;
 

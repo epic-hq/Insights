@@ -93,6 +93,14 @@ export interface CompanyResearchResult {
 	};
 }
 
+function toOptionalString(value: string | null | undefined): string | undefined {
+	return value ?? undefined;
+}
+
+function toOptionalStringArray(value: string[] | null | undefined): string[] | undefined {
+	return value ?? undefined;
+}
+
 /**
  * Directly fetch and extract content from a URL
  */
@@ -217,13 +225,13 @@ export async function researchCompanyWebsite(websiteUrl: string): Promise<Compan
 						return {
 							success: true,
 							data: {
-								description: extractedData.description,
-								customer_problem: extractedData.customer_problem,
-								offerings: extractedData.offerings,
-								target_orgs: extractedData.target_customers,
-								target_roles: extractedData.target_roles,
-								competitors: extractedData.competitors,
-								industry: extractedData.industry,
+								description: toOptionalString(extractedData.description),
+								customer_problem: toOptionalString(extractedData.customer_problem),
+								offerings: toOptionalStringArray(extractedData.offerings),
+								target_orgs: toOptionalStringArray(extractedData.target_customers),
+								target_roles: toOptionalStringArray(extractedData.target_roles),
+								competitors: toOptionalStringArray(extractedData.competitors),
+								industry: toOptionalString(extractedData.industry),
 							},
 						};
 					}
@@ -270,13 +278,13 @@ export async function researchCompanyWebsite(websiteUrl: string): Promise<Compan
 	return {
 		success: true,
 		data: {
-			description: extractedData.description,
-			customer_problem: extractedData.customer_problem,
-			offerings: extractedData.offerings,
-			target_orgs: extractedData.target_customers,
-			target_roles: extractedData.target_roles,
-			competitors: extractedData.competitors,
-			industry: extractedData.industry,
+			description: toOptionalString(extractedData.description),
+			customer_problem: toOptionalString(extractedData.customer_problem),
+			offerings: toOptionalStringArray(extractedData.offerings),
+			target_orgs: toOptionalStringArray(extractedData.target_customers),
+			target_roles: toOptionalStringArray(extractedData.target_roles),
+			competitors: toOptionalStringArray(extractedData.competitors),
+			industry: toOptionalString(extractedData.industry),
 		},
 	};
 }

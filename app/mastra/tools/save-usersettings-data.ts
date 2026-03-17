@@ -27,14 +27,15 @@ export const saveUserSettingsDataTool = createTool({
 			})
 			.optional(),
 	}),
-	execute: async (input, context?) => {
+	execute: async (input, context) => {
 		try {
 			consola.debug("context", context);
 			consola.debug("context user_id", context?.requestContext?.get?.("user_id"));
 			const user_id = context?.requestContext?.get?.("user_id");
 			const { problem, challenges, content_types, other_feedback, completed } = input;
+			const completedValue = completed ?? true;
 
-			if (!user_id) {
+			if (typeof user_id !== "string" || !user_id) {
 				return {
 					success: false,
 					message: "Missing user_id for save-user-settings-data",
@@ -52,13 +53,13 @@ export const saveUserSettingsDataTool = createTool({
 			const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 			// Structure the signup data
-			const signupData = {
-				goal: problem,
-				challenges,
-				content_types,
-				other_feedback,
-				completed,
-			};
+				const signupData = {
+					goal: problem,
+					challenges,
+					content_types,
+					other_feedback,
+					completed: completedValue,
+				};
 
 			// Upsert the data using the stored procedure
 			const { data, error } = await supabase.rpc("upsert_signup_data", {
@@ -70,11 +71,14 @@ export const saveUserSettingsDataTool = createTool({
 				throw error;
 			}
 
-			return {
-				success: true,
-				message: "Signup data saved successfully",
-				data: signupData,
-			};
+				return {
+					success: true,
+					message: "Signup data saved successfully",
+					data: {
+						...signupData,
+						completed: completedValue,
+					},
+				};
 		} catch (error) {
 			console.error("Error saving signup data:", error);
 			return {

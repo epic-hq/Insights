@@ -110,6 +110,14 @@ function normalizeLabel(value: string | null | undefined): string {
 	return (value ?? "").replace(/\s+/g, " ").trim();
 }
 
+function getContextString(value: unknown): string | undefined {
+	return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function toOptionalString(value: string | null | undefined): string | undefined {
+	return value ?? undefined;
+}
+
 function labelKey(kindSlug: string, label: string): string {
 	return `${kindSlug.toLowerCase()}|${normalizeLabel(label).toLowerCase()}`;
 }
@@ -203,7 +211,6 @@ async function runExtraction({
 	const prompt = buildPrompt({ personName, transcript, kindSummaries });
 	const { object } = await generateObject({
 		model: openai("gpt-4o-mini"),
-		mode: "json",
 		schema: extractionSchema,
 		prompt,
 	});
@@ -231,11 +238,11 @@ export const upsertPersonFacetsTool = createTool({
 		"Extracts structured person facets from a transcript or structured facts and upserts them into the person_facet table, creating account facets when needed.",
 	inputSchema: toolInputSchema,
 	outputSchema: toolOutputSchema,
-	execute: async (input, context?) => {
+	execute: async (input, context) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>;
 
-		const runtimeProjectId = context?.requestContext?.get?.("project_id");
-		const runtimeAccountId = context?.requestContext?.get?.("account_id");
+		const runtimeProjectId = getContextString(context?.requestContext?.get?.("project_id"));
+		const runtimeAccountId = getContextString(context?.requestContext?.get?.("account_id"));
 
 		const {
 			personId,
@@ -299,7 +306,7 @@ export const upsertPersonFacetsTool = createTool({
 				.map((row) => `- ${row.slug}: ${row.label}${row.description ? ` — ${row.description}` : ""}`)
 				.join("\n");
 
-			const normalizedFacts = normalizeManualFacets(facts);
+			const normalizedFacts = normalizeManualFacets(facts ?? undefined);
 			let generatedSummary: string | null = null;
 			let generatedFacets: ExtractedFacet[] = [];
 
@@ -424,8 +431,8 @@ export const upsertPersonFacetsTool = createTool({
 					if (spec.facetAccountId) {
 						removalRecords.push({
 							facetAccountId: spec.facetAccountId,
-							label: spec.label,
-							kindSlug: spec.kindSlug,
+							label: toOptionalString(spec.label),
+							kindSlug: toOptionalString(spec.kindSlug),
 							reason: spec.reason || "Marked for removal via tool input.",
 						});
 						continue;
@@ -436,8 +443,8 @@ export const upsertPersonFacetsTool = createTool({
 						if (existingId) {
 							removalRecords.push({
 								facetAccountId: existingId,
-								label: spec.label,
-								kindSlug: spec.kindSlug,
+								label: toOptionalString(spec.label),
+								kindSlug: toOptionalString(spec.kindSlug),
 								reason: spec.reason || "Matched existing facet for removal.",
 							});
 							continue;
@@ -523,9 +530,9 @@ export const upsertPersonFacetsTool = createTool({
 
 			if (!dryRun) {
 				if (rowsToUpsert.length) {
-					const { error: upsertError } = await supabase
-						.from("person_facet")
-						.upsert(rowsToUpsert, { onConflict: "person_id,facet_account_id" });
+						const { error: upsertError } = await (supabase as any)
+							.from("person_facet")
+							.upsert(rowsToUpsert, { onConflict: "person_id,facet_account_id" });
 					if (upsertError) throw new Error(`Failed to upsert person facets: ${upsertError.message}`);
 				}
 
@@ -558,11 +565,11 @@ export const upsertPersonFacetsTool = createTool({
 					status: entry.status,
 					confidence: entry.confidence,
 					source,
-				})),
-				removedFacets: finalRemovals,
-				dryRun,
-				warnings,
-			};
+					})),
+					removedFacets: finalRemovals,
+					dryRun: dryRun || undefined,
+					warnings: warnings.length ? warnings : undefined,
+				};
 		} catch (error) {
 			consola.error("upsert-person-facets: unexpected failure", error);
 			return {

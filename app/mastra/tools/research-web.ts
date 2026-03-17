@@ -39,6 +39,10 @@ function delay(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function getContextString(value: unknown): string | undefined {
+	return typeof value === "string" && value.trim() ? value : undefined;
+}
+
 /**
  * Web research tool using Exa.ai semantic search API.
  * Use this when users ask for web research, market research, competitor analysis,
@@ -92,7 +96,7 @@ export const webResearchTool = createTool({
 		evidenceCount: z.number().nullish().describe("Number of evidence records created"),
 		error: z.string().optional(),
 	}),
-	execute: async (input, context?) => {
+	execute: async (input, context) => {
 		const apiKey = process.env.EXA_API_KEY;
 		if (!apiKey) {
 			return {
@@ -104,8 +108,8 @@ export const webResearchTool = createTool({
 		}
 
 		// Get project context for saving the note
-		const projectId = context?.requestContext?.get?.("project_id");
-		const accountId = context?.requestContext?.get?.("account_id");
+		const projectId = getContextString(context?.requestContext?.get?.("project_id"));
+		const accountId = getContextString(context?.requestContext?.get?.("account_id"));
 
 		try {
 			const { query, numResults, type, useAutoprompt, includeText, category } = input;
@@ -301,8 +305,8 @@ export const webResearchTool = createTool({
 						consola.info(`[web-research] Created ${evidenceCount} evidence records`);
 
 						// Update note with indexing status so NoteCard shows it as indexed
-						if (evidenceCount > 0) {
-							await supabaseAdmin
+							if (evidenceCount > 0 && noteId) {
+								await supabaseAdmin
 								.schema("public")
 								.from("interviews")
 								.update({
@@ -428,7 +432,7 @@ export const findSimilarPagesTool = createTool({
 		evidenceCount: z.number().nullish().describe("Number of evidence records created"),
 		error: z.string().optional(),
 	}),
-	execute: async (input, context?) => {
+	execute: async (input, context) => {
 		const apiKey = process.env.EXA_API_KEY;
 		if (!apiKey) {
 			return {
@@ -438,8 +442,8 @@ export const findSimilarPagesTool = createTool({
 			};
 		}
 
-		const projectId = context?.requestContext?.get?.("project_id");
-		const accountId = context?.requestContext?.get?.("account_id");
+		const projectId = getContextString(context?.requestContext?.get?.("project_id"));
+		const accountId = getContextString(context?.requestContext?.get?.("account_id"));
 
 		try {
 			const { url, numResults, includeText } = input;
@@ -611,8 +615,8 @@ export const findSimilarPagesTool = createTool({
 						consola.info(`[find-similar] Created ${evidenceCount} evidence records`);
 
 						// Update note with indexing status so NoteCard shows it as indexed
-						if (evidenceCount > 0) {
-							await supabaseAdmin
+							if (evidenceCount > 0 && noteId) {
+								await supabaseAdmin
 								.schema("public")
 								.from("interviews")
 								.update({
