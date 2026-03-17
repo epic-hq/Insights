@@ -26,6 +26,7 @@ import {
 } from "~/lib/billing";
 import { SIMILARITY_THRESHOLDS } from "~/lib/embeddings/openai.server";
 import { searchEvidenceForTheme } from "~/lib/evidence/semantic-search.server";
+import { getProjectAnalysisSettings } from "~/features/projects/utils/analysisSettings";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { generateInterviewInsightsFromEvidenceCore } from "./extractEvidenceCore";
 import {
@@ -153,6 +154,15 @@ export const generateInsightsTaskV2 = task({
         );
       }
 
+      const { data: projectData } = await client
+        .from("projects")
+        .select("project_settings")
+        .eq("id", interview.project_id)
+        .maybeSingle();
+      const analysisSettings = getProjectAnalysisSettings(
+        projectData?.project_settings,
+      );
+
       // Create billing context for embedding operations
       const billingCtx = systemBillingContext(
         interview.account_id,
@@ -221,7 +231,7 @@ export const generateInsightsTaskV2 = task({
           interview.project_id,
           searchText,
           billingCtx,
-          // Uses SIMILARITY_THRESHOLDS.THEME_DEDUPLICATION by default
+          analysisSettings.theme_dedup_threshold,
         );
 
         if (similarTheme) {
@@ -340,7 +350,7 @@ export const generateInsightsTaskV2 = task({
             const similarEvidence = await searchEvidenceForTheme(client, {
               themeQuery: searchQuery,
               interviewId,
-              matchThreshold: SIMILARITY_THRESHOLDS.EVIDENCE_TO_THEME, // 0.4
+              matchThreshold: analysisSettings.evidence_link_threshold,
               matchCount: 20,
             });
 

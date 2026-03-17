@@ -1,4 +1,5 @@
 import consola from "consola";
+import { getProjectAnalysisSettings } from "~/features/projects/utils/analysisSettings";
 import {
 	type BillingContext,
 	generateEmbeddingWithBilling,
@@ -187,7 +188,8 @@ async function findSemanticallySimilarTheme(
 async function upsertTheme(
 	supabase: SupabaseClient,
 	payload: Omit<ThemeInsert, "id"> & { id?: string },
-	billingCtx: BillingContext
+	billingCtx: BillingContext,
+	themeDedupThreshold = SIMILARITY_THRESHOLDS.THEME_DEDUPLICATION
 ): Promise<Theme> {
 	// 1. Try exact name match first (fastest)
 	const { data: existing, error: findErr } = await supabase
@@ -226,8 +228,8 @@ async function upsertTheme(
 			supabase,
 			payload.project_id,
 			searchText,
-			billingCtx
-			// Uses SIMILARITY_THRESHOLDS.THEME_DEDUPLICATION (0.8) by default
+			billingCtx,
+			themeDedupThreshold
 		);
 
 		if (similarTheme) {
@@ -383,6 +385,10 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 
 	// Create billing context for all LLM operations
 	const billingCtx = systemBillingContext(account_id, "theme_generation", project_id ?? undefined);
+	const { data: projectData } = project_id
+		? await supabase.from("projects").select("project_settings").eq("id", project_id).maybeSingle()
+		: { data: null };
+	const analysisSettings = getProjectAnalysisSettings(projectData?.project_settings);
 
 	// 2) Call BAML
 	let resp;
@@ -453,7 +459,8 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 					synonyms: t.synonyms ?? [],
 					anti_examples: [],
 				},
-				billingCtx
+				billingCtx,
+				analysisSettings.theme_dedup_threshold
 			);
 		} catch (themeErr) {
 			consola.warn("[autoGroupThemesAndApply] Failed to upsert theme", {
@@ -477,7 +484,7 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 					project_id,
 					searchQuery,
 					billingCtx,
-					0.4, // threshold - balance between coverage and relevance
+					analysisSettings.evidence_link_threshold,
 					50 // max matches per theme
 				);
 

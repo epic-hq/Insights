@@ -21,6 +21,10 @@ import { Label } from "~/components/ui/label";
 import { Slider } from "~/components/ui/slider";
 import { Textarea } from "~/components/ui/textarea";
 import { getProjectSectionKinds, getProjectSections } from "~/features/projects/db";
+import {
+	DEFAULT_EVIDENCE_LINK_THRESHOLD,
+	DEFAULT_THEME_DEDUP_THRESHOLD,
+} from "~/features/projects/utils/analysisSettings";
 import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server";
 import type { Database } from "~/types";
 import { createProjectRoutes } from "~/utils/routes.server";
@@ -256,8 +260,12 @@ export async function action({
 
 	// Update analysis settings (thresholds stored in project_settings JSONB)
 	if (intent === "update_analysis_settings") {
-		const themeDedup = Number.parseFloat((formData.get("theme_dedup_threshold") as string) || "0.8");
-		const evidenceLink = Number.parseFloat((formData.get("evidence_link_threshold") as string) || "0.4");
+		const themeDedup = Number.parseFloat(
+			(formData.get("theme_dedup_threshold") as string) || `${DEFAULT_THEME_DEDUP_THRESHOLD}`
+		);
+		const evidenceLink = Number.parseFloat(
+			(formData.get("evidence_link_threshold") as string) || `${DEFAULT_EVIDENCE_LINK_THRESHOLD}`
+		);
 
 		// Get current project_settings to merge
 		const { data: currentProject } = await supabase
@@ -292,18 +300,14 @@ export async function action({
 	return { error: "Unknown action" };
 }
 
-// Default thresholds matching SIMILARITY_THRESHOLDS in openai.server.ts
-const DEFAULT_THEME_DEDUP = 0.8;
-const DEFAULT_EVIDENCE_LINK = 0.4;
-
 export default function EditProject() {
 	const { project } = useLoaderData<typeof loader>();
 	const actionData = useActionData<typeof action>();
 
 	// Extract current analysis settings from project_settings JSONB
 	const analysisSettings = (project.project_settings as { analysis?: Record<string, number> } | null)?.analysis;
-	const initialThemeDedup = analysisSettings?.theme_dedup_threshold ?? DEFAULT_THEME_DEDUP;
-	const initialEvidenceLink = analysisSettings?.evidence_link_threshold ?? DEFAULT_EVIDENCE_LINK;
+	const initialThemeDedup = analysisSettings?.theme_dedup_threshold ?? DEFAULT_THEME_DEDUP_THRESHOLD;
+	const initialEvidenceLink = analysisSettings?.evidence_link_threshold ?? DEFAULT_EVIDENCE_LINK_THRESHOLD;
 
 	// Local state for slider values
 	const [themeDedupThreshold, setThemeDedupThreshold] = useState(initialThemeDedup);

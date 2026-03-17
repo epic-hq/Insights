@@ -15,6 +15,7 @@ import {
 	loadLensTemplates,
 } from "~/features/lenses/lib/loadLensAnalyses.server";
 import { getPeopleOptions } from "~/features/people/db";
+import { getProjectAnalysisSettings } from "~/features/projects/utils/analysisSettings";
 import { getPostHogServerClient } from "~/lib/posthog.server";
 import { memory } from "~/mastra/memory";
 import type { UpsightMessage } from "~/mastra/message-types";
@@ -332,9 +333,17 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// Extract analysis job information from interview.conversation_analysis
 		const analysisJob = extractAnalysisFromInterview(interview);
 
+		const { data: projectData } = await supabase
+			.from("projects")
+			.select("project_settings")
+			.eq("id", projectId)
+			.maybeSingle();
+		const analysisSettings = getProjectAnalysisSettings(projectData?.project_settings);
+
 		const { data: insightsData, error } = await getInterviewInsights({
 			supabase,
 			interviewId: interviewId,
+			minConfidence: analysisSettings.evidence_link_threshold,
 		});
 
 		if (error) {

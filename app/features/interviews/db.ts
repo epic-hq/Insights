@@ -208,17 +208,20 @@ export const getInterviewParticipants = async ({
 export const getInterviewInsights = async ({
 	supabase,
 	interviewId,
+	minConfidence = 0,
 }: {
 	supabase: SupabaseClient<Database>;
 	interviewId: string;
+	minConfidence?: number;
 }) => {
 	// Fetch themes related to this interview via theme_evidence junction and evidence table
 	// Note: Themes are now project-level entities, not directly linked to interviews
-	const { data, error } = await supabase
+	let query = supabase
 		.from("theme_evidence")
 		.select(
 			`
 			theme_id,
+			confidence,
 			themes (
 				id,
 				name,
@@ -234,6 +237,12 @@ export const getInterviewInsights = async ({
 		`
 		)
 		.eq("evidence.interview_id", interviewId);
+
+	if (minConfidence > 0) {
+		query = query.or(`confidence.is.null,confidence.gte.${minConfidence}`);
+	}
+
+	const { data, error } = await query;
 
 	if (error) {
 		return { data: null, error };
