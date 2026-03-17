@@ -7,16 +7,15 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Briefcase,
+  ChevronLeft,
   Edit2,
   Loader2,
   MoreVertical,
   RefreshCw,
-  Sparkles,
   Trash2,
   Users,
   XCircle,
 } from "lucide-react";
-import { ChevronLeft } from "lucide-react";
 import { Link, useFetcher, useRevalidator } from "react-router";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -276,36 +275,6 @@ export function InterviewDetailHeader({
                 className="text-blue-600 focus:text-blue-600"
               >
                 Apply Lenses
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={async () => {
-                  try {
-                    const response = await fetch(
-                      "/api/regenerate-conversation-analysis",
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ interviewId: interview.id }),
-                      },
-                    );
-                    const result = await response.json();
-                    if (result.success) {
-                      revalidator.revalidate();
-                    } else {
-                      consola.error(
-                        "Regenerate analysis failed:",
-                        result.error,
-                      );
-                    }
-                  } catch (e) {
-                    consola.error("Regenerate analysis failed", e);
-                  }
-                }}
-                disabled={fetcher.state !== "idle"}
-                className="text-amber-600 focus:text-amber-600"
-              >
-                <Sparkles className="mr-2 h-4 w-4" />
-                Regenerate Analysis
               </DropdownMenuItem>
               {linkedOpportunity ? (
                 <DropdownMenuItem asChild>
