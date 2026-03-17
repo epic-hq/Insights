@@ -5,12 +5,10 @@
 import { useRouteLoaderData } from "react-router";
 
 export function useAccountPlan(): string {
-  const data = useRouteLoaderData("routes/_ProtectedLayout") as
-    | Record<string, unknown>
-    | undefined;
-  return (data?.accountPlanId as string) ?? "free";
+	const data = useRouteLoaderData("routes/_ProtectedLayout") as Record<string, unknown> | undefined;
+	return (data?.accountPlanId as string) ?? "free";
 }
 
 export function isPaidPlan(planId: string): boolean {
-  return planId !== "free";
+	return planId !== "free";
 }
