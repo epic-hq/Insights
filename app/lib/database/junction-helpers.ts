@@ -4,9 +4,25 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "~/../../supabase/types";
+import type { Database } from "~/types";
 
 type DatabaseClient = SupabaseClient<Database>;
+type QueryClient = DatabaseClient & {
+	from(table: string): any;
+};
+
+type TagRow = { tag: string };
+type PersonaLinkRow = {
+	interviews?: {
+		interview_people?: Array<{
+			people?: {
+				personas?: {
+					id?: string | null;
+				} | null;
+			} | null;
+		}>;
+	} | null;
+};
 
 // Type definitions for junction table operations
 export interface InsightTagsSync {
@@ -37,7 +53,7 @@ export interface ProjectPeopleStats {
  * Insight-Tags Junction Table Helpers
  */
 export class InsightTagsHelper {
-	constructor(private db: DatabaseClient) {}
+	constructor(public readonly db: DatabaseClient) {}
 
 	/**
 	 * Sync tags for an insight - replaces all existing tags
@@ -56,7 +72,7 @@ export class InsightTagsHelper {
 			created_at: new Date().toISOString(),
 		}));
 
-		const { data, error } = await this.db.from("insight_tags").insert(tagRecords).select();
+		const { data, error } = await ((this.db as any).from("insight_tags") as any).insert(tagRecords).select();
 
 		return { data, error };
 	}
@@ -74,8 +90,7 @@ export class InsightTagsHelper {
 			created_at: new Date().toISOString(),
 		}));
 
-		const { data, error } = await this.db
-			.from("insight_tags")
+		const { data, error } = await ((this.db as any).from("insight_tags") as any)
 			.upsert(tagRecords, {
 				onConflict: "insight_id,tag,account_id",
 				ignoreDuplicates: true,
@@ -103,10 +118,14 @@ export class InsightTagsHelper {
 	 * Get all tags for an insight
 	 */
 	async getTagsForInsight(insightId: string) {
-		const { data, error } = await this.db.from("insight_tags").select("tag").eq("insight_id", insightId).order("tag");
+		const { data, error } = await (this.db as QueryClient)
+			.from("insight_tags")
+			.select("tag")
+			.eq("insight_id", insightId)
+			.order("tag");
 
 		return {
-			data: data?.map((row) => row.tag) || [],
+			data: ((data as TagRow[] | null) || []).map((row) => row.tag),
 			error,
 		};
 	}
@@ -137,7 +156,7 @@ export class InsightTagsHelper {
  * Interview-Tags Junction Table Helpers
  */
 export class InterviewTagsHelper {
-	constructor(private db: DatabaseClient) {}
+	constructor(public readonly db: DatabaseClient) {}
 
 	/**
 	 * Sync tags for an interview
@@ -156,7 +175,7 @@ export class InterviewTagsHelper {
 			created_at: new Date().toISOString(),
 		}));
 
-		const { data, error } = await this.db.from("interview_tags").insert(tagRecords).select();
+		const { data, error } = await ((this.db as any).from("interview_tags") as any).insert(tagRecords).select();
 
 		return { data, error };
 	}
@@ -165,14 +184,14 @@ export class InterviewTagsHelper {
 	 * Get all tags for an interview
 	 */
 	async getTagsForInterview(interviewId: string) {
-		const { data, error } = await this.db
+		const { data, error } = await (this.db as QueryClient)
 			.from("interview_tags")
 			.select("tag")
 			.eq("interview_id", interviewId)
 			.order("tag");
 
 		return {
-			data: data?.map((row) => row.tag) || [],
+			data: ((data as TagRow[] | null) || []).map((row) => row.tag),
 			error,
 		};
 	}
@@ -182,7 +201,7 @@ export class InterviewTagsHelper {
  * Opportunity-Insights Junction Table Helpers
  */
 export class OpportunityInsightsHelper {
-	constructor(private db: DatabaseClient) {}
+	constructor(public readonly db: DatabaseClient) {}
 
 	/**
 	 * Sync insights for an opportunity - replaces all existing links
@@ -284,7 +303,7 @@ export class OpportunityInsightsHelper {
  * Project-People Junction Table Helpers
  */
 export class ProjectPeopleHelper {
-	constructor(private db: DatabaseClient) {}
+	constructor(public readonly db: DatabaseClient) {}
 
 	/**
 	 * Update project-people stats (usually called automatically via triggers)
@@ -384,7 +403,7 @@ export class ProjectPeopleHelper {
  * Persona-Insights Junction Table Helpers
  */
 export class PersonaInsightsHelper {
-	constructor(private db: DatabaseClient) {}
+	constructor(public readonly db: DatabaseClient) {}
 
 	/**
 	 * Link an insight to a persona with relevance score
@@ -413,7 +432,7 @@ export class PersonaInsightsHelper {
 	 */
 	async autoLinkInsightToPersonas(insightId: string) {
 		// Find personas for people involved in the interview that generated this insight
-		const { data: personaLinks } = await this.db
+		const { data: personaLinks } = await (this.db as QueryClient)
 			.from("themes")
 			.select(`
         id,
@@ -439,7 +458,7 @@ export class PersonaInsightsHelper {
 
 		if (!personaLinks?.length) return { data: [], error: null };
 
-		const linkRecords = personaLinks.flatMap(
+		const linkRecords = ((personaLinks as PersonaLinkRow[] | null) || []).flatMap(
 			(insight) =>
 				insight.interviews?.interview_people
 					?.map((ip) => ({
@@ -453,8 +472,7 @@ export class PersonaInsightsHelper {
 
 		if (linkRecords.length === 0) return { data: [], error: null };
 
-		const { data, error } = await this.db
-			.from("persona_insights")
+		const { data, error } = await ((this.db as any).from("persona_insights") as any)
 			.upsert(linkRecords, {
 				onConflict: "persona_id,insight_id",
 				ignoreDuplicates: true,

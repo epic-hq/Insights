@@ -20,7 +20,9 @@ import { NotificationProvider } from "~/contexts/NotificationContext";
 import { ThemeProvider } from "~/contexts/ThemeContext";
 import { ValidationViewProvider } from "~/contexts/ValidationViewContext";
 import { getClientEnv } from "~/env.server";
+import type { ClientEnvVars } from "~/env.server";
 import { loadContext } from "~/server/load-context";
+import type { Route } from "./+types/root";
 import { loader as authCallbackLoader } from "./routes/auth.callback";
 import { ClientHintCheck, getHints } from "./services/client-hints";
 import tailwindcss from "./tailwind.css?url";
@@ -28,16 +30,16 @@ import tailwindcss from "./tailwind.css?url";
 export async function loader({ context, request }: LoaderFunctionArgs) {
 	const requestUrl = new URL(request.url);
 	if (requestUrl.pathname === "/" && requestUrl.searchParams.has("code")) {
-		return authCallbackLoader({ request, params: {} });
+		return authCallbackLoader({ request, params: {}, context } as LoaderFunctionArgs);
 	}
 
 	let lang = "en";
-	let clientEnv: Record<string, unknown> | undefined;
+	let clientEnv: ReturnType<typeof getClientEnv> | undefined;
 
 	try {
 		const loadCtx = context.get(loadContext) as {
 			lang?: string;
-			clientEnv?: Record<string, unknown>;
+			clientEnv?: ReturnType<typeof getClientEnv>;
 			env?: { APP_ENV: string };
 			isProductionDeployment?: boolean;
 			t?: (key: string) => string;
@@ -125,7 +127,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
 
 	// Make clientEnv available globally on window.env for polyEnv pattern
 	if (typeof window !== "undefined") {
-		window.env = clientEnv;
+		window.env = clientEnv as ClientEnvVars;
 	}
 
 	return (

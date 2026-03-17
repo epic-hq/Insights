@@ -98,7 +98,30 @@ type SalesLensSummaryRow = Tables<"sales_lens_summaries"> & {
 };
 
 type SalesLensHygieneEventRow = Tables<"sales_lens_hygiene_events">;
-type SalesLensStakeholderRow = Tables<"sales_lens_stakeholders">;
+type SalesLensStakeholderRow = Tables<"sales_lens_stakeholders"> & {
+	evidence_refs: Array<{
+		evidence_id: string;
+		start_ms: number | null;
+		end_ms: number | null;
+		transcript_snippet: string | null;
+	}> | null;
+};
+
+function isEvidenceRef(
+	value: unknown
+): value is { evidence_id: string; start_ms: number | null; end_ms: number | null; transcript_snippet: string | null } {
+	if (!value || typeof value !== "object") return false;
+	const candidate = value as Record<string, unknown>;
+	return typeof candidate.evidence_id === "string";
+}
+
+function isHygieneSummaryItem(
+	value: unknown
+): value is { code: string; severity: string; message?: string | null; slot?: string | null } {
+	if (!value || typeof value !== "object") return false;
+	const candidate = value as Record<string, unknown>;
+	return typeof candidate.code === "string" && typeof candidate.severity === "string";
+}
 
 const salesLensActionSchema = z
 	.object({
@@ -243,7 +266,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				.map((id) => peopleById.get(id)?.name ?? null)
 				.filter((value): value is string => Boolean(value));
 
-			const evidenceRefs = Array.isArray(slot.evidence_refs) ? slot.evidence_refs : [];
+			const evidenceRefs = Array.isArray(slot.evidence_refs) ? slot.evidence_refs.filter(isEvidenceRef) : [];
 			return {
 				id: slot.id,
 				slot: slot.slot,
@@ -270,7 +293,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		const stakeholderViews = stakeholderRows.map((stakeholder) => {
 			const linkedPerson = stakeholder.person_id ? peopleById.get(stakeholder.person_id) : undefined;
 			const organization = stakeholder.organization_id ? organizationsById.get(stakeholder.organization_id) : undefined;
-			const stakeholderEvidenceRefs = Array.isArray(stakeholder.evidence_refs) ? stakeholder.evidence_refs : [];
+			const stakeholderEvidenceRefs = Array.isArray(stakeholder.evidence_refs)
+				? stakeholder.evidence_refs.filter(isEvidenceRef)
+				: [];
 			return {
 				id: stakeholder.id,
 				displayName: stakeholder.display_name,
@@ -331,7 +356,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			attendeeNames,
 			attendeePersonKeys: summary.attendee_person_keys ?? [],
 			unlinkedAttendees,
-			hygieneSummary: Array.isArray(summary.hygiene_summary) ? summary.hygiene_summary : [],
+			hygieneSummary: Array.isArray(summary.hygiene_summary)
+				? summary.hygiene_summary.filter(isHygieneSummaryItem)
+				: [],
 			hygieneEvents: hygieneViews,
 			slots: slotViews,
 			stakeholders: stakeholderViews,

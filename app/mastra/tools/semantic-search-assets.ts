@@ -15,6 +15,10 @@ import type { Database } from "../../types";
 const DEFAULT_MATCH_COUNT = 10;
 const DEFAULT_MATCH_THRESHOLD = 0.35; // Assets need lower threshold - structured data has lower semantic similarity
 
+function getContextString(value: unknown): string | undefined {
+	return typeof value === "string" && value.trim() ? value : undefined;
+}
+
 export const semanticSearchAssetsTool = createTool({
 	id: "semantic-search-assets",
 	description:
@@ -59,10 +63,10 @@ export const semanticSearchAssetsTool = createTool({
 		totalCount: z.number(),
 		threshold: z.number(),
 	}),
-	execute: async (input, context?) => {
+	execute: async (input, context) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>;
-		const projectId = input.projectId ?? context?.requestContext?.get?.("project_id") ?? null;
-		const accountId = context?.requestContext?.get?.("account_id") ?? null;
+		const projectId = getContextString(context?.requestContext?.get?.("project_id")) ?? null;
+		const accountId = getContextString(context?.requestContext?.get?.("account_id")) ?? null;
 
 		const query = input.query?.trim();
 		const matchThreshold = input.matchThreshold ?? DEFAULT_MATCH_THRESHOLD;

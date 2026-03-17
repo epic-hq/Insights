@@ -37,6 +37,18 @@ export interface CompanyContext {
 	target_roles: string[] | null;
 }
 
+type AccountContextRow = {
+	website_url: string | null;
+	company_description: string | null;
+	customer_problem: string | null;
+	offerings: string[] | null;
+	competitors: string[] | null;
+	industry: string | null;
+	target_orgs: string[] | null;
+	target_company_sizes: string[] | null;
+	target_roles: string[] | null;
+};
+
 /**
  * Project-level research context from project_sections
  * All fields are optional - when present, they OVERRIDE account defaults
@@ -85,13 +97,13 @@ export interface BamlContext {
  * Fetch company context from accounts table
  */
 async function getCompanyContext(supabase: SupabaseClient<Database>, accountId: string): Promise<CompanyContext> {
-	const { data: account, error } = await supabase
+	const { data: account, error } = (await (supabase as any)
 		.from("accounts")
 		.select(
 			"website_url, company_description, customer_problem, offerings, competitors, industry, target_orgs, target_company_sizes, target_roles"
 		)
 		.eq("id", accountId)
-		.single();
+		.single()) as { data: AccountContextRow | null; error: { message: string } | null };
 
 	if (error) {
 		consola.warn("Failed to fetch company context:", error);

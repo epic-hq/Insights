@@ -12,10 +12,12 @@ import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { z } from "zod";
 import { createTask, createTaskLink } from "~/features/tasks/db";
+import type { PersonAssignee } from "~/features/tasks/types";
 import { authenticateDesktopRequest } from "~/lib/auth/desktop-auth.server";
 import { validateAttributionParity } from "~/lib/evidence/personAttribution.server";
 import { resolveOrCreatePerson } from "~/lib/people/resolution.server";
 import { getPostHogServerClient } from "~/lib/posthog.server";
+import type { Json } from "~/types";
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
 const FinalizeRequestSchema = z.object({
@@ -79,7 +81,7 @@ const FinalizeRequestSchema = z.object({
 	meeting_title: z.string().nullish(),
 });
 
-type FinalizePerson = z.infer<typeof FinalizeRequestSchema>["people"] extends Array<infer T> ? T : never;
+type FinalizePerson = NonNullable<z.infer<typeof FinalizeRequestSchema>["people"]>[number];
 
 const normalizeLookup = (value: string | null | undefined) => (value || "").toLowerCase().replace(/\s+/g, " ").trim();
 
@@ -295,7 +297,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				.from("interviews")
 				.update({
 					transcript: fullTranscript,
-					transcript_formatted: transcriptPayload as unknown as Record<string, unknown>,
+						transcript_formatted: transcriptPayload as unknown as Json,
 					duration_sec: duration_seconds || interview.duration_sec || null,
 					meeting_platform: platform || interview.meeting_platform || null,
 					created_by: user?.id || interview.created_by || null,
@@ -436,23 +438,27 @@ export async function action({ request }: ActionFunctionArgs) {
 
 			for (const task of tasks) {
 				try {
-					let assigneeId: string | null = null;
-					const assigneeLookup = normalizeLookup(task.assignee);
-					if (assigneeLookup) {
-						for (const [personKey, personId] of resolvedPeopleMap.entries()) {
-							const sourcePerson = peopleByKey.get(personKey);
+						let assignee: PersonAssignee | null = null;
+						const assigneeLookup = normalizeLookup(task.assignee);
+						if (assigneeLookup) {
+							for (const [personKey, personId] of resolvedPeopleMap.entries()) {
+								const sourcePerson = peopleByKey.get(personKey);
 							const candidates = [
 								normalizeLookup(sourcePerson?.person_name),
 								normalizeLookup(sourcePerson?.email),
 								normalizeLookup(sourcePerson?.person_key),
 								normalizeLookup(personKey),
-							];
-							if (candidates.some((candidate) => candidate?.includes(assigneeLookup))) {
-								assigneeId = personId;
-								break;
+								];
+								if (candidates.some((candidate) => candidate?.includes(assigneeLookup))) {
+									assignee = {
+										type: "person",
+										person_id: personId,
+										name: sourcePerson?.person_name || personKey,
+									};
+									break;
+								}
 							}
 						}
-					}
 
 					const dueDate = parseDueDate(task.due);
 
@@ -461,20 +467,16 @@ export async function action({ request }: ActionFunctionArgs) {
 						accountId: account_id,
 						projectId: project_id,
 						userId: user?.id || null,
-						data: {
-							title: task.text,
-							description: `Action item from meeting: ${interview.title || "Desktop Recording"}`,
+							data: {
+								title: task.text,
+								cluster: "General",
+								description: `Action item from meeting: ${interview.title || "Desktop Recording"}`,
 							status: "backlog",
 							priority: 3,
 							due_date: dueDate,
-							assigned_to: assigneeId
-								? [
-										{
-											user_id: assigneeId,
-											assigned_at: new Date().toISOString(),
-										},
-									]
-								: [],
+								assigned_to: assignee
+									? [assignee]
+									: [],
 							tags: ["from-meeting"],
 						},
 					});

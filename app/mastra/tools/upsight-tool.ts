@@ -10,6 +10,49 @@ import { getPersonas } from "../../features/personas/db";
 import { getProjectById, getProjects } from "../../features/projects/db";
 import type { Database, Insight, Interview, Opportunity, Person, Persona } from "../../types";
 
+type ProjectRow = {
+	id: string;
+	name: string | null;
+	description: string | null;
+	status: string | null;
+	created_at: string;
+	updated_at: string;
+};
+
+type OpportunityView = Opportunity & {
+	status?: string | null;
+	impact?: string | null;
+};
+
+type InsightSummary = {
+	id: string;
+	name: string | null;
+	details: string | null;
+	category: string | null;
+	impact: number | null;
+	pain: string | null;
+	desired_outcome: string | null;
+};
+
+type InterviewSummary = {
+	id: string;
+	title: string | null;
+	interview_date: string | null;
+	status: string | null;
+};
+
+type OpportunitySummary = {
+	id: string;
+	title: string | null;
+	description: string | null;
+	status: string | null;
+	impact: string | null;
+};
+
+function getContextString(value: unknown): string | undefined {
+	return typeof value === "string" && value.trim() ? value : undefined;
+}
+
 // Project search and analysis tool for Upsight
 export const upsightTool = createTool({
 	id: "upsight_search",
@@ -95,23 +138,24 @@ export const upsightTool = createTool({
 			lastUpdated: z.string(),
 		}),
 	}),
-	execute: async (input, context?) => {
+	execute: async (input, context) => {
 		try {
 			consola.debug("Upsight tool executing with input:", input);
 			consola.debug("Context:", context);
 
 			// Get accountId and projectId from runtime context or input
 			const runtimeAccountId =
-				context?.requestContext?.get?.("account_id") || context?.requestContext?.get?.("accountId");
+				getContextString(context?.requestContext?.get?.("account_id")) ||
+				getContextString(context?.requestContext?.get?.("accountId"));
 			const runtimeProjectId =
-				context?.requestContext?.get?.("project_id") || context?.requestContext?.get?.("projectId");
-			const runtimeUserId = context?.requestContext?.get?.("user_id") || context?.requestContext?.get?.("userId");
+				getContextString(context?.requestContext?.get?.("project_id")) ||
+				getContextString(context?.requestContext?.get?.("projectId"));
 
 			// Use runtime context values if available, otherwise fall back to input parameters
 			const finalAccountId = runtimeAccountId || input.accountId;
 			const finalProjectId = runtimeProjectId || input.projectId;
 
-			consola.debug("Using accountId:", finalAccountId, "projectId:", finalProjectId, "userId:", runtimeUserId);
+			consola.debug("Using accountId:", finalAccountId, "projectId:", finalProjectId);
 
 			if (!finalAccountId) {
 				throw new Error("accountId is required - must be provided either in context or runtime headers");
@@ -144,10 +188,10 @@ export const upsightTool = createTool({
 			} = input;
 
 			// Initialize result arrays
-			let projects: any[] = [];
+			let projects: ProjectRow[] = [];
 			const insights: Array<Insight> = [];
 			const interviews: Array<Interview> = [];
-			const opportunities: Array<Opportunity> = [];
+			const opportunities: Array<OpportunityView> = [];
 			const people: Array<Person> = [];
 			const personas: Array<Persona> = [];
 
@@ -156,13 +200,13 @@ export const upsightTool = createTool({
 				// Get specific project
 				const { data: projectData, error: projectError } = await getProjectById({ supabase, id: finalProjectId });
 				if (projectData && !projectError) {
-					projects = [projectData];
+					projects = [projectData as unknown as ProjectRow];
 				}
 			} else {
 				// Get all projects for account
 				const { data: projectsData, error: projectsError } = await getProjects({ supabase, accountId: finalAccountId });
 				if (projectsData && !projectsError) {
-					projects = projectsData.slice(0, limit);
+					projects = projectsData.slice(0, limit) as ProjectRow[];
 				}
 			}
 
@@ -173,13 +217,13 @@ export const upsightTool = createTool({
 				// Get insights
 				if (includeInsights) {
 					try {
-						const { data: insightsData, error: insightsError } = await getInsights({
-							supabase,
-							accountId: finalAccountId,
-							projectId: currentProjectId,
-						});
-						if (insightsData && !insightsError) {
-							let filteredInsights = insightsData;
+							const { data: insightsData, error: insightsError } = await getInsights({
+								supabase,
+								accountId: finalAccountId,
+								projectId: currentProjectId,
+							});
+							if (insightsData && !insightsError) {
+								let filteredInsights = insightsData as Insight[];
 
 							// Apply search filter if provided
 							if (searchQuery) {
@@ -202,13 +246,13 @@ export const upsightTool = createTool({
 				// Get interviews
 				if (includeInterviews) {
 					try {
-						const { data: interviewsData, error: interviewsError } = await getInterviews({
-							supabase,
-							accountId: finalAccountId,
-							projectId: currentProjectId,
-						});
-						if (interviewsData && !interviewsError) {
-							let filteredInterviews = interviewsData;
+							const { data: interviewsData, error: interviewsError } = await getInterviews({
+								supabase,
+								accountId: finalAccountId,
+								projectId: currentProjectId,
+							});
+							if (interviewsData && !interviewsError) {
+								let filteredInterviews = interviewsData as Interview[];
 
 							// Apply search filter if provided
 							if (searchQuery) {
@@ -227,13 +271,13 @@ export const upsightTool = createTool({
 				// Get opportunities
 				if (includeOpportunities) {
 					try {
-						const { data: opportunitiesData, error: opportunitiesError } = await getOpportunities({
-							supabase,
-							accountId: finalAccountId,
-							projectId: currentProjectId,
-						});
-						if (opportunitiesData && !opportunitiesError) {
-							let filteredOpportunities = opportunitiesData;
+							const { data: opportunitiesData, error: opportunitiesError } = await getOpportunities({
+								supabase,
+								accountId: finalAccountId,
+								projectId: currentProjectId,
+							});
+							if (opportunitiesData && !opportunitiesError) {
+								let filteredOpportunities = opportunitiesData as OpportunityView[];
 
 							// Apply search filter if provided
 							if (searchQuery) {
@@ -254,13 +298,13 @@ export const upsightTool = createTool({
 				// Get people
 				if (includePeople) {
 					try {
-						const { data: peopleData, error: peopleError } = await getPeople({
-							supabase,
-							accountId: finalAccountId,
-							projectId: currentProjectId,
-						});
-						if (peopleData && !peopleError) {
-							let filteredPeople = peopleData;
+							const { data: peopleData, error: peopleError } = await getPeople({
+								supabase,
+								accountId: finalAccountId,
+								projectId: currentProjectId,
+							});
+							if (peopleData && !peopleError) {
+								let filteredPeople = peopleData as Person[];
 
 							// Apply search filter if provided
 							if (searchQuery) {
@@ -282,12 +326,12 @@ export const upsightTool = createTool({
 				// Get personas
 				if (includePersonas) {
 					try {
-						const { data: personasData, error: personasError } = await getPersonas({
-							supabase,
-							accountId: finalAccountId,
-						});
-						if (personasData && !personasError) {
-							let filteredPersonas = personasData;
+							const { data: personasData, error: personasError } = await getPersonas({
+								supabase,
+								projectId: currentProjectId,
+							});
+							if (personasData && !personasError) {
+								let filteredPersonas = personasData as Persona[];
 
 							// Apply search filter if provided
 							if (searchQuery) {
@@ -307,8 +351,31 @@ export const upsightTool = createTool({
 			}
 
 			// Generate project status and key findings
-			const keyFindings = generateKeyFindings(insights, interviews, opportunities);
-			const nextSteps = generateNextSteps(insights, opportunities, interviews);
+			const insightSummaries: InsightSummary[] = insights.map((i) => ({
+				id: i.id,
+				name: i.name ?? null,
+				details: i.details ?? null,
+				category: i.category ?? null,
+				impact: typeof i.impact === "number" ? i.impact : null,
+				pain: i.pain ?? null,
+				desired_outcome: i.desired_outcome ?? null,
+			}));
+			const interviewSummaries: InterviewSummary[] = interviews.map((i) => ({
+				id: i.id,
+				title: i.title ?? null,
+				interview_date: i.interview_date ?? null,
+				status: i.status ?? null,
+			}));
+			const opportunitySummaries: OpportunitySummary[] = opportunities.map((o) => ({
+				id: o.id,
+				title: o.title ?? null,
+				description: o.description ?? null,
+				status: o.status ?? null,
+				impact: o.impact ?? null,
+			}));
+
+			const keyFindings = generateKeyFindings(insightSummaries, interviewSummaries, opportunitySummaries);
+			const nextSteps = generateNextSteps(insightSummaries, opportunitySummaries, interviewSummaries);
 
 			const projectStatus = {
 				keyFindings,
@@ -330,28 +397,9 @@ export const upsightTool = createTool({
 					created_at: p.created_at,
 					updated_at: p.updated_at,
 				})),
-				insights: insights.map((i) => ({
-					id: i.id,
-					name: i.name,
-					details: i.details,
-					category: i.category,
-					impact: i.impact,
-					pain: i.pain,
-					desired_outcome: i.desired_outcome,
-				})),
-				interviews: interviews.map((i) => ({
-					id: i.id,
-					title: i.title,
-					interview_date: i.interview_date,
-					status: i.status,
-				})),
-				opportunities: opportunities.map((o) => ({
-					id: o.id,
-					title: o.title,
-					description: o.description,
-					status: o.status,
-					impact: o.impact,
-				})),
+				insights: insightSummaries,
+				interviews: interviewSummaries,
+				opportunities: opportunitySummaries,
 				people: people.map((p) => ({
 					id: p.id,
 					name: p.name,
@@ -374,26 +422,32 @@ export const upsightTool = createTool({
 });
 
 // Helper function to generate key findings from data
-function generateKeyFindings(insights: any[], interviews: any[], opportunities: any[]): string[] {
+function generateKeyFindings(
+	insights: InsightSummary[],
+	interviews: InterviewSummary[],
+	opportunities: OpportunitySummary[]
+): string[] {
 	const findings: string[] = [];
 
 	// Analyze insights for patterns
 	if (insights.length > 0) {
-		const highImpactInsights = insights.filter((i) => i.impact && i.impact >= 8);
+		const highImpactInsights = insights.filter((i) => typeof i.impact === "number" && i.impact >= 8);
 		if (highImpactInsights.length > 0) {
 			findings.push(`${highImpactInsights.length} high-impact insights identified (impact score ≥ 8)`);
 		}
 
-		const categories = insights.map((i) => i.category).filter(Boolean);
+		const categories = insights
+			.map((i) => i.category)
+			.filter((category): category is string => Boolean(category));
 		const categoryCount = categories.reduce(
-			(acc, cat) => {
-				acc[cat] = (acc[cat] || 0) + 1;
-				return acc;
-			},
+				(acc, cat) => {
+					acc[cat] = (acc[cat] || 0) + 1;
+					return acc;
+				},
 			{} as Record<string, number>
 		);
 
-		const topCategory = Object.entries(categoryCount).sort(([, a], [, b]) => b - a)[0];
+		const topCategory = Object.entries(categoryCount).sort(([, a], [, b]) => Number(b) - Number(a))[0];
 		if (topCategory) {
 			findings.push(`Most common insight category: ${topCategory[0]} (${topCategory[1]} insights)`);
 		}
@@ -430,7 +484,11 @@ function generateKeyFindings(insights: any[], interviews: any[], opportunities: 
 }
 
 // Helper function to generate next steps
-function generateNextSteps(insights: any[], opportunities: any[], interviews: any[]): string[] {
+function generateNextSteps(
+	insights: InsightSummary[],
+	opportunities: OpportunitySummary[],
+	interviews: InterviewSummary[]
+): string[] {
 	const steps: string[] = [];
 
 	// Suggest actions based on data patterns
@@ -442,7 +500,7 @@ function generateNextSteps(insights: any[], opportunities: any[], interviews: an
 		steps.push("Review insights to identify potential opportunities");
 	}
 
-	const highImpactInsights = insights.filter((i) => i.impact && i.impact >= 8);
+	const highImpactInsights = insights.filter((i) => typeof i.impact === "number" && i.impact >= 8);
 	if (highImpactInsights.length > 0) {
 		steps.push(`Prioritize action on ${highImpactInsights.length} high-impact insights`);
 	}

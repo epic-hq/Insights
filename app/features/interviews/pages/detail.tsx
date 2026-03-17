@@ -82,6 +82,7 @@ const ACTIVE_ANALYSIS_STATUSES = new Set<Database["public"]["Enums"]["job_status
 	"retry",
 ]);
 const TERMINAL_ANALYSIS_STATUSES = new Set<Database["public"]["Enums"]["job_status"]>(["done", "error"]);
+type AnalysisStatus = Database["public"]["Enums"]["job_status"];
 
 export const meta: MetaFunction = ({ data }) => {
 	const d = data as { interview?: { title?: string | null } } | undefined;
@@ -284,7 +285,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	const selectedEvidence = useMemo(() => {
 		if (!selectedEvidenceId) return null;
-		const item = evidence.find((e) => e.id === selectedEvidenceId);
+			const item = evidence.find((e: (typeof evidence)[number]) => e.id === selectedEvidenceId);
 		if (!item) return null;
 		return {
 			id: item.id,
@@ -380,11 +381,11 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		if (!takeaways.length || !evidence?.length) return takeaways;
 
 		// Create mutable copies and match them to evidence
-		const takeawaysWithEvidence = takeaways.map((t) => ({ ...t }));
-		matchTakeawaysToEvidence(
-			takeawaysWithEvidence,
-			evidence.map((e) => ({ id: e.id, verbatim: e.verbatim, gist: e.gist }))
-		);
+			const takeawaysWithEvidence = takeaways.map((t: (typeof takeaways)[number]) => ({ ...t }));
+			matchTakeawaysToEvidence(
+				takeawaysWithEvidence,
+				evidence.map((e: (typeof evidence)[number]) => ({ id: e.id, verbatim: e.verbatim, gist: e.gist }))
+			);
 		return takeawaysWithEvidence;
 	}, [conversationAnalysis?.keyTakeaways, evidence]);
 	const conversationUpdatedLabel =
@@ -475,11 +476,11 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			.split("_")
 			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 			.join(" ");
-	const _analysisStatusLabel = analysisState?.status ? formatStatusLabel(analysisState.status) : null;
-	const _analysisStatusTone = analysisState?.status
-		? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status)
-			? "bg-primary/10 text-primary"
-			: analysisState.status === "error"
+		const _analysisStatusLabel = analysisState?.status ? formatStatusLabel(analysisState.status) : null;
+		const _analysisStatusTone = analysisState?.status
+			? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status as AnalysisStatus)
+				? "bg-primary/10 text-primary"
+				: analysisState.status === "error"
 				? "bg-destructive/10 text-destructive"
 				: "bg-muted text-muted-foreground"
 		: "";
@@ -533,11 +534,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					filter: `id=eq.${interview.id}`,
 				},
 				(payload) => {
-					const raw = (
-						payload as {
+						const raw = (payload as unknown as {
 							new?: Database["public"]["Tables"]["interviews"]["Row"];
-						}
-					).new;
+						}).new;
 					if (!raw) return;
 
 					// Update interview state (single source of truth)
@@ -599,7 +598,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			return;
 		}
 
-		if (TERMINAL_ANALYSIS_STATUSES.has(status)) {
+			if (TERMINAL_ANALYSIS_STATUSES.has(status as AnalysisStatus)) {
 			setTriggerAuth(null);
 			setTokenErrorRunId(null);
 			return;
@@ -869,7 +868,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					</p>
 					<ManagePeopleAssociations
 						interviewId={interview.id}
-						participants={participants.map((p) => ({
+							participants={participants.map((p: (typeof participants)[number]) => ({
 							id: String(p.id),
 							role: p.role,
 							transcript_key: p.transcript_key,
@@ -882,7 +881,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									}
 								: null,
 						}))}
-						availablePeople={peopleOptions.map((p) => ({
+							availablePeople={peopleOptions.map((p: (typeof peopleOptions)[number]) => ({
 							id: p.id,
 							name: p.name,
 							person_type: (p as any).person_type,
@@ -923,9 +922,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				open={verifyDrawerOpen}
 				onOpenChange={setVerifyDrawerOpen}
 				selectedEvidence={selectedEvidence}
-				allEvidence={evidence
-					.filter((e) => e.id && typeof e.id === "string")
-					.map((e) => ({
+					allEvidence={evidence
+						.filter((e: (typeof evidence)[number]) => e.id && typeof e.id === "string")
+						.map((e: (typeof evidence)[number]) => ({
 						id: e.id,
 						verbatim: e.verbatim ?? null,
 						gist: e.gist ?? null,

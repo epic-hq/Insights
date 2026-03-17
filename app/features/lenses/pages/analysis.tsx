@@ -34,6 +34,21 @@ import { ManageLensesTab } from "../components/ManageLensesTab";
 import { loadAnalysisPageData } from "../lib/loadAnalysisData.server";
 import { loadLensTemplates } from "../lib/loadLensAnalyses.server";
 
+type FacetCountRow = {
+	id: number;
+	label: string;
+	slug: string;
+	facet_kind_global: { slug?: string; label?: string } | null;
+	person_count: Array<{ count?: number | null }> | null;
+};
+
+type ProjectOrganization = {
+	id: string;
+	name: string;
+	industry: string | null;
+	size_range: string | null;
+};
+
 export const meta: MetaFunction = () => {
 	return [
 		{ title: "Analysis | Insights" },
@@ -129,14 +144,14 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		consola.warn("Failed to fetch facets for ICP picker:", facetError);
 	}
 
-	const facetsWithCounts = (rawFacets || [])
+	const facetsWithCounts = ((rawFacets || []) as FacetCountRow[])
 		.map((f) => ({
 			id: f.id,
 			label: f.label,
 			slug: f.slug,
-			kindSlug: (f.facet_kind_global as any)?.slug || "",
-			kindLabel: (f.facet_kind_global as any)?.label || "",
-			personCount: (f.person_count as any)?.[0]?.count ?? 0,
+			kindSlug: f.facet_kind_global?.slug || "",
+			kindLabel: f.facet_kind_global?.label || "",
+			personCount: f.person_count?.[0]?.count ?? 0,
 		}))
 		.sort((a, b) => b.personCount - a.personCount);
 
@@ -159,7 +174,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	};
 
 	// Build scored people list for UI with org details resolved
-	const orgMap = new Map((projectOrgs || []).map((o) => [o.id, o]));
+	const orgMap = new Map<string, ProjectOrganization>(((projectOrgs || []) as ProjectOrganization[]).map((o) => [o.id, o]));
 	const icpScoredPeople = (icpScores || []).map((s) => {
 		const p = s.people as any;
 		const orgId = p?.default_organization_id || null;
@@ -199,7 +214,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		icpCriteria,
 		icpDistribution,
 		icpScoredPeople,
-		organizations: (projectOrgs || []).map((o) => ({
+		organizations: ((projectOrgs || []) as ProjectOrganization[]).map((o) => ({
 			id: o.id,
 			name: o.name,
 		})),

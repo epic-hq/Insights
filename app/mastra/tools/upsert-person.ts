@@ -33,6 +33,10 @@ function normalizeOrganizationName(value: string | null | undefined): string {
 	return (value ?? "").trim();
 }
 
+function getContextString(value: unknown): string | undefined {
+	return typeof value === "string" ? value : undefined;
+}
+
 async function ensureOrganizationByName(
 	supabase: SupabaseClient<Database>,
 	{
@@ -173,10 +177,10 @@ export const upsertPersonTool = createTool({
 			})
 			.nullable(),
 	}),
-	execute: async (input, context?) => {
+	execute: async (input, context) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>;
-		const runtimeProjectId = context?.requestContext?.get?.("project_id");
-		const runtimeAccountId = context?.requestContext?.get?.("account_id");
+		const runtimeProjectId = getContextString(context?.requestContext?.get?.("project_id"));
+		const runtimeAccountId = getContextString(context?.requestContext?.get?.("account_id"));
 
 		const {
 			personId,
@@ -224,7 +228,7 @@ export const upsertPersonTool = createTool({
 			// Build the update object with only provided fields
 			const updateData: Record<string, string | null> = {};
 
-			if (name !== undefined) {
+			if (typeof name === "string") {
 				const { firstname, lastname } = parseFullName(name);
 				updateData.firstname = firstname || null;
 				updateData.lastname = lastname || null;
@@ -244,7 +248,7 @@ export const upsertPersonTool = createTool({
 			if (pronouns !== undefined) updateData.pronouns = pronouns;
 			if (lifecycleStage !== undefined) updateData.lifecycle_stage = lifecycleStage;
 			if (whereMet !== undefined) updateData.where_met = whereMet;
-			if (whenMet !== undefined) {
+			if (typeof whenMet === "string") {
 				// Try to parse the date - accept ISO strings or natural language
 				try {
 					const parsedDate = new Date(whenMet);

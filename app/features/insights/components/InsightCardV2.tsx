@@ -23,7 +23,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
 import InlineEdit from "~/components/ui/inline-edit";
 import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
-import type { CommentView, Insight, InsightView } from "~/types";
+import type { Insight, InsightView } from "~/types";
 
 interface Comment {
 	id: string;
@@ -39,6 +39,24 @@ interface InsightCardV2Props {
 	onArchive?: () => void;
 	onDontShowMe?: () => void;
 }
+
+type CommentCardView = {
+	id: string;
+	account_id?: string;
+	content?: string;
+	created_at?: string;
+	insight_id?: string;
+	updated_at?: string;
+	user_id?: string;
+	author?: string;
+	text?: string;
+	timestamp?: string;
+};
+
+type InsightCardView = Omit<InsightView, "comments"> & {
+	comments?: CommentCardView[];
+	novelty?: number | string | null;
+};
 
 // Helper function to validate insight ID
 const validateInsightId = (id: string | undefined): string | null => {
@@ -105,11 +123,11 @@ export default function InsightCardV2({
 	const [savingField, setSavingField] = useState<string | null>(null);
 
 	const handleSaveField = async (field: string, value?: string) => {
-		if (savingField === field) return; // Prevent double-save
+			if (savingField === field) return; // Prevent double-save
 		setSavingField(field);
 		try {
 			const newValue = typeof value === "string" ? value : editingValue;
-			if ((localInsight as Record<string, unknown>)[field] !== newValue) {
+			if ((localInsight as unknown as Record<string, unknown>)[field] !== newValue) {
 				// Optimistically update local state
 				setLocalInsight((prev) => ({ ...prev, [field]: newValue }));
 				// Persist change to DB
@@ -133,7 +151,7 @@ export default function InsightCardV2({
 	// Helper to handle edit start
 	const handleEditStart = (field: string) => {
 		setEditingField(field);
-		setEditingValue(((localInsight as Record<string, unknown>)[field] as string) || "");
+		setEditingValue(((localInsight as unknown as Record<string, unknown>)[field] as string) || "");
 	};
 
 	// Handler for inline text submit
@@ -152,10 +170,10 @@ export default function InsightCardV2({
 		className?: string;
 		placeholder?: string;
 		multiline?: boolean;
-	}) => {
-		const isEditing = editingField === field;
-		const isSaving = savingField === field;
-		const value = ((localInsight as Record<string, unknown>)[field] as string) || "";
+		}) => {
+			const isEditing = editingField === field;
+			const isSaving = savingField === field;
+			const value = ((localInsight as unknown as Record<string, unknown>)[field] as string) || "";
 
 		return (
 			<div
@@ -229,9 +247,9 @@ export default function InsightCardV2({
 
 	// TODO get away from defining local views unless necessary
 	// Extended insight state with UI-only fields
-	const [localInsight, setLocalInsight] = useState<InsightView>({
+	const [localInsight, setLocalInsight] = useState<InsightCardView>({
 		...insight,
-		comments: insight.comments || [],
+		comments: (insight as Insight & { comments?: CommentCardView[] }).comments || [],
 	});
 	const [_showMore, _setShowMoree] = useState(false);
 
@@ -253,7 +271,7 @@ export default function InsightCardV2({
 		if (!commentText) return;
 
 		// Optimistically add comment to local state (matching CommentView structure)
-		const newComment: CommentView = {
+		const newComment: CommentCardView = {
 			id: Date.now().toString(),
 			account_id: "", // Will be filled by server
 			content: commentText,
@@ -543,7 +561,9 @@ export default function InsightCardV2({
 										<div
 											key={i}
 											className={`h-2 w-2 rounded-full ${
-												i <= (localInsight.novelty || 0) ? "bg-purple-500" : "bg-muted"
+												i <= (typeof localInsight.novelty === "number" ? localInsight.novelty : 0)
+													? "bg-purple-500"
+													: "bg-muted"
 											}`}
 										/>
 									))}

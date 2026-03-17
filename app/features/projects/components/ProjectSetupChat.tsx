@@ -18,6 +18,18 @@ import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
 import { cn } from "~/lib/utils";
 import type { UpsightMessage } from "~/mastra/message-types";
 
+type ToolMessagePart = {
+	type: string;
+	toolCallId?: string;
+	input?: unknown;
+	output?: unknown;
+	state?: string;
+};
+
+function getToolParts(message: UpsightMessage | undefined): ToolMessagePart[] {
+	return (message?.parts ?? []).filter((part) => typeof part.type === "string" && part.type.startsWith("tool-")) as ToolMessagePart[];
+}
+
 // Field detection patterns for contextual suggestions
 const FIELD_PATTERNS: Record<
 	string,
@@ -388,38 +400,6 @@ export function ProjectSetupChat({
 				}
 			}
 
-			// Handle agent switching (setup complete → status agent)
-			if (toolCall.toolName === "switchAgent") {
-				const input = toolCall.input as {
-					targetAgent?: string;
-					reason?: string;
-				};
-				const targetAgent = input?.targetAgent;
-				const reason = input?.reason || "Switching...";
-
-				consola.info("switchAgent tool called:", { targetAgent, reason });
-
-				if (targetAgent === "project-status") {
-					// Setup complete - navigate to dashboard
-					addToolResult({
-						tool: "switchAgent",
-						toolCallId: toolCall.toolCallId,
-						output: { success: true, targetAgent, message: reason },
-					});
-					// Trigger completion callback
-					onSetupComplete?.();
-				} else {
-					addToolResult({
-						tool: "switchAgent",
-						toolCallId: toolCall.toolCallId,
-						output: {
-							success: true,
-							targetAgent,
-							message: "Already in setup mode.",
-						},
-					});
-				}
-			}
 		},
 	});
 
@@ -555,16 +535,10 @@ export function ProjectSetupChat({
 		const lastAssistantMsg = [...displayableMessages].reverse().find((m) => m.role === "assistant");
 		if (!lastAssistantMsg) return [];
 
-		// Check for suggestNextSteps tool invocation
-		const suggestionToolCall = lastAssistantMsg.toolInvocations?.find(
-			(t) => t.toolName === "suggestNextSteps" && "result" in t
-		);
-
-		if (suggestionToolCall && "args" in suggestionToolCall) {
-			const args = suggestionToolCall.args as { suggestions?: string[] };
-			if (args.suggestions && Array.isArray(args.suggestions) && args.suggestions.length > 0) {
-				return args.suggestions;
-			}
+		const suggestionToolPart = getToolParts(lastAssistantMsg).find((part) => part.type === "tool-recommendNextActions");
+		const output = suggestionToolPart?.output as { suggestions?: string[] } | undefined;
+		if (output?.suggestions && Array.isArray(output.suggestions) && output.suggestions.length > 0) {
+			return output.suggestions;
 		}
 
 		return [];
@@ -632,13 +606,13 @@ export function ProjectSetupChat({
 		const lastMsg = displayableMessages[displayableMessages.length - 1];
 		if (!lastMsg || lastMsg.role !== "assistant") return;
 
-		const hasDataTools = lastMsg.toolInvocations?.some((t) =>
+		const hasDataTools = getToolParts(lastMsg).some((part) =>
 			[
-				"saveProjectSectionsData",
-				"updateProjectSectionMeta",
-				"saveAccountCompanyContext",
-				"researchCompanyWebsite",
-			].includes(t.toolName)
+				"tool-saveProjectSectionsData",
+				"tool-saveUserSettingsData",
+				"tool-fetchProjectStatusContext",
+				"tool-fetchInterviewContext",
+			].includes(part.type)
 		);
 
 		if (hasDataTools && onDataChanged) {
