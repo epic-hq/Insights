@@ -13,11 +13,14 @@ import {
 import { checkLimitAccess, getAccountPlan } from "~/lib/feature-gate/check-limit.server";
 import { getPostHogServerClient } from "~/lib/posthog.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import type { Database, Json } from "~/types";
 
 export const loader = () => Response.json({ message: "Method not allowed" }, { status: 405 });
 
 type IdentityMode = "anonymous" | "identified";
 type IdentityField = "email" | "phone";
+type ResponseMode = NonNullable<Database["public"]["Tables"]["research_link_responses"]["Insert"]["response_mode"]>;
+type ResearchLinkResponseInsert = Database["public"]["Tables"]["research_link_responses"]["Insert"];
 
 interface ResearchLink {
 	id: string;
@@ -30,6 +33,14 @@ interface ResearchLink {
 	survey_owner_user_id: string | null;
 	identity_mode: IdentityMode;
 	identity_field: IdentityField;
+}
+
+function resolveResponseMode(list: ResearchLink, requestedMode?: "form" | "chat"): ResponseMode {
+	if (list.allow_chat && requestedMode === "chat") {
+		return "chat";
+	}
+
+	return list.default_response_mode === "chat" ? "chat" : "form";
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -129,8 +140,7 @@ async function handleAnonymousStart(
 	}
 
 	const existingResponseId = parsed.data.responseId;
-	const responseMode =
-		list.allow_chat && parsed.data.responseMode ? parsed.data.responseMode : (list.default_response_mode ?? "form");
+	const responseMode = resolveResponseMode(list, parsed.data.responseMode);
 	const utmParams = parsed.data.utmParams ?? null;
 
 	// If we have an existing response ID, try to resume it
@@ -154,17 +164,18 @@ async function handleAnonymousStart(
 	}
 
 	// Create new anonymous response
-	const { data: inserted, error: insertError } = await supabase
-		.from("research_link_responses")
-		.insert({
+	const insertPayload = {
 			research_link_id: list.id,
 			email: null, // Anonymous - no email
 			phone: null, // Anonymous - no phone
-			responses: {},
+			responses: {} as Json,
 			completed: false,
 			response_mode: responseMode,
 			...(utmParams ? { utm_params: utmParams } : {}),
-		})
+		} as unknown as ResearchLinkResponseInsert;
+	const { data: inserted, error: insertError } = await supabase
+		.from("research_link_responses")
+		.insert(insertPayload)
 		.select("id")
 		.maybeSingle();
 
@@ -203,8 +214,7 @@ async function handlePhoneStart(
 
 	const normalizedPhone = parsed.data.phone.trim().replace(/\s+/g, "");
 	const existingResponseId = parsed.data.responseId;
-	const responseMode =
-		list.allow_chat && parsed.data.responseMode ? parsed.data.responseMode : (list.default_response_mode ?? "form");
+	const responseMode = resolveResponseMode(list, parsed.data.responseMode);
 	const utmParams = parsed.data.utmParams ?? null;
 
 	// If we have an existing response ID, try to resume it
@@ -265,16 +275,18 @@ async function handlePhoneStart(
 	}
 
 	// Create new phone-identified response
-	const { data: inserted, error: insertError } = await supabase
-		.from("research_link_responses")
-		.insert({
+	const insertPayload = {
 			research_link_id: list.id,
+			email: null,
 			phone: normalizedPhone,
-			responses: {},
+			responses: {} as Json,
 			completed: false,
 			response_mode: responseMode,
 			...(utmParams ? { utm_params: utmParams } : {}),
-		})
+		} as unknown as ResearchLinkResponseInsert;
+	const { data: inserted, error: insertError } = await supabase
+		.from("research_link_responses")
+		.insert(insertPayload)
 		.select("id")
 		.maybeSingle();
 
@@ -314,8 +326,7 @@ async function handleEmailStart(
 
 	const normalizedEmail = parsed.data.email.trim().toLowerCase();
 	const existingResponseId = parsed.data.responseId;
-	const responseMode =
-		list.allow_chat && parsed.data.responseMode ? parsed.data.responseMode : (list.default_response_mode ?? "form");
+	const responseMode = resolveResponseMode(list, parsed.data.responseMode);
 	const utmParams = parsed.data.utmParams ?? null;
 
 	// If we have an existing response ID, try to resume it
@@ -404,17 +415,18 @@ async function handleEmailStart(
 
 	if (existingPerson) {
 		// Person exists - create response linked to them
-		const { data: inserted, error: insertError } = await supabase
-			.from("research_link_responses")
-			.insert({
+		const insertPayload: ResearchLinkResponseInsert = {
 				research_link_id: list.id,
 				email: normalizedEmail,
 				person_id: existingPerson.id,
-				responses: {},
+				responses: {} as Json,
 				completed: false,
 				response_mode: responseMode,
 				...(utmParams ? { utm_params: utmParams } : {}),
-			})
+			};
+		const { data: inserted, error: insertError } = await supabase
+			.from("research_link_responses")
+			.insert(insertPayload)
 			.select("id")
 			.maybeSingle();
 
@@ -433,16 +445,17 @@ async function handleEmailStart(
 	}
 
 	// No person found - create response without person_id and signal frontend needs name
-	const { data: inserted, error: insertError } = await supabase
-		.from("research_link_responses")
-		.insert({
+	const insertPayload: ResearchLinkResponseInsert = {
 			research_link_id: list.id,
 			email: normalizedEmail,
-			responses: {},
+			responses: {} as Json,
 			completed: false,
 			response_mode: responseMode,
 			...(utmParams ? { utm_params: utmParams } : {}),
-		})
+		};
+	const { data: inserted, error: insertError } = await supabase
+		.from("research_link_responses")
+		.insert(insertPayload)
 		.select("id")
 		.maybeSingle();
 
@@ -481,8 +494,7 @@ async function handleCreatePersonAndContinue(
 	const firstName = data.firstName.trim();
 	const lastName = data.lastName?.trim() || null;
 	const companyName = data.company?.trim() || null;
-	const responseMode =
-		list.allow_chat && data.responseMode ? data.responseMode : (list.default_response_mode ?? "form");
+	const responseMode = resolveResponseMode(list, data.responseMode);
 
 	// Check if person already exists by email (race condition check)
 	const { data: existingPerson } = await supabase

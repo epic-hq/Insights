@@ -521,13 +521,14 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		throw new Response("Missing slug", { status: 400 });
 	}
 	const supabase = createSupabaseAdminClient();
-	const { data: list, error } = await supabase
+	const { data: rawList, error } = await supabase
 		.from("research_links")
 		.select(
 			"id, name, slug, description, hero_title, hero_subtitle, instructions, hero_cta_label, hero_cta_helper, redirect_url, calendar_url, questions, allow_chat, allow_voice, allow_video, walkthrough_video_url, default_response_mode, is_live, account_id, identity_mode, identity_field, collect_title, respondent_fields"
 		)
 		.eq("slug", slug)
 		.maybeSingle();
+	const list = rawList as LoaderData["list"] | null;
 
 	if (error) {
 		throw new Response(error.message, { status: 500 });

@@ -36,6 +36,7 @@ import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 import { getFacetCatalog } from "~/lib/database/facets.server";
 import { getServerClient } from "~/lib/supabase/client.server";
+import type { Person } from "~/types";
 import { getImageUrl } from "~/utils/storeImage.server";
 
 export const meta: MetaFunction = () => {
@@ -280,11 +281,11 @@ export default function PeopleIndexPage() {
 	const facetsById = useMemo(() => {
 		const map = new Map<number, { label: string; alias?: string; kind_slug: string }>();
 		for (const facet of catalog.facets) {
-			map.set(facet.facet_account_id, {
-				label: facet.label,
-				alias: facet.alias,
-				kind_slug: facet.kind_slug,
-			});
+				map.set(facet.facet_account_id, {
+					label: facet.label,
+					alias: facet.alias ?? undefined,
+					kind_slug: facet.kind_slug,
+				});
 		}
 		return map;
 	}, [catalog]);
@@ -624,17 +625,20 @@ export default function PeopleIndexPage() {
 							return (
 								<EnhancedPersonCard
 									key={person.id}
-									person={{
+									person={
+										{
 										...person,
 										people_personas: (person.people_personas || []).map((pp) => ({
 											personas: pp.personas
 												? {
+														id: pp.personas.id,
 														name: pp.personas.name,
 														color_hex: pp.personas.color_hex || undefined,
 													}
 												: undefined,
 										})),
-									}}
+									} as Person
+									}
 									conversationCount={person.interview_people?.length ?? 0}
 									evidenceCount={evidence_counts[person.id] ?? 0}
 									facets={facets}

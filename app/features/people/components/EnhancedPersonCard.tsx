@@ -16,16 +16,17 @@ import type { Person } from "~/types";
 interface PersonWithPersonas {
 	id: string;
 	name: string | null;
-	image_url: string | null;
+	image_url?: string | null;
 	people_personas?: Array<{
-		persona_id: string;
-		personas: {
-			id: string;
+		persona_id?: string;
+		personas?: {
+			id?: string | null;
 			name: string;
-			color_hex: string;
-		};
+			color_hex?: string | null;
+		} | undefined;
 	}>;
 	people_organizations?: Array<{
+		is_primary?: boolean | null;
 		organization?: {
 			id: string;
 			name: string | null;
@@ -62,12 +63,13 @@ export default function EnhancedPersonCard({
 	icpBand,
 	icpConfidence,
 }: EnhancedPersonCardProps) {
+	const personView = person as Person & PersonWithPersonas;
 	const [isHovered, setIsHovered] = useState(false);
 	const currentProjectContext = useCurrentProject();
 	const routes = useProjectRoutes(currentProjectContext?.projectPath);
 
 	// Persona color or fallback
-	const persona = person.people_personas?.[0]?.personas;
+	const persona = personView.people_personas?.[0]?.personas;
 	const themeColor = persona?.color_hex || "#6366f1"; // Indigo fallback
 
 	// Name and avatar logic
@@ -81,11 +83,12 @@ export default function EnhancedPersonCard({
 			.slice(0, 2) || "?";
 
 	const topFacets = facets?.slice(0, 3) ?? [];
-	const primaryOrganization = person.people_organizations?.[0]?.organization;
+	const primaryOrganization = personView.people_organizations?.[0]?.organization;
 	const primaryOrganizationLabel = primaryOrganization?.name || primaryOrganization?.website_url || undefined;
 	const primaryRole =
-		person.people_organizations?.find((link) => link.is_primary)?.job_title ??
-		person.people_organizations?.[0]?.job_title ??
+		personView.people_organizations?.find((link) => link.is_primary)
+			?.job_title ??
+		personView.people_organizations?.[0]?.job_title ??
 		null;
 
 	return (
@@ -273,24 +276,37 @@ export function MiniPersonCard({
 			.slice(0, 2) || "?";
 	// consola.log("MiniPersonCard person: ", person, persona)
 
-	const Wrapper = disableLinks ? "span" : Link;
-	const avatarLinkProps = disableLinks ? {} : { to: routes.people.detail(person.id) };
-	const nameLinkProps = disableLinks ? {} : { to: routes.people.detail(person.id) };
-
 	return (
 		<div className="flex items-center gap-2">
-			<Wrapper {...avatarLinkProps}>
-				<Avatar className="h-8 w-8">
-					{person.image_url && <AvatarImage src={person.image_url} alt={person.name} />}
-					<AvatarFallback className="font-medium text-sm text-white" style={{ backgroundColor: themeColor }}>
-						{initials}
-					</AvatarFallback>
-				</Avatar>
-			</Wrapper>
+			{disableLinks ? (
+				<span>
+					<Avatar className="h-8 w-8">
+						{person.image_url && <AvatarImage src={person.image_url} alt={person.name ?? undefined} />}
+						<AvatarFallback className="font-medium text-sm text-white" style={{ backgroundColor: themeColor }}>
+							{initials}
+						</AvatarFallback>
+					</Avatar>
+				</span>
+			) : (
+				<Link to={routes.people.detail(person.id)}>
+					<Avatar className="h-8 w-8">
+						{person.image_url && <AvatarImage src={person.image_url} alt={person.name ?? undefined} />}
+						<AvatarFallback className="font-medium text-sm text-white" style={{ backgroundColor: themeColor }}>
+							{initials}
+						</AvatarFallback>
+					</Avatar>
+				</Link>
+			)}
 			<div className="flex flex-col">
-				<Wrapper {...nameLinkProps}>
-					<h3 className="font-medium text-sm">{person.name}</h3>
-				</Wrapper>
+				{disableLinks ? (
+					<span>
+						<h3 className="font-medium text-sm">{person.name}</h3>
+					</span>
+				) : (
+					<Link to={routes.people.detail(person.id)}>
+						<h3 className="font-medium text-sm">{person.name}</h3>
+					</Link>
+				)}
 				{persona?.name && "id" in persona && persona.id && (
 					<>
 						{disableLinks ? (

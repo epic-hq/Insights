@@ -148,7 +148,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		consola.error("Error fetching persona insights:", personaInsightsError);
 	}
 
-	const personaInsightIds = personaInsightRows?.map((row) => row.insight_id).filter(Boolean) || [];
+		const personaInsightIds = personaInsightRows?.map((row: { insight_id: string | null }) => row.insight_id).filter(Boolean) || [];
 	let insights: Insight[] = [];
 	if (personaInsightIds.length > 0) {
 		const [{ data: themeRows, error: themesError }, { data: tagsRows }] = await Promise.all([
@@ -169,17 +169,17 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 
 		const tagsMap = new Map<string, { tag?: string | null; term?: string | null; definition?: string | null }[]>();
-		tagsRows?.forEach((row) => {
-			if (!row.insight_id || !row.tags) return;
-			if (!tagsMap.has(row.insight_id)) tagsMap.set(row.insight_id, []);
-			tagsMap.get(row.insight_id)?.push(row.tags);
-		});
+			tagsRows?.forEach((row: { insight_id: string | null; tags: { tag?: string | null; term?: string | null; definition?: string | null } | null }) => {
+				if (!row.insight_id || !row.tags) return;
+				if (!tagsMap.has(row.insight_id)) tagsMap.set(row.insight_id, []);
+				tagsMap.get(row.insight_id)?.push(row.tags);
+			});
 
 		insights =
-			themeRows?.map((row) => ({
-				...row,
-				insight_tags: (tagsMap.get(row.id) || []).map((tag) => ({ tags: tag })),
-			})) || [];
+				themeRows?.map((row: Insight) => ({
+					...row,
+					insight_tags: (tagsMap.get(row.id) || []).map((tag) => ({ tags: tag })),
+				})) || [];
 	}
 
 	// Get related personas (same account, different persona)
