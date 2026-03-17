@@ -12,7 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useFetcher, useNavigate } from "react-router";
+import { Link, useFetcher, useRevalidator } from "react-router";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,7 +73,6 @@ export default function InterviewCard({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { projectPath, projectId } = useCurrentProject();
   const routes = useProjectRoutes(projectPath || "");
-  const navigate = useNavigate();
   const deleteFetcher = useFetcher<{
     success?: boolean;
     redirectTo?: string;
@@ -81,15 +80,16 @@ export default function InterviewCard({
   }>();
   const reprocessFetcher = useFetcher();
 
+  const { revalidate } = useRevalidator();
   const isDeleting = deleteFetcher.state !== "idle";
   const isReprocessing = reprocessFetcher.state !== "idle";
 
-  // Navigate after successful delete
+  // Revalidate list after successful delete (stay on current page, refresh data)
   useEffect(() => {
-    if (deleteFetcher.data?.success && deleteFetcher.data?.redirectTo) {
-      navigate(deleteFetcher.data.redirectTo);
+    if (deleteFetcher.data?.success) {
+      revalidate();
     }
-  }, [deleteFetcher.data, navigate]);
+  }, [deleteFetcher.data, revalidate]);
 
   const handleReprocess = (e: React.MouseEvent) => {
     e.preventDefault();

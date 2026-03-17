@@ -151,6 +151,7 @@ const OptimizeVideoPayload = z.object({
 export const optimizeVideo = schemaTask({
   id: "interview.optimize-video",
   schema: OptimizeVideoPayload,
+  machine: "medium-1x", // 2GB RAM — ffmpeg needs ~500MB+ even for small files
   maxDuration: 1800, // 30 minutes for very long videos
   retry: {
     maxAttempts: 2,

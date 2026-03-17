@@ -66,6 +66,7 @@ export { loader } from "./detail.loader";
  */
 export function shouldRevalidate({
   formAction,
+  defaultShouldRevalidate,
   currentUrl,
   nextUrl,
 }: {
@@ -76,9 +77,17 @@ export function shouldRevalidate({
 }) {
   // Always revalidate on form submissions (actions)
   if (formAction) return true;
-  // Skip revalidation when only search params changed on the same page
-  if (currentUrl.pathname === nextUrl.pathname) return false;
-  return true;
+  // Skip revalidation only when the URL change is purely search params on the same page
+  // (tab, lens, source are client-only UI state).
+  // Do NOT skip when URLs are identical — that's an explicit revalidator.revalidate() call
+  // from realtime subscriptions or fallback polling.
+  if (
+    currentUrl.pathname === nextUrl.pathname &&
+    currentUrl.search !== nextUrl.search
+  ) {
+    return false;
+  }
+  return defaultShouldRevalidate;
 }
 
 const ACTIVE_ANALYSIS_STATUSES = new Set<
