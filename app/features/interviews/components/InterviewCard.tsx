@@ -1,34 +1,25 @@
 import consola from "consola";
 import { formatDistance } from "date-fns";
 import { motion } from "framer-motion";
-import {
-  Building2,
-  Calendar,
-  Clock,
-  FileText,
-  Loader2,
-  MoreVertical,
-  RefreshCw,
-  Trash2,
-} from "lucide-react";
+import { Building2, Calendar, Clock, FileText, Loader2, MoreVertical, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useFetcher, useRevalidator } from "react-router";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { Badge } from "~/components/ui/badge";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import MediaTypeIcon from "~/components/ui/MediaTypeIcon";
 import { useCurrentProject } from "~/contexts/current-project-context";
@@ -39,408 +30,341 @@ import type { Database } from "~/types";
 type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"];
 
 interface InterviewCardProps {
-  interview: InterviewRow & {
-    participant: string;
-    role: string;
-    persona: string;
-    created_at: string;
-    duration: string;
-    insightCount?: number;
-    evidenceCount?: number;
-    topThemes?: Array<{
-      id: string;
-      name: string;
-      color?: string;
-    }>;
-    interview_people?: Array<{
-      people?: {
-        name?: string;
-        segment?: string;
-        person_type?: string | null;
-        default_organization?: { name: string } | null;
-      };
-      role?: string;
-    }>;
-  };
-  className?: string;
+	interview: InterviewRow & {
+		participant: string;
+		role: string;
+		persona: string;
+		created_at: string;
+		duration: string;
+		insightCount?: number;
+		evidenceCount?: number;
+		topThemes?: Array<{
+			id: string;
+			name: string;
+			color?: string;
+		}>;
+		interview_people?: Array<{
+			people?: {
+				name?: string;
+				segment?: string;
+				person_type?: string | null;
+				default_organization?: { name: string } | null;
+			};
+			role?: string;
+		}>;
+	};
+	className?: string;
 }
 
-export default function InterviewCard({
-  interview,
-  className,
-}: InterviewCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const { projectPath, projectId } = useCurrentProject();
-  const routes = useProjectRoutes(projectPath || "");
-  const deleteFetcher = useFetcher<{
-    success?: boolean;
-    redirectTo?: string;
-    error?: string;
-  }>();
-  const reprocessFetcher = useFetcher();
+export default function InterviewCard({ interview, className }: InterviewCardProps) {
+	const [isHovered, setIsHovered] = useState(false);
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+	const { projectPath, projectId } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
+	const deleteFetcher = useFetcher<{
+		success?: boolean;
+		redirectTo?: string;
+		error?: string;
+	}>();
+	const reprocessFetcher = useFetcher();
 
-  const { revalidate } = useRevalidator();
-  const isDeleting = deleteFetcher.state !== "idle";
-  const isReprocessing = reprocessFetcher.state !== "idle";
+	const { revalidate } = useRevalidator();
+	const isDeleting = deleteFetcher.state !== "idle";
+	const isReprocessing = reprocessFetcher.state !== "idle";
 
-  // Revalidate list after successful delete (stay on current page, refresh data)
-  useEffect(() => {
-    if (deleteFetcher.data?.success) {
-      revalidate();
-    }
-  }, [deleteFetcher.data, revalidate]);
+	// Revalidate list after successful delete (stay on current page, refresh data)
+	useEffect(() => {
+		if (deleteFetcher.data?.success) {
+			revalidate();
+		}
+	}, [deleteFetcher.data, revalidate]);
 
-  const handleReprocess = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    reprocessFetcher.submit(
-      { interviewId: interview.id },
-      { method: "post", action: "/api/reprocess-interview" },
-    );
-  };
+	const handleReprocess = (e: React.MouseEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+		reprocessFetcher.submit({ interviewId: interview.id }, { method: "post", action: "/api/reprocess-interview" });
+	};
 
-  const handleDelete = () => {
-    deleteFetcher.submit(
-      { interviewId: interview.id, projectId },
-      { method: "post", action: "/api/interviews/delete" },
-    );
-  };
+	const handleDelete = () => {
+		deleteFetcher.submit(
+			{ interviewId: interview.id, projectId },
+			{ method: "post", action: "/api/interviews/delete" }
+		);
+	};
 
-  // Generic/placeholder names that don't represent a real identified person
-  const GENERIC_NAMES = new Set([
-    "unknown participant",
-    "participant 1",
-    "participant 2",
-    "interviewer",
-    "attendee / organizer",
-    "anonymous",
-  ]);
-  const isGenericName = (name: string) => {
-    const lower = name.toLowerCase().trim();
-    return (
-      GENERIC_NAMES.has(lower) ||
-      /^(participant|speaker|attendee)\s*\d*$/i.test(lower) ||
-      /^realtime\s/i.test(lower)
-    );
-  };
+	// Generic/placeholder names that don't represent a real identified person
+	const GENERIC_NAMES = new Set([
+		"unknown participant",
+		"participant 1",
+		"participant 2",
+		"interviewer",
+		"attendee / organizer",
+		"anonymous",
+	]);
+	const isGenericName = (name: string) => {
+		const lower = name.toLowerCase().trim();
+		return (
+			GENERIC_NAMES.has(lower) || /^(participant|speaker|attendee)\s*\d*$/i.test(lower) || /^realtime\s/i.test(lower)
+		);
+	};
 
-  // Separate participants from team members (internal)
-  const allPeople = interview.interview_people || [];
-  const externalPeople = allPeople.filter(
-    (p) => p.people?.person_type !== "internal",
-  );
-  const teamMembers = allPeople.filter(
-    (p) => p.people?.person_type === "internal",
-  );
+	// Separate participants from team members (internal)
+	const allPeople = interview.interview_people || [];
+	const externalPeople = allPeople.filter((p) => p.people?.person_type !== "internal");
+	const teamMembers = allPeople.filter((p) => p.people?.person_type === "internal");
 
-  // From external people, separate real names from generic placeholders
-  const realNamedPeople = externalPeople.filter(
-    (p) => p.people?.name && !isGenericName(p.people.name),
-  );
-  const displayParticipants =
-    realNamedPeople.length > 0 ? realNamedPeople : externalPeople;
+	// From external people, separate real names from generic placeholders
+	const realNamedPeople = externalPeople.filter((p) => p.people?.name && !isGenericName(p.people.name));
+	const displayParticipants = realNamedPeople.length > 0 ? realNamedPeople : externalPeople;
 
-  // Build participant names (real names only, no generics)
-  const realParticipantNames = Array.from(
-    new Set(
-      externalPeople
-        .map((p) => p.people?.name?.trim())
-        .filter((n): n is string => !!n && !isGenericName(n)),
-    ),
-  );
+	// Build participant names (real names only, no generics)
+	const realParticipantNames = Array.from(
+		new Set(externalPeople.map((p) => p.people?.name?.trim()).filter((n): n is string => !!n && !isGenericName(n)))
+	);
 
-  // Count how many external people have generic/missing names
-  const anonCount =
-    externalPeople.length -
-    externalPeople.filter(
-      (p) => p.people?.name && !isGenericName(p.people.name),
-    ).length;
+	// Count how many external people have generic/missing names
+	const anonCount =
+		externalPeople.length - externalPeople.filter((p) => p.people?.name && !isGenericName(p.people.name)).length;
 
-  // Team member names (for the heading line)
-  const teamMemberNames = Array.from(
-    new Set(
-      teamMembers
-        .map((p) => p.people?.name?.trim())
-        .filter((n): n is string => Boolean(n)),
-    ),
-  );
+	// Team member names (for the heading line)
+	const teamMemberNames = Array.from(
+		new Set(teamMembers.map((p) => p.people?.name?.trim()).filter((n): n is string => Boolean(n)))
+	);
 
-  // Build the heading: real names first, then "Anon" / "Anon (N)", then team members
-  const headingParts: string[] = [...realParticipantNames.slice(0, 3)];
-  if (anonCount === 1) headingParts.push("Anon");
-  if (anonCount > 1) headingParts.push(`Anon (${anonCount})`);
-  // Add team members after participants
-  headingParts.push(...teamMemberNames.slice(0, 2));
-  const overflowCount = Math.max(
-    0,
-    realParticipantNames.length - 3 + Math.max(0, teamMemberNames.length - 2),
-  );
+	// Build the heading: real names first, then "Anon" / "Anon (N)", then team members
+	const headingParts: string[] = [...realParticipantNames.slice(0, 3)];
+	if (anonCount === 1) headingParts.push("Anon");
+	if (anonCount > 1) headingParts.push(`Anon (${anonCount})`);
+	// Add team members after participants
+	headingParts.push(...teamMemberNames.slice(0, 2));
+	const overflowCount = Math.max(0, realParticipantNames.length - 3 + Math.max(0, teamMemberNames.length - 2));
 
-  // Get organization from first external participant
-  const primaryOrg = externalPeople.find(
-    (p) => p.people?.default_organization?.name,
-  )?.people?.default_organization?.name;
+	// Get organization from first external participant
+	const primaryOrg = externalPeople.find((p) => p.people?.default_organization?.name)?.people?.default_organization
+		?.name;
 
-  // Thumbnail handling
-  const audio_extensions = ["mp3", "wav", "m4a", "ogg", "flac", "aac"];
-  const image_extensions = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
-  const file_extension = interview.file_extension?.toLowerCase() || "";
-  const is_audio_only =
-    interview.media_type === "voice_memo" ||
-    interview.source_type?.includes("audio") ||
-    audio_extensions.includes(file_extension);
-  const is_image = image_extensions.includes(file_extension);
-  const media_preview_url =
-    interview.thumbnail_url || (is_image ? interview.media_url : null);
-  const [signed_media_preview_url, setSignedMediaPreviewUrl] = useState<
-    string | null
-  >(null);
+	// Thumbnail handling
+	const audio_extensions = ["mp3", "wav", "m4a", "ogg", "flac", "aac"];
+	const image_extensions = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
+	const file_extension = interview.file_extension?.toLowerCase() || "";
+	const is_audio_only =
+		interview.media_type === "voice_memo" ||
+		interview.source_type?.includes("audio") ||
+		audio_extensions.includes(file_extension);
+	const is_image = image_extensions.includes(file_extension);
+	const media_preview_url = interview.thumbnail_url || (is_image ? interview.media_url : null);
+	const [signed_media_preview_url, setSignedMediaPreviewUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    setSignedMediaPreviewUrl(null);
+	useEffect(() => {
+		let cancelled = false;
+		setSignedMediaPreviewUrl(null);
 
-    if (!media_preview_url) return;
+		if (!media_preview_url) return;
 
-    const url = media_preview_url;
-    const is_http_url = url.startsWith("http://") || url.startsWith("https://");
-    if (is_http_url) {
-      setSignedMediaPreviewUrl(url);
-      return;
-    }
+		const url = media_preview_url;
+		const is_http_url = url.startsWith("http://") || url.startsWith("https://");
+		if (is_http_url) {
+			setSignedMediaPreviewUrl(url);
+			return;
+		}
 
-    const fetchSignedPreviewUrl = async () => {
-      try {
-        const response = await fetch("/api/media/signed-url", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mediaUrl: url, intent: "playback" }),
-        });
+		const fetchSignedPreviewUrl = async () => {
+			try {
+				const response = await fetch("/api/media/signed-url", {
+					method: "POST",
+					credentials: "include",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ mediaUrl: url, intent: "playback" }),
+				});
 
-        if (!response.ok) {
-          const error_text = await response.text().catch(() => "");
-          consola.warn(
-            "Thumbnail signed URL request failed:",
-            response.status,
-            error_text,
-          );
-          return;
-        }
+				if (!response.ok) {
+					const error_text = await response.text().catch(() => "");
+					consola.warn("Thumbnail signed URL request failed:", response.status, error_text);
+					return;
+				}
 
-        const data = (await response.json()) as { signedUrl?: string };
-        if (!cancelled && data.signedUrl) {
-          setSignedMediaPreviewUrl(data.signedUrl);
-        }
-      } catch (err) {
-        consola.warn("Failed to fetch signed thumbnail URL:", err);
-      }
-    };
+				const data = (await response.json()) as { signedUrl?: string };
+				if (!cancelled && data.signedUrl) {
+					setSignedMediaPreviewUrl(data.signedUrl);
+				}
+			} catch (err) {
+				consola.warn("Failed to fetch signed thumbnail URL:", err);
+			}
+		};
 
-    void fetchSignedPreviewUrl();
+		void fetchSignedPreviewUrl();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [media_preview_url]);
+		return () => {
+			cancelled = true;
+		};
+	}, [media_preview_url]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "ready":
-        return "border border-green-300 bg-transparent text-green-700 dark:border-green-700 dark:text-green-400";
-      case "transcribed":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
-      case "processing":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
-    }
-  };
+	const getStatusColor = (status: string) => {
+		switch (status) {
+			case "ready":
+				return "border border-green-300 bg-transparent text-green-700 dark:border-green-700 dark:text-green-400";
+			case "transcribed":
+				return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
+			case "processing":
+				return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
+			default:
+				return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+		}
+	};
 
-  const hasVideoThumbnail = !!media_preview_url;
+	const hasVideoThumbnail = !!media_preview_url;
 
-  return (
-    <>
-      <Link to={routes.interviews.detail(interview.id)}>
-        <motion.div
-          className={cn(
-            "group relative cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900",
-            "transition-all duration-300 ease-out",
-            "hover:shadow-black/5 hover:shadow-lg dark:hover:shadow-white/5",
-            className,
-          )}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          whileHover={{ y: -2, scale: 1.01 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-        >
-          {/* Action Menu */}
-          <div
-            className={cn(
-              "absolute top-2 right-2 z-10 opacity-0 transition-opacity group-hover:opacity-100",
-              (isDeleting || isReprocessing) && "opacity-100",
-            )}
-          >
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                className="rounded-md bg-white/80 p-1.5 hover:bg-white dark:bg-gray-800/80 dark:hover:bg-gray-800"
-              >
-                {isReprocessing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <MoreVertical className="h-4 w-4" />
-                )}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={handleReprocess}
-                  disabled={isReprocessing}
-                >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  {isReprocessing ? "Reprocessing..." : "Reprocess"}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDeleteDialogOpen(true);
-                  }}
-                  disabled={isDeleting}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete...
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+	return (
+		<>
+			<Link to={routes.interviews.detail(interview.id)}>
+				<motion.div
+					className={cn(
+						"group relative cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900",
+						"transition-all duration-300 ease-out",
+						"hover:shadow-black/5 hover:shadow-lg dark:hover:shadow-white/5",
+						className
+					)}
+					onMouseEnter={() => setIsHovered(true)}
+					onMouseLeave={() => setIsHovered(false)}
+					whileHover={{ y: -2, scale: 1.01 }}
+					transition={{ duration: 0.3, ease: "easeOut" }}
+				>
+					{/* Action Menu */}
+					<div
+						className={cn(
+							"absolute top-2 right-2 z-10 opacity-0 transition-opacity group-hover:opacity-100",
+							(isDeleting || isReprocessing) && "opacity-100"
+						)}
+					>
+						<DropdownMenu>
+							<DropdownMenuTrigger
+								onClick={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+								className="rounded-md bg-white/80 p-1.5 hover:bg-white dark:bg-gray-800/80 dark:hover:bg-gray-800"
+							>
+								{isReprocessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreVertical className="h-4 w-4" />}
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								<DropdownMenuItem onClick={handleReprocess} disabled={isReprocessing}>
+									<RefreshCw className="mr-2 h-4 w-4" />
+									{isReprocessing ? "Reprocessing..." : "Reprocess"}
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									onClick={(e) => {
+										e.preventDefault();
+										e.stopPropagation();
+										setDeleteDialogOpen(true);
+									}}
+									disabled={isDeleting}
+									className="text-destructive focus:text-destructive"
+								>
+									<Trash2 className="mr-2 h-4 w-4" />
+									Delete...
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</div>
 
-          {/* Video thumbnail — only for video content */}
-          {hasVideoThumbnail && (
-            <div className="overflow-hidden border-gray-200 border-b bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
-              <div className="relative aspect-video w-full">
-                {signed_media_preview_url ? (
-                  <img
-                    src={signed_media_preview_url}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="h-full w-full bg-muted/40" />
-                )}
-              </div>
-            </div>
-          )}
+					{/* Video thumbnail — only for video content */}
+					{hasVideoThumbnail && (
+						<div className="overflow-hidden border-gray-200 border-b bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+							<div className="relative aspect-video w-full">
+								{signed_media_preview_url ? (
+									<img src={signed_media_preview_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+								) : (
+									<div className="h-full w-full bg-muted/40" />
+								)}
+							</div>
+						</div>
+					)}
 
-          {/* Card Content */}
-          <div className="p-4">
-            {/* Primary: People names */}
-            <div className="mb-1 flex items-start justify-between gap-2">
-              <h3 className="line-clamp-1 font-bold text-foreground text-lg leading-snug">
-                {headingParts.join(", ")}
-                {overflowCount > 0 && (
-                  <span className="font-normal text-muted-foreground">
-                    {" "}
-                    +{overflowCount}
-                  </span>
-                )}
-              </h3>
-              <Badge
-                className={cn(
-                  "shrink-0 font-medium text-xs",
-                  getStatusColor(interview.status),
-                )}
-              >
-                {interview.status.charAt(0).toUpperCase() +
-                  interview.status.slice(1)}
-              </Badge>
-            </div>
+					{/* Card Content */}
+					<div className="p-4">
+						{/* Primary: People names */}
+						<div className="mb-1 flex items-start justify-between gap-2">
+							<h3 className="line-clamp-1 font-bold text-foreground text-lg leading-snug">
+								{headingParts.join(", ")}
+								{overflowCount > 0 && <span className="font-normal text-muted-foreground"> +{overflowCount}</span>}
+							</h3>
+							<Badge className={cn("shrink-0 font-medium text-xs", getStatusColor(interview.status))}>
+								{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
+							</Badge>
+						</div>
 
-            {/* Secondary: Organization */}
-            {primaryOrg && (
-              <div className="mb-2 flex items-center gap-1.5">
-                <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground text-sm">
-                  {primaryOrg}
-                </span>
-              </div>
-            )}
+						{/* Secondary: Organization */}
+						{primaryOrg && (
+							<div className="mb-2 flex items-center gap-1.5">
+								<Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+								<span className="text-muted-foreground text-sm">{primaryOrg}</span>
+							</div>
+						)}
 
-            {/* Tertiary: Title/filename + media type indicator */}
-            <div className="mb-3 flex items-center gap-1.5">
-              <MediaTypeIcon
-                mediaType={interview.media_type}
-                sourceType={interview.source_type}
-                showLabel={false}
-                iconClassName="h-3.5 w-3.5 text-muted-foreground/70"
-              />
-              <span className="line-clamp-1 text-muted-foreground/70 text-xs">
-                {interview.title || "Untitled"}
-              </span>
-            </div>
+						{/* Tertiary: Title/filename + media type indicator */}
+						<div className="mb-3 flex items-center gap-1.5">
+							<MediaTypeIcon
+								mediaType={interview.media_type}
+								sourceType={interview.source_type}
+								showLabel={false}
+								iconClassName="h-3.5 w-3.5 text-muted-foreground/70"
+							/>
+							<span className="line-clamp-1 text-muted-foreground/70 text-xs">{interview.title || "Untitled"}</span>
+						</div>
 
-            {/* Metadata row */}
-            <div className="flex items-center gap-4 text-muted-foreground text-xs">
-              <div className="flex items-center gap-1">
-                <FileText className="h-3 w-3" />
-                <span className="font-medium">
-                  {interview.evidenceCount || interview.insightCount || 0}
-                </span>
-                <span>evidence</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                <span>{interview.duration}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                <span>
-                  {formatDistance(new Date(interview.created_at), new Date(), {
-                    addSuffix: true,
-                  })}
-                </span>
-              </div>
-            </div>
-          </div>
+						{/* Metadata row */}
+						<div className="flex items-center gap-4 text-muted-foreground text-xs">
+							<div className="flex items-center gap-1">
+								<FileText className="h-3 w-3" />
+								<span className="font-medium">{interview.evidenceCount || interview.insightCount || 0}</span>
+								<span>evidence</span>
+							</div>
+							<div className="flex items-center gap-1">
+								<Clock className="h-3 w-3" />
+								<span>{interview.duration}</span>
+							</div>
+							<div className="flex items-center gap-1">
+								<Calendar className="h-3 w-3" />
+								<span>
+									{formatDistance(new Date(interview.created_at), new Date(), {
+										addSuffix: true,
+									})}
+								</span>
+							</div>
+						</div>
+					</div>
 
-          {/* Hover Effect */}
-          <motion.div
-            className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-blue-50/50 to-purple-50/50 opacity-0 dark:from-blue-900/20 dark:to-purple-900/20"
-            animate={{ opacity: isHovered ? 1 : 0 }}
-            transition={{ duration: 0.3 }}
-          />
-        </motion.div>
-      </Link>
+					{/* Hover Effect */}
+					<motion.div
+						className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-blue-50/50 to-purple-50/50 opacity-0 dark:from-blue-900/20 dark:to-purple-900/20"
+						animate={{ opacity: isHovered ? 1 : 0 }}
+						transition={{ duration: 0.3 }}
+					/>
+				</motion.div>
+			</Link>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete interview</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete "
-              {interview.title || "this interview"}" and all associated data.
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  );
+			{/* Delete Confirmation Dialog */}
+			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete interview</AlertDialogTitle>
+						<AlertDialogDescription>
+							This will permanently delete "{interview.title || "this interview"}" and all associated data. This action
+							cannot be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={handleDelete}
+							disabled={isDeleting}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						>
+							{isDeleting ? "Deleting..." : "Delete"}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
+	);
 }
