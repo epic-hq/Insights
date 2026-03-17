@@ -1,0 +1,25 @@
+{
+  "name": "@agentcrm/mcp-server",
+  "version": "0.1.0",
+  "description": "AgentCRM.dev — MCP server for managing people, organizations, and opportunities. Works with Claude, OpenAI, and any MCP-compatible agent.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "agent-crm": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@supabase/supabase-js": "^2.75.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "keywords": ["mcp", "crm", "agent", "ai", "supabase"],
+  "license": "MIT"
+}
