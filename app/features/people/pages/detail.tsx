@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
 import { redirect, useActionData, useFetcher, useLoaderData, useParams, useRevalidator } from "react-router-dom";
 import { PageContainer } from "~/components/layout/PageContainer";
-import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog";
+import { QuickNoteDialog, type NoteType } from "~/components/notes/QuickNoteDialog";
 import { useCurrentProject } from "~/contexts/current-project-context";
 import {
 	getOrganizations,
@@ -68,7 +68,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 				projectId,
 				id: personId,
 			}),
-			getFacetCatalog({ db: supabase, accountId, projectId }),
+			getFacetCatalog({ db: supabase, accountId }),
 			getOrganizations({ supabase, accountId, projectId }),
 		]);
 
@@ -268,21 +268,24 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 		}
 
 		// Compute derived values needed for AI next steps
-		const allInterviewLinksForLoader = (person.interview_people || []).filter(
-			(ip: { interviews?: { id?: string } }) => ip.interviews?.id
-		);
+		const allInterviewLinksForLoader = ((person.interview_people || []) as Array<{
+			interviews?: {
+				id?: string;
+				source_type?: string;
+				media_type?: string;
+				created_at?: string;
+			} | null;
+		}>).filter((ip) => Boolean(ip.interviews?.id));
 		const interviewLinksForLoader = allInterviewLinksForLoader.filter(
-			(ip: { interviews?: { source_type?: string; media_type?: string } }) =>
+			(ip) =>
 				ip.interviews?.source_type !== "note" &&
 				ip.interviews?.source_type !== "survey_response" &&
 				ip.interviews?.source_type !== "public_chat" &&
 				ip.interviews?.media_type !== "voice_memo"
 		);
-		const surveyLinksForLoader = allInterviewLinksForLoader.filter(
-			(ip: { interviews?: { source_type?: string } }) => ip.interviews?.source_type === "survey_response"
-		);
+		const surveyLinksForLoader = allInterviewLinksForLoader.filter((ip) => ip.interviews?.source_type === "survey_response");
 		const lastContactDates = allInterviewLinksForLoader
-			.map((link: { interviews?: { created_at?: string } }) => link.interviews?.created_at)
+			.map((link) => link.interviews?.created_at)
 			.filter((d: string | undefined): d is string => Boolean(d))
 			.map((d: string) => new Date(d));
 		const lastContactDateForLoader =
@@ -940,11 +943,11 @@ export default function PersonDetail() {
 	const facetsById = useMemo(() => {
 		const map = new Map<number, { label: string; alias?: string; kind_slug: string }>();
 		for (const facet of catalog.facets) {
-			map.set(facet.facet_account_id, {
-				label: facet.label,
-				alias: facet.alias,
-				kind_slug: facet.kind_slug,
-			});
+				map.set(facet.facet_account_id, {
+					label: facet.label,
+					alias: facet.alias ?? undefined,
+					kind_slug: facet.kind_slug,
+				});
 		}
 		return map;
 	}, [catalog]);
@@ -1013,11 +1016,11 @@ export default function PersonDetail() {
 			if (!grouped[kindSlug]) {
 				grouped[kindSlug] = [];
 			}
-			grouped[kindSlug].push({
-				id: facet.facet_account_id,
-				label: facet.label,
-				slug: facet.slug || facet.label.toLowerCase().replace(/\s+/g, "-"),
-			});
+				grouped[kindSlug].push({
+					id: facet.facet_account_id,
+					label: facet.label,
+					slug: facet.kind_slug || facet.label.toLowerCase().replace(/\s+/g, "-"),
+				});
 		}
 		return grouped;
 	}, [catalog.facets]);
@@ -1144,8 +1147,12 @@ export default function PersonDetail() {
 		async (note: {
 			title: string;
 			content: string;
-			noteType: string;
-			associations: Record<string, unknown>;
+			noteType: NoteType;
+			associations: {
+				people?: string[];
+				organizations?: string[];
+				opportunities?: string[];
+			};
 			tags: string[];
 		}) => {
 			if (!projectId) throw new Error("Project ID is required");
@@ -1175,6 +1182,91 @@ export default function PersonDetail() {
 		[projectId, person.id, revalidator]
 	);
 
+	const scorecardPerson = useMemo(
+		() => ({
+			...person,
+			industry: ((person as Record<string, unknown>).industry as string | null | undefined) ?? null,
+			people_personas: (person.people_personas ?? [])
+				.filter(
+					(
+						row
+					): row is typeof row & {
+						personas: { id: string; name: string; color_hex: string | null };
+					} => Boolean(row.personas?.id && row.personas?.name)
+				)
+				.map((row) => ({
+					persona_id: row.personas.id,
+					personas: {
+						id: row.personas.id,
+						name: row.personas.name,
+						color_hex: row.personas.color_hex ?? "#6366f1",
+					},
+				})),
+		}),
+		[person]
+	);
+
+	const profilePerson = useMemo(
+		() => ({
+			...person,
+			industry: ((person as Record<string, unknown>).industry as string | null | undefined) ?? null,
+			contact_info:
+				person.contact_info && typeof person.contact_info === "object" && !Array.isArray(person.contact_info)
+					? (person.contact_info as Record<string, string>)
+					: null,
+		}),
+		[person]
+	);
+
+	const normalizedLinkedOrganizations = useMemo(
+		() =>
+			sortedLinkedOrganizations.map((link) => ({
+				id: link.id,
+				is_primary: link.is_primary ?? undefined,
+				job_title: link.job_title ?? null,
+				organization: link.organization
+					? {
+							id: link.organization.id,
+							name: link.organization.name,
+						}
+					: null,
+			})),
+		[sortedLinkedOrganizations]
+	);
+
+	const normalizedResearchLinkResponses = useMemo(
+		() =>
+			(researchLinkResponses ?? []).map((row) => ({
+				id: row.id,
+				email: row.email ?? "",
+				responses:
+					row.responses && typeof row.responses === "object" && !Array.isArray(row.responses)
+						? (row.responses as Record<string, unknown>)
+						: null,
+				completed: row.completed ?? false,
+				created_at: row.created_at,
+				updated_at: row.updated_at,
+				research_links: row.research_links
+					? {
+							id: row.research_links.id,
+							name: row.research_links.name,
+							slug: row.research_links.slug,
+							questions: Array.isArray(row.research_links.questions)
+								? (row.research_links.questions as Array<{
+										id: string;
+										prompt: string;
+										type: string;
+										options?: string[];
+										likertScale?: number;
+										likertLabels?: { low: string; high: string };
+									}>)
+								: null,
+						}
+					: null,
+			})),
+		[researchLinkResponses]
+	);
+
 	// ---- Render: single-scroll layout with anchor sections ----
 	return (
 		<div className="relative min-h-screen bg-muted/20">
@@ -1201,7 +1293,7 @@ export default function PersonDetail() {
 				{/* Section 1: Scorecard Hero */}
 				<section id="scorecard">
 					<PersonScorecard
-						person={person}
+						person={scorecardPerson}
 						primaryOrg={primaryOrg}
 						icpMatch={icpMatch}
 						interviewCount={interviewLinks.length}
@@ -1243,7 +1335,7 @@ export default function PersonDetail() {
 				{/* Section 3: Profile, Contact & Attributes */}
 				<section id="profile">
 					<PersonProfileSection
-						person={person}
+						person={profilePerson}
 						primaryOrg={primaryOrg}
 						facetLensGroups={facetLensGroups}
 						availableFacetsByKind={availableFacetsByKind}
@@ -1257,7 +1349,7 @@ export default function PersonDetail() {
 								confidence: number | null;
 							}> | null
 						}
-						sortedLinkedOrganizations={sortedLinkedOrganizations}
+						sortedLinkedOrganizations={normalizedLinkedOrganizations}
 						routes={routes}
 						availableOrganizations={organizations}
 					/>
@@ -1265,13 +1357,13 @@ export default function PersonDetail() {
 
 				{/* Section 4: Activity Timeline */}
 				<section id="activity">
-					<PersonActivityTimeline
-						allInterviewLinks={allInterviewLinks}
-						relatedAssets={relatedAssets}
-						surveyResponses={surveyResponses}
-						researchLinkResponses={researchLinkResponses}
-						routes={routes}
-					/>
+						<PersonActivityTimeline
+							allInterviewLinks={allInterviewLinks}
+							relatedAssets={relatedAssets}
+							surveyResponses={surveyResponses}
+							researchLinkResponses={normalizedResearchLinkResponses}
+							routes={routes}
+						/>
 				</section>
 			</PageContainer>
 

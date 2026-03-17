@@ -4,8 +4,14 @@ import type { TreeNode } from "~/components/charts/TreeMap";
 import Dashboard from "~/features/dashboard/components/Dashboard";
 import type { KPI } from "~/features/dashboard/components/KPIBar";
 import { getPersonas } from "~/features/personas/db";
+import { getProjects } from "~/features/projects/db";
 import { getServerClient } from "~/lib/supabase/client.server";
-import type { InsightView, OpportunityView } from "~/types";
+import type { InsightView, OpportunityView, Project } from "~/types";
+
+type InsightTagRow = {
+	tag: string | null;
+	insight_id: string | null;
+};
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Insights Dashboard" }, { name: "description", content: "Insights for conversations" }];
@@ -48,8 +54,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		},
 	];
 
+	const { data: projectRows } = await getProjects({ supabase, accountId });
+	const project = (projectRows?.[0] ?? null) as Project | null;
+
+	if (!project) {
+		throw new Response("Project not found", { status: 404 });
+	}
+
 	// Fetch personas with counts
-	const { data, error } = await getPersonas({ supabase, accountId });
+	const { data } = await getPersonas({ supabase, projectId: project.id });
 
 	// Transform personas into the expected format
 	const personas = (data || []).map((p, index) => {
@@ -107,43 +120,25 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const { data: insightRows } = await supabase.from("themes").select("*").eq("account_id", accountId).limit(10);
 
 	// Transform insights into the expected format
-	const insights: InsightView[] = (insightRows || []).map((insight) => ({
-		id: insight.id,
-		name: insight.name || "",
-		tag: "", // No tag field in DB schema
-		category: insight.category || "",
-		journeyStage: insight.journey_stage || "",
-		impact: insight.impact,
-		novelty: insight.novelty,
-		jtbd: insight.jtbd,
-		underlyingMotivation: "", // No motivation field in DB schema
-		pain: insight.pain,
-		desiredOutcome: insight.desired_outcome,
-		description: "", // No description field in DB schema
-		evidence: "", // No evidence field in DB schema
-		opportunityIdeas: insight.opportunity_ideas,
-		confidence: insight.confidence,
-		createdAt: insight.created_at,
-		// relatedTags: removed - now using insight_tags junction table
-		contradictions: insight.contradictions,
-	}));
+	const insights: InsightView[] = (insightRows || []) as InsightView[];
 
 	// Fetch insights with their tags from junction table
 	const { data: insightTagRows } = await supabase
 		.from("insight_tags")
 		.select("tag, insight_id")
 		.eq("account_id", accountId);
+	const insightTagsData = (insightTagRows as InsightTagRow[] | null) || [];
 
-	const tagInsightIds = insightTagRows?.map((row) => row.insight_id).filter((id): id is string => Boolean(id)) || [];
+	const tagInsightIds = insightTagsData.map((row) => row.insight_id).filter((id): id is string => Boolean(id));
 	const { data: themeNames } =
 		tagInsightIds.length > 0
 			? await supabase.from("themes").select("id, name").in("id", tagInsightIds)
-			: { data: [], error: null };
+			: { data: [] as Array<{ id: string; name: string | null }> };
 
 	const nameMap = new Map(themeNames?.map((row) => [row.id, row.name || ""]));
 
 	const insightTags =
-		insightTagRows?.map((row) => ({
+		insightTagsData.map((row) => ({
 			tag: row.tag,
 			insights: row.insight_id
 				? {
@@ -152,7 +147,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
 						title: nameMap.get(row.insight_id) || "",
 					}
 				: null,
-		})) || [];
+		}));
+
+	const tags = Array.from(
+		insightTags.reduce((map, row) => {
+			if (!row.tag) return map;
+			map.set(row.tag, (map.get(row.tag) ?? 0) + 1);
+			return map;
+		}, new Map<string, number>())
+	).map(([name, frequency]) => ({ name, frequency }));
 
 	// Debug logging
 	// consola.log("Dashboard Debug:", {
@@ -219,6 +222,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		interviews,
 		opportunities,
 		themeTree,
+		project,
+		tags,
 		insights,
 	};
 }
