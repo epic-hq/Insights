@@ -63,8 +63,15 @@ const VIDEO_EXTENSIONS = ["mp4", "mov", "avi", "mkv", "m4v"];
 export function deriveMediaFormat(
 	fileExtension: string | null | undefined,
 	sourceType: string | null | undefined,
-	mediaType: string | null | undefined
+	mediaType: string | null | undefined,
+	mediaUrl?: string | null | undefined
 ): "audio" | "video" | null {
+	if (mediaUrl) {
+		const path = mediaUrl.split("?")[0]?.toLowerCase() ?? "";
+		if (AUDIO_EXTENSIONS.some((ext) => path.endsWith(`.${ext}`))) return "audio";
+		if (VIDEO_EXTENSIONS.some((ext) => path.endsWith(`.${ext}`)) || path.endsWith(".webm")) return "video";
+	}
+
 	if (fileExtension) {
 		const ext = fileExtension.toLowerCase().replace(/^\./, "");
 		if (AUDIO_EXTENSIONS.includes(ext)) return "audio";

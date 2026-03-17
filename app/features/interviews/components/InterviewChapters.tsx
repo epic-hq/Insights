@@ -5,7 +5,7 @@
  */
 
 import { ChevronLeft, ChevronRight, List } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { cn } from "~/lib/utils";
 import type { Evidence } from "~/types";
 
@@ -104,6 +104,16 @@ export function InterviewChapters({ evidence, onChapterClick, className }: Inter
 	const visibleChapters = useMemo(() => chapters.slice(pageStart, pageEnd), [chapters, pageStart, pageEnd]);
 	const hasPrev = pageStart > 0;
 	const hasNext = pageEnd < totalChapters;
+
+	useEffect(() => {
+		if (evidence.length === 0) {
+			setActiveIndex(null);
+			setPageStart(0);
+			return;
+		}
+		setActiveIndex(null);
+		setPageStart(0);
+	}, [evidence]);
 
 	const handleChapterClick = useCallback(
 		(globalIndex: number, time: number | null) => {

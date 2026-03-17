@@ -53,6 +53,7 @@ interface InterviewDetailHeaderProps {
 		created_at: string;
 		duration_sec: number | null;
 		media_url: string | null;
+		processing_metadata?: Record<string, unknown> | null;
 		status: string;
 		share_enabled?: boolean | null;
 		share_token?: string | null;
@@ -119,7 +120,7 @@ function getStatusLabel(status: string): string {
 export function InterviewDetailHeader({
 	interview,
 	accountId,
-	projectId,
+	projectId: _projectId,
 	evidenceCount,
 	insightCount,
 	creatorName,
@@ -154,6 +155,13 @@ export function InterviewDetailHeader({
 		const person = p.people as { id?: string; name?: string | null } | null;
 		return person?.id && person?.name && !/^(Participant|Interviewer)\s*\d*$/i.test(person.name ?? "");
 	});
+	const mediaUrlPath = interview.media_url?.split("?")[0]?.toLowerCase() ?? "";
+	const currentMediaLooksVideo = /\.(mp4|mov|avi|mkv|m4v|webm)$/i.test(mediaUrlPath);
+	const storedOriginalVideoKey =
+		typeof interview.processing_metadata?.original_video_r2_key === "string"
+			? interview.processing_metadata.original_video_r2_key
+			: null;
+	const hasVideoSource = Boolean(storedOriginalVideoKey || currentMediaLooksVideo);
 
 	return (
 		<div className="space-y-3">
@@ -251,7 +259,7 @@ export function InterviewDetailHeader({
 								<RefreshCw className="mr-2 h-4 w-4" />
 								Re-run Analysis
 							</DropdownMenuItem>
-							{interview.media_url && (
+							{hasVideoSource && (
 								<>
 									<DropdownMenuItem
 										onClick={async () => {

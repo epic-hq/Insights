@@ -13,6 +13,12 @@ import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { createSupabaseAdminClient, getAuthenticatedUser } from "~/lib/supabase/client.server";
 
+function isVideoKey(key: string | null | undefined): boolean {
+	if (!key) return false;
+	const path = key.split("?")[0]?.toLowerCase() ?? "";
+	return /\.(mp4|mov|avi|mkv|m4v|webm)$/i.test(path);
+}
+
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return Response.json({ error: "Method not allowed" }, { status: 405 });
@@ -43,18 +49,18 @@ export async function action({ request }: ActionFunctionArgs) {
 	const metadata = (interview.processing_metadata ?? {}) as Record<string, unknown>;
 	const storedOriginalVideoKey =
 		typeof metadata.original_video_r2_key === "string" ? metadata.original_video_r2_key : null;
-	const optimizationSourceR2Key = storedOriginalVideoKey ?? interview.media_url;
-	// For thumbnails, prefer the optimized mp4 when it exists; otherwise fall back to the original upload.
-	const thumbnailSourceR2Key =
-		storedOriginalVideoKey && interview.media_url && interview.media_url !== storedOriginalVideoKey
-			? interview.media_url
-			: optimizationSourceR2Key;
+	const optimizedVideoKey = isVideoKey(interview.media_url) ? interview.media_url : null;
+	const optimizationSourceR2Key = storedOriginalVideoKey ?? optimizedVideoKey;
+	const thumbnailSourceR2Key = optimizedVideoKey ?? storedOriginalVideoKey;
 
-	if (!optimizationSourceR2Key) {
+	if (!optimizationSourceR2Key || !isVideoKey(optimizationSourceR2Key)) {
 		return Response.json({ error: "No video file found for this interview" }, { status: 400 });
 	}
 
 	if (thumbnailOnly) {
+		if (!thumbnailSourceR2Key || !isVideoKey(thumbnailSourceR2Key)) {
+			return Response.json({ error: "No video source available for thumbnail extraction" }, { status: 400 });
+		}
 		const handle = await tasks.trigger("generate-thumbnail", {
 			mediaKey: thumbnailSourceR2Key,
 			interviewId: interview.id,
