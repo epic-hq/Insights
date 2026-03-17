@@ -30,10 +30,7 @@ const detailScopes = [
 type DetailScope = (typeof detailScopes)[number];
 const defaultDetailScopes: readonly DetailScope[] = ["status", "sections"];
 
-type ProjectSectionRow = Database["public"]["Tables"]["project_sections"]["Row"];
-type InsightRow = Database["public"]["Tables"]["themes"]["Row"];
 type EvidenceRow = Database["public"]["Tables"]["evidence"]["Row"];
-type ThemeRow = Database["public"]["Tables"]["themes"]["Row"];
 type ThemeEvidenceRow = Database["public"]["Tables"]["theme_evidence"]["Row"] & {
 	evidence?: Pick<
 		EvidenceRow,
@@ -52,15 +49,10 @@ type ProjectPeopleRow = Database["public"]["Tables"]["project_people"]["Row"] & 
 		  })
 		| null;
 };
-type PersonaRow = Database["public"]["Tables"]["personas"]["Row"];
 type PeoplePersonaRow = Database["public"]["Tables"]["people_personas"]["Row"] & {
 	people?: Pick<Database["public"]["Tables"]["people"]["Row"], "id" | "name" | "segment" | "job_function"> | null;
 };
 type PersonaInsightsRow = Database["public"]["Tables"]["persona_insights"]["Row"];
-type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"] & {
-	insights?: Array<{ id: string | null }> | null;
-	evidence?: Array<{ id: string | null }> | null;
-};
 type InterviewPeopleRow = Database["public"]["Tables"]["interview_people"]["Row"] & {
 	interview?: Pick<
 		Database["public"]["Tables"]["interviews"]["Row"],
@@ -83,6 +75,10 @@ function normalizeDate(value: unknown) {
 	if (value instanceof Date) return value.toISOString();
 	if (typeof value === "string") return value;
 	return null;
+}
+
+function trimToString(value: unknown): string {
+	return typeof value === "string" ? value.trim() : "";
 }
 
 function toStringArray(value: unknown): string[] {
@@ -147,7 +143,7 @@ const projectStatusSchema = z.object({
 const sectionSchema = z.object({
 	id: z.string(),
 	kind: z.string(),
-	content_md: z.string(),
+	content_md: z.string().nullable(),
 	meta: z.unknown().nullable(),
 	position: z.number().nullable(),
 	created_at: z.string().nullable(),
@@ -469,7 +465,7 @@ export const fetchProjectStatusContextTool = createTool({
 		const runtimeProjectId = context?.requestContext?.get?.("project_id");
 		const runtimeAccountId = context?.requestContext?.get?.("account_id");
 
-		const projectId = (input.projectId ?? runtimeProjectId ?? "").trim();
+		const projectId = trimToString(input.projectId ?? runtimeProjectId);
 		const runtimeAccountIdString = runtimeAccountId ? String(runtimeAccountId).trim() : undefined;
 		const scopes = (input.scopes && input.scopes.length > 0 ? input.scopes : defaultDetailScopes) as DetailScope[];
 		const includeEvidence = input.includeEvidence ?? scopes.includes("evidence");
@@ -634,8 +630,8 @@ export const fetchProjectStatusContextTool = createTool({
 
 					if (error) throw error;
 
-					const serialized: SectionPayload[] =
-						sections?.map((section: ProjectSectionRow) => ({
+						const serialized: SectionPayload[] =
+							(sections ?? []).map((section) => ({
 							id: section.id,
 							kind: section.kind,
 							content_md: section.content_md,
@@ -665,28 +661,36 @@ export const fetchProjectStatusContextTool = createTool({
 
 					if (error) throw error;
 
-					const insightIds = insights?.map((insight) => insight.id) || [];
-					const priorityMap = new Map<string, number>();
-					if (insightIds.length) {
-						const { data: priorityRows } = await supabase
-							.from("insights_with_priority")
-							.select("id, priority")
-							.in("id", insightIds);
-						priorityRows?.forEach((row) => priorityMap.set(row.id, row.priority ?? 0));
-					}
-					const { data: tagsRows } =
-						insightIds.length > 0
-							? await supabase.from("insight_tags").select("insight_id, tags(tag)").in("insight_id", insightIds)
-							: { data: [], error: null };
+						const insightIds = (insights ?? []).map((insight) => insight.id);
+						const priorityMap = new Map<string, number>();
+						if (insightIds.length) {
+							const { data: priorityRows } = await (supabase as any)
+								.from("insights_with_priority")
+								.select("id, priority")
+								.in("id", insightIds);
+							for (const row of ((priorityRows ?? []) as unknown as Array<{ id: string; priority: number | null }>)) {
+								priorityMap.set(row.id, row.priority ?? 0);
+							}
+						}
+						const { data: tagsRows } =
+							insightIds.length > 0
+								? await supabase.from("insight_tags").select("insight_id, tags(tag)").in("insight_id", insightIds)
+								: { data: [] };
 
-					const tagsMap = new Map<string, string[]>();
-					(tagsRows || []).forEach((row) => {
-						if (!row.insight_id || !row.tags?.tag) return;
-						tagsMap.set(row.insight_id, [...(tagsMap.get(row.insight_id) || []), row.tags.tag]);
-					});
+						const tagsMap = new Map<string, string[]>();
+						for (const row of (tagsRows ?? []) as Array<{
+							insight_id: string | null;
+							tags?: { tag?: string | null } | Array<{ tag?: string | null }> | null;
+						}>) {
+							if (!row.insight_id) continue;
+							const tagRows = Array.isArray(row.tags) ? row.tags : row.tags ? [row.tags] : [];
+							for (const tagRow of tagRows) {
+								if (!tagRow?.tag) continue;
+								tagsMap.set(row.insight_id, [...(tagsMap.get(row.insight_id) || []), tagRow.tag]);
+							}
+						}
 
-					const serialized: InsightPayload[] =
-						insights?.map((insight: InsightRow) => {
+						const serialized = (insights ?? []).map((insight) => {
 							const tags = Array.from(new Set(tagsMap.get(insight.id) || []));
 							return {
 								id: insight.id,
@@ -715,7 +719,7 @@ export const fetchProjectStatusContextTool = createTool({
 								updated_at: normalizeDate(insight.updated_at),
 								url: projectPath ? `${HOST}${routes.insights.detail(insight.id)}` : null,
 							};
-						}) ?? [];
+							}) as InsightPayload[];
 
 					data.insights = serialized;
 				} catch (error) {
@@ -744,7 +748,7 @@ export const fetchProjectStatusContextTool = createTool({
 						if (error) throw error;
 
 						const serialized: EvidencePayload[] =
-							evidence?.map((item: EvidenceRow) => ({
+							(evidence ?? []).map((item) => ({
 								id: item.id,
 								gist: item.gist ?? null,
 								verbatim: item.verbatim ?? null,
@@ -766,7 +770,7 @@ export const fetchProjectStatusContextTool = createTool({
 								gains: toStringArray(item.gains),
 								anchors: item.anchors ?? undefined,
 								url: projectPath ? `${HOST}${routes.evidence.detail(item.id)}` : null,
-							})) ?? [];
+							}));
 
 						data.evidence = serialized;
 					} catch (error) {
@@ -789,7 +793,7 @@ export const fetchProjectStatusContextTool = createTool({
 
 					if (error) throw error;
 
-					const themeRows: ThemeRow[] = themes ?? [];
+					const themeRows = themes ?? [];
 					const themeIds = themeRows.map((theme) => theme.id);
 					const themeEvidenceMap = new Map<string, ThemePayload["evidence"]>();
 					const themeEvidenceCount = new Map<string, number>();
@@ -951,44 +955,38 @@ export const fetchProjectStatusContextTool = createTool({
 						}
 					}
 
-					const serialized: PersonPayload[] = peopleRows.map((row) => {
-						const person = row.person;
-						const personas =
-							person?.people_personas
-								?.map((entry) => entry?.personas)
-								.filter((persona): persona is Database["public"]["Tables"]["personas"]["Row"] => Boolean(persona))
-								.map((persona) => ({
-									id: persona.id,
-									name: persona.name ?? null,
-									color_hex: (persona as { color_hex?: string | null })?.color_hex ?? null,
-								})) ?? [];
+					type PersonInterviewSummary = NonNullable<PersonPayload["interviews"]>[number];
+					const serialized = peopleRows
+						.map((row) => {
+							const person = row.person;
+							const personas =
+								person?.people_personas
+									?.map((entry) => entry?.personas)
+									.filter((persona): persona is Database["public"]["Tables"]["personas"]["Row"] => Boolean(persona))
+									.map((persona) => ({
+										id: persona.id,
+										name: persona.name ?? null,
+										color_hex: (persona as { color_hex?: string | null })?.color_hex ?? null,
+									})) ?? [];
 
-						const personId = person?.id ?? row.person_id;
-						const interviewsForPerson = (interviewPeopleMap.get(personId) ?? [])
-							.map((entry) => {
-								const interviewId = entry.interview_id ?? entry.interview?.id;
-								if (!interviewId) return null;
-								const interviewDate = normalizeDate(entry.interview?.interview_date);
-								const evidenceGroup = evidenceByInterview.get(interviewId) ?? [];
-								return {
-									id: interviewId,
-									title: entry.interview?.title ?? null,
-									interview_date: interviewDate,
-									status: entry.interview?.status ?? null,
-									evidenceCount: evidenceGroup.length,
-								};
-							})
-							.filter(
-								(
-									entry
-								): entry is {
-									id: string;
-									title: string | null;
-									interview_date: string | null;
-									status: string | null;
-									evidenceCount: number;
-								} => Boolean(entry)
-							);
+							const personId = person?.id ?? row.person_id;
+							if (!personId) return null;
+							const interviewsForPerson = (interviewPeopleMap.get(personId) ?? [])
+								.map((entry) => {
+									const linkedInterview = entry.interview;
+									const interviewId = entry.interview_id ?? linkedInterview?.id;
+									if (!interviewId) return null;
+									const interviewDate = normalizeDate(linkedInterview?.interview_date);
+									const evidenceGroup = evidenceByInterview.get(interviewId) ?? [];
+									return {
+										id: interviewId,
+										title: linkedInterview?.title ?? null,
+										interview_date: interviewDate,
+										status: linkedInterview?.status ?? null,
+										evidenceCount: evidenceGroup.length,
+									};
+								})
+								.filter(Boolean) as PersonInterviewSummary[];
 
 						let evidenceSnippets: PersonEvidencePayload[] | undefined;
 						if (includePersonEvidence && interviewsForPerson.length > 0) {
@@ -1017,33 +1015,34 @@ export const fetchProjectStatusContextTool = createTool({
 							}
 						}
 
-						return {
-							personId,
-							name: person?.name ?? null,
-							segment: person?.segment ?? null,
-							jobFunction: person?.job_function ?? null,
-							title: (person as { title?: string | null })?.title ?? null,
-							company: resolveOrganizationName(person?.default_organization) ?? null,
-							description: person?.description ?? null,
-							location: person?.location ?? null,
-							image_url: person?.image_url ?? null,
-							firstSeenAt: normalizeDate(row.first_seen_at),
-							lastSeenAt: normalizeDate(row.last_seen_at),
-							interviewCount: row.interview_count ?? null,
-							personas,
-							contactInfo: person?.contact_info ?? null,
-							interviews: interviewsForPerson.length > 0 ? interviewsForPerson : undefined,
-							evidence: evidenceSnippets,
-							icpMatch: icpByPerson.get(personId)
-								? {
-										band: icpByPerson.get(personId)!.band,
-										score: icpByPerson.get(personId)!.score,
-										confidence: icpByPerson.get(personId)!.confidence,
-									}
-								: null,
-							url: projectPath ? `${HOST}${routes.people.detail(personId)}` : null,
-						};
-					});
+							return {
+								personId,
+								name: person?.name ?? null,
+								segment: person?.segment ?? null,
+								jobFunction: person?.job_function ?? null,
+								title: (person as { title?: string | null })?.title ?? null,
+								company: resolveOrganizationName(person?.default_organization) ?? null,
+								description: person?.description ?? null,
+								location: person?.location ?? null,
+								image_url: person?.image_url ?? null,
+								firstSeenAt: normalizeDate(row.first_seen_at),
+								lastSeenAt: normalizeDate(row.last_seen_at),
+								interviewCount: row.interview_count ?? null,
+								personas,
+								contactInfo: person?.contact_info ?? null,
+								interviews: interviewsForPerson.length > 0 ? interviewsForPerson : undefined,
+								evidence: evidenceSnippets,
+								icpMatch: icpByPerson.get(personId)
+									? {
+											band: icpByPerson.get(personId)!.band,
+											score: icpByPerson.get(personId)!.score,
+											confidence: icpByPerson.get(personId)!.confidence,
+										}
+									: null,
+								url: projectPath ? `${HOST}${routes.people.detail(personId)}` : null,
+							};
+						})
+						.filter(Boolean) as PersonPayload[];
 
 					data.people = serialized;
 
@@ -1124,7 +1123,7 @@ export const fetchProjectStatusContextTool = createTool({
 
 					if (error) throw error;
 
-					const personaRows: PersonaRow[] = personas ?? [];
+					const personaRows = personas ?? [];
 					const personaIds = personaRows.map((persona) => persona.id);
 					const personaInsightMap = new Map<string, Set<string>>();
 					const personaPeopleMap = new Map<
@@ -1260,8 +1259,7 @@ export const fetchProjectStatusContextTool = createTool({
 						insightMap.set(row.interview_id, (insightMap.get(row.interview_id) || 0) + 1);
 					});
 
-					const serialized: InterviewPayload[] =
-						(interviews as InterviewRow[] | null)?.map((interview) => ({
+						const serialized: InterviewPayload[] = (interviews ?? []).map((interview) => ({
 							id: interview.id,
 							title: interview.title ?? null,
 							participant_pseudonym: interview.participant_pseudonym ?? null,
@@ -1273,7 +1271,7 @@ export const fetchProjectStatusContextTool = createTool({
 							evidenceCount: evidenceMap.get(interview.id) ?? 0,
 							insightCount: insightMap.get(interview.id) ?? 0,
 							url: projectPath ? `${HOST}${routes.interviews.detail(interview.id)}` : null,
-						})) ?? [];
+						}));
 
 					data.interviews = serialized;
 				} catch (error) {
