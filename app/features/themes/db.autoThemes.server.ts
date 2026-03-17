@@ -8,6 +8,7 @@ import {
 	systemBillingContext,
 } from "~/lib/billing";
 import { SIMILARITY_THRESHOLDS } from "~/lib/embeddings/openai.server";
+import { findLocalEvidenceMatchesForTheme, mergeThemeEvidenceMatches } from "~/lib/evidence/theme-linking.server";
 import type { SupabaseClient, Theme, Theme_EvidenceInsert, ThemeInsert } from "~/types";
 import { deleteOrphanedThemes } from "./services/segmentThemeQueries.server";
 
@@ -50,6 +51,8 @@ async function findSimilarEvidenceForTheme(
 // Input shape for evidence rows we pass to BAML. Mirrors columns in `public.evidence`.
 interface EvidenceForTheme {
 	id: string;
+	gist?: string | null;
+	chunk?: string | null;
 	verbatim: string;
 	kind_tags: string[] | null;
 	personas: string[] | null;
@@ -73,6 +76,14 @@ type AutoGroupThemesResult = {
 	themes: Theme[];
 };
 
+type ProposedThemeResult = {
+	name: string;
+	statement: string;
+	inclusion_criteria: string;
+	exclusion_criteria?: string | null;
+	synonyms?: string[];
+};
+
 // Select evidence rows to analyze
 async function loadEvidence(
 	supabase: SupabaseClient,
@@ -88,7 +99,7 @@ async function loadEvidence(
 
 	let query = supabase
 		.from("evidence")
-		.select("id, verbatim, personas, segments, journey_stage, support, is_question")
+		.select("id, gist, chunk, verbatim, personas, segments, journey_stage, support, is_question")
 		.eq("project_id", project_id)
 		.or("is_question.is.null,is_question.eq.false"); // Filter out interviewer questions
 
@@ -391,7 +402,7 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 	const analysisSettings = getProjectAnalysisSettings(projectData?.project_settings);
 
 	// 2) Call BAML
-	let resp;
+	let resp: { themes?: ProposedThemeResult[] } | undefined;
 	try {
 		const evidence_json = JSON.stringify(evidence);
 		consola.log("[autoGroupThemesAndApply] Calling BAML with evidence length:", evidence_json.length);
@@ -475,10 +486,19 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 		// Use semantic search to find evidence matching this theme
 		if (project_id) {
 			// Build search query from theme's statement and inclusion criteria
-			const searchQuery = [t.statement, t.inclusion_criteria, t.name].filter(Boolean).join(". ");
+			const searchQuery = [t.statement, t.inclusion_criteria, t.name, ...(t.synonyms ?? [])].filter(Boolean).join(". ");
 			consola.log(`[autoGroupThemesAndApply] Searching evidence for theme "${t.name}"...`);
 
 			try {
+				const localEvidenceMatches = findLocalEvidenceMatchesForTheme({
+					candidates: evidence,
+					themeName: t.name,
+					statement: t.statement ?? null,
+					inclusionCriteria: t.inclusion_criteria ?? null,
+					synonyms: t.synonyms ?? [],
+					limit: 12,
+				});
+
 				const similarEvidence = await findSimilarEvidenceForTheme(
 					supabase,
 					project_id,
@@ -488,21 +508,26 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 					50 // max matches per theme
 				);
 
-				consola.log(`[autoGroupThemesAndApply] Found ${similarEvidence.length} similar evidence for "${t.name}"`);
+				const evidenceMatches = mergeThemeEvidenceMatches(localEvidenceMatches, similarEvidence);
+
+				consola.log(
+					`[autoGroupThemesAndApply] Found ${evidenceMatches.length} total evidence matches for "${t.name}" ` +
+						`(${localEvidenceMatches.length} local, ${similarEvidence.length} semantic)`
+				);
 
 				// Create theme_evidence links for each match
-				for (const match of similarEvidence) {
+				for (const match of evidenceMatches) {
 					try {
 						await upsertThemeEvidence(supabase, {
 							account_id,
 							project_id,
 							theme_id: theme.id,
 							evidence_id: match.id,
-							rationale: `Semantic match (${Math.round(match.similarity * 100)}%)`,
-							confidence: match.similarity,
+							rationale: match.rationale,
+							confidence: match.confidence,
 						});
 						link_count += 1;
-					} catch (linkErr) {
+					} catch (_linkErr) {
 						// Silently skip - likely duplicate or FK error
 					}
 				}

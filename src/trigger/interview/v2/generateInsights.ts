@@ -26,6 +26,10 @@ import {
 } from "~/lib/billing";
 import { SIMILARITY_THRESHOLDS } from "~/lib/embeddings/openai.server";
 import { searchEvidenceForTheme } from "~/lib/evidence/semantic-search.server";
+import {
+	findLocalEvidenceMatchesForTheme,
+	mergeThemeEvidenceMatches,
+} from "~/lib/evidence/theme-linking.server";
 import { getProjectAnalysisSettings } from "~/features/projects/utils/analysisSettings";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { generateInterviewInsightsFromEvidenceCore } from "./extractEvidenceCore";
@@ -186,6 +190,18 @@ export const generateInsightsTaskV2 = task({
         details: string | null;
         evidence: string | null;
       }[] = [];
+      const { data: interviewEvidenceRows, error: evidenceLoadError } = await client
+        .from("evidence")
+        .select("id, gist, chunk, verbatim")
+        .in("id", evidenceIds);
+
+      if (evidenceLoadError) {
+        throw new Error(
+          `Failed to load evidence rows for insight linking: ${evidenceLoadError.message}`,
+        );
+      }
+
+      const candidateEvidenceRows = interviewEvidenceRows ?? [];
 
       for (const insight of insights.insights) {
         // 1. Check if theme with this exact name already exists in the project
@@ -354,20 +370,35 @@ export const generateInsightsTaskV2 = task({
               matchCount: 20,
             });
 
-            if (similarEvidence.length === 0) {
+            const localEvidenceMatches = findLocalEvidenceMatchesForTheme({
+              candidates: candidateEvidenceRows,
+              themeName: theme.name,
+              statement: theme.details,
+              inclusionCriteria: theme.evidence,
+              evidenceQuote: theme.evidence,
+              limit: 8,
+            });
+
+            const evidenceMatches = mergeThemeEvidenceMatches(
+              localEvidenceMatches,
+              similarEvidence,
+            );
+
+            if (evidenceMatches.length === 0) {
               consola.warn(
                 `[generateInsights] No matching evidence found for theme "${theme.name}" (query: "${searchQuery.substring(0, 100)}...")`,
               );
               themesWithNoLinks.push(theme.name);
             } else {
               consola.debug(
-                `[generateInsights] Found ${similarEvidence.length} matching evidence for theme "${theme.name}"`,
+                `[generateInsights] Found ${evidenceMatches.length} matching evidence for theme "${theme.name}" ` +
+                  `(${localEvidenceMatches.length} local, ${similarEvidence.length} semantic)`,
               );
             }
 
             // Create links with semantic confidence scores
             let linksCreatedForTheme = 0;
-            for (const match of similarEvidence) {
+            for (const match of evidenceMatches) {
               const { error: linkError } = await client
                 .from("theme_evidence")
                 .upsert(
@@ -376,8 +407,8 @@ export const generateInsightsTaskV2 = task({
                     project_id: interview.project_id,
                     theme_id: theme.id,
                     evidence_id: match.id,
-                    rationale: `Semantic match (${Math.round(match.similarity * 100)}%)`,
-                    confidence: match.similarity,
+                    rationale: match.rationale,
+                    confidence: match.confidence,
                   },
                   {
                     onConflict: "theme_id,evidence_id,account_id",
@@ -391,9 +422,9 @@ export const generateInsightsTaskV2 = task({
               }
             }
 
-            if (linksCreatedForTheme === 0 && similarEvidence.length > 0) {
+            if (linksCreatedForTheme === 0 && evidenceMatches.length > 0) {
               consola.warn(
-                `[generateInsights] Failed to create links for theme "${theme.name}" despite finding ${similarEvidence.length} matches`,
+                `[generateInsights] Failed to create links for theme "${theme.name}" despite finding ${evidenceMatches.length} matches`,
               );
               themesWithNoLinks.push(theme.name);
             }
