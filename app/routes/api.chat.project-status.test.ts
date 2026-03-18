@@ -508,7 +508,11 @@ describe("api.chat.project-status", () => {
 				description: "Understand who we serve and how StartupSD can improve.",
 				questions: [
 					{ prompt: "What best describes your role?", type: "single_select", options: ["Founder", "Service provider"] },
-					{ prompt: "How long have you been part of the community?", type: "single_select", options: ["<1 year", "1-3 years"] },
+					{
+						prompt: "How long have you been part of the community?",
+						type: "single_select",
+						options: ["<1 year", "1-3 years"],
+					},
 				],
 			},
 			usage: { inputTokens: 100, outputTokens: 50 },
@@ -537,7 +541,15 @@ describe("api.chat.project-status", () => {
 			likertScale: index === 6 ? 4 : null,
 			likertLabels: index === 6 ? { low: "Needs work", high: "Strong" } : null,
 			sectionId:
-				index < 2 ? "section_1" : index < 5 ? "section_a" : index < 8 ? "section_b" : index < 12 ? "section_c" : "section_d",
+				index < 2
+					? "section_1"
+					: index < 5
+						? "section_a"
+						: index < 8
+							? "section_b"
+							: index < 12
+								? "section_c"
+								: "section_d",
 			sectionTitle:
 				index < 2
 					? "Who You Are"
@@ -646,6 +658,142 @@ describe("api.chat.project-status", () => {
 			likertScale: 4,
 			helperText: "Scale: Strong | Adequate | Needs work | Haven't experienced",
 		});
+	});
+
+	it("applies journey routing to sectioned quick-create surveys", async () => {
+		mockedGenerateObject.mockResolvedValueOnce({
+			object: {
+				name: "StartupSD Community Survey 2026",
+				description: "Community health and needs.",
+				questions: [
+					{
+						id: "q1",
+						prompt: "What best describes your primary role?",
+						type: "single_select",
+						required: true,
+						options: ["Founder", "Service provider", "Investor"],
+						sectionId: "shared_intro",
+						sectionTitle: "Shared intro",
+					},
+					{
+						id: "q2",
+						prompt: "How long have you been part of the community?",
+						type: "single_select",
+						options: ["<1 year", "1-3 years", "3+ years"],
+						sectionId: "shared_intro",
+						sectionTitle: "Shared intro",
+					},
+					{
+						id: "q3",
+						prompt: "What stage is your startup at right now?",
+						type: "single_select",
+						options: ["Idea", "Revenue", "Not applicable"],
+						sectionId: "founder_path",
+						sectionTitle: "Founder path",
+					},
+					{
+						id: "q4",
+						prompt: "What are your top needs right now?",
+						type: "multi_select",
+						options: ["Funding", "Hiring", "Mentorship"],
+						sectionId: "founder_path",
+						sectionTitle: "Founder path",
+					},
+					{
+						id: "q5",
+						prompt: "What type of organization do you represent?",
+						type: "single_select",
+						options: ["Law firm", "Marketing", "Other"],
+						sectionId: "service_provider_path",
+						sectionTitle: "Service provider path",
+					},
+					{
+						id: "q6",
+						prompt: "What is your primary goal in engaging with StartupSD?",
+						type: "multi_select",
+						options: ["Business development", "Mentorship", "Brand visibility"],
+						sectionId: "service_provider_path",
+						sectionTitle: "Service provider path",
+					},
+					{
+						id: "q7",
+						prompt: "How would you rate the overall quality of StartupSD events?",
+						type: "single_select",
+						options: ["Excellent", "Good", "Fair", "Poor"],
+						sectionId: "shared_closing",
+						sectionTitle: "Shared closing",
+					},
+					{
+						id: "q8",
+						prompt: "If you could change one thing about StartupSD, what would it be?",
+						type: "long_text",
+						sectionId: "shared_closing",
+						sectionTitle: "Shared closing",
+					},
+				],
+				journey: {
+					decisionQuestionId: "q1",
+					routes: [
+						{
+							label: "Founders and operators",
+							matchValues: ["Founder", "Investor"],
+							targetSectionId: "founder_path",
+						},
+						{
+							label: "Service providers",
+							matchValues: ["Service provider"],
+							targetSectionId: "service_provider_path",
+						},
+					],
+					sharedClosingSectionIds: ["shared_closing"],
+				},
+			},
+			usage: { inputTokens: 240, outputTokens: 160 },
+		} as any);
+
+		const response = await action(
+			buildArgs({
+				message: "create a StartupSD community survey with role-based branching",
+			})
+		);
+
+		expect(response.status).toBe(200);
+		expect(mockedCreateSurveyTool.execute).toHaveBeenCalledTimes(1);
+		const call = mockedCreateSurveyTool.execute.mock.calls[0][0] as {
+			questions: Array<Record<string, any>>;
+		};
+
+		expect(call.questions[0].branching?.rules).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					action: "skip_to",
+					targetSectionId: "founder_path",
+					conditions: expect.objectContaining({
+						logic: "or",
+					}),
+				}),
+				expect.objectContaining({
+					action: "skip_to",
+					targetSectionId: "service_provider_path",
+				}),
+			])
+		);
+		expect(call.questions[3].branching?.rules).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					action: "skip_to",
+					targetSectionId: "shared_closing",
+				}),
+			])
+		);
+		expect(call.questions[5].branching?.rules).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					action: "skip_to",
+					targetSectionId: "shared_closing",
+				}),
+			])
+		);
 	});
 
 	it("routes how-to prompts to howtoAgent with ux_research_mode", async () => {
@@ -1308,7 +1456,8 @@ describe("api.chat.project-status", () => {
 		const response = await action(
 			buildArgs({
 				message: "update this survey to match my brief",
-				system: "View: Survey editor (surveyId=e6374753-10cf-49c9-9453-e0566a8be411) /a/acct-url/project-1/ask/e6374753-10cf-49c9-9453-e0566a8be411/edit",
+				system:
+					"View: Survey editor (surveyId=e6374753-10cf-49c9-9453-e0566a8be411) /a/acct-url/project-1/ask/e6374753-10cf-49c9-9453-e0566a8be411/edit",
 			})
 		);
 		expect(response.status).toBe(200);

@@ -186,6 +186,16 @@ const surveyQuestionBranchingDraftSchema = z.object({
 	rules: z.array(surveyBranchRuleDraftSchema),
 	defaultNext: z.string().min(1).nullish(),
 });
+const surveyJourneyRouteDraftSchema = z.object({
+	label: z.string().nullish(),
+	matchValues: z.array(z.string().min(1)).min(1),
+	targetSectionId: z.string().min(1),
+});
+const surveyJourneyDraftSchema = z.object({
+	decisionQuestionId: z.string().min(1),
+	routes: z.array(surveyJourneyRouteDraftSchema).min(1),
+	sharedClosingSectionIds: z.array(z.string().min(1)).nullish(),
+});
 const surveyQuestionDraftSchema = z
 	.object({
 		id: z.string().min(1).nullish(),
@@ -211,7 +221,152 @@ const surveyQuickCreateDraftSchema = z.object({
 	name: z.string().min(2),
 	description: z.string().nullish(),
 	questions: z.array(surveyQuestionDraftSchema).min(3).max(24),
+	journey: surveyJourneyDraftSchema.nullish(),
 });
+
+function slugifySurveyToken(input: string): string {
+	return input
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "")
+		.slice(0, 40);
+}
+
+function dedupeBranchRules(
+	rules: Array<{
+		id?: string | null;
+		conditions: {
+			logic: "and" | "or";
+			conditions: Array<{ questionId: string; operator: string; value?: string | string[] }>;
+		};
+		action: "skip_to" | "end_survey";
+		targetQuestionId?: string | null;
+		targetSectionId?: string | null;
+		label?: string | null;
+		naturalLanguage?: string | null;
+		summary?: string | null;
+		guidance?: string | null;
+		source?: "user_ui" | "user_voice" | "ai_generated" | null;
+		confidence?: "high" | "medium" | "low" | null;
+		createdAt?: string | null;
+	}>
+) {
+	const seen = new Set<string>();
+	return rules.filter((rule) => {
+		const key = JSON.stringify({
+			action: rule.action,
+			targetQuestionId: rule.targetQuestionId ?? null,
+			targetSectionId: rule.targetSectionId ?? null,
+			conditions: rule.conditions,
+		});
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+}
+
+function applyJourneyArchitectureToDraft(
+	draft: z.infer<typeof surveyQuickCreateDraftSchema>
+): z.infer<typeof surveyQuickCreateDraftSchema> {
+	if (!draft.journey) return draft;
+
+	const questions = draft.questions.map((question) => ({
+		...question,
+		branching: question.branching
+			? {
+					...question.branching,
+					rules: [...question.branching.rules],
+				}
+			: null,
+	}));
+	const questionById = new Map(questions.map((question) => [question.id ?? "", question] as const));
+	const decisionQuestion = questionById.get(draft.journey.decisionQuestionId);
+	const decisionQuestionId = decisionQuestion?.id;
+	if (!decisionQuestionId) {
+		return draft;
+	}
+
+	const sectionQuestionIds = new Map<string, string[]>();
+	for (const question of questions) {
+		const sectionId = question.sectionId?.trim();
+		const questionId = question.id?.trim();
+		if (!sectionId || !questionId) continue;
+		const existing = sectionQuestionIds.get(sectionId) ?? [];
+		existing.push(questionId);
+		sectionQuestionIds.set(sectionId, existing);
+	}
+
+	const routeRules = draft.journey.routes
+		.filter((route) => sectionQuestionIds.has(route.targetSectionId))
+		.map((route, index) => ({
+			id: `journey-route-${slugifySurveyToken(route.label ?? route.targetSectionId)}-${index + 1}`,
+			conditions: {
+				logic: "or" as const,
+				conditions: route.matchValues.map((value) => ({
+					questionId: decisionQuestionId,
+					operator: decisionQuestion.type === "multi_select" ? ("selected" as const) : ("equals" as const),
+					value,
+				})),
+			},
+			action: "skip_to" as const,
+			targetSectionId: route.targetSectionId,
+			label: route.label ?? `Route to ${route.targetSectionId}`,
+			summary: route.label ?? `Route to ${route.targetSectionId}`,
+			source: "ai_generated" as const,
+			confidence: "high" as const,
+		}));
+
+	if (routeRules.length > 0) {
+		decisionQuestion.branching = {
+			...(decisionQuestion.branching ?? {}),
+			rules: dedupeBranchRules([...(decisionQuestion.branching?.rules ?? []), ...routeRules]),
+		};
+	}
+
+	const firstSharedClosingSectionId = draft.journey.sharedClosingSectionIds?.[0];
+	if (!firstSharedClosingSectionId || !sectionQuestionIds.has(firstSharedClosingSectionId)) {
+		return {
+			...draft,
+			questions,
+		};
+	}
+
+	const routedSectionIds = Array.from(new Set(draft.journey.routes.map((route) => route.targetSectionId))).filter(
+		(sectionId) => sectionId !== firstSharedClosingSectionId && sectionQuestionIds.has(sectionId)
+	);
+
+	for (const sectionId of routedSectionIds) {
+		const questionIds = sectionQuestionIds.get(sectionId) ?? [];
+		const lastQuestionId = questionIds.at(-1);
+		if (!lastQuestionId) continue;
+		const lastQuestion = questionById.get(lastQuestionId);
+		if (!lastQuestion?.id) continue;
+
+		const rejoinRule = {
+			id: `journey-rejoin-${slugifySurveyToken(sectionId)}-to-${slugifySurveyToken(firstSharedClosingSectionId)}`,
+			conditions: {
+				logic: "and" as const,
+				conditions: [{ questionId: lastQuestion.id, operator: "answered" as const }],
+			},
+			action: "skip_to" as const,
+			targetSectionId: firstSharedClosingSectionId,
+			label: `Continue to ${firstSharedClosingSectionId}`,
+			summary: `Continue to ${firstSharedClosingSectionId}`,
+			source: "ai_generated" as const,
+			confidence: "high" as const,
+		};
+
+		lastQuestion.branching = {
+			...(lastQuestion.branching ?? {}),
+			rules: dedupeBranchRules([...(lastQuestion.branching?.rules ?? []), rejoinRule]),
+		};
+	}
+
+	return {
+		...draft,
+		questions,
+	};
+}
 
 function mapUsageToLangfuse(usage?: { inputTokens?: number; outputTokens?: number }) {
 	if (!usage) return { usage: undefined, usageDetails: undefined };
@@ -1307,26 +1462,30 @@ User request:
 Project context:
 ${options.systemContext || "No extra context."}
 
-Requirements:
+	Requirements:
 - If the user provides an explicit survey outline, numbered questions, sections, options, or branching, preserve that structure faithfully instead of summarizing it.
 - Keep the total question count close to the user's explicit brief. Do not collapse a detailed 10-20 question survey into a short starter survey.
+- Prefer a block journey architecture when segments diverge: shared intro -> conditional path blocks -> shared closing block.
 - Use question types that match intent (auto, short_text, long_text, single_select, multi_select, likert).
 - Only include options for select questions.
 - Only include likertScale/likertLabels for likert questions.
 - For matrix questions, convert each row into its own likert question under the same sectionTitle and use helperText to preserve the shared scale wording.
 - Include sectionId and sectionTitle whenever the brief is organized into sections.
 - Include branching whenever the brief specifies conditional paths. Prefer targetSectionId-based skip rules for screeners and branch exit points.
+- When the brief implies block routing, include a journey object with decisionQuestionId, routes, and sharedClosingSectionIds so the survey can be post-processed into reliable section routing.
 - Preserve provided answer options and required flags.
 - Keep prompts concise and natural, but do not rewrite away the user's intent.
 - Survey must be immediately usable without follow-up.`,
 	});
 
+	const normalizedDraft = applyJourneyArchitectureToDraft(draft.object);
+
 	const created = await createSurveyTool.execute(
 		{
 			projectId: options.projectId,
-			name: draft.object.name,
-			description: draft.object.description ?? null,
-			questions: draft.object.questions,
+			name: normalizedDraft.name,
+			description: normalizedDraft.description ?? null,
+			questions: normalizedDraft.questions,
 			isLive: true,
 		},
 		{ requestContext: options.requestContext }
@@ -1348,8 +1507,8 @@ Requirements:
 		componentId: `survey-created-${created.surveyId ?? "new"}`,
 		data: {
 			surveyId: created.surveyId ?? "new-survey",
-			name: draft.object.name,
-			questionCount: created.questionCount ?? draft.object.questions.length,
+			name: normalizedDraft.name,
+			questionCount: created.questionCount ?? normalizedDraft.questions.length,
 			editUrl: editPath,
 			publicUrl,
 		},
@@ -1357,7 +1516,7 @@ Requirements:
 
 	return {
 		success: true,
-		text: `Created "${draft.object.name}". Opening it in Edit mode now: [Open survey](${editPath})`,
+		text: `Created "${normalizedDraft.name}". Opening it in Edit mode now: [Open survey](${editPath})`,
 		navigatePath: editPath,
 		a2uiMessages: surveyCardSurface.messages,
 		usage: draft.usage,
