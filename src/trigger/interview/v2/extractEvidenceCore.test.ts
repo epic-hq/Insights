@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { shouldSkipPersistedEvidenceTurn } from "./extractEvidenceCore";
 
 describe("extractEvidenceCore - person_id attribution", () => {
   // Mock data structures that mirror the actual code
@@ -153,5 +154,65 @@ describe("extractEvidenceCore - person_id attribution", () => {
 
     // No NULL time window, no fragile UPDATE
     expect(facetRowsNew.every((row) => row.person_id !== null)).toBe(true);
+  });
+});
+
+describe("extractEvidenceCore - evidence selection", () => {
+  it("skips interviewer research prompts that only move the conversation forward", () => {
+    expect(
+      shouldSkipPersistedEvidenceTurn({
+        chunk: "Okay. How about AI and things like that?",
+        gist: "asks about AI",
+        verb: "How about AI?",
+        facetMentionCount: 0,
+        isQuestion: true,
+        isInterviewerTurn: true,
+        interactionContext: "research",
+      }),
+    ).toBe(true);
+  });
+
+  it("skips low-signal acknowledgments with no facets", () => {
+    expect(
+      shouldSkipPersistedEvidenceTurn({
+        chunk: "Yeah.",
+        gist: "confirms",
+        verb: "Yeah.",
+        facetMentionCount: 0,
+        isQuestion: false,
+        isInterviewerTurn: false,
+        interactionContext: "research",
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps substantive participant evidence even when concise", () => {
+    expect(
+      shouldSkipPersistedEvidenceTurn({
+        chunk:
+          "I want the tool to pull in my sources and show me what's missing before I draft anything.",
+        gist: "wants source gap detection",
+        verb: "show me what's missing",
+        facetMentionCount: 2,
+        isQuestion: false,
+        isInterviewerTurn: false,
+        interactionContext: "research",
+      }),
+    ).toBe(false);
+  });
+
+  it("keeps non-procedural interviewer turns when they carry concrete signal", () => {
+    expect(
+      shouldSkipPersistedEvidenceTurn({
+        chunk:
+          "We usually see people abandon this workflow when the calendar step takes too long.",
+        gist: "workflow abandonment trigger",
+        verb: "abandon this workflow",
+        facetMentionCount: 1,
+        isQuestion: false,
+        isInterviewerTurn: true,
+        interactionContext: "research",
+      }),
+    ).toBe(false);
   });
 });

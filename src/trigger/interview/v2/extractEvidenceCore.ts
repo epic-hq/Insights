@@ -209,6 +209,80 @@ function sanitizeVerbatim(input: unknown): string | null {
   return cleaned.length ? cleaned : null;
 }
 
+function normalizeEvidenceText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const LOW_SIGNAL_EVIDENCE_PATTERNS: RegExp[] = [
+  /^(yeah|yes|yep|yup|okay|ok|cool|nice|sure|right|got it|sounds good)\.?$/i,
+  /^(all good|that sounds really smart)\.?$/i,
+  /^(thanks|thank you|thanks so much)(?:\b.*)?$/i,
+  /^(of course)(?:\b.*)?$/i,
+];
+
+const PROCEDURAL_QUESTION_PATTERNS: RegExp[] = [
+  /^(all good|can you|could you|do you pay|how much time do you spend|what subjects|how about ai|how did that go|walk me through)/i,
+];
+
+function isLowSignalEvidenceText(value: string): boolean {
+  const normalized = normalizeEvidenceText(value);
+  if (!normalized) return true;
+  return LOW_SIGNAL_EVIDENCE_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function isProceduralQuestionText(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return PROCEDURAL_QUESTION_PATTERNS.some((pattern) => pattern.test(trimmed));
+}
+
+export function shouldSkipPersistedEvidenceTurn(params: {
+  chunk: string;
+  gist: string;
+  verb: string;
+  facetMentionCount: number;
+  isQuestion: boolean;
+  isInterviewerTurn: boolean;
+  interactionContext:
+    | "research"
+    | "sales"
+    | "support"
+    | "internal"
+    | "debrief"
+    | "personal"
+    | null;
+}): boolean {
+  const {
+    chunk,
+    gist,
+    verb,
+    facetMentionCount,
+    isQuestion,
+    isInterviewerTurn,
+    interactionContext,
+  } = params;
+  const lowSignalText =
+    isLowSignalEvidenceText(chunk) ||
+    isLowSignalEvidenceText(verb) ||
+    isLowSignalEvidenceText(gist);
+  const isProceduralQuestion = isQuestion && isProceduralQuestionText(chunk);
+  const shouldSkipResearchPrompt =
+    interactionContext === "research" &&
+    isInterviewerTurn &&
+    (isQuestion || facetMentionCount === 0);
+  const shouldSkipLowSignalAck =
+    facetMentionCount === 0 &&
+    ((chunk.length < 90 && lowSignalText) ||
+      (isQuestion && chunk.length < 140) ||
+      isProceduralQuestion);
+
+  return shouldSkipResearchPrompt || shouldSkipLowSignalAck;
+}
+
 // Generate a stable, short signature for dedupe/independence.
 // Not cryptographically strong; sufficient to cluster near-duplicates.
 function stringHash(input: string): string {
@@ -1760,6 +1834,33 @@ export async function extractEvidenceAndPeopleCore({
       ? ((ev as { facet_mentions?: FacetMention[] })
           .facet_mentions as FacetMention[])
       : [];
+    const participant = participantByKey.get(personKey) ?? null;
+    const isInterviewerTurn = isLikelyInterviewerSpeaker(
+      participant?.speaker_label ?? null,
+      firstTranscriptSpeakerLabel,
+    );
+    if (
+      shouldSkipPersistedEvidenceTurn({
+        chunk,
+        gist,
+        verb,
+        facetMentionCount: facetMentions.length,
+        isQuestion: Boolean(ev.isQuestion),
+        isInterviewerTurn,
+        interactionContext,
+      })
+    ) {
+      consola.info("[extractEvidence] Skipping low-signal evidence turn", {
+        evidenceIndex,
+        personKey,
+        isInterviewerTurn,
+        isQuestion: ev.isQuestion ?? false,
+        interactionContext,
+        gist,
+        verb,
+      });
+      continue;
+    }
 
     if (facetMentions.length > 0) {
       consola.info(
