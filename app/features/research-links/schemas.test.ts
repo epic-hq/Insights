@@ -314,11 +314,11 @@ describe("ResearchLinkPayloadSchema — respondentFields", () => {
 		}
 	});
 
-	it("should be undefined when omitted (optional field)", () => {
+	it("should default to first_name + last_name when omitted", () => {
 		const result = ResearchLinkPayloadSchema.safeParse(basePayload);
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data.respondentFields).toBeUndefined();
+			expect(result.data.respondentFields).toEqual(["first_name", "last_name"]);
 		}
 	});
 

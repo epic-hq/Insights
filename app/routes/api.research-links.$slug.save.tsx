@@ -228,7 +228,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		}
 	}
 
-	return { ok: true };
+	return Response.json({ ok: true });
 }
 
 /**

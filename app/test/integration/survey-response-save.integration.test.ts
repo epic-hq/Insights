@@ -179,8 +179,9 @@ describe("Survey Response Save Integration", () => {
 				params: { slug: RESEARCH_LINK_SLUG },
 				context: {},
 			} as never);
-			expect(response).toBeDefined();
-			expect((response as { ok: boolean }).ok).toBe(true);
+			expect(response).toBeInstanceOf(Response);
+			expect((response as Response).status).toBe(200);
+			await expect((response as Response).json()).resolves.toEqual({ ok: true });
 		});
 
 		it("should mark the response as completed in DB", async () => {
@@ -263,8 +264,9 @@ describe("Survey Response Save Integration", () => {
 				params: { slug: RESEARCH_LINK_SLUG },
 				context: {},
 			} as never);
-			expect(response).toBeDefined();
-			expect((response as { ok: boolean }).ok).toBe(true);
+			expect(response).toBeInstanceOf(Response);
+			expect((response as Response).status).toBe(200);
+			await expect((response as Response).json()).resolves.toEqual({ ok: true });
 		});
 
 		it("should create a person record from email", async () => {
@@ -433,7 +435,9 @@ describe("Survey Response Save Integration", () => {
 				params: { slug: RESEARCH_LINK_SLUG },
 				context: {},
 			} as never);
-			expect((response as { ok: boolean }).ok).toBe(true);
+			expect(response).toBeInstanceOf(Response);
+			expect((response as Response).status).toBe(200);
+			await expect((response as Response).json()).resolves.toEqual({ ok: true });
 
 			const { data } = await adminDb
 				.from("research_link_responses")
@@ -480,7 +484,9 @@ describe("Survey Response Save Integration", () => {
 				params: { slug: RESEARCH_LINK_SLUG },
 				context: {},
 			} as never);
-			expect((response as { ok: boolean }).ok).toBe(true);
+			expect(response).toBeInstanceOf(Response);
+			expect((response as Response).status).toBe(200);
+			await expect((response as Response).json()).resolves.toEqual({ ok: true });
 
 			const { data } = await adminDb
 				.from("research_link_responses")
@@ -530,7 +536,9 @@ describe("Survey Response Save Integration", () => {
 				params: { slug: RESEARCH_LINK_SLUG },
 				context: {},
 			} as never);
-			expect((response as { ok: boolean }).ok).toBe(true);
+			expect(response).toBeInstanceOf(Response);
+			expect((response as Response).status).toBe(200);
+			await expect((response as Response).json()).resolves.toEqual({ ok: true });
 
 			const { data } = await adminDb
 				.from("research_link_responses")
