@@ -31,7 +31,11 @@ import { Textarea } from "~/components/ui/textarea";
 import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button";
 import { getNextQuestionIndex, hasResponseValue } from "~/features/research-links/branching";
 import { VideoRecorder } from "~/features/research-links/components/VideoRecorder";
-import { COMPANY_SIZE_OPTIONS } from "~/features/research-links/respondent-fields";
+import {
+	RESPONDENT_FIELD_DEFINITION_MAP,
+	type RespondentFieldKey,
+	type RespondentFieldOption,
+} from "~/features/research-links/respondent-fields";
 import { type ResearchLinkQuestion, ResearchLinkQuestionSchema } from "~/features/research-links/schemas";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
@@ -583,11 +587,48 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		return { ...q, mediaUrl: presigned?.url ?? null };
 	});
 
+	const respondentFields = Array.isArray(list.respondent_fields)
+		? (list.respondent_fields as string[])
+		: list.collect_title
+			? ["first_name", "last_name", "company", "title"]
+			: ["first_name", "last_name", "company"];
+	const selectFieldDefinitions = respondentFields
+		.map((field) => RESPONDENT_FIELD_DEFINITION_MAP[field as RespondentFieldKey])
+		.filter(
+			(
+				field
+			): field is Extract<(typeof RESPONDENT_FIELD_DEFINITION_MAP)[RespondentFieldKey], { inputType: "select" }> =>
+				Boolean(field && field.inputType === "select" && field.facetKindSlug)
+		);
+
+	const respondentFieldOptions: Partial<Record<RespondentFieldKey, RespondentFieldOption[]>> = {};
+	const kindSlugs = Array.from(new Set(selectFieldDefinitions.map((field) => field.facetKindSlug)));
+	if (kindSlugs.length > 0) {
+		const { data: kindRows } = await supabase.from("facet_kind_global").select("id, slug").in("slug", kindSlugs);
+		const kindIdToSlug = new Map((kindRows ?? []).map((row) => [row.id, row.slug]));
+		const { data: globalRows } = await supabase
+			.from("facet_global")
+			.select("kind_id, slug, label")
+			.in("kind_id", Array.from(kindIdToSlug.keys()))
+			.order("label");
+
+		for (const field of selectFieldDefinitions) {
+			const options = (globalRows ?? [])
+				.filter((row) => kindIdToSlug.get(row.kind_id) === field.facetKindSlug)
+				.map((row) => ({
+					value: field.optionValueMode === "slug" ? row.slug : row.label,
+					label: row.label,
+				}));
+			respondentFieldOptions[field.key] = options;
+		}
+	}
+
 	return {
 		slug,
 		list,
 		questions: signedQuestions,
 		walkthroughSignedUrl,
+		respondentFieldOptions,
 	};
 }
 
@@ -623,6 +664,7 @@ type LoaderData = {
 	};
 	questions: Array<ResearchLinkQuestion>;
 	walkthroughSignedUrl: string | null;
+	respondentFieldOptions: Partial<Record<RespondentFieldKey, RespondentFieldOption[]>>;
 };
 
 type Stage = "email" | "phone" | "name" | "instructions" | "survey" | "video" | "complete";
@@ -696,7 +738,7 @@ async function saveProgress(
 }
 
 export default function ResearchLinkPage() {
-	const { slug, list, questions, walkthroughSignedUrl } = useLoaderData() as LoaderData;
+	const { slug, list, questions, walkthroughSignedUrl, respondentFieldOptions } = useLoaderData() as LoaderData;
 	const [searchParams] = useSearchParams();
 	const ffVoice = searchParams.get("ffVoice") === "true";
 	const emailId = useId();
@@ -745,6 +787,10 @@ export default function ResearchLinkPage() {
 	}, [list.respondent_fields, list.collect_title]);
 
 	const hasField = useCallback((key: string) => respondentFields.includes(key), [respondentFields]);
+	const getFieldOptions = useCallback(
+		(key: RespondentFieldKey) => respondentFieldOptions[key] ?? [],
+		[respondentFieldOptions]
+	);
 	const hasNameFields = hasField("first_name") || hasField("last_name");
 	const isEmailValid = emailSchema.safeParse(email).success;
 	const isPhoneValid = phoneSchema.safeParse(phone).success;
@@ -1743,13 +1789,32 @@ export default function ResearchLinkPage() {
 									<Label className="text-white/90">
 										Job Function <span className="text-white/40">(optional)</span>
 									</Label>
-									<Input
-										type="text"
-										value={jobFunction}
-										onChange={(e) => setJobFunction(e.target.value)}
-										placeholder="e.g., Product, Marketing, Operations"
-										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-									/>
+									{getFieldOptions("job_function").length > 0 ? (
+										<Select
+											value={jobFunction || "__empty__"}
+											onValueChange={(value) => setJobFunction(value === "__empty__" ? "" : value)}
+										>
+											<SelectTrigger className="border-white/10 bg-black/40 text-white">
+												<SelectValue placeholder="Select a job function" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="__empty__">Not specified</SelectItem>
+												{getFieldOptions("job_function").map((option) => (
+													<SelectItem key={option.value} value={option.value}>
+														{option.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									) : (
+										<Input
+											type="text"
+											value={jobFunction}
+											onChange={(e) => setJobFunction(e.target.value)}
+											placeholder="e.g., Product, Marketing, Operations"
+											className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+										/>
+									)}
 								</div>
 							)}
 
@@ -1758,13 +1823,32 @@ export default function ResearchLinkPage() {
 									<Label className="text-white/90">
 										Industry <span className="text-white/40">(optional)</span>
 									</Label>
-									<Input
-										type="text"
-										value={industry}
-										onChange={(e) => setIndustry(e.target.value)}
-										placeholder="e.g., Healthcare, FinTech, SaaS"
-										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-									/>
+									{getFieldOptions("industry").length > 0 ? (
+										<Select
+											value={industry || "__empty__"}
+											onValueChange={(value) => setIndustry(value === "__empty__" ? "" : value)}
+										>
+											<SelectTrigger className="border-white/10 bg-black/40 text-white">
+												<SelectValue placeholder="Select an industry" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="__empty__">Not specified</SelectItem>
+												{getFieldOptions("industry").map((option) => (
+													<SelectItem key={option.value} value={option.value}>
+														{option.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									) : (
+										<Input
+											type="text"
+											value={industry}
+											onChange={(e) => setIndustry(e.target.value)}
+											placeholder="e.g., Healthcare, FinTech, SaaS"
+											className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+										/>
+									)}
 								</div>
 							)}
 
@@ -1773,22 +1857,32 @@ export default function ResearchLinkPage() {
 									<Label className="text-white/90">
 										Company Size <span className="text-white/40">(optional)</span>
 									</Label>
-									<Select
-										value={companySize || "__empty__"}
-										onValueChange={(value) => setCompanySize(value === "__empty__" ? "" : value)}
-									>
-										<SelectTrigger className="border-white/10 bg-black/40 text-white">
-											<SelectValue placeholder="Select a size range" />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="__empty__">Not specified</SelectItem>
-											{COMPANY_SIZE_OPTIONS.map((option) => (
-												<SelectItem key={option.value} value={option.value}>
-													{option.label}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
+									{getFieldOptions("company_size").length > 0 ? (
+										<Select
+											value={companySize || "__empty__"}
+											onValueChange={(value) => setCompanySize(value === "__empty__" ? "" : value)}
+										>
+											<SelectTrigger className="border-white/10 bg-black/40 text-white">
+												<SelectValue placeholder="Select a size range" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="__empty__">Not specified</SelectItem>
+												{getFieldOptions("company_size").map((option) => (
+													<SelectItem key={option.value} value={option.value}>
+														{option.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									) : (
+										<Input
+											type="text"
+											value={companySize}
+											onChange={(e) => setCompanySize(e.target.value)}
+											placeholder="e.g., 51-200"
+											className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+										/>
+									)}
 								</div>
 							)}
 
