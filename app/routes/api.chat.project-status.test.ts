@@ -501,6 +501,32 @@ describe("api.chat.project-status", () => {
 		expect(call.agentId).toBe("projectStatusAgent");
 	});
 
+	it("routes explicit survey creation to quick-create even when already on a survey page", async () => {
+		mockedGenerateObject.mockResolvedValueOnce({
+			object: {
+				name: "StartupSD Community Survey 2026",
+				description: "Understand who we serve and how StartupSD can improve.",
+				questions: [
+					{ prompt: "What best describes your role?", type: "single_select", options: ["Founder", "Service provider"] },
+					{ prompt: "How long have you been part of the community?", type: "single_select", options: ["<1 year", "1-3 years"] },
+				],
+			},
+			usage: { inputTokens: 100, outputTokens: 50 },
+		} as any);
+
+		const response = await action(
+			buildArgs({
+				message: "create a new SSD-community survey based on this brief",
+				system:
+					"View: Survey editor (surveyId=e6374753-10cf-49c9-9453-e0566a8be411) /a/acct-url/project-1/ask/e6374753-10cf-49c9-9453-e0566a8be411/edit",
+			})
+		);
+
+		expect(response.status).toBe(200);
+		expect(mockedCreateSurveyTool.execute).toHaveBeenCalledTimes(1);
+		expect(mockedHandleChatStream).not.toHaveBeenCalled();
+	});
+
 	it("routes how-to prompts to howtoAgent with ux_research_mode", async () => {
 		const response = await action(buildArgs({ message: "How do I run better user interviews?" }));
 		expect(response.status).toBe(200);

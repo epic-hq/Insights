@@ -971,7 +971,20 @@ function routeByDeterministicPrompt(
 		};
 	}
 
-	// Survey editing/review → surveyAgent (must be checked BEFORE creation)
+	const asksForSurveyCreate =
+		hasAny("survey", "waitlist", "ask link", "questionnaire") &&
+		hasAny("create", "make", "build", "draft", "generate") &&
+		!looksLikeFailureReport;
+	if (asksForSurveyCreate) {
+		return {
+			targetAgentId: "researchAgent",
+			confidence: 1,
+			responseMode: "survey_quick_create",
+			rationale: "deterministic routing for direct survey creation",
+		};
+	}
+
+	// Survey editing/review → surveyAgent
 	const surveyIdFromContext = extractSurveyIdFromSystemContext(systemContext);
 	const asksForSurveyEdit =
 		hasAny("survey", "ask link", "question", "questionnaire") &&
@@ -1024,19 +1037,6 @@ function routeByDeterministicPrompt(
 			confidence: 0.9,
 			responseMode: "normal",
 			rationale: "deterministic routing: user is on survey page (catch-all)",
-		};
-	}
-
-	const asksForSurveyCreate =
-		hasAny("survey", "waitlist", "ask link", "questionnaire") &&
-		hasAny("create", "make", "build", "draft", "generate") &&
-		!looksLikeFailureReport;
-	if (asksForSurveyCreate) {
-		return {
-			targetAgentId: "researchAgent",
-			confidence: 1,
-			responseMode: "survey_quick_create",
-			rationale: "deterministic routing for direct survey creation",
 		};
 	}
 
