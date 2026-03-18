@@ -16,6 +16,7 @@ const TIME_BY_TYPE: Record<string, number> = {
 	single_select: 15,
 	multi_select: 20,
 	likert: 12,
+	matrix: 30,
 	image_select: 25,
 	auto: 30,
 };

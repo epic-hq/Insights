@@ -38,7 +38,7 @@ describe("summarizeSurveyFlow", () => {
 		expect(summary.hasBranching).toBe(false);
 		expect(summary.paths).toHaveLength(1);
 		expect(summary.paths[0]?.questionCount).toBe(3);
-		expect(formatFlowRangeLabel(summary)).toContain("questions/path");
+		expect(formatFlowRangeLabel(summary)).toContain("questions");
 	});
 
 	it("builds per-target path summaries from early decision point", () => {
@@ -118,5 +118,164 @@ describe("summarizeSurveyFlow", () => {
 		const breakdown = formatPathBreakdown(summary);
 		expect(breakdown).toContain("Path A");
 		expect(breakdown).toContain("Path B");
+	});
+
+	it("treats defaultNext as a real alternate branch path", () => {
+		const questions: ResearchLinkQuestion[] = [
+			makeQuestion({
+				id: "q1",
+				prompt: "Role",
+				type: "single_select",
+				options: ["Founder", "Service provider"],
+				sectionId: "intro",
+				sectionTitle: "Intro",
+				branching: {
+					rules: [
+						{
+							id: "service-provider-path",
+							action: "skip_to",
+							targetSectionId: "service_path",
+							conditions: {
+								logic: "or",
+								conditions: [{ questionId: "q1", operator: "equals", value: "Service provider" }],
+							},
+						},
+					],
+					defaultNext: "q2",
+				},
+			}),
+			makeQuestion({
+				id: "q2",
+				prompt: "Founder need",
+				type: "short_text",
+				sectionId: "founder_path",
+				sectionTitle: "Founder path",
+				branching: {
+					rules: [
+						{
+							id: "founder-rejoin",
+							action: "skip_to",
+							targetSectionId: "shared_close",
+							conditions: {
+								logic: "or",
+								conditions: [{ questionId: "q1", operator: "not_equals", value: "Service provider" }],
+							},
+						},
+					],
+				},
+			}),
+			makeQuestion({
+				id: "q3",
+				prompt: "Service provider need",
+				type: "short_text",
+				sectionId: "service_path",
+				sectionTitle: "Service path",
+				branching: {
+					rules: [
+						{
+							id: "service-rejoin",
+							action: "skip_to",
+							targetSectionId: "shared_close",
+							conditions: {
+								logic: "or",
+								conditions: [{ questionId: "q1", operator: "equals", value: "Service provider" }],
+							},
+						},
+					],
+				},
+			}),
+			makeQuestion({
+				id: "q4",
+				prompt: "Shared close",
+				type: "long_text",
+				sectionId: "shared_close",
+				sectionTitle: "Shared close",
+			}),
+		];
+
+		const summary = summarizeSurveyFlow(questions);
+		expect(summary.hasBranching).toBe(true);
+		expect(summary.paths).toHaveLength(2);
+		expect(summary.minQuestions).toBe(3);
+		expect(summary.maxQuestions).toBe(3);
+	});
+
+	it("treats answered-based rejoin rules as part of the path estimate", () => {
+		const questions: ResearchLinkQuestion[] = [
+			makeQuestion({
+				id: "q1",
+				prompt: "Role",
+				type: "single_select",
+				options: ["Founder", "Service provider"],
+				branching: {
+					rules: [
+						{
+							id: "route-service",
+							action: "skip_to",
+							targetSectionId: "service_path",
+							conditions: {
+								logic: "or",
+								conditions: [{ questionId: "q1", operator: "equals", value: "Service provider" }],
+							},
+						},
+					],
+					defaultNext: "q2",
+				},
+			}),
+			makeQuestion({
+				id: "q2",
+				prompt: "Founder 1",
+				type: "short_text",
+				sectionId: "founder_path",
+				sectionTitle: "Founder path",
+			}),
+			makeQuestion({
+				id: "q3",
+				prompt: "Founder 2",
+				type: "short_text",
+				sectionId: "founder_path",
+				sectionTitle: "Founder path",
+				branching: {
+					rules: [
+						{
+							id: "founder-close",
+							action: "skip_to",
+							targetSectionId: "shared_close",
+							conditions: {
+								logic: "or",
+								conditions: [{ questionId: "q3", operator: "answered" }],
+							},
+						},
+					],
+				},
+			}),
+			makeQuestion({
+				id: "q4",
+				prompt: "Service 1",
+				type: "short_text",
+				sectionId: "service_path",
+				sectionTitle: "Service path",
+			}),
+			makeQuestion({
+				id: "q5",
+				prompt: "Service 2",
+				type: "short_text",
+				sectionId: "service_path",
+				sectionTitle: "Service path",
+			}),
+			makeQuestion({
+				id: "q6",
+				prompt: "Shared close",
+				type: "long_text",
+				sectionId: "shared_close",
+				sectionTitle: "Shared close",
+			}),
+		];
+
+		const summary = summarizeSurveyFlow(questions);
+		expect(summary.hasBranching).toBe(true);
+		expect(summary.paths).toHaveLength(2);
+		expect(summary.minQuestions).toBe(4);
+		expect(summary.maxQuestions).toBe(4);
 	});
 });

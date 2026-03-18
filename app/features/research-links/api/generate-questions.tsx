@@ -73,6 +73,7 @@ Survey design guidelines:
 - Avoid yes/no unless it is a true screener
 - Each question should provide unique insight (no redundancy)
 - Keep cognitive load low; avoid long or compound questions
+- Never add respondent-facing phrases like "Optional but encouraged"
 ${customPrompt ? "- Follow the user's specific instructions above" : ""}
 
 Generate questions that maximize completion rate and produce actionable insights.`,

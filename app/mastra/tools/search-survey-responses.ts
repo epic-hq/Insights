@@ -17,6 +17,7 @@ const QuestionTypeEnum = z.enum([
 	"single_select",
 	"multi_select",
 	"likert",
+	"matrix",
 	"image_select",
 ]);
 
@@ -29,12 +30,20 @@ interface QuestionDefinition {
 	options?: string[] | null;
 	likertScale?: number | null;
 	likertLabels?: { low?: string; high?: string } | null;
+	matrixRows?: Array<{ id: string; label: string }> | null;
 }
 
 interface QuestionStats {
 	average?: number;
 	distribution?: Record<string, number>;
 	percentages?: Record<string, number>;
+	matrixRows?: Array<{
+		id: string;
+		label: string;
+		average: number | null;
+		distribution: Record<string, number>;
+		percentages: Record<string, number>;
+	}>;
 }
 
 interface TextResponse {
@@ -142,6 +151,17 @@ MANDATORY LINKING RULES:
 								average: z.number().optional(),
 								distribution: z.record(z.string(), z.number()).optional(),
 								percentages: z.record(z.string(), z.number()).optional(),
+								matrixRows: z
+									.array(
+										z.object({
+											id: z.string(),
+											label: z.string(),
+											average: z.number().nullable(),
+											distribution: z.record(z.string(), z.number()),
+											percentages: z.record(z.string(), z.number()),
+										})
+									)
+									.optional(),
 							})
 							.optional(),
 						textResponses: z
@@ -175,7 +195,7 @@ MANDATORY LINKING RULES:
 			// Allow input.projectId to override if provided
 			projectId = input.projectId ?? resolved.projectId;
 			projectPath = `/a/${accountId}/${projectId}`;
-		} catch (error) {
+		} catch (_error) {
 			// If context resolution fails, try to use input.projectId as fallback
 			const runtimeProjectId = context?.requestContext?.get?.("project_id");
 			projectId = input.projectId ?? ((runtimeProjectId ? String(runtimeProjectId).trim() : null) as string);
@@ -437,6 +457,52 @@ function aggregateQuestionResponses(
 					average: Math.round(average * 100) / 100,
 					distribution,
 					percentages,
+				};
+			}
+			break;
+		}
+
+		case "matrix": {
+			const scale = question.likertScale ?? 5;
+			const matrixRows = (question.matrixRows ?? []).map((row) => {
+				const numericValues = answers
+					.map((answer) => {
+						if (!answer.value || typeof answer.value !== "object" || Array.isArray(answer.value)) return null;
+						const rowValue = (answer.value as Record<string, unknown>)[row.id];
+						const parsed = typeof rowValue === "number" ? rowValue : Number.parseInt(String(rowValue), 10);
+						return Number.isNaN(parsed) ? null : parsed;
+					})
+					.filter((value): value is number => value !== null);
+
+				const distribution: Record<string, number> = {};
+				for (let i = 1; i <= scale; i++) {
+					distribution[String(i)] = 0;
+				}
+
+				for (const value of numericValues) {
+					distribution[String(value)] = (distribution[String(value)] ?? 0) + 1;
+				}
+
+				const percentages: Record<string, number> = {};
+				for (const [key, count] of Object.entries(distribution)) {
+					percentages[key] = numericValues.length > 0 ? Math.round((count / numericValues.length) * 100) : 0;
+				}
+
+				return {
+					id: row.id,
+					label: row.label,
+					average:
+						numericValues.length > 0
+							? Math.round((numericValues.reduce((sum, value) => sum + value, 0) / numericValues.length) * 100) / 100
+							: null,
+					distribution,
+					percentages,
+				};
+			});
+
+			if (matrixRows.length > 0) {
+				summary.stats = {
+					matrixRows,
 				};
 			}
 			break;

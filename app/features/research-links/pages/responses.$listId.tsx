@@ -48,7 +48,7 @@ interface QuestionStats {
 	questionText: string;
 	questionType: string;
 	/** Inferred type used for display (handles "auto" → actual type) */
-	effectiveType: "likert" | "single_select" | "multi_select" | "text";
+	effectiveType: "likert" | "matrix" | "single_select" | "multi_select" | "text";
 	responseCount: number;
 	totalResponses: number;
 	/** For numeric/likert questions */
@@ -58,6 +58,16 @@ interface QuestionStats {
 		max: number;
 		scale: number; // The max scale value (e.g., 5 for 1-5)
 		distribution: Record<number, number>; // value -> count
+	};
+	matrix?: {
+		scale: number;
+		rows: Array<{
+			id: string;
+			label: string;
+			average: number | null;
+			responseCount: number;
+			distribution: Record<number, number>;
+		}>;
 	};
 	/** For single/multi select questions */
 	choices?: {
@@ -102,8 +112,9 @@ interface SavedAiAnalysis {
 }
 
 /** Map question type string to effective display type */
-function mapQuestionType(type: string): "likert" | "single_select" | "multi_select" | "text" {
+function mapQuestionType(type: string): "likert" | "matrix" | "single_select" | "multi_select" | "text" {
 	if (type === "likert") return "likert";
+	if (type === "matrix") return "matrix";
 	if (type === "single_select" || type === "image_select") return "single_select";
 	if (type === "multi_select") return "multi_select";
 	return "text";
@@ -116,9 +127,10 @@ function mapQuestionType(type: string): "likert" | "single_select" | "multi_sele
 function inferEffectiveType(
 	question: ResearchLinkQuestion,
 	answers: unknown[]
-): "likert" | "single_select" | "multi_select" | "text" {
+): "likert" | "matrix" | "single_select" | "multi_select" | "text" {
 	// Explicit types map directly
 	if (question.type === "likert") return "likert";
+	if (question.type === "matrix") return "matrix";
 	if (question.type === "single_select" || question.type === "image_select") return "single_select";
 	if (question.type === "multi_select") return "multi_select";
 	if (question.type === "short_text" || question.type === "long_text") return "text";
@@ -131,6 +143,7 @@ function inferEffectiveType(
 	}
 
 	// If question has likert config, it's likert
+	if (question.matrixRows?.length) return "matrix";
 	if (question.likertScale) return "likert";
 
 	// Check if all non-empty responses are numeric
@@ -193,6 +206,41 @@ function computeQuestionStats(
 					distribution,
 				};
 			}
+		} else if (effectiveType === "matrix") {
+			const rows = question.matrixRows ?? [];
+			const scale = question.likertScale ?? 5;
+			base.matrix = {
+				scale,
+				rows: rows.map((row) => {
+					const numericAnswers = nonEmptyAnswers
+						.map((answer) => {
+							if (!answer || typeof answer !== "object" || Array.isArray(answer)) return Number.NaN;
+							const rowValue = (answer as Record<string, unknown>)[row.id];
+							return typeof rowValue === "number"
+								? rowValue
+								: typeof rowValue === "string"
+									? Number.parseFloat(rowValue)
+									: Number.NaN;
+						})
+						.filter((entry) => !Number.isNaN(entry));
+
+					const distribution: Record<number, number> = {};
+					for (const value of numericAnswers) {
+						distribution[value] = (distribution[value] || 0) + 1;
+					}
+
+					return {
+						id: row.id,
+						label: row.label,
+						average:
+							numericAnswers.length > 0
+								? numericAnswers.reduce((sum, entry) => sum + entry, 0) / numericAnswers.length
+								: null,
+						responseCount: numericAnswers.length,
+						distribution,
+					};
+				}),
+			};
 		} else if (effectiveType === "single_select" || effectiveType === "multi_select") {
 			const optionCounts: Record<string, number> = {};
 
@@ -694,8 +742,8 @@ function QuestionBreakdown({
 						</div>
 					</div>
 					<div className="space-y-1">
-						{Array.from({ length: stat.numeric.scale }, (_, i) => stat.numeric!.scale - i).map((value) => {
-							const count = stat.numeric!.distribution[value] || 0;
+						{Array.from({ length: stat.numeric.scale }, (_, i) => stat.numeric.scale - i).map((value) => {
+							const count = stat.numeric.distribution[value] || 0;
 							const pct = stat.responseCount > 0 ? Math.round((count / stat.responseCount) * 100) : 0;
 							return (
 								<div key={value} className="flex items-center gap-2 text-sm">
@@ -710,6 +758,37 @@ function QuestionBreakdown({
 							);
 						})}
 					</div>
+				</div>
+			)}
+
+			{stat.effectiveType === "matrix" && stat.matrix && (
+				<div className="space-y-3">
+					{stat.matrix.rows.map((row) => (
+						<div key={row.id} className="space-y-1.5">
+							<div className="flex items-center gap-3">
+								<span className="min-w-0 flex-1 text-sm">{row.label}</span>
+								<span className="font-semibold text-sm">{row.average != null ? row.average.toFixed(1) : "—"}</span>
+								<span className="text-muted-foreground text-xs">/ {stat.matrix?.scale}</span>
+							</div>
+							<div className="space-y-1">
+								{Array.from({ length: stat.matrix.scale }, (_, index) => stat.matrix.scale - index).map((value) => {
+									const count = row.distribution[value] || 0;
+									const pct = row.responseCount > 0 ? Math.round((count / row.responseCount) * 100) : 0;
+									return (
+										<div key={value} className="flex items-center gap-2 text-xs">
+											<span className="w-4 text-right font-medium">{value}</span>
+											<div className="h-3 flex-1 overflow-hidden rounded bg-muted">
+												<div className="h-full bg-primary/70" style={{ width: `${pct}%` }} />
+											</div>
+											<span className="w-14 text-right text-muted-foreground">
+												{pct}% ({count})
+											</span>
+										</div>
+									);
+								})}
+							</div>
+						</div>
+					))}
 				</div>
 			)}
 
@@ -862,7 +941,7 @@ export default function ResearchLinkResponsesPage() {
 		}
 		analyzeFetcher.submit(payload, {
 			method: "POST",
-			action: routes.ask.index() + "/api/analyze-responses",
+			action: `${routes.ask.index()}/api/analyze-responses`,
 		});
 		setShowCustomInstructions(false);
 	};
@@ -1632,17 +1711,19 @@ export default function ResearchLinkResponsesPage() {
 																};
 															})
 															.filter(Boolean)
-															.map((item, i) => (
-																<div
-																	key={i}
-																	className="rounded-lg border-muted-foreground/30 border-l-2 bg-muted/30 py-3 pr-3 pl-4"
-																>
-																	<p className="whitespace-pre-wrap text-base leading-relaxed">"{item!.answer}"</p>
-																	<p className="mt-1.5 text-muted-foreground text-sm">
-																		— {item!.name || item!.email || "Anonymous"}
-																	</p>
-																</div>
-															))}
+															.map((item, i) =>
+																item ? (
+																	<div
+																		key={i}
+																		className="rounded-lg border-muted-foreground/30 border-l-2 bg-muted/30 py-3 pr-3 pl-4"
+																	>
+																		<p className="whitespace-pre-wrap text-base leading-relaxed">"{item.answer}"</p>
+																		<p className="mt-1.5 text-muted-foreground text-sm">
+																			— {item.name || item.email || "Anonymous"}
+																		</p>
+																	</div>
+																) : null
+															)}
 													</div>
 												</div>
 											)}

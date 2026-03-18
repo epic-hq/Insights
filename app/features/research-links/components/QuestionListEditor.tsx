@@ -41,7 +41,12 @@ import type { ResearchLinkQuestion } from "../schemas";
 import { createEmptyQuestion } from "../schemas";
 import { buildSurveySectionGraph } from "../section-graph";
 import { DEFAULT_SECTION_ID, deriveSurveySections } from "../sections";
-import { formatFlowAverageLabel, formatPathBreakdown, summarizeSurveyFlow } from "../survey-flow";
+import {
+	formatFlowMinutesLabel,
+	formatFlowQuestionCountLabel,
+	formatPathBreakdown,
+	summarizeSurveyFlow,
+} from "../survey-flow";
 import { getMediaType, isR2Key } from "../utils";
 import { QuestionBranchingEditor } from "./QuestionBranchingEditor";
 import { QuestionMediaEditor } from "./QuestionMediaEditor";
@@ -72,6 +77,16 @@ function formatQuestionsForClipboard(questions: ResearchLinkQuestion[]): string 
 			const low = q.likertLabels?.low ?? "1";
 			const high = q.likertLabels?.high ?? String(scale);
 			lines.push(`   Scale 1–${scale}: ${low} → ${high}`);
+		}
+
+		if (q.type === "matrix" && q.matrixRows?.length) {
+			const scale = q.likertScale ?? 5;
+			const low = q.likertLabels?.low ?? "1";
+			const high = q.likertLabels?.high ?? String(scale);
+			lines.push(`   Matrix scale 1–${scale}: ${low} → ${high}`);
+			for (const row of q.matrixRows) {
+				lines.push(`   - ${row.label}`);
+			}
 		}
 	}
 	return lines.join("\n");
@@ -162,6 +177,7 @@ function questionTypeLabel(type: string): string {
 		single_select: "Select one",
 		multi_select: "Select many",
 		likert: "Likert scale",
+		matrix: "Matrix grid",
 		image_select: "Image select",
 	};
 	return labels[type] ?? type;
@@ -298,6 +314,7 @@ const QUESTION_SECONDS_BY_TYPE: Record<string, number> = {
 	single_select: 9,
 	multi_select: 14,
 	likert: 9,
+	matrix: 20,
 	image_select: 14,
 };
 const SURVEY_LENGTH_WARN_SECONDS = 5 * 60;
@@ -1024,6 +1041,16 @@ function QuestionEditDrawer({
 											low: "Strongly disagree",
 											high: "Strongly agree",
 										};
+									} else if (value === "matrix") {
+										updates.likertScale = draft.likertScale ?? 5;
+										updates.likertLabels = draft.likertLabels ?? {
+											low: "Needs work",
+											high: "Strong",
+										};
+										updates.matrixRows = draft.matrixRows ?? [
+											{ id: `${draft.id}_row_1`, label: "Row 1" },
+											{ id: `${draft.id}_row_2`, label: "Row 2" },
+										];
 									} else if (value === "image_select") {
 										updates.imageOptions = draft.imageOptions ?? [{ label: "", imageUrl: "" }];
 									}
@@ -1040,6 +1067,7 @@ function QuestionEditDrawer({
 									<SelectItem value="single_select">Select one</SelectItem>
 									<SelectItem value="multi_select">Select many</SelectItem>
 									<SelectItem value="likert">Likert scale</SelectItem>
+									<SelectItem value="matrix">Matrix grid</SelectItem>
 									<SelectItem value="image_select">Image select</SelectItem>
 								</SelectContent>
 							</Select>
@@ -1261,6 +1289,122 @@ function QuestionEditDrawer({
 									placeholder="High label (e.g., Strongly agree)"
 									className="h-8 text-xs"
 								/>
+							</div>
+						</div>
+					)}
+
+					{draft.type === "matrix" && (
+						<div className="space-y-4">
+							<div className="space-y-2">
+								<Label className="text-xs">Rows</Label>
+								<div className="space-y-2">
+									{(draft.matrixRows ?? []).map((row, rowIndex) => (
+										<div key={row.id} className="flex items-center gap-2">
+											<Input
+												value={row.label}
+												onChange={(e) => {
+													const nextRows = [...(draft.matrixRows ?? [])];
+													nextRows[rowIndex] = {
+														...nextRows[rowIndex],
+														label: e.target.value,
+													};
+													applyDraftUpdates({ matrixRows: nextRows }, "debounced");
+												}}
+												onBlur={() => flushPendingQuestionUpdates()}
+												placeholder={`Row ${rowIndex + 1}`}
+												className="h-8 text-xs"
+											/>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="h-7 w-7 shrink-0 opacity-60 hover:text-destructive hover:opacity-100"
+												onClick={() => {
+													const nextRows = (draft.matrixRows ?? []).filter((_, index) => index !== rowIndex);
+													applyDraftUpdates({
+														matrixRows: nextRows.length > 0 ? nextRows : [{ id: `${draft.id}_row_1`, label: "Row 1" }],
+													});
+												}}
+											>
+												<X className="h-3.5 w-3.5" />
+											</Button>
+										</div>
+									))}
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										className="h-7 text-muted-foreground text-xs hover:text-foreground"
+										onClick={() => {
+											const nextRows = [
+												...(draft.matrixRows ?? []),
+												{
+													id: `${draft.id}_row_${(draft.matrixRows?.length ?? 0) + 1}`,
+													label: "",
+												},
+											];
+											applyDraftUpdates({ matrixRows: nextRows });
+										}}
+									>
+										<Plus className="mr-1 h-3 w-3" /> Add row
+									</Button>
+								</div>
+							</div>
+
+							<div className="space-y-3">
+								<div className="flex items-center gap-2">
+									<Label className="text-xs">Scale</Label>
+									<Select
+										value={String(draft.likertScale ?? 5)}
+										onValueChange={(value) => applyDraftUpdates({ likertScale: Number(value) })}
+									>
+										<SelectTrigger className="h-8 w-20 text-xs">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="3">1-3</SelectItem>
+											<SelectItem value="4">1-4</SelectItem>
+											<SelectItem value="5">1-5</SelectItem>
+											<SelectItem value="7">1-7</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+								<div className="flex gap-2">
+									<Input
+										value={draft.likertLabels?.low ?? ""}
+										onChange={(e) =>
+											applyDraftUpdates(
+												{
+													likertLabels: {
+														...draft.likertLabels,
+														low: e.target.value || undefined,
+													},
+												},
+												"debounced"
+											)
+										}
+										onBlur={() => flushPendingQuestionUpdates()}
+										placeholder="Low label (e.g., Needs work)"
+										className="h-8 text-xs"
+									/>
+									<Input
+										value={draft.likertLabels?.high ?? ""}
+										onChange={(e) =>
+											applyDraftUpdates(
+												{
+													likertLabels: {
+														...draft.likertLabels,
+														high: e.target.value || undefined,
+													},
+												},
+												"debounced"
+											)
+										}
+										onBlur={() => flushPendingQuestionUpdates()}
+										placeholder="High label (e.g., Strong)"
+										className="h-8 text-xs"
+									/>
+								</div>
 							</div>
 						</div>
 					)}
@@ -1745,9 +1889,13 @@ export function QuestionListEditor({
 
 	const questionTypes = useMemo(() => questions.map((q) => q.type), [questions]);
 	const flowSummary = useMemo(() => summarizeSurveyFlow(questions), [questions]);
+	const flowCountLabel = useMemo(() => {
+		if (!flowSummary.hasBranching || flowSummary.paths.length < 2) return undefined;
+		return `Respondents see ${formatFlowQuestionCountLabel(flowSummary)}`;
+	}, [flowSummary]);
 	const flowEstimateLabel = useMemo(() => {
 		if (!flowSummary.hasBranching || flowSummary.paths.length < 2) return undefined;
-		return formatFlowAverageLabel(flowSummary);
+		return formatFlowMinutesLabel(flowSummary);
 	}, [flowSummary]);
 	const flowEstimateIsLong = flowSummary.hasBranching && flowSummary.maxSeconds > SURVEY_LENGTH_WARN_SECONDS;
 	const flowEstimateDebug = useMemo(() => {
@@ -1927,6 +2075,7 @@ export function QuestionListEditor({
 		<UnifiedQuestionList
 			count={questions.length}
 			questionTypes={questionTypes}
+			countLabelOverride={flowCountLabel}
 			timeLabelOverride={flowEstimateLabel}
 			timeIsLongOverride={flowEstimateLabel ? flowEstimateIsLong : undefined}
 			showTimeBar
@@ -1968,9 +2117,6 @@ export function QuestionListEditor({
 									{block.roleLabel}
 								</span>
 								<span className="max-w-[170px] truncate">{block.title}</span>
-								<span className="text-muted-foreground">
-									{block.questionCount}q • {block.estimatedMinutes}
-								</span>
 							</button>
 						))}
 					</div>
@@ -2089,9 +2235,6 @@ export function QuestionListEditor({
 											</>
 										)}
 									</div>
-									<span className="text-[10px] text-muted-foreground">
-										{sectionSummary.questionCount} questions • {sectionSummary.estimatedMinutes}
-									</span>
 								</div>
 							)}
 							{isSectionCollapsed ? null : (

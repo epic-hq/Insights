@@ -22,7 +22,7 @@ type ExistingResearchLink = Pick<ResearchLink, "id" | "name" | "account_id" | "p
 };
 
 type AdminSupabaseClient = ReturnType<typeof createSupabaseAdminClient>;
-const STRUCTURAL_QUESTION_TYPES = ["likert", "single_select", "multi_select", "image_select"];
+const STRUCTURAL_QUESTION_TYPES = ["likert", "matrix", "single_select", "multi_select", "image_select"];
 
 function coerceSupabaseRow<T>(value: unknown): T {
 	return value as T;
@@ -494,6 +494,7 @@ async function emitSurveyQuestionEvidenceAndFacets({
 	for (let i = 0; i < questions.length; i++) {
 		const question = questions[i];
 		if (!question.id || !question.prompt) continue;
+		if (question.type === "matrix") continue;
 
 		const answerText = normalizeSurveyAnswerValue(responses[question.id]);
 		if (!answerText) continue;

@@ -10,6 +10,7 @@ const QUESTION_SECONDS_BY_TYPE: Record<string, number> = {
 	single_select: 9,
 	multi_select: 14,
 	likert: 9,
+	matrix: 20,
 	image_select: 14,
 };
 
@@ -75,13 +76,18 @@ function simulatePath(
 	const questionById = new Map(activeQuestions.map((question) => [question.id, question]));
 	const visited: string[] = [];
 	const seen = new Set<string>();
+	const simulatedResponses: ResponseRecord = { ...seedResponses };
 	let currentQuestion = activeQuestions[0] ?? null;
 	let guard = 0;
 
 	while (currentQuestion && guard < activeQuestions.length * 4) {
 		visited.push(currentQuestion.id);
 		seen.add(currentQuestion.id);
-		const nextId = getNextQuestionId(currentQuestion, activeQuestions, seedResponses);
+		if (!(currentQuestion.id in simulatedResponses)) {
+			simulatedResponses[currentQuestion.id] =
+				currentQuestion.type === "multi_select" ? ["__simulated__"] : "__simulated__";
+		}
+		const nextId = getNextQuestionId(currentQuestion, activeQuestions, simulatedResponses);
 		if (!nextId) break;
 		if (seen.has(nextId)) break;
 		currentQuestion = questionById.get(nextId) ?? null;
@@ -155,6 +161,25 @@ function getDecisionTargetGroups(
 		}
 	}
 
+	if (decisionQuestion.branching?.defaultNext) {
+		const defaultTargetQuestionId = decisionQuestion.branching.defaultNext;
+		const targetIndex = questionIndexById.get(defaultTargetQuestionId);
+		const targetQuestion = questions.find((question) => question.id === defaultTargetQuestionId) ?? null;
+		const defaultLabel =
+			targetQuestion?.sectionId && sectionMap.has(targetQuestion.sectionId)
+				? (sectionMap.get(targetQuestion.sectionId)?.title ?? "Default path")
+				: targetIndex !== undefined
+					? `Q${targetIndex + 1}`
+					: "Default path";
+		const key = `default:${defaultTargetQuestionId}:${defaultLabel}`;
+		if (!groups.has(key)) {
+			groups.set(key, {
+				label: defaultLabel,
+				seedResponses: {},
+			});
+		}
+	}
+
 	return Array.from(groups.values());
 }
 
@@ -175,12 +200,15 @@ export function summarizeSurveyFlow(questions: ResearchLinkQuestion[]): SurveyFl
 
 	const decisionQuestionIndex = activeQuestions.findIndex((question) => {
 		const rules = question.branching?.rules ?? [];
-		if (rules.length < 2) return false;
-		const targetKeys = new Set(
-			rules.map((rule) =>
-				rule.action === "end_survey" ? "end" : rule.targetSectionId || rule.targetQuestionId || "unknown"
-			)
-		);
+		const targets = new Set<string>();
+		for (const rule of rules) {
+			targets.add(rule.action === "end_survey" ? "end" : rule.targetSectionId || rule.targetQuestionId || "unknown");
+		}
+		if (question.branching?.defaultNext) {
+			targets.add(`default:${question.branching.defaultNext}`);
+		}
+		if (targets.size < 2) return false;
+		const targetKeys = new Set([...targets]);
 		return targetKeys.size > 1;
 	});
 	const decisionQuestion = decisionQuestionIndex >= 0 ? activeQuestions[decisionQuestionIndex] : null;
@@ -232,16 +260,8 @@ export function summarizeSurveyFlow(questions: ResearchLinkQuestion[]): SurveyFl
 }
 
 export function formatFlowRangeLabel(summary: SurveyFlowSummary): string {
-	if (summary.paths.length === 0) return "~0 min";
-	const minMinuteLabel = formatEstimatedMinutesFromSeconds(summary.minSeconds);
-	const maxMinuteLabel = formatEstimatedMinutesFromSeconds(summary.maxSeconds);
-	const minuteRange =
-		minMinuteLabel === maxMinuteLabel ? minMinuteLabel : `${minMinuteLabel}-${maxMinuteLabel.replace(/^~/, "")}`;
-	const questionRange =
-		summary.minQuestions === summary.maxQuestions
-			? `${summary.minQuestions} questions/path`
-			: `${summary.minQuestions}-${summary.maxQuestions} questions/path`;
-	return `${minuteRange} · ${questionRange}`;
+	if (summary.paths.length === 0) return "~0 min · 0 questions";
+	return `${formatFlowMinutesLabel(summary)} · ${formatFlowQuestionCountLabel(summary)}`;
 }
 
 export function formatFlowAverageLabel(summary: SurveyFlowSummary): string {
@@ -258,4 +278,18 @@ export function formatPathBreakdown(summary: SurveyFlowSummary): string {
 	return summary.paths
 		.map((path) => `${path.label}: ${path.questionCount}q (${path.estimatedMinutesLabel})`)
 		.join(" • ");
+}
+
+export function formatFlowMinutesLabel(summary: SurveyFlowSummary): string {
+	if (summary.paths.length === 0) return "~0 min";
+	const minMinuteLabel = formatEstimatedMinutesFromSeconds(summary.minSeconds);
+	const maxMinuteLabel = formatEstimatedMinutesFromSeconds(summary.maxSeconds);
+	return minMinuteLabel === maxMinuteLabel ? minMinuteLabel : `${minMinuteLabel}-${maxMinuteLabel.replace(/^~/, "")}`;
+}
+
+export function formatFlowQuestionCountLabel(summary: SurveyFlowSummary): string {
+	if (summary.paths.length === 0) return "0 questions";
+	return summary.minQuestions === summary.maxQuestions
+		? `${summary.minQuestions} questions`
+		: `${summary.minQuestions}-${summary.maxQuestions} questions`;
 }

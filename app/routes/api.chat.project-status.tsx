@@ -149,6 +149,7 @@ const SURVEY_QUESTION_TYPE_VALUES = [
 	"single_select",
 	"multi_select",
 	"likert",
+	"matrix",
 	"image_select",
 ] as const;
 const surveyBranchConditionDraftSchema = z.object({
@@ -211,6 +212,14 @@ const surveyQuestionDraftSchema = z
 				low: z.string().nullish(),
 				high: z.string().nullish(),
 			})
+			.nullish(),
+		matrixRows: z
+			.array(
+				z.object({
+					id: z.string().min(1).nullish(),
+					label: z.string().min(1),
+				})
+			)
 			.nullish(),
 		sectionId: z.string().min(1).nullish(),
 		sectionTitle: z.string().min(1).nullish(),
@@ -1466,15 +1475,16 @@ ${options.systemContext || "No extra context."}
 - If the user provides an explicit survey outline, numbered questions, sections, options, or branching, preserve that structure faithfully instead of summarizing it.
 - Keep the total question count close to the user's explicit brief. Do not collapse a detailed 10-20 question survey into a short starter survey.
 - Prefer a block journey architecture when segments diverge: shared intro -> conditional path blocks -> shared closing block.
-- Use question types that match intent (auto, short_text, long_text, single_select, multi_select, likert).
+- Use question types that match intent (auto, short_text, long_text, single_select, multi_select, likert, matrix).
 - Only include options for select questions.
 - Only include likertScale/likertLabels for likert questions.
-- For matrix questions, convert each row into its own likert question under the same sectionTitle and use helperText to preserve the shared scale wording.
+- Use matrix when several rows share the exact same rating scale and should be answered together. For matrix, include matrixRows plus likertScale/likertLabels.
 - Include sectionId and sectionTitle whenever the brief is organized into sections.
 - Include branching whenever the brief specifies conditional paths. Prefer targetSectionId-based skip rules for screeners and branch exit points.
 - When the brief implies block routing, include a journey object with decisionQuestionId, routes, and sharedClosingSectionIds so the survey can be post-processed into reliable section routing.
 - Preserve provided answer options and required flags.
 - Keep prompts concise and natural, but do not rewrite away the user's intent.
+- Never add respondent-facing phrases like "Optional but encouraged".
 - Survey must be immediately usable without follow-up.`,
 	});
 

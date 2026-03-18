@@ -36,6 +36,8 @@ export interface UnifiedQuestionListProps {
 	className?: string;
 	/** Optional precomputed estimate label (e.g., path-aware summary) */
 	timeLabelOverride?: string;
+	/** Optional custom count label (e.g., respondent path count) */
+	countLabelOverride?: string;
 	/** Optional long-survey flag for override label */
 	timeIsLongOverride?: boolean;
 }
@@ -54,6 +56,7 @@ export function UnifiedQuestionList({
 	showActionBar = true,
 	className,
 	timeLabelOverride,
+	countLabelOverride,
 	timeIsLongOverride,
 }: UnifiedQuestionListProps) {
 	const totalSeconds = questionTypes ? estimateTotalSeconds(questionTypes) : 0;
@@ -62,6 +65,7 @@ export function UnifiedQuestionList({
 	const hasEstimate = Boolean(timeLabelOverride) || Boolean(questionTypes);
 	const [nudgeDismissed, setNudgeDismissed] = useState(false);
 	const showNudge = !nudgeDismissed && !hasBeenCoached && count >= 5 && onCoach;
+	const countLabel = countLabelOverride ?? `You have ${count} questions`;
 
 	return (
 		<div className={cn("space-y-1", className)}>
@@ -71,7 +75,7 @@ export function UnifiedQuestionList({
 					<div className="flex items-center justify-between gap-3">
 						<div className="flex items-center gap-2">
 							<Sparkles className="h-4 w-4 shrink-0 animate-pulse text-violet-500" />
-							<span className="text-sm text-violet-700 dark:text-violet-300">You have {count} questions</span>
+							<span className="text-sm text-violet-700 dark:text-violet-300">{countLabel}</span>
 							{showTimeBar && hasEstimate && (
 								<span
 									className={cn(

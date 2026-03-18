@@ -127,6 +127,20 @@ describe("ResearchLinkResponseSaveSchema", () => {
 		const result = ResearchLinkResponseSaveSchema.safeParse(payload);
 		expect(result.success).toBe(true);
 	});
+
+	it("should accept matrix row response objects", () => {
+		const payload = {
+			responseId: "22c66a0c-cfbb-4caf-a1c6-704ac5596bda",
+			responses: {
+				q7: {
+					networking: "4",
+					mentors: "3",
+				},
+			},
+		};
+		const result = ResearchLinkResponseSaveSchema.safeParse(payload);
+		expect(result.success).toBe(true);
+	});
 });
 
 describe("ResearchLinkAnonymousStartSchema", () => {
@@ -192,7 +206,16 @@ describe("ResearchLinkQuestionSchema", () => {
 	});
 
 	it("should accept all question types", () => {
-		const types = ["auto", "short_text", "long_text", "single_select", "multi_select", "likert", "image_select"];
+		const types = [
+			"auto",
+			"short_text",
+			"long_text",
+			"single_select",
+			"multi_select",
+			"likert",
+			"matrix",
+			"image_select",
+		];
 		for (const type of types) {
 			const result = ResearchLinkQuestionSchema.safeParse({
 				id: "q1",
@@ -238,6 +261,21 @@ describe("ResearchLinkQuestionSchema", () => {
 			type: "likert",
 			likertScale: 5,
 			likertLabels: { low: null, high: null },
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it("should accept matrix config", () => {
+		const result = ResearchLinkQuestionSchema.safeParse({
+			id: "q7",
+			prompt: "Rate these StartupSD capabilities",
+			type: "matrix",
+			likertScale: 4,
+			likertLabels: { low: "Needs work", high: "Strong" },
+			matrixRows: [
+				{ id: "networking", label: "Networking and making valuable connections" },
+				{ id: "mentors", label: "Access to mentors and advisors" },
+			],
 		});
 		expect(result.success).toBe(true);
 	});

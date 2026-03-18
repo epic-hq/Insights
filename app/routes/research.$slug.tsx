@@ -77,8 +77,72 @@ function QuestionMedia({ url }: { url: string }) {
 }
 
 // Type definitions used by ChatSection (moved before component)
-type ResponseValue = string | string[] | boolean | null;
+type MatrixResponseValue = Record<string, string | null | undefined>;
+type ResponseValue = string | string[] | boolean | MatrixResponseValue | null;
 type ResponseRecord = Record<string, ResponseValue>;
+
+function isMatrixResponseValue(value: ResponseValue): value is MatrixResponseValue {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasDraftResponseValue(value: ResponseValue): boolean {
+	if (Array.isArray(value)) return value.length > 0;
+	if (typeof value === "string") return value.trim().length > 0;
+	if (typeof value === "boolean") return true;
+	if (isMatrixResponseValue(value)) {
+		return Object.values(value).some((entry) => typeof entry === "string" && entry.trim().length > 0);
+	}
+	return false;
+}
+
+function normalizeResponseValue(value: ResponseValue): ResponseValue {
+	if (Array.isArray(value)) {
+		return value.filter((entry) => typeof entry === "string" && entry.trim().length > 0);
+	}
+	if (typeof value === "string") return value.trim();
+	if (isMatrixResponseValue(value)) {
+		const entries = Object.entries(value).flatMap(([rowId, rowValue]) => {
+			if (typeof rowValue !== "string") return [];
+			const trimmed = rowValue.trim();
+			return trimmed.length > 0 ? ([[rowId, trimmed]] as const) : [];
+		});
+		return entries.length > 0 ? Object.fromEntries(entries) : null;
+	}
+	return value ?? null;
+}
+
+function responseValuesEqual(a: ResponseValue, b: ResponseValue) {
+	const aHasValue = hasDraftResponseValue(a);
+	const bHasValue = hasDraftResponseValue(b);
+	if (!aHasValue && !bHasValue) return true;
+	if (Array.isArray(a) || Array.isArray(b)) {
+		if (!Array.isArray(a) || !Array.isArray(b)) return false;
+		if (a.length !== b.length) return false;
+		return a.every((entry, idx) => entry === b[idx]);
+	}
+	if (isMatrixResponseValue(a) || isMatrixResponseValue(b)) {
+		if (!isMatrixResponseValue(a) || !isMatrixResponseValue(b)) return false;
+		const aEntries = Object.entries(a).sort(([left], [right]) => left.localeCompare(right));
+		const bEntries = Object.entries(b).sort(([left], [right]) => left.localeCompare(right));
+		if (aEntries.length !== bEntries.length) return false;
+		return aEntries.every(([rowId, value], index) => rowId === bEntries[index]?.[0] && value === bEntries[index]?.[1]);
+	}
+	return a === b;
+}
+
+function isQuestionAnswerComplete(question: ResearchLinkQuestion, value: ResponseValue): boolean {
+	const normalized = normalizeResponseValue(value);
+	if (question.type === "matrix") {
+		if (!isMatrixResponseValue(normalized)) return false;
+		const rows = question.matrixRows ?? [];
+		if (rows.length === 0) return false;
+		return rows.every((row) => {
+			const rowValue = normalized[row.id];
+			return typeof rowValue === "string" && rowValue.trim().length > 0;
+		});
+	}
+	return hasResponseValue(normalized);
+}
 
 /**
  * Chat section component - isolated to ensure useChat is initialized with valid responseId
@@ -772,10 +836,12 @@ export default function ResearchLinkPage() {
 	const [initializing, setInitializing] = useState(true);
 	const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
 	const utmParamsRef = useRef<Record<string, string> | undefined>(undefined);
+	const hasMatrixQuestions = useMemo(() => questions.some((question) => question.type === "matrix"), [questions]);
+	const supportsChatMode = list.allow_chat && !hasMatrixQuestions;
 
-	const resolvedMode = list.allow_chat ? mode : "form";
+	const resolvedMode = supportsChatMode ? mode : "form";
 	const voiceEnabled = list.allow_voice && ffVoice;
-	const hasMultipleModes = list.allow_chat || voiceEnabled;
+	const hasMultipleModes = supportsChatMode || voiceEnabled;
 
 	// Respondent fields configuration (falls back to collect_title for backwards compat)
 	const respondentFields = useMemo(() => {
@@ -799,6 +865,8 @@ export default function ResearchLinkPage() {
 	const handleModeSwitch = useCallback(
 		async (newMode: Mode) => {
 			if (newMode === mode) return;
+
+			if (newMode === "chat" && !supportsChatMode) return;
 
 			// Refresh responses from DB for ANY identity mode (not just email)
 			console.log("[handleModeSwitch]", {
@@ -838,7 +906,7 @@ export default function ResearchLinkPage() {
 			}
 			setMode(newMode);
 		},
-		[mode, responseId, stage, email, phone, slug, questions]
+		[mode, responseId, stage, email, phone, slug, questions, supportsChatMode]
 	);
 
 	// Mode switcher component for survey stages
@@ -857,7 +925,7 @@ export default function ResearchLinkPage() {
 					<ClipboardList className="h-3.5 w-3.5" />
 					Form
 				</button>
-				{list.allow_chat && (
+				{supportsChatMode && (
 					<button
 						type="button"
 						onClick={() => void handleModeSwitch("chat")}
@@ -925,7 +993,7 @@ export default function ResearchLinkPage() {
 		setRedirectCountdown(null);
 		setError(null);
 		setInitializing(true);
-	}, []);
+	}, [getInitialStage]);
 
 	// Auto-reset after 5 seconds on completion (fresh start for next respondent)
 	useEffect(() => {
@@ -992,10 +1060,10 @@ export default function ResearchLinkPage() {
 				: "idle";
 
 	useEffect(() => {
-		if (!list.allow_chat && mode === "chat") {
+		if (!supportsChatMode && mode === "chat") {
 			setMode("form");
 		}
-	}, [list.allow_chat, mode]);
+	}, [supportsChatMode, mode]);
 
 	useEffect(() => {
 		if (typeof window === "undefined") return;
@@ -1346,7 +1414,7 @@ export default function ResearchLinkPage() {
 			return;
 		}
 		const normalizedValue = normalizeResponseValue(value);
-		if (currentQuestion?.required && !hasResponseValue(normalizedValue)) {
+		if (currentQuestion?.required && !isQuestionAnswerComplete(currentQuestion, normalizedValue)) {
 			setError("This question is required");
 			return;
 		}
@@ -1398,7 +1466,7 @@ export default function ResearchLinkPage() {
 		if (responseValuesEqual(normalized, existing)) return;
 
 		const nextResponses: ResponseRecord = { ...responses };
-		if (hasResponseValue(normalized)) {
+		if (hasDraftResponseValue(normalized)) {
 			nextResponses[questionId] = normalized;
 		} else {
 			delete nextResponses[questionId];
@@ -1428,7 +1496,8 @@ export default function ResearchLinkPage() {
 	function handleJumpToQuestion(targetIndex: number) {
 		if (targetIndex < 0 || targetIndex >= questions.length) return;
 		// Allow jumping to any answered question or current question
-		const isAnswered = hasResponseValue(responses[questions[targetIndex]?.id]);
+		const targetQuestion = questions[targetIndex];
+		const isAnswered = targetQuestion ? isQuestionAnswerComplete(targetQuestion, responses[targetQuestion.id]) : false;
 		const isCurrent = targetIndex === currentIndex;
 		const isPrevious = targetIndex < currentIndex;
 		if (isAnswered || isCurrent || isPrevious) {
@@ -2002,7 +2071,10 @@ export default function ResearchLinkPage() {
 									<Button
 										type="button"
 										onClick={() => void handleAnswerSubmit(currentAnswer)}
-										disabled={isSaving || (currentQuestion?.required && !hasResponseValue(currentAnswer))}
+										disabled={
+											isSaving ||
+											(currentQuestion?.required && !isQuestionAnswerComplete(currentQuestion, currentAnswer))
+										}
 										className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
 									>
 										{isSaving ? (
@@ -2019,7 +2091,7 @@ export default function ResearchLinkPage() {
 								{/* Progress indicator - minimal dots */}
 								<div className="flex items-center justify-center gap-1.5">
 									{questions.map((q, idx) => {
-										const isAnswered = hasResponseValue(responses[q.id]);
+										const isAnswered = isQuestionAnswerComplete(q, responses[q.id]);
 										const isCurrent = idx === currentIndex;
 										const canJump = isAnswered || isCurrent || idx < currentIndex;
 										return (
@@ -2154,29 +2226,11 @@ function findNextQuestionIndex(responses: ResponseRecord, questions: ResearchLin
 	for (let index = 0; index < questions.length; index++) {
 		const question = questions[index];
 		const value = responses?.[question.id];
-		if (!hasResponseValue(value)) {
+		if (!isQuestionAnswerComplete(question, value)) {
 			return index;
 		}
 	}
 	return questions.length;
-}
-
-function responseValuesEqual(a: ResponseValue, b: ResponseValue) {
-	const aHasValue = hasResponseValue(a);
-	const bHasValue = hasResponseValue(b);
-	if (!aHasValue && !bHasValue) return true;
-	if (Array.isArray(a) || Array.isArray(b)) {
-		if (!Array.isArray(a) || !Array.isArray(b)) return false;
-		if (a.length !== b.length) return false;
-		return a.every((entry, idx) => entry === b[idx]);
-	}
-	return a === b;
-}
-
-function normalizeResponseValue(value: ResponseValue): ResponseValue {
-	if (Array.isArray(value)) return value.filter((entry) => typeof entry === "string" && entry.trim().length > 0);
-	if (typeof value === "string") return value.trim();
-	return value ?? null;
 }
 
 function renderQuestionInput({
@@ -2314,6 +2368,97 @@ function renderQuestionInput({
 		);
 	}
 
+	if (resolved.kind === "matrix") {
+		const selectedValues = isMatrixResponseValue(value) ? value : {};
+		const scalePoints = Array.from({ length: resolved.scale }, (_, i) => i + 1);
+		const updateMatrixValue = (rowId: string, nextValue: string) => {
+			onChange({
+				...selectedValues,
+				[rowId]: nextValue,
+			});
+		};
+
+		return (
+			<div className="space-y-4">
+				<div className="hidden overflow-x-auto rounded-xl border border-white/10 bg-black/20 md:block">
+					<table className="min-w-full border-collapse">
+						<thead>
+							<tr className="border-white/10 border-b text-white/50 text-xs">
+								<th className="px-4 py-3 text-left font-medium">Area</th>
+								{scalePoints.map((point) => (
+									<th key={point} className="px-2 py-3 text-center font-medium">
+										{point}
+									</th>
+								))}
+							</tr>
+						</thead>
+						<tbody>
+							{resolved.rows.map((row) => (
+								<tr key={row.id} className="border-white/10 border-b last:border-b-0">
+									<td className="px-4 py-3 text-sm text-white/85">{row.label}</td>
+									{scalePoints.map((point) => {
+										const isSelected = selectedValues[row.id] === String(point);
+										return (
+											<td key={point} className="px-2 py-3 text-center">
+												<button
+													type="button"
+													onClick={() => updateMatrixValue(row.id, String(point))}
+													className={cn(
+														"mx-auto flex h-9 w-9 items-center justify-center rounded-md border font-medium text-sm transition-all",
+														isSelected
+															? "border-white bg-white text-black"
+															: "border-white/20 bg-white/5 text-white/70 hover:border-white/40 hover:bg-white/10 hover:text-white"
+													)}
+												>
+													{point}
+												</button>
+											</td>
+										);
+									})}
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
+
+				<div className="space-y-4 md:hidden">
+					{resolved.rows.map((row) => (
+						<div key={row.id} className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4">
+							<p className="text-sm text-white/85">{row.label}</p>
+							<div className="flex items-center justify-between gap-2">
+								{scalePoints.map((point) => {
+									const isSelected = selectedValues[row.id] === String(point);
+									return (
+										<button
+											key={point}
+											type="button"
+											onClick={() => updateMatrixValue(row.id, String(point))}
+											className={cn(
+												"flex h-10 w-10 items-center justify-center rounded-lg border font-medium text-sm transition-all",
+												isSelected
+													? "border-white bg-white text-black"
+													: "border-white/20 bg-white/5 text-white/70 hover:border-white/40 hover:bg-white/10 hover:text-white"
+											)}
+										>
+											{point}
+										</button>
+									);
+								})}
+							</div>
+						</div>
+					))}
+				</div>
+
+				{(resolved.labels.low || resolved.labels.high) && (
+					<div className="flex justify-between text-white/50 text-xs">
+						<span>{resolved.labels.low}</span>
+						<span>{resolved.labels.high}</span>
+					</div>
+				)}
+			</div>
+		);
+	}
+
 	if (resolved.kind === "image_select") {
 		const selectedValue = typeof value === "string" ? value : "";
 		return (
@@ -2434,6 +2579,14 @@ function resolveQuestionInput(question: ResearchLinkQuestion) {
 	if (question.type === "likert") {
 		return {
 			kind: "likert" as const,
+			scale: question.likertScale ?? 5,
+			labels: question.likertLabels ?? { low: "", high: "" },
+		};
+	}
+	if (question.type === "matrix" && question.matrixRows?.length) {
+		return {
+			kind: "matrix" as const,
+			rows: question.matrixRows,
 			scale: question.likertScale ?? 5,
 			labels: question.likertLabels ?? { low: "", high: "" },
 		};

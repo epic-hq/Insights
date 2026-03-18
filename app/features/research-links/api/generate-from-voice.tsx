@@ -18,12 +18,19 @@ const RequestSchema = z.object({
 	projectContext: z.string().optional().default(""),
 });
 
-const QuestionTypeSchema = z.enum(["short_text", "long_text", "single_select", "multi_select", "likert"]);
+const QuestionTypeSchema = z.enum(["short_text", "long_text", "single_select", "multi_select", "likert", "matrix"]);
 
 const GeneratedQuestionSchema = z.object({
 	prompt: z.string(),
 	type: QuestionTypeSchema,
 	options: z.array(z.string()).optional(),
+	matrixRows: z
+		.array(
+			z.object({
+				label: z.string().min(1),
+			})
+		)
+		.optional(),
 	required: z.boolean().default(true),
 });
 
@@ -94,9 +101,12 @@ QUESTION DESIGN PRINCIPLES:
   - single_select: Mutually exclusive choices (provide options array)
   - multi_select: Multiple selections allowed (provide options array)
   - likert: Satisfaction, likelihood, preference scales (numeric rating)
+  - matrix: Shared rating grid with 3-5 rows that all use the same scale (provide matrixRows)
 - Make questions conversational and easy to answer
 - Each question should provide unique insight
 - Order questions logically - easier questions first, sensitive/complex later
+- Use matrix only when multiple statements truly share the same rating scale and belong together on one screen
+- Never add respondent-facing phrases like "Optional but encouraged"
 
 BRANCHING GUIDELINES:
 If the user mentioned wanting different questions for different groups (e.g., "for sponsors focus on budget", "if they're enterprise, ask about scale"), create guidelines:
@@ -123,6 +133,19 @@ Generate a survey that will help the user gather the insights they described.`,
 			prompt: q.prompt,
 			type: q.type,
 			options: q.options ?? [],
+			matrixRows:
+				q.matrixRows?.map((row, rowIndex) => ({
+					id: `q${index + 1}_row_${rowIndex + 1}`,
+					label: row.label,
+				})) ?? null,
+			likertScale: q.type === "matrix" || q.type === "likert" ? 5 : null,
+			likertLabels:
+				q.type === "matrix" || q.type === "likert"
+					? {
+							low: "Needs work",
+							high: "Strong",
+						}
+					: null,
 			required: q.required,
 		}));
 
@@ -150,12 +173,22 @@ Generate a survey that will help the user gather the insights they described.`,
 		// Collect clarifications from guidelines that need them
 		const clarifications = guidelines
 			.filter((g) => g.confidence !== "high" && g.clarificationNeeded)
-			.map((g) => ({
-				guidelineId: g.id,
-				summary: g.summary,
-				confidence: g.confidence,
-				question: g.clarificationNeeded!,
-			}));
+			.map((g) => {
+				const question = g.clarificationNeeded;
+				if (!question) return null;
+				return {
+					guidelineId: g.id,
+					summary: g.summary,
+					confidence: g.confidence,
+					question,
+				};
+			})
+			.filter(
+				(
+					item
+				): item is { guidelineId: string; summary: string; confidence: "high" | "medium" | "low"; question: string } =>
+					Boolean(item)
+			);
 
 		// Determine if any clarifications are needed
 		const needsClarification = clarifications.length > 0;

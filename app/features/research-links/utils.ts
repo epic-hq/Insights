@@ -21,6 +21,16 @@ export function extractAnswer(response: ResearchLinkResponse, question: Research
 	if (Array.isArray(value)) {
 		return value.join(", ");
 	}
+	if (typeof value === "object") {
+		const rowLabels = new Map((question.matrixRows ?? []).map((row) => [row.id, row.label] as const));
+		return Object.entries(value as Record<string, unknown>)
+			.flatMap(([rowId, rowValue]) => {
+				if (typeof rowValue !== "string" || rowValue.trim().length === 0) return [];
+				const label = rowLabels.get(rowId) ?? rowId;
+				return [`${label}: ${rowValue}`];
+			})
+			.join("; ");
+	}
 	if (typeof value === "boolean") {
 		return value ? "Yes" : "No";
 	}

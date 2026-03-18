@@ -17,6 +17,13 @@ export interface QuestionResponseStats {
 	/** For likert: scale value → count */
 	likertDistribution?: { value: number; count: number }[];
 	likertAvg?: number;
+	matrixRows?: {
+		id: string;
+		label: string;
+		answered: number;
+		avg: number | null;
+		distribution: { value: number; count: number }[];
+	}[];
 	/** For open text — recent answer snippets */
 	recentAnswers?: string[];
 }
@@ -81,7 +88,7 @@ export function QuestionHoverResults({
 			})
 			.catch(() => setStats(null))
 			.finally(() => setLoading(false));
-	}, [isVisible, questionId, listId, stats, loading]);
+	}, [accountId, isVisible, listId, loading, projectId, questionId, stats]);
 
 	if (!isVisible) return null;
 
@@ -89,6 +96,7 @@ export function QuestionHoverResults({
 
 	const isSelect = questionType === "single_select" || questionType === "multi_select";
 	const isLikert = questionType === "likert";
+	const isMatrix = questionType === "matrix";
 
 	return (
 		<div className="ml-12 flex items-center gap-3 py-1 text-[10px] text-muted-foreground">
@@ -111,8 +119,16 @@ export function QuestionHoverResults({
 				</span>
 			)}
 
+			{isMatrix &&
+				stats.matrixRows?.slice(0, 2).map((row) => (
+					<span key={row.id} className="flex items-center gap-1">
+						<span className="max-w-[100px] truncate">{row.label}</span>
+						<strong className="text-foreground">{row.avg?.toFixed(1) ?? "—"}</strong>
+					</span>
+				))}
+
 			{/* Text: AI summary or recent answers */}
-			{!isSelect && !isLikert && aiInsight && (
+			{!isSelect && !isLikert && !isMatrix && aiInsight && (
 				<span className="max-w-[300px] truncate italic">{aiInsight.summary}</span>
 			)}
 		</div>

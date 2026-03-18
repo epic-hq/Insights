@@ -19,7 +19,15 @@ import {
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 8);
 
-const QUESTION_TYPES = ["auto", "short_text", "long_text", "single_select", "multi_select", "likert"] as const;
+const QUESTION_TYPES = [
+	"auto",
+	"short_text",
+	"long_text",
+	"single_select",
+	"multi_select",
+	"likert",
+	"matrix",
+] as const;
 type SurveyQuestionType = (typeof QUESTION_TYPES)[number];
 const QUESTION_TYPE_SET = new Set<string>(QUESTION_TYPES);
 const NPS_PROMPT_PATTERN =
@@ -29,6 +37,16 @@ function toNonEmptyString(value: unknown): string | null {
 	if (typeof value !== "string") return null;
 	const trimmed = value.trim();
 	return trimmed.length > 0 ? trimmed : null;
+}
+
+function sanitizeSurveyCopy(value: string | null): string | null {
+	if (!value) return null;
+	const sanitized = value
+		.replace(/\boptional\s*,?\s*but\s*encouraged\b/gi, "")
+		.replace(/\s{2,}/g, " ")
+		.replace(/\s+([,.;:!?])/g, "$1")
+		.trim();
+	return sanitized.length > 0 ? sanitized : null;
 }
 
 function normalizeTaxonomyKey(value: unknown): string | null {
@@ -91,6 +109,23 @@ function derivePersonFieldKey(taxonomyKey: string | null): string | null {
 function normalizeQuestionId(value: unknown, index: number): string {
 	const candidate = toNonEmptyString(value);
 	return candidate ?? `q${index + 1}`;
+}
+
+function normalizeMatrixRows(input: unknown, questionId: string) {
+	if (!Array.isArray(input) || input.length === 0) return null;
+	const rows = input
+		.map((row, index) => {
+			if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+			const candidate = row as Record<string, unknown>;
+			const label = toNonEmptyString(candidate.label);
+			if (!label) return null;
+			return {
+				id: toNonEmptyString(candidate.id) ?? `${questionId}_row_${index + 1}`,
+				label,
+			};
+		})
+		.filter((row): row is { id: string; label: string } => Boolean(row));
+	return rows.length > 0 ? rows : null;
 }
 
 function normalizeBranching(input: unknown) {
@@ -204,17 +239,18 @@ function normalizeBranching(input: unknown) {
 
 function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) {
 	const id = normalizeQuestionId(input.id, index);
-	const prompt = toNonEmptyString(input.prompt) ?? `Question ${index + 1}`;
+	const prompt = sanitizeSurveyCopy(toNonEmptyString(input.prompt)) ?? `Question ${index + 1}`;
 	const isNpsPrompt = NPS_PROMPT_PATTERN.test(prompt);
 	const explicitTaxonomy = normalizeTaxonomyKey(input.taxonomyKey);
 	const taxonomyKey = explicitTaxonomy ?? inferTaxonomyKeyFromPrompt(prompt);
 	const explicitPersonFieldKey = toNonEmptyString(input.personFieldKey);
 	const personFieldKey = explicitPersonFieldKey ?? derivePersonFieldKey(taxonomyKey);
-	const helperText = toNonEmptyString(input.helperText);
+	const helperText = sanitizeSurveyCopy(toNonEmptyString(input.helperText));
 	const sectionId = toNonEmptyString(input.sectionId);
-	const sectionTitle = toNonEmptyString(input.sectionTitle);
+	const sectionTitle = sanitizeSurveyCopy(toNonEmptyString(input.sectionTitle));
 	const allowOther = input.allowOther !== false;
 	const branching = normalizeBranching(input.branching);
+	const matrixRows = normalizeMatrixRows(input.matrixRows, id);
 
 	const rawType = typeof input.type === "string" ? input.type : "";
 	let type: SurveyQuestionType = QUESTION_TYPE_SET.has(rawType) ? (rawType as SurveyQuestionType) : "auto";
@@ -285,6 +321,31 @@ function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) 
 		};
 	}
 
+	if (type === "matrix") {
+		likertScale ??= 5;
+		likertLabels ??= { low: "Needs work", high: "Strong" };
+		return {
+			id,
+			prompt,
+			type,
+			required,
+			placeholder: null,
+			helperText,
+			options: null,
+			allowOther,
+			likertScale,
+			likertLabels,
+			matrixRows,
+			imageOptions: null,
+			videoUrl: null,
+			sectionId,
+			sectionTitle,
+			taxonomyKey,
+			personFieldKey,
+			branching,
+		};
+	}
+
 	if ((type === "single_select" || type === "multi_select") && (!options || options.length === 0)) {
 		type = "auto";
 	}
@@ -300,6 +361,7 @@ function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) 
 		allowOther,
 		likertScale: null,
 		likertLabels: null,
+		matrixRows: null,
 		imageOptions: null,
 		videoUrl: null,
 		sectionId,
@@ -325,6 +387,7 @@ Question types:
 - "single_select": Choose one option from a list (requires options array)
 - "multi_select": Choose multiple options (requires options array)
 - "likert": Rating scale (use likertScale for size, likertLabels for endpoints)
+- "matrix": Multi-row shared rating grid (use matrixRows plus likertScale/likertLabels)
 - NPS standard in this product: use 1-10 scale with labeled endpoints`,
 	inputSchema: z
 		.object({
@@ -339,7 +402,7 @@ Question types:
 				.array(z.record(z.string(), z.unknown()))
 				.min(1)
 				.describe(
-					"Array of question objects. Missing fields are normalized server-side (type/required/options/likertScale/likertLabels). Optional metadata: taxonomyKey and personFieldKey for canonical response mapping."
+					"Array of question objects. Missing fields are normalized server-side (type/required/options/likertScale/likertLabels/matrixRows). Optional metadata: taxonomyKey and personFieldKey for canonical response mapping."
 				),
 			isLive: z.boolean().nullish().describe("Whether the survey is immediately live (default: true)"),
 		})

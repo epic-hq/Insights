@@ -2,6 +2,22 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 import { QuestionBranchingSchema } from "./branching";
 
+export const MATRIX_ROW_SCHEMA = z.object({
+	id: z.string().min(1, "Row id is required"),
+	label: z.string().min(1, "Row label is required"),
+});
+
+export const RESEARCH_LINK_QUESTION_TYPES = [
+	"auto",
+	"short_text",
+	"long_text",
+	"single_select",
+	"multi_select",
+	"likert",
+	"matrix",
+	"image_select",
+] as const;
+
 export const ResearchLinkQuestionSchema = z.object({
 	id: z.string().min(1, "Question id is required"),
 	prompt: z.string().default(""),
@@ -10,15 +26,7 @@ export const ResearchLinkQuestionSchema = z.object({
 		.string()
 		.default("auto")
 		.transform((val) => {
-			const valid = [
-				"auto",
-				"short_text",
-				"long_text",
-				"single_select",
-				"multi_select",
-				"likert",
-				"image_select",
-			] as const;
+			const valid = RESEARCH_LINK_QUESTION_TYPES;
 			return (valid as readonly string[]).includes(val) ? (val as (typeof valid)[number]) : "short_text";
 		}),
 	placeholder: z.string().optional().nullable(),
@@ -35,6 +43,7 @@ export const ResearchLinkQuestionSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+	matrixRows: z.array(MATRIX_ROW_SCHEMA).optional().nullable(),
 	// Image options configuration (label + imageUrl pairs)
 	imageOptions: z
 		.array(
@@ -79,6 +88,7 @@ export function createEmptyQuestion(): ResearchLinkQuestion {
 		allowOther: true,
 		likertScale: null,
 		likertLabels: null,
+		matrixRows: null,
 		imageOptions: null,
 		mediaUrl: null,
 		videoUrl: null,
@@ -248,7 +258,16 @@ export const ResearchLinkCreatePersonSchema = z.object({
 export const ResearchLinkResponseSaveSchema = z.object({
 	responseId: z.string().uuid({ message: "Response id is required" }),
 	responses: z
-		.record(z.string(), z.union([z.string(), z.array(z.string()), z.boolean(), z.null()]))
+		.record(
+			z.string(),
+			z.union([
+				z.string(),
+				z.array(z.string()),
+				z.boolean(),
+				z.null(),
+				z.record(z.string(), z.union([z.string(), z.null()])),
+			])
+		)
 		.optional()
 		.default({}),
 	completed: z.boolean().optional(),
