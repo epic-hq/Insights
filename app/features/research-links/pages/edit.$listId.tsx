@@ -39,21 +39,13 @@ import { SendSurveyDialog } from "../components/SendSurveyDialog";
 import { WalkthroughRecorder } from "../components/WalkthroughRecorder";
 import { getResearchLinkById } from "../db";
 import { extractFormFields, useOptimisticForm } from "../hooks/useOptimisticForm";
+import { RESPONDENT_FIELD_DEFINITIONS } from "../respondent-fields";
 import {
 	createEmptyQuestion,
 	ResearchLinkPayloadSchema,
 	type ResearchLinkQuestion,
 	ResearchLinkQuestionSchema,
 } from "../schemas";
-
-/** Available respondent fields with labels and descriptions */
-const RESPONDENT_FIELD_OPTIONS = [
-	{ key: "first_name", label: "First name" },
-	{ key: "last_name", label: "Last name" },
-	{ key: "company", label: "Company" },
-	{ key: "title", label: "Job title" },
-	{ key: "phone", label: "Phone number" },
-] as const;
 
 /** Multi-picker for selecting which respondent fields to collect */
 function RespondentFieldsPicker({
@@ -69,7 +61,7 @@ function RespondentFieldsPicker({
 	const activeCount = fields.length;
 
 	// Filter out phone if identity is already phone-based
-	const options = RESPONDENT_FIELD_OPTIONS.filter((opt) => !(opt.key === "phone" && identityType === "phone"));
+	const options = RESPONDENT_FIELD_DEFINITIONS.filter((opt) => !(opt.key === "phone" && identityType === "phone"));
 
 	const toggleField = (key: string) => {
 		const next = fields.includes(key) ? fields.filter((f) => f !== key) : [...fields, key];
@@ -637,7 +629,7 @@ export default function EditResearchLinkPage() {
 											</span>
 										)}
 										{fields.respondentFields.map((key) => {
-											const opt = RESPONDENT_FIELD_OPTIONS.find((o) => o.key === key);
+											const opt = RESPONDENT_FIELD_DEFINITIONS.find((o) => o.key === key);
 											return (
 												<span key={key} className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground/70">
 													{opt?.label ?? key}

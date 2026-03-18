@@ -96,7 +96,7 @@ const QuestionsJsonSchema = z
 		try {
 			const parsed = JSON.parse(value ?? "[]");
 			return parsed;
-		} catch (error) {
+		} catch (_error) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: "Invalid questions payload",
@@ -235,6 +235,11 @@ export const ResearchLinkCreatePersonSchema = z.object({
 	firstName: z.string({ required_error: "First name is required" }).min(1, "First name is required"),
 	lastName: z.string().optional().nullable(),
 	company: z.string().optional().nullable(),
+	title: z.string().optional().nullable(),
+	jobFunction: z.string().optional().nullable(),
+	industry: z.string().optional().nullable(),
+	companySize: z.string().optional().nullable(),
+	phone: z.string().optional().nullable(),
 	responseId: z.string().uuid({ message: "Response ID is required" }),
 	responseMode: z.enum(["form", "chat"]).optional(),
 	utmParams: z.record(z.string(), z.string()).optional().nullable(),

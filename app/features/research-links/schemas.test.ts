@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	ResearchLinkAnonymousStartSchema,
+	ResearchLinkCreatePersonSchema,
 	ResearchLinkPayloadSchema,
 	ResearchLinkQuestionSchema,
 	ResearchLinkResponseSaveSchema,
@@ -341,6 +342,29 @@ describe("ResearchLinkPayloadSchema — respondentFields", () => {
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data.respondentFields).toEqual(["first_name", "last_name"]);
+		}
+	});
+});
+
+describe("ResearchLinkCreatePersonSchema", () => {
+	it("accepts extended respondent profile fields", () => {
+		const result = ResearchLinkCreatePersonSchema.safeParse({
+			email: "jane@example.com",
+			firstName: "Jane",
+			lastName: "Doe",
+			company: "Acme",
+			title: "VP Product",
+			jobFunction: "Product",
+			industry: "SaaS",
+			companySize: "201-500",
+			phone: "+15551234567",
+			responseId: "22c66a0c-cfbb-4caf-a1c6-704ac5596bda",
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.jobFunction).toBe("Product");
+			expect(result.data.industry).toBe("SaaS");
+			expect(result.data.companySize).toBe("201-500");
 		}
 	});
 });

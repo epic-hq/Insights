@@ -4,6 +4,9 @@
  */
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
+import { standardizeSizeRange, syncOrgDataToPersonFacets } from "~/features/people/syncOrgDataToPersonFacets.server";
+import { syncPeopleFieldsToFacets } from "~/features/people/syncPeopleFieldsToFacets.server";
+import { syncTitleToJobTitleFacet } from "~/features/people/syncTitleToFacet.server";
 import {
 	ResearchLinkAnonymousStartSchema,
 	ResearchLinkCreatePersonSchema,
@@ -473,6 +476,11 @@ async function handleCreatePersonAndContinue(
 		firstName: string;
 		lastName?: string | null;
 		company?: string | null;
+		title?: string | null;
+		jobFunction?: string | null;
+		industry?: string | null;
+		companySize?: string | null;
+		phone?: string | null;
 		responseId: string;
 		responseMode?: "form" | "chat";
 	}
@@ -481,62 +489,77 @@ async function handleCreatePersonAndContinue(
 	const firstName = data.firstName.trim();
 	const lastName = data.lastName?.trim() || null;
 	const companyName = data.company?.trim() || null;
+	const title = data.title?.trim() || null;
+	const jobFunction = data.jobFunction?.trim() || null;
+	const industry = data.industry?.trim() || null;
+	const companySize = standardizeSizeRange(data.companySize);
+	const primaryPhone = data.phone?.trim() || null;
 	const responseMode =
 		list.allow_chat && data.responseMode ? data.responseMode : (list.default_response_mode ?? "form");
 
-	// Check if person already exists by email (race condition check)
-	const { data: existingPerson } = await supabase
-		.from("people")
-		.select("id")
-		.eq("account_id", list.account_id)
-		.eq("primary_email", normalizedEmail)
-		.maybeSingle();
+	async function ensureOrganizationId(): Promise<string | null> {
+		if (!companyName || !list.account_id) return organizationId;
+		if (organizationId) return organizationId;
 
-	let personId = existingPerson?.id;
+		const { data: existingOrg } = await supabase
+			.from("organizations")
+			.select("id")
+			.eq("account_id", list.account_id)
+			.ilike("name", companyName)
+			.maybeSingle();
+		if (existingOrg?.id) {
+			organizationId = existingOrg.id;
+			return organizationId;
+		}
 
-	if (!personId) {
-		// Phase 3: Resolve organization if company name provided
-		let organizationId: string | null = null;
-		if (companyName && list.account_id) {
-			// Find existing organization (case-insensitive)
-			const { data: existingOrg } = await supabase
+		const { data: newOrg, error: orgError } = await supabase
+			.from("organizations")
+			.insert({
+				account_id: list.account_id,
+				project_id: list.project_id,
+				name: companyName,
+				industry,
+				size_range: companySize,
+			})
+			.select("id")
+			.single();
+
+		if (!orgError && newOrg?.id) {
+			organizationId = newOrg.id;
+			return organizationId;
+		}
+
+		if (orgError?.code === "23505") {
+			const { data: raceOrg } = await supabase
 				.from("organizations")
 				.select("id")
 				.eq("account_id", list.account_id)
 				.ilike("name", companyName)
 				.maybeSingle();
-
-			if (existingOrg) {
-				organizationId = existingOrg.id;
-			} else {
-				// Create new organization
-				const { data: newOrg, error: orgError } = await supabase
-					.from("organizations")
-					.insert({
-						account_id: list.account_id,
-						project_id: list.project_id,
-						name: companyName,
-					})
-					.select("id")
-					.single();
-
-				if (!orgError && newOrg) {
-					organizationId = newOrg.id;
-				}
-				// If org creation fails due to race condition, try to find it again
-				else if (orgError?.code === "23505") {
-					const { data: raceOrg } = await supabase
-						.from("organizations")
-						.select("id")
-						.eq("account_id", list.account_id)
-						.ilike("name", companyName)
-						.maybeSingle();
-					if (raceOrg) {
-						organizationId = raceOrg.id;
-					}
-				}
+			if (raceOrg?.id) {
+				organizationId = raceOrg.id;
+				return organizationId;
 			}
 		}
+
+		return null;
+	}
+
+	// Check if person already exists by email (race condition check)
+	const { data: existingPerson } = await supabase
+		.from("people")
+		.select("id, title, job_function, primary_phone, default_organization_id")
+		.eq("account_id", list.account_id)
+		.eq("primary_email", normalizedEmail)
+		.maybeSingle();
+
+	const createdNewPerson = !existingPerson?.id;
+	let personId = existingPerson?.id;
+	let organizationId = existingPerson?.default_organization_id ?? null;
+
+	if (!personId) {
+		// Phase 3: Resolve organization if company name provided
+		organizationId = await ensureOrganizationId();
 
 		// Create the person record (name is auto-generated from firstname/lastname)
 		const { data: newPerson, error: personError } = await supabase
@@ -545,8 +568,11 @@ async function handleCreatePersonAndContinue(
 				account_id: list.account_id,
 				project_id: list.project_id,
 				primary_email: normalizedEmail,
+				primary_phone: primaryPhone,
 				firstname: firstName,
 				lastname: lastName,
+				title,
+				job_function: jobFunction,
 				default_organization_id: organizationId,
 				person_type: "external",
 			})
@@ -576,12 +602,50 @@ async function handleCreatePersonAndContinue(
 		}
 	}
 
+	if (personId && existingPerson) {
+		const personUpdate: Record<string, string> = {};
+		if (title && !existingPerson.title) personUpdate.title = title;
+		if (jobFunction && !existingPerson.job_function) personUpdate.job_function = jobFunction;
+		if (primaryPhone && !existingPerson.primary_phone) personUpdate.primary_phone = primaryPhone;
+		if (Object.keys(personUpdate).length > 0) {
+			await supabase.from("people").update(personUpdate).eq("id", personId);
+		}
+	}
+
+	if (companyName && !organizationId) {
+		organizationId = await ensureOrganizationId();
+	}
+
+	if (!createdNewPerson && personId && organizationId && organizationId !== existingPerson?.default_organization_id) {
+		await supabase.from("people").update({ default_organization_id: organizationId }).eq("id", personId);
+		const { error: linkError } = await supabase.from("people_organizations").insert({
+			account_id: list.account_id,
+			project_id: list.project_id,
+			person_id: personId,
+			organization_id: organizationId,
+			is_primary: true,
+		});
+		if (linkError && linkError.code !== "23505") {
+			consola.warn("[research-link-start] Failed to create people_organizations link:", linkError);
+		}
+	}
+
+	if (organizationId && (industry || companySize)) {
+		const orgUpdate: Record<string, string> = {};
+		if (industry) orgUpdate.industry = industry;
+		if (companySize) orgUpdate.size_range = companySize;
+		if (Object.keys(orgUpdate).length > 0) {
+			await supabase.from("organizations").update(orgUpdate).eq("id", organizationId);
+		}
+	}
+
 	// Update the response with the person_id
 	const { data: response, error: updateError } = await supabase
 		.from("research_link_responses")
 		.update({
 			person_id: personId,
 			response_mode: responseMode,
+			...(primaryPhone ? { phone: primaryPhone } : {}),
 		})
 		.eq("id", data.responseId)
 		.select("id, responses, completed")
@@ -589,6 +653,38 @@ async function handleCreatePersonAndContinue(
 
 	if (updateError || !response) {
 		return Response.json({ message: updateError?.message ?? "Unable to link person to response" }, { status: 500 });
+	}
+
+	if (personId && list.project_id) {
+		if (title) {
+			await syncTitleToJobTitleFacet({
+				supabase,
+				personId,
+				accountId: list.account_id,
+				title,
+			});
+		}
+		if (jobFunction) {
+			await syncPeopleFieldsToFacets({
+				supabase,
+				personId,
+				accountId: list.account_id,
+				projectId: list.project_id,
+				fields: { job_function: jobFunction },
+			});
+		}
+		if (industry || companySize) {
+			await syncOrgDataToPersonFacets({
+				supabase,
+				personId,
+				accountId: list.account_id,
+				projectId: list.project_id,
+				orgData: {
+					industry,
+					size_range: companySize,
+				},
+			});
+		}
 	}
 
 	return Response.json({

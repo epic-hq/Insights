@@ -15,7 +15,6 @@ import {
 	MessageSquare,
 	Mic,
 	Send,
-	Video,
 } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { LoaderFunctionArgs, MetaFunction } from "react-router";
@@ -32,6 +31,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button";
 import { getNextQuestionIndex, hasResponseValue } from "~/features/research-links/branching";
 import { VideoRecorder } from "~/features/research-links/components/VideoRecorder";
+import { COMPANY_SIZE_OPTIONS } from "~/features/research-links/respondent-fields";
 import { type ResearchLinkQuestion, ResearchLinkQuestionSchema } from "~/features/research-links/schemas";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
@@ -641,6 +641,11 @@ type StartSignupPayload =
 			firstName?: string | null;
 			lastName?: string | null;
 			company?: string | null;
+			title?: string | null;
+			jobFunction?: string | null;
+			industry?: string | null;
+			companySize?: string | null;
+			phone?: string | null;
 			responseId?: string | null;
 			responseMode?: Mode;
 			utmParams?: Record<string, string> | null;
@@ -713,6 +718,9 @@ export default function ResearchLinkPage() {
 	const [lastName, setLastName] = useState("");
 	const [company, setCompany] = useState("");
 	const [respondentTitle, setRespondentTitle] = useState("");
+	const [jobFunction, setJobFunction] = useState("");
+	const [industry, setIndustry] = useState("");
+	const [companySize, setCompanySize] = useState("");
 	const [responseId, setResponseId] = useState<string | null>(null);
 	const [responses, setResponses] = useState<ResponseRecord>({});
 	const [currentIndex, setCurrentIndex] = useState(0);
@@ -861,6 +869,9 @@ export default function ResearchLinkPage() {
 		setLastName("");
 		setCompany("");
 		setRespondentTitle("");
+		setJobFunction("");
+		setIndustry("");
+		setCompanySize("");
 		setResponseId(null);
 		setResponses({});
 		setCurrentIndex(0);
@@ -952,6 +963,11 @@ export default function ResearchLinkPage() {
 			const urlPhone = urlParams.get("phone");
 			const urlFirstName = urlParams.get("first_name") || urlParams.get("name")?.split(" ")[0] || null;
 			const urlLastName = urlParams.get("last_name") || urlParams.get("name")?.split(" ").slice(1).join(" ") || null;
+			const urlCompany = urlParams.get("company");
+			const urlTitle = urlParams.get("title");
+			const urlJobFunction = urlParams.get("job_function");
+			const urlIndustry = urlParams.get("industry");
+			const urlCompanySize = urlParams.get("company_size");
 
 			// Extract UTM params for campaign attribution (store in ref for manual submits)
 			const utmParams = extractUtmParamsFromSearch(urlParams);
@@ -996,6 +1012,11 @@ export default function ResearchLinkPage() {
 				setEmail(urlEmail);
 				if (urlFirstName) setFirstName(urlFirstName);
 				if (urlLastName) setLastName(urlLastName);
+				if (urlCompany) setCompany(urlCompany);
+				if (urlTitle) setRespondentTitle(urlTitle);
+				if (urlJobFunction) setJobFunction(urlJobFunction);
+				if (urlIndustry) setIndustry(urlIndustry);
+				if (urlCompanySize) setCompanySize(urlCompanySize);
 				void startSignup(slug, {
 					email: urlEmail,
 					responseMode: resolvedMode,
@@ -1019,6 +1040,11 @@ export default function ResearchLinkPage() {
 								email: urlEmail,
 								firstName: urlFirstName,
 								lastName: urlLastName,
+								company: urlCompany,
+								title: urlTitle,
+								jobFunction: urlJobFunction,
+								industry: urlIndustry,
+								companySize: urlCompanySize,
 								responseId: result.responseId,
 								responseMode: resolvedMode,
 								utmParams: utmPayload,
@@ -1089,6 +1115,11 @@ export default function ResearchLinkPage() {
 			if (urlPhone) setPhone(urlPhone);
 			if (urlFirstName) setFirstName(urlFirstName);
 			if (urlLastName) setLastName(urlLastName);
+			if (urlCompany) setCompany(urlCompany);
+			if (urlTitle) setRespondentTitle(urlTitle);
+			if (urlJobFunction) setJobFunction(urlJobFunction);
+			if (urlIndustry) setIndustry(urlIndustry);
+			if (urlCompanySize) setCompanySize(urlCompanySize);
 
 			// For anonymous mode, auto-start the survey with a fresh session
 			if (list.identity_mode === "anonymous") {
@@ -1135,6 +1166,7 @@ export default function ResearchLinkPage() {
 	}, [stage, currentIndex, questions, responses, resolvedMode]);
 
 	const currentQuestion = useMemo(() => questions[currentIndex], [currentIndex, questions]);
+	const currentQuestionMediaUrl = currentQuestion?.mediaUrl ?? currentQuestion?.videoUrl ?? null;
 
 	const _answeredCount = useMemo(() => {
 		return questions.filter((q) => {
@@ -1237,6 +1269,11 @@ export default function ResearchLinkPage() {
 				firstName: firstName.trim(),
 				lastName: lastName.trim() || null,
 				company: company.trim() || null,
+				title: respondentTitle.trim() || null,
+				jobFunction: jobFunction.trim() || null,
+				industry: industry.trim() || null,
+				companySize: companySize || null,
+				phone: phone.trim() || null,
 				responseId,
 				responseMode: resolvedMode,
 			});
@@ -1701,6 +1738,60 @@ export default function ResearchLinkPage() {
 								</div>
 							)}
 
+							{hasField("job_function") && (
+								<div className="space-y-2">
+									<Label className="text-white/90">
+										Job Function <span className="text-white/40">(optional)</span>
+									</Label>
+									<Input
+										type="text"
+										value={jobFunction}
+										onChange={(e) => setJobFunction(e.target.value)}
+										placeholder="e.g., Product, Marketing, Operations"
+										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+									/>
+								</div>
+							)}
+
+							{hasField("industry") && (
+								<div className="space-y-2">
+									<Label className="text-white/90">
+										Industry <span className="text-white/40">(optional)</span>
+									</Label>
+									<Input
+										type="text"
+										value={industry}
+										onChange={(e) => setIndustry(e.target.value)}
+										placeholder="e.g., Healthcare, FinTech, SaaS"
+										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+									/>
+								</div>
+							)}
+
+							{hasField("company_size") && (
+								<div className="space-y-2">
+									<Label className="text-white/90">
+										Company Size <span className="text-white/40">(optional)</span>
+									</Label>
+									<Select
+										value={companySize || "__empty__"}
+										onValueChange={(value) => setCompanySize(value === "__empty__" ? "" : value)}
+									>
+										<SelectTrigger className="border-white/10 bg-black/40 text-white">
+											<SelectValue placeholder="Select a size range" />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="__empty__">Not specified</SelectItem>
+											{COMPANY_SIZE_OPTIONS.map((option) => (
+												<SelectItem key={option.value} value={option.value}>
+													{option.label}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							)}
+
 							{/* Phone field (when identity is email but phone is requested) */}
 							{hasField("phone") && list.identity_field !== "phone" && (
 								<div className="space-y-2">
@@ -1784,9 +1875,7 @@ export default function ResearchLinkPage() {
 											</span>
 										</h2>
 										{/* Question media (image, video, or audio) */}
-										{(currentQuestion.mediaUrl ?? currentQuestion.videoUrl) && (
-											<QuestionMedia url={(currentQuestion.mediaUrl ?? currentQuestion.videoUrl)!} />
-										)}
+										{currentQuestionMediaUrl && <QuestionMedia url={currentQuestionMediaUrl} />}
 										{currentQuestion.helperText && (
 											<p className="text-base text-white/50">{currentQuestion.helperText}</p>
 										)}
