@@ -26,6 +26,7 @@ import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button";
@@ -2027,10 +2028,14 @@ export default function ResearchLinkPage() {
 								exit={{ opacity: 0, x: -20 }}
 								transition={{ duration: 0.2 }}
 								className="space-y-10"
+								data-testid="survey-question"
 							>
 								<div className="space-y-6">
 									<div className="space-y-3">
-										<h2 className="flex items-start gap-3 font-medium text-white text-xl sm:text-2xl">
+										<h2
+											className="flex items-start gap-3 font-medium text-white text-xl sm:text-2xl"
+											data-testid="survey-question-prompt"
+										>
 											<span className="shrink-0 text-white/40">{currentIndex + 1}.</span>
 											<span>
 												{currentQuestion.prompt}
@@ -2064,6 +2069,7 @@ export default function ResearchLinkPage() {
 										onClick={handleBack}
 										disabled={currentIndex === 0}
 										className="text-white/50 hover:bg-white/10 hover:text-white"
+										data-testid="survey-back-button"
 									>
 										<ArrowLeft className="mr-1 h-3.5 w-3.5" />
 										Back
@@ -2076,6 +2082,7 @@ export default function ResearchLinkPage() {
 											(currentQuestion?.required && !isQuestionAnswerComplete(currentQuestion, currentAnswer))
 										}
 										className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
+										data-testid="survey-next-button"
 									>
 										{isSaving ? (
 											<Loader2 className="h-4 w-4 animate-spin" />
@@ -2178,6 +2185,7 @@ export default function ResearchLinkPage() {
 							initial={{ opacity: 0, scale: 0.95 }}
 							animate={{ opacity: 1, scale: 1 }}
 							className="flex flex-col items-center gap-4 rounded-xl border border-white/10 bg-white/10 p-8 text-center"
+							data-testid="survey-complete"
 						>
 							<CheckCircle2 className="h-12 w-12 text-emerald-300" />
 							<div className="space-y-2">
@@ -2251,43 +2259,14 @@ function renderQuestionInput({
 	const resolved = resolveQuestionInput(question);
 
 	if (resolved.kind === "select") {
-		const currentValue = typeof value === "string" ? value : "";
-		const isOtherSelected = currentValue !== "" && !resolved.options.includes(currentValue);
 		return (
-			<div className="space-y-2">
-				<Select
-					value={isOtherSelected ? "__other__" : currentValue}
-					onValueChange={(next) => {
-						if (next === "__other__") {
-							onChange(""); // Clear so user can type
-						} else {
-							onChange(next);
-						}
-					}}
-				>
-					<SelectTrigger className="border-white/10 bg-black/30 text-white">
-						<SelectValue placeholder="Select an option" />
-					</SelectTrigger>
-					<SelectContent>
-						{resolved.options.map((option) => (
-							<SelectItem key={option} value={option}>
-								{option}
-							</SelectItem>
-						))}
-						{resolved.allowOther && <SelectItem value="__other__">Other...</SelectItem>}
-					</SelectContent>
-				</Select>
-				{resolved.allowOther && (isOtherSelected || currentValue === "") && (
-					<Input
-						type="text"
-						value={isOtherSelected ? currentValue : ""}
-						onChange={(e) => onChange(e.target.value)}
-						placeholder="Type your answer..."
-						className="border-white/10 bg-black/30 text-white placeholder:text-white/40"
-						autoFocus={isOtherSelected}
-					/>
-				)}
-			</div>
+			<SingleSelectInput
+				question={question}
+				value={value}
+				onChange={onChange}
+				options={resolved.options}
+				allowOther={resolved.allowOther}
+			/>
 		);
 	}
 
@@ -2308,7 +2287,7 @@ function renderQuestionInput({
 									onChange(nextChecked ? [...selected, option] : selected.filter((entry) => entry !== option));
 								}}
 							/>
-							<span>{option}</span>
+							<span data-testid="survey-multi-option">{option}</span>
 						</label>
 					);
 				})}
@@ -2329,6 +2308,7 @@ function renderQuestionInput({
 							}}
 							placeholder="Type your answer..."
 							className="border-white/10 bg-black/30 text-white placeholder:text-white/40"
+							data-testid="survey-text-input"
 						/>
 					</div>
 				)}
@@ -2347,6 +2327,8 @@ function renderQuestionInput({
 							key={point}
 							type="button"
 							onClick={() => onChange(String(point))}
+							aria-label={`Rate ${point}`}
+							data-testid={`survey-likert-${point}`}
 							className={cn(
 								"flex h-10 w-10 items-center justify-center rounded-lg border font-medium text-sm transition-all",
 								selectedValue === String(point)
@@ -2371,6 +2353,7 @@ function renderQuestionInput({
 	if (resolved.kind === "matrix") {
 		const selectedValues = isMatrixResponseValue(value) ? value : {};
 		const scalePoints = Array.from({ length: resolved.scale }, (_, i) => i + 1);
+		const hasScaleLabels = Boolean(resolved.labels.low || resolved.labels.high);
 		const updateMatrixValue = (rowId: string, nextValue: string) => {
 			onChange({
 				...selectedValues,
@@ -2383,6 +2366,17 @@ function renderQuestionInput({
 				<div className="hidden overflow-x-auto rounded-xl border border-white/10 bg-black/20 md:block">
 					<table className="min-w-full border-collapse">
 						<thead>
+							{hasScaleLabels && (
+								<tr className="border-white/10 border-b text-white/50 text-xs">
+									<th className="px-4 pt-3 pb-1" />
+									<th colSpan={scalePoints.length} className="px-2 pt-3 pb-1">
+										<div className="flex items-center justify-between gap-4 px-1">
+											<span>{resolved.labels.low}</span>
+											<span className="text-right">{resolved.labels.high}</span>
+										</div>
+									</th>
+								</tr>
+							)}
 							<tr className="border-white/10 border-b text-white/50 text-xs">
 								<th className="px-4 py-3 text-left font-medium">Area</th>
 								{scalePoints.map((point) => (
@@ -2394,7 +2388,11 @@ function renderQuestionInput({
 						</thead>
 						<tbody>
 							{resolved.rows.map((row) => (
-								<tr key={row.id} className="border-white/10 border-b last:border-b-0">
+								<tr
+									key={row.id}
+									className="border-white/10 border-b last:border-b-0"
+									data-testid={`survey-matrix-row-${row.id}`}
+								>
 									<td className="px-4 py-3 text-sm text-white/85">{row.label}</td>
 									{scalePoints.map((point) => {
 										const isSelected = selectedValues[row.id] === String(point);
@@ -2403,6 +2401,8 @@ function renderQuestionInput({
 												<button
 													type="button"
 													onClick={() => updateMatrixValue(row.id, String(point))}
+													aria-label={`Rate ${row.label} ${point}`}
+													data-testid={`survey-matrix-${row.id}-${point}`}
 													className={cn(
 														"mx-auto flex h-9 w-9 items-center justify-center rounded-md border font-medium text-sm transition-all",
 														isSelected
@@ -2421,9 +2421,22 @@ function renderQuestionInput({
 					</table>
 				</div>
 
+				{hasScaleLabels && (
+					<div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 md:hidden">
+						<div className="flex items-center justify-between gap-4 px-1 text-white/50 text-xs">
+							<span>{resolved.labels.low}</span>
+							<span className="text-right">{resolved.labels.high}</span>
+						</div>
+					</div>
+				)}
+
 				<div className="space-y-4 md:hidden">
 					{resolved.rows.map((row) => (
-						<div key={row.id} className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4">
+						<div
+							key={row.id}
+							className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4"
+							data-testid={`survey-matrix-row-${row.id}`}
+						>
 							<p className="text-sm text-white/85">{row.label}</p>
 							<div className="flex items-center justify-between gap-2">
 								{scalePoints.map((point) => {
@@ -2433,6 +2446,8 @@ function renderQuestionInput({
 											key={point}
 											type="button"
 											onClick={() => updateMatrixValue(row.id, String(point))}
+											aria-label={`Rate ${row.label} ${point}`}
+											data-testid={`survey-matrix-${row.id}-${point}`}
 											className={cn(
 												"flex h-10 w-10 items-center justify-center rounded-lg border font-medium text-sm transition-all",
 												isSelected
@@ -2448,13 +2463,6 @@ function renderQuestionInput({
 						</div>
 					))}
 				</div>
-
-				{(resolved.labels.low || resolved.labels.high) && (
-					<div className="flex justify-between text-white/50 text-xs">
-						<span>{resolved.labels.low}</span>
-						<span>{resolved.labels.high}</span>
-					</div>
-				)}
 			</div>
 		);
 	}
@@ -2468,6 +2476,7 @@ function renderQuestionInput({
 						key={option.label}
 						type="button"
 						onClick={() => onChange(option.label)}
+						data-testid="survey-image-option"
 						className={cn(
 							"group relative overflow-hidden rounded-xl border-2 transition-all",
 							selectedValue === option.label
@@ -2516,6 +2525,7 @@ function renderQuestionInput({
 					style={{ minHeight: "220px" }}
 					className="w-full resize-none border-white/10 bg-black/20 pr-14 text-lg text-white placeholder:text-white/30 focus:border-white/20 md:text-xl"
 					autoFocus
+					data-testid="survey-textarea-input"
 				/>
 				{voiceSupported && toggleRecording && voiceButtonState && (
 					<div className="absolute top-2 right-2">
@@ -2544,6 +2554,7 @@ function renderQuestionInput({
 				onChange={(event) => onChange(event.target.value)}
 				placeholder="Type your response..."
 				className={cn("border-white/10 bg-black/30 text-white placeholder:text-white/40", showVoice && "pr-12")}
+				data-testid="survey-text-input"
 			/>
 			{showVoice && (
 				<div className="-translate-y-1/2 absolute top-1/2 right-2">
@@ -2615,4 +2626,120 @@ function resolveQuestionInput(question: ResearchLinkQuestion) {
 		return { kind: "input" as const, inputType: "tel" as const };
 	}
 	return { kind: "textarea" as const };
+}
+
+function SingleSelectInput({
+	question,
+	value,
+	onChange,
+	options,
+	allowOther,
+}: {
+	question: ResearchLinkQuestion;
+	value: ResponseValue;
+	onChange: (value: ResponseValue) => void;
+	options: string[];
+	allowOther?: boolean;
+}) {
+	const currentValue = typeof value === "string" ? value : "";
+	const isOtherValue = currentValue !== "" && !options.includes(currentValue);
+	const [otherSelected, setOtherSelected] = useState(isOtherValue);
+
+	useEffect(() => {
+		if (isOtherValue) {
+			setOtherSelected(true);
+			return;
+		}
+		if (currentValue !== "") {
+			setOtherSelected(false);
+		}
+	}, [currentValue, isOtherValue]);
+
+	const selectedValue = isOtherValue ? "__other__" : otherSelected ? "__other__" : currentValue;
+
+	return (
+		<div className="space-y-3">
+			<RadioGroup
+				value={selectedValue}
+				onValueChange={(next) => {
+					if (next === "__other__") {
+						setOtherSelected(true);
+						if (isOtherValue) return;
+						onChange("");
+						return;
+					}
+
+					setOtherSelected(false);
+					onChange(next);
+				}}
+				className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+				data-testid="survey-select-input"
+			>
+				{options.map((option, index) => {
+					const optionId = `${question.id}-option-${index}`;
+					const selected = currentValue === option;
+					return (
+						<Label
+							key={option}
+							htmlFor={optionId}
+							data-testid="survey-select-option"
+							className={cn(
+								"group flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border p-4 text-left transition-all",
+								selected
+									? "border-white bg-white text-black"
+									: "border-white/15 bg-white/5 text-white/85 hover:border-white/35 hover:bg-white/10"
+							)}
+						>
+							<RadioGroupItem
+								value={option}
+								id={optionId}
+								className={cn(
+									"mt-0.5 border-white/35 shadow-none",
+									selected && "border-black text-black",
+									!selected && "text-white"
+								)}
+							/>
+							<span className="flex-1 text-sm leading-relaxed">{option}</span>
+						</Label>
+					);
+				})}
+
+				{allowOther && (
+					<Label
+						htmlFor={`${question.id}-option-other`}
+						data-testid="survey-select-option"
+						className={cn(
+							"group flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border p-4 text-left transition-all",
+							selectedValue === "__other__"
+								? "border-white bg-white text-black"
+								: "border-white/15 bg-white/5 text-white/85 hover:border-white/35 hover:bg-white/10"
+						)}
+					>
+						<RadioGroupItem
+							value="__other__"
+							id={`${question.id}-option-other`}
+							className={cn(
+								"mt-0.5 border-white/35 shadow-none",
+								selectedValue === "__other__" && "border-black text-black",
+								selectedValue !== "__other__" && "text-white"
+							)}
+						/>
+						<span className="flex-1 text-sm leading-relaxed">Other</span>
+					</Label>
+				)}
+			</RadioGroup>
+
+			{allowOther && (otherSelected || isOtherValue) && (
+				<Input
+					type="text"
+					value={isOtherValue ? currentValue : ""}
+					onChange={(e) => onChange(e.target.value)}
+					placeholder="Type your answer..."
+					className="border-white/10 bg-black/30 text-white placeholder:text-white/40"
+					autoFocus={selectedValue === "__other__"}
+					data-testid="survey-text-input"
+				/>
+			)}
+		</div>
+	);
 }
