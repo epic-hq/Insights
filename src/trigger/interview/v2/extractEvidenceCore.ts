@@ -241,6 +241,7 @@ function isProceduralQuestionText(value: string): boolean {
 }
 
 export function shouldSkipPersistedEvidenceTurn(params: {
+  personKey: string;
   chunk: string;
   gist: string;
   verb: string;
@@ -257,6 +258,7 @@ export function shouldSkipPersistedEvidenceTurn(params: {
     | null;
 }): boolean {
   const {
+    personKey,
     chunk,
     gist,
     verb,
@@ -270,17 +272,18 @@ export function shouldSkipPersistedEvidenceTurn(params: {
     isLowSignalEvidenceText(verb) ||
     isLowSignalEvidenceText(gist);
   const isProceduralQuestion = isQuestion && isProceduralQuestionText(chunk);
-  const shouldSkipResearchPrompt =
-    interactionContext === "research" &&
-    isInterviewerTurn &&
-    (isQuestion || facetMentionCount === 0);
+  const isExplicitInterviewer = personKey.startsWith("interviewer-");
+  const shouldTreatAsInterviewer = isExplicitInterviewer || isInterviewerTurn;
+  const shouldSkipInterviewerScaffolding =
+    shouldTreatAsInterviewer &&
+    (facetMentionCount === 0 || isQuestion || isProceduralQuestion);
   const shouldSkipLowSignalAck =
     facetMentionCount === 0 &&
     ((chunk.length < 90 && lowSignalText) ||
       (isQuestion && chunk.length < 140) ||
       isProceduralQuestion);
 
-  return shouldSkipResearchPrompt || shouldSkipLowSignalAck;
+  return shouldSkipInterviewerScaffolding || shouldSkipLowSignalAck;
 }
 
 // Generate a stable, short signature for dedupe/independence.
@@ -1841,6 +1844,7 @@ export async function extractEvidenceAndPeopleCore({
     );
     if (
       shouldSkipPersistedEvidenceTurn({
+        personKey,
         chunk,
         gist,
         verb,

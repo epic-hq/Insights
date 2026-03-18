@@ -161,6 +161,7 @@ describe("extractEvidenceCore - evidence selection", () => {
   it("skips interviewer research prompts that only move the conversation forward", () => {
     expect(
       shouldSkipPersistedEvidenceTurn({
+        personKey: "interviewer-1",
         chunk: "Okay. How about AI and things like that?",
         gist: "asks about AI",
         verb: "How about AI?",
@@ -175,6 +176,7 @@ describe("extractEvidenceCore - evidence selection", () => {
   it("skips low-signal acknowledgments with no facets", () => {
     expect(
       shouldSkipPersistedEvidenceTurn({
+        personKey: "participant-1",
         chunk: "Yeah.",
         gist: "confirms",
         verb: "Yeah.",
@@ -189,6 +191,7 @@ describe("extractEvidenceCore - evidence selection", () => {
   it("keeps substantive participant evidence even when concise", () => {
     expect(
       shouldSkipPersistedEvidenceTurn({
+        personKey: "participant-1",
         chunk:
           "I want the tool to pull in my sources and show me what's missing before I draft anything.",
         gist: "wants source gap detection",
@@ -201,9 +204,10 @@ describe("extractEvidenceCore - evidence selection", () => {
     ).toBe(false);
   });
 
-  it("keeps non-procedural interviewer turns when they carry concrete signal", () => {
+  it("keeps interviewer turns when they carry concrete facet-bearing signal", () => {
     expect(
       shouldSkipPersistedEvidenceTurn({
+        personKey: "interviewer-1",
         chunk:
           "We usually see people abandon this workflow when the calendar step takes too long.",
         gist: "workflow abandonment trigger",
@@ -214,5 +218,21 @@ describe("extractEvidenceCore - evidence selection", () => {
         interactionContext: "research",
       }),
     ).toBe(false);
+  });
+
+  it("skips interviewer concept-demo scaffolding even when not classified as research", () => {
+    expect(
+      shouldSkipPersistedEvidenceTurn({
+        personKey: "interviewer-1",
+        chunk:
+          "One of the ideas here is that we'd start in the beginning with allowing you to ask something.",
+        gist: "introduce concept demo",
+        verb: "allowing you to ask something",
+        facetMentionCount: 0,
+        isQuestion: false,
+        isInterviewerTurn: false,
+        interactionContext: "personal",
+      }),
+    ).toBe(true);
   });
 });
