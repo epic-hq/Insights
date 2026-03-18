@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { findLocalEvidenceMatchesForTheme, mergeThemeEvidenceMatches } from "./theme-linking.server";
+import {
+	findLocalEvidenceMatchesForTheme,
+	limitThemeLinksPerEvidence,
+	mergeThemeEvidenceMatches,
+} from "./theme-linking.server";
 
 describe("findLocalEvidenceMatchesForTheme", () => {
 	it("anchors a theme to the direct supporting quote even with timestamps", () => {
@@ -52,6 +56,24 @@ describe("findLocalEvidenceMatchesForTheme", () => {
 		});
 		expect(matches[0].confidence).toBeGreaterThan(0.6);
 	});
+
+	it("does not create false positives from broad stopword overlap", () => {
+		const matches = findLocalEvidenceMatchesForTheme({
+			candidates: [
+				{
+					id: "ev-1",
+					gist: "Vendor networking after teardown",
+					chunk: "Host a vendors-only networking hour after teardown so vendors can collaborate and stay connected.",
+				},
+			],
+			themeName: "Preference for Interactive Workshops",
+			statement: "Attendees prefer hands-on, interactive workshops that build practical skills over passive learning.",
+			inclusionCriteria:
+				"Quotes mentioning workshops, hands-on learning, teaching components, or interactive sessions.",
+		});
+
+		expect(matches).toEqual([]);
+	});
 });
 
 describe("mergeThemeEvidenceMatches", () => {
@@ -86,6 +108,43 @@ describe("mergeThemeEvidenceMatches", () => {
 				id: "ev-2",
 				confidence: 0.52,
 				rationale: "Semantic match (52%)",
+			},
+		]);
+	});
+});
+
+describe("limitThemeLinksPerEvidence", () => {
+	it("caps tiny interviews to one dominant theme per evidence row", () => {
+		const links = limitThemeLinksPerEvidence(
+			[
+				{
+					themeId: "theme-1",
+					evidenceId: "ev-1",
+					confidence: 0.77,
+					rationale: "Theme text overlap match",
+				},
+				{
+					themeId: "theme-2",
+					evidenceId: "ev-1",
+					confidence: 0.68,
+					rationale: "Theme text overlap match",
+				},
+				{
+					themeId: "theme-3",
+					evidenceId: "ev-1",
+					confidence: 0.66,
+					rationale: "Semantic match (66%)",
+				},
+			],
+			1
+		);
+
+		expect(links).toEqual([
+			{
+				themeId: "theme-1",
+				evidenceId: "ev-1",
+				confidence: 0.77,
+				rationale: "Theme text overlap match",
 			},
 		]);
 	});

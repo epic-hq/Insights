@@ -8,7 +8,11 @@ import {
 	systemBillingContext,
 } from "~/lib/billing";
 import { SIMILARITY_THRESHOLDS } from "~/lib/embeddings/openai.server";
-import { findLocalEvidenceMatchesForTheme, mergeThemeEvidenceMatches } from "~/lib/evidence/theme-linking.server";
+import {
+	findLocalEvidenceMatchesForTheme,
+	limitThemeLinksPerEvidence,
+	mergeThemeEvidenceMatches,
+} from "~/lib/evidence/theme-linking.server";
 import type { SupabaseClient, Theme, Theme_EvidenceInsert, ThemeInsert } from "~/types";
 import { deleteOrphanedThemes } from "./services/segmentThemeQueries.server";
 
@@ -442,6 +446,12 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 	const created_theme_ids: string[] = [];
 	const themes: Theme[] = [];
 	let link_count = 0;
+	const pendingLinks: Array<{
+		themeId: string;
+		evidenceId: string;
+		confidence: number;
+		rationale: string;
+	}> = [];
 
 	const themesFromBaml = Array.isArray(resp?.themes) ? resp.themes : [];
 	if (!themesFromBaml.length) {
@@ -508,32 +518,43 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 					50 // max matches per theme
 				);
 
-				const evidenceMatches = mergeThemeEvidenceMatches(localEvidenceMatches, similarEvidence);
+				const evidenceMatches = mergeThemeEvidenceMatches(localEvidenceMatches, similarEvidence).filter(
+					(match) => match.confidence >= analysisSettings.evidence_link_threshold
+				);
 
 				consola.log(
 					`[autoGroupThemesAndApply] Found ${evidenceMatches.length} total evidence matches for "${t.name}" ` +
 						`(${localEvidenceMatches.length} local, ${similarEvidence.length} semantic)`
 				);
 
-				// Create theme_evidence links for each match
 				for (const match of evidenceMatches) {
-					try {
-						await upsertThemeEvidence(supabase, {
-							account_id,
-							project_id,
-							theme_id: theme.id,
-							evidence_id: match.id,
-							rationale: match.rationale,
-							confidence: match.confidence,
-						});
-						link_count += 1;
-					} catch (_linkErr) {
-						// Silently skip - likely duplicate or FK error
-					}
+					pendingLinks.push({
+						themeId: theme.id,
+						evidenceId: match.id,
+						rationale: match.rationale,
+						confidence: match.confidence,
+					});
 				}
 			} catch (searchErr) {
 				consola.warn(`[autoGroupThemesAndApply] Semantic search failed for theme "${t.name}":`, searchErr);
 			}
+		}
+	}
+
+	const prunedLinks = limitThemeLinksPerEvidence(pendingLinks, evidence.length);
+	for (const link of prunedLinks) {
+		try {
+			await upsertThemeEvidence(supabase, {
+				account_id,
+				project_id,
+				theme_id: link.themeId,
+				evidence_id: link.evidenceId,
+				rationale: link.rationale,
+				confidence: link.confidence,
+			});
+			link_count += 1;
+		} catch (_linkErr) {
+			// Silently skip - likely duplicate or FK error
 		}
 	}
 

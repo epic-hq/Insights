@@ -28,6 +28,7 @@ import { SIMILARITY_THRESHOLDS } from "~/lib/embeddings/openai.server";
 import { searchEvidenceForTheme } from "~/lib/evidence/semantic-search.server";
 import {
 	findLocalEvidenceMatchesForTheme,
+	limitThemeLinksPerEvidence,
 	mergeThemeEvidenceMatches,
 } from "~/lib/evidence/theme-linking.server";
 import { getProjectAnalysisSettings } from "~/features/projects/utils/analysisSettings";
@@ -349,6 +350,12 @@ export const generateInsightsTaskV2 = task({
       // This replaces the old cross-product approach (every theme × every evidence)
       let linkCount = 0;
       const themesWithNoLinks: string[] = [];
+      const pendingLinks: Array<{
+        themeId: string;
+        evidenceId: string;
+        confidence: number;
+        rationale: string;
+      }> = [];
 
       if (createdThemes.length > 0) {
         consola.info(
@@ -382,6 +389,9 @@ export const generateInsightsTaskV2 = task({
             const evidenceMatches = mergeThemeEvidenceMatches(
               localEvidenceMatches,
               similarEvidence,
+            ).filter(
+              (match) =>
+                match.confidence >= analysisSettings.evidence_link_threshold,
             );
 
             if (evidenceMatches.length === 0) {
@@ -396,37 +406,13 @@ export const generateInsightsTaskV2 = task({
               );
             }
 
-            // Create links with semantic confidence scores
-            let linksCreatedForTheme = 0;
             for (const match of evidenceMatches) {
-              const { error: linkError } = await client
-                .from("theme_evidence")
-                .upsert(
-                  {
-                    account_id: interview.account_id,
-                    project_id: interview.project_id,
-                    theme_id: theme.id,
-                    evidence_id: match.id,
-                    rationale: match.rationale,
-                    confidence: match.confidence,
-                  },
-                  {
-                    onConflict: "theme_id,evidence_id,account_id",
-                    ignoreDuplicates: false, // Update confidence if already exists
-                  },
-                );
-
-              if (!linkError) {
-                linkCount++;
-                linksCreatedForTheme++;
-              }
-            }
-
-            if (linksCreatedForTheme === 0 && evidenceMatches.length > 0) {
-              consola.warn(
-                `[generateInsights] Failed to create links for theme "${theme.name}" despite finding ${evidenceMatches.length} matches`,
-              );
-              themesWithNoLinks.push(theme.name);
+              pendingLinks.push({
+                themeId: theme.id,
+                evidenceId: match.id,
+                rationale: match.rationale,
+                confidence: match.confidence,
+              });
             }
           } catch (searchErr) {
             consola.warn(
@@ -437,8 +423,44 @@ export const generateInsightsTaskV2 = task({
           }
         }
 
+        const prunedLinks = limitThemeLinksPerEvidence(
+          pendingLinks,
+          candidateEvidenceRows.length,
+        );
+        const linkedThemeIds = new Set(prunedLinks.map((link) => link.themeId));
+
+        for (const theme of createdThemes) {
+          if (!linkedThemeIds.has(theme.id)) {
+            themesWithNoLinks.push(theme.name);
+          }
+        }
+
+        for (const link of prunedLinks) {
+          const { error: linkError } = await client
+            .from("theme_evidence")
+            .upsert(
+              {
+                account_id: interview.account_id,
+                project_id: interview.project_id,
+                theme_id: link.themeId,
+                evidence_id: link.evidenceId,
+                rationale: link.rationale,
+                confidence: link.confidence,
+              },
+              {
+                onConflict: "theme_id,evidence_id,account_id",
+                ignoreDuplicates: false,
+              },
+            );
+
+          if (!linkError) {
+            linkCount++;
+          }
+        }
+
         consola.success(
-          `[generateInsights] Created ${linkCount} semantic theme_evidence links`,
+          `[generateInsights] Created ${linkCount} semantic/theme-grounded theme_evidence links ` +
+            `(kept ${prunedLinks.length}/${pendingLinks.length} after evidence caps)`,
         );
 
         // Log warning if any themes got no links

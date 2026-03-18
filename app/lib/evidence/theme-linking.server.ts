@@ -12,6 +12,86 @@ export interface LocalThemeEvidenceMatch {
 	rationale: string;
 }
 
+export interface ProposedThemeEvidenceLink {
+	themeId: string;
+	evidenceId: string;
+	confidence: number;
+	rationale: string;
+}
+
+const STOPWORDS = new Set([
+	"a",
+	"all",
+	"also",
+	"an",
+	"and",
+	"any",
+	"are",
+	"as",
+	"at",
+	"be",
+	"because",
+	"been",
+	"but",
+	"by",
+	"can",
+	"for",
+	"from",
+	"get",
+	"had",
+	"has",
+	"have",
+	"how",
+	"ideally",
+	"if",
+	"in",
+	"into",
+	"is",
+	"it",
+	"its",
+	"just",
+	"maintain",
+	"make",
+	"more",
+	"of",
+	"on",
+	"or",
+	"our",
+	"out",
+	"overall",
+	"post",
+	"should",
+	"so",
+	"some",
+	"strong",
+	"such",
+	"than",
+	"that",
+	"the",
+	"their",
+	"them",
+	"there",
+	"these",
+	"they",
+	"this",
+	"those",
+	"through",
+	"to",
+	"up",
+	"use",
+	"using",
+	"value",
+	"way",
+	"we",
+	"were",
+	"what",
+	"when",
+	"where",
+	"which",
+	"with",
+	"would",
+]);
+
 function stripTimestampSuffix(value: string): string {
 	return value.replace(/\s*(?:\(|\[)\d{1,2}:\d{2}(?::\d{2})?(?:\)|\])\s*$/g, "").trim();
 }
@@ -36,7 +116,7 @@ function tokenize(value: string | null | undefined): Set<string> {
 				if (token.length > 4 && token.endsWith("s")) return token.slice(0, -1);
 				return token;
 			})
-			.filter((token) => token.length >= 3)
+			.filter((token) => token.length >= 3 && !STOPWORDS.has(token))
 	);
 }
 
@@ -204,4 +284,47 @@ export function mergeThemeEvidenceMatches(
 	}
 
 	return Array.from(merged.values()).sort((a, b) => b.confidence - a.confidence);
+}
+
+function rationalePriority(rationale: string): number {
+	if (rationale === "Direct quote match") return 5;
+	if (rationale === "Quote matched evidence context") return 4;
+	if (rationale === "Evidence quote contains stored snippet") return 3;
+	if (rationale === "Quote token overlap match") return 2;
+	if (rationale === "Theme text overlap match") return 1;
+	return 0;
+}
+
+function getMaxThemesPerEvidence(totalEvidenceCount: number): number {
+	if (totalEvidenceCount <= 5) return 1;
+	if (totalEvidenceCount <= 15) return 2;
+	return 3;
+}
+
+export function limitThemeLinksPerEvidence(
+	links: ProposedThemeEvidenceLink[],
+	totalEvidenceCount: number
+): ProposedThemeEvidenceLink[] {
+	const maxThemesPerEvidence = getMaxThemesPerEvidence(totalEvidenceCount);
+	if (links.length <= maxThemesPerEvidence) return links;
+
+	const grouped = new Map<string, ProposedThemeEvidenceLink[]>();
+	for (const link of links) {
+		const bucket = grouped.get(link.evidenceId) ?? [];
+		bucket.push(link);
+		grouped.set(link.evidenceId, bucket);
+	}
+
+	const kept: ProposedThemeEvidenceLink[] = [];
+	for (const evidenceLinks of grouped.values()) {
+		const winners = evidenceLinks
+			.sort((a, b) => {
+				if (b.confidence !== a.confidence) return b.confidence - a.confidence;
+				return rationalePriority(b.rationale) - rationalePriority(a.rationale);
+			})
+			.slice(0, maxThemesPerEvidence);
+		kept.push(...winners);
+	}
+
+	return kept;
 }
