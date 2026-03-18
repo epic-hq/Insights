@@ -695,6 +695,18 @@ export function buildQuickLinksMarkdown(options: {
 	return `Quick links: ${links.join(" · ")}`;
 }
 
+function responseHasExplicitNextActionPrompt(text: string): boolean {
+	const normalized = text.toLowerCase();
+	return (
+		normalized.includes("would you like me to:") ||
+		normalized.includes("please confirm your preference") ||
+		normalized.includes("choose one of these options") ||
+		normalized.includes("pick one of these options") ||
+		normalized.includes("select one of these options") ||
+		normalized.includes("reply with your choice")
+	);
+}
+
 type StreamLike = ReadableStream<Record<string, unknown>>;
 
 function augmentStreamForReliability(
@@ -786,6 +798,7 @@ function augmentStreamForReliability(
 		if (options.csvListContract) return;
 		if (!sawTextDelta) return;
 		if (MARKDOWN_LINK_REGEX.test(accumulatedAssistantText)) return;
+		if (responseHasExplicitNextActionPrompt(accumulatedAssistantText)) return;
 		const quickLinks = buildQuickLinksMarkdown({
 			accountId: options.accountId,
 			projectId: options.projectId,

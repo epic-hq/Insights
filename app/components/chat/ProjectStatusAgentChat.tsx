@@ -107,6 +107,63 @@ function buildUserInputPayloadKey(payload: UserInputPayload): string {
 	return `${payload.prompt}::${payload.selectionMode}::${payload.options.map((option) => option.id).join(",")}`;
 }
 
+function extractDecisionSuggestions(messageText: string): string[] {
+	const markerIndex = messageText.toLowerCase().lastIndexOf("would you like me to:");
+	if (markerIndex < 0) return [];
+
+	const lines = messageText.slice(markerIndex).split(/\r?\n/).slice(1);
+	const suggestions: string[] = [];
+	let sawBullet = false;
+
+	for (const line of lines) {
+		const trimmed = line.trim();
+		if (!trimmed) {
+			if (sawBullet) break;
+			continue;
+		}
+
+		const bulletMatch = trimmed.match(/^[-*•]\s+(.+)$/);
+		if (!bulletMatch) {
+			if (sawBullet) break;
+			continue;
+		}
+
+		const suggestion = bulletMatch[1]?.trim();
+		if (!suggestion) continue;
+		suggestions.push(suggestion.replace(/[.:]\s*$/, ""));
+		sawBullet = true;
+	}
+
+	return Array.from(new Set(suggestions)).slice(0, 3);
+}
+
+function deriveDeterministicSuggestions(messageText: string, currentPageContext: string): string[] {
+	if (!messageText) return [];
+
+	const explicitDecisionSuggestions = extractDecisionSuggestions(messageText);
+	if (explicitDecisionSuggestions.length > 0) {
+		return explicitDecisionSuggestions;
+	}
+
+	const isSurveyEditor = /View:\s*Survey editor/i.test(currentPageContext);
+	if (!isSurveyEditor) return [];
+
+	const normalized = messageText.toLowerCase();
+	if (
+		normalized.includes("please confirm your preference") ||
+		normalized.includes("replace the current survey content entirely") ||
+		normalized.includes("update only the questions that differ")
+	) {
+		return [
+			"Replace the current survey entirely",
+			"Update only the changed questions and keep existing IDs",
+			"Review the branching before applying",
+		];
+	}
+
+	return [];
+}
+
 interface PeopleImportApiResponse {
 	success?: boolean;
 	requestId?: string;
@@ -1700,6 +1757,14 @@ export function ProjectStatusAgentChat({
 			return;
 		}
 
+		const hasInlineActionControls =
+			extractUserInputPayloads(lastMsg).length > 0 || Boolean(extractSuggestActionsPayload(lastMsg));
+		if (hasInlineActionControls) {
+			setGeneratedSuggestions([]);
+			lastProcessedMessageId.current = lastMsg.id;
+			return;
+		}
+
 		// Otherwise, generate new ones via API
 		lastProcessedMessageId.current = lastMsg.id;
 
@@ -1709,6 +1774,12 @@ export function ProjectStatusAgentChat({
 				.map((p) => p.text)
 				.join("\n") || "";
 		if (!lastText) return;
+
+		const deterministicSuggestions = deriveDeterministicSuggestions(lastText, currentPageContext);
+		if (deterministicSuggestions.length > 0) {
+			setGeneratedSuggestions(deterministicSuggestions);
+			return;
+		}
 
 		fetch("/api/generate-suggestions", {
 			method: "POST",

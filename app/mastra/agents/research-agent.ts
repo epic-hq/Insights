@@ -93,7 +93,9 @@ When the user asks about interview prep, open questions, follow-ups, or "how do 
 		storage: getSharedPostgresStore(),
 		options: {
 			lastMessages: 20,
-			observationalMemory: true,
+			observationalMemory: {
+				model: "openai/gpt-4.1-mini",
+			},
 		},
 	}),
 	tools: wrapToolsWithStatusEvents({

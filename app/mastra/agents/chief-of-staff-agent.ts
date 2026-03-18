@@ -94,7 +94,9 @@ Step 2: Write a 1-2 sentence chat summary. The widget does the heavy lifting —
 		storage: getSharedPostgresStore(),
 		options: {
 			lastMessages: 20,
-			observationalMemory: true,
+			observationalMemory: {
+				model: "openai/gpt-4.1-mini",
+			},
 		},
 	}),
 	outputProcessors: [new TokenLimiterProcessor(20_000)],

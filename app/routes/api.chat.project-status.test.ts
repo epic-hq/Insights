@@ -1284,4 +1284,43 @@ describe("api.chat.project-status", () => {
 		expect(quickLinks).toContain("[People](/a/acct-1/project-1/people)");
 		expect(quickLinks).toContain("[Insights](/a/acct-1/project-1/insights/table)");
 	});
+
+	it("does not append quick links when the assistant is already asking for a clear next-action choice", async () => {
+		mockedHandleChatStream.mockResolvedValue(
+			new ReadableStream({
+				start(controller) {
+					controller.enqueue({ type: "start" });
+					controller.enqueue({ type: "start-step" });
+					controller.enqueue({ type: "text-start", id: "chunk-a" });
+					controller.enqueue({
+						type: "text-delta",
+						id: "chunk-a",
+						delta:
+							"To update this survey accurately, would you like me to:\n\n- Replace the current survey content entirely with this new structure\n- Update only the questions that differ, keeping any existing responses and IDs\n\nPlease confirm your preference so I can proceed.",
+					});
+					controller.enqueue({ type: "text-end", id: "chunk-a" });
+					controller.enqueue({ type: "finish", finishReason: "stop" });
+					controller.close();
+				},
+			}) as any
+		);
+
+		const response = await action(
+			buildArgs({
+				message: "update this survey to match my brief",
+				system: "View: Survey editor (surveyId=e6374753-10cf-49c9-9453-e0566a8be411) /a/acct-url/project-1/ask/e6374753-10cf-49c9-9453-e0566a8be411/edit",
+			})
+		);
+		expect(response.status).toBe(200);
+
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+		const text = chunks
+			.filter((chunk) => chunk.type === "text-delta")
+			.map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""))
+			.join("\n");
+
+		expect(text).toContain("Please confirm your preference");
+		expect(text).not.toContain("Quick links:");
+	});
 });

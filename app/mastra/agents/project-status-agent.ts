@@ -270,7 +270,9 @@ Please try:
 		storage: getSharedPostgresStore(),
 		options: {
 			lastMessages: 20,
-			observationalMemory: true,
+			observationalMemory: {
+				model: "openai/gpt-4.1-mini",
+			},
 		},
 	}),
 	// TokenLimiterProcessor prevents context window overflow
