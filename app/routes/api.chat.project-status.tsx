@@ -149,12 +149,51 @@ const SURVEY_QUESTION_TYPE_VALUES = [
 	"single_select",
 	"multi_select",
 	"likert",
+	"image_select",
 ] as const;
+const surveyBranchConditionDraftSchema = z.object({
+	questionId: z.string().min(1),
+	operator: z.enum([
+		"equals",
+		"not_equals",
+		"contains",
+		"not_contains",
+		"selected",
+		"not_selected",
+		"answered",
+		"not_answered",
+	]),
+	value: z.union([z.string(), z.array(z.string())]).optional(),
+});
+const surveyBranchRuleDraftSchema = z.object({
+	id: z.string().min(1).nullish(),
+	conditions: z.object({
+		logic: z.enum(["and", "or"]),
+		conditions: z.array(surveyBranchConditionDraftSchema).min(1),
+	}),
+	action: z.enum(["skip_to", "end_survey"]),
+	targetQuestionId: z.string().min(1).nullish(),
+	targetSectionId: z.string().min(1).nullish(),
+	label: z.string().nullish(),
+	naturalLanguage: z.string().nullish(),
+	summary: z.string().nullish(),
+	guidance: z.string().nullish(),
+	source: z.enum(["user_ui", "user_voice", "ai_generated"]).nullish(),
+	confidence: z.enum(["high", "medium", "low"]).nullish(),
+	createdAt: z.string().nullish(),
+});
+const surveyQuestionBranchingDraftSchema = z.object({
+	rules: z.array(surveyBranchRuleDraftSchema),
+	defaultNext: z.string().min(1).nullish(),
+});
 const surveyQuestionDraftSchema = z
 	.object({
+		id: z.string().min(1).nullish(),
 		prompt: z.string().min(1),
 		type: z.enum(SURVEY_QUESTION_TYPE_VALUES).nullish(),
 		required: z.boolean().nullish(),
+		helperText: z.string().nullish(),
+		allowOther: z.boolean().nullish(),
 		options: z.array(z.string()).nullish(),
 		likertScale: z.number().int().min(3).max(10).nullish(),
 		likertLabels: z
@@ -163,12 +202,15 @@ const surveyQuestionDraftSchema = z
 				high: z.string().nullish(),
 			})
 			.nullish(),
+		sectionId: z.string().min(1).nullish(),
+		sectionTitle: z.string().min(1).nullish(),
+		branching: surveyQuestionBranchingDraftSchema.nullish(),
 	})
 	.passthrough();
 const surveyQuickCreateDraftSchema = z.object({
 	name: z.string().min(2),
 	description: z.string().nullish(),
-	questions: z.array(surveyQuestionDraftSchema).min(3).max(8),
+	questions: z.array(surveyQuestionDraftSchema).min(3).max(24),
 });
 
 function mapUsageToLangfuse(usage?: { inputTokens?: number; outputTokens?: number }) {
@@ -1243,7 +1285,7 @@ async function executeSurveyQuickCreate(options: {
 	const draft = await generateObject({
 		model: instrumentedOpenai("gpt-4o"),
 		schema: surveyQuickCreateDraftSchema,
-		temperature: 0.2,
+		temperature: 0.1,
 		prompt: `Create a ready-to-launch survey draft from the user request.
 
 User request:
@@ -1253,11 +1295,16 @@ Project context:
 ${options.systemContext || "No extra context."}
 
 Requirements:
-- Return 3-6 practical questions.
+- If the user provides an explicit survey outline, numbered questions, sections, options, or branching, preserve that structure faithfully instead of summarizing it.
+- Keep the total question count close to the user's explicit brief. Do not collapse a detailed 10-20 question survey into a short starter survey.
 - Use question types that match intent (auto, short_text, long_text, single_select, multi_select, likert).
 - Only include options for select questions.
 - Only include likertScale/likertLabels for likert questions.
-- Keep prompts concise and natural.
+- For matrix questions, convert each row into its own likert question under the same sectionTitle and use helperText to preserve the shared scale wording.
+- Include sectionId and sectionTitle whenever the brief is organized into sections.
+- Include branching whenever the brief specifies conditional paths. Prefer targetSectionId-based skip rules for screeners and branch exit points.
+- Preserve provided answer options and required flags.
+- Keep prompts concise and natural, but do not rewrite away the user's intent.
 - Survey must be immediately usable without follow-up.`,
 	});
 

@@ -88,13 +88,133 @@ function derivePersonFieldKey(taxonomyKey: string | null): string | null {
 	return null;
 }
 
+function normalizeQuestionId(value: unknown, index: number): string {
+	const candidate = toNonEmptyString(value);
+	return candidate ?? `q${index + 1}`;
+}
+
+function normalizeBranching(input: unknown) {
+	if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+	const branching = input as {
+		rules?: unknown;
+		defaultNext?: unknown;
+	};
+	if (!Array.isArray(branching.rules) || branching.rules.length === 0) return null;
+
+	const rules = branching.rules
+		.map((rule, index) => {
+			if (!rule || typeof rule !== "object" || Array.isArray(rule)) return null;
+			const candidate = rule as Record<string, unknown>;
+			const conditionsGroup =
+				candidate.conditions && typeof candidate.conditions === "object" && !Array.isArray(candidate.conditions)
+					? (candidate.conditions as Record<string, unknown>)
+					: null;
+			const logic = conditionsGroup?.logic === "or" ? "or" : "and";
+			const conditions = Array.isArray(conditionsGroup?.conditions)
+				? conditionsGroup.conditions
+						.map((condition) => {
+							if (!condition || typeof condition !== "object" || Array.isArray(condition)) return null;
+							const candidateCondition = condition as Record<string, unknown>;
+							const questionId = toNonEmptyString(candidateCondition.questionId);
+							const operator = toNonEmptyString(candidateCondition.operator);
+							if (!questionId || !operator) return null;
+							if (
+								![
+									"equals",
+									"not_equals",
+									"contains",
+									"not_contains",
+									"selected",
+									"not_selected",
+									"answered",
+									"not_answered",
+								].includes(operator)
+							) {
+								return null;
+							}
+							const rawValue = candidateCondition.value;
+							const value =
+								typeof rawValue === "string"
+									? rawValue
+									: Array.isArray(rawValue)
+										? rawValue.filter((entry): entry is string => typeof entry === "string")
+										: undefined;
+							return { questionId, operator, value };
+						})
+						.filter((condition): condition is { questionId: string; operator: string; value?: string | string[] } =>
+							Boolean(condition)
+						)
+				: [];
+			if (conditions.length === 0) return null;
+
+			const action =
+				candidate.action === "end_survey" ? "end_survey" : candidate.action === "skip_to" ? "skip_to" : null;
+			if (!action) return null;
+
+			return {
+				id: toNonEmptyString(candidate.id) ?? `branch-rule-${index + 1}`,
+				conditions: { logic, conditions },
+				action,
+				targetQuestionId: toNonEmptyString(candidate.targetQuestionId) ?? undefined,
+				targetSectionId: toNonEmptyString(candidate.targetSectionId) ?? undefined,
+				label: toNonEmptyString(candidate.label) ?? undefined,
+				naturalLanguage: toNonEmptyString(candidate.naturalLanguage) ?? undefined,
+				summary: toNonEmptyString(candidate.summary) ?? undefined,
+				guidance: toNonEmptyString(candidate.guidance) ?? undefined,
+				source:
+					candidate.source === "user_ui" || candidate.source === "user_voice" || candidate.source === "ai_generated"
+						? candidate.source
+						: undefined,
+				confidence:
+					candidate.confidence === "high" || candidate.confidence === "medium" || candidate.confidence === "low"
+						? candidate.confidence
+						: undefined,
+				createdAt: toNonEmptyString(candidate.createdAt) ?? undefined,
+			};
+		})
+		.filter(
+			(
+				rule
+			): rule is {
+				id: string;
+				conditions: {
+					logic: "and" | "or";
+					conditions: Array<{ questionId: string; operator: string; value?: string | string[] }>;
+				};
+				action: "skip_to" | "end_survey";
+				targetQuestionId?: string;
+				targetSectionId?: string;
+				label?: string;
+				naturalLanguage?: string;
+				summary?: string;
+				guidance?: string;
+				source?: "user_ui" | "user_voice" | "ai_generated";
+				confidence?: "high" | "medium" | "low";
+				createdAt?: string;
+			} => Boolean(rule)
+		);
+
+	if (rules.length === 0) return null;
+
+	return {
+		rules,
+		defaultNext: toNonEmptyString(branching.defaultNext) ?? undefined,
+	};
+}
+
 function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) {
+	const id = normalizeQuestionId(input.id, index);
 	const prompt = toNonEmptyString(input.prompt) ?? `Question ${index + 1}`;
 	const isNpsPrompt = NPS_PROMPT_PATTERN.test(prompt);
 	const explicitTaxonomy = normalizeTaxonomyKey(input.taxonomyKey);
 	const taxonomyKey = explicitTaxonomy ?? inferTaxonomyKeyFromPrompt(prompt);
 	const explicitPersonFieldKey = toNonEmptyString(input.personFieldKey);
 	const personFieldKey = explicitPersonFieldKey ?? derivePersonFieldKey(taxonomyKey);
+	const helperText = toNonEmptyString(input.helperText);
+	const sectionId = toNonEmptyString(input.sectionId);
+	const sectionTitle = toNonEmptyString(input.sectionTitle);
+	const allowOther = input.allowOther !== false;
+	const branching = normalizeBranching(input.branching);
 
 	const rawType = typeof input.type === "string" ? input.type : "";
 	let type: SurveyQuestionType = QUESTION_TYPE_SET.has(rawType) ? (rawType as SurveyQuestionType) : "auto";
@@ -145,19 +265,23 @@ function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) 
 			likertLabels ??= { low: null, high: null };
 		}
 		return {
-			id: crypto.randomUUID(),
+			id,
 			prompt,
 			type,
 			required,
 			placeholder: null,
-			helperText: null,
+			helperText,
 			options: null,
+			allowOther,
 			likertScale,
 			likertLabels,
 			imageOptions: null,
 			videoUrl: null,
+			sectionId,
+			sectionTitle,
 			taxonomyKey,
 			personFieldKey,
+			branching,
 		};
 	}
 
@@ -166,19 +290,23 @@ function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) 
 	}
 
 	return {
-		id: crypto.randomUUID(),
+		id,
 		prompt,
 		type,
 		required,
 		placeholder: null,
-		helperText: null,
+		helperText,
 		options: type === "single_select" || type === "multi_select" ? options : null,
+		allowOther,
 		likertScale: null,
 		likertLabels: null,
 		imageOptions: null,
 		videoUrl: null,
+		sectionId,
+		sectionTitle,
 		taxonomyKey,
 		personFieldKey,
+		branching,
 	};
 }
 

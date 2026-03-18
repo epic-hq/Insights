@@ -527,6 +527,127 @@ describe("api.chat.project-status", () => {
 		expect(mockedHandleChatStream).not.toHaveBeenCalled();
 	});
 
+	it("preserves detailed survey drafts with sections and branching in quick-create", async () => {
+		const detailedQuestions = Array.from({ length: 14 }, (_, index) => ({
+			id: `q${index + 1}`,
+			prompt: `Question ${index + 1}`,
+			type: index === 6 ? "likert" : "single_select",
+			required: true,
+			options: index === 6 ? null : ["Option A", "Option B"],
+			likertScale: index === 6 ? 4 : null,
+			likertLabels: index === 6 ? { low: "Needs work", high: "Strong" } : null,
+			sectionId:
+				index < 2 ? "section_1" : index < 5 ? "section_a" : index < 8 ? "section_b" : index < 12 ? "section_c" : "section_d",
+			sectionTitle:
+				index < 2
+					? "Who You Are"
+					: index < 5
+						? "Founders & Startup Ecosystem"
+						: index < 8
+							? "Service Providers & Partners"
+							: index < 12
+								? "Your Experience with StartupSD"
+								: "Looking Ahead",
+			helperText: index === 6 ? "Scale: Strong | Adequate | Needs work | Haven't experienced" : null,
+			branching:
+				index === 0
+					? {
+							rules: [
+								{
+									id: "rule-to-a",
+									conditions: {
+										logic: "or",
+										conditions: [
+											{ questionId: "q1", operator: "equals", value: "Founder / Co-founder" },
+											{ questionId: "q1", operator: "equals", value: "Investor" },
+										],
+									},
+									action: "skip_to",
+									targetSectionId: "section_a",
+								},
+								{
+									id: "rule-to-b",
+									conditions: {
+										logic: "and",
+										conditions: [{ questionId: "q1", operator: "equals", value: "Service provider" }],
+									},
+									action: "skip_to",
+									targetSectionId: "section_b",
+								},
+							],
+						}
+					: index === 4
+						? {
+								rules: [
+									{
+										id: "rule-a-to-c",
+										conditions: {
+											logic: "and",
+											conditions: [{ questionId: "q1", operator: "answered" }],
+										},
+										action: "skip_to",
+										targetSectionId: "section_c",
+									},
+								],
+							}
+						: index === 7
+							? {
+									rules: [
+										{
+											id: "rule-b-to-c",
+											conditions: {
+												logic: "and",
+												conditions: [{ questionId: "q1", operator: "answered" }],
+											},
+											action: "skip_to",
+											targetSectionId: "section_c",
+										},
+									],
+								}
+							: null,
+		}));
+
+		mockedGenerateObject.mockResolvedValueOnce({
+			object: {
+				name: "StartupSD Community Survey 2026",
+				description: "Understand who we serve, what they need, and how StartupSD can improve.",
+				questions: detailedQuestions,
+			},
+			usage: { inputTokens: 400, outputTokens: 350 },
+		} as any);
+
+		const response = await action(
+			buildArgs({
+				message: "create a new SSD-community survey based on this detailed brief",
+				system:
+					"View: Survey editor (surveyId=e6374753-10cf-49c9-9453-e0566a8be411) /a/acct-url/project-1/ask/e6374753-10cf-49c9-9453-e0566a8be411/edit",
+			})
+		);
+
+		expect(response.status).toBe(200);
+		expect(mockedCreateSurveyTool.execute).toHaveBeenCalledTimes(1);
+		const call = mockedCreateSurveyTool.execute.mock.calls[0][0] as {
+			questions: Array<Record<string, unknown>>;
+		};
+		expect(call.questions).toHaveLength(14);
+		expect(call.questions[0]).toMatchObject({
+			id: "q1",
+			sectionId: "section_1",
+			sectionTitle: "Who You Are",
+			branching: {
+				rules: expect.arrayContaining([
+					expect.objectContaining({ targetSectionId: "section_a", action: "skip_to" }),
+					expect.objectContaining({ targetSectionId: "section_b", action: "skip_to" }),
+				]),
+			},
+		});
+		expect(call.questions[6]).toMatchObject({
+			type: "likert",
+			likertScale: 4,
+			helperText: "Scale: Strong | Adequate | Needs work | Haven't experienced",
+		});
+	});
+
 	it("routes how-to prompts to howtoAgent with ux_research_mode", async () => {
 		const response = await action(buildArgs({ message: "How do I run better user interviews?" }));
 		expect(response.status).toBe(200);

@@ -126,7 +126,7 @@ function fieldValuesEqual(a: unknown, b: unknown): boolean {
 
 export function useOptimisticForm(
 	loaderFields: SurveyFormFields,
-	{ debounceMs = 1000, savedDisplayMs = 2000 }: UseOptimisticFormOptions = {}
+	{ debounceMs = 1500, savedDisplayMs = 2000 }: UseOptimisticFormOptions = {}
 ): UseOptimisticFormReturn {
 	const fetcher = useFetcher<{
 		ok?: boolean;
