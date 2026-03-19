@@ -740,6 +740,16 @@ type StartSignupResult = {
 	responses: ResponseRecord;
 	completed: boolean;
 	personId: string | null;
+	/** Profile fields returned when a known person is found, so the client can pre-fill the name form */
+	personProfile?: {
+		firstName?: string | null;
+		lastName?: string | null;
+		company?: string | null;
+		title?: string | null;
+		jobFunction?: string | null;
+		industry?: string | null;
+		companySize?: string | null;
+	} | null;
 };
 
 type StartSignupPayload =
@@ -1144,39 +1154,53 @@ export default function ResearchLinkPage() {
 						if (initialIndex >= questions.length) {
 							setStage("complete");
 						} else if (result.personId) {
-							// Known person — skip identity gate entirely
-							setCurrentIndex(initialIndex);
-							setStage(list.instructions ? "instructions" : "survey");
-							const existingValue = result.responses?.[questions[initialIndex]?.id];
-							setCurrentAnswer(existingValue ?? "");
+							// Known person — pre-fill from profile, URL params override
+							const profile = result.personProfile;
+							const fn = urlFirstName || profile?.firstName || "";
+							const ln = urlLastName || profile?.lastName || "";
+							const co = urlCompany || profile?.company || "";
+							const ti = urlTitle || profile?.title || "";
+							const jf = urlJobFunction || profile?.jobFunction || "";
+							const ind = urlIndustry || profile?.industry || "";
+							const cs = urlCompanySize || profile?.companySize || "";
+							setFirstName(fn);
+							setLastName(ln);
+							setCompany(co);
+							setRespondentTitle(ti);
+							setJobFunction(jf);
+							setIndustry(ind);
+							setCompanySize(cs);
+
+							// Check if any configured respondent fields are still empty
+							const fieldValues: Record<string, string> = {
+								first_name: fn,
+								last_name: ln,
+								company: co,
+								title: ti,
+								job_function: jf,
+								industry: ind,
+								company_size: cs,
+							};
+							const respondentFields = (list.respondent_fields ?? []) as string[];
+							const hasEmptyField = respondentFields.some(
+								(f: string) => f !== "first_name" && f !== "phone" && !fieldValues[f]
+							);
+
+							if (hasEmptyField) {
+								// Show name form pre-populated so user can review/complete
+								setCurrentIndex(initialIndex);
+								setStage("name");
+							} else {
+								// Profile is complete — skip to survey
+								setCurrentIndex(initialIndex);
+								setStage(list.instructions ? "instructions" : "survey");
+								const existingValue = result.responses?.[questions[initialIndex]?.id];
+								setCurrentAnswer(existingValue ?? "");
+							}
 						} else if (urlFirstName) {
-							// Unknown person but name provided via URL — create person and skip to survey
-							void startSignup(slug, {
-								email: urlEmail,
-								firstName: urlFirstName,
-								lastName: urlLastName,
-								company: urlCompany,
-								title: urlTitle,
-								jobFunction: urlJobFunction,
-								industry: urlIndustry,
-								companySize: urlCompanySize,
-								responseId: result.responseId,
-								responseMode: resolvedMode,
-								utmParams: utmPayload,
-							})
-								.then((personResult) => {
-									setResponseId(personResult.responseId);
-									setResponses(personResult.responses || {});
-									setCurrentIndex(initialIndex);
-									setStage(list.instructions ? "instructions" : "survey");
-									const existingValue = personResult.responses?.[questions[initialIndex]?.id];
-									setCurrentAnswer(existingValue ?? "");
-								})
-								.catch(() => {
-									// Fall through — person creation failed, show name form
-									setCurrentIndex(initialIndex);
-									setStage("name");
-								});
+							// Unknown person with URL params — show form pre-populated for review
+							setCurrentIndex(initialIndex);
+							setStage("name");
 						} else {
 							// Unknown person, no name — show name collection form
 							setCurrentIndex(initialIndex);
@@ -1783,7 +1807,11 @@ export default function ResearchLinkPage() {
 							animate={{ opacity: 1, y: 0 }}
 							className="space-y-4"
 						>
-							<p className="text-sm text-white/80 leading-relaxed">Tell us a bit about yourself to continue.</p>
+							<p className="text-sm text-white/80 leading-relaxed">
+								{firstName
+									? "Please confirm your details before we begin."
+									: "Tell us a bit about yourself to continue."}
+							</p>
 
 							{/* Name fields */}
 							{hasNameFields && (

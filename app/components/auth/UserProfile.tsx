@@ -1,5 +1,6 @@
 import {
 	BarChart3,
+	BookOpen,
 	ChevronsUpDown,
 	ClipboardList,
 	CreditCard,
@@ -137,6 +138,15 @@ export function UserProfile({ collapsed: collapsedProp, className }: UserProfile
 							<DropdownMenuItem onClick={handleThemeToggle} className="flex w-full items-center gap-2">
 								<ThemeToggle />
 								<span>Theme</span>
+							</DropdownMenuItem>
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuItem asChild>
+								<Link to="/docs" className="flex w-full items-center gap-2">
+									<BookOpen className="h-4 w-4" />
+									<span>Docs</span>
+								</Link>
 							</DropdownMenuItem>
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />

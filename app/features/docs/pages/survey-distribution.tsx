@@ -57,12 +57,45 @@ export default function SurveyDistributionGuide() {
 								UpSight automatically matches the respondent to their imported profile — skipping identity questions
 								and enabling personalized AI conversations.
 							</p>
-							<p className="mt-2 text-muted-foreground text-sm">
-								<strong className="text-foreground">Supported parameters:</strong>{" "}
-								<code className="rounded bg-muted px-1 text-xs">email</code>,{" "}
-								<code className="rounded bg-muted px-1 text-xs">name</code>,{" "}
-								<code className="rounded bg-muted px-1 text-xs">company</code>
-							</p>
+							<div className="mt-3 space-y-1.5">
+								<p className="font-medium text-foreground text-sm">Supported URL parameters</p>
+								<div className="grid gap-1.5 text-muted-foreground text-sm sm:grid-cols-2">
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">email</code> — respondent email (primary
+										identifier)
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">name</code> — full name (auto-splits into
+										first/last)
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">first_name</code> — first name only
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">last_name</code> — last name only
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">company</code> — company / organization
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">title</code> — job title
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">job_function</code> — e.g. Product,
+										Marketing
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">industry</code> — e.g. SaaS, Healthcare
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">company_size</code> — e.g. 51-200
+									</div>
+								</div>
+								<p className="text-muted-foreground text-xs">
+									When a known person's profile has missing fields, respondents see a pre-filled form to
+									confirm and complete their details before starting.
+								</p>
+							</div>
 						</div>
 					</div>
 				</CardContent>
@@ -151,20 +184,19 @@ export default function SurveyDistributionGuide() {
 								<div className="rounded-lg border p-4">
 									<p className="mb-2 font-medium text-foreground text-sm">Mailchimp</p>
 									<p className="mb-2 text-muted-foreground text-xs">
-										Add your survey URL as a button or link in your campaign template. Append the merge tag so
-										each recipient's email is passed automatically:
+										Add your survey URL as a button or link in your campaign template. Append merge tags so
+										each recipient's info is passed automatically:
 									</p>
 									<div className="rounded-md bg-muted/50 p-2">
 										<code className="break-all text-xs">
-											https://getupsight.com/ask/your-survey?email=*|EMAIL|*
+											https://getupsight.com/ask/your-survey?email=*|EMAIL|*&first_name=*|FNAME|*&last_name=*|LNAME|*&company=*|MMERGE5|*
 										</code>
 									</div>
 									<p className="mt-2 text-muted-foreground text-xs">
-										You can also pass name and company:{" "}
-										<code className="rounded bg-muted px-1 text-[11px]">
-											?email=*|EMAIL|*&name=*|FNAME|*&company=*|MMERGE5|*
-										</code>{" "}
-										(replace MMERGE5 with your company field's merge tag).
+										Replace <code className="rounded bg-muted px-1 text-[11px]">MMERGE5</code> with your
+										company field's merge tag. You can also add{" "}
+										<code className="rounded bg-muted px-1 text-[11px]">&title=*|MMERGE6|*</code> if you
+										collect job titles.
 									</p>
 								</div>
 
@@ -176,13 +208,15 @@ export default function SurveyDistributionGuide() {
 									</p>
 									<div className="rounded-md bg-muted/50 p-2">
 										<code className="break-all text-xs">
-											{"https://getupsight.com/ask/your-survey?email={{email}}"}
+											{"https://getupsight.com/ask/your-survey?email={{email}}&first_name={{first_name}}&last_name={{last_name}}&company={{company}}"}
 										</code>
 									</div>
 									<p className="mt-2 text-muted-foreground text-xs">
-										SendGrid uses <code className="rounded bg-muted px-1 text-[11px]">{"{{variable}}"}</code>{" "}
-										syntax. Postmark uses <code className="rounded bg-muted px-1 text-[11px]">{"{{variable}}"}</code>{" "}
-										as well. Check your platform's docs for exact field names.
+										Both platforms use{" "}
+										<code className="rounded bg-muted px-1 text-[11px]">{"{{variable}}"}</code> syntax.
+										Check your platform's docs for exact field names — they may differ (e.g.{" "}
+										<code className="rounded bg-muted px-1 text-[11px]">{"{{firstName}}"}</code> vs{" "}
+										<code className="rounded bg-muted px-1 text-[11px]">{"{{first_name}}"}</code>).
 									</p>
 								</div>
 
@@ -191,19 +225,27 @@ export default function SurveyDistributionGuide() {
 									<p className="mb-2 font-medium text-foreground text-sm">ConvertKit / HubSpot / Others</p>
 									<p className="text-muted-foreground text-xs">
 										Most email platforms support merge tags or personalization tokens. The pattern is the same:
-										append <code className="rounded bg-muted px-1 text-[11px]">?email=</code> followed by your
-										platform's email merge tag. Check your platform's documentation for the correct syntax.
+										append{" "}
+										<code className="rounded bg-muted px-1 text-[11px]">
+											?email=&first_name=&last_name=&company=
+										</code>{" "}
+										using your platform's merge tag syntax for each field. Check your platform's documentation
+										for the correct tag names.
 									</p>
 								</div>
 							</div>
 
 							<div className="mt-4 rounded-lg border-amber-500 border-l-4 bg-amber-50 p-3 dark:bg-amber-950/20">
-								<p className="font-medium text-sm">Why pre-fill the email?</p>
+								<p className="font-medium text-sm">Why pre-fill respondent info?</p>
 								<p className="mt-1 text-muted-foreground text-sm">
-									When a respondent clicks a link with their email pre-filled, UpSight instantly matches them to
-									their imported profile. This means: no "What's your email?" question, the AI interviewer knows
-									their name/company/role, and you get clean attribution in your results. Without it, respondents
-									must type their email manually.
+									When a respondent clicks a link with their details pre-filled, UpSight matches them to
+									their profile instantly — no "What's your email?" question. Pass{" "}
+									<code className="rounded bg-muted px-1 text-xs">email</code>,{" "}
+									<code className="rounded bg-muted px-1 text-xs">first_name</code>,{" "}
+									<code className="rounded bg-muted px-1 text-xs">last_name</code>, and{" "}
+									<code className="rounded bg-muted px-1 text-xs">company</code>{" "}
+									for the best experience. The AI interviewer will know who they are, and they'll see a
+									pre-filled form to confirm any missing details before starting.
 								</p>
 							</div>
 						</div>
@@ -302,9 +344,9 @@ export default function SurveyDistributionGuide() {
 							<code className="text-xs">https://getupsight.com/embed/your-survey-slug</code>
 						</div>
 						<p className="text-muted-foreground text-xs">
-							If your site knows the user's email, pass it via the embed URL:{" "}
+							If your site knows the user, pass their info via the embed URL:{" "}
 							<code className="rounded bg-muted px-1 text-[11px]">
-								/embed/your-survey-slug?email=user@example.com
+								/embed/your-survey-slug?email=user@example.com&first_name=Jane&company=Acme
 							</code>
 						</p>
 					</CardContent>
