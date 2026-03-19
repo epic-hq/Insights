@@ -15,8 +15,16 @@ export function isR2Key(url: string): boolean {
 	return !url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("data:");
 }
 
-export function extractAnswer(response: ResearchLinkResponse, question: ResearchLinkQuestion): string {
-	const value = (response.responses as Record<string, unknown> | null)?.[question.id];
+function formatScaledValue(question: ResearchLinkQuestion, value: string | number): string {
+	const numericValue = typeof value === "number" ? value : Number.parseFloat(String(value));
+	if (Number.isNaN(numericValue)) return String(value);
+	if (question.type === "likert" || question.type === "matrix" || question.likertScale) {
+		return `${numericValue}/${question.likertScale ?? 5}`;
+	}
+	return String(value);
+}
+
+export function formatQuestionAnswerValue(question: ResearchLinkQuestion, value: unknown): string {
 	if (value == null) return "";
 	if (Array.isArray(value)) {
 		return value.join(", ");
@@ -25,16 +33,29 @@ export function extractAnswer(response: ResearchLinkResponse, question: Research
 		const rowLabels = new Map((question.matrixRows ?? []).map((row) => [row.id, row.label] as const));
 		return Object.entries(value as Record<string, unknown>)
 			.flatMap(([rowId, rowValue]) => {
-				if (typeof rowValue !== "string" || rowValue.trim().length === 0) return [];
+				if ((typeof rowValue !== "string" && typeof rowValue !== "number") || String(rowValue).trim().length === 0) {
+					return [];
+				}
 				const label = rowLabels.get(rowId) ?? rowId;
-				return [`${label}: ${rowValue}`];
+				return [`${label}: ${formatScaledValue(question, rowValue)}`];
 			})
 			.join("; ");
 	}
 	if (typeof value === "boolean") {
 		return value ? "Yes" : "No";
 	}
+	if (typeof value === "number") {
+		return formatScaledValue(question, value);
+	}
+	if (typeof value === "string" && (question.type === "likert" || question.type === "matrix")) {
+		return formatScaledValue(question, value);
+	}
 	return String(value);
+}
+
+export function extractAnswer(response: ResearchLinkResponse, question: ResearchLinkQuestion): string {
+	const value = (response.responses as Record<string, unknown> | null)?.[question.id];
+	return formatQuestionAnswerValue(question, value);
 }
 
 function escapeCsvValue(value: string): string {

@@ -13,6 +13,14 @@ describe("hasResponseValue", () => {
 	it("treats trimmed empty strings as unanswered", () => {
 		expect(hasResponseValue("   ")).toBe(false);
 	});
+
+	it("treats matrix objects with values as answered", () => {
+		expect(hasResponseValue({ row_1: "4", row_2: "" })).toBe(true);
+	});
+
+	it("treats empty matrix objects as unanswered", () => {
+		expect(hasResponseValue({ row_1: "", row_2: null })).toBe(false);
+	});
 });
 
 describe("evaluateCondition answered/not_answered", () => {
@@ -30,6 +38,25 @@ describe("evaluateCondition answered/not_answered", () => {
 				{ questionId: "q1", operator: "not_answered" },
 				{
 					q1: [],
+				}
+			)
+		).toBe(true);
+	});
+
+	it("uses shared answer semantics for matrix values", () => {
+		expect(
+			evaluateCondition(
+				{ questionId: "q1", operator: "answered" },
+				{
+					q1: { row_1: "5" },
+				}
+			)
+		).toBe(true);
+		expect(
+			evaluateCondition(
+				{ questionId: "q1", operator: "not_answered" },
+				{
+					q1: { row_1: "" },
 				}
 			)
 		).toBe(true);

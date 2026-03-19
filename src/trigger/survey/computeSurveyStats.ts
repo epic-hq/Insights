@@ -24,6 +24,7 @@ type QuestionType =
   | "single_select"
   | "multi_select"
   | "likert"
+  | "matrix"
   | "image_select";
 
 interface QuestionDefinition {
@@ -33,6 +34,7 @@ interface QuestionDefinition {
   options?: string[] | null;
   likertScale?: number | null;
   likertLabels?: { low?: string; high?: string } | null;
+  matrixRows?: Array<{ id: string; label: string }> | null;
 }
 
 interface QuestionStats {
@@ -255,6 +257,46 @@ function aggregateQuestionResponses(
           average: Math.round(average * 100) / 100,
           distribution,
           percentages,
+        };
+      }
+      break;
+    }
+
+    case "matrix": {
+      const distribution: Record<string, number> = {};
+      const rowAverages: Record<string, number> = {};
+      const rows = question.matrixRows ?? [];
+
+      for (const row of rows) {
+        const numericValues = answers
+          .map((answer) => {
+            if (!answer.value || typeof answer.value !== "object" || Array.isArray(answer.value)) return null;
+            const rowValue = (answer.value as Record<string, unknown>)[row.id];
+            const parsed =
+              typeof rowValue === "number" ? rowValue : Number.parseInt(String(rowValue ?? ""), 10);
+            return Number.isNaN(parsed) ? null : parsed;
+          })
+          .filter((value): value is number => value !== null);
+
+        if (numericValues.length === 0) continue;
+        const average = numericValues.reduce((sum, value) => sum + value, 0) / numericValues.length;
+        rowAverages[row.id] = Math.round(average * 100) / 100;
+
+        for (const value of numericValues) {
+          const key = `${row.id}:${value}`;
+          distribution[key] = (distribution[key] ?? 0) + 1;
+        }
+      }
+
+      if (Object.keys(distribution).length > 0) {
+        summary.stats = {
+          average:
+            Object.keys(rowAverages).length > 0
+              ? Math.round(
+                  (Object.values(rowAverages).reduce((sum, value) => sum + value, 0) / Object.keys(rowAverages).length) * 100
+                ) / 100
+              : undefined,
+          distribution,
         };
       }
       break;

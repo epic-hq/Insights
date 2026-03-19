@@ -92,6 +92,16 @@ async function seedSurveyData() {
 				prompt: "Describe your ideal pizza experience",
 				type: "long_text",
 			},
+			{
+				id: "q-matrix",
+				prompt: "Rate the pizza experience across these dimensions",
+				type: "matrix",
+				likertScale: 5,
+				matrixRows: [
+					{ id: "taste", label: "Taste" },
+					{ id: "value", label: "Value" },
+				],
+			},
 		],
 	});
 	if (linkError) throw new Error(`Failed to seed research link: ${linkError.message}`);
@@ -169,6 +179,7 @@ describe("Survey Response Save Integration", () => {
 						"q-select": "Weekly",
 						"q-likert": "4",
 						"q-longtext": "A wood-fired oven, fresh mozzarella, and a cold drink on a summer evening",
+						"q-matrix": { taste: "5", value: "3" },
 					},
 					completed: true,
 				}),
@@ -209,13 +220,15 @@ describe("Survey Response Save Integration", () => {
 				.eq("research_link_response_id", ANON_RESPONSE_ID);
 
 			expect(evidence).toBeTruthy();
-			expect(evidence!.length).toBe(4);
+			expect(evidence!.length).toBe(6);
 
 			const verbatims = evidence!.map((e) => e.verbatim);
 			expect(verbatims.some((v) => v?.includes("favorite pizza topping"))).toBe(true);
 			expect(verbatims.some((v) => v?.includes("ideal pizza experience"))).toBe(true);
 			expect(verbatims.some((v) => v?.includes("How often do you eat pizza?"))).toBe(true);
 			expect(verbatims.some((v) => v?.includes("Rate your pizza satisfaction"))).toBe(true);
+			expect(verbatims.some((v) => v?.includes("Taste"))).toBe(true);
+			expect(verbatims.some((v) => v?.includes("Value"))).toBe(true);
 			expect(evidence!.every((e) => e.method === "survey")).toBe(true);
 		});
 
@@ -233,10 +246,12 @@ describe("Survey Response Save Integration", () => {
 				);
 
 			expect(error).toBeNull();
-			expect((facets ?? []).length).toBe(4);
+			expect((facets ?? []).length).toBe(6);
 			expect((facets ?? []).every((row) => row.kind_slug === "survey_response")).toBe(true);
 			expect((facets ?? []).some((row) => row.label.includes("How often do you eat pizza"))).toBe(true);
 			expect((facets ?? []).some((row) => row.quote?.includes("Weekly"))).toBe(true);
+			expect((facets ?? []).some((row) => row.label.includes("Taste") && row.quote?.includes("5/5"))).toBe(true);
+			expect((facets ?? []).some((row) => row.label.includes("Value") && row.quote?.includes("3/5"))).toBe(true);
 		});
 	});
 
@@ -254,6 +269,7 @@ describe("Survey Response Save Integration", () => {
 						"q-select": "Monthly",
 						"q-likert": "5",
 						"q-longtext": "Simple ingredients, perfectly cooked",
+						"q-matrix": { taste: "4", value: "5" },
 					},
 					completed: true,
 				}),
@@ -288,7 +304,7 @@ describe("Survey Response Save Integration", () => {
 				.eq("research_link_response_id", IDENTIFIED_RESPONSE_ID);
 
 			expect(evidence).toBeTruthy();
-			expect(evidence!.length).toBe(4);
+			expect(evidence!.length).toBe(6);
 
 			for (const ev of evidence!) {
 				const { data: links } = await adminDb
@@ -318,7 +334,7 @@ describe("Survey Response Save Integration", () => {
 				.in("evidence_id", evidenceIds);
 
 			expect(error).toBeNull();
-			expect((facets ?? []).length).toBe(4);
+			expect((facets ?? []).length).toBe(6);
 			expect((facets ?? []).every((row) => row.person_id === person?.id)).toBe(true);
 		});
 	});

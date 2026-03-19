@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { ResearchLinkQuestion } from "./schemas";
-import { buildResponsesCsv, extractAnswer, getMediaType, isR2Key } from "./utils";
+import { buildResponsesCsv, extractAnswer, formatQuestionAnswerValue, getMediaType, isR2Key } from "./utils";
 
 describe("getMediaType", () => {
 	it("should detect image extensions", () => {
@@ -109,6 +109,57 @@ describe("extractAnswer", () => {
 	it("should return empty string for null responses", () => {
 		const response = { responses: null } as any;
 		expect(extractAnswer(response, makeQuestion("q1"))).toBe("");
+	});
+
+	it("should format matrix responses with row labels and scale", () => {
+		const question: ResearchLinkQuestion = {
+			...makeQuestion("q1"),
+			type: "matrix",
+			likertScale: 5,
+			matrixRows: [
+				{ id: "row_1", label: "Networking" },
+				{ id: "row_2", label: "Mentorship" },
+			],
+		};
+		const response = {
+			responses: {
+				q1: {
+					row_1: "4",
+					row_2: "3",
+				},
+			},
+		} as any;
+
+		expect(extractAnswer(response, question)).toBe("Networking: 4/5; Mentorship: 3/5");
+	});
+});
+
+describe("formatQuestionAnswerValue", () => {
+	it("formats likert numbers with their scale", () => {
+		const question: ResearchLinkQuestion = {
+			id: "q1",
+			prompt: "Rate it",
+			required: false,
+			type: "likert",
+			placeholder: null,
+			helperText: null,
+			options: null,
+			allowOther: true,
+			likertScale: 5,
+			likertLabels: null,
+			matrixRows: null,
+			imageOptions: null,
+			mediaUrl: null,
+			videoUrl: null,
+			sectionId: null,
+			sectionTitle: null,
+			taxonomyKey: null,
+			personFieldKey: null,
+			hidden: false,
+			branching: null,
+		};
+
+		expect(formatQuestionAnswerValue(question, "4")).toBe("4/5");
 	});
 });
 

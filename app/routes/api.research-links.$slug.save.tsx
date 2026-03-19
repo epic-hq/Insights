@@ -23,6 +23,12 @@ type ExistingResearchLink = Pick<ResearchLink, "id" | "name" | "account_id" | "p
 
 type AdminSupabaseClient = ReturnType<typeof createSupabaseAdminClient>;
 const STRUCTURAL_QUESTION_TYPES = ["likert", "matrix", "single_select", "multi_select", "image_select"];
+interface SurveyAnswerEntry {
+	label: string;
+	answerText: string;
+	contextSummary: string;
+	anchors: Array<Record<string, unknown>>;
+}
 
 function coerceSupabaseRow<T>(value: unknown): T {
 	return value as T;
@@ -323,6 +329,60 @@ function normalizeSurveyAnswerValue(value: unknown): string | null {
 	}
 }
 
+function formatScaledSurveyValue(question: ResearchLinkQuestion, value: string | number): string {
+	const numericValue = typeof value === "number" ? value : Number.parseFloat(String(value));
+	if (Number.isNaN(numericValue)) return String(value);
+	return `${numericValue}/${question.likertScale ?? 5}`;
+}
+
+function expandSurveyAnswerEntries(question: ResearchLinkQuestion, value: unknown): SurveyAnswerEntry[] {
+	if (!question.id || !question.prompt) return [];
+	if (question.type === "matrix") {
+		if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+		const rowValues = value as Record<string, unknown>;
+		return (question.matrixRows ?? []).flatMap((row) => {
+			const rowValue = rowValues[row.id];
+			if (typeof rowValue !== "string" && typeof rowValue !== "number") return [];
+			const answerText = formatScaledSurveyValue(question, rowValue);
+			if (answerText.trim().length === 0) return [];
+			return [
+				{
+					label: `${question.prompt} — ${row.label}`,
+					answerText,
+					contextSummary: `Survey response to: ${question.prompt} (${row.label})`,
+					anchors: [
+						{
+							type: "survey_question",
+							question_id: question.id,
+							question_type: question.type ?? "auto",
+							matrix_row_id: row.id,
+							matrix_row_label: row.label,
+						},
+					],
+				},
+			];
+		});
+	}
+
+	const answerText = normalizeSurveyAnswerValue(value);
+	if (!answerText) return [];
+
+	return [
+		{
+			label: question.prompt,
+			answerText,
+			contextSummary: `Survey response to: ${question.prompt}`,
+			anchors: [
+				{
+					type: "survey_question",
+					question_id: question.id,
+					question_type: question.type ?? "auto",
+				},
+			],
+		},
+	];
+}
+
 function buildSurveyQuestionFacetSlug(questionId: string, prompt: string): string {
 	const idPart = questionId
 		.toLowerCase()
@@ -494,153 +554,149 @@ async function emitSurveyQuestionEvidenceAndFacets({
 	for (let i = 0; i < questions.length; i++) {
 		const question = questions[i];
 		if (!question.id || !question.prompt) continue;
-		if (question.type === "matrix") continue;
+		const answerEntries = expandSurveyAnswerEntries(question, responses[question.id]);
+		if (answerEntries.length === 0) continue;
 
-		const answerText = normalizeSurveyAnswerValue(responses[question.id]);
-		if (!answerText) continue;
+		for (const entry of answerEntries) {
+			const verbatim = `${entry.label}\n\n"${entry.answerText}"`;
 
-		const verbatim = `${question.prompt}\n\n"${answerText}"`;
-
-		const { data: evidence, error: evidenceError } = await supabase
-			.from("evidence")
-			.insert({
-				account_id: accountId,
-				project_id: projectId,
-				research_link_response_id: responseId,
-				method: "survey",
-				modality: "qual",
-				verbatim,
-				context_summary: `Survey response to: ${question.prompt}`,
-				anchors: [
-					{
-						type: "survey_question",
-						question_id: question.id,
-						question_index: i,
-						question_type: question.type ?? "auto",
-					},
-				],
-			})
-			.select("id")
-			.maybeSingle();
-
-		if (evidenceError) {
-			facet_diagnostics.push({
-				stage: "evidence",
-				question_id: question.id,
-				error: evidenceError.message,
-			});
-			consola.error("Failed to create evidence for question", {
-				questionId: question.id,
-				error: evidenceError,
-			});
-			continue;
-		}
-		evidenceCreated += 1;
-
-		if (evidence?.id && personId) {
-			const { error: linkError } = await supabase.from("evidence_people").upsert(
-				{
-					evidence_id: evidence.id,
-					person_id: personId,
+			const { data: evidence, error: evidenceError } = await supabase
+				.from("evidence")
+				.insert({
 					account_id: accountId,
 					project_id: projectId,
-					role: "respondent",
-				},
-				{ onConflict: "evidence_id,person_id,account_id" }
-			);
+					research_link_response_id: responseId,
+					method: "survey",
+					modality: "qual",
+					verbatim,
+					context_summary: entry.contextSummary,
+					anchors: entry.anchors.map((anchor) => ({
+						...anchor,
+						question_index: i,
+					})),
+				})
+				.select("id")
+				.maybeSingle();
 
-			if (linkError) {
+			if (evidenceError) {
 				facet_diagnostics.push({
-					stage: "evidence_people",
+					stage: "evidence",
 					question_id: question.id,
-					evidence_id: evidence.id,
-					error: linkError.message,
+					error: evidenceError.message,
 				});
-				consola.error("Failed to link evidence to person", {
-					evidenceId: evidence.id,
-					personId,
-					error: linkError,
+				consola.error("Failed to create evidence for question", {
+					questionId: question.id,
+					error: evidenceError,
 				});
-			} else {
-				evidenceLinksCreated += 1;
+				continue;
 			}
-		}
+			evidenceCreated += 1;
 
-		if (!surveyKindId || !evidence?.id) {
-			if (!surveyKindId) {
-				facet_diagnostics.push({
-					stage: "facet_kind",
-					question_id: question.id,
-					error: "survey_response kind unavailable",
-				});
+			if (evidence?.id && personId) {
+				const { error: linkError } = await supabase.from("evidence_people").upsert(
+					{
+						evidence_id: evidence.id,
+						person_id: personId,
+						account_id: accountId,
+						project_id: projectId,
+						role: "respondent",
+					},
+					{ onConflict: "evidence_id,person_id,account_id" }
+				);
+
+				if (linkError) {
+					facet_diagnostics.push({
+						stage: "evidence_people",
+						question_id: question.id,
+						evidence_id: evidence.id,
+						error: linkError.message,
+					});
+					consola.error("Failed to link evidence to person", {
+						evidenceId: evidence.id,
+						personId,
+						error: linkError,
+					});
+				} else {
+					evidenceLinksCreated += 1;
+				}
 			}
-			continue;
-		}
 
-		const facetAccountId = await resolveSurveyQuestionFacetAccountId({
-			supabase,
-			accountId,
-			surveyKindId,
-			questionId: question.id,
-			prompt: question.prompt,
-			cache: facetAccountCache,
-		});
+			if (!surveyKindId || !evidence?.id) {
+				if (!surveyKindId) {
+					facet_diagnostics.push({
+						stage: "facet_kind",
+						question_id: question.id,
+						error: "survey_response kind unavailable",
+					});
+				}
+				continue;
+			}
 
-		if (!facetAccountId) {
-			facet_diagnostics.push({
-				stage: "facet_account",
-				question_id: question.id,
-				error: "facet account unavailable",
+			const facetAccountId = await resolveSurveyQuestionFacetAccountId({
+				supabase,
+				accountId,
+				surveyKindId,
+				questionId: `${question.id}:${entry.label}`,
+				prompt: entry.label,
+				cache: facetAccountCache,
 			});
-			continue;
-		}
 
-		let { error: facetError } = await supabase.from("evidence_facet").insert({
-			evidence_id: evidence.id,
-			account_id: accountId,
-			project_id: projectId,
-			person_id: personId,
-			kind_slug: "survey_response",
-			facet_account_id: facetAccountId,
-			label: question.prompt,
-			quote: answerText,
-			source: "survey",
-			confidence: 0.95,
-		});
+			if (!facetAccountId) {
+				facet_diagnostics.push({
+					stage: "facet_account",
+					question_id: question.id,
+					error: "facet account unavailable",
+				});
+				continue;
+			}
 
-		if (facetError?.message?.includes("facet_account_id")) {
-			const legacyFacetRef = `a:${facetAccountId}`;
-			const legacyFacetResult = await supabase.from("evidence_facet").insert({
+			let { error: facetError } = await supabase.from("evidence_facet").insert({
 				evidence_id: evidence.id,
 				account_id: accountId,
 				project_id: projectId,
 				person_id: personId,
 				kind_slug: "survey_response",
-				facet_ref: legacyFacetRef,
-				label: question.prompt,
-				quote: answerText,
+				facet_account_id: facetAccountId,
+				label: entry.label,
+				quote: entry.answerText,
 				source: "survey",
 				confidence: 0.95,
 			});
-			facetError = legacyFacetResult.error;
-		}
 
-		if (facetError) {
-			facet_diagnostics.push({
-				stage: "evidence_facet",
-				question_id: question.id,
-				evidence_id: evidence.id,
-				facet_account_id: facetAccountId,
-				error: facetError.message,
-			});
-			consola.error("Failed to create survey_response evidence_facet", {
-				questionId: question.id,
-				evidenceId: evidence.id,
-				error: facetError.message,
-			});
-			continue;
+			if (facetError?.message?.includes("facet_account_id")) {
+				const legacyFacetRef = `a:${facetAccountId}`;
+				const legacyFacetResult = await supabase.from("evidence_facet").insert({
+					evidence_id: evidence.id,
+					account_id: accountId,
+					project_id: projectId,
+					person_id: personId,
+					kind_slug: "survey_response",
+					facet_ref: legacyFacetRef,
+					label: entry.label,
+					quote: entry.answerText,
+					source: "survey",
+					confidence: 0.95,
+				});
+				facetError = legacyFacetResult.error;
+			}
+
+			if (facetError) {
+				facet_diagnostics.push({
+					stage: "evidence_facet",
+					question_id: question.id,
+					evidence_id: evidence.id,
+					facet_account_id: facetAccountId,
+					error: facetError.message,
+				});
+				consola.error("Failed to create survey_response evidence_facet", {
+					questionId: question.id,
+					evidenceId: evidence.id,
+					error: facetError.message,
+				});
+				continue;
+			}
+			facetsCreated += 1;
 		}
-		facetsCreated += 1;
 	}
 
 	if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
