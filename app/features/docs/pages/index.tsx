@@ -10,6 +10,7 @@ import {
 	Compass,
 	FileSpreadsheet,
 	GitBranch,
+	Globe,
 	Layers3,
 	Lightbulb,
 	Mail,
@@ -104,11 +105,17 @@ export default function DocsIndex() {
 					description="Create surveys, personalize the experience, and distribute to your audience."
 				>
 					<DocCard
+						to="/docs/survey-distribution"
+						icon={<Globe className="h-5 w-5" />}
+						title="Survey Distribution Guide"
+						description="Every way to share your survey: direct link, email, QR code, website embed, and social — with pre-fill setup"
+						badge="New"
+					/>
+					<DocCard
 						to="/docs/sending-surveys"
 						icon={<Mail className="h-5 w-5" />}
 						title="Send Surveys via Email"
-						description="Distribute personalized surveys via Mailchimp or any email platform with identity pre-fill and CRM-powered personalization"
-						badge="New"
+						description="End-to-end guide for Mailchimp campaigns with identity pre-fill and CRM-powered personalization"
 					/>
 					<DocCard
 						to="/docs/survey-branching"
