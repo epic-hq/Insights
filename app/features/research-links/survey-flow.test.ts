@@ -278,4 +278,127 @@ describe("summarizeSurveyFlow", () => {
 		expect(summary.minQuestions).toBe(4);
 		expect(summary.maxQuestions).toBe(4);
 	});
+
+	it("captures downstream decision points when computing shortest and longest paths", () => {
+		const questions: ResearchLinkQuestion[] = [
+			makeQuestion({
+				id: "q1",
+				prompt: "Role",
+				type: "single_select",
+				options: ["Founder", "Service provider", "Investor"],
+				sectionId: "shared",
+				sectionTitle: "Shared",
+			}),
+			makeQuestion({
+				id: "q2",
+				prompt: "Organization",
+				type: "short_text",
+				sectionId: "shared",
+				sectionTitle: "Shared",
+				branching: {
+					rules: [
+						{
+							id: "route-service",
+							action: "skip_to",
+							targetSectionId: "service_path",
+							conditions: {
+								logic: "or",
+								conditions: [{ questionId: "q1", operator: "equals", value: "Service provider" }],
+							},
+						},
+						{
+							id: "route-investor",
+							action: "skip_to",
+							targetSectionId: "investor_path",
+							conditions: {
+								logic: "or",
+								conditions: [{ questionId: "q1", operator: "equals", value: "Investor" }],
+							},
+						},
+					],
+					defaultNext: "q3",
+				},
+			}),
+			makeQuestion({
+				id: "q3",
+				prompt: "Founder needs",
+				type: "multi_select",
+				sectionId: "founder_path",
+				sectionTitle: "Founder path",
+			}),
+			makeQuestion({
+				id: "q4",
+				prompt: "Need fundraising help",
+				type: "single_select",
+				options: ["Yes", "No"],
+				sectionId: "founder_path",
+				sectionTitle: "Founder path",
+				branching: {
+					rules: [
+						{
+							id: "route-funding",
+							action: "skip_to",
+							targetSectionId: "funding_path",
+							conditions: {
+								logic: "or",
+								conditions: [{ questionId: "q4", operator: "equals", value: "Yes" }],
+							},
+						},
+					],
+					defaultNext: "q8",
+				},
+			}),
+			makeQuestion({
+				id: "q5",
+				prompt: "Funding matrix",
+				type: "matrix",
+				sectionId: "funding_path",
+				sectionTitle: "Funding path",
+				matrixRows: [
+					{ id: "row_1", label: "Investor access" },
+					{ id: "row_2", label: "Pitch feedback" },
+				],
+				branching: {
+					rules: [],
+					defaultNext: "q8",
+				},
+			}),
+			makeQuestion({
+				id: "q6",
+				prompt: "Service question",
+				type: "image_select",
+				sectionId: "service_path",
+				sectionTitle: "Service path",
+				imageOptions: [{ label: "Directory", imageUrl: "https://example.com/directory.png" }],
+				branching: {
+					rules: [],
+					defaultNext: "q8",
+				},
+			}),
+			makeQuestion({
+				id: "q7",
+				prompt: "Investor question",
+				type: "likert",
+				sectionId: "investor_path",
+				sectionTitle: "Investor path",
+				branching: {
+					rules: [],
+					defaultNext: "q8",
+				},
+			}),
+			makeQuestion({
+				id: "q8",
+				prompt: "Closing question",
+				type: "long_text",
+				sectionId: "shared_close",
+				sectionTitle: "Shared close",
+			}),
+		];
+
+		const summary = summarizeSurveyFlow(questions);
+
+		expect(summary.minQuestions).toBe(4);
+		expect(summary.maxQuestions).toBe(6);
+		expect(formatFlowRangeLabel(summary)).toContain("4-6 questions");
+	});
 });

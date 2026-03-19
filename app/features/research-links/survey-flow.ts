@@ -1,5 +1,5 @@
 import type { BranchRule, ResponseRecord } from "./branching";
-import { getNextQuestionId } from "./branching";
+import { getNextQuestionId, hasResponseValue } from "./branching";
 import type { ResearchLinkQuestion } from "./schemas";
 import { deriveSurveySections, resolveSectionStartQuestionId } from "./sections";
 
@@ -42,127 +42,317 @@ export function formatEstimatedMinutesFromSeconds(totalSeconds: number): string 
 	return `~${Math.max(1, Math.round(totalSeconds / 60))} min`;
 }
 
-function seedResponsesFromRule(rule: BranchRule): ResponseRecord {
-	const responses: ResponseRecord = {};
-	for (const condition of rule.conditions.conditions) {
-		if (typeof condition.value !== "string" || condition.value.trim().length === 0) continue;
-		if (condition.operator === "equals" || condition.operator === "contains") {
-			responses[condition.questionId] = condition.value;
-			continue;
-		}
-		if (condition.operator === "selected") {
-			const current = responses[condition.questionId];
-			if (Array.isArray(current)) {
-				if (!current.includes(condition.value)) current.push(condition.value);
-			} else {
-				responses[condition.questionId] = [condition.value];
-			}
-		}
-	}
-	return responses;
-}
+type PathTransition = {
+	label: string;
+	nextQuestionId: string | null;
+	responses: ResponseRecord;
+};
 
-function simulatePath(
-	questions: ResearchLinkQuestion[],
-	seedResponses: ResponseRecord
-): { questionIds: string[]; questionCount: number; estimatedSeconds: number; estimatedMinutesLabel: string } {
-	const activeQuestions = questions.filter(
-		(question): question is ResearchLinkQuestion & { id: string } => !question.hidden && Boolean(question.id)
-	);
-	if (activeQuestions.length === 0) {
-		return { questionIds: [], questionCount: 0, estimatedSeconds: 0, estimatedMinutesLabel: "~0 min" };
+type LegacyRuleCondition = {
+	questionId: string;
+	operator: string;
+	value?: string | string[];
+};
+
+type LegacyBranchRule = BranchRule & {
+	if?: LegacyRuleCondition;
+	conditions?: BranchRule["conditions"];
+};
+
+function getRuleConditions(rule: BranchRule): BranchRule["conditions"] {
+	const candidate = rule as LegacyBranchRule;
+	if (candidate.conditions?.conditions?.length) {
+		return candidate.conditions;
 	}
 
-	const questionById = new Map(activeQuestions.map((question) => [question.id, question]));
-	const visited: string[] = [];
-	const seen = new Set<string>();
-	const simulatedResponses: ResponseRecord = { ...seedResponses };
-	let currentQuestion = activeQuestions[0] ?? null;
-	let guard = 0;
-
-	while (currentQuestion && guard < activeQuestions.length * 4) {
-		visited.push(currentQuestion.id);
-		seen.add(currentQuestion.id);
-		if (!(currentQuestion.id in simulatedResponses)) {
-			simulatedResponses[currentQuestion.id] =
-				currentQuestion.type === "multi_select" ? ["__simulated__"] : "__simulated__";
-		}
-		const nextId = getNextQuestionId(currentQuestion, activeQuestions, simulatedResponses);
-		if (!nextId) break;
-		if (seen.has(nextId)) break;
-		currentQuestion = questionById.get(nextId) ?? null;
-		guard += 1;
+	if (candidate.if?.questionId && candidate.if.operator) {
+		return {
+			logic: "or",
+			conditions: [
+				{
+					questionId: candidate.if.questionId,
+					operator: candidate.if.operator as BranchRule["conditions"]["conditions"][number]["operator"],
+					value: candidate.if.value,
+				},
+			],
+		};
 	}
-
-	const estimatedSeconds = visited.reduce((acc, questionId) => {
-		const question = questionById.get(questionId);
-		return question ? acc + estimateQuestionSeconds(question) : acc;
-	}, 0);
 
 	return {
-		questionIds: visited,
-		questionCount: visited.length,
-		estimatedSeconds,
-		estimatedMinutesLabel: formatEstimatedMinutesFromSeconds(estimatedSeconds),
+		logic: "or",
+		conditions: [],
 	};
 }
 
-type DecisionTargetGroup = {
-	label: string;
-	seedResponses: ResponseRecord;
-};
+function createAnsweredPlaceholder(question: ResearchLinkQuestion): ResponseRecord[string] {
+	if (question.type === "multi_select") return ["__simulated__"];
+	return "__simulated__";
+}
 
-function getDecisionTargetGroups(
-	decisionQuestion: ResearchLinkQuestion,
-	questions: ResearchLinkQuestion[]
-): DecisionTargetGroup[] {
-	const rules = decisionQuestion.branching?.rules ?? [];
-	if (rules.length === 0) return [];
+function valuesConflict(existing: ResponseRecord[string], nextValue: string): boolean {
+	if (!hasResponseValue(existing)) return false;
+	if (Array.isArray(existing)) return !existing.includes(nextValue);
+	return String(existing) !== nextValue;
+}
+
+function mergeRuleResponses(
+	rule: BranchRule,
+	questionsById: Map<string, ResearchLinkQuestion>,
+	visitedQuestionIds: Set<string>,
+	currentQuestionId: string,
+	assumedResponses: ResponseRecord
+): ResponseRecord | null {
+	const merged: ResponseRecord = { ...assumedResponses };
+	const conditions = getRuleConditions(rule);
+
+	for (const condition of conditions.conditions) {
+		const conditionQuestion = questionsById.get(condition.questionId);
+		const existingValue = merged[condition.questionId];
+		const conditionTouchesAnsweredQuestion =
+			visitedQuestionIds.has(condition.questionId) || condition.questionId === currentQuestionId;
+
+		switch (condition.operator) {
+			case "equals":
+			case "contains": {
+				if (typeof condition.value !== "string" || condition.value.trim().length === 0) return null;
+				if (valuesConflict(existingValue, condition.value)) return null;
+				merged[condition.questionId] = condition.value;
+				break;
+			}
+			case "selected": {
+				if (typeof condition.value !== "string" || condition.value.trim().length === 0) return null;
+				if (existingValue && !Array.isArray(existingValue)) return null;
+				const selected = Array.isArray(existingValue) ? [...existingValue] : [];
+				if (!selected.includes(condition.value)) selected.push(condition.value);
+				merged[condition.questionId] = selected;
+				break;
+			}
+			case "not_equals":
+			case "not_contains": {
+				if (typeof condition.value !== "string" || condition.value.trim().length === 0) break;
+				if (hasResponseValue(existingValue) && String(existingValue) === condition.value) return null;
+				break;
+			}
+			case "not_selected": {
+				if (typeof condition.value !== "string" || condition.value.trim().length === 0) break;
+				if (Array.isArray(existingValue) && existingValue.includes(condition.value)) return null;
+				break;
+			}
+			case "answered": {
+				if (hasResponseValue(existingValue) || conditionTouchesAnsweredQuestion) {
+					if (!hasResponseValue(existingValue) && conditionQuestion) {
+						merged[condition.questionId] = createAnsweredPlaceholder(conditionQuestion);
+					}
+					break;
+				}
+				return null;
+			}
+			case "not_answered": {
+				if (hasResponseValue(existingValue) || conditionTouchesAnsweredQuestion) return null;
+				break;
+			}
+			default:
+				return null;
+		}
+	}
+
+	return merged;
+}
+
+function ruleDefinitelyMatches(
+	rule: BranchRule,
+	visitedQuestionIds: Set<string>,
+	currentQuestionId: string,
+	assumedResponses: ResponseRecord
+): boolean {
+	const conditions = getRuleConditions(rule);
+	const evaluateKnownCondition = (condition: BranchRule["conditions"]["conditions"][number]) => {
+		const existingValue = assumedResponses[condition.questionId];
+		const isAnsweredContext =
+			visitedQuestionIds.has(condition.questionId) || condition.questionId === currentQuestionId;
+
+		switch (condition.operator) {
+			case "equals":
+				return (
+					typeof condition.value === "string" &&
+					hasResponseValue(existingValue) &&
+					String(existingValue) === condition.value
+				);
+			case "contains":
+				return (
+					typeof condition.value === "string" &&
+					hasResponseValue(existingValue) &&
+					String(existingValue).toLowerCase().includes(condition.value.toLowerCase())
+				);
+			case "selected":
+				return (
+					typeof condition.value === "string" && Array.isArray(existingValue) && existingValue.includes(condition.value)
+				);
+			case "not_equals":
+				return (
+					typeof condition.value === "string" &&
+					hasResponseValue(existingValue) &&
+					String(existingValue) !== condition.value
+				);
+			case "not_contains":
+				return (
+					typeof condition.value === "string" &&
+					hasResponseValue(existingValue) &&
+					!String(existingValue).toLowerCase().includes(condition.value.toLowerCase())
+				);
+			case "not_selected":
+				return (
+					typeof condition.value === "string" &&
+					Array.isArray(existingValue) &&
+					!existingValue.includes(condition.value)
+				);
+			case "answered":
+				return hasResponseValue(existingValue) || isAnsweredContext;
+			case "not_answered":
+				return !hasResponseValue(existingValue) && !isAnsweredContext;
+			default:
+				return false;
+		}
+	};
+
+	if (conditions.logic === "and") {
+		return conditions.conditions.every((condition) => evaluateKnownCondition(condition));
+	}
+
+	return conditions.conditions.some((condition) => evaluateKnownCondition(condition));
+}
+
+function inferFallbackResponses(
+	question: ResearchLinkQuestion,
+	rules: BranchRule[],
+	assumedResponses: ResponseRecord
+): ResponseRecord {
+	if (hasResponseValue(assumedResponses[question.id])) {
+		return { ...assumedResponses };
+	}
+
+	if ((question.type !== "single_select" && question.type !== "multi_select") || !question.options?.length) {
+		return { ...assumedResponses };
+	}
+
+	const claimedValues = new Set<string>();
+	for (const rule of rules) {
+		for (const condition of getRuleConditions(rule).conditions) {
+			if (
+				condition.questionId === question.id &&
+				(condition.operator === "equals" || condition.operator === "selected") &&
+				typeof condition.value === "string"
+			) {
+				claimedValues.add(condition.value);
+			}
+		}
+	}
+
+	const fallbackOption = question.options.find((option) => !claimedValues.has(option));
+	if (!fallbackOption) return { ...assumedResponses };
+
+	return {
+		...assumedResponses,
+		[question.id]: question.type === "multi_select" ? [fallbackOption] : fallbackOption,
+	};
+}
+
+function hasExhaustiveBranchCoverage(rules: BranchRule[], questionsById: Map<string, ResearchLinkQuestion>): boolean {
+	const conditionsByQuestion = new Map<string, Set<string>>();
+
+	for (const rule of rules) {
+		for (const condition of getRuleConditions(rule).conditions) {
+			if (
+				(condition.operator !== "equals" && condition.operator !== "selected") ||
+				typeof condition.value !== "string" ||
+				condition.value.trim().length === 0
+			) {
+				continue;
+			}
+
+			const values = conditionsByQuestion.get(condition.questionId) ?? new Set<string>();
+			values.add(condition.value);
+			conditionsByQuestion.set(condition.questionId, values);
+		}
+	}
+
+	for (const [questionId, claimedValues] of conditionsByQuestion.entries()) {
+		const question = questionsById.get(questionId);
+		if (!question) continue;
+
+		const supportedTypes = new Set(["single_select", "multi_select", "image_select"]);
+		if (!supportedTypes.has(question.type)) continue;
+
+		const allOptions =
+			question.type === "image_select"
+				? (question.imageOptions?.map((option) => option.label).filter(Boolean) ?? [])
+				: (question.options?.filter(Boolean) ?? []);
+
+		if (allOptions.length === 0) continue;
+		if (allOptions.every((option) => claimedValues.has(option))) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+function getPossibleTransitions(
+	question: ResearchLinkQuestion,
+	questions: ResearchLinkQuestion[],
+	visitedQuestionIds: Set<string>,
+	assumedResponses: ResponseRecord
+): PathTransition[] {
+	const rules = question.branching?.rules ?? [];
 
 	const sectionMap = new Map(deriveSurveySections(questions).map((section) => [section.id, section] as const));
 	const questionIndexById = new Map(questions.map((question, index) => [question.id, index] as const));
-	const groups = new Map<string, DecisionTargetGroup>();
+	const questionById = new Map(questions.map((candidate) => [candidate.id, candidate] as const));
+	const transitions = new Map<string, PathTransition>();
+	const currentIndex = questionIndexById.get(question.id) ?? -1;
+	const linearNextQuestionId =
+		currentIndex >= 0 && currentIndex < questions.length - 1 ? (questions[currentIndex + 1]?.id ?? null) : null;
+	const guaranteedRuleMatch = rules.some((rule) =>
+		ruleDefinitelyMatches(rule, visitedQuestionIds, question.id, assumedResponses)
+	);
 
 	for (const rule of rules) {
+		const nextResponses = mergeRuleResponses(rule, questionById, visitedQuestionIds, question.id, assumedResponses);
+		if (!nextResponses) continue;
+
 		let targetQuestionId: string | null = null;
 		let targetLabel = "End survey";
 
 		if (rule.action === "skip_to") {
 			targetQuestionId =
 				rule.targetSectionId && rule.targetSectionId.trim().length > 0
-					? resolveSectionStartQuestionId(questions, rule.targetSectionId, decisionQuestion.id)
+					? resolveSectionStartQuestionId(questions, rule.targetSectionId, question.id)
 					: (rule.targetQuestionId ?? null);
-
 			if (rule.targetSectionId && sectionMap.has(rule.targetSectionId)) {
 				targetLabel = sectionMap.get(rule.targetSectionId)?.title ?? "Section";
 			} else if (targetQuestionId) {
 				const targetIndex = questionIndexById.get(targetQuestionId);
 				targetLabel = targetIndex !== undefined ? `Q${targetIndex + 1}` : "Target";
-			} else {
-				targetLabel = "Target";
 			}
 		}
 
-		const key = `${rule.action}:${targetQuestionId ?? "end"}:${targetLabel}`;
-		const seed = seedResponsesFromRule(rule);
-		const existing = groups.get(key);
-		if (!existing) {
-			groups.set(key, {
-				label: targetLabel,
-				seedResponses: seed,
-			});
-			continue;
-		}
-
-		for (const [questionId, value] of Object.entries(seed)) {
-			if (!(questionId in existing.seedResponses)) {
-				existing.seedResponses[questionId] = value;
-			}
-		}
+		const key = `${rule.id}:${targetQuestionId ?? "end"}`;
+		transitions.set(key, {
+			label: targetLabel,
+			nextQuestionId: targetQuestionId,
+			responses: nextResponses,
+		});
 	}
 
-	if (decisionQuestion.branching?.defaultNext) {
-		const defaultTargetQuestionId = decisionQuestion.branching.defaultNext;
+	const fallbackTargetQuestionId =
+		question.branching?.defaultNext ??
+		(rules.length === 0 ? getNextQuestionId(question, questions, assumedResponses) : linearNextQuestionId);
+	const allowFallbackPath =
+		Boolean(fallbackTargetQuestionId) &&
+		!guaranteedRuleMatch &&
+		(question.branching?.defaultNext || !hasExhaustiveBranchCoverage(rules, questionById));
+	if (fallbackTargetQuestionId && allowFallbackPath) {
+		const defaultTargetQuestionId = fallbackTargetQuestionId;
 		const targetIndex = questionIndexById.get(defaultTargetQuestionId);
 		const targetQuestion = questions.find((question) => question.id === defaultTargetQuestionId) ?? null;
 		const defaultLabel =
@@ -172,15 +362,29 @@ function getDecisionTargetGroups(
 					? `Q${targetIndex + 1}`
 					: "Default path";
 		const key = `default:${defaultTargetQuestionId}:${defaultLabel}`;
-		if (!groups.has(key)) {
-			groups.set(key, {
+		if (!transitions.has(key)) {
+			const fallbackResponses =
+				rules.length > 0 ? inferFallbackResponses(question, rules, assumedResponses) : { ...assumedResponses };
+			transitions.set(key, {
 				label: defaultLabel,
-				seedResponses: {},
+				nextQuestionId: defaultTargetQuestionId,
+				responses: fallbackResponses,
 			});
 		}
 	}
 
-	return Array.from(groups.values());
+	if (rules.length > 0 && !question.branching?.defaultNext && !guaranteedRuleMatch) {
+		const linearNextId = linearNextQuestionId;
+		if (!linearNextId) {
+			transitions.set("default:end", {
+				label: "End survey",
+				nextQuestionId: null,
+				responses: { ...assumedResponses },
+			});
+		}
+	}
+
+	return Array.from(transitions.values());
 }
 
 export function summarizeSurveyFlow(questions: ResearchLinkQuestion[]): SurveyFlowSummary {
@@ -199,47 +403,73 @@ export function summarizeSurveyFlow(questions: ResearchLinkQuestion[]): SurveyFl
 	}
 
 	const decisionQuestionIndex = activeQuestions.findIndex((question) => {
-		const rules = question.branching?.rules ?? [];
 		const targets = new Set<string>();
-		for (const rule of rules) {
+		for (const rule of question.branching?.rules ?? []) {
 			targets.add(rule.action === "end_survey" ? "end" : rule.targetSectionId || rule.targetQuestionId || "unknown");
 		}
-		if (question.branching?.defaultNext) {
-			targets.add(`default:${question.branching.defaultNext}`);
-		}
-		if (targets.size < 2) return false;
-		const targetKeys = new Set([...targets]);
-		return targetKeys.size > 1;
+		if (question.branching?.defaultNext) targets.add(`default:${question.branching.defaultNext}`);
+		return targets.size > 1;
 	});
 	const decisionQuestion = decisionQuestionIndex >= 0 ? activeQuestions[decisionQuestionIndex] : null;
+	const questionById = new Map(activeQuestions.map((question) => [question.id, question] as const));
+	const paths: SurveyPathSummary[] = [];
 
-	let rawPaths: SurveyPathSummary[] = [];
-	if (!decisionQuestion) {
-		const linearPath = simulatePath(activeQuestions, {});
-		rawPaths = [{ label: "Default path", ...linearPath }];
-	} else {
-		const groups = getDecisionTargetGroups(decisionQuestion, activeQuestions);
-		rawPaths = groups.map((group) => ({
-			label: group.label,
-			...simulatePath(activeQuestions, group.seedResponses),
-		}));
-		if (rawPaths.length === 0) {
-			rawPaths = [{ label: "Default path", ...simulatePath(activeQuestions, {}) }];
+	function walk(
+		questionId: string | null,
+		assumedResponses: ResponseRecord,
+		visitedQuestionIds: string[],
+		labels: string[]
+	) {
+		if (!questionId) {
+			const estimatedSeconds = visitedQuestionIds.reduce((acc, visitedId) => {
+				const question = questionById.get(visitedId);
+				return question ? acc + estimateQuestionSeconds(question) : acc;
+			}, 0);
+			paths.push({
+				label: labels.filter(Boolean).join(" → ") || "Default path",
+				questionIds: visitedQuestionIds,
+				questionCount: visitedQuestionIds.length,
+				estimatedSeconds,
+				estimatedMinutesLabel: formatEstimatedMinutesFromSeconds(estimatedSeconds),
+			});
+			return;
+		}
+
+		const question = questionById.get(questionId);
+		if (!question) return;
+		if (visitedQuestionIds.includes(questionId)) return;
+
+		const nextVisited = [...visitedQuestionIds, questionId];
+		const nextResponses = { ...assumedResponses };
+		const transitions = getPossibleTransitions(question, activeQuestions, new Set(nextVisited), nextResponses);
+
+		if (transitions.length === 0) {
+			walk(null, nextResponses, nextVisited, labels);
+			return;
+		}
+
+		for (const transition of transitions) {
+			walk(
+				transition.nextQuestionId,
+				{ ...nextResponses, ...transition.responses },
+				nextVisited,
+				transition.label && transition.label !== "Default path" ? [...labels, transition.label] : labels
+			);
 		}
 	}
+
+	walk(activeQuestions[0]?.id ?? null, {}, [], []);
 
 	const deduped = new Map<string, SurveyPathSummary>();
-	for (const path of rawPaths) {
+	for (const path of paths) {
 		const key = path.questionIds.join(">");
-		if (!key) continue;
-		if (!deduped.has(key)) {
-			deduped.set(key, path);
-		}
+		if (!key || deduped.has(key)) continue;
+		deduped.set(key, path);
 	}
-	const paths = Array.from(deduped.values());
+	const uniquePaths = Array.from(deduped.values());
 
-	const questionCounts = paths.map((path) => path.questionCount);
-	const seconds = paths.map((path) => path.estimatedSeconds);
+	const questionCounts = uniquePaths.map((path) => path.questionCount);
+	const seconds = uniquePaths.map((path) => path.estimatedSeconds);
 	const minQuestions = Math.min(...questionCounts);
 	const maxQuestions = Math.max(...questionCounts);
 	const minSeconds = Math.min(...seconds);
@@ -251,7 +481,7 @@ export function summarizeSurveyFlow(questions: ResearchLinkQuestion[]): SurveyFl
 		decisionQuestionIndex: decisionQuestion
 			? activeQuestions.findIndex((question) => question.id === decisionQuestion.id)
 			: null,
-		paths,
+		paths: uniquePaths,
 		minQuestions,
 		maxQuestions,
 		minSeconds,

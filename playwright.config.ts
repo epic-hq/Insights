@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "playwright/test";
 
+const e2eBaseURL = process.env.E2E_BASE_URL || "http://localhost:4290";
+
 /**
  * Playwright E2E test configuration for UpSight.
  *
@@ -26,7 +28,7 @@ export default defineConfig({
   globalSetup: "./tests/e2e/global-setup.ts",
 
   use: {
-    baseURL: process.env.E2E_BASE_URL || "http://localhost:4280",
+    baseURL: e2eBaseURL,
     trace:
       process.env.E2E_TRACE === "on"
         ? "on"
@@ -70,9 +72,10 @@ export default defineConfig({
     process.env.CI || process.env.E2E_BASE_URL
       ? undefined
       : {
-          command: "pnpm run dev:vite",
-          url: "http://localhost:4280",
-          reuseExistingServer: true,
-          timeout: 120 * 1000,
+          command:
+            "mkdir -p build/client && PORT=4290 PLAYWRIGHT=1 dotenvx run -- react-router dev",
+          url: e2eBaseURL,
+          reuseExistingServer: false,
+          timeout: 240 * 1000,
         },
 });

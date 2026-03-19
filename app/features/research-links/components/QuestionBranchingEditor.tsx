@@ -348,11 +348,12 @@ export function QuestionBranchingEditor({
 	};
 
 	return (
-		<div>
+		<div data-testid="question-branching-editor">
 			<button
 				type="button"
 				onClick={() => setIsExpanded(!isExpanded)}
 				className="flex w-full items-center gap-1.5 text-foreground/80 text-xs hover:text-foreground"
+				data-testid="question-branching-toggle"
 			>
 				{isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
 				<GitBranch className="h-3 w-3" />
@@ -372,7 +373,7 @@ export function QuestionBranchingEditor({
 								{rules.length > 0 ? "If no rule matches, go to" : "After this question, go to"}
 							</span>
 							<Select value={defaultNextSelectValue} onValueChange={updateDefaultNext}>
-								<SelectTrigger className="h-7 min-w-[210px] text-xs">
+								<SelectTrigger className="h-7 min-w-[210px] text-xs" data-testid="branch-default-next-select">
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
@@ -419,6 +420,7 @@ export function QuestionBranchingEditor({
 								rows={1}
 								disabled={isParsing}
 								className="min-h-[2.25rem] resize-none pr-20 text-xs"
+								data-testid="branch-nl-input"
 							/>
 							<Button
 								type="button"
@@ -427,6 +429,7 @@ export function QuestionBranchingEditor({
 								disabled={!nlInput.trim() || isParsing}
 								onClick={parseNlRule}
 								className="absolute top-0.5 right-1 h-7 gap-1 text-xs"
+								data-testid="branch-nl-add"
 							>
 								{isParsing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
 								{isParsing ? "Parsing…" : "Add"}
@@ -469,7 +472,11 @@ export function QuestionBranchingEditor({
 						const conditionQuestionOptions = conditionQuestion.options ?? [];
 
 						return (
-							<div key={rule.id} className="space-y-1.5 rounded-lg border border-border/40 bg-muted/20 p-2">
+							<div
+								key={rule.id}
+								className="space-y-1.5 rounded-lg border border-border/40 bg-muted/20 p-2"
+								data-testid={`branch-rule-${ruleIndex}`}
+							>
 								{/* Summary line (for AI rules) or structured display */}
 								{hasSummary ? (
 									<div className="flex items-start gap-1.5">
@@ -509,7 +516,10 @@ export function QuestionBranchingEditor({
 											value={condition?.questionId ?? question.id}
 											onValueChange={(v) => updateConditionQuestionId(ruleIndex, v)}
 										>
-											<SelectTrigger className="h-6 min-w-[110px] max-w-[220px] text-xs">
+											<SelectTrigger
+												className="h-6 min-w-[110px] max-w-[220px] text-xs"
+												data-testid={`branch-rule-${ruleIndex}-condition-question`}
+											>
 												<SelectValue placeholder="Source question" />
 											</SelectTrigger>
 											<SelectContent>
@@ -526,7 +536,7 @@ export function QuestionBranchingEditor({
 											value={condition?.operator ?? "equals"}
 											onValueChange={(v) => updateConditionOperator(ruleIndex, v as ConditionOperator)}
 										>
-											<SelectTrigger className="h-6 w-24 text-xs">
+											<SelectTrigger className="h-6 w-24 text-xs" data-testid={`branch-rule-${ruleIndex}-operator`}>
 												<SelectValue />
 											</SelectTrigger>
 											<SelectContent>
@@ -551,7 +561,10 @@ export function QuestionBranchingEditor({
 													value={(condition?.value as string) ?? ""}
 													onValueChange={(v) => updateConditionValue(ruleIndex, v)}
 												>
-													<SelectTrigger className="h-6 min-w-[100px] max-w-[180px] text-xs">
+													<SelectTrigger
+														className="h-6 min-w-[100px] max-w-[180px] text-xs"
+														data-testid={`branch-rule-${ruleIndex}-value-select`}
+													>
 														<SelectValue placeholder="Select value" />
 													</SelectTrigger>
 													<SelectContent>
@@ -568,6 +581,7 @@ export function QuestionBranchingEditor({
 													onChange={(e) => updateConditionValue(ruleIndex, e.target.value)}
 													placeholder="value"
 													className="h-6 w-24 text-xs"
+													data-testid={`branch-rule-${ruleIndex}-value-input`}
 												/>
 											))}
 
@@ -583,7 +597,7 @@ export function QuestionBranchingEditor({
 												})
 											}
 										>
-											<SelectTrigger className="h-6 w-24 text-xs">
+											<SelectTrigger className="h-6 w-24 text-xs" data-testid={`branch-rule-${ruleIndex}-action`}>
 												<SelectValue />
 											</SelectTrigger>
 											<SelectContent>
@@ -604,7 +618,10 @@ export function QuestionBranchingEditor({
 													updateRule(ruleIndex, { targetQuestionId: v, targetSectionId: undefined });
 												}}
 											>
-												<SelectTrigger className="h-6 max-w-[200px] text-xs">
+												<SelectTrigger
+													className="h-6 max-w-[200px] text-xs"
+													data-testid={`branch-rule-${ruleIndex}-target`}
+												>
 													<SelectValue placeholder="Select question or section" />
 												</SelectTrigger>
 												<SelectContent>
@@ -670,6 +687,7 @@ export function QuestionBranchingEditor({
 								addManualRule();
 							}}
 							className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+							data-testid="branch-add-manual-rule"
 						>
 							<Plus className="h-3 w-3" /> Add manual rule
 						</button>

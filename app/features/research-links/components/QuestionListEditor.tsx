@@ -844,7 +844,7 @@ function QuestionEditDrawer({
 				}
 			}}
 		>
-			<SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+			<SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg" data-testid="question-editor-drawer">
 				<SheetHeader>
 					<SheetTitle className="flex items-center gap-2">
 						<span className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 font-semibold text-primary text-xs tabular-nums">
@@ -932,6 +932,7 @@ function QuestionEditDrawer({
 							}}
 							rows={2}
 							className="resize-none text-sm"
+							data-testid="question-text-input"
 						/>
 					</div>
 
@@ -953,7 +954,7 @@ function QuestionEditDrawer({
 								assignSection({ id: target.id, title: target.title });
 							}}
 						>
-							<SelectTrigger className="h-9 text-xs">
+							<SelectTrigger className="h-9 text-xs" data-testid="question-section-select">
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
@@ -987,11 +988,13 @@ function QuestionEditDrawer({
 									}}
 									placeholder="Block name (e.g., Shared close)"
 									className="h-8 text-xs"
+									data-testid="question-section-create-input"
 								/>
 								<Button
 									type="button"
 									size="sm"
 									className="h-8"
+									data-testid="question-section-create-button"
 									onClick={() => {
 										const nextTitle = normalizeSectionTitleInput(newSectionTitle);
 										if (!nextTitle) return;
@@ -1057,7 +1060,7 @@ function QuestionEditDrawer({
 									applyDraftUpdates(updates);
 								}}
 							>
-								<SelectTrigger className="h-9 text-xs">
+								<SelectTrigger className="h-9 text-xs" data-testid="question-type-select">
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
@@ -1214,7 +1217,12 @@ function QuestionEditDrawer({
 									</Button>
 								</div>
 							) : (
-								<OptionsInput options={draft.options ?? null} onChange={(options) => applyDraftUpdates({ options })} />
+								<div data-testid="question-options-editor">
+									<OptionsInput
+										options={draft.options ?? null}
+										onChange={(options) => applyDraftUpdates({ options })}
+									/>
+								</div>
 							)}
 
 							{/* Allow "Other" write-in toggle */}
@@ -1313,6 +1321,7 @@ function QuestionEditDrawer({
 												onBlur={() => flushPendingQuestionUpdates()}
 												placeholder={`Row ${rowIndex + 1}`}
 												className="h-8 text-xs"
+												data-testid={`question-matrix-row-${rowIndex}`}
 											/>
 											<Button
 												type="button"
@@ -1335,6 +1344,7 @@ function QuestionEditDrawer({
 										variant="ghost"
 										size="sm"
 										className="h-7 text-muted-foreground text-xs hover:text-foreground"
+										data-testid="question-matrix-add-row"
 										onClick={() => {
 											const nextRows = [
 												...(draft.matrixRows ?? []),
@@ -1518,6 +1528,7 @@ function QuestionEditDrawer({
 							}}
 							placeholder="Optional hint shown below the question"
 							className="h-8 text-xs"
+							data-testid="question-helper-text"
 						/>
 					</div>
 
@@ -2091,9 +2102,10 @@ export function QuestionListEditor({
 					</div>
 				) : undefined
 			}
+			className="survey-question-list"
 		>
 			{journeyBlockSummaries.length > 1 && (
-				<div className="mb-2 rounded-md border border-violet-500/20 bg-violet-500/[0.03]">
+				<div className="mb-2 rounded-md border border-violet-500/20 bg-violet-500/[0.03]" data-testid="journey-blocks">
 					<div className="border-violet-500/15 border-b px-2 py-1 font-medium text-[10px] text-violet-600 uppercase tracking-wide dark:text-violet-300">
 						Journey blocks
 					</div>
@@ -2252,6 +2264,7 @@ export function QuestionListEditor({
 										text={question.prompt}
 										isSelected={selectedQuestionId === question.id}
 										onClick={() => setSelectedQuestionId(question.id)}
+										testId="question-row"
 										className={cn(
 											highlightedTargetQuestionId === question.id &&
 												"border-violet-500/60 bg-violet-500/[0.06] ring-1 ring-violet-500/30"

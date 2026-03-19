@@ -15,9 +15,9 @@ export { STORAGE_STATE_PATH } from "./storage-state";
 /** Setup auth fixture */
 async function setupAuth(page: Page): Promise<AuthFixture> {
   const isLoggedIn = async () => {
-    // Robust check: hit /login and verify we get redirected away.
-    // Cookie presence alone is insufficient when session cookies are stale.
-    await page.goto("/login");
+    // Probe an authenticated route instead of /login.
+    // /login can be slow or noisy during boot and should not be our auth oracle.
+    await page.goto("/home");
     await page.waitForLoadState("domcontentloaded");
     return !/\/login(?:$|[?#])/.test(page.url());
   };
@@ -35,6 +35,7 @@ async function setupAuth(page: Page): Promise<AuthFixture> {
         );
       }
 
+      await page.goto("/login");
       await page.fill('input[name="email"]', testEmail);
       await page.fill('input[name="password"]', testPassword);
       // Avoid clicking social auth submit buttons.

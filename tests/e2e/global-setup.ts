@@ -18,7 +18,7 @@ export default async function globalSetup() {
 
   await fs.mkdir(path.dirname(STORAGE_STATE_PATH), { recursive: true });
 
-  const baseURL = process.env.E2E_BASE_URL || "http://localhost:4280";
+  const baseURL = process.env.E2E_BASE_URL || "http://localhost:4290";
   const browser = await chromium.launch();
   const context = await browser.newContext();
   const page = await context.newPage();

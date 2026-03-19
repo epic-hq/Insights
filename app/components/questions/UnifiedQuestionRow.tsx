@@ -31,6 +31,8 @@ export interface UnifiedQuestionRowProps {
 	textSlot?: ReactNode;
 	/** Optional className override */
 	className?: string;
+	/** Optional test id for E2E selectors */
+	testId?: string;
 	/** Optional drop-off completion percentage (0-100) — renders a vertical bar on the right edge */
 	dropoff?: { completionPct: number };
 }
@@ -47,6 +49,7 @@ export function UnifiedQuestionRow({
 	children,
 	textSlot,
 	className,
+	testId,
 	dropoff,
 }: UnifiedQuestionRowProps) {
 	const content = (
@@ -106,14 +109,14 @@ export function UnifiedQuestionRow({
 
 	if (as === "div") {
 		return (
-			<div onClick={onClick} className={classes}>
+			<div onClick={onClick} className={classes} data-testid={testId}>
 				{content}
 			</div>
 		);
 	}
 
 	return (
-		<button type="button" onClick={onClick} className={classes}>
+		<button type="button" onClick={onClick} className={classes} data-testid={testId}>
 			{content}
 		</button>
 	);

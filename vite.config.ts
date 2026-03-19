@@ -8,6 +8,8 @@ import devtoolsJson from "vite-plugin-devtools-json";
 import { iconsSpritesheet } from "vite-plugin-icons-spritesheet";
 import tsconfigPaths from "vite-tsconfig-paths";
 
+const isPlaywright = process.env.PLAYWRIGHT === "1";
+
 export default defineConfig({
   base: "/",
   resolve: {
@@ -197,6 +199,9 @@ export default defineConfig({
   server: {
     open: true,
     port: Number(process.env.PORT || 4280),
+    hmr: {
+      overlay: !isPlaywright,
+    },
     // CORS config for Pica AuthKit - their iframe calls our API from authkit.picaos.com
     cors: {
       origin: true, // Reflect the request origin

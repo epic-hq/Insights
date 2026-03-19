@@ -670,6 +670,7 @@ export default function EditResearchLinkPage() {
 													size="sm"
 													className="h-7 px-2.5"
 													onClick={() => setImmediate("identityType", "anonymous")}
+													data-testid="identity-type-anonymous"
 												>
 													Anonymous
 												</Button>
@@ -886,7 +887,9 @@ export default function EditResearchLinkPage() {
 										</div>
 										<p className="font-medium text-sm">Public link</p>
 										<div className="rounded-md border bg-muted/40 px-2.5 py-2 text-foreground/70 text-xs">
-											<span className="break-all font-mono">{publicLink}</span>
+											<span className="break-all font-mono" data-testid="survey-public-link">
+												{publicLink}
+											</span>
 										</div>
 										<div className="flex flex-wrap gap-2">
 											<Button type="button" variant="outline" size="sm" onClick={handleCopyLink} className="gap-2">

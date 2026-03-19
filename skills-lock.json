@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "designing-surveys": {
+      "source": "refoundai/lenny-skills",
+      "sourceType": "github",
+      "computedHash": "6d988f04fc48420fe734a2d7172a69f9e32bbba12483d855ffffc4abdeab6f05"
+    }
+  }
+}

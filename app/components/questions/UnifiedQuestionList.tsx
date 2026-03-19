@@ -71,7 +71,10 @@ export function UnifiedQuestionList({
 		<div className={cn("space-y-1", className)}>
 			{/* Coach nudge banner — shown above questions when 5+ and not yet coached */}
 			{showNudge && (
-				<div className="mb-2 rounded-lg border border-violet-500/20 bg-gradient-to-r from-violet-500/10 to-blue-500/10 px-3 py-2.5 dark:border-violet-500/30 dark:from-violet-500/15 dark:to-blue-500/15">
+				<div
+					className="mb-2 rounded-lg border border-violet-500/20 bg-gradient-to-r from-violet-500/10 to-blue-500/10 px-3 py-2.5 dark:border-violet-500/30 dark:from-violet-500/15 dark:to-blue-500/15"
+					data-testid="question-list-summary"
+				>
 					<div className="flex items-center justify-between gap-3">
 						<div className="flex items-center gap-2">
 							<Sparkles className="h-4 w-4 shrink-0 animate-pulse text-violet-500" />
@@ -117,7 +120,7 @@ export function UnifiedQuestionList({
 
 			{/* Coach button + time estimate — shown after coaching or when nudge dismissed */}
 			{!showNudge && count > 0 && (onCoach || (showTimeBar && hasEstimate)) && (
-				<div className="mb-2 flex items-center justify-between">
+				<div className="mb-2 flex items-center justify-between" data-testid="question-list-summary">
 					{showTimeBar && hasEstimate ? (
 						<span className={cn("text-xs", isLong ? "font-semibold text-amber-500" : "text-muted-foreground")}>
 							{estimateLabel}
@@ -158,6 +161,7 @@ export function UnifiedQuestionList({
 						size="sm"
 						className="flex-1 border-border/60 border-dashed bg-muted/20 text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground"
 						onClick={onAdd}
+						data-testid="question-list-add"
 					>
 						<Plus className="mr-1.5 h-3.5 w-3.5" /> Add question
 					</Button>

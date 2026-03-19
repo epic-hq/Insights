@@ -11,8 +11,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function coerceThreshold(value: unknown, fallback: number, min: number, max: number): number {
-	const parsed =
-		typeof value === "number" ? value : typeof value === "string" ? Number.parseFloat(value) : Number.NaN;
+	const parsed = typeof value === "number" ? value : typeof value === "string" ? Number.parseFloat(value) : Number.NaN;
 
 	if (!Number.isFinite(parsed)) {
 		return fallback;
@@ -26,12 +25,7 @@ export function getProjectAnalysisSettings(projectSettings: unknown): ProjectAna
 	const analysis = isRecord(settings.analysis) ? settings.analysis : {};
 
 	return {
-		theme_dedup_threshold: coerceThreshold(
-			analysis.theme_dedup_threshold,
-			DEFAULT_THEME_DEDUP_THRESHOLD,
-			0.5,
-			0.95
-		),
+		theme_dedup_threshold: coerceThreshold(analysis.theme_dedup_threshold, DEFAULT_THEME_DEDUP_THRESHOLD, 0.5, 0.95),
 		evidence_link_threshold: coerceThreshold(
 			analysis.evidence_link_threshold,
 			DEFAULT_EVIDENCE_LINK_THRESHOLD,
