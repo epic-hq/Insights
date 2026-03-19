@@ -189,14 +189,19 @@ export default function SurveyDistributionGuide() {
 									</p>
 									<div className="rounded-md bg-muted/50 p-2">
 										<code className="break-all text-xs">
-											https://getupsight.com/ask/your-survey?email=*|EMAIL|*&first_name=*|FNAME|*&last_name=*|LNAME|*&company=*|MMERGE5|*
+											https://getupsight.com/ask/your-survey?email=*|EMAIL|*&first_name=*|FNAME|*&last_name=*|LNAME|*
 										</code>
 									</div>
 									<p className="mt-2 text-muted-foreground text-xs">
-										Replace <code className="rounded bg-muted px-1 text-[11px]">MMERGE5</code> with your
-										company field's merge tag. You can also add{" "}
-										<code className="rounded bg-muted px-1 text-[11px]">&title=*|MMERGE6|*</code> if you
-										collect job titles.
+										<code className="rounded bg-muted px-1 text-[11px]">EMAIL</code>,{" "}
+										<code className="rounded bg-muted px-1 text-[11px]">FNAME</code>, and{" "}
+										<code className="rounded bg-muted px-1 text-[11px]">LNAME</code> are Mailchimp's built-in
+										merge tags. For custom fields like company or title, find the merge tag in{" "}
+										<strong>Audience → Settings → Audience fields</strong> (it'll look like{" "}
+										<code className="rounded bg-muted px-1 text-[11px]">*|MMERGE5|*</code>) and append it:{" "}
+										<code className="rounded bg-muted px-1 text-[11px]">
+											&company=*|MMERGE5|*
+										</code>
 									</p>
 								</div>
 
