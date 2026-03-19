@@ -83,6 +83,7 @@ export function WalkthroughRecorder({
 	const chunksRef = useRef<Blob[]>([]);
 	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const dragRef = useRef<HTMLDivElement>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	// Cleanup on unmount
 	useEffect(() => {
@@ -269,6 +270,58 @@ export function WalkthroughRecorder({
 		);
 	}, [listId, deleteFetcher]);
 
+	const handleFileUpload = useCallback(
+		async (file: File) => {
+			const baseType = file.type.split(";")[0].trim();
+			if (!["video/webm", "video/mp4", "video/quicktime"].includes(baseType)) {
+				setError("Invalid file type. Allowed: webm, mp4, mov");
+				return;
+			}
+			if (file.size > 500 * 1024 * 1024) {
+				setError("File too large. Maximum size: 500MB");
+				return;
+			}
+
+			setState("uploading");
+			setError(null);
+
+			try {
+				const formData = new FormData();
+				formData.append("video", file);
+
+				const response = await fetch(`/api/research-links/${listId}/upload-walkthrough`, {
+					method: "POST",
+					body: formData,
+				});
+
+				if (!response.ok) {
+					const data = await response.json().catch(() => ({}));
+					throw new Error(data.error || "Upload failed");
+				}
+
+				const result = await response.json();
+				setState("complete");
+				onUploadComplete?.(result.videoUrl);
+			} catch (err) {
+				setError(err instanceof Error ? err.message : "Upload failed");
+				setState("error");
+			}
+		},
+		[listId, onUploadComplete]
+	);
+
+	const handleFileInputChange = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			const file = e.target.files?.[0];
+			if (file) {
+				handleFileUpload(file);
+			}
+			// Reset input so the same file can be selected again
+			e.target.value = "";
+		},
+		[handleFileUpload]
+	);
+
 	const formatTime = (seconds: number) => {
 		const mins = Math.floor(seconds / 60);
 		const secs = seconds % 60;
@@ -299,20 +352,76 @@ export function WalkthroughRecorder({
 		[position]
 	);
 
-	// Idle state - show button to start
+	// Idle state - show buttons to record or upload
 	if (state === "idle") {
 		return (
-			<div className="flex items-center gap-3 rounded-lg border border-muted-foreground/30 border-dashed bg-muted/30 p-4">
-				<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-					<Video className="h-5 w-5 text-primary" />
+			<div className="space-y-2">
+				<div className="flex items-center gap-3 rounded-lg border border-muted-foreground/30 border-dashed bg-muted/30 p-4">
+					<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+						<Video className="h-5 w-5 text-primary" />
+					</div>
+					<div className="flex-1">
+						<p className="font-medium text-sm">Add an intro video</p>
+						<p className="text-muted-foreground text-xs">Record a walkthrough or upload a video file</p>
+					</div>
+					<div className="flex gap-2">
+						<Button onClick={startPreview} size="sm" variant="outline" className="gap-2">
+							<Camera className="h-4 w-4" />
+							Record
+						</Button>
+						<Button onClick={() => fileInputRef.current?.click()} size="sm" className="gap-2">
+							<Upload className="h-4 w-4" />
+							Upload
+						</Button>
+					</div>
 				</div>
+				<input
+					ref={fileInputRef}
+					type="file"
+					accept="video/webm,video/mp4,video/quicktime,.webm,.mp4,.mov"
+					className="hidden"
+					onChange={handleFileInputChange}
+				/>
+				{error && (
+					<div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-destructive text-sm">
+						<AlertCircle className="h-4 w-4 shrink-0" />
+						{error}
+					</div>
+				)}
+			</div>
+		);
+	}
+
+	// Inline uploading state (file upload, not from floating recorder)
+	if (state === "uploading" && !mediaStreamRef.current) {
+		return (
+			<div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-4">
+				<Loader2 className="h-5 w-5 animate-spin text-primary" />
 				<div className="flex-1">
-					<p className="font-medium text-sm">Record a walkthrough video</p>
-					<p className="text-muted-foreground text-xs">Explain your questions while clicking through them</p>
+					<p className="font-medium text-sm">Uploading video...</p>
+					<p className="text-muted-foreground text-xs">This may take a moment</p>
 				</div>
-				<Button onClick={startPreview} size="sm" className="gap-2">
-					<Camera className="h-4 w-4" />
-					Start Recording
+			</div>
+		);
+	}
+
+	// Error state when not in floating overlay (e.g. file upload error)
+	if (state === "error" && !mediaStreamRef.current) {
+		return (
+			<div className="space-y-2">
+				<div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-destructive text-sm">
+					<AlertCircle className="h-4 w-4 shrink-0" />
+					{error}
+				</div>
+				<Button
+					onClick={() => {
+						setError(null);
+						setState("idle");
+					}}
+					variant="outline"
+					size="sm"
+				>
+					Try Again
 				</Button>
 			</div>
 		);
@@ -338,7 +447,7 @@ export function WalkthroughRecorder({
 							disabled={isDeleting}
 						>
 							<RefreshCw className="h-3.5 w-3.5" />
-							Re-record
+							Replace
 						</Button>
 						<Button
 							onClick={handleDelete}
