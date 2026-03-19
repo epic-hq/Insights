@@ -57,12 +57,45 @@ export default function SurveyDistributionGuide() {
 								UpSight automatically matches the respondent to their imported profile — skipping identity questions
 								and enabling personalized AI conversations.
 							</p>
-							<p className="mt-2 text-muted-foreground text-sm">
-								<strong className="text-foreground">Supported parameters:</strong>{" "}
-								<code className="rounded bg-muted px-1 text-xs">email</code>,{" "}
-								<code className="rounded bg-muted px-1 text-xs">name</code>,{" "}
-								<code className="rounded bg-muted px-1 text-xs">company</code>
-							</p>
+							<div className="mt-3 space-y-1.5">
+								<p className="font-medium text-foreground text-sm">Supported URL parameters</p>
+								<div className="grid gap-1.5 text-muted-foreground text-sm sm:grid-cols-2">
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">email</code> — respondent email (primary
+										identifier)
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">name</code> — full name (auto-splits into
+										first/last)
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">first_name</code> — first name only
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">last_name</code> — last name only
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">company</code> — company / organization
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">title</code> — job title
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">job_function</code> — e.g. Product,
+										Marketing
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">industry</code> — e.g. SaaS, Healthcare
+									</div>
+									<div>
+										<code className="rounded bg-muted px-1 text-xs">company_size</code> — e.g. 51-200
+									</div>
+								</div>
+								<p className="text-muted-foreground text-xs">
+									When a known person's profile has missing fields, respondents see a pre-filled form to
+									confirm and complete their details before starting.
+								</p>
+							</div>
 						</div>
 					</div>
 				</CardContent>

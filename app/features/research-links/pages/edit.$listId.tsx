@@ -999,6 +999,12 @@ export default function EditResearchLinkPage() {
 												<code className="rounded bg-muted px-1 text-[11px]">{"?email={{email}}"}</code> (SendGrid/Postmark) to
 												pre-fill the respondent's email for automatic identity matching.
 											</p>
+											<p className="mt-1 text-muted-foreground text-xs">
+												You can also pass{" "}
+												<code className="rounded bg-muted px-1 text-[11px]">name</code>,{" "}
+												<code className="rounded bg-muted px-1 text-[11px]">company</code>,{" "}
+												<code className="rounded bg-muted px-1 text-[11px]">title</code>, and more to pre-fill profile fields.
+											</p>
 											<Link to="/docs/survey-distribution" className="mt-2 inline-block text-primary text-xs underline">
 												See full email platform setup guide
 											</Link>

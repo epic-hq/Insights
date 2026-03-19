@@ -399,7 +399,7 @@ async function handleEmailStart(
 	// Use limit(1) instead of maybeSingle() to handle duplicate people records gracefully
 	const { data: existingPeople } = await supabase
 		.from("people")
-		.select("id, name, firstname, lastname")
+		.select("id, name, firstname, lastname, title, job_function, default_organization_id")
 		.eq("account_id", list.account_id)
 		.eq("primary_email", normalizedEmail)
 		.limit(1);
@@ -425,6 +425,23 @@ async function handleEmailStart(
 			return Response.json({ message: insertError?.message ?? "Unable to start response" }, { status: 500 });
 		}
 
+		// Fetch org data for the person profile
+		let orgName: string | null = null;
+		let orgIndustry: string | null = null;
+		let orgSizeRange: string | null = null;
+		if (existingPerson.default_organization_id) {
+			const { data: org } = await supabase
+				.from("organizations")
+				.select("name, industry, size_range")
+				.eq("id", existingPerson.default_organization_id)
+				.maybeSingle();
+			if (org) {
+				orgName = org.name;
+				orgIndustry = org.industry;
+				orgSizeRange = org.size_range;
+			}
+		}
+
 		return Response.json({
 			responseId: inserted.id,
 			responses: {},
@@ -432,6 +449,15 @@ async function handleEmailStart(
 			personId: existingPerson.id,
 			identityMode: "identified",
 			identityField: "email",
+			personProfile: {
+				firstName: existingPerson.firstname,
+				lastName: existingPerson.lastname,
+				company: orgName,
+				title: existingPerson.title,
+				jobFunction: existingPerson.job_function,
+				industry: orgIndustry,
+				companySize: orgSizeRange,
+			},
 		});
 	}
 
