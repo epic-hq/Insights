@@ -5,12 +5,16 @@ import {
 	Check,
 	ChevronDown,
 	ChevronRight,
+	Code,
 	Copy,
 	ExternalLink,
+	Link2,
 	Loader2,
 	Mail,
 	Pencil,
+	QrCode,
 	Send,
+	Share2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
@@ -860,10 +864,14 @@ export default function EditResearchLinkPage() {
 								</Card>
 							</TabsContent>
 
-							<TabsContent value="distribute" className="min-w-0 space-y-4 overflow-hidden">
-								{/* Public Link + Slug */}
+							<TabsContent value="distribute" className="min-w-0 space-y-5 overflow-hidden">
+								{/* Your Survey Link */}
 								<Card>
 									<CardContent className="space-y-3 py-3">
+										<div className="flex items-center gap-2">
+											<Link2 className="h-4 w-4 text-primary" />
+											<p className="font-semibold text-sm">Your Survey Link</p>
+										</div>
 										<div className="space-y-1.5">
 											<Label htmlFor="slug" className="text-muted-foreground text-xs">
 												URL slug
@@ -884,7 +892,6 @@ export default function EditResearchLinkPage() {
 											/>
 											{errors?.slug ? <p className="text-destructive text-xs">{errors.slug}</p> : null}
 										</div>
-										<p className="font-medium text-sm">Public link</p>
 										<div className="rounded-md border bg-muted/40 px-2.5 py-2 text-foreground/70 text-xs">
 											<span className="break-all font-mono">{publicLink}</span>
 										</div>
@@ -899,16 +906,41 @@ export default function EditResearchLinkPage() {
 													Open in new tab
 												</a>
 											</Button>
+										</div>
+									</CardContent>
+								</Card>
+
+								{/* Share via QR Code */}
+								<Card>
+									<CardContent className="py-3">
+										<div className="flex items-center justify-between gap-3">
+											<div className="flex items-center gap-3">
+												<div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+													<QrCode className="h-4 w-4 text-muted-foreground" />
+												</div>
+												<div>
+													<p className="font-medium text-sm">Share via QR code</p>
+													<p className="text-muted-foreground text-xs">
+														Print or display at events, on packaging, or in presentations.
+													</p>
+												</div>
+											</div>
 											<QRCodeButton url={publicLink} onClick={() => setIsQRModalOpen(true)} />
 										</div>
 									</CardContent>
 								</Card>
 
-								{/* Email Distribution */}
+								{/* Send via Email (Gmail) */}
 								<Card>
-									<CardContent className="py-3">
+									<CardContent className="space-y-3 py-3">
+										<div className="flex items-center gap-2">
+											<Mail className="h-4 w-4 text-primary" />
+											<p className="font-semibold text-sm">Send via Email</p>
+										</div>
+
+										{/* Gmail direct send */}
 										{gmailConnected ? (
-											<div className="flex items-center gap-3">
+											<div className="flex items-center gap-3 rounded-md border bg-green-50/50 p-3 dark:bg-green-950/20">
 												<div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
 													<Mail className="h-4 w-4 text-green-600 dark:text-green-400" />
 												</div>
@@ -919,7 +951,7 @@ export default function EditResearchLinkPage() {
 															<span className="ml-1 font-normal text-muted-foreground">({gmailEmail})</span>
 														)}
 													</p>
-													<p className="text-muted-foreground text-xs">Send survey invites from your email.</p>
+													<p className="text-muted-foreground text-xs">Send survey invites directly from UpSight.</p>
 												</div>
 												<Button type="button" size="sm" onClick={() => setSendDialogOpen(true)} className="gap-2">
 													<Send className="h-4 w-4" />
@@ -927,15 +959,15 @@ export default function EditResearchLinkPage() {
 												</Button>
 											</div>
 										) : (
-											<div className="flex items-center justify-between gap-3">
+											<div className="flex items-center justify-between gap-3 rounded-md border p-3">
 												<div className="flex items-center gap-3">
 													<div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
 														<Mail className="h-4 w-4 text-muted-foreground" />
 													</div>
 													<div>
-														<p className="font-medium text-sm">Send via email</p>
+														<p className="font-medium text-sm">Send from Gmail</p>
 														<p className="text-muted-foreground text-xs">
-															Connect Gmail to send invites from your own address.
+															Connect Gmail to send invites directly from UpSight.
 														</p>
 													</div>
 												</div>
@@ -957,15 +989,32 @@ export default function EditResearchLinkPage() {
 												</PicaConnectButton>
 											</div>
 										)}
+
+										{/* External email platforms */}
+										<div className="rounded-lg border bg-muted/20 p-3">
+											<p className="mb-1 font-medium text-foreground text-xs">Using Mailchimp, SendGrid, or another platform?</p>
+											<p className="text-muted-foreground text-xs">
+												Copy your survey link above and add it to your email campaign. Append{" "}
+												<code className="rounded bg-muted px-1 text-[11px]">?email=*|EMAIL|*</code> (Mailchimp) or{" "}
+												<code className="rounded bg-muted px-1 text-[11px]">{"?email={{email}}"}</code> (SendGrid/Postmark) to
+												pre-fill the respondent's email for automatic identity matching.
+											</p>
+											<Link to="/docs/survey-distribution" className="mt-2 inline-block text-primary text-xs underline">
+												See full email platform setup guide
+											</Link>
+										</div>
 									</CardContent>
 								</Card>
 
-								{/* Embed Code */}
+								{/* Embed on Website */}
 								<Card>
 									<CardContent className="space-y-2 py-3">
-										<p className="font-medium text-sm">Embed on your website</p>
+										<div className="flex items-center gap-2">
+											<Code className="h-4 w-4 text-primary" />
+											<p className="font-semibold text-sm">Embed on Your Website</p>
+										</div>
 										<p className="text-muted-foreground text-xs">
-											Add this form to your website for waitlists, feedback collection, or lead capture.
+											Add this survey to your website for waitlists, feedback collection, or lead capture.
 										</p>
 										<EmbedCodeGenerator
 											slug={fields.slug}
@@ -974,6 +1023,23 @@ export default function EditResearchLinkPage() {
 											walkthroughVideoUrl={walkthroughVideoUrl}
 											walkthroughThumbnailUrl={walkthroughThumbnailUrl}
 										/>
+									</CardContent>
+								</Card>
+
+								{/* Share on Social / Messaging */}
+								<Card>
+									<CardContent className="py-3">
+										<div className="flex items-center gap-3">
+											<div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+												<Share2 className="h-4 w-4 text-muted-foreground" />
+											</div>
+											<div>
+												<p className="font-medium text-sm">Share on Slack, Teams, or Social</p>
+												<p className="text-muted-foreground text-xs">
+													Paste your survey link in channels, DMs, or social posts. Respondents will self-identify when they start.
+												</p>
+											</div>
+										</div>
 									</CardContent>
 								</Card>
 							</TabsContent>

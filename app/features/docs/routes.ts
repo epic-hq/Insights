@@ -15,6 +15,7 @@ export default [
 
 		// Surveys
 		route("sending-surveys", "./features/docs/pages/sending-surveys.tsx"),
+		route("survey-distribution", "./features/docs/pages/survey-distribution.tsx"),
 		route("survey-branching", "./features/docs/pages/survey-branching.tsx"),
 
 		// Analysis
