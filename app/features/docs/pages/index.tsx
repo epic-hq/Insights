@@ -1,211 +1,183 @@
-import { Book, Briefcase, Compass, Layers3, Lightbulb, Package, Users, Zap } from "lucide-react";
+/**
+ * Documentation hub for UpSight.
+ * Organized by workflow: Getting Started, Surveys, CRM & People, Analysis.
+ */
+import {
+	ArrowRight,
+	BarChart3,
+	Bot,
+	Briefcase,
+	Compass,
+	FileSpreadsheet,
+	GitBranch,
+	Layers3,
+	Lightbulb,
+	Mail,
+	Package,
+	Users,
+	Zap,
+} from "lucide-react";
 import { Link } from "react-router";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+
+interface DocCardProps {
+	to: string;
+	icon: React.ReactNode;
+	title: string;
+	description: string;
+	badge?: string;
+}
+
+function DocCard({ to, icon, title, description, badge }: DocCardProps) {
+	return (
+		<Link to={to} className="group">
+			<Card className="h-full transition-all hover:border-primary/30 hover:shadow-md">
+				<CardHeader className="pb-3">
+					<CardTitle className="flex items-center gap-2 text-base group-hover:text-primary">
+						{icon}
+						{title}
+						{badge && (
+							<Badge variant="secondary" className="ml-auto text-xs">
+								{badge}
+							</Badge>
+						)}
+					</CardTitle>
+					<CardDescription className="text-sm">{description}</CardDescription>
+				</CardHeader>
+			</Card>
+		</Link>
+	);
+}
+
+interface SectionProps {
+	title: string;
+	description: string;
+	children: React.ReactNode;
+}
+
+function Section({ title, description, children }: SectionProps) {
+	return (
+		<div className="space-y-4">
+			<div>
+				<h2 className="font-semibold text-xl tracking-tight">{title}</h2>
+				<p className="text-muted-foreground text-sm">{description}</p>
+			</div>
+			<div className="grid gap-4 md:grid-cols-2">{children}</div>
+		</div>
+	);
+}
 
 export default function DocsIndex() {
 	return (
 		<div className="container mx-auto max-w-5xl px-4 py-12">
 			{/* Header */}
 			<div className="mb-12">
-				<h1 className="mb-4 font-bold text-4xl tracking-tight">Documentation</h1>
+				<h1 className="mb-2 font-bold text-4xl tracking-tight">Documentation</h1>
 				<p className="text-lg text-muted-foreground">
-					Learn how to get the most out of Insights for your research projects
+					Guides for running research, importing contacts, sending surveys, and turning conversations into insights.
 				</p>
 			</div>
 
-			{/* Introduction */}
-			<Card className="mb-12">
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<Book className="h-5 w-5" />
-						Welcome to Insights
-					</CardTitle>
-				</CardHeader>
-				<CardContent className="space-y-4 text-muted-foreground">
-					<p>
-						<strong className="text-foreground">Insights</strong> is your AI-powered research companion that helps you
-						conduct, organize, and analyze customer research at scale. Whether you're validating a product idea,
-						understanding user needs, or discovering market opportunities, Insights streamlines your entire research
-						workflow.
-					</p>
-
-					<div className="space-y-3">
-						<h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">How It Works</h3>
-
-						<div className="space-y-4">
-							<div>
-								<h4 className="mb-1 font-medium text-foreground">1. Plan Your Research</h4>
-								<p className="text-sm">
-									Define your research goals, decision questions, and target personas. Our AI helps you craft better
-									questions and structure your research for maximum impact.
-								</p>
-							</div>
-
-							<div>
-								<h4 className="mb-1 font-medium text-foreground">2. Recruit & Connect</h4>
-								<p className="text-sm">
-									Track your research participants and conduct interviews. Upload audio, video, or text transcripts—our
-									AI automatically extracts insights, identifies themes, and links findings to your research questions.
-								</p>
-							</div>
-
-							<div>
-								<h4 className="mb-1 font-medium text-foreground">3. Discover Patterns</h4>
-								<p className="text-sm">
-									Explore themes across interviews, group insights by persona, and visualize patterns in your data. Our
-									AI surfaces hidden connections and helps you understand what matters most to your users.
-								</p>
-							</div>
+			{/* Quick Start Banner */}
+			<Link to="/docs/getting-started" className="group mb-12 block">
+				<div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 p-6 transition-all hover:bg-primary/10">
+					<div className="flex items-center gap-4">
+						<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+							<Compass className="h-6 w-6" />
+						</div>
+						<div>
+							<h3 className="font-semibold text-foreground text-lg">New to UpSight?</h3>
+							<p className="text-muted-foreground text-sm">
+								Set up your first project, import contacts, and start collecting insights
+							</p>
 						</div>
 					</div>
-
-					<div className="rounded-lg border-primary border-l-4 bg-primary/5 p-4">
-						<p className="font-medium text-foreground text-sm">💡 Pro Tip</p>
-						<p className="mt-1 text-sm">
-							Start with a clear research goal and 2-3 key decision questions. This helps the AI provide more relevant
-							insights and keeps your research focused.
-						</p>
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* Quick Links */}
-			<div className="mb-8">
-				<h2 className="mb-6 font-semibold text-2xl">Quick Start Guides</h2>
-				<div className="grid gap-6 md:grid-cols-2">
-					<Link to="/docs/getting-started" className="group">
-						<Card className="h-full transition-shadow hover:shadow-lg">
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2 text-lg group-hover:text-primary">
-									<Compass className="h-5 w-5" />
-									Getting Started
-								</CardTitle>
-								<CardDescription>
-									Set up your first project, define research goals, and prepare for interviews
-								</CardDescription>
-							</CardHeader>
-						</Card>
-					</Link>
-
-					<Link to="/docs/research-workflow" className="group">
-						<Card className="h-full transition-shadow hover:shadow-lg">
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2 text-lg group-hover:text-primary">
-									<Users className="h-5 w-5" />
-									Research Workflow
-								</CardTitle>
-								<CardDescription>Learn the complete research process from planning to analysis</CardDescription>
-							</CardHeader>
-						</Card>
-					</Link>
-
-					<Link to="/docs/analyzing-insights" className="group">
-						<Card className="h-full transition-shadow hover:shadow-lg">
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2 text-lg group-hover:text-primary">
-									<Lightbulb className="h-5 w-5" />
-									Analyzing Insights
-								</CardTitle>
-								<CardDescription>
-									Discover patterns, validate hypotheses, and extract actionable findings
-								</CardDescription>
-							</CardHeader>
-						</Card>
-					</Link>
-					<Link to="/docs/conversation-lenses" className="group">
-						<Card className="h-full transition-shadow hover:shadow-lg">
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2 text-lg group-hover:text-primary">
-									<Layers3 className="h-5 w-5" />
-									Conversation Lenses
-								</CardTitle>
-								<CardDescription>
-									Understand how SPICED, BANT, MEDDIC, MAP, and team perspectives are stored, edited, and refreshed
-								</CardDescription>
-							</CardHeader>
-						</Card>
-					</Link>
-
-					<Link to="/docs/product-lens" className="group">
-						<Card className="h-full transition-shadow hover:shadow-lg">
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2 text-lg group-hover:text-primary">
-									<Package className="h-5 w-5" />
-									Product Lens
-								</CardTitle>
-								<CardDescription>
-									Prioritize what to build next using a pain × user type matrix from customer conversations
-								</CardDescription>
-							</CardHeader>
-						</Card>
-					</Link>
-
-					<Link to="/docs/crm-opportunities" className="group">
-						<Card className="h-full transition-shadow hover:shadow-lg">
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2 text-lg group-hover:text-primary">
-									<Briefcase className="h-5 w-5" />
-									CRM & Opportunities
-								</CardTitle>
-								<CardDescription>
-									Turn discovery conversations into actionable deal intelligence with AI-powered coaching
-								</CardDescription>
-							</CardHeader>
-						</Card>
-					</Link>
-
-					<Link to="/docs/crm-quick-reference" className="group">
-						<Card className="h-full transition-shadow hover:shadow-lg">
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2 text-lg group-hover:text-primary">
-									<Zap className="h-5 w-5" />
-									CRM Quick Reference
-								</CardTitle>
-								<CardDescription>One-page cheat sheet for the complete discovery-to-deal workflow</CardDescription>
-							</CardHeader>
-						</Card>
-					</Link>
+					<ArrowRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-1" />
 				</div>
+			</Link>
+
+			<div className="space-y-12">
+				{/* Surveys & Distribution */}
+				<Section
+					title="Surveys & Distribution"
+					description="Create surveys, personalize the experience, and distribute to your audience."
+				>
+					<DocCard
+						to="/docs/sending-surveys"
+						icon={<Mail className="h-5 w-5" />}
+						title="Send Surveys via Email"
+						description="Distribute personalized surveys via Mailchimp or any email platform with identity pre-fill and CRM-powered personalization"
+						badge="New"
+					/>
+					<DocCard
+						to="/docs/survey-branching"
+						icon={<GitBranch className="h-5 w-5" />}
+						title="Survey Branching & AI Modes"
+						description="Route respondents with skip logic, AND/OR conditions, and control AI autonomy in chat surveys"
+					/>
+				</Section>
+
+				{/* CRM & People */}
+				<Section title="CRM & People" description="Import contacts, manage organizations, and track opportunities.">
+					<DocCard
+						to="/docs/importing-people"
+						icon={<FileSpreadsheet className="h-5 w-5" />}
+						title="Import People & Organizations"
+						description="Bring contacts, companies, and custom fields (membership, segment, etc.) into UpSight via CSV"
+						badge="New"
+					/>
+					<DocCard
+						to="/docs/crm-opportunities"
+						icon={<Briefcase className="h-5 w-5" />}
+						title="CRM & Opportunities"
+						description="Turn discovery conversations into deal intelligence with AI-powered coaching"
+					/>
+					<DocCard
+						to="/docs/crm-quick-reference"
+						icon={<Zap className="h-5 w-5" />}
+						title="CRM Quick Reference"
+						description="One-page cheat sheet for the complete discovery-to-deal workflow"
+					/>
+				</Section>
+
+				{/* Research & Analysis */}
+				<Section title="Research & Analysis" description="Plan research, analyze conversations, and discover patterns.">
+					<DocCard
+						to="/docs/research-workflow"
+						icon={<Users className="h-5 w-5" />}
+						title="Research Workflow"
+						description="The complete research process from planning to insights"
+					/>
+					<DocCard
+						to="/docs/analyzing-insights"
+						icon={<Lightbulb className="h-5 w-5" />}
+						title="Analyzing Insights"
+						description="Discover patterns, validate hypotheses, and extract actionable findings"
+					/>
+					<DocCard
+						to="/docs/conversation-lenses"
+						icon={<Layers3 className="h-5 w-5" />}
+						title="Conversation Lenses"
+						description="SPICED, BANT, MEDDIC, MAP and team perspectives for structured extraction"
+					/>
+					<DocCard
+						to="/docs/product-lens"
+						icon={<Package className="h-5 w-5" />}
+						title="Product Lens"
+						description="Prioritize what to build using a pain-by-user-type matrix from conversations"
+					/>
+				</Section>
 			</div>
 
-			{/* Key Features */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Key Features</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<div className="grid gap-4 md:grid-cols-2">
-						<div>
-							<h4 className="mb-2 font-medium text-foreground">AI-Powered Analysis</h4>
-							<p className="text-muted-foreground text-sm">
-								Automatically extract insights, identify themes, and surface patterns across all your interviews
-							</p>
-						</div>
-						<div>
-							<h4 className="mb-2 font-medium text-foreground">Smart Personas</h4>
-							<p className="text-muted-foreground text-sm">
-								Automatically group participants into personas based on their responses and behaviors
-							</p>
-						</div>
-						<div>
-							<h4 className="mb-2 font-medium text-foreground">Evidence Tracking</h4>
-							<p className="text-muted-foreground text-sm">
-								Every insight is linked to specific quotes and timestamps for easy verification
-							</p>
-						</div>
-						<div>
-							<h4 className="mb-2 font-medium text-foreground">Collaborative Research</h4>
-							<p className="text-muted-foreground text-sm">
-								Share projects with your team, assign tasks, and work together on research analysis
-							</p>
-						</div>
-					</div>
-				</CardContent>
-			</Card>
-
 			{/* Footer */}
-			<div className="mt-12 text-center text-muted-foreground text-sm">
-				<p>Need help? Contact support or check our community forum for answers.</p>
+			<div className="mt-16 text-center text-muted-foreground text-sm">
+				<p>
+					Need help? Email us at{" "}
+					<a href="mailto:support@getupsight.com" className="text-primary underline">
+						support@getupsight.com
+					</a>
+				</p>
 			</div>
 		</div>
 	);

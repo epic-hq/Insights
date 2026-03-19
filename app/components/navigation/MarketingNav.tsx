@@ -6,6 +6,7 @@ const MARKETING_LINKS = [
 	{ key: "product-teams", label: "For Product Teams", to: "/customer-discovery" },
 	{ key: "consultants", label: "Consultants", to: "/customer-discovery-for-consultants" },
 	{ key: "pricing", label: "Pricing", to: "/pricing" },
+	{ key: "docs", label: "Docs", to: "/docs" },
 	{ key: "blog", label: "Blog", to: "/blog" },
 ];
 

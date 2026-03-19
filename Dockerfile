@@ -50,9 +50,9 @@ ENV NODE_ENV=production \
     NODE_OPTIONS=--max_old_space_size=1024 \
     MASTRA_DB_PATH=/app/data/mastra.db
 
-# Install pnpm and dotenvx for runtime
+# Install pnpm, dotenvx, and bubblewrap for LocalSandbox isolation
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends curl ca-certificates \
+  && apt-get install -y --no-install-recommends curl ca-certificates bubblewrap \
   && curl -sfS https://dotenvx.sh/install.sh | sh \
   && chown node:node /usr/local/bin/dotenvx \
   && npm install -g pnpm \
@@ -76,8 +76,8 @@ COPY --from=build /app/supabase/types.ts ./supabase/types.ts
 
 # Minimal runtime data dir + Mastra output dir (Mastra writes server configs here)
 # Reinstate node ownership for runtime-writable paths, including node_modules.
-RUN mkdir -p /app/data /app/.mastra/output /app/app/mastra/public \
-  && chown -R node:node /app/data /app/.mastra /app/app/mastra/public \
+RUN mkdir -p /app/data /app/.mastra/output /app/app/mastra/public /tmp/sandbox-work \
+  && chown -R node:node /app/data /app/.mastra /app/app/mastra/public /tmp/sandbox-work \
   && chown -R node:node /app/node_modules
 # Copy encrypted env files for dotenvx (fly.toml controls which one is used)
 COPY --chown=node:node .env.production ./.env.production
