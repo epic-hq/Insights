@@ -1582,7 +1582,7 @@ export default function ResearchLinkPage() {
 							{list.instructions && <p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>}
 
 							{/* Mode selector - show when multiple modes available */}
-							{(list.allow_chat || voiceEnabled || list.calendar_url) && (
+							{(supportsChatMode || voiceEnabled || list.calendar_url) && (
 								<div className="space-y-2">
 									<p className="text-white/60 text-xs">How would you like to respond?</p>
 									<div className="flex gap-2">
@@ -1599,7 +1599,7 @@ export default function ResearchLinkPage() {
 											<ClipboardList className="h-5 w-5" />
 											<span className="font-medium text-xs">Form</span>
 										</button>
-										{list.allow_chat && (
+										{supportsChatMode && (
 											<button
 												type="button"
 												onClick={() => setMode("chat")}
@@ -1705,7 +1705,7 @@ export default function ResearchLinkPage() {
 							{list.instructions && <p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>}
 
 							{/* Mode selector - show when multiple modes available */}
-							{(list.allow_chat || voiceEnabled || list.calendar_url) && (
+							{(supportsChatMode || voiceEnabled || list.calendar_url) && (
 								<div className="space-y-2">
 									<p className="text-white/60 text-xs">How would you like to respond?</p>
 									<div className="flex gap-2">
@@ -1722,7 +1722,7 @@ export default function ResearchLinkPage() {
 											<ClipboardList className="h-5 w-5" />
 											<span className="font-medium text-xs">Form</span>
 										</button>
-										{list.allow_chat && (
+										{supportsChatMode && (
 											<button
 												type="button"
 												onClick={() => setMode("chat")}
