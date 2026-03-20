@@ -1,18 +1,36 @@
 # AgentCRM.dev — MCP Server
 
-A [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that gives AI agents full CRUD access to your CRM data — **people, organizations, and opportunities**.
+[![npm version](https://img.shields.io/npm/v/@agentcrm/mcp-server)](https://www.npmjs.com/package/@agentcrm/mcp-server)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Customer intelligence and CRM for AI agents. Give your agent **searchable evidence, themes, and full CRM access** via the [Model Context Protocol](https://modelcontextprotocol.io/).
 
 Works with **Claude Code**, **Claude Desktop**, **OpenAI agents**, **Cursor**, **Windsurf**, and any MCP-compatible system.
 
+> **Powered by [UpSight](https://getupsight.com)** — the customer intelligence platform that turns conversations into evidence your agents can reason over.
+
 ## What's Inside
 
-**16 tools** across 3 entities:
+### CRM Tools — 16 tools across 3 entities:
 
 | Entity | Tools |
 |--------|-------|
 | **People** | `list_people`, `get_person`, `create_person`, `update_person`, `delete_person`, `search_people` |
 | **Organizations** | `list_organizations`, `get_organization`, `create_organization`, `update_organization`, `delete_organization` |
 | **Opportunities** | `list_opportunities`, `get_opportunity`, `create_opportunity`, `update_opportunity`, `delete_opportunity` |
+
+### Intelligence Tools (via UpSight API key) — Coming in v0.3
+
+| Category | Tools |
+|----------|-------|
+| **Search** | `semantic_search_evidence`, `semantic_search_people` |
+| **Evidence** | `fetch_evidence`, `fetch_themes`, `fetch_interview_context` |
+| **People** | `fetch_people_details`, `fetch_personas`, `fetch_segments` |
+| **Surveys** | `fetch_surveys`, `search_survey_responses` |
+| **Project** | `fetch_project_status` |
+| **Write** | `upsert_person`, `manage_people`, `create_task`, `update_task`, `delete_task`, `mark_task_complete`, `manage_annotations` |
+
+### CRM Tool Features
 
 Every tool includes:
 - Rich descriptions for agent comprehension
@@ -23,21 +41,29 @@ Every tool includes:
 
 ## Quick Start
 
-### 1. Prerequisites
-
-- Node.js 18+
-- A Supabase project with the UpSight schema
-- Service role key (for server-side access)
-
-### 2. Build
+### Option A: npx (Recommended)
 
 ```bash
-cd mcp-servers/agent-crm
-npm install
-npm run build
+npx @agentcrm/mcp-server
 ```
 
-### 3. Environment Variables
+### Option B: Global install
+
+```bash
+npm install -g @agentcrm/mcp-server
+agentcrm
+```
+
+### Option C: From source
+
+```bash
+git clone https://github.com/epic-hq/agentcrm-mcp-server
+cd agentcrm-mcp-server
+npm install && npm run build
+node dist/index.js
+```
+
+### Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -45,12 +71,6 @@ npm run build
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Service role key (NOT the anon key) |
 | `AGENTCRM_ACCOUNT_ID` | No | Default account ID (can pass per-call) |
 | `AGENTCRM_PROJECT_ID` | No | Default project ID (can pass per-call) |
-
-### 4. Run
-
-```bash
-node dist/index.js
-```
 
 The server communicates over **stdio** (stdin/stdout), following the MCP standard.
 
@@ -83,16 +103,16 @@ Then in Claude Code, you can say things like:
 - "Find opportunities in the Proposal stage"
 - "Update Jane's title to VP of Engineering"
 
-### Claude Desktop
+### Claude Desktop / Claude Cowork
 
 Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
 
 ```json
 {
   "mcpServers": {
-    "agent-crm": {
-      "command": "node",
-      "args": ["/absolute/path/to/mcp-servers/agent-crm/dist/index.js"],
+    "agentcrm": {
+      "command": "npx",
+      "args": ["@agentcrm/mcp-server"],
       "env": {
         "SUPABASE_URL": "https://your-project.supabase.co",
         "SUPABASE_SERVICE_ROLE_KEY": "your-service-role-key",
@@ -131,16 +151,22 @@ For systems that support MCP via stdio transport, the pattern is the same — po
 
 For systems that require HTTP/SSE transport, you'll need an MCP-to-HTTP bridge (e.g., `mcp-proxy` or a custom wrapper). SSE transport support is planned for a future release.
 
-## API Key Architecture (Planned)
+## API Key Authentication
 
-For production multi-tenant usage, we plan to support API keys that:
+For production multi-tenant usage, use a **UpSight API key** (`UPSIGHT_API_KEY`):
 
-1. **Scope access** to a specific `account_id` + `project_id` pair
-2. **Rate limit** by tier (free: 100 ops/day, pro: 10,000 ops/day)
-3. **Audit log** all operations with the key identity
-4. **Free tier**: Up to 100 people, 50 organizations, 25 opportunities
+```bash
+# Generate at: https://getupsight.com → Project Settings → API Keys
+export UPSIGHT_API_KEY="upsk_..."
+```
 
-The API key would replace the `SUPABASE_SERVICE_ROLE_KEY` env var, routing through a proxy that enforces limits and scoping.
+API keys:
+1. **Scope access** to a specific `account_id` + `project_id` pair automatically
+2. **Hash-only storage** — the raw key is shown once, never stored
+3. **Soft revoke** — disable keys without deleting audit trail
+4. **Replace env vars** — no need for `AGENTCRM_ACCOUNT_ID` / `AGENTCRM_PROJECT_ID` when using API key
+
+> **Note**: CRM tools currently use `SUPABASE_SERVICE_ROLE_KEY` + account/project env vars. Intelligence tools (v0.3) will use `UPSIGHT_API_KEY` exclusively. A future release will unify both under `UPSIGHT_API_KEY`.
 
 ## Running Integration Tests
 

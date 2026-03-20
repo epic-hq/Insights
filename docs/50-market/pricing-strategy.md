@@ -71,7 +71,7 @@ Smart model routing (use GPT-4o-mini for 80% of operations, GPT-4o/Claude for co
 
 1. **Project-based, not per-seat** — Differentiation vs. everyone else. Teams share one project. No "how many licenses do I need?" friction.
 2. **Generous free tier** — Hook on the recording + evidence habit. Limit AI intelligence, not access.
-3. **Predictable, not credit-based** — No AI credits. No surprise bills. Flat monthly price.
+3. **Predictable base + transparent overages** — No opaque AI credits. Generous included usage with clear per-unit overages. Users always know what they'll pay.
 4. **Agent access included** — MCP/API access is not a premium feature. It's the product.
 5. **Traction first** — Price low enough that it's a no-brainer impulse buy. Raise later.
 
@@ -86,15 +86,17 @@ Smart model routing (use GPT-4o-mini for 80% of operations, GPT-4o/Claude for co
 |---|---|
 | 1 project | — |
 | 5 conversations/mo (interviews, notes, imports) | Rolling |
+| 50 AI queries/mo (theme, lens, analysis) | Rolling |
+| Unlimited semantic search (embedding lookups) | — |
 | Unlimited survey responses | — |
 | Basic evidence extraction | — |
 | 2 team members | — |
 | MCP server access (read-only) | — |
 | Community support | — |
 
-**NOT included**: Theme clustering, persona generation, lens analysis, semantic search, export
+**NOT included**: Theme clustering, persona generation, lens analysis, export, write via MCP
 
-**Why this works**: 5 conversations is enough to feel the magic. They upload 3 sales calls and 2 research interviews. See evidence extracted. Want themes? Upgrade. Want to connect Claude? Free MCP read works, but write requires Pro.
+**Why this works**: 5 conversations is enough to feel the magic. They upload 3 sales calls and 2 research interviews. See evidence extracted. Semantic search is free (embeddings cost ~$0.000004/query) so they get hooked on searching. Want themes? Upgrade. Want to connect Claude? Free MCP read works, but write requires Starter+.
 
 **Margin**: Negative (~$3/mo COGS). Acquisition cost. Cap at ~2,000 free projects before reviewing.
 
@@ -107,9 +109,10 @@ Smart model routing (use GPT-4o-mini for 80% of operations, GPT-4o/Claude for co
 |---|---|
 | 1 project | — |
 | 25 conversations/mo | Rolling |
+| 500 AI queries/mo (theme, lens, analysis) | Rolling; $0.03/query overage |
+| Unlimited semantic search | — |
 | Unlimited survey responses | — |
 | Full evidence extraction + themes | — |
-| Semantic search (MCP + UI) | — |
 | Persona & segment generation | — |
 | 5 team members | — |
 | MCP server (read + write) | — |
@@ -117,6 +120,7 @@ Smart model routing (use GPT-4o-mini for 80% of operations, GPT-4o/Claude for co
 
 **Target buyer**: Solo founder, small PM team, consultant
 **Comparison**: Cheaper than Attio Plus ($29/seat), cheaper than Grain Business ($48/seat), **40x cheaper than Gong minimum**
+**AI query COGS**: 500 queries × ~$0.005 avg = ~$2.50/mo. Overage at $0.03 = ~70% margin on overages.
 **Margin**: ~83%
 
 ---
@@ -127,7 +131,9 @@ Smart model routing (use GPT-4o-mini for 80% of operations, GPT-4o/Claude for co
 | Included | Limit |
 |---|---|
 | 1 project | — |
-| 100 conversations/mo | Rolling |
+| 100 conversations/mo | Rolling; $1.00/conversation overage |
+| 5,000 AI queries/mo | Rolling; $0.02/query overage |
+| Unlimited semantic search | — |
 | Everything in Starter | — |
 | Lens analysis (BANT, JTBD, competitive) | — |
 | Advanced theme clustering | — |
@@ -139,6 +145,7 @@ Smart model routing (use GPT-4o-mini for 80% of operations, GPT-4o/Claude for co
 
 **Target buyer**: Product team at Series A-C, sales enablement lead
 **Comparison**: Less than 1 Gong seat ($108/mo minimum). Less than 2 Attio Pro seats ($118/mo).
+**AI query COGS**: 5,000 queries × ~$0.005 avg = ~$25/mo. Overage at $0.02 = ~60% margin.
 **Margin**: ~85%
 
 ---
@@ -149,7 +156,9 @@ Smart model routing (use GPT-4o-mini for 80% of operations, GPT-4o/Claude for co
 | Included | Limit |
 |---|---|
 | 1 project | — |
-| Unlimited conversations | — |
+| 500 conversations/mo | Rolling; $0.75/conversation overage |
+| 25,000 AI queries/mo | Rolling; $0.015/query overage |
+| Unlimited semantic search | — |
 | Everything in Pro | — |
 | Agent builder API (bulk queries, webhooks) | — |
 | Programmatic theme subscriptions | — |
@@ -161,7 +170,9 @@ Smart model routing (use GPT-4o-mini for 80% of operations, GPT-4o/Claude for co
 
 **Target buyer**: Agent builder companies, mid-market product orgs, companies with 50+ interviews/mo
 **Comparison**: Less than the Gong platform fee alone ($50K/yr vs $1,788/yr). Fraction of agent infrastructure budgets.
-**Margin**: ~80-90% (depends on volume; transcription is the swing factor)
+**AI query COGS**: 25,000 queries × ~$0.005 avg = ~$125/mo. Overage at $0.015 = ~50% margin (volume discount).
+**Heavy agent builder example**: 50K queries/mo = $199 + (25K × $0.015) = $574/mo — still 10x cheaper than Gong.
+**Margin**: ~75-90% (depends on volume; transcription is the swing factor)
 
 ---
 
@@ -179,6 +190,51 @@ Smart model routing (use GPT-4o-mini for 80% of operations, GPT-4o/Claude for co
 | SLA | 99.9% uptime |
 
 **Target**: Large enterprise with multiple teams using UpSight. $500-2,000/mo depending on scope.
+
+---
+
+### AI Query Cost Reference (March 2026)
+
+Understanding our COGS per AI operation to validate overage pricing:
+
+| Operation | Model Used | Approx Tokens (in/out) | Cost/Call | Notes |
+|---|---|---|---|---|
+| **Semantic search** (embedding lookup) | text-embedding-3-small | ~200 in | **$0.000004** | Essentially free — unlimited on all tiers |
+| **Evidence summary** | GPT-4o-mini | ~2K/500 | **$0.0006** | Cheap, high-volume operation |
+| **Theme extraction** | Claude Sonnet 4.5 | ~4K/2K | **$0.042** | Most common "AI query" |
+| **Lens analysis** (BANT, JTBD) | Claude Sonnet 4.5 | ~8K/3K | **$0.069** | Heavier analysis |
+| **Full interview analysis** | Claude Opus 4.6 | ~15K/5K | **$0.20** | Premium operation |
+| **Daily brief workflow** | Mixed (3-5 calls) | ~20K total | **$0.15-0.30** | Multi-step workflow |
+
+**Blended average**: ~$0.005-0.01/query with smart model routing (80% mini/Haiku, 20% Sonnet/Opus).
+
+**Key pricing decisions:**
+- Semantic search is **always free** — it's the hook ($0.000004/call is noise)
+- "AI queries" = theme, lens, analysis, briefs — the expensive stuff
+- Overages at $0.015-0.03/query give 50-70% margin on variable cost
+- Prices drop ~80% YoY — we can pass savings to customers or improve margins
+
+**Model routing strategy:**
+- GPT-4o-mini / Haiku 4.5 for evidence extraction, summaries, simple queries
+- Claude Sonnet 4.5 for theme clustering, lens analysis, survey review
+- Claude Opus 4.6 only for complex multi-step reasoning (daily briefs, ICP scoring)
+- Prompt caching reduces input costs by 90% for repeated system prompts
+
+---
+
+### Agent Builder API — Pure Usage-Based Option
+
+For companies integrating UpSight as infrastructure (like Twilio/Stripe pricing):
+
+| Operation | Price | COGS | Margin |
+|---|---|---|---|
+| Evidence query (semantic search) | $0.005/query | ~$0.00001 | 99%+ |
+| AI analysis call (theme, lens) | $0.03/call | ~$0.01 | 70% |
+| Conversation ingestion | $1.50/conversation | ~$0.40 | 73% |
+| Embedding generation | $0.001/item | ~$0.00002 | 98% |
+| **Volume discount** | 20% off at 10K+/mo queries | — | — |
+
+**Why offer this**: Agent builders (11x.ai, Artisan, Warmly) expect infrastructure pricing. They don't want tiers — they want predictable unit economics they can build into their own pricing model.
 
 ---
 
