@@ -1,5 +1,5 @@
--- Create project_api_keys table for MCP client authentication
--- Key format: upsk_<32 hex chars> (only SHA-256 hash stored)
+-- Repair: create project_api_keys if the previous migration was recorded
+-- but the table was not actually created (bloated diff failure).
 
 create table if not exists public.project_api_keys (
   id uuid primary key default gen_random_uuid(),
@@ -16,15 +16,12 @@ create table if not exists public.project_api_keys (
   revoked_at timestamptz
 );
 
--- Fast lookup by hash (only active keys)
 create index if not exists idx_project_api_keys_hash
   on public.project_api_keys (key_hash)
   where revoked_at is null;
 
--- List keys per project
 create index if not exists idx_project_api_keys_project
   on public.project_api_keys (project_id, created_at desc)
   where revoked_at is null;
 
--- RLS: managed by service role (supabaseAdmin bypasses RLS)
 alter table public.project_api_keys enable row level security;

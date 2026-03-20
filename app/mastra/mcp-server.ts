@@ -38,7 +38,11 @@ import { fetchSurveysTool } from "./tools/fetch-surveys";
 import { fetchThemesTool } from "./tools/fetch-themes";
 import { manageAnnotationsTool } from "./tools/manage-annotations";
 import { managePeopleTool } from "./tools/manage-people";
-import { createTaskTool, deleteTaskTool, updateTaskTool } from "./tools/manage-tasks";
+import {
+  createTaskTool,
+  deleteTaskTool,
+  updateTaskTool,
+} from "./tools/manage-tasks";
 import { markTaskCompleteTool } from "./tools/mark-task-complete";
 import { searchSurveyResponsesTool } from "./tools/search-survey-responses";
 // Phase 1: Intelligence Read Tools
@@ -54,17 +58,17 @@ import { dailyBriefWorkflow } from "./workflows/daily-brief";
 // ---------------------------------------------------------------------------
 
 const PHASE_1_TOOLS = {
-	semantic_search_evidence: semanticSearchEvidenceTool,
-	fetch_evidence: fetchEvidenceTool,
-	fetch_themes: fetchThemesTool,
-	fetch_people_details: fetchPeopleDetailsTool,
-	fetch_surveys: fetchSurveysTool,
-	search_survey_responses: searchSurveyResponsesTool,
-	fetch_interview_context: fetchInterviewContextTool,
-	fetch_personas: fetchPersonasTool,
-	fetch_segments: fetchSegmentsTool,
-	semantic_search_people: semanticSearchPeopleTool,
-	fetch_project_status: fetchProjectStatusContextTool,
+  semantic_search_evidence: semanticSearchEvidenceTool,
+  fetch_evidence: fetchEvidenceTool,
+  fetch_themes: fetchThemesTool,
+  fetch_people_details: fetchPeopleDetailsTool,
+  fetch_surveys: fetchSurveysTool,
+  search_survey_responses: searchSurveyResponsesTool,
+  fetch_interview_context: fetchInterviewContextTool,
+  fetch_personas: fetchPersonasTool,
+  fetch_segments: fetchSegmentsTool,
+  semantic_search_people: semanticSearchPeopleTool,
+  fetch_project_status: fetchProjectStatusContextTool,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -72,13 +76,13 @@ const PHASE_1_TOOLS = {
 // ---------------------------------------------------------------------------
 
 const PHASE_2_TOOLS = {
-	upsert_person: upsertPersonTool,
-	manage_people: managePeopleTool,
-	create_task: createTaskTool,
-	update_task: updateTaskTool,
-	delete_task: deleteTaskTool,
-	mark_task_complete: markTaskCompleteTool,
-	manage_annotations: manageAnnotationsTool,
+  upsert_person: upsertPersonTool,
+  manage_people: managePeopleTool,
+  create_task: createTaskTool,
+  update_task: updateTaskTool,
+  delete_task: deleteTaskTool,
+  mark_task_complete: markTaskCompleteTool,
+  manage_annotations: manageAnnotationsTool,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -86,37 +90,41 @@ const PHASE_2_TOOLS = {
 // ---------------------------------------------------------------------------
 
 interface McpContext {
-	accountId: string;
-	projectId: string;
-	scopes: string[];
+  accountId: string;
+  projectId: string;
+  scopes: string[];
 }
 
 async function resolveStdioApiKey(): Promise<McpContext | null> {
-	const rawKey = process.env.UPSIGHT_API_KEY;
-	if (!rawKey) {
-		consola.warn("[mcp-server] UPSIGHT_API_KEY not set — tools will require explicit project_id in input");
-		return null;
-	}
+  const rawKey = process.env.UPSIGHT_API_KEY;
+  if (!rawKey) {
+    consola.warn(
+      "[mcp-server] UPSIGHT_API_KEY not set — tools will require explicit project_id in input",
+    );
+    return null;
+  }
 
-	const supabase = createSupabaseAdminClient();
-	const resolved = await resolveApiKey(supabase, rawKey);
+  const supabase = createSupabaseAdminClient();
+  const resolved = await resolveApiKey(supabase, rawKey);
 
-	if (!resolved) {
-		consola.error("[mcp-server] UPSIGHT_API_KEY is invalid, revoked, or expired");
-		process.exit(1);
-	}
+  if (!resolved) {
+    consola.error(
+      "[mcp-server] UPSIGHT_API_KEY is invalid, revoked, or expired",
+    );
+    process.exit(1);
+  }
 
-	consola.info("[mcp-server] API key resolved", {
-		projectId: resolved.projectId,
-		accountId: resolved.accountId,
-		scopes: resolved.scopes,
-	});
+  consola.info("[mcp-server] API key resolved", {
+    projectId: resolved.projectId,
+    accountId: resolved.accountId,
+    scopes: resolved.scopes,
+  });
 
-	return {
-		accountId: resolved.accountId,
-		projectId: resolved.projectId,
-		scopes: resolved.scopes,
-	};
+  return {
+    accountId: resolved.accountId,
+    projectId: resolved.projectId,
+    scopes: resolved.scopes,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -124,50 +132,59 @@ async function resolveStdioApiKey(): Promise<McpContext | null> {
 // ---------------------------------------------------------------------------
 
 export async function startMCPServer() {
-	// Resolve API key context once at startup (stdio = single session)
-	const apiKeyContext = await resolveStdioApiKey();
+  // Resolve API key context once at startup (stdio = single session)
+  const apiKeyContext = await resolveStdioApiKey();
 
-	const allTools = { ...PHASE_1_TOOLS, ...PHASE_2_TOOLS };
+  const allTools = { ...PHASE_1_TOOLS, ...PHASE_2_TOOLS };
 
-	const server = new MCPServer({
-		id: "upsight-intelligence",
-		name: "UpSight Intelligence",
-		version: "1.1.0",
-		tools: allTools,
-		workflows: {
-			dailyBriefWorkflow,
-		},
-	});
+  const server = new MCPServer({
+    id: "upsight-intelligence",
+    name: "UpSight Intelligence",
+    version: "1.1.0",
+    tools: allTools,
+    workflows: {
+      dailyBriefWorkflow,
+    },
+  });
 
-	// If API key resolved, inject project/account into requestContext
-	// so tools can access them via context?.requestContext?.get("project_id")
-	if (apiKeyContext) {
-		// Mastra MCPServer supports context injection via the server instance.
-		// For stdio, we set default request context that all tool calls inherit.
-		const serverRecord = server as unknown as Record<string, unknown>;
-		if (typeof serverRecord.setDefaultContext === "function") {
-			(serverRecord.setDefaultContext as (ctx: Record<string, string>) => void)({
-				project_id: apiKeyContext.projectId,
-				account_id: apiKeyContext.accountId,
-			});
-		} else {
-			// Fallback: set env vars that tools can read as context
-			process.env.__MCP_PROJECT_ID = apiKeyContext.projectId;
-			process.env.__MCP_ACCOUNT_ID = apiKeyContext.accountId;
-			consola.debug("[mcp-server] Set context via env vars (MCPServer.setDefaultContext not available)");
-		}
-	}
+  // If API key resolved, inject project/account into requestContext
+  // so tools can access them via context?.requestContext?.get("project_id")
+  if (apiKeyContext) {
+    // Mastra MCPServer supports context injection via the server instance.
+    // For stdio, we set default request context that all tool calls inherit.
+    const serverRecord = server as unknown as Record<string, unknown>;
+    if (typeof serverRecord.setDefaultContext === "function") {
+      (serverRecord.setDefaultContext as (ctx: Record<string, string>) => void)(
+        {
+          project_id: apiKeyContext.projectId,
+          account_id: apiKeyContext.accountId,
+        },
+      );
+    } else {
+      // Fallback: set env vars that tools can read as context
+      process.env.__MCP_PROJECT_ID = apiKeyContext.projectId;
+      process.env.__MCP_ACCOUNT_ID = apiKeyContext.accountId;
+      consola.debug(
+        "[mcp-server] Set context via env vars (MCPServer.setDefaultContext not available)",
+      );
+    }
+  }
 
-	await server.startStdio();
-	consola.info(
-		`[mcp-server] UpSight Intelligence started on stdio (${Object.keys(allTools).length} tools: ${Object.keys(PHASE_1_TOOLS).length} read + ${Object.keys(PHASE_2_TOOLS).length} write)`
-	);
+  await server.startStdio();
+  consola.info(
+    `[mcp-server] UpSight Intelligence started on stdio (${Object.keys(allTools).length} tools: ${Object.keys(PHASE_1_TOOLS).length} read + ${Object.keys(PHASE_2_TOOLS).length} write)`,
+  );
 }
 
-// For direct execution
-if (require.main === module) {
-	startMCPServer().catch((err) => {
-		consola.error("[mcp-server] Fatal startup error", err);
-		process.exit(1);
-	});
+// For direct execution (ESM-compatible)
+const isDirectExecution =
+  typeof import.meta.url !== "undefined" &&
+  process.argv[1] &&
+  import.meta.url.endsWith(process.argv[1].replace(/\\/g, "/"));
+
+if (isDirectExecution) {
+  startMCPServer().catch((err) => {
+    consola.error("[mcp-server] Fatal startup error", err);
+    process.exit(1);
+  });
 }
