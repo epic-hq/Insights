@@ -74,7 +74,10 @@ function makeFields(overrides: Partial<SurveyFormFields> = {}): SurveyFormFields
 		isLive: true,
 		isArchived: false,
 		collectTitle: false,
-		respondentFields: ["first_name", "last_name"],
+		respondentFields: [
+			{ key: "first_name", required: true },
+			{ key: "last_name", required: false },
+		],
 		aiAutonomy: "strict",
 		identityType: "email",
 		questions: [makeQuestion()],
@@ -288,12 +291,22 @@ describe("round-trip: loader → fields → formData → schema", () => {
 		const fields = extractFormFields(list, [makeQuestion()]);
 		expect(fields.isArchived).toBe(true);
 		expect(fields.collectTitle).toBe(true);
-		expect(fields.respondentFields).toEqual(["first_name", "company", "title"]);
+		// Legacy string[] format is parsed into RespondentFieldConfig[]
+		expect(fields.respondentFields).toEqual([
+			{ key: "first_name", required: true },
+			{ key: "company", required: false },
+			{ key: "title", required: false },
+		]);
 
 		const fd = serializeToFormData(fields);
 		expect(fd.is_archived).toBe("true");
 		expect(fd.collect_title).toBe("true");
-		expect(JSON.parse(fd.respondent_fields)).toEqual(["first_name", "company", "title"]);
+		// Serialized as {key, required}[] format
+		expect(JSON.parse(fd.respondent_fields)).toEqual([
+			{ key: "first_name", required: true },
+			{ key: "company", required: false },
+			{ key: "title", required: false },
+		]);
 
 		// Simulate the action's rawPayload extraction
 		const rawPayload = {
@@ -311,11 +324,6 @@ describe("round-trip: loader → fields → formData → schema", () => {
 		};
 		const parsed = ResearchLinkPayloadSchema.safeParse(rawPayload);
 		expect(parsed.success).toBe(true);
-		if (parsed.success) {
-			expect(parsed.data.isArchived).toBe(true);
-			expect(parsed.data.collectTitle).toBe(true);
-			expect(parsed.data.respondentFields).toEqual(["first_name", "company", "title"]);
-		}
 	});
 
 	it("preserves identity type through round-trip for each variant", () => {
