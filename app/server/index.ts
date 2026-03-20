@@ -225,15 +225,16 @@ export default await createHonoServer({
     // Auth: Authorization: Bearer upsk_...
     // -----------------------------------------------------------------------
 
-    let mcpServerPromise: Promise<
-      InstanceType<typeof import("@mastra/mcp").MCPServer>
-    > | null = null;
+    // Cache tool imports (expensive), create new MCPServer per connection (required by MCP SDK)
+    let mcpToolsPromise: Promise<{
+      MCPServer: any;
+      mcpTools: Record<string, any>;
+    }> | null = null;
 
-    async function getMcpServer() {
-      if (!mcpServerPromise) {
-        mcpServerPromise = (async () => {
+    async function getMcpToolsAndClass() {
+      if (!mcpToolsPromise) {
+        mcpToolsPromise = (async () => {
           const { MCPServer } = await import("@mastra/mcp");
-          // createTool not needed — we strip outputSchema by shallow clone
           const { semanticSearchEvidenceTool } =
             await import("../mastra/tools/semantic-search-evidence");
           const { fetchEvidenceTool } =
@@ -275,13 +276,11 @@ export default await createHonoServer({
             return {
               ...rest,
               execute: async (input: any, ctx: any) => {
-                // Build a requestContext Map from env vars set by API key auth
                 const contextMap = new Map<string, string>();
                 if (process.env.__MCP_PROJECT_ID)
                   contextMap.set("project_id", process.env.__MCP_PROJECT_ID);
                 if (process.env.__MCP_ACCOUNT_ID)
                   contextMap.set("account_id", process.env.__MCP_ACCOUNT_ID);
-
                 const safeCtx = {
                   requestContext: contextMap,
                   messages: ctx?.messages,
@@ -318,15 +317,21 @@ export default await createHonoServer({
             Object.entries(allTools).map(([k, v]) => [k, wrapForMcp(v)]),
           );
 
-          return new MCPServer({
-            id: "upsight-intelligence",
-            name: "UpSight Intelligence",
-            version: "1.1.0",
-            tools: mcpTools,
-          });
+          return { MCPServer, mcpTools };
         })();
       }
-      return mcpServerPromise;
+      return mcpToolsPromise;
+    }
+
+    // Create a fresh MCPServer per connection (MCP SDK requires one transport per server instance)
+    async function createMcpServer() {
+      const { MCPServer, mcpTools } = await getMcpToolsAndClass();
+      return new MCPServer({
+        id: "upsight-intelligence",
+        name: "UpSight Intelligence",
+        version: "1.1.0",
+        tools: mcpTools,
+      });
     }
 
     server.all("/mcp/*", async (c) => {
@@ -351,7 +356,7 @@ export default await createHonoServer({
       process.env.__MCP_PROJECT_ID = resolved.projectId;
       process.env.__MCP_ACCOUNT_ID = resolved.accountId;
 
-      const mcpServer = await getMcpServer();
+      const mcpServer = await createMcpServer();
       const url = new URL(c.req.url);
 
       return mcpServer.startHonoSSE({
