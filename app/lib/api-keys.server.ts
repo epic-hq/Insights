@@ -13,7 +13,15 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
-import type { Database } from "~/types";
+
+/**
+ * The `project_api_keys` table is defined in `supabase/schemas/50_api_keys.sql`
+ * but has not yet been included in the generated `database.types.ts`.
+ * Until `pnpm db:types` is re-run against a database with this table,
+ * we type the Supabase client loosely for api-key operations only.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySupabaseClient = SupabaseClient<any>;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,7 +82,7 @@ export function keyDisplayPrefix(rawKey: string): string {
 
 /** Create a new API key for a project. Returns the raw key (show-once). */
 export async function createApiKey(
-	supabase: SupabaseClient<Database>,
+	supabase: AnySupabaseClient,
 	opts: {
 		accountId: string;
 		projectId: string;
@@ -113,7 +121,7 @@ export async function createApiKey(
 
 /** Resolve a raw API key to its project/account context. Returns null if invalid/revoked/expired. */
 export async function resolveApiKey(
-	supabase: SupabaseClient<Database>,
+	supabase: AnySupabaseClient,
 	rawKey: string
 ): Promise<ResolvedApiKey | null> {
 	if (!rawKey || !rawKey.startsWith(KEY_PREFIX)) {
@@ -160,7 +168,7 @@ export async function resolveApiKey(
 }
 
 /** List active (non-revoked) API keys for a project. Never returns the hash. */
-export async function listApiKeys(supabase: SupabaseClient<Database>, projectId: string): Promise<ApiKeyRecord[]> {
+export async function listApiKeys(supabase: AnySupabaseClient, projectId: string): Promise<ApiKeyRecord[]> {
 	const { data, error } = await supabase
 		.from("project_api_keys")
 		.select(
@@ -180,7 +188,7 @@ export async function listApiKeys(supabase: SupabaseClient<Database>, projectId:
 
 /** Soft-revoke an API key. */
 export async function revokeApiKey(
-	supabase: SupabaseClient<Database>,
+	supabase: AnySupabaseClient,
 	keyId: string,
 	projectId: string
 ): Promise<void> {

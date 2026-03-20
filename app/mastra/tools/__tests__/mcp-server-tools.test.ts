@@ -4,7 +4,7 @@
  */
 
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 // Mock heavy dependencies to avoid loading Supabase, OpenAI, etc.
 vi.mock("../../../lib/supabase/client.server", () => ({
@@ -71,7 +71,7 @@ describe("MCP Server Phase 1 Tools", () => {
 	it("all tools have descriptions", () => {
 		for (const [name, tool] of Object.entries(PHASE_1_TOOLS)) {
 			expect(tool.description, `Tool ${name} should have a description`).toBeDefined();
-			expect(tool.description!.length, `Tool ${name} description should be non-empty`).toBeGreaterThan(10);
+			expect(tool.description?.length, `Tool ${name} description should be non-empty`).toBeGreaterThan(10);
 		}
 	});
 
@@ -149,7 +149,7 @@ describe("MCP Server Phase 2 Tools (CRM Write)", () => {
 	it("all tools have descriptions", () => {
 		for (const [name, tool] of Object.entries(PHASE_2_TOOLS)) {
 			expect(tool.description, `Tool ${name} should have a description`).toBeDefined();
-			expect(tool.description!.length, `Tool ${name} description should be non-empty`).toBeGreaterThan(10);
+			expect(tool.description?.length, `Tool ${name} description should be non-empty`).toBeGreaterThan(10);
 		}
 	});
 

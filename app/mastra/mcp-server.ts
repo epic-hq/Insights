@@ -142,11 +142,11 @@ export async function startMCPServer() {
 	// If API key resolved, inject project/account into requestContext
 	// so tools can access them via context?.requestContext?.get("project_id")
 	if (apiKeyContext) {
-		const originalStartStdio = server.startStdio.bind(server);
 		// Mastra MCPServer supports context injection via the server instance.
 		// For stdio, we set default request context that all tool calls inherit.
-		if (typeof (server as any).setDefaultContext === "function") {
-			(server as any).setDefaultContext({
+		const serverRecord = server as unknown as Record<string, unknown>;
+		if (typeof serverRecord.setDefaultContext === "function") {
+			(serverRecord.setDefaultContext as (ctx: Record<string, string>) => void)({
 				project_id: apiKeyContext.projectId,
 				account_id: apiKeyContext.accountId,
 			});

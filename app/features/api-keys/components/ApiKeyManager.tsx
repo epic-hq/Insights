@@ -44,6 +44,18 @@ interface ApiKeyRecord {
 	created_at: string;
 }
 
+interface CreateResponse {
+	ok: boolean;
+	rawKey?: string;
+	record?: ApiKeyRecord;
+	error?: string;
+}
+
+interface RevokeResponse {
+	ok: boolean;
+	error?: string;
+}
+
 interface ApiKeyManagerProps {
 	projectPath: string;
 	initialKeys: ApiKeyRecord[];
@@ -80,8 +92,8 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
 
 export function ApiKeyManager({ projectPath, initialKeys }: ApiKeyManagerProps) {
 	const formId = useId();
-	const createFetcher = useFetcher();
-	const revokeFetcher = useFetcher();
+	const createFetcher = useFetcher<CreateResponse>();
+	const revokeFetcher = useFetcher<RevokeResponse>();
 
 	const [keys, setKeys] = useState<ApiKeyRecord[]>(initialKeys);
 	const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -95,17 +107,17 @@ export function ApiKeyManager({ projectPath, initialKeys }: ApiKeyManagerProps) 
 
 	// Handle create response
 	useEffect(() => {
-		if (createFetcher.data && (createFetcher.data as any).ok) {
-			const data = createFetcher.data as any;
+		const data = createFetcher.data;
+		if (data?.ok && data.rawKey && data.record) {
 			setCreatedRawKey(data.rawKey);
-			setKeys((prev) => [data.record, ...prev]);
+			setKeys((prev) => [data.record as ApiKeyRecord, ...prev]);
 			setNewKeyName("");
 		}
 	}, [createFetcher.data]);
 
 	// Handle revoke response
 	useEffect(() => {
-		if (revokeFetcher.data && (revokeFetcher.data as any).ok && revokeTarget) {
+		if (revokeFetcher.data?.ok && revokeTarget) {
 			setKeys((prev) => prev.filter((k) => k.id !== revokeTarget.id));
 			setRevokeTarget(null);
 		}
