@@ -331,7 +331,12 @@ describe("ResearchLinkPayloadSchema — respondentFields", () => {
 		questions: JSON.stringify([{ id: "q1", prompt: "Test?" }]),
 	};
 
-	it("should parse a JSON string of field names", () => {
+	const defaultConfigs = [
+		{ key: "first_name", required: true },
+		{ key: "last_name", required: false },
+	];
+
+	it("should parse a JSON string of field names (legacy format)", () => {
 		const result = ResearchLinkPayloadSchema.safeParse({
 			...basePayload,
 			respondentFields: JSON.stringify(["first_name", "company", "phone"]),
@@ -339,6 +344,21 @@ describe("ResearchLinkPayloadSchema — respondentFields", () => {
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data.respondentFields).toEqual(["first_name", "company", "phone"]);
+		}
+	});
+
+	it("should parse a JSON string of config objects (new format)", () => {
+		const configs = [
+			{ key: "first_name", required: true },
+			{ key: "company", required: true },
+		];
+		const result = ResearchLinkPayloadSchema.safeParse({
+			...basePayload,
+			respondentFields: JSON.stringify(configs),
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.respondentFields).toEqual(configs);
 		}
 	});
 
@@ -353,11 +373,11 @@ describe("ResearchLinkPayloadSchema — respondentFields", () => {
 		}
 	});
 
-	it("should default to first_name + last_name when omitted", () => {
+	it("should default when omitted (optional field)", () => {
 		const result = ResearchLinkPayloadSchema.safeParse(basePayload);
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data.respondentFields).toEqual(["first_name", "last_name"]);
+			expect(result.data.respondentFields).toBeUndefined();
 		}
 	});
 
@@ -368,7 +388,7 @@ describe("ResearchLinkPayloadSchema — respondentFields", () => {
 		});
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data.respondentFields).toEqual(["first_name", "last_name"]);
+			expect(result.data.respondentFields).toEqual(defaultConfigs);
 		}
 	});
 
@@ -379,7 +399,7 @@ describe("ResearchLinkPayloadSchema — respondentFields", () => {
 		});
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data.respondentFields).toEqual(["first_name", "last_name"]);
+			expect(result.data.respondentFields).toEqual(defaultConfigs);
 		}
 	});
 });

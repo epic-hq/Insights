@@ -31,6 +31,7 @@ import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Textarea } from "~/components/ui/textarea";
 import { getGmailConnection } from "~/lib/integrations/gmail.server";
+import { cn } from "~/lib/utils";
 import { getServerClient } from "~/lib/supabase/client.server";
 import { userContext } from "~/server/user-context";
 import { createR2PresignedUrl } from "~/utils/r2.server";
@@ -43,7 +44,7 @@ import { SendSurveyDialog } from "../components/SendSurveyDialog";
 import { WalkthroughRecorder } from "../components/WalkthroughRecorder";
 import { getResearchLinkById } from "../db";
 import { extractFormFields, useOptimisticForm } from "../hooks/useOptimisticForm";
-import { RESPONDENT_FIELD_DEFINITIONS } from "../respondent-fields";
+import { RESPONDENT_FIELD_DEFINITIONS, type RespondentFieldConfig } from "../respondent-fields";
 import {
 	createEmptyQuestion,
 	ResearchLinkPayloadSchema,
@@ -57,8 +58,8 @@ function RespondentFieldsPicker({
 	onChange,
 	identityType,
 }: {
-	fields: string[];
-	onChange: (fields: string[]) => void;
+	fields: RespondentFieldConfig[];
+	onChange: (fields: RespondentFieldConfig[]) => void;
 	identityType: "anonymous" | "email" | "phone";
 }) {
 	const [expanded, setExpanded] = useState(fields.length > 0);
@@ -67,10 +68,23 @@ function RespondentFieldsPicker({
 	// Filter out phone if identity is already phone-based
 	const options = RESPONDENT_FIELD_DEFINITIONS.filter((opt) => !(opt.key === "phone" && identityType === "phone"));
 
+	const fieldKeys = fields.map((f) => f.key);
+
 	const toggleField = (key: string) => {
-		const next = fields.includes(key) ? fields.filter((f) => f !== key) : [...fields, key];
-		onChange(next);
+		if (fieldKeys.includes(key)) {
+			onChange(fields.filter((f) => f.key !== key));
+		} else {
+			onChange([...fields, { key, required: false }]);
+		}
 	};
+
+	const toggleRequired = (key: string) => {
+		onChange(
+			fields.map((f) => (f.key === key ? { ...f, required: !f.required } : f))
+		);
+	};
+
+	const isFieldRequired = (key: string) => fields.find((f) => f.key === key)?.required ?? false;
 
 	return (
 		<div className="rounded-md border px-3 py-2.5">
@@ -102,15 +116,35 @@ function RespondentFieldsPicker({
 			</button>
 			{expanded && (
 				<div className="mt-2 space-y-1 border-t pt-2">
-					{options.map((opt) => (
-						<label
-							key={opt.key}
-							className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 hover:bg-muted/30"
-						>
-							<Checkbox checked={fields.includes(opt.key)} onCheckedChange={() => toggleField(opt.key)} />
-							<span className="text-sm">{opt.label}</span>
-						</label>
-					))}
+					{options.map((opt) => {
+						const isEnabled = fieldKeys.includes(opt.key);
+						const isReq = isFieldRequired(opt.key);
+						return (
+							<div
+								key={opt.key}
+								className="flex items-center justify-between gap-2 rounded-md px-1 py-1.5 hover:bg-muted/30"
+							>
+								<label className="flex flex-1 cursor-pointer items-center gap-2.5">
+									<Checkbox checked={isEnabled} onCheckedChange={() => toggleField(opt.key)} />
+									<span className="text-sm">{opt.label}</span>
+								</label>
+								{isEnabled && (
+									<button
+										type="button"
+										onClick={() => toggleRequired(opt.key)}
+										className={cn(
+											"rounded px-1.5 py-0.5 font-medium text-[10px] transition-colors",
+											isReq
+												? "bg-red-500/15 text-red-600 dark:text-red-400"
+												: "bg-muted text-muted-foreground hover:bg-muted/80"
+										)}
+									>
+										{isReq ? "Required" : "Optional"}
+									</button>
+								)}
+							</div>
+						);
+					})}
 				</div>
 			)}
 		</div>
@@ -306,7 +340,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		updatePayload.respondent_fields = payload.respondentFields;
 		// Keep collect_title in sync for backwards compatibility
 		const fields = payload.respondentFields ?? [];
-		updatePayload.collect_title = fields.includes("title");
+		const fieldKeys = Array.isArray(fields) ? fields.map((f: unknown) => typeof f === "string" ? f : (f as { key: string }).key) : [];
+		updatePayload.collect_title = fieldKeys.includes("title");
 	}
 	if (formData.has("ai_autonomy")) {
 		const autonomy = formData.get("ai_autonomy");
@@ -632,11 +667,20 @@ export default function EditResearchLinkPage() {
 												Phone
 											</span>
 										)}
-										{fields.respondentFields.map((key) => {
-											const opt = RESPONDENT_FIELD_DEFINITIONS.find((o) => o.key === key);
+										{fields.respondentFields.map((fc) => {
+											const opt = RESPONDENT_FIELD_DEFINITIONS.find((o) => o.key === fc.key);
 											return (
-												<span key={key} className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground/70">
-													{opt?.label ?? key}
+												<span
+													key={fc.key}
+													className={cn(
+														"rounded-full px-2 py-0.5 text-[11px]",
+														fc.required
+															? "bg-red-500/10 font-medium text-red-600 dark:text-red-400"
+															: "bg-muted text-foreground/70"
+													)}
+												>
+													{opt?.label ?? fc.key}
+													{fc.required ? " *" : ""}
 												</span>
 											);
 										})}

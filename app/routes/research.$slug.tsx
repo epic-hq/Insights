@@ -34,8 +34,12 @@ import { getNextQuestionIndex, hasResponseValue } from "~/features/research-link
 import { VideoRecorder } from "~/features/research-links/components/VideoRecorder";
 import {
 	RESPONDENT_FIELD_DEFINITION_MAP,
+	type RespondentFieldConfig,
 	type RespondentFieldKey,
 	type RespondentFieldOption,
+	getFieldKeys,
+	isFieldRequired,
+	parseRespondentFields,
 } from "~/features/research-links/respondent-fields";
 import { type ResearchLinkQuestion, ResearchLinkQuestionSchema } from "~/features/research-links/schemas";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
@@ -652,11 +656,14 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		return { ...q, mediaUrl: presigned?.url ?? null };
 	});
 
-	const respondentFields = Array.isArray(list.respondent_fields)
-		? (list.respondent_fields as string[])
-		: list.collect_title
-			? ["first_name", "last_name", "company", "title"]
-			: ["first_name", "last_name", "company"];
+	const respondentFieldConfigs = parseRespondentFields(
+		Array.isArray(list.respondent_fields)
+			? list.respondent_fields
+			: list.collect_title
+				? ["first_name", "last_name", "company", "title"]
+				: ["first_name", "last_name", "company"]
+	);
+	const respondentFields = getFieldKeys(respondentFieldConfigs);
 	const selectFieldDefinitions = respondentFields
 		.map((field) => RESPONDENT_FIELD_DEFINITION_MAP[field as RespondentFieldKey])
 		.filter(
@@ -694,6 +701,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		questions: signedQuestions,
 		walkthroughSignedUrl,
 		respondentFieldOptions,
+		respondentFieldConfigs,
 	};
 }
 
@@ -730,6 +738,7 @@ type LoaderData = {
 	questions: Array<ResearchLinkQuestion>;
 	walkthroughSignedUrl: string | null;
 	respondentFieldOptions: Partial<Record<RespondentFieldKey, RespondentFieldOption[]>>;
+	respondentFieldConfigs: RespondentFieldConfig[];
 };
 
 type Stage = "email" | "phone" | "name" | "instructions" | "survey" | "video" | "complete";
@@ -813,7 +822,8 @@ async function saveProgress(
 }
 
 export default function ResearchLinkPage() {
-	const { slug, list, questions, walkthroughSignedUrl, respondentFieldOptions } = useLoaderData() as LoaderData;
+	const { slug, list, questions, walkthroughSignedUrl, respondentFieldOptions, respondentFieldConfigs } =
+		useLoaderData() as LoaderData;
 	const [searchParams] = useSearchParams();
 	const ffVoice = searchParams.get("ffVoice") === "true";
 	const emailId = useId();
@@ -854,16 +864,14 @@ export default function ResearchLinkPage() {
 	const voiceEnabled = list.allow_voice && ffVoice;
 	const hasMultipleModes = supportsChatMode || voiceEnabled;
 
-	// Respondent fields configuration (falls back to collect_title for backwards compat)
-	const respondentFields = useMemo(() => {
-		const fields = list.respondent_fields;
-		if (Array.isArray(fields)) return fields as string[];
-		// Backwards compat: old surveys only have collect_title
-		const defaults = ["first_name", "last_name", "company"];
-		return list.collect_title ? [...defaults, "title"] : defaults;
-	}, [list.respondent_fields, list.collect_title]);
+	// Respondent fields configuration (uses parsed configs from loader)
+	const respondentFields = useMemo(() => getFieldKeys(respondentFieldConfigs), [respondentFieldConfigs]);
 
 	const hasField = useCallback((key: string) => respondentFields.includes(key), [respondentFields]);
+	const isRequired = useCallback(
+		(key: string) => isFieldRequired(respondentFieldConfigs, key),
+		[respondentFieldConfigs]
+	);
 	const getFieldOptions = useCallback(
 		(key: RespondentFieldKey) => respondentFieldOptions[key] ?? [],
 		[respondentFieldOptions]
@@ -1132,124 +1140,9 @@ export default function ResearchLinkPage() {
 				return;
 			}
 
-			// Personalized link: standalone ?email (no responseId) — auto-submit for known people
-			if (urlEmail && !urlResponseId && list.identity_field === "email") {
-				setEmail(urlEmail);
-				if (urlFirstName) setFirstName(urlFirstName);
-				if (urlLastName) setLastName(urlLastName);
-				if (urlCompany) setCompany(urlCompany);
-				if (urlTitle) setRespondentTitle(urlTitle);
-				if (urlJobFunction) setJobFunction(urlJobFunction);
-				if (urlIndustry) setIndustry(urlIndustry);
-				if (urlCompanySize) setCompanySize(urlCompanySize);
-				void startSignup(slug, {
-					email: urlEmail,
-					responseMode: resolvedMode,
-					utmParams: utmPayload,
-				})
-					.then((result) => {
-						setResponseId(result.responseId);
-						setResponses(result.responses || {});
-						const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
-						if (initialIndex >= questions.length) {
-							setStage("complete");
-						} else if (result.personId) {
-							// Known person — pre-fill from profile, URL params override
-							const profile = result.personProfile;
-							const fn = urlFirstName || profile?.firstName || "";
-							const ln = urlLastName || profile?.lastName || "";
-							const co = urlCompany || profile?.company || "";
-							const ti = urlTitle || profile?.title || "";
-							const jf = urlJobFunction || profile?.jobFunction || "";
-							const ind = urlIndustry || profile?.industry || "";
-							const cs = urlCompanySize || profile?.companySize || "";
-							setFirstName(fn);
-							setLastName(ln);
-							setCompany(co);
-							setRespondentTitle(ti);
-							setJobFunction(jf);
-							setIndustry(ind);
-							setCompanySize(cs);
-
-							// Check if any configured respondent fields are still empty
-							const fieldValues: Record<string, string> = {
-								first_name: fn,
-								last_name: ln,
-								company: co,
-								title: ti,
-								job_function: jf,
-								industry: ind,
-								company_size: cs,
-							};
-							const respondentFields = (list.respondent_fields ?? []) as string[];
-							const hasEmptyField = respondentFields.some(
-								(f: string) => f !== "first_name" && f !== "phone" && !fieldValues[f]
-							);
-
-							if (hasEmptyField) {
-								// Show name form pre-populated so user can review/complete
-								setCurrentIndex(initialIndex);
-								setStage("name");
-							} else {
-								// Profile is complete — skip to survey
-								setCurrentIndex(initialIndex);
-								setStage(list.instructions ? "instructions" : "survey");
-								const existingValue = result.responses?.[questions[initialIndex]?.id];
-								setCurrentAnswer(existingValue ?? "");
-							}
-						} else if (urlFirstName) {
-							// Unknown person with URL params — show form pre-populated for review
-							setCurrentIndex(initialIndex);
-							setStage("name");
-						} else {
-							// Unknown person, no name — show name collection form
-							setCurrentIndex(initialIndex);
-							setStage("name");
-						}
-					})
-					.catch(() => {
-						// Auto-submit failed — show pre-filled email form for manual confirmation
-						setInitializing(false);
-					})
-					.finally(() => {
-						setInitializing(false);
-					});
-				return;
-			}
-
-			// Personalized link: standalone ?phone (no responseId)
-			if (urlPhone && !urlResponseId && list.identity_field === "phone") {
-				setPhone(urlPhone);
-				void startSignup(slug, {
-					phone: urlPhone,
-					responseMode: resolvedMode,
-					utmParams: utmPayload,
-				})
-					.then((result) => {
-						setResponseId(result.responseId);
-						setResponses(result.responses || {});
-						const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
-						if (initialIndex >= questions.length) {
-							setStage("complete");
-						} else {
-							// Phone-identified: skip to survey (person lookup happens server-side)
-							setCurrentIndex(initialIndex);
-							setStage(list.instructions ? "instructions" : "survey");
-							const existingValue = result.responses?.[questions[initialIndex]?.id];
-							setCurrentAnswer(existingValue ?? "");
-						}
-					})
-					.catch(() => {
-						// Auto-submit failed — show pre-filled phone form
-						setInitializing(false);
-					})
-					.finally(() => {
-						setInitializing(false);
-					});
-				return;
-			}
-
-			// Pre-fill only (email/phone present but identity_field doesn't match — just populate the field)
+			// Personalized link: prefill fields from URL params and show landing page.
+			// The user sees the landing page with prefilled values and clicks the CTA to proceed.
+			// startSignup() will be called in handleEmailSubmit/handlePhoneSubmit when they click.
 			if (urlEmail) setEmail(urlEmail);
 			if (urlPhone) setPhone(urlPhone);
 			if (urlFirstName) setFirstName(urlFirstName);
@@ -1332,18 +1225,45 @@ export default function ResearchLinkPage() {
 			setResponseId(result.responseId);
 			setResponses(result.responses || {});
 
-			// If no person linked, we need to collect name info
-			if (!result.personId) {
-				setStage("name");
-				return;
-			}
-
-			// Person was found, proceed to survey
 			const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
 			if (initialIndex >= questions.length) {
 				setStage("complete");
+				return;
+			}
+			setCurrentIndex(initialIndex);
+
+			// Pre-fill profile fields: URL params override DB values
+			if (result.personId && result.personProfile) {
+				const profile = result.personProfile;
+				if (!firstName && profile.firstName) setFirstName(profile.firstName);
+				if (!lastName && profile.lastName) setLastName(profile.lastName);
+				if (!company && profile.company) setCompany(profile.company);
+				if (!respondentTitle && profile.title) setRespondentTitle(profile.title);
+				if (!jobFunction && profile.jobFunction) setJobFunction(profile.jobFunction);
+				if (!industry && profile.industry) setIndustry(profile.industry);
+				if (!companySize && profile.companySize) setCompanySize(profile.companySize);
+			}
+
+			// Check if any configured respondent fields need collection
+			const currentFields: Record<string, string> = {
+				first_name: firstName || result.personProfile?.firstName || "",
+				last_name: lastName || result.personProfile?.lastName || "",
+				company: company || result.personProfile?.company || "",
+				title: respondentTitle || result.personProfile?.title || "",
+				job_function: jobFunction || result.personProfile?.jobFunction || "",
+				industry: industry || result.personProfile?.industry || "",
+				company_size: companySize || result.personProfile?.companySize || "",
+			};
+			// Show name form if there are configured non-phone fields to fill
+			const nonPhoneConfigs = respondentFieldConfigs.filter((c) => c.key !== "phone");
+			const hasEmptyField = nonPhoneConfigs.some((c) => !currentFields[c.key]);
+
+			if (hasEmptyField) {
+				// Show name form pre-populated so user can fill missing fields
+				setStage("name");
+			} else if (list.instructions) {
+				setStage("instructions");
 			} else {
-				setCurrentIndex(initialIndex);
 				setStage("survey");
 			}
 		} catch (caught) {
@@ -1371,17 +1291,48 @@ export default function ResearchLinkPage() {
 			setResponseId(result.responseId);
 			setResponses(result.responses || {});
 
-			// Phone-identified surveys don't collect name, go straight to survey
 			const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
 			if (initialIndex >= questions.length) {
 				setStage("complete");
-			} else {
-				setCurrentIndex(initialIndex);
-				if (list.instructions) {
-					setStage("instructions");
-				} else {
-					setStage("survey");
+				return;
+			}
+			setCurrentIndex(initialIndex);
+
+			// Pre-fill profile fields from DB if available
+			if (result.personId && result.personProfile) {
+				const profile = result.personProfile;
+				if (!firstName && profile.firstName) setFirstName(profile.firstName);
+				if (!lastName && profile.lastName) setLastName(profile.lastName);
+				if (!company && profile.company) setCompany(profile.company);
+				if (!respondentTitle && profile.title) setRespondentTitle(profile.title);
+				if (!jobFunction && profile.jobFunction) setJobFunction(profile.jobFunction);
+				if (!industry && profile.industry) setIndustry(profile.industry);
+				if (!companySize && profile.companySize) setCompanySize(profile.companySize);
+			}
+
+			// Check if any configured respondent fields still need filling
+			const nonPhoneConfigs = respondentFieldConfigs.filter((c) => c.key !== "phone");
+			if (nonPhoneConfigs.length > 0) {
+				const currentFields: Record<string, string> = {
+					first_name: firstName || result.personProfile?.firstName || "",
+					last_name: lastName || result.personProfile?.lastName || "",
+					company: company || result.personProfile?.company || "",
+					title: respondentTitle || result.personProfile?.title || "",
+					job_function: jobFunction || result.personProfile?.jobFunction || "",
+					industry: industry || result.personProfile?.industry || "",
+					company_size: companySize || result.personProfile?.companySize || "",
+				};
+				const hasEmptyField = nonPhoneConfigs.some((c) => !currentFields[c.key]);
+				if (hasEmptyField) {
+					setStage("name");
+					return;
 				}
+			}
+
+			if (list.instructions) {
+				setStage("instructions");
+			} else {
+				setStage("survey");
 			}
 		} catch (caught) {
 			setError(caught instanceof Error ? caught.message : "Something went wrong");
@@ -1393,9 +1344,22 @@ export default function ResearchLinkPage() {
 	async function handleNameSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setError(null);
-		if (hasField("first_name") && !firstName.trim()) {
-			setError("Enter your first name to continue");
-			return;
+		// Validate all required fields
+		const requiredChecks: Array<{ key: string; value: string; label: string }> = [
+			{ key: "first_name", value: firstName, label: "first name" },
+			{ key: "last_name", value: lastName, label: "last name" },
+			{ key: "company", value: company, label: "company" },
+			{ key: "title", value: respondentTitle, label: "job title" },
+			{ key: "job_function", value: jobFunction, label: "job function" },
+			{ key: "industry", value: industry, label: "industry" },
+			{ key: "company_size", value: companySize, label: "company size" },
+			{ key: "phone", value: phone, label: "phone number" },
+		];
+		for (const check of requiredChecks) {
+			if (isRequired(check.key) && !check.value.trim()) {
+				setError(`Please enter your ${check.label} to continue`);
+				return;
+			}
 		}
 		if (!responseId) {
 			setError("Something went wrong. Please refresh and try again.");
@@ -1824,7 +1788,12 @@ export default function ResearchLinkPage() {
 									{hasField("first_name") && (
 										<div className="space-y-2">
 											<Label className="text-white/90">
-												First Name <span className="text-red-400">*</span>
+												First Name{" "}
+												{isRequired("first_name") ? (
+													<span className="text-red-400">*</span>
+												) : (
+													<span className="text-white/40">(optional)</span>
+												)}
 											</Label>
 											<Input
 												type="text"
@@ -1832,20 +1801,28 @@ export default function ResearchLinkPage() {
 												onChange={(e) => setFirstName(e.target.value)}
 												placeholder="Jane"
 												className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-												required
+												required={isRequired("first_name")}
 												autoFocus
 											/>
 										</div>
 									)}
 									{hasField("last_name") && (
 										<div className="space-y-2">
-											<Label className="text-white/90">Last Name</Label>
+											<Label className="text-white/90">
+												Last Name{" "}
+												{isRequired("last_name") ? (
+													<span className="text-red-400">*</span>
+												) : (
+													<span className="text-white/40">(optional)</span>
+												)}
+											</Label>
 											<Input
 												type="text"
 												value={lastName}
 												onChange={(e) => setLastName(e.target.value)}
 												placeholder="Doe"
 												className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+												required={isRequired("last_name")}
 											/>
 										</div>
 									)}
@@ -1855,13 +1832,21 @@ export default function ResearchLinkPage() {
 							{/* Company field */}
 							{hasField("company") && (
 								<div className="space-y-2">
-									<Label className="text-white/90">Company</Label>
+									<Label className="text-white/90">
+										Company{" "}
+										{isRequired("company") ? (
+											<span className="text-red-400">*</span>
+										) : (
+											<span className="text-white/40">(optional)</span>
+										)}
+									</Label>
 									<Input
 										type="text"
 										value={company}
 										onChange={(e) => setCompany(e.target.value)}
 										placeholder="Acme Inc"
 										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+										required={isRequired("company")}
 									/>
 								</div>
 							)}
@@ -1870,7 +1855,12 @@ export default function ResearchLinkPage() {
 							{hasField("title") && (
 								<div className="space-y-2">
 									<Label className="text-white/90">
-										Job Title <span className="text-white/40">(optional)</span>
+										Job Title{" "}
+										{isRequired("title") ? (
+											<span className="text-red-400">*</span>
+										) : (
+											<span className="text-white/40">(optional)</span>
+										)}
 									</Label>
 									<Input
 										type="text"
@@ -1878,6 +1868,7 @@ export default function ResearchLinkPage() {
 										onChange={(e) => setRespondentTitle(e.target.value)}
 										placeholder="e.g., Product Manager"
 										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+										required={isRequired("title")}
 									/>
 								</div>
 							)}
@@ -1885,7 +1876,12 @@ export default function ResearchLinkPage() {
 							{hasField("job_function") && (
 								<div className="space-y-2">
 									<Label className="text-white/90">
-										Job Function <span className="text-white/40">(optional)</span>
+										Job Function{" "}
+										{isRequired("job_function") ? (
+											<span className="text-red-400">*</span>
+										) : (
+											<span className="text-white/40">(optional)</span>
+										)}
 									</Label>
 									{getFieldOptions("job_function").length > 0 ? (
 										<Select
@@ -1919,7 +1915,12 @@ export default function ResearchLinkPage() {
 							{hasField("industry") && (
 								<div className="space-y-2">
 									<Label className="text-white/90">
-										Industry <span className="text-white/40">(optional)</span>
+										Industry{" "}
+										{isRequired("industry") ? (
+											<span className="text-red-400">*</span>
+										) : (
+											<span className="text-white/40">(optional)</span>
+										)}
 									</Label>
 									{getFieldOptions("industry").length > 0 ? (
 										<Select
@@ -1953,7 +1954,12 @@ export default function ResearchLinkPage() {
 							{hasField("company_size") && (
 								<div className="space-y-2">
 									<Label className="text-white/90">
-										Company Size <span className="text-white/40">(optional)</span>
+										Company Size{" "}
+										{isRequired("company_size") ? (
+											<span className="text-red-400">*</span>
+										) : (
+											<span className="text-white/40">(optional)</span>
+										)}
 									</Label>
 									{getFieldOptions("company_size").length > 0 ? (
 										<Select
@@ -1988,7 +1994,12 @@ export default function ResearchLinkPage() {
 							{hasField("phone") && list.identity_field !== "phone" && (
 								<div className="space-y-2">
 									<Label className="text-white/90">
-										Phone <span className="text-white/40">(optional)</span>
+										Phone{" "}
+										{isRequired("phone") ? (
+											<span className="text-red-400">*</span>
+										) : (
+											<span className="text-white/40">(optional)</span>
+										)}
 									</Label>
 									<Input
 										type="tel"
@@ -1996,6 +2007,7 @@ export default function ResearchLinkPage() {
 										onChange={(e) => setPhone(e.target.value)}
 										placeholder="+1 (555) 123-4567"
 										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+										required={isRequired("phone")}
 									/>
 								</div>
 							)}

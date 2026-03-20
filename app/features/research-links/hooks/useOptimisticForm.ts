@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher } from "react-router-dom";
+import { type RespondentFieldConfig, parseRespondentFields, serializeRespondentFields } from "../respondent-fields";
 import type { ResearchLinkQuestion } from "../schemas";
 
 export type AutoSaveStatus = "idle" | "saving" | "saved" | "error";
@@ -26,7 +27,7 @@ export interface SurveyFormFields {
 	isLive: boolean;
 	isArchived: boolean;
 	collectTitle: boolean;
-	respondentFields: string[];
+	respondentFields: RespondentFieldConfig[];
 	aiAutonomy: "strict" | "moderate" | "adaptive";
 	identityType: "anonymous" | "email" | "phone";
 	questions: ResearchLinkQuestion[];
@@ -61,8 +62,8 @@ export function extractFormFields(list: Record<string, unknown>, questions: Rese
 		isArchived: Boolean(list.is_archived),
 		collectTitle: Boolean(list.collect_title),
 		respondentFields: Array.isArray(list.respondent_fields)
-			? (list.respondent_fields as string[])
-			: ["first_name", "last_name"],
+			? parseRespondentFields(list.respondent_fields)
+			: parseRespondentFields(["first_name", "last_name"]),
 		aiAutonomy: (list.ai_autonomy as "strict" | "moderate" | "adaptive") ?? "strict",
 		identityType,
 		questions: questions.length > 0 ? questions : [],
@@ -89,7 +90,7 @@ export function serializeToFormData(fields: SurveyFormFields): Record<string, st
 		is_live: String(fields.isLive),
 		is_archived: String(fields.isArchived),
 		collect_title: String(fields.collectTitle),
-		respondent_fields: JSON.stringify(fields.respondentFields),
+		respondent_fields: JSON.stringify(serializeRespondentFields(fields.respondentFields)),
 		ai_autonomy: fields.aiAutonomy,
 		identity_type: fields.identityType,
 		questions: JSON.stringify(fields.questions),
