@@ -1479,6 +1479,9 @@ export default function ResearchLinkPage() {
 			const prevIndex = currentIndex - 1;
 			setCurrentIndex(prevIndex);
 			setCurrentAnswer(responses[questions[prevIndex]?.id] ?? "");
+		} else if (respondentFieldConfigs.length > 0) {
+			// On first question, go back to demographics form
+			setStage("name");
 		}
 	}
 
@@ -2107,7 +2110,7 @@ export default function ResearchLinkPage() {
 										variant="ghost"
 										size="sm"
 										onClick={handleBack}
-										disabled={currentIndex === 0}
+										disabled={currentIndex === 0 && respondentFieldConfigs.length === 0}
 										className="text-white/50 hover:bg-white/10 hover:text-white"
 										data-testid="survey-back-button"
 									>
