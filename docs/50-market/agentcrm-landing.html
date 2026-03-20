@@ -62,6 +62,38 @@
       mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
       -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
     }
+    /* Tabs */
+    .tab-btn {
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: rgba(255,255,255,0.35);
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: rgba(255,255,255,0.6); }
+    .tab-btn.active {
+      color: #00d4ff;
+      border-bottom-color: #00d4ff;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .subtab-btn {
+      cursor: pointer;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: rgba(255,255,255,0.3);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .subtab-btn:hover { color: rgba(255,255,255,0.5); border-color: rgba(255,255,255,0.15); }
+    .subtab-btn.active { color: #00d4ff; border-color: rgba(0,212,255,0.3); background: rgba(0,212,255,0.05); }
+    .subtab-panel { display: none; }
+    .subtab-panel.active { display: block; }
   </style>
 </head>
 
@@ -74,9 +106,10 @@
         <span class="text-white">AgentCRM</span><span class="text-accent">.dev</span>
       </a>
       <div class="flex items-center gap-6">
+        <a href="#setup" class="text-sm text-white/50 hover:text-white transition-colors hidden sm:block">Setup</a>
         <a href="#tools" class="text-sm text-white/50 hover:text-white transition-colors hidden sm:block">Tools</a>
+        <a href="#journeys" class="text-sm text-white/50 hover:text-white transition-colors hidden sm:block">Journeys</a>
         <a href="#pricing" class="text-sm text-white/50 hover:text-white transition-colors hidden sm:block">Pricing</a>
-        <a href="https://docs.agentcrm.dev" class="text-sm text-white/50 hover:text-white transition-colors hidden sm:block">Docs</a>
         <a href="#cta" class="text-sm font-medium text-surface bg-accent px-4 py-1.5 rounded-md btn-primary transition-all">Get API Key</a>
       </div>
     </div>
@@ -146,7 +179,7 @@
           <div class="flex-none w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent font-mono text-sm font-medium">2</div>
           <div>
             <h3 class="font-semibold text-lg mb-1.5">Connect via MCP</h3>
-            <p class="text-white/40 leading-relaxed">Add the UpSight MCP server to Claude Desktop, Cursor, or any MCP-compatible client. One JSON block.</p>
+            <p class="text-white/40 leading-relaxed">Add AgentCRM to Claude Desktop, ChatGPT, or OpenClaw. Remote connector, local install, or one-line CLI — your choice.</p>
           </div>
         </div>
         <!-- Step 3 -->
@@ -161,34 +194,131 @@
     </div>
   </section>
 
-  <!-- Code Snippet -->
-  <section class="py-20 sm:py-28 border-t border-white/5">
+  <!-- Setup Instructions (Tabbed) -->
+  <section id="setup" class="py-20 sm:py-28 border-t border-white/5">
     <div class="max-w-3xl mx-auto px-6">
       <p class="text-xs font-medium text-accent/70 uppercase tracking-widest mb-4">Quick start</p>
-      <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-8">Add to Claude Desktop in 30 seconds.</h2>
+      <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-8">Connect in under a minute.</h2>
 
-      <div class="bg-surface-raised border border-white/5 rounded-xl glow overflow-hidden">
-        <div class="flex items-center gap-2 px-4 py-3 border-b border-white/5">
-          <div class="flex gap-1.5">
-            <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
-            <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
-            <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
-          </div>
-          <span class="text-xs text-white/30 font-mono ml-2">claude_desktop_config.json</span>
+      <!-- Tabs -->
+      <div class="flex gap-1 border-b border-white/5 mb-0 overflow-x-auto" id="setup-tabs">
+        <button class="tab-btn active" data-tab="claude-desktop" onclick="switchTab('setup', 'claude-desktop')">Claude Desktop</button>
+        <button class="tab-btn" data-tab="chatgpt" onclick="switchTab('setup', 'chatgpt')">ChatGPT</button>
+        <button class="tab-btn" data-tab="openclaw" onclick="switchTab('setup', 'openclaw')">OpenClaw</button>
+      </div>
+
+      <!-- Claude Desktop Panel -->
+      <div class="tab-panel active" id="panel-claude-desktop">
+        <div class="flex gap-2 mt-4 mb-3" id="claude-subtabs">
+          <button class="subtab-btn active" data-subtab="claude-remote" onclick="switchSubTab('claude', 'claude-remote')">Remote Connector (Recommended)</button>
+          <button class="subtab-btn" data-subtab="claude-local" onclick="switchSubTab('claude', 'claude-local')">Local Install</button>
         </div>
-        <pre class="p-5 overflow-x-auto"><code class="font-mono text-white/70">{
+
+        <!-- Remote MCP (Connector) -->
+        <div class="subtab-panel active" id="subpanel-claude-remote">
+          <div class="bg-surface-raised border border-white/5 rounded-xl glow overflow-hidden">
+            <div class="flex items-center gap-2 px-4 py-3 border-b border-white/5">
+              <div class="flex gap-1.5">
+                <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+              </div>
+              <span class="text-xs text-white/30 font-mono ml-2">Settings → Connectors</span>
+            </div>
+            <div class="p-5 space-y-3 text-sm text-white/60 leading-relaxed">
+              <p><span class="text-white/80 font-medium">1.</span> Open Claude Desktop → <span class="text-accent/80 font-mono text-xs">Settings → Connectors</span></p>
+              <p><span class="text-white/80 font-medium">2.</span> Click <span class="text-accent/80">"Add custom connector"</span></p>
+              <p><span class="text-white/80 font-medium">3.</span> Paste the server URL:</p>
+              <div class="bg-surface border border-white/5 rounded-lg px-4 py-2.5 font-mono text-accent/80 text-xs">
+                https://mcp.agentcrm.dev/sse
+              </div>
+              <p><span class="text-white/80 font-medium">4.</span> Complete the OAuth sign-in when prompted</p>
+              <p><span class="text-white/80 font-medium">5.</span> Start chatting — AgentCRM tools appear automatically</p>
+            </div>
+          </div>
+          <p class="text-sm text-white/30 mt-4">No install, no config files. Works on Free, Pro, Max, Team, and Enterprise plans. Also works on Claude mobile.</p>
+        </div>
+
+        <!-- Local MCP Install -->
+        <div class="subtab-panel" id="subpanel-claude-local">
+          <div class="bg-surface-raised border border-white/5 rounded-xl glow overflow-hidden">
+            <div class="flex items-center gap-2 px-4 py-3 border-b border-white/5">
+              <div class="flex gap-1.5">
+                <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+              </div>
+              <span class="text-xs text-white/30 font-mono ml-2">Settings → Developer → Edit Config</span>
+            </div>
+            <pre class="p-5 overflow-x-auto"><code class="font-mono text-white/70">{
   <span class="text-accent/80">"mcpServers"</span>: {
-    <span class="text-accent/80">"upsight"</span>: {
+    <span class="text-accent/80">"agentcrm"</span>: {
       <span class="text-accent/80">"command"</span>: <span class="text-green-400/70">"npx"</span>,
-      <span class="text-accent/80">"args"</span>: [<span class="text-green-400/70">"@upsight/mcp-server"</span>],
+      <span class="text-accent/80">"args"</span>: [<span class="text-green-400/70">"@agentcrm/mcp-server"</span>],
       <span class="text-accent/80">"env"</span>: {
-        <span class="text-accent/80">"UPSIGHT_API_KEY"</span>: <span class="text-green-400/70">"your-api-key"</span>
+        <span class="text-accent/80">"UPSIGHT_API_KEY"</span>: <span class="text-green-400/70">"upsk_your-api-key"</span>
       }
     }
   }
 }</code></pre>
+          </div>
+          <p class="text-sm text-white/30 mt-4">Go to <span class="font-mono text-white/40">Settings → Developer → Edit Config</span> and paste the above. Credentials stay local — never hit the network.</p>
+        </div>
       </div>
-      <p class="text-sm text-white/30 mt-4">Works with any MCP-compatible client. Claude Desktop, Cursor, Windsurf, and more.</p>
+
+      <!-- ChatGPT Panel -->
+      <div class="tab-panel" id="panel-chatgpt">
+        <div class="bg-surface-raised border border-white/5 rounded-xl glow overflow-hidden mt-4">
+          <div class="flex items-center gap-2 px-4 py-3 border-b border-white/5">
+            <div class="flex gap-1.5">
+              <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+            </div>
+            <span class="text-xs text-white/30 font-mono ml-2">Settings → Connectors → Create</span>
+          </div>
+          <div class="p-5 space-y-3 text-sm text-white/60 leading-relaxed">
+            <p><span class="text-white/80 font-medium">1.</span> In ChatGPT, go to <span class="text-accent/80 font-mono text-xs">Settings → Connectors</span></p>
+            <p><span class="text-white/80 font-medium">2.</span> Click <span class="text-accent/80">"Create"</span> to add a new connector</p>
+            <p><span class="text-white/80 font-medium">3.</span> Enter a name (<span class="text-white/50">e.g. "AgentCRM"</span>) and paste the server URL:</p>
+            <div class="bg-surface border border-white/5 rounded-lg px-4 py-2.5 font-mono text-accent/80 text-xs">
+              https://mcp.agentcrm.dev/mcp
+            </div>
+            <p><span class="text-white/80 font-medium">4.</span> Complete the OAuth flow to authorize access</p>
+            <p><span class="text-white/80 font-medium">5.</span> AgentCRM tools now appear in both <span class="text-white/50">Chat</span> and <span class="text-white/50">Deep Research</span> modes</p>
+          </div>
+        </div>
+        <p class="text-sm text-white/30 mt-4">Requires ChatGPT Pro, Team, Enterprise, or Edu plan. Enable <span class="font-mono text-white/40">Developer Mode</span> in Advanced settings for full tool access.</p>
+      </div>
+
+      <!-- OpenClaw Panel -->
+      <div class="tab-panel" id="panel-openclaw">
+        <div class="bg-surface-raised border border-white/5 rounded-xl glow overflow-hidden mt-4">
+          <div class="flex items-center gap-2 px-4 py-3 border-b border-white/5">
+            <div class="flex gap-1.5">
+              <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+            </div>
+            <span class="text-xs text-white/30 font-mono ml-2">Terminal</span>
+          </div>
+          <div class="p-5 space-y-4">
+            <div>
+              <p class="text-xs text-white/30 mb-2 font-medium">Option A: Install via ClawHub (recommended)</p>
+              <div class="bg-surface border border-white/5 rounded-lg px-4 py-2.5 font-mono text-sm">
+                <span class="text-white/40">$</span> <span class="text-green-400/70">clawhub install agentcrm/mcp-server</span>
+              </div>
+            </div>
+            <div>
+              <p class="text-xs text-white/30 mb-2 font-medium">Option B: Manual configuration</p>
+              <pre class="bg-surface border border-white/5 rounded-lg px-4 py-2.5 overflow-x-auto"><code class="font-mono text-sm text-white/70"><span class="text-white/40">$</span> <span class="text-green-400/70">openclaw config set mcpServers.agentcrm.command "npx"</span>
+<span class="text-white/40">$</span> <span class="text-green-400/70">openclaw config set mcpServers.agentcrm.args '["@agentcrm/mcp-server"]'</span>
+<span class="text-white/40">$</span> <span class="text-green-400/70">openclaw config set mcpServers.agentcrm.env.UPSIGHT_API_KEY "upsk_your-api-key"</span></code></pre>
+            </div>
+          </div>
+        </div>
+        <p class="text-sm text-white/30 mt-4">Config stored at <span class="font-mono text-white/40">~/.openclaw/openclaw.json</span>. Works with all OpenClaw messaging bridges — WhatsApp, Telegram, Discord, and more.</p>
+      </div>
     </div>
   </section>
 
@@ -269,19 +399,12 @@
       <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-12">Works where your agents already live.</h2>
 
       <div class="flex flex-wrap items-center justify-center gap-x-10 gap-y-8">
-        <!-- Claude -->
+        <!-- Claude Desktop -->
         <div class="flex flex-col items-center gap-2.5 group">
           <div class="w-12 h-12 rounded-xl bg-surface-raised border border-white/5 flex items-center justify-center text-white/40 group-hover:text-white/70 transition-colors">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12l2 2 4-4"/></svg>
           </div>
           <span class="text-xs text-white/30 font-medium">Claude Desktop</span>
-        </div>
-        <!-- Cursor -->
-        <div class="flex flex-col items-center gap-2.5 group">
-          <div class="w-12 h-12 rounded-xl bg-surface-raised border border-white/5 flex items-center justify-center text-white/40 group-hover:text-white/70 transition-colors">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
-          </div>
-          <span class="text-xs text-white/30 font-medium">Cursor</span>
         </div>
         <!-- ChatGPT -->
         <div class="flex flex-col items-center gap-2.5 group">
@@ -289,6 +412,20 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m-7.07-15.07l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
           </div>
           <span class="text-xs text-white/30 font-medium">ChatGPT</span>
+        </div>
+        <!-- OpenClaw -->
+        <div class="flex flex-col items-center gap-2.5 group">
+          <div class="w-12 h-12 rounded-xl bg-surface-raised border border-white/5 flex items-center justify-center text-white/40 group-hover:text-white/70 transition-colors">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4c0-1.1.9-2 2-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2V4z"/><path d="M9 10v4a3 3 0 003 3v0a3 3 0 003-3v-4"/><path d="M12 17v3"/><path d="M8 22h8"/></svg>
+          </div>
+          <span class="text-xs text-white/30 font-medium">OpenClaw</span>
+        </div>
+        <!-- Cursor -->
+        <div class="flex flex-col items-center gap-2.5 group">
+          <div class="w-12 h-12 rounded-xl bg-surface-raised border border-white/5 flex items-center justify-center text-white/40 group-hover:text-white/70 transition-colors">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+          </div>
+          <span class="text-xs text-white/30 font-medium">Cursor</span>
         </div>
         <!-- LangChain -->
         <div class="flex flex-col items-center gap-2.5 group">
@@ -304,6 +441,144 @@
           </div>
           <span class="text-xs text-white/30 font-medium">OpenAI Agents SDK</span>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- User Journeys -->
+  <section id="journeys" class="py-20 sm:py-28 border-t border-white/5">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="max-w-3xl">
+        <p class="text-xs font-medium text-accent/70 uppercase tracking-widest mb-4">User journeys</p>
+        <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-3">Your path from install to insight.</h2>
+        <p class="text-white/40 text-lg mb-12">Pick your platform. Get set up in minutes. Start asking your agents about your customers.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Claude Desktop Journey -->
+        <div class="bg-surface-raised border border-white/5 rounded-xl p-6 hover:border-white/10 transition-colors">
+          <div class="flex items-center gap-3 mb-5">
+            <div class="w-9 h-9 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-accent"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12l2 2 4-4"/></svg>
+            </div>
+            <h3 class="font-semibold text-base">Claude Desktop User</h3>
+          </div>
+
+          <div class="space-y-4 text-sm">
+            <div class="flex gap-3">
+              <div class="flex-none w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-accent text-[10px] font-bold mt-0.5">1</div>
+              <div>
+                <p class="text-white/60"><span class="text-white/80 font-medium">Add connector</span> — Open Settings → Connectors, paste the AgentCRM URL. Or go to Developer settings for local install.</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="flex-none w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-accent text-[10px] font-bold mt-0.5">2</div>
+              <div>
+                <p class="text-white/60"><span class="text-white/80 font-medium">Authorize</span> — Complete OAuth (remote) or paste your API key (local). One time.</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="flex-none w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-accent text-[10px] font-bold mt-0.5">3</div>
+              <div>
+                <p class="text-white/60"><span class="text-white/80 font-medium">Ask Claude</span> — <em class="text-white/40">"What are the top pain points from our enterprise interviews?"</em></p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="flex-none w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-accent text-[10px] font-bold mt-0.5">4</div>
+              <div>
+                <p class="text-white/60"><span class="text-white/80 font-medium">Get cited answers</span> — Claude returns themes, evidence, and exact quotes with source attribution.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-5 pt-4 border-t border-white/5">
+            <p class="text-xs text-white/25"><span class="text-accent/60 font-medium">Best for:</span> Solo research, deep-dive analysis, writing briefs and reports grounded in evidence.</p>
+          </div>
+        </div>
+
+        <!-- ChatGPT Journey -->
+        <div class="bg-surface-raised border border-white/5 rounded-xl p-6 hover:border-white/10 transition-colors">
+          <div class="flex items-center gap-3 mb-5">
+            <div class="w-9 h-9 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-accent"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m-7.07-15.07l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+            </div>
+            <h3 class="font-semibold text-base">ChatGPT User</h3>
+          </div>
+
+          <div class="space-y-4 text-sm">
+            <div class="flex gap-3">
+              <div class="flex-none w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-accent text-[10px] font-bold mt-0.5">1</div>
+              <div>
+                <p class="text-white/60"><span class="text-white/80 font-medium">Create connector</span> — Settings → Connectors → Create. Name it "AgentCRM" and paste the server URL.</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="flex-none w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-accent text-[10px] font-bold mt-0.5">2</div>
+              <div>
+                <p class="text-white/60"><span class="text-white/80 font-medium">Enable Developer Mode</span> — Go to Advanced settings and toggle it on for full tool access.</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="flex-none w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-accent text-[10px] font-bold mt-0.5">3</div>
+              <div>
+                <p class="text-white/60"><span class="text-white/80 font-medium">Chat or Deep Research</span> — <em class="text-white/40">"Research what our customers say about pricing across all interviews"</em></p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="flex-none w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-accent text-[10px] font-bold mt-0.5">4</div>
+              <div>
+                <p class="text-white/60"><span class="text-white/80 font-medium">Verified synthesis</span> — ChatGPT uses Deep Research to search and fetch evidence, returning comprehensive reports with receipts.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-5 pt-4 border-t border-white/5">
+            <p class="text-xs text-white/25"><span class="text-accent/60 font-medium">Best for:</span> Deep research across many interviews, team knowledge sharing, ChatGPT Enterprise workflows.</p>
+          </div>
+        </div>
+
+        <!-- OpenClaw Journey -->
+        <div class="bg-surface-raised border border-white/5 rounded-xl p-6 hover:border-white/10 transition-colors">
+          <div class="flex items-center gap-3 mb-5">
+            <div class="w-9 h-9 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-accent"><path d="M6 4c0-1.1.9-2 2-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2V4z"/><path d="M9 10v4a3 3 0 003 3v0a3 3 0 003-3v-4"/><path d="M12 17v3"/><path d="M8 22h8"/></svg>
+            </div>
+            <h3 class="font-semibold text-base">OpenClaw User</h3>
+          </div>
+
+          <div class="space-y-4 text-sm">
+            <div class="flex gap-3">
+              <div class="flex-none w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-accent text-[10px] font-bold mt-0.5">1</div>
+              <div>
+                <p class="text-white/60"><span class="text-white/80 font-medium">Install skill</span> — Run <span class="font-mono text-accent/60 text-xs">clawhub install agentcrm/mcp-server</span> or configure manually.</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="flex-none w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-accent text-[10px] font-bold mt-0.5">2</div>
+              <div>
+                <p class="text-white/60"><span class="text-white/80 font-medium">Set API key</span> — Pass your <span class="font-mono text-white/40 text-xs">UPSIGHT_API_KEY</span> as an environment variable.</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="flex-none w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-accent text-[10px] font-bold mt-0.5">3</div>
+              <div>
+                <p class="text-white/60"><span class="text-white/80 font-medium">Message from anywhere</span> — Ask via WhatsApp, Telegram, Discord, or iMessage: <em class="text-white/40">"Who did we talk to at Acme last month?"</em></p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="flex-none w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-accent text-[10px] font-bold mt-0.5">4</div>
+              <div>
+                <p class="text-white/60"><span class="text-white/80 font-medium">CRM on the go</span> — Create contacts, update deals, and search evidence from your messaging app of choice.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-5 pt-4 border-t border-white/5">
+            <p class="text-xs text-white/25"><span class="text-accent/60 font-medium">Best for:</span> Mobile-first CRM updates, messaging-native teams, multi-channel customer ops from any device.</p>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
@@ -367,6 +642,29 @@
       </div>
     </div>
   </footer>
+
+  <!-- Tab switching logic -->
+  <script>
+    function switchTab(group, tabId) {
+      const container = group === 'setup' ? document.getElementById('setup') : document.body;
+      container.querySelectorAll('#' + group + '-tabs .tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+      });
+      container.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === 'panel-' + tabId);
+      });
+    }
+
+    function switchSubTab(group, subTabId) {
+      const container = document.getElementById(group + '-subtabs');
+      container.querySelectorAll('.subtab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.subtab === subTabId);
+      });
+      container.parentElement.querySelectorAll('.subtab-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === 'subpanel-' + subTabId);
+      });
+    }
+  </script>
 
 </body>
 </html>
