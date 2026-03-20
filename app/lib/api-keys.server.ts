@@ -120,10 +120,7 @@ export async function createApiKey(
 }
 
 /** Resolve a raw API key to its project/account context. Returns null if invalid/revoked/expired. */
-export async function resolveApiKey(
-	supabase: AnySupabaseClient,
-	rawKey: string
-): Promise<ResolvedApiKey | null> {
+export async function resolveApiKey(supabase: AnySupabaseClient, rawKey: string): Promise<ResolvedApiKey | null> {
 	if (!rawKey || !rawKey.startsWith(KEY_PREFIX)) {
 		return null;
 	}
@@ -187,11 +184,7 @@ export async function listApiKeys(supabase: AnySupabaseClient, projectId: string
 }
 
 /** Soft-revoke an API key. */
-export async function revokeApiKey(
-	supabase: AnySupabaseClient,
-	keyId: string,
-	projectId: string
-): Promise<void> {
+export async function revokeApiKey(supabase: AnySupabaseClient, keyId: string, projectId: string): Promise<void> {
 	const { error } = await supabase
 		.from("project_api_keys")
 		.update({ revoked_at: new Date().toISOString() })

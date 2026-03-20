@@ -47,6 +47,23 @@ describe("API Key Generation", () => {
 			const hash2 = hashApiKey("upsk_key_two");
 			expect(hash1).not.toBe(hash2);
 		});
+
+		it("handles empty string input without throwing", () => {
+			const hash = hashApiKey("");
+			expect(hash).toMatch(/^[0-9a-f]{64}$/);
+		});
+
+		it("handles very long input without throwing", () => {
+			const longKey = "upsk_" + "a".repeat(10000);
+			const hash = hashApiKey(longKey);
+			expect(hash).toMatch(/^[0-9a-f]{64}$/);
+		});
+
+		it("treats keys as case-sensitive", () => {
+			const hash1 = hashApiKey("upsk_ABCDEF");
+			const hash2 = hashApiKey("upsk_abcdef");
+			expect(hash1).not.toBe(hash2);
+		});
 	});
 
 	describe("keyDisplayPrefix", () => {
@@ -61,6 +78,19 @@ describe("API Key Generation", () => {
 			expect(prefix.startsWith("upsk_")).toBe(true);
 			expect(prefix.length).toBe(13); // 5 + 8
 			expect(key.startsWith(prefix)).toBe(true);
+		});
+
+		it("handles short key gracefully (returns what is available)", () => {
+			const shortKey = "upsk_ab";
+			const prefix = keyDisplayPrefix(shortKey);
+			// Should return the full short key since it has less than 13 chars
+			expect(prefix).toBe("upsk_ab");
+			expect(prefix.length).toBe(7);
+		});
+
+		it("handles empty string without throwing", () => {
+			const prefix = keyDisplayPrefix("");
+			expect(prefix).toBe("");
 		});
 	});
 });

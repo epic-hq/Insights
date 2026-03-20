@@ -109,7 +109,7 @@ describe("MCP Server Phase 1 Tools", () => {
 			it(`${toolName} input schema can parse minimal input`, () => {
 				const tool = PHASE_1_TOOLS[toolName as keyof typeof PHASE_1_TOOLS];
 				// All Phase 1 tools should accept empty input (context provides project_id)
-				const result = tool.inputSchema.safeParse({});
+				const result = tool.inputSchema?.safeParse({});
 				// It's ok if it fails validation — we just want to confirm the schema exists
 				// and is a Zod schema (has safeParse method)
 				expect(result).toBeDefined();
@@ -170,6 +170,17 @@ describe("MCP Server Phase 2 Tools (CRM Write)", () => {
 			expect(name, `${name} should be snake_case`).toMatch(/^[a-z][a-z0-9_]*$/);
 		}
 	});
+
+	describe("Write tools accept input via schema", () => {
+		for (const toolName of Object.keys(PHASE_2_TOOLS)) {
+			it(`${toolName} input schema responds to safeParse`, () => {
+				const tool = PHASE_2_TOOLS[toolName as keyof typeof PHASE_2_TOOLS];
+				const result = tool.inputSchema?.safeParse({});
+				expect(result).toBeDefined();
+				expect(typeof result?.success).toBe("boolean");
+			});
+		}
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -186,5 +197,16 @@ describe("MCP Server All Tools", () => {
 	it("has no duplicate tool names", () => {
 		const names = Object.keys(ALL_TOOLS);
 		expect(new Set(names).size).toBe(names.length);
+	});
+
+	it("no tools share the same id", () => {
+		const ids = Object.values(ALL_TOOLS).map((t) => t.id);
+		expect(new Set(ids).size).toBe(ids.length);
+	});
+
+	it("all tool descriptions are at least 10 characters long", () => {
+		for (const [name, tool] of Object.entries(ALL_TOOLS)) {
+			expect((tool.description?.length ?? 0) > 10, `Tool ${name} description is too short`).toBe(true);
+		}
 	});
 });
