@@ -1,4 +1,5 @@
 import consola from "consola";
+import { ApiKeyManager } from "~/features/api-keys/components/ApiKeyManager";
 import { motion } from "framer-motion";
 import { Save, Settings2, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -21,6 +22,7 @@ import { Label } from "~/components/ui/label";
 import { Slider } from "~/components/ui/slider";
 import { Textarea } from "~/components/ui/textarea";
 import { getProjectSectionKinds, getProjectSections } from "~/features/projects/db";
+import { listApiKeys } from "~/lib/api-keys.server";
 import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server";
 import type { Database } from "~/types";
 import { createProjectRoutes } from "~/utils/routes.server";
@@ -141,7 +143,11 @@ export async function loader({
 
 	const projectData = extractProjectData(sections ?? []);
 
-	return { project, sections: sections ?? [], kinds, projectData };
+	// Fetch API keys for MCP connections
+	const adminSupabase = createSupabaseAdminClient();
+	const apiKeys = await listApiKeys(adminSupabase, projectId);
+
+	return { project, sections: sections ?? [], kinds, projectData, apiKeys };
 }
 
 export async function action({
@@ -297,7 +303,7 @@ const DEFAULT_THEME_DEDUP = 0.8;
 const DEFAULT_EVIDENCE_LINK = 0.4;
 
 export default function EditProject() {
-	const { project } = useLoaderData<typeof loader>();
+	const { project, apiKeys } = useLoaderData<typeof loader>();
 	const actionData = useActionData<typeof action>();
 
 	// Extract current analysis settings from project_settings JSONB
@@ -425,6 +431,12 @@ export default function EditProject() {
 						</form>
 					</CardContent>
 				</Card>
+
+				{/* API Key Management for MCP Connections */}
+				<ApiKeyManager
+					projectPath={`/a/${project.account_id}/${project.id}`}
+					initialKeys={apiKeys}
+				/>
 
 				<Card className="mt-6 border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20">
 					<CardHeader>
