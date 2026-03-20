@@ -4,7 +4,7 @@
  */
 
 // @vitest-environment node
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock heavy dependencies to avoid loading Supabase, OpenAI, etc.
 vi.mock("../../../lib/supabase/client.server", () => ({
@@ -22,25 +22,24 @@ vi.mock("consola", () => ({
 	},
 }));
 
+import { fetchEvidenceTool } from "../fetch-evidence";
+import { fetchInterviewContextTool } from "../fetch-interview-context";
+import { fetchPeopleDetailsTool } from "../fetch-people-details";
+import { fetchPersonasTool } from "../fetch-personas";
+import { fetchProjectStatusContextTool } from "../fetch-project-status-context";
+import { fetchSegmentsTool } from "../fetch-segments";
+import { fetchSurveysTool } from "../fetch-surveys";
+import { fetchThemesTool } from "../fetch-themes";
+import { manageAnnotationsTool } from "../manage-annotations";
+import { managePeopleTool } from "../manage-people";
+import { createTaskTool, deleteTaskTool, updateTaskTool } from "../manage-tasks";
+import { markTaskCompleteTool } from "../mark-task-complete";
+import { searchSurveyResponsesTool } from "../search-survey-responses";
 // Phase 1 tool imports
 import { semanticSearchEvidenceTool } from "../semantic-search-evidence";
-import { fetchEvidenceTool } from "../fetch-evidence";
-import { fetchThemesTool } from "../fetch-themes";
-import { fetchPeopleDetailsTool } from "../fetch-people-details";
-import { fetchSurveysTool } from "../fetch-surveys";
-import { searchSurveyResponsesTool } from "../search-survey-responses";
-import { fetchInterviewContextTool } from "../fetch-interview-context";
-import { fetchPersonasTool } from "../fetch-personas";
-import { fetchSegmentsTool } from "../fetch-segments";
 import { semanticSearchPeopleTool } from "../semantic-search-people";
-import { fetchProjectStatusContextTool } from "../fetch-project-status-context";
-
 // Phase 2 tool imports
 import { upsertPersonTool } from "../upsert-person";
-import { managePeopleTool } from "../manage-people";
-import { createTaskTool, updateTaskTool, deleteTaskTool } from "../manage-tasks";
-import { markTaskCompleteTool } from "../mark-task-complete";
-import { manageAnnotationsTool } from "../manage-annotations";
 
 const PHASE_1_TOOLS = {
 	semantic_search_evidence: semanticSearchEvidenceTool,

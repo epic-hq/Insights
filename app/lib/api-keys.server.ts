@@ -82,7 +82,7 @@ export async function createApiKey(
 		scopes?: string[];
 		createdBy?: string | null;
 		expiresAt?: string | null;
-	},
+	}
 ): Promise<GeneratedApiKey> {
 	const rawKey = generateRawApiKey();
 	const keyHash = hashApiKey(rawKey);
@@ -114,7 +114,7 @@ export async function createApiKey(
 /** Resolve a raw API key to its project/account context. Returns null if invalid/revoked/expired. */
 export async function resolveApiKey(
 	supabase: SupabaseClient<Database>,
-	rawKey: string,
+	rawKey: string
 ): Promise<ResolvedApiKey | null> {
 	if (!rawKey || !rawKey.startsWith(KEY_PREFIX)) {
 		return null;
@@ -160,13 +160,12 @@ export async function resolveApiKey(
 }
 
 /** List active (non-revoked) API keys for a project. Never returns the hash. */
-export async function listApiKeys(
-	supabase: SupabaseClient<Database>,
-	projectId: string,
-): Promise<ApiKeyRecord[]> {
+export async function listApiKeys(supabase: SupabaseClient<Database>, projectId: string): Promise<ApiKeyRecord[]> {
 	const { data, error } = await supabase
 		.from("project_api_keys")
-		.select("id, account_id, project_id, name, key_prefix, scopes, last_used_at, expires_at, created_at, created_by, revoked_at")
+		.select(
+			"id, account_id, project_id, name, key_prefix, scopes, last_used_at, expires_at, created_at, created_by, revoked_at"
+		)
 		.eq("project_id", projectId)
 		.is("revoked_at", null)
 		.order("created_at", { ascending: false });
@@ -183,7 +182,7 @@ export async function listApiKeys(
 export async function revokeApiKey(
 	supabase: SupabaseClient<Database>,
 	keyId: string,
-	projectId: string,
+	projectId: string
 ): Promise<void> {
 	const { error } = await supabase
 		.from("project_api_keys")

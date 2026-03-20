@@ -76,13 +76,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		if (!parsed.success) {
 			return Response.json(
 				{ ok: false, error: parsed.error.issues[0]?.message ?? "Validation failed" },
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 
-		const scopes = parsed.data.scopes
-			? parsed.data.scopes.split(",").map((s) => s.trim())
-			: ["read"];
+		const scopes = parsed.data.scopes ? parsed.data.scopes.split(",").map((s) => s.trim()) : ["read"];
 
 		const { rawKey, record } = await createApiKey(supabase, {
 			accountId,
@@ -104,7 +102,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		if (!parsed.success) {
 			return Response.json(
 				{ ok: false, error: parsed.error.issues[0]?.message ?? "Validation failed" },
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 

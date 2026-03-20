@@ -25,33 +25,29 @@
 
 import { MCPServer } from "@mastra/mcp";
 import consola from "consola";
-
-// Phase 1: Intelligence Read Tools
-import { semanticSearchEvidenceTool } from "./tools/semantic-search-evidence";
-import { fetchEvidenceTool } from "./tools/fetch-evidence";
-import { fetchThemesTool } from "./tools/fetch-themes";
-import { fetchPeopleDetailsTool } from "./tools/fetch-people-details";
-import { fetchSurveysTool } from "./tools/fetch-surveys";
-import { searchSurveyResponsesTool } from "./tools/search-survey-responses";
-import { fetchInterviewContextTool } from "./tools/fetch-interview-context";
-import { fetchPersonasTool } from "./tools/fetch-personas";
-import { fetchSegmentsTool } from "./tools/fetch-segments";
-import { semanticSearchPeopleTool } from "./tools/semantic-search-people";
-import { fetchProjectStatusContextTool } from "./tools/fetch-project-status-context";
-
-// Phase 2: CRM Write Tools
-import { upsertPersonTool } from "./tools/upsert-person";
-import { managePeopleTool } from "./tools/manage-people";
-import { createTaskTool, updateTaskTool, deleteTaskTool } from "./tools/manage-tasks";
-import { markTaskCompleteTool } from "./tools/mark-task-complete";
-import { manageAnnotationsTool } from "./tools/manage-annotations";
-
-// Workflows
-import { dailyBriefWorkflow } from "./workflows/daily-brief";
-
 // Auth
 import { resolveApiKey } from "../lib/api-keys.server";
 import { createSupabaseAdminClient } from "../lib/supabase/client.server";
+import { fetchEvidenceTool } from "./tools/fetch-evidence";
+import { fetchInterviewContextTool } from "./tools/fetch-interview-context";
+import { fetchPeopleDetailsTool } from "./tools/fetch-people-details";
+import { fetchPersonasTool } from "./tools/fetch-personas";
+import { fetchProjectStatusContextTool } from "./tools/fetch-project-status-context";
+import { fetchSegmentsTool } from "./tools/fetch-segments";
+import { fetchSurveysTool } from "./tools/fetch-surveys";
+import { fetchThemesTool } from "./tools/fetch-themes";
+import { manageAnnotationsTool } from "./tools/manage-annotations";
+import { managePeopleTool } from "./tools/manage-people";
+import { createTaskTool, deleteTaskTool, updateTaskTool } from "./tools/manage-tasks";
+import { markTaskCompleteTool } from "./tools/mark-task-complete";
+import { searchSurveyResponsesTool } from "./tools/search-survey-responses";
+// Phase 1: Intelligence Read Tools
+import { semanticSearchEvidenceTool } from "./tools/semantic-search-evidence";
+import { semanticSearchPeopleTool } from "./tools/semantic-search-people";
+// Phase 2: CRM Write Tools
+import { upsertPersonTool } from "./tools/upsert-person";
+// Workflows
+import { dailyBriefWorkflow } from "./workflows/daily-brief";
 
 // ---------------------------------------------------------------------------
 // Phase 1 tool registry
@@ -163,7 +159,9 @@ export async function startMCPServer() {
 	}
 
 	await server.startStdio();
-	consola.info(`[mcp-server] UpSight Intelligence started on stdio (${Object.keys(allTools).length} tools: ${Object.keys(PHASE_1_TOOLS).length} read + ${Object.keys(PHASE_2_TOOLS).length} write)`);
+	consola.info(
+		`[mcp-server] UpSight Intelligence started on stdio (${Object.keys(allTools).length} tools: ${Object.keys(PHASE_1_TOOLS).length} read + ${Object.keys(PHASE_2_TOOLS).length} write)`
+	);
 }
 
 // For direct execution

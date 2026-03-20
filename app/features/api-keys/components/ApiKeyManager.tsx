@@ -113,20 +113,14 @@ export function ApiKeyManager({ projectPath, initialKeys }: ApiKeyManagerProps) 
 
 	const handleCreate = useCallback(() => {
 		if (!newKeyName.trim()) return;
-		createFetcher.submit(
-			{ intent: "create", name: newKeyName.trim() },
-			{ method: "POST", action: apiRoute },
-		);
+		createFetcher.submit({ intent: "create", name: newKeyName.trim() }, { method: "POST", action: apiRoute });
 	}, [newKeyName, createFetcher, apiRoute]);
 
 	const handleRevoke = useCallback(
 		(key: ApiKeyRecord) => {
-			revokeFetcher.submit(
-				{ intent: "revoke", keyId: key.id },
-				{ method: "POST", action: apiRoute },
-			);
+			revokeFetcher.submit({ intent: "revoke", keyId: key.id }, { method: "POST", action: apiRoute });
 		},
-		[revokeFetcher, apiRoute],
+		[revokeFetcher, apiRoute]
 	);
 
 	const formatDate = (iso: string | null) => {
@@ -146,9 +140,7 @@ export function ApiKeyManager({ projectPath, initialKeys }: ApiKeyManagerProps) 
 						<Key className="h-5 w-5" />
 						API Keys
 					</CardTitle>
-					<CardDescription>
-						Connect AI agents (Claude Desktop, Cursor, etc.) to this project via MCP.
-					</CardDescription>
+					<CardDescription>Connect AI agents (Claude Desktop, Cursor, etc.) to this project via MCP.</CardDescription>
 				</div>
 				<Button size="sm" onClick={() => setShowCreateDialog(true)} className="gap-1.5">
 					<Plus className="h-4 w-4" />
@@ -158,15 +150,12 @@ export function ApiKeyManager({ projectPath, initialKeys }: ApiKeyManagerProps) 
 
 			<CardContent className="space-y-3">
 				{keys.length === 0 ? (
-					<p className="text-sm text-muted-foreground py-4 text-center">
+					<p className="py-4 text-center text-muted-foreground text-sm">
 						No API keys yet. Generate one to connect an AI agent.
 					</p>
 				) : (
 					keys.map((key) => (
-						<div
-							key={key.id}
-							className="flex items-center justify-between rounded-lg border p-3"
-						>
+						<div key={key.id} className="flex items-center justify-between rounded-lg border p-3">
 							<div className="space-y-1">
 								<div className="flex items-center gap-2">
 									<span className="font-medium text-sm">{key.name}</span>
@@ -174,8 +163,8 @@ export function ApiKeyManager({ projectPath, initialKeys }: ApiKeyManagerProps) 
 										{key.scopes.join(", ")}
 									</Badge>
 								</div>
-								<div className="flex items-center gap-3 text-xs text-muted-foreground">
-									<code className="bg-muted px-1.5 py-0.5 rounded">{key.key_prefix}...</code>
+								<div className="flex items-center gap-3 text-muted-foreground text-xs">
+									<code className="rounded bg-muted px-1.5 py-0.5">{key.key_prefix}...</code>
 									<span>Created {formatDate(key.created_at)}</span>
 									<span>Last used {formatDate(key.last_used_at)}</span>
 								</div>
@@ -195,10 +184,10 @@ export function ApiKeyManager({ projectPath, initialKeys }: ApiKeyManagerProps) 
 
 				{/* MCP Config Hint */}
 				{keys.length > 0 && (
-					<div className="mt-4 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-						<p className="font-medium mb-1">Claude Desktop / Cursor config:</p>
+					<div className="mt-4 rounded-lg bg-muted/50 p-3 text-muted-foreground text-xs">
+						<p className="mb-1 font-medium">Claude Desktop / Cursor config:</p>
 						<pre className="overflow-x-auto whitespace-pre">
-{`{
+							{`{
   "mcpServers": {
     "upsight": {
       "command": "npx",
@@ -233,12 +222,12 @@ export function ApiKeyManager({ projectPath, initialKeys }: ApiKeyManagerProps) 
 
 					{createdRawKey ? (
 						<div className="space-y-4">
-							<div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950 p-4">
-								<p className="text-sm font-medium text-emerald-800 dark:text-emerald-200 mb-2">
+							<div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950">
+								<p className="mb-2 font-medium text-emerald-800 text-sm dark:text-emerald-200">
 									Key created! Copy it now — it won't be shown again.
 								</p>
 								<div className="flex items-center gap-2">
-									<code className="flex-1 text-xs bg-white dark:bg-black rounded px-2 py-1.5 font-mono break-all border">
+									<code className="flex-1 break-all rounded border bg-white px-2 py-1.5 font-mono text-xs dark:bg-black">
 										{createdRawKey}
 									</code>
 									<CopyButton text={createdRawKey} />
@@ -290,9 +279,8 @@ export function ApiKeyManager({ projectPath, initialKeys }: ApiKeyManagerProps) 
 					<AlertDialogHeader>
 						<AlertDialogTitle>Revoke API Key</AlertDialogTitle>
 						<AlertDialogDescription>
-							This will immediately disconnect any AI agents using the key{" "}
-							<strong>{revokeTarget?.name}</strong> ({revokeTarget?.key_prefix}...).
-							This action cannot be undone.
+							This will immediately disconnect any AI agents using the key <strong>{revokeTarget?.name}</strong> (
+							{revokeTarget?.key_prefix}...). This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

@@ -1,5 +1,4 @@
 import consola from "consola";
-import { ApiKeyManager } from "~/features/api-keys/components/ApiKeyManager";
 import { motion } from "framer-motion";
 import { Save, Settings2, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -21,6 +20,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Slider } from "~/components/ui/slider";
 import { Textarea } from "~/components/ui/textarea";
+import { ApiKeyManager } from "~/features/api-keys/components/ApiKeyManager";
 import { getProjectSectionKinds, getProjectSections } from "~/features/projects/db";
 import { listApiKeys } from "~/lib/api-keys.server";
 import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server";
@@ -433,10 +433,7 @@ export default function EditProject() {
 				</Card>
 
 				{/* API Key Management for MCP Connections */}
-				<ApiKeyManager
-					projectPath={`/a/${project.account_id}/${project.id}`}
-					initialKeys={apiKeys}
-				/>
+				<ApiKeyManager projectPath={`/a/${project.account_id}/${project.id}`} initialKeys={apiKeys} />
 
 				<Card className="mt-6 border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20">
 					<CardHeader>
