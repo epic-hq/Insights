@@ -1,5 +1,5 @@
 /**
- * Tests that the MCP server correctly registers all Phase 1 tools.
+ * Tests that the MCP server correctly registers all Phase 1 + Phase 2 tools.
  * Validates tool names, descriptions, and input schemas.
  */
 
@@ -34,6 +34,13 @@ import { fetchPersonasTool } from "../fetch-personas";
 import { fetchSegmentsTool } from "../fetch-segments";
 import { semanticSearchPeopleTool } from "../semantic-search-people";
 import { fetchProjectStatusContextTool } from "../fetch-project-status-context";
+
+// Phase 2 tool imports
+import { upsertPersonTool } from "../upsert-person";
+import { managePeopleTool } from "../manage-people";
+import { createTaskTool, updateTaskTool, deleteTaskTool } from "../manage-tasks";
+import { markTaskCompleteTool } from "../mark-task-complete";
+import { manageAnnotationsTool } from "../manage-annotations";
 
 const PHASE_1_TOOLS = {
 	semantic_search_evidence: semanticSearchEvidenceTool,
@@ -110,5 +117,75 @@ describe("MCP Server Phase 1 Tools", () => {
 				expect(typeof result.success).toBe("boolean");
 			});
 		}
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Phase 2: CRM Write Tools
+// ---------------------------------------------------------------------------
+
+const PHASE_2_TOOLS = {
+	upsert_person: upsertPersonTool,
+	manage_people: managePeopleTool,
+	create_task: createTaskTool,
+	update_task: updateTaskTool,
+	delete_task: deleteTaskTool,
+	mark_task_complete: markTaskCompleteTool,
+	manage_annotations: manageAnnotationsTool,
+};
+
+describe("MCP Server Phase 2 Tools (CRM Write)", () => {
+	it("registers exactly 7 write tools", () => {
+		expect(Object.keys(PHASE_2_TOOLS).length).toBe(7);
+	});
+
+	it("all tools are defined and have an id", () => {
+		for (const [name, tool] of Object.entries(PHASE_2_TOOLS)) {
+			expect(tool, `Tool ${name} should be defined`).toBeDefined();
+			expect(tool.id, `Tool ${name} should have an id`).toBeDefined();
+			expect(typeof tool.id).toBe("string");
+		}
+	});
+
+	it("all tools have descriptions", () => {
+		for (const [name, tool] of Object.entries(PHASE_2_TOOLS)) {
+			expect(tool.description, `Tool ${name} should have a description`).toBeDefined();
+			expect(tool.description!.length, `Tool ${name} description should be non-empty`).toBeGreaterThan(10);
+		}
+	});
+
+	it("all tools have input schemas", () => {
+		for (const [name, tool] of Object.entries(PHASE_2_TOOLS)) {
+			expect(tool.inputSchema, `Tool ${name} should have an inputSchema`).toBeDefined();
+		}
+	});
+
+	it("all tools have execute functions", () => {
+		for (const [name, tool] of Object.entries(PHASE_2_TOOLS)) {
+			expect(typeof tool.execute, `Tool ${name} should have an execute function`).toBe("function");
+		}
+	});
+
+	it("all MCP tool names use snake_case", () => {
+		for (const name of Object.keys(PHASE_2_TOOLS)) {
+			expect(name, `${name} should be snake_case`).toMatch(/^[a-z][a-z0-9_]*$/);
+		}
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Combined: All tools
+// ---------------------------------------------------------------------------
+
+describe("MCP Server All Tools", () => {
+	const ALL_TOOLS = { ...PHASE_1_TOOLS, ...PHASE_2_TOOLS };
+
+	it("registers 18 total tools (11 read + 7 write)", () => {
+		expect(Object.keys(ALL_TOOLS).length).toBe(18);
+	});
+
+	it("has no duplicate tool names", () => {
+		const names = Object.keys(ALL_TOOLS);
+		expect(new Set(names).size).toBe(names.length);
 	});
 });

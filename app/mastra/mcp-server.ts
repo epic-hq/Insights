@@ -1,7 +1,8 @@
 /**
  * UpSight MCP Server — Customer Intelligence for AI Agents
  *
- * Exposes read-only intelligence tools (Phase 1) via stdio transport.
+ * Exposes intelligence read tools (Phase 1) and CRM write tools (Phase 2)
+ * via stdio transport.
  * Authenticates via UPSIGHT_API_KEY env var, resolving project/account context
  * from the hashed key at startup.
  *
@@ -38,6 +39,13 @@ import { fetchSegmentsTool } from "./tools/fetch-segments";
 import { semanticSearchPeopleTool } from "./tools/semantic-search-people";
 import { fetchProjectStatusContextTool } from "./tools/fetch-project-status-context";
 
+// Phase 2: CRM Write Tools
+import { upsertPersonTool } from "./tools/upsert-person";
+import { managePeopleTool } from "./tools/manage-people";
+import { createTaskTool, updateTaskTool, deleteTaskTool } from "./tools/manage-tasks";
+import { markTaskCompleteTool } from "./tools/mark-task-complete";
+import { manageAnnotationsTool } from "./tools/manage-annotations";
+
 // Workflows
 import { dailyBriefWorkflow } from "./workflows/daily-brief";
 
@@ -61,6 +69,20 @@ const PHASE_1_TOOLS = {
 	fetch_segments: fetchSegmentsTool,
 	semantic_search_people: semanticSearchPeopleTool,
 	fetch_project_status: fetchProjectStatusContextTool,
+} as const;
+
+// ---------------------------------------------------------------------------
+// Phase 2 tool registry (CRM write operations)
+// ---------------------------------------------------------------------------
+
+const PHASE_2_TOOLS = {
+	upsert_person: upsertPersonTool,
+	manage_people: managePeopleTool,
+	create_task: createTaskTool,
+	update_task: updateTaskTool,
+	delete_task: deleteTaskTool,
+	mark_task_complete: markTaskCompleteTool,
+	manage_annotations: manageAnnotationsTool,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -109,11 +131,13 @@ export async function startMCPServer() {
 	// Resolve API key context once at startup (stdio = single session)
 	const apiKeyContext = await resolveStdioApiKey();
 
+	const allTools = { ...PHASE_1_TOOLS, ...PHASE_2_TOOLS };
+
 	const server = new MCPServer({
 		id: "upsight-intelligence",
 		name: "UpSight Intelligence",
-		version: "1.0.0",
-		tools: PHASE_1_TOOLS,
+		version: "1.1.0",
+		tools: allTools,
 		workflows: {
 			dailyBriefWorkflow,
 		},
@@ -139,7 +163,7 @@ export async function startMCPServer() {
 	}
 
 	await server.startStdio();
-	consola.info(`[mcp-server] UpSight Intelligence started on stdio (${Object.keys(PHASE_1_TOOLS).length} tools)`);
+	consola.info(`[mcp-server] UpSight Intelligence started on stdio (${Object.keys(allTools).length} tools: ${Object.keys(PHASE_1_TOOLS).length} read + ${Object.keys(PHASE_2_TOOLS).length} write)`);
 }
 
 // For direct execution
