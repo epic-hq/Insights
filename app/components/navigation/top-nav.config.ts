@@ -227,6 +227,6 @@ export const TOP_NAV_UTILITY_ITEMS: TopNavItem[] = [
 		key: "settings",
 		title: "Settings",
 		icon: Settings,
-		to: (routes) => routes.projects.setup(),
+		to: (routes) => routes.settings(),
 	},
 ];
