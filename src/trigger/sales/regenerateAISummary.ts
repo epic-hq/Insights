@@ -14,6 +14,33 @@ type Payload = {
   computedBy?: string | null;
 };
 
+type ConversationTakeaways = {
+  value_synopsis?: string | null;
+  critical_next_step?: string | null;
+  future_improvement?: string | null;
+  supporting_evidence_ids?: string[] | null;
+};
+
+type SalesLensDataRow = {
+  payload?: {
+    frameworks?: Array<{
+      name?: string | null;
+      slots?: Array<{
+        slot?: string | null;
+        label?: string | null;
+        textValue?: string | null;
+        summary?: string | null;
+      }> | null;
+    }> | null;
+    entities?: {
+      stakeholders?: Array<{
+        displayName?: string | null;
+        role?: string | null;
+      }> | null;
+    } | null;
+  } | null;
+};
+
 /**
  * Regenerate AI summary (conversation takeaways) for an interview.
  * Can be called with optional custom instructions to guide the AI's analysis.
@@ -87,12 +114,13 @@ export const regenerateAISummaryTask = task({
       : null;
 
     // Fetch sales lens data for framework summaries
-    const { data: salesLensData } = await client
+    const { data: rawSalesLensData } = await (client as any)
       .from("sales_lens_data")
       .select("payload")
       .eq("source_id", interviewId)
       .eq("source_kind", "interview")
       .maybeSingle();
+    const salesLensData = (rawSalesLensData ?? null) as SalesLensDataRow | null;
 
     const extraction = salesLensData?.payload || {};
 
@@ -172,10 +200,10 @@ export const regenerateAISummaryTask = task({
     );
     const billingCtx = systemBillingContext(
       interview.account_id,
-      "sales_takeaways",
+      "interview_analysis",
       interview.project_id || undefined,
     );
-    const { result: takeaways } = await runBamlWithBilling(
+    const { result } = await runBamlWithBilling(
       billingCtx,
       {
         functionName: "ExtractConversationTakeaways",
@@ -206,6 +234,7 @@ export const regenerateAISummaryTask = task({
       },
       `interview:${interviewId}:regenerate-summary`,
     );
+    const takeaways = result as ConversationTakeaways;
 
     consola.info(`[regenerateAISummary] BAML extraction completed`);
 
@@ -228,7 +257,7 @@ export const regenerateAISummaryTask = task({
         future_improvement: takeaways.future_improvement?.substring(0, 100),
         supporting_evidence_count:
           takeaways.supporting_evidence_ids?.length || 0,
-        supporting_evidence_ids: takeaways.supporting_evidence_ids?.map((id) =>
+        supporting_evidence_ids: takeaways.supporting_evidence_ids?.map((id: string) =>
           id.substring(0, 8),
         ),
       },

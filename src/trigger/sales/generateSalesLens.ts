@@ -16,6 +16,13 @@ type Payload = {
   computedBy?: string | null;
 };
 
+type ConversationTakeaways = {
+  value_synopsis?: string | null;
+  critical_next_step?: string | null;
+  future_improvement?: string | null;
+  supporting_evidence_ids?: string[] | null;
+};
+
 /**
  * Helper function to generate and store conversation takeaways
  */
@@ -161,10 +168,10 @@ async function generateConversationTakeaways(
     );
     const billingCtx = systemBillingContext(
       extraction.accountId,
-      "sales_takeaways",
+      "interview_analysis",
       extraction.projectId || undefined,
     );
-    const { result: takeaways } = await runBamlWithBilling(
+    const { result } = await runBamlWithBilling(
       billingCtx,
       {
         functionName: "ExtractConversationTakeaways",
@@ -194,6 +201,7 @@ async function generateConversationTakeaways(
       },
       `interview:${interviewId}:conversation-takeaways`,
     );
+    const takeaways = result as ConversationTakeaways;
 
     consola.info(`[generateConversationTakeaways] BAML extraction completed`);
 
@@ -212,7 +220,7 @@ async function generateConversationTakeaways(
         future_improvement: takeaways.future_improvement?.substring(0, 100),
         supporting_evidence_count:
           takeaways.supporting_evidence_ids?.length || 0,
-        supporting_evidence_ids: takeaways.supporting_evidence_ids?.map((id) =>
+        supporting_evidence_ids: takeaways.supporting_evidence_ids?.map((id: string) =>
           id.substring(0, 8),
         ),
       },
@@ -267,7 +275,7 @@ export const generateSalesLensTask = task({
         `[generateSalesLensTask] Using BAML-based extraction for ${payload.interviewId}`,
       );
       extraction = await buildSalesLensFromEvidence(
-        client,
+        client as unknown as Parameters<typeof buildSalesLensFromEvidence>[0],
         payload.interviewId,
       );
 
@@ -313,7 +321,7 @@ export const generateSalesLensTask = task({
       );
 
       extraction = await buildInitialSalesLensExtraction(
-        client,
+        client as unknown as Parameters<typeof buildInitialSalesLensExtraction>[0],
         payload.interviewId,
       );
       method = "heuristic";
