@@ -361,7 +361,7 @@ export default await createHonoServer({
 
       return mcpServer.startHonoSSE({
         url,
-        ssePath: "/mcp/sse",
+        ssePath: "/mcp",
         messagePath: "/mcp/message",
         context: c,
       });

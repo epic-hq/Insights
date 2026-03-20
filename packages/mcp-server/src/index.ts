@@ -41,7 +41,7 @@ if (!API_KEY) {
 
 async function main() {
   // Connect to the hosted UpSight MCP server over SSE
-  const sseUrl = new URL("/mcp/sse", UPSIGHT_BASE_URL);
+  const sseUrl = new URL("/mcp", UPSIGHT_BASE_URL);
   const sseTransport = new SSEClientTransport(sseUrl, {
     requestInit: {
       headers: {

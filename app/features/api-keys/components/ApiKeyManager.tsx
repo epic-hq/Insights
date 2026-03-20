@@ -233,7 +233,7 @@ export function ApiKeyManager({
               {`{
   "mcpServers": {
     "upsight": {
-      "url": "https://getupsight.com/mcp/sse",
+      "url": "https://getupsight.com/mcp",
       "headers": {
         "Authorization": "Bearer your_key_here"
       }
