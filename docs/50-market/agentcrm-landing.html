@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentCRM.dev — Customer Intelligence for AI Agents</title>
+  <meta name="description" content="Turn customer conversations into searchable, verifiable evidence your AI agents can reason over. Connect via MCP. Cite real quotes, not hallucinations.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+          },
+          colors: {
+            accent: '#00d4ff',
+            surface: {
+              DEFAULT: '#0a0a0a',
+              raised: '#111111',
+              overlay: '#171717',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::selection {
+      background: rgba(0, 212, 255, 0.25);
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #ffffff 0%, #00d4ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .glow {
+      box-shadow: 0 0 40px rgba(0, 212, 255, 0.08);
+    }
+    .tool-card:hover {
+      border-color: rgba(0, 212, 255, 0.3);
+      background: #131313;
+    }
+    .btn-primary:hover {
+      background: #00bfe6;
+      box-shadow: 0 0 24px rgba(0, 212, 255, 0.2);
+    }
+    .btn-secondary:hover {
+      border-color: rgba(0, 212, 255, 0.5);
+      color: #00d4ff;
+    }
+    pre code {
+      font-size: 0.85rem;
+      line-height: 1.7;
+    }
+    .fade-edge {
+      mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+    }
+  </style>
+</head>
+
+<body class="bg-surface text-white font-sans antialiased">
+
+  <!-- Nav -->
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-surface/80 backdrop-blur-md border-b border-white/5">
+    <div class="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+      <a href="#" class="font-semibold text-sm tracking-tight">
+        <span class="text-white">AgentCRM</span><span class="text-accent">.dev</span>
+      </a>
+      <div class="flex items-center gap-6">
+        <a href="#tools" class="text-sm text-white/50 hover:text-white transition-colors hidden sm:block">Tools</a>
+        <a href="#pricing" class="text-sm text-white/50 hover:text-white transition-colors hidden sm:block">Pricing</a>
+        <a href="https://docs.agentcrm.dev" class="text-sm text-white/50 hover:text-white transition-colors hidden sm:block">Docs</a>
+        <a href="#cta" class="text-sm font-medium text-surface bg-accent px-4 py-1.5 rounded-md btn-primary transition-all">Get API Key</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="pt-32 pb-20 sm:pt-44 sm:pb-32">
+    <div class="max-w-3xl mx-auto px-6 text-center">
+      <div class="inline-flex items-center gap-2 text-xs font-medium text-accent/80 bg-accent/5 border border-accent/10 rounded-full px-3 py-1 mb-8">
+        <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+        Now in public beta
+      </div>
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
+        Customer intelligence<br>
+        <span class="gradient-text">your agents can reason over</span>
+      </h1>
+      <p class="text-lg sm:text-xl text-white/50 max-w-xl mx-auto mb-10 leading-relaxed">
+        Turn conversations into searchable, verifiable evidence. Connect via MCP. Your agents cite real quotes, not hallucinations.
+      </p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a href="#cta" class="w-full sm:w-auto text-center text-sm font-medium text-surface bg-accent px-6 py-3 rounded-lg btn-primary transition-all">
+          Get Your API Key
+        </a>
+        <a href="#how-it-works" class="w-full sm:w-auto text-center text-sm font-medium text-white/60 border border-white/10 px-6 py-3 rounded-lg btn-secondary transition-all">
+          See How It Works
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Problem -->
+  <section class="py-20 sm:py-28 border-t border-white/5">
+    <div class="max-w-3xl mx-auto px-6">
+      <p class="text-xs font-medium text-accent/70 uppercase tracking-widest mb-4">The problem</p>
+      <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-6">Your agents are flying blind.</h2>
+      <div class="text-white/40 text-lg leading-relaxed space-y-4 max-w-2xl">
+        <p>
+          They have demographic data and intent signals. They know a lead visited your pricing page. But they have <span class="text-white/70">zero memory of what customers actually said</span>.
+        </p>
+        <p>
+          When your SDR agent drafts an email, it guesses. When your CS agent triages a ticket, it starts from scratch. Every conversation is a black box.
+        </p>
+        <p class="text-white/70 font-medium">
+          The industry moved from prompt engineering to context engineering. Your agents need better context.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section id="how-it-works" class="py-20 sm:py-28 border-t border-white/5">
+    <div class="max-w-3xl mx-auto px-6">
+      <p class="text-xs font-medium text-accent/70 uppercase tracking-widest mb-4">How it works</p>
+      <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-14">Three steps to customer memory.</h2>
+
+      <div class="grid gap-10 sm:gap-14">
+        <!-- Step 1 -->
+        <div class="flex gap-5">
+          <div class="flex-none w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent font-mono text-sm font-medium">1</div>
+          <div>
+            <h3 class="font-semibold text-lg mb-1.5">Generate an API key</h3>
+            <p class="text-white/40 leading-relaxed">Sign up, create a project, and get your key. Takes 30 seconds.</p>
+          </div>
+        </div>
+        <!-- Step 2 -->
+        <div class="flex gap-5">
+          <div class="flex-none w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent font-mono text-sm font-medium">2</div>
+          <div>
+            <h3 class="font-semibold text-lg mb-1.5">Connect via MCP</h3>
+            <p class="text-white/40 leading-relaxed">Add the UpSight MCP server to Claude Desktop, Cursor, or any MCP-compatible client. One JSON block.</p>
+          </div>
+        </div>
+        <!-- Step 3 -->
+        <div class="flex gap-5">
+          <div class="flex-none w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent font-mono text-sm font-medium">3</div>
+          <div>
+            <h3 class="font-semibold text-lg mb-1.5">Ask anything about your customers</h3>
+            <p class="text-white/40 leading-relaxed">Search evidence semantically, fetch themes, get person context. Every answer is grounded in real conversations with citations.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Code Snippet -->
+  <section class="py-20 sm:py-28 border-t border-white/5">
+    <div class="max-w-3xl mx-auto px-6">
+      <p class="text-xs font-medium text-accent/70 uppercase tracking-widest mb-4">Quick start</p>
+      <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-8">Add to Claude Desktop in 30 seconds.</h2>
+
+      <div class="bg-surface-raised border border-white/5 rounded-xl glow overflow-hidden">
+        <div class="flex items-center gap-2 px-4 py-3 border-b border-white/5">
+          <div class="flex gap-1.5">
+            <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+          </div>
+          <span class="text-xs text-white/30 font-mono ml-2">claude_desktop_config.json</span>
+        </div>
+        <pre class="p-5 overflow-x-auto"><code class="font-mono text-white/70">{
+  <span class="text-accent/80">"mcpServers"</span>: {
+    <span class="text-accent/80">"upsight"</span>: {
+      <span class="text-accent/80">"command"</span>: <span class="text-green-400/70">"npx"</span>,
+      <span class="text-accent/80">"args"</span>: [<span class="text-green-400/70">"@upsight/mcp-server"</span>],
+      <span class="text-accent/80">"env"</span>: {
+        <span class="text-accent/80">"UPSIGHT_API_KEY"</span>: <span class="text-green-400/70">"your-api-key"</span>
+      }
+    }
+  }
+}</code></pre>
+      </div>
+      <p class="text-sm text-white/30 mt-4">Works with any MCP-compatible client. Claude Desktop, Cursor, Windsurf, and more.</p>
+    </div>
+  </section>
+
+  <!-- Tool Showcase -->
+  <section id="tools" class="py-20 sm:py-28 border-t border-white/5">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="max-w-3xl">
+        <p class="text-xs font-medium text-accent/70 uppercase tracking-widest mb-4">MCP Tools</p>
+        <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-3">11 tools. One connection.</h2>
+        <p class="text-white/40 text-lg mb-12">Every tool returns structured data with source attribution. Your agent always knows where the answer came from.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+
+        <div class="tool-card border border-white/5 rounded-lg p-4 transition-all">
+          <p class="font-mono text-sm text-accent/80 mb-1.5">semantic_search_evidence</p>
+          <p class="text-sm text-white/35">Search customer quotes by meaning, not just keywords.</p>
+        </div>
+
+        <div class="tool-card border border-white/5 rounded-lg p-4 transition-all">
+          <p class="font-mono text-sm text-accent/80 mb-1.5">fetch_themes</p>
+          <p class="text-sm text-white/35">Get clustered patterns across all conversations.</p>
+        </div>
+
+        <div class="tool-card border border-white/5 rounded-lg p-4 transition-all">
+          <p class="font-mono text-sm text-accent/80 mb-1.5">get_person_context</p>
+          <p class="text-sm text-white/35">Full history and evidence for any contact.</p>
+        </div>
+
+        <div class="tool-card border border-white/5 rounded-lg p-4 transition-all">
+          <p class="font-mono text-sm text-accent/80 mb-1.5">list_conversations</p>
+          <p class="text-sm text-white/35">Browse and filter all ingested conversations.</p>
+        </div>
+
+        <div class="tool-card border border-white/5 rounded-lg p-4 transition-all">
+          <p class="font-mono text-sm text-accent/80 mb-1.5">get_conversation_detail</p>
+          <p class="text-sm text-white/35">Transcript, participants, and extracted evidence.</p>
+        </div>
+
+        <div class="tool-card border border-white/5 rounded-lg p-4 transition-all">
+          <p class="font-mono text-sm text-accent/80 mb-1.5">fetch_evidence_by_lens</p>
+          <p class="text-sm text-white/35">Query evidence through structured lenses like objections or feature requests.</p>
+        </div>
+
+        <div class="tool-card border border-white/5 rounded-lg p-4 transition-all">
+          <p class="font-mono text-sm text-accent/80 mb-1.5">get_project_overview</p>
+          <p class="text-sm text-white/35">Summary stats and health of your project.</p>
+        </div>
+
+        <div class="tool-card border border-white/5 rounded-lg p-4 transition-all">
+          <p class="font-mono text-sm text-accent/80 mb-1.5">list_people</p>
+          <p class="text-sm text-white/35">All contacts with personas and conversation counts.</p>
+        </div>
+
+        <div class="tool-card border border-white/5 rounded-lg p-4 transition-all">
+          <p class="font-mono text-sm text-accent/80 mb-1.5">search_people</p>
+          <p class="text-sm text-white/35">Find contacts by name, company, or persona.</p>
+        </div>
+
+        <div class="tool-card border border-white/5 rounded-lg p-4 transition-all">
+          <p class="font-mono text-sm text-accent/80 mb-1.5">get_lens_definitions</p>
+          <p class="text-sm text-white/35">Available analysis frameworks for your project.</p>
+        </div>
+
+        <div class="tool-card border border-white/5 rounded-lg p-4 transition-all">
+          <p class="font-mono text-sm text-accent/80 mb-1.5">get_theme_detail</p>
+          <p class="text-sm text-white/35">Deep dive into a specific theme with supporting evidence.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Who Uses This -->
+  <section class="py-20 sm:py-28 border-t border-white/5">
+    <div class="max-w-3xl mx-auto px-6 text-center">
+      <p class="text-xs font-medium text-accent/70 uppercase tracking-widest mb-4">Compatible with</p>
+      <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-12">Works where your agents already live.</h2>
+
+      <div class="flex flex-wrap items-center justify-center gap-x-10 gap-y-8">
+        <!-- Claude -->
+        <div class="flex flex-col items-center gap-2.5 group">
+          <div class="w-12 h-12 rounded-xl bg-surface-raised border border-white/5 flex items-center justify-center text-white/40 group-hover:text-white/70 transition-colors">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12l2 2 4-4"/></svg>
+          </div>
+          <span class="text-xs text-white/30 font-medium">Claude Desktop</span>
+        </div>
+        <!-- Cursor -->
+        <div class="flex flex-col items-center gap-2.5 group">
+          <div class="w-12 h-12 rounded-xl bg-surface-raised border border-white/5 flex items-center justify-center text-white/40 group-hover:text-white/70 transition-colors">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+          </div>
+          <span class="text-xs text-white/30 font-medium">Cursor</span>
+        </div>
+        <!-- ChatGPT -->
+        <div class="flex flex-col items-center gap-2.5 group">
+          <div class="w-12 h-12 rounded-xl bg-surface-raised border border-white/5 flex items-center justify-center text-white/40 group-hover:text-white/70 transition-colors">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m-7.07-15.07l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+          </div>
+          <span class="text-xs text-white/30 font-medium">ChatGPT</span>
+        </div>
+        <!-- LangChain -->
+        <div class="flex flex-col items-center gap-2.5 group">
+          <div class="w-12 h-12 rounded-xl bg-surface-raised border border-white/5 flex items-center justify-center text-white/40 group-hover:text-white/70 transition-colors">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h4v10H4z"/><path d="M10 4h4v16h-4z"/><path d="M16 9h4v6h-4z"/></svg>
+          </div>
+          <span class="text-xs text-white/30 font-medium">LangChain</span>
+        </div>
+        <!-- OpenAI Agents SDK -->
+        <div class="flex flex-col items-center gap-2.5 group">
+          <div class="w-12 h-12 rounded-xl bg-surface-raised border border-white/5 flex items-center justify-center text-white/40 group-hover:text-white/70 transition-colors">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <span class="text-xs text-white/30 font-medium">OpenAI Agents SDK</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="py-20 sm:py-28 border-t border-white/5">
+    <div class="max-w-3xl mx-auto px-6 text-center">
+      <p class="text-xs font-medium text-accent/70 uppercase tracking-widest mb-4">Pricing</p>
+      <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-4">Free during beta.</h2>
+      <p class="text-white/40 text-lg mb-10">Full access to all 11 MCP tools. No credit card required.</p>
+
+      <div class="inline-flex flex-col sm:flex-row gap-4 sm:gap-6 items-center bg-surface-raised border border-white/5 rounded-xl p-6 sm:p-8">
+        <div class="text-left">
+          <div class="flex items-baseline gap-2 mb-1">
+            <span class="text-3xl font-bold">$0</span>
+            <span class="text-white/30 text-sm">/month during beta</span>
+          </div>
+          <p class="text-sm text-white/30">Then starts at $29/mo. Locked in pricing for beta users.</p>
+        </div>
+        <a href="#cta" class="flex-none text-sm font-medium text-surface bg-accent px-6 py-3 rounded-lg btn-primary transition-all whitespace-nowrap">
+          Start Free
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section id="cta" class="py-24 sm:py-32 border-t border-white/5">
+    <div class="max-w-3xl mx-auto px-6 text-center">
+      <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
+        Give your agents<br>
+        <span class="gradient-text">customer memory.</span>
+      </h2>
+      <p class="text-white/40 text-lg mb-10 max-w-lg mx-auto">
+        Stop guessing what customers said. Start citing what they actually told you.
+      </p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a href="mailto:hello@agentcrm.dev?subject=API%20Key%20Request" class="w-full sm:w-auto text-center text-sm font-medium text-surface bg-accent px-8 py-3.5 rounded-lg btn-primary transition-all">
+          Get Your API Key
+        </a>
+        <a href="https://docs.agentcrm.dev" class="w-full sm:w-auto text-center text-sm font-medium text-white/60 border border-white/10 px-8 py-3.5 rounded-lg btn-secondary transition-all">
+          Read the Docs
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/5 py-10">
+    <div class="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="font-semibold text-sm">
+          <span class="text-white">AgentCRM</span><span class="text-accent">.dev</span>
+        </span>
+        <span class="text-xs text-white/20">by UpSight</span>
+      </div>
+      <div class="flex items-center gap-6 text-sm text-white/30">
+        <a href="https://docs.agentcrm.dev" class="hover:text-white/60 transition-colors">Docs</a>
+        <a href="mailto:hello@agentcrm.dev" class="hover:text-white/60 transition-colors">Contact</a>
+        <a href="https://github.com/upsight" class="hover:text-white/60 transition-colors">GitHub</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
