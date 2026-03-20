@@ -176,6 +176,9 @@ const routes = [
 				route("api/evidence/semantic-search", "./routes/api.evidence.semantic-search.tsx"),
 				route("api/merge-people", "./routes/api.merge-people.tsx"),
 
+				// API key management (project-scoped)
+				route("api/api-keys", "./features/api-keys/api/manage.tsx"),
+
 				// Test routes (project-scoped, need project context)
 				route("test/gen-ui", "./routes/test.gen-ui.tsx"),
 			]),

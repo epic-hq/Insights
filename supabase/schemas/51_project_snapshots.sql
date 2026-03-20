@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS project_snapshots (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  account_id uuid NOT NULL REFERENCES accounts.accounts(id) ON DELETE CASCADE,
   snapshot_date date NOT NULL DEFAULT CURRENT_DATE,
   data jsonb NOT NULL DEFAULT '{}',
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -18,8 +18,10 @@ ALTER TABLE project_snapshots ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their project snapshots"
   ON project_snapshots FOR SELECT
   USING (
-    account_id IN (
-      SELECT account_id FROM account_user WHERE user_id = auth.uid()
+    EXISTS (
+      SELECT 1 FROM accounts.account_user
+      WHERE account_user.account_id = project_snapshots.account_id
+        AND account_user.user_id = auth.uid()
     )
   );
 
