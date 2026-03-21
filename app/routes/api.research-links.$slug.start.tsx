@@ -7,6 +7,7 @@ import type { ActionFunctionArgs } from "react-router";
 import { standardizeSizeRange, syncOrgDataToPersonFacets } from "~/features/people/syncOrgDataToPersonFacets.server";
 import { syncPeopleFieldsToFacets } from "~/features/people/syncPeopleFieldsToFacets.server";
 import { syncTitleToJobTitleFacet } from "~/features/people/syncTitleToFacet.server";
+import { fetchPersonAttributesForBranching } from "~/features/research-links/lib/person-branching-context.server";
 import {
 	ResearchLinkAnonymousStartSchema,
 	ResearchLinkCreatePersonSchema,
@@ -118,6 +119,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	return handleEmailStart(supabase, researchLink, payload);
 }
 
+async function getPersonAttributesOrEmpty(
+	supabase: ReturnType<typeof createSupabaseAdminClient>,
+	personId: string | null | undefined
+) {
+	if (!personId) return {};
+	return fetchPersonAttributesForBranching(supabase, personId);
+}
+
 /**
  * Handle anonymous survey start - no identification required
  */
@@ -151,6 +160,7 @@ async function handleAnonymousStart(
 				responses: existingById.responses ?? {},
 				completed: existingById.completed ?? false,
 				personId: existingById.person_id,
+				personAttributes: await getPersonAttributesOrEmpty(supabase, existingById.person_id),
 				identityMode: "anonymous",
 			});
 		}
@@ -182,6 +192,7 @@ async function handleAnonymousStart(
 		responses: {},
 		completed: false,
 		personId: null,
+		personAttributes: {},
 		identityMode: "anonymous",
 	});
 }
@@ -231,6 +242,7 @@ async function handlePhoneStart(
 				responses: existingById.responses ?? {},
 				completed: existingById.completed ?? false,
 				personId: existingById.person_id,
+				personAttributes: await getPersonAttributesOrEmpty(supabase, existingById.person_id),
 				identityMode: "identified",
 				identityField: "phone",
 			});
@@ -262,6 +274,7 @@ async function handlePhoneStart(
 			responses: existing.responses ?? {},
 			completed: existing.completed ?? false,
 			personId: existing.person_id,
+			personAttributes: await getPersonAttributesOrEmpty(supabase, existing.person_id),
 			identityMode: "identified",
 			identityField: "phone",
 		});
@@ -292,6 +305,7 @@ async function handlePhoneStart(
 		responses: {},
 		completed: false,
 		personId: null,
+		personAttributes: {},
 		identityMode: "identified",
 		identityField: "phone",
 	});
@@ -342,6 +356,7 @@ async function handleEmailStart(
 				responses: existingById.responses ?? {},
 				completed: existingById.completed ?? false,
 				personId: existingById.person_id,
+				personAttributes: await getPersonAttributesOrEmpty(supabase, existingById.person_id),
 				identityMode: "identified",
 				identityField: "email",
 			});
@@ -390,6 +405,7 @@ async function handleEmailStart(
 			responses: existing.responses ?? {},
 			completed: existing.completed ?? false,
 			personId,
+			personAttributes: await getPersonAttributesOrEmpty(supabase, personId),
 			identityMode: "identified",
 			identityField: "email",
 		});
@@ -447,6 +463,7 @@ async function handleEmailStart(
 			responses: {},
 			completed: false,
 			personId: existingPerson.id,
+			personAttributes: await getPersonAttributesOrEmpty(supabase, existingPerson.id),
 			identityMode: "identified",
 			identityField: "email",
 			personProfile: {
@@ -486,6 +503,7 @@ async function handleEmailStart(
 		responses: {},
 		completed: false,
 		personId: null,
+		personAttributes: {},
 		identityMode: "identified",
 		identityField: "email",
 	});
@@ -718,6 +736,7 @@ async function handleCreatePersonAndContinue(
 		responses: response.responses ?? {},
 		completed: response.completed ?? false,
 		personId,
+		personAttributes: await getPersonAttributesOrEmpty(supabase, personId),
 		identityMode: "identified",
 		identityField: "email",
 	});

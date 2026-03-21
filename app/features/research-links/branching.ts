@@ -7,6 +7,8 @@
 
 import consola from "consola";
 import { z } from "zod";
+import type { BranchingContext, ResponseValue } from "./branching-context";
+import { responsesOnlyContext } from "./branching-context";
 import { resolveSectionStartQuestionId } from "./sections";
 
 const ENABLE_BRANCHING_DEBUG = typeof process !== "undefined" && process.env.NODE_ENV !== "production";
@@ -31,14 +33,32 @@ export const ConditionOperatorSchema = z.enum([
 
 export type ConditionOperator = z.infer<typeof ConditionOperatorSchema>;
 
-/**
- * Single condition to evaluate
- */
-export const ConditionSchema = z.object({
+const QuestionConditionSchema = z.object({
+	sourceType: z.literal("question").default("question"),
 	questionId: z.string().min(1),
 	operator: ConditionOperatorSchema,
 	value: z.union([z.string(), z.array(z.string())]).optional(),
 });
+
+const PersonAttributeConditionSchema = z.object({
+	sourceType: z.literal("person_attribute"),
+	attributeKey: z.string().min(1),
+	operator: ConditionOperatorSchema,
+	value: z.union([z.string(), z.array(z.string())]).optional(),
+});
+
+/**
+ * Single condition to evaluate
+ */
+export const ConditionSchema = z.preprocess(
+	(input) => {
+		if (!input || typeof input !== "object" || Array.isArray(input)) return input;
+		const candidate = input as Record<string, unknown>;
+		if (typeof candidate.sourceType === "string") return candidate;
+		return { ...candidate, sourceType: "question" };
+	},
+	z.discriminatedUnion("sourceType", [QuestionConditionSchema, PersonAttributeConditionSchema])
+);
 
 export type Condition = z.infer<typeof ConditionSchema>;
 
@@ -111,19 +131,11 @@ export const QuestionBranchingSchema = z.object({
 
 export type QuestionBranching = z.infer<typeof QuestionBranchingSchema>;
 
-// ============================================================================
-// Response Types
-// ============================================================================
-
-type MatrixResponseValue = Record<string, string | number | null | undefined>;
-
-export type ResponseValue = string | string[] | boolean | MatrixResponseValue | null | undefined;
+type MatrixResponseValue = Extract<ResponseValue, Record<string, string | number | null | undefined>>;
 
 function isMatrixResponseValue(value: ResponseValue): value is MatrixResponseValue {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-
-export type ResponseRecord = Record<string, ResponseValue>;
 
 // ============================================================================
 // Evaluation Functions
@@ -160,10 +172,13 @@ export function hasResponseValue(value: ResponseValue): boolean {
 }
 
 /**
- * Evaluate a single condition against responses
+ * Evaluate a single condition against unified branching context
  */
-export function evaluateCondition(condition: Condition, responses: ResponseRecord): boolean {
-	const answer = responses[condition.questionId];
+export function evaluateCondition(condition: Condition, context: BranchingContext): boolean {
+	const answer =
+		condition.sourceType === "person_attribute"
+			? context.personAttributes[condition.attributeKey]
+			: context.responses[condition.questionId];
 	const expectedValue = condition.value;
 
 	switch (condition.operator) {
@@ -209,11 +224,11 @@ export function evaluateCondition(condition: Condition, responses: ResponseRecor
 /**
  * Evaluate a condition group (AND/OR logic)
  */
-export function evaluateConditionGroup(group: ConditionGroup, responses: ResponseRecord): boolean {
+export function evaluateConditionGroup(group: ConditionGroup, context: BranchingContext): boolean {
 	if (group.logic === "and") {
-		return group.conditions.every((c) => evaluateCondition(c, responses));
+		return group.conditions.every((c) => evaluateCondition(c, context));
 	}
-	return group.conditions.some((c) => evaluateCondition(c, responses));
+	return group.conditions.some((c) => evaluateCondition(c, context));
 }
 
 /**
@@ -221,12 +236,12 @@ export function evaluateConditionGroup(group: ConditionGroup, responses: Respons
  */
 export function evaluateBranchRules(
 	branching: QuestionBranching | null | undefined,
-	responses: ResponseRecord
+	context: BranchingContext
 ): { action: BranchAction; targetQuestionId?: string; targetSectionId?: string; ruleId?: string } | null {
 	if (!branching?.rules?.length) return null;
 
 	for (const rule of branching.rules) {
-		if (evaluateConditionGroup(rule.conditions, responses)) {
+		if (evaluateConditionGroup(rule.conditions, context)) {
 			if (ENABLE_BRANCHING_DEBUG) {
 				consola.debug("[branching] matched rule", {
 					ruleId: rule.id,
@@ -267,10 +282,10 @@ export interface QuestionWithBranching {
 export function getNextQuestionId(
 	currentQuestion: QuestionWithBranching,
 	questions: QuestionWithBranching[],
-	responses: ResponseRecord
+	context: BranchingContext
 ): string | null {
 	// Evaluate branch rules
-	const branchResult = evaluateBranchRules(currentQuestion.branching, responses);
+	const branchResult = evaluateBranchRules(currentQuestion.branching, context);
 
 	if (branchResult) {
 		if (branchResult.action === "end_survey") {
@@ -338,12 +353,12 @@ export function getNextQuestionId(
 export function getNextQuestionIndex(
 	currentIndex: number,
 	questions: QuestionWithBranching[],
-	responses: ResponseRecord
+	context: BranchingContext
 ): number {
 	const currentQuestion = questions[currentIndex];
 	if (!currentQuestion) return questions.length;
 
-	const nextId = getNextQuestionId(currentQuestion, questions, responses);
+	const nextId = getNextQuestionId(currentQuestion, questions, context);
 
 	if (nextId === null) {
 		return questions.length; // End survey
@@ -370,7 +385,7 @@ export function createSkipRule(
 		id: `skip-${questionId}-${value}`.replace(/\s+/g, "-").toLowerCase(),
 		conditions: {
 			logic: "and",
-			conditions: [{ questionId, operator: "equals", value }],
+			conditions: [{ sourceType: "question", questionId, operator: "equals", value }],
 		},
 		action: "skip_to",
 		targetQuestionId,
@@ -386,7 +401,7 @@ export function createEndRule(questionId: string, value: string, label?: string)
 		id: `end-${questionId}-${value}`.replace(/\s+/g, "-").toLowerCase(),
 		conditions: {
 			logic: "and",
-			conditions: [{ questionId, operator: "equals", value }],
+			conditions: [{ sourceType: "question", questionId, operator: "equals", value }],
 		},
 		action: "end_survey",
 		label,
@@ -397,12 +412,12 @@ export function createEndRule(questionId: string, value: string, label?: string)
  * Create an OR condition group
  */
 export function createOrConditions(
-	conditions: Omit<Condition, "operator">[],
+	conditions: Array<{ questionId: string; value?: string | string[] }>,
 	operator: ConditionOperator
 ): ConditionGroup {
 	return {
 		logic: "or",
-		conditions: conditions.map((c) => ({ ...c, operator })),
+		conditions: conditions.map((c) => ({ sourceType: "question", ...c, operator })),
 	};
 }
 
@@ -410,11 +425,14 @@ export function createOrConditions(
  * Create an AND condition group
  */
 export function createAndConditions(
-	conditions: Omit<Condition, "operator">[],
+	conditions: Array<{ questionId: string; value?: string | string[] }>,
 	operator: ConditionOperator
 ): ConditionGroup {
 	return {
 		logic: "and",
-		conditions: conditions.map((c) => ({ ...c, operator })),
+		conditions: conditions.map((c) => ({ sourceType: "question", ...c, operator })),
 	};
 }
+
+export { responsesOnlyContext };
+export type { BranchingContext, ResponseRecord, ResponseValue } from "./branching-context";

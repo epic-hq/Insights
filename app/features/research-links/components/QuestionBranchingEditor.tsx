@@ -16,7 +16,9 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
+import { COMPANY_SIZE_RANGES } from "~/lib/constants/options";
 import type { BranchRule, ConditionOperator, QuestionBranching } from "../branching";
+import { PERSON_ATTRIBUTE_KEYS, type PersonAttributeKey } from "../branching-context";
 import type { ResearchLinkQuestion } from "../schemas";
 import { deriveSurveySections, resolveSectionStartQuestionId } from "../sections";
 
@@ -51,7 +53,11 @@ function consolidateRulesByTarget(rules: BranchRule[]): BranchRule[] {
 			continue;
 		}
 
-		const groupKey = `${rule.action}|${rule.targetQuestionId ?? "end"}|${primaryCondition.questionId}|${primaryCondition.operator}`;
+		const conditionSourceKey =
+			primaryCondition.sourceType === "person_attribute"
+				? `person:${primaryCondition.attributeKey}`
+				: `question:${primaryCondition.questionId}`;
+		const groupKey = `${rule.action}|${rule.targetQuestionId ?? "end"}|${conditionSourceKey}|${primaryCondition.operator}`;
 		const group = mergeGroups.get(groupKey);
 		if (!group) {
 			const initialValue = typeof primaryCondition.value === "string" ? primaryCondition.value : "";
@@ -77,11 +83,21 @@ function consolidateRulesByTarget(rules: BranchRule[]): BranchRule[] {
 			const values = [...group.values];
 			const conditions =
 				values.length > 1
-					? values.map((value) => ({
-							questionId: firstCondition.questionId,
-							operator: firstCondition.operator,
-							value,
-						}))
+					? values.map((value) =>
+							firstCondition.sourceType === "person_attribute"
+								? {
+										sourceType: "person_attribute" as const,
+										attributeKey: firstCondition.attributeKey,
+										operator: firstCondition.operator,
+										value,
+									}
+								: {
+										sourceType: "question" as const,
+										questionId: firstCondition.questionId,
+										operator: firstCondition.operator,
+										value,
+									}
+						)
 					: [firstCondition];
 
 			const rule: BranchRule = {
@@ -98,6 +114,28 @@ function consolidateRulesByTarget(rules: BranchRule[]): BranchRule[] {
 	];
 
 	return consolidatedEntries.sort((a, b) => a.index - b.index).map((entry) => entry.rule);
+}
+
+const PERSON_ATTRIBUTE_LABELS = new Map(PERSON_ATTRIBUTE_KEYS.map((entry) => [entry.key, entry.label] as const));
+const ATTRIBUTE_VALUE_OPTIONS: Partial<Record<PersonAttributeKey, string[]>> = {
+	seniority_level: ["Leadership", "Senior", "Manager", "Mid", "Entry"],
+	icp_band: ["Strong", "Moderate", "Weak"],
+	company_size: COMPANY_SIZE_RANGES.map((option) => option.value),
+	membership_status: ["active", "lapsed", "expired", "trial", "former"],
+};
+
+function getConditionSourceLabel(
+	condition: BranchRule["conditions"]["conditions"][number],
+	allQuestions: ResearchLinkQuestion[]
+) {
+	if (condition.sourceType === "person_attribute") {
+		return PERSON_ATTRIBUTE_LABELS.get(condition.attributeKey) ?? condition.attributeKey;
+	}
+
+	const idx = allQuestions.findIndex((q) => q.id === condition.questionId);
+	if (idx < 0) return "Question";
+	const sourceQuestion = allQuestions[idx];
+	return `Q${idx + 1}: ${sourceQuestion.prompt.slice(0, 30)}${sourceQuestion.prompt.length > 30 ? "…" : ""}`;
 }
 
 export function QuestionBranchingEditor({
@@ -176,6 +214,11 @@ export function QuestionBranchingEditor({
 						prompt: q.prompt,
 						index: idx,
 					})),
+					laterSections: laterSections.map((section) => ({
+						id: section.id,
+						title: section.title,
+						startQuestionId: section.startQuestionId,
+					})),
 				}),
 			});
 
@@ -206,6 +249,7 @@ export function QuestionBranchingEditor({
 		question,
 		currentQuestionOptions,
 		laterQuestions,
+		laterSections,
 		rules,
 		emitBranching,
 	]);
@@ -217,6 +261,7 @@ export function QuestionBranchingEditor({
 				logic: "and",
 				conditions: [
 					{
+						sourceType: "question",
 						questionId: question.id,
 						operator: "equals",
 						value: "",
@@ -254,22 +299,51 @@ export function QuestionBranchingEditor({
 		toast.success(`Consolidated ${rules.length} rules into ${consolidated.length}`);
 	};
 
-	const updateConditionQuestionId = (ruleIndex: number, nextQuestionId: string) => {
+	const updateConditionSource = (ruleIndex: number, nextSourceValue: string) => {
 		const rule = rules[ruleIndex];
 		if (!rule) return;
 		const firstCondition = rule.conditions.conditions[0];
 		if (!firstCondition) return;
 
-		const updatedFirstCondition = {
-			...firstCondition,
-			questionId: nextQuestionId,
-			value: firstCondition.operator === "answered" || firstCondition.operator === "not_answered" ? undefined : "",
-		};
+		const nextCondition = nextSourceValue.startsWith("person:")
+			? {
+					sourceType: "person_attribute" as const,
+					attributeKey: nextSourceValue.slice("person:".length),
+					operator: firstCondition.operator,
+					value: firstCondition.operator === "answered" || firstCondition.operator === "not_answered" ? undefined : "",
+				}
+			: {
+					sourceType: "question" as const,
+					questionId: nextSourceValue.slice("question:".length),
+					operator: firstCondition.operator,
+					value: firstCondition.operator === "answered" || firstCondition.operator === "not_answered" ? undefined : "",
+				};
 
 		updateRule(ruleIndex, {
 			conditions: {
 				...rule.conditions,
-				conditions: [updatedFirstCondition, ...rule.conditions.conditions.slice(1)],
+				conditions: [nextCondition, ...rule.conditions.conditions.slice(1)],
+			},
+		});
+	};
+
+	const updateConditionAttributeKey = (ruleIndex: number, nextAttributeKey: string) => {
+		const rule = rules[ruleIndex];
+		if (!rule) return;
+		const firstCondition = rule.conditions.conditions[0];
+		if (!firstCondition || firstCondition.sourceType !== "person_attribute") return;
+
+		updateRule(ruleIndex, {
+			conditions: {
+				...rule.conditions,
+				conditions: [
+					{
+						...firstCondition,
+						attributeKey: nextAttributeKey,
+						value:
+							firstCondition.operator === "answered" || firstCondition.operator === "not_answered" ? undefined : "",
+					},
+				],
 			},
 		});
 	};
@@ -415,7 +489,7 @@ export function QuestionBranchingEditor({
 										parseNlRule();
 									}
 								}}
-								placeholder='e.g. "If sponsor, skip to budget question and probe on ROI"'
+								placeholder='e.g. "If membership status is active, skip to shared closing"'
 								rows={1}
 								disabled={isParsing}
 								className="min-h-[2.25rem] resize-none pr-20 text-xs"
@@ -433,7 +507,7 @@ export function QuestionBranchingEditor({
 							</Button>
 						</div>
 						<p className="text-[10px] text-muted-foreground">
-							Plain English works here. Example: If role is founder, go to the founder section.
+							Plain English works here. Example: If membership status is active, skip to Shared closing.
 						</p>
 						{parseError && <p className="text-[10px] text-destructive">{parseError}</p>}
 						{rules.length > 1 && (
@@ -461,12 +535,22 @@ export function QuestionBranchingEditor({
 						const isAiGenerated = rule.source === "ai_generated";
 						const hasSummary = Boolean(rule.summary);
 						const hasGuidance = Boolean(rule.guidance);
-						const conditionQuestion = condition
-							? (allQuestions.find((q) => q.id === condition.questionId) ?? question)
-							: question;
+						const conditionQuestion =
+							condition && condition.sourceType === "question"
+								? (allQuestions.find((q) => q.id === condition.questionId) ?? question)
+								: question;
 						const conditionQuestionHasOptions =
 							conditionQuestion.type === "single_select" || conditionQuestion.type === "multi_select";
 						const conditionQuestionOptions = conditionQuestion.options ?? [];
+						const conditionSourceValue = condition
+							? condition.sourceType === "person_attribute"
+								? `person:${condition.attributeKey}`
+								: `question:${condition.questionId}`
+							: `question:${question.id}`;
+						const personAttributeValueOptions =
+							condition?.sourceType === "person_attribute"
+								? (ATTRIBUTE_VALUE_OPTIONS[condition.attributeKey as PersonAttributeKey] ?? [])
+								: [];
 
 						return (
 							<div key={rule.id} className="space-y-1.5 rounded-lg border border-border/40 bg-muted/20 p-2">
@@ -504,23 +588,49 @@ export function QuestionBranchingEditor({
 								) : (
 									/* Manual rule — structured dropdowns */
 									<div className="flex flex-wrap items-center gap-1.5 text-xs">
-										<span className="text-muted-foreground">If answer</span>
-										<Select
-											value={condition?.questionId ?? question.id}
-											onValueChange={(v) => updateConditionQuestionId(ruleIndex, v)}
-										>
+										<span className="text-muted-foreground">If</span>
+										<Select value={conditionSourceValue} onValueChange={(v) => updateConditionSource(ruleIndex, v)}>
 											<SelectTrigger className="h-6 min-w-[110px] max-w-[220px] text-xs">
-												<SelectValue placeholder="Source question" />
+												<SelectValue placeholder="Condition source" />
 											</SelectTrigger>
 											<SelectContent>
+												<div className="px-2 py-1 font-medium text-[10px] text-muted-foreground uppercase tracking-wide">
+													Person attributes
+												</div>
+												{PERSON_ATTRIBUTE_KEYS.map((entry) => (
+													<SelectItem key={`person-${entry.key}`} value={`person:${entry.key}`}>
+														{entry.label}
+													</SelectItem>
+												))}
+												<div className="px-2 py-1 font-medium text-[10px] text-muted-foreground uppercase tracking-wide">
+													Question answers
+												</div>
 												{conditionSourceQuestions.map((q, idx) => (
-													<SelectItem key={q.id} value={q.id}>
+													<SelectItem key={q.id} value={`question:${q.id}`}>
 														Q{idx + 1}: {q.prompt.slice(0, 30)}
 														{q.prompt.length > 30 ? "…" : ""}
 													</SelectItem>
 												))}
 											</SelectContent>
 										</Select>
+
+										{condition?.sourceType === "person_attribute" && (
+											<Select
+												value={condition.attributeKey}
+												onValueChange={(v) => updateConditionAttributeKey(ruleIndex, v)}
+											>
+												<SelectTrigger className="h-6 min-w-[120px] max-w-[220px] text-xs">
+													<SelectValue placeholder="Person attribute" />
+												</SelectTrigger>
+												<SelectContent>
+													{PERSON_ATTRIBUTE_KEYS.map((entry) => (
+														<SelectItem key={`attribute-${entry.key}`} value={entry.key}>
+															{entry.label}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										)}
 
 										<Select
 											value={condition?.operator ?? "equals"}
@@ -533,7 +643,7 @@ export function QuestionBranchingEditor({
 												<SelectItem value="equals">equals</SelectItem>
 												<SelectItem value="not_equals">doesn't equal</SelectItem>
 												<SelectItem value="contains">contains</SelectItem>
-												{conditionQuestionHasOptions && (
+												{condition?.sourceType !== "person_attribute" && conditionQuestionHasOptions && (
 													<>
 														<SelectItem value="selected">includes</SelectItem>
 														<SelectItem value="not_selected">excludes</SelectItem>
@@ -546,7 +656,23 @@ export function QuestionBranchingEditor({
 
 										{condition?.operator !== "answered" &&
 											condition?.operator !== "not_answered" &&
-											(conditionQuestionHasOptions && conditionQuestionOptions.length > 0 ? (
+											(condition?.sourceType === "person_attribute" && personAttributeValueOptions.length > 0 ? (
+												<Select
+													value={(condition?.value as string) ?? ""}
+													onValueChange={(v) => updateConditionValue(ruleIndex, v)}
+												>
+													<SelectTrigger className="h-6 min-w-[100px] max-w-[180px] text-xs">
+														<SelectValue placeholder="Select value" />
+													</SelectTrigger>
+													<SelectContent>
+														{personAttributeValueOptions.map((opt) => (
+															<SelectItem key={opt} value={opt}>
+																{opt}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											) : conditionQuestionHasOptions && conditionQuestionOptions.length > 0 ? (
 												<Select
 													value={(condition?.value as string) ?? ""}
 													onValueChange={(v) => updateConditionValue(ruleIndex, v)}
@@ -566,7 +692,9 @@ export function QuestionBranchingEditor({
 												<Input
 													value={(condition?.value as string) ?? ""}
 													onChange={(e) => updateConditionValue(ruleIndex, e.target.value)}
-													placeholder="value"
+													placeholder={
+														condition ? `${getConditionSourceLabel(condition, allQuestions)} value` : "value"
+													}
 													className="h-6 w-24 text-xs"
 												/>
 											))}
@@ -643,11 +771,20 @@ export function QuestionBranchingEditor({
 									</div>
 								)}
 
+								{!hasSummary && condition?.sourceType === "person_attribute" && (
+									<p className="text-[10px] text-muted-foreground">
+										Using {getConditionSourceLabel(condition, allQuestions)} from the known person profile.
+									</p>
+								)}
+
 								{/* Compact action/target display for AI rules */}
 								{hasSummary && (
 									<div className="flex flex-wrap items-center gap-1 pl-0.5 text-[11px] text-muted-foreground">
 										<span className="rounded bg-muted/50 px-1.5 py-0.5">
-											{condition?.operator} "{condition?.value}"
+											{condition
+												? `${getConditionSourceLabel(condition, allQuestions)} ${condition.operator}`
+												: "condition"}{" "}
+											{typeof condition?.value === "string" ? `"${condition.value}"` : ""}
 										</span>
 										<span>→</span>
 										<span className="rounded bg-muted/50 px-1.5 py-0.5">

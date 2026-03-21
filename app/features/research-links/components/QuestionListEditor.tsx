@@ -37,6 +37,7 @@ import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
 import type { BranchRule } from "../branching";
+import { PERSON_ATTRIBUTE_KEYS } from "../branching-context";
 import type { ResearchLinkQuestion } from "../schemas";
 import { createEmptyQuestion } from "../schemas";
 import { buildSurveySectionGraph } from "../section-graph";
@@ -188,6 +189,8 @@ function formatBranchRuleValue(value: string | string[] | undefined): string {
 	return value?.trim() ?? "";
 }
 
+const PERSON_ATTRIBUTE_LABELS = new Map(PERSON_ATTRIBUTE_KEYS.map((entry) => [entry.key, entry.label] as const));
+
 function getBranchTargetMeta(
 	rule: BranchRule,
 	questions: ResearchLinkQuestion[],
@@ -225,22 +228,26 @@ function getBranchTargetMeta(
 function formatRuleConditionForGrouping(rule: BranchRule): string {
 	if (rule.conditions.conditions.length === 0) return "otherwise";
 	const parts = rule.conditions.conditions.map((condition) => {
+		const sourceLabel =
+			condition.sourceType === "person_attribute"
+				? (PERSON_ATTRIBUTE_LABELS.get(condition.attributeKey) ?? condition.attributeKey)
+				: "Answer";
 		const value = formatBranchRuleValue(condition.value);
 		switch (condition.operator) {
 			case "equals":
 			case "selected":
-				return value ? `"${value}"` : "selected";
+				return value ? `${sourceLabel} = "${value}"` : `${sourceLabel} selected`;
 			case "not_equals":
 			case "not_selected":
-				return value ? `not "${value}"` : "not selected";
+				return value ? `${sourceLabel} ≠ "${value}"` : `${sourceLabel} not selected`;
 			case "contains":
-				return value ? `contains "${value}"` : "contains";
+				return value ? `${sourceLabel} contains "${value}"` : `${sourceLabel} contains`;
 			case "not_contains":
-				return value ? `does not contain "${value}"` : "does not contain";
+				return value ? `${sourceLabel} does not contain "${value}"` : `${sourceLabel} does not contain`;
 			case "answered":
-				return "answered";
+				return `${sourceLabel} answered`;
 			case "not_answered":
-				return "not answered";
+				return `${sourceLabel} not answered`;
 			default:
 				return condition.operator;
 		}
@@ -363,7 +370,9 @@ function cleanupBranchingAfterQuestionDelete(
 			if (!question.branching) return question;
 			const cleanedRules = question.branching.rules.filter((rule) => {
 				if (rule.targetQuestionId === deletedQuestionId) return false;
-				if (rule.conditions.conditions.some((c) => c.questionId === deletedQuestionId)) return false;
+				if (rule.conditions.conditions.some((c) => c.sourceType === "question" && c.questionId === deletedQuestionId)) {
+					return false;
+				}
 				return true;
 			});
 			const cleanedDefaultNext =
@@ -2092,6 +2101,29 @@ export function QuestionListEditor({
 				) : undefined
 			}
 		>
+			{flowSummary.hasBranching && flowSummary.paths.length > 1 && (
+				<div className="mb-2 rounded-md border border-violet-500/20 bg-violet-500/[0.03] p-2">
+					<div className="mb-1 font-medium text-[10px] text-violet-600 uppercase tracking-wide dark:text-violet-300">
+						Path simulation
+					</div>
+					<div className="space-y-1">
+						{flowSummary.paths.map((path) => (
+							<div
+								key={`path-${path.label}-${path.triggerLabel ?? "default"}`}
+								className="flex flex-wrap items-center gap-2 rounded-md border border-violet-500/15 bg-background/50 px-2 py-1 text-[11px]"
+							>
+								<span className="font-medium text-foreground">{path.label}</span>
+								<span className="text-muted-foreground">{path.questionCount} questions</span>
+								<span className="text-muted-foreground">{path.estimatedMinutesLabel}</span>
+								{path.triggerLabel ? (
+									<span className="text-violet-700 dark:text-violet-300">when {path.triggerLabel}</span>
+								) : null}
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+
 			{journeyBlockSummaries.length > 1 && (
 				<div className="mb-2 rounded-md border border-violet-500/20 bg-violet-500/[0.03]">
 					<div className="border-violet-500/15 border-b px-2 py-1 font-medium text-[10px] text-violet-600 uppercase tracking-wide dark:text-violet-300">

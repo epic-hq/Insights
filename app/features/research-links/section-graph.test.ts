@@ -42,7 +42,7 @@ describe("buildSurveySectionGraph", () => {
 							id: "rule-a",
 							conditions: {
 								logic: "or",
-								conditions: [{ questionId: "q1", operator: "equals", value: "Founder" }],
+								conditions: [{ sourceType: "question", questionId: "q1", operator: "equals", value: "Founder" }],
 							},
 							action: "skip_to",
 							targetSectionId: "path_a",
@@ -51,7 +51,7 @@ describe("buildSurveySectionGraph", () => {
 							id: "rule-b",
 							conditions: {
 								logic: "or",
-								conditions: [{ questionId: "q1", operator: "equals", value: "Investor" }],
+								conditions: [{ sourceType: "question", questionId: "q1", operator: "equals", value: "Investor" }],
 							},
 							action: "skip_to",
 							targetSectionId: "path_b",

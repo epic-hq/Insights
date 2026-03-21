@@ -150,9 +150,11 @@ function normalizeBranching(input: unknown) {
 						.map((condition) => {
 							if (!condition || typeof condition !== "object" || Array.isArray(condition)) return null;
 							const candidateCondition = condition as Record<string, unknown>;
+							const sourceType = candidateCondition.sourceType === "person_attribute" ? "person_attribute" : "question";
 							const questionId = toNonEmptyString(candidateCondition.questionId);
+							const attributeKey = toNonEmptyString(candidateCondition.attributeKey);
 							const operator = toNonEmptyString(candidateCondition.operator);
-							if (!questionId || !operator) return null;
+							if (!(sourceType === "person_attribute" ? attributeKey : questionId) || !operator) return null;
 							if (
 								![
 									"equals",
@@ -174,11 +176,11 @@ function normalizeBranching(input: unknown) {
 									: Array.isArray(rawValue)
 										? rawValue.filter((entry): entry is string => typeof entry === "string")
 										: undefined;
-							return { questionId, operator, value };
+							return sourceType === "person_attribute"
+								? { sourceType, attributeKey, operator, value }
+								: { sourceType, questionId, operator, value };
 						})
-						.filter((condition): condition is { questionId: string; operator: string; value?: string | string[] } =>
-							Boolean(condition)
-						)
+						.filter(Boolean)
 				: [];
 			if (conditions.length === 0) return null;
 
@@ -214,7 +216,20 @@ function normalizeBranching(input: unknown) {
 				id: string;
 				conditions: {
 					logic: "and" | "or";
-					conditions: Array<{ questionId: string; operator: string; value?: string | string[] }>;
+					conditions: Array<
+						| {
+								sourceType: "question";
+								questionId: string;
+								operator: string;
+								value?: string | string[];
+						  }
+						| {
+								sourceType: "person_attribute";
+								attributeKey: string;
+								operator: string;
+								value?: string | string[];
+						  }
+					>;
 				};
 				action: "skip_to" | "end_survey";
 				targetQuestionId?: string;

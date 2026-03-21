@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import type { BranchRule, QuestionBranching } from "./branching";
+import type { BranchRule } from "./branching";
 import { type SurveyFormFields, serializeToFormData } from "./hooks/useOptimisticForm";
 import type { ResearchLinkQuestion } from "./schemas";
 import { ResearchLinkPayloadSchema } from "./schemas";
@@ -88,7 +88,7 @@ function makeRule(overrides: Partial<BranchRule> = {}): BranchRule {
 		id: overrides.id ?? "rule-1",
 		conditions: overrides.conditions ?? {
 			logic: "and",
-			conditions: [{ questionId: "q1", operator: "equals", value: "yes" }],
+			conditions: [{ sourceType: "question", questionId: "q1", operator: "equals", value: "yes" }],
 		},
 		action: overrides.action ?? "skip_to",
 		targetQuestionId: overrides.targetQuestionId ?? "q3",
@@ -231,7 +231,7 @@ describe("branching cleanup on question delete", () => {
 						id: "rule-ref-q1",
 						conditions: {
 							logic: "and",
-							conditions: [{ questionId: "q1", operator: "equals", value: "yes" }],
+							conditions: [{ sourceType: "question", questionId: "q1", operator: "equals", value: "yes" }],
 						},
 						targetQuestionId: "q3",
 					}),
@@ -254,7 +254,7 @@ describe("branching cleanup on question delete", () => {
 					makeRule({
 						conditions: {
 							logic: "and",
-							conditions: [{ questionId: "q1", operator: "answered" }],
+							conditions: [{ sourceType: "question", questionId: "q1", operator: "answered" }],
 						},
 						targetQuestionId: "q3",
 					}),
@@ -284,7 +284,7 @@ describe("branching cleanup on question delete", () => {
 						id: "rule-keep",
 						conditions: {
 							logic: "and",
-							conditions: [{ questionId: "q2", operator: "equals", value: "A" }],
+							conditions: [{ sourceType: "question", questionId: "q2", operator: "equals", value: "A" }],
 						},
 						targetQuestionId: "q4",
 					}),
@@ -292,7 +292,7 @@ describe("branching cleanup on question delete", () => {
 						id: "rule-remove",
 						conditions: {
 							logic: "and",
-							conditions: [{ questionId: "q3", operator: "equals", value: "B" }],
+							conditions: [{ sourceType: "question", questionId: "q3", operator: "equals", value: "B" }],
 						},
 						targetQuestionId: "q4",
 					}),

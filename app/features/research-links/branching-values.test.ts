@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateCondition, hasResponseValue } from "./branching";
+import { evaluateCondition, hasResponseValue, responsesOnlyContext } from "./branching";
 
 describe("hasResponseValue", () => {
 	it("treats empty multi-select arrays as unanswered", () => {
@@ -27,18 +27,18 @@ describe("evaluateCondition answered/not_answered", () => {
 	it("uses shared answer semantics for arrays", () => {
 		expect(
 			evaluateCondition(
-				{ questionId: "q1", operator: "answered" },
-				{
+				{ sourceType: "question", questionId: "q1", operator: "answered" },
+				responsesOnlyContext({
 					q1: [],
-				}
+				})
 			)
 		).toBe(false);
 		expect(
 			evaluateCondition(
-				{ questionId: "q1", operator: "not_answered" },
-				{
+				{ sourceType: "question", questionId: "q1", operator: "not_answered" },
+				responsesOnlyContext({
 					q1: [],
-				}
+				})
 			)
 		).toBe(true);
 	});
@@ -46,18 +46,18 @@ describe("evaluateCondition answered/not_answered", () => {
 	it("uses shared answer semantics for matrix values", () => {
 		expect(
 			evaluateCondition(
-				{ questionId: "q1", operator: "answered" },
-				{
+				{ sourceType: "question", questionId: "q1", operator: "answered" },
+				responsesOnlyContext({
 					q1: { row_1: "5" },
-				}
+				})
 			)
 		).toBe(true);
 		expect(
 			evaluateCondition(
-				{ questionId: "q1", operator: "not_answered" },
-				{
+				{ sourceType: "question", questionId: "q1", operator: "not_answered" },
+				responsesOnlyContext({
 					q1: { row_1: "" },
-				}
+				})
 			)
 		).toBe(true);
 	});

@@ -13,6 +13,8 @@ import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { getProjectContextGeneric } from "~/features/questions/db";
 import { getNextQuestionId, hasResponseValue, type ResponseRecord } from "~/features/research-links/branching";
+import { buildBranchingContext, type PersonAttributeRecord } from "~/features/research-links/branching-context";
+import { fetchPersonAttributesForBranching } from "~/features/research-links/lib/person-branching-context.server";
 import { type ResearchLinkQuestion, ResearchLinkQuestionSchema } from "~/features/research-links/schemas";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { mastra } from "~/mastra";
@@ -24,7 +26,8 @@ import { mastra } from "~/mastra";
  */
 function computeReachablePath(
 	questions: ResearchLinkQuestion[],
-	responses: ResponseRecord
+	responses: ResponseRecord,
+	personAttributes: PersonAttributeRecord
 ): {
 	answeredPath: Array<{ id: string; prompt: string; answer: string }>;
 	nextQuestion: ResearchLinkQuestion | null;
@@ -34,6 +37,7 @@ function computeReachablePath(
 	const answeredPath: Array<{ id: string; prompt: string; answer: string }> = [];
 	let currentIndex = 0;
 	let surveyComplete = false;
+	const context = buildBranchingContext(responses, questions, personAttributes);
 
 	// Walk through the survey following branching rules
 	while (currentIndex < questions.length) {
@@ -50,7 +54,7 @@ function computeReachablePath(
 			});
 
 			// Evaluate branching to find next question
-			const nextId = getNextQuestionId(question, questions, responses);
+			const nextId = getNextQuestionId(question, questions, context);
 
 			if (nextId === null) {
 				// Branching says end survey
@@ -187,6 +191,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		.maybeSingle();
 
 	const currentResponses = (responseRecord?.responses as Record<string, unknown>) ?? {};
+	const personAttributes = responseRecord?.person_id
+		? await fetchPersonAttributesForBranching(supabase, responseRecord.person_id)
+		: {};
 
 	// Get AI autonomy setting (default to strict)
 	const aiAutonomy = (list.ai_autonomy as "strict" | "moderate" | "adaptive") ?? "strict";
@@ -246,7 +253,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			const missingFields: string[] = [];
 			if (!person.name) missingFields.push("name");
 			if (!person.title) missingFields.push("title");
-			const orgName = (person as any).default_organization?.name;
+			const defaultOrganization = person.default_organization as { name: string | null } | null;
+			const orgName = defaultOrganization?.name;
 			if (!orgName) missingFields.push("company");
 			if (!person.segment) missingFields.push("segment");
 			if (!person.job_function) missingFields.push("job_function");
@@ -316,7 +324,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	// This ensures chat mode respects the same skip logic as form mode
 	const { answeredPath, nextQuestion, remainingQuestions, surveyComplete } = computeReachablePath(
 		questions,
-		currentResponses as ResponseRecord
+		currentResponses as ResponseRecord,
+		personAttributes
 	);
 
 	consola.info("research-link-chat: computed path", {

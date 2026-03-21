@@ -152,20 +152,38 @@ const SURVEY_QUESTION_TYPE_VALUES = [
 	"matrix",
 	"image_select",
 ] as const;
-const surveyBranchConditionDraftSchema = z.object({
-	questionId: z.string().min(1),
-	operator: z.enum([
-		"equals",
-		"not_equals",
-		"contains",
-		"not_contains",
-		"selected",
-		"not_selected",
-		"answered",
-		"not_answered",
-	]),
-	value: z.union([z.string(), z.array(z.string())]).optional(),
-});
+const surveyBranchConditionDraftSchema = z.discriminatedUnion("sourceType", [
+	z.object({
+		sourceType: z.literal("question"),
+		questionId: z.string().min(1),
+		operator: z.enum([
+			"equals",
+			"not_equals",
+			"contains",
+			"not_contains",
+			"selected",
+			"not_selected",
+			"answered",
+			"not_answered",
+		]),
+		value: z.union([z.string(), z.array(z.string())]).optional(),
+	}),
+	z.object({
+		sourceType: z.literal("person_attribute"),
+		attributeKey: z.string().min(1),
+		operator: z.enum([
+			"equals",
+			"not_equals",
+			"contains",
+			"not_contains",
+			"selected",
+			"not_selected",
+			"answered",
+			"not_answered",
+		]),
+		value: z.union([z.string(), z.array(z.string())]).optional(),
+	}),
+]);
 const surveyBranchRuleDraftSchema = z.object({
 	id: z.string().min(1).nullish(),
 	conditions: z.object({
@@ -355,7 +373,7 @@ function applyJourneyArchitectureToDraft(
 			id: `journey-rejoin-${slugifySurveyToken(sectionId)}-to-${slugifySurveyToken(firstSharedClosingSectionId)}`,
 			conditions: {
 				logic: "and" as const,
-				conditions: [{ questionId: lastQuestion.id, operator: "answered" as const }],
+				conditions: [{ sourceType: "question" as const, questionId: lastQuestion.id, operator: "answered" as const }],
 			},
 			action: "skip_to" as const,
 			targetSectionId: firstSharedClosingSectionId,

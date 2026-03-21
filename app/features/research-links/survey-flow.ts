@@ -1,5 +1,6 @@
-import type { BranchRule, ResponseRecord } from "./branching";
+import type { BranchRule } from "./branching";
 import { getNextQuestionId } from "./branching";
+import type { PersonAttributeRecord, ResponseRecord } from "./branching-context";
 import type { ResearchLinkQuestion } from "./schemas";
 import { deriveSurveySections, resolveSectionStartQuestionId } from "./sections";
 
@@ -16,6 +17,7 @@ const QUESTION_SECONDS_BY_TYPE: Record<string, number> = {
 
 export type SurveyPathSummary = {
 	label: string;
+	triggerLabel?: string;
 	questionIds: string[];
 	questionCount: number;
 	estimatedSeconds: number;
@@ -42,10 +44,58 @@ export function formatEstimatedMinutesFromSeconds(totalSeconds: number): string 
 	return `~${Math.max(1, Math.round(totalSeconds / 60))} min`;
 }
 
-function seedResponsesFromRule(rule: BranchRule): ResponseRecord {
+type SeedContext = {
+	responses: ResponseRecord;
+	personAttributes: PersonAttributeRecord;
+};
+
+function formatConditionTriggerLabel(rule: BranchRule): string {
+	if (rule.conditions.conditions.length === 0) return "otherwise";
+	return rule.conditions.conditions
+		.map((condition) => {
+			const sourceLabel =
+				condition.sourceType === "person_attribute" ? condition.attributeKey.replaceAll("_", " ") : "answer";
+			const valueLabel =
+				typeof condition.value === "string"
+					? condition.value
+					: Array.isArray(condition.value)
+						? condition.value.join(", ")
+						: "";
+			switch (condition.operator) {
+				case "equals":
+				case "selected":
+					return `${sourceLabel} is ${valueLabel}`;
+				case "not_equals":
+				case "not_selected":
+					return `${sourceLabel} is not ${valueLabel}`;
+				case "contains":
+					return `${sourceLabel} contains ${valueLabel}`;
+				case "not_contains":
+					return `${sourceLabel} does not contain ${valueLabel}`;
+				case "answered":
+					return `${sourceLabel} is answered`;
+				case "not_answered":
+					return `${sourceLabel} is blank`;
+				default:
+					return sourceLabel;
+			}
+		})
+		.join(rule.conditions.logic === "or" ? " OR " : " AND ");
+}
+
+function seedContextFromRule(rule: BranchRule): SeedContext {
 	const responses: ResponseRecord = {};
+	const personAttributes: PersonAttributeRecord = {};
 	for (const condition of rule.conditions.conditions) {
 		if (typeof condition.value !== "string" || condition.value.trim().length === 0) continue;
+
+		if (condition.sourceType === "person_attribute") {
+			if (condition.operator === "equals" || condition.operator === "contains") {
+				personAttributes[condition.attributeKey] = condition.value;
+			}
+			continue;
+		}
+
 		if (condition.operator === "equals" || condition.operator === "contains") {
 			responses[condition.questionId] = condition.value;
 			continue;
@@ -59,12 +109,12 @@ function seedResponsesFromRule(rule: BranchRule): ResponseRecord {
 			}
 		}
 	}
-	return responses;
+	return { responses, personAttributes };
 }
 
 function simulatePath(
 	questions: ResearchLinkQuestion[],
-	seedResponses: ResponseRecord
+	seedContext: SeedContext
 ): { questionIds: string[]; questionCount: number; estimatedSeconds: number; estimatedMinutesLabel: string } {
 	const activeQuestions = questions.filter(
 		(question): question is ResearchLinkQuestion & { id: string } => !question.hidden && Boolean(question.id)
@@ -76,7 +126,7 @@ function simulatePath(
 	const questionById = new Map(activeQuestions.map((question) => [question.id, question]));
 	const visited: string[] = [];
 	const seen = new Set<string>();
-	const simulatedResponses: ResponseRecord = { ...seedResponses };
+	const simulatedResponses: ResponseRecord = { ...seedContext.responses };
 	let currentQuestion = activeQuestions[0] ?? null;
 	let guard = 0;
 
@@ -87,7 +137,10 @@ function simulatePath(
 			simulatedResponses[currentQuestion.id] =
 				currentQuestion.type === "multi_select" ? ["__simulated__"] : "__simulated__";
 		}
-		const nextId = getNextQuestionId(currentQuestion, activeQuestions, simulatedResponses);
+		const nextId = getNextQuestionId(currentQuestion, activeQuestions, {
+			responses: simulatedResponses,
+			personAttributes: seedContext.personAttributes,
+		});
 		if (!nextId) break;
 		if (seen.has(nextId)) break;
 		currentQuestion = questionById.get(nextId) ?? null;
@@ -109,7 +162,8 @@ function simulatePath(
 
 type DecisionTargetGroup = {
 	label: string;
-	seedResponses: ResponseRecord;
+	triggerLabel: string;
+	seedContext: SeedContext;
 };
 
 function getDecisionTargetGroups(
@@ -144,19 +198,25 @@ function getDecisionTargetGroups(
 		}
 
 		const key = `${rule.action}:${targetQuestionId ?? "end"}:${targetLabel}`;
-		const seed = seedResponsesFromRule(rule);
+		const seed = seedContextFromRule(rule);
 		const existing = groups.get(key);
 		if (!existing) {
 			groups.set(key, {
 				label: targetLabel,
-				seedResponses: seed,
+				triggerLabel: formatConditionTriggerLabel(rule),
+				seedContext: seed,
 			});
 			continue;
 		}
 
-		for (const [questionId, value] of Object.entries(seed)) {
-			if (!(questionId in existing.seedResponses)) {
-				existing.seedResponses[questionId] = value;
+		for (const [questionId, value] of Object.entries(seed.responses)) {
+			if (!(questionId in existing.seedContext.responses)) {
+				existing.seedContext.responses[questionId] = value;
+			}
+		}
+		for (const [attributeKey, value] of Object.entries(seed.personAttributes)) {
+			if (!(attributeKey in existing.seedContext.personAttributes)) {
+				existing.seedContext.personAttributes[attributeKey] = value;
 			}
 		}
 	}
@@ -175,7 +235,8 @@ function getDecisionTargetGroups(
 		if (!groups.has(key)) {
 			groups.set(key, {
 				label: defaultLabel,
-				seedResponses: {},
+				triggerLabel: "otherwise",
+				seedContext: { responses: {}, personAttributes: {} },
 			});
 		}
 	}
@@ -215,16 +276,17 @@ export function summarizeSurveyFlow(questions: ResearchLinkQuestion[]): SurveyFl
 
 	let rawPaths: SurveyPathSummary[] = [];
 	if (!decisionQuestion) {
-		const linearPath = simulatePath(activeQuestions, {});
+		const linearPath = simulatePath(activeQuestions, { responses: {}, personAttributes: {} });
 		rawPaths = [{ label: "Default path", ...linearPath }];
 	} else {
 		const groups = getDecisionTargetGroups(decisionQuestion, activeQuestions);
 		rawPaths = groups.map((group) => ({
 			label: group.label,
-			...simulatePath(activeQuestions, group.seedResponses),
+			triggerLabel: group.triggerLabel,
+			...simulatePath(activeQuestions, group.seedContext),
 		}));
 		if (rawPaths.length === 0) {
-			rawPaths = [{ label: "Default path", ...simulatePath(activeQuestions, {}) }];
+			rawPaths = [{ label: "Default path", ...simulatePath(activeQuestions, { responses: {}, personAttributes: {} }) }];
 		}
 	}
 
@@ -276,7 +338,11 @@ export function formatFlowAverageLabel(summary: SurveyFlowSummary): string {
 export function formatPathBreakdown(summary: SurveyFlowSummary): string {
 	if (summary.paths.length <= 1) return "";
 	return summary.paths
-		.map((path) => `${path.label}: ${path.questionCount}q (${path.estimatedMinutesLabel})`)
+		.map((path) =>
+			path.triggerLabel
+				? `${path.label} [${path.triggerLabel}]: ${path.questionCount}q (${path.estimatedMinutesLabel})`
+				: `${path.label}: ${path.questionCount}q (${path.estimatedMinutesLabel})`
+		)
 		.join(" • ");
 }
 

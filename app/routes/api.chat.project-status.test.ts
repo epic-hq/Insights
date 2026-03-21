@@ -570,8 +570,8 @@ describe("api.chat.project-status", () => {
 									conditions: {
 										logic: "or",
 										conditions: [
-											{ questionId: "q1", operator: "equals", value: "Founder / Co-founder" },
-											{ questionId: "q1", operator: "equals", value: "Investor" },
+											{ sourceType: "question", questionId: "q1", operator: "equals", value: "Founder / Co-founder" },
+											{ sourceType: "question", questionId: "q1", operator: "equals", value: "Investor" },
 										],
 									},
 									action: "skip_to",
@@ -581,7 +581,7 @@ describe("api.chat.project-status", () => {
 									id: "rule-to-b",
 									conditions: {
 										logic: "and",
-										conditions: [{ questionId: "q1", operator: "equals", value: "Service provider" }],
+										conditions: [{ sourceType: "question", questionId: "q1", operator: "equals", value: "Service provider" }],
 									},
 									action: "skip_to",
 									targetSectionId: "section_b",
@@ -595,7 +595,7 @@ describe("api.chat.project-status", () => {
 										id: "rule-a-to-c",
 										conditions: {
 											logic: "and",
-											conditions: [{ questionId: "q1", operator: "answered" }],
+											conditions: [{ sourceType: "question", questionId: "q1", operator: "answered" }],
 										},
 										action: "skip_to",
 										targetSectionId: "section_c",
@@ -609,7 +609,7 @@ describe("api.chat.project-status", () => {
 											id: "rule-b-to-c",
 											conditions: {
 												logic: "and",
-												conditions: [{ questionId: "q1", operator: "answered" }],
+												conditions: [{ sourceType: "question", questionId: "q1", operator: "answered" }],
 											},
 											action: "skip_to",
 											targetSectionId: "section_c",

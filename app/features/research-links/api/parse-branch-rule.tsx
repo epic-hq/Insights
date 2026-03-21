@@ -14,6 +14,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { generateObject } from "ai";
 import type { ActionFunctionArgs } from "react-router";
 import { z } from "zod";
+import { PERSON_ATTRIBUTE_KEYS } from "../branching-context";
 
 const RequestSchema = z.object({
 	input: z.string().min(1, "Describe the skip logic in plain English"),
@@ -30,9 +31,20 @@ const RequestSchema = z.object({
 			})
 		)
 		.default([]),
+	laterSections: z
+		.array(
+			z.object({
+				id: z.string(),
+				title: z.string(),
+				startQuestionId: z.string(),
+			})
+		)
+		.default([]),
 });
 
 const ConditionItemSchema = z.object({
+	sourceType: z.enum(["question", "person_attribute"]).default("question"),
+	attributeKey: z.string().optional(),
 	triggerValue: z
 		.string()
 		.describe("What response triggers this condition — exact option for select, keyword for text"),
@@ -42,6 +54,8 @@ const ConditionItemSchema = z.object({
 });
 
 const ParsedRuleSchema = z.object({
+	sourceType: z.enum(["question", "person_attribute"]).default("question"),
+	attributeKey: z.string().optional(),
 	triggerValue: z.string().describe("Primary trigger value (for single-condition rules or backwards compat)"),
 	operator: z
 		.enum(["equals", "not_equals", "contains", "not_contains", "selected", "not_selected", "answered", "not_answered"])
@@ -57,6 +71,7 @@ const ParsedRuleSchema = z.object({
 		.describe("How to combine conditions: 'and' = all must match, 'or' = any can match"),
 	action: z.enum(["skip_to", "end_survey"]).describe("What to do when triggered"),
 	targetQuestionIndex: z.number().optional().describe("For skip_to: index of the target question in laterQuestions"),
+	targetSectionId: z.string().optional().describe("For skip_to: section id when the rule refers to a later section"),
 	summary: z.string().describe("Human-readable summary, e.g. 'When sponsors respond, skip to budget questions'"),
 	guidance: z
 		.string()
@@ -77,7 +92,8 @@ export async function action({ request }: ActionFunctionArgs) {
 			return { error: "Invalid request", details: parsed.error.issues };
 		}
 
-		const { input, questionId, questionPrompt, questionType, questionOptions, laterQuestions } = parsed.data;
+		const { input, questionId, questionPrompt, questionType, questionOptions, laterQuestions, laterSections } =
+			parsed.data;
 
 		const isSelect = questionType === "single_select" || questionType === "multi_select";
 		const optionsList = questionOptions.length > 0 ? `\nAvailable options: ${questionOptions.join(", ")}` : "";
@@ -85,6 +101,11 @@ export async function action({ request }: ActionFunctionArgs) {
 			laterQuestions.length > 0
 				? `\nQuestions that come after this one:\n${laterQuestions.map((q) => `  [${q.index}] "${q.prompt}"`).join("\n")}`
 				: "";
+		const laterSectionList =
+			laterSections.length > 0
+				? `\nLater sections:\n${laterSections.map((section) => `  [${section.id}] "${section.title}"`).join("\n")}`
+				: "";
+		const personAttributeList = `\nPerson attributes available for branching:\n${PERSON_ATTRIBUTE_KEYS.map((entry) => `- ${entry.key}: ${entry.label}`).join("\n")}`;
 
 		const result = await generateObject({
 			model: anthropic("claude-sonnet-4-20250514"),
@@ -93,13 +114,18 @@ export async function action({ request }: ActionFunctionArgs) {
 
 CURRENT QUESTION:
 "${questionPrompt}"
-Type: ${questionType}${optionsList}${laterQList}
+Type: ${questionType}${optionsList}${laterQList}${laterSectionList}${personAttributeList}
 
 USER'S RULE (plain English):
 "${input}"
 
 TASK:
 Parse this into a structured skip logic rule.
+
+CONDITION SOURCE:
+- Use sourceType="question" when the rule depends on what the respondent answers to the current question.
+- Use sourceType="person_attribute" when the rule depends on known CRM/profile data like membership_status, seniority_level, company_size, industry, or icp_band.
+- When sourceType="person_attribute", set attributeKey to one of the listed person attribute keys.
 
 OPERATOR SELECTION:
 ${
@@ -110,6 +136,7 @@ ${
 - The triggerValue should be a keyword or short phrase to match against.`
 }
 - Use "answered" / "not_answered" if the rule is about whether the question was answered at all.
+- For person attributes, prefer equals/not_equals/contains/not_contains/answered/not_answered.
 
 COMPOUND CONDITIONS:
 If the user describes multiple conditions (e.g. "If sponsor AND selected Enterprise"), use additionalConditions.
@@ -121,7 +148,7 @@ If the user describes multiple conditions (e.g. "If sponsor AND selected Enterpr
 - Example: Founder/Employee/Student all to the same target => one rule with three conditions combined by OR.
 
 ACTION:
-- "skip_to": Jump to a later question. Set targetQuestionIndex to the index from the list above.
+- "skip_to": Jump to a later question or later section. Prefer targetSectionId when the user names a block/section like "shared closing" or "founder path".
 - "end_survey": End the survey early.
 
 GUIDANCE (important):
@@ -145,29 +172,65 @@ CONFIDENCE:
 		// Build the BranchRule
 		const r = result.object;
 
+		if (r.sourceType === "person_attribute" && !r.attributeKey) {
+			return {
+				error: "AI could not determine which person attribute to branch on. Try naming the attribute more explicitly.",
+				parsed: r,
+			};
+		}
+
 		// Validate targetQuestionIndex is in bounds
 		let targetQuestion = null;
+		let targetSectionId: string | undefined;
 		if (r.action === "skip_to") {
-			if (r.targetQuestionIndex === undefined || r.targetQuestionIndex === null) {
+			const matchingSection = r.targetSectionId
+				? laterSections.find(
+						(section) =>
+							section.id === r.targetSectionId || section.title.toLowerCase() === r.targetSectionId?.toLowerCase()
+					)
+				: null;
+			if (matchingSection) {
+				targetSectionId = matchingSection.id;
+			} else if (r.targetQuestionIndex === undefined || r.targetQuestionIndex === null) {
 				return {
-					error: "AI could not determine which question to skip to. Try being more specific.",
+					error: "AI could not determine which question or section to skip to. Try being more specific.",
 					parsed: r,
 				};
-			}
-			if (r.targetQuestionIndex < 0 || r.targetQuestionIndex >= laterQuestions.length) {
+			} else if (r.targetQuestionIndex < 0 || r.targetQuestionIndex >= laterQuestions.length) {
 				return {
 					error: `AI referenced question index ${r.targetQuestionIndex} but only ${laterQuestions.length} later questions exist. Try rephrasing.`,
 					parsed: r,
 				};
+			} else {
+				targetQuestion = laterQuestions[r.targetQuestionIndex];
 			}
-			targetQuestion = laterQuestions[r.targetQuestionIndex];
 		}
 
 		// Build conditions array (primary + any additional)
 		const allConditions = [
-			{ questionId, operator: r.operator, value: r.triggerValue },
+			r.sourceType === "person_attribute"
+				? {
+						sourceType: "person_attribute" as const,
+						attributeKey: r.attributeKey ?? "",
+						operator: r.operator,
+						value: r.triggerValue,
+					}
+				: {
+						sourceType: "question" as const,
+						questionId,
+						operator: r.operator,
+						value: r.triggerValue,
+					},
 			...(r.additionalConditions ?? []).map((c) => ({
-				questionId,
+				...(c.sourceType === "person_attribute"
+					? {
+							sourceType: "person_attribute" as const,
+							attributeKey: c.attributeKey ?? "",
+						}
+					: {
+							sourceType: "question" as const,
+							questionId,
+						}),
 				operator: c.operator,
 				value: c.triggerValue,
 			})),
@@ -181,6 +244,7 @@ CONFIDENCE:
 			},
 			action: r.action,
 			targetQuestionId: targetQuestion?.id,
+			targetSectionId,
 			naturalLanguage: input,
 			summary: r.summary,
 			guidance: r.guidance,

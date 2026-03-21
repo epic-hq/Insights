@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getNextQuestionId } from "./branching";
+import { getNextQuestionId, responsesOnlyContext } from "./branching";
 import type { ResearchLinkQuestion } from "./schemas";
 import { deriveSurveySections, resolveSectionStartQuestionId } from "./sections";
 
@@ -78,7 +78,7 @@ describe("branching with targetSectionId", () => {
 						id: "r1",
 						conditions: {
 							logic: "and",
-							conditions: [{ questionId: "q1", operator: "equals", value: "go" }],
+							conditions: [{ sourceType: "question", questionId: "q1", operator: "equals", value: "go" }],
 						},
 						action: "skip_to",
 						targetSectionId: "path_b",
@@ -90,7 +90,7 @@ describe("branching with targetSectionId", () => {
 		const q3 = makeQuestion({ id: "q3", sectionId: "path_b" });
 		const q4 = makeQuestion({ id: "q4", sectionId: "path_b" });
 
-		const nextId = getNextQuestionId(q1, [q1, q2, q3, q4], { q1: "go" });
+		const nextId = getNextQuestionId(q1, [q1, q2, q3, q4], responsesOnlyContext({ q1: "go" }));
 		expect(nextId).toBe("q3");
 	});
 });

@@ -30,16 +30,17 @@ import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button";
-import { getNextQuestionIndex, hasResponseValue } from "~/features/research-links/branching";
+import { getNextQuestionId, getNextQuestionIndex, hasResponseValue } from "~/features/research-links/branching";
+import { buildBranchingContext, type PersonAttributeRecord } from "~/features/research-links/branching-context";
 import { VideoRecorder } from "~/features/research-links/components/VideoRecorder";
 import {
+	getFieldKeys,
+	isFieldRequired,
+	parseRespondentFields,
 	RESPONDENT_FIELD_DEFINITION_MAP,
 	type RespondentFieldConfig,
 	type RespondentFieldKey,
 	type RespondentFieldOption,
-	getFieldKeys,
-	isFieldRequired,
-	parseRespondentFields,
 } from "~/features/research-links/respondent-fields";
 import { type ResearchLinkQuestion, ResearchLinkQuestionSchema } from "~/features/research-links/schemas";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
@@ -749,6 +750,7 @@ type StartSignupResult = {
 	responses: ResponseRecord;
 	completed: boolean;
 	personId: string | null;
+	personAttributes?: PersonAttributeRecord;
 	/** Profile fields returned when a known person is found, so the client can pre-fill the name form */
 	personProfile?: {
 		firstName?: string | null;
@@ -850,6 +852,7 @@ export default function ResearchLinkPage() {
 	const [companySize, setCompanySize] = useState("");
 	const [responseId, setResponseId] = useState<string | null>(null);
 	const [responses, setResponses] = useState<ResponseRecord>({});
+	const [personAttributes, setPersonAttributes] = useState<PersonAttributeRecord>({});
 	const [currentIndex, setCurrentIndex] = useState(0);
 	const [currentAnswer, setCurrentAnswer] = useState<ResponseValue>("");
 	const [isSaving, setIsSaving] = useState(false);
@@ -910,10 +913,11 @@ export default function ResearchLinkPage() {
 						responseKeys: Object.keys(result.responses || {}),
 					});
 					setResponses(result.responses || {});
+					setPersonAttributes(result.personAttributes || {});
 
 					// When switching to form, position at next unanswered question
 					if (newMode === "form") {
-						const nextIdx = findNextQuestionIndex(result.responses || {}, questions);
+						const nextIdx = findNextQuestionIndex(result.responses || {}, questions, result.personAttributes || {});
 						if (nextIdx < questions.length) {
 							setCurrentIndex(nextIdx);
 							setCurrentAnswer(result.responses?.[questions[nextIdx]?.id] ?? "");
@@ -1037,7 +1041,8 @@ export default function ResearchLinkPage() {
 			.then((result) => {
 				setResponseId(result.responseId);
 				setResponses(result.responses || {});
-				const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
+				setPersonAttributes(result.personAttributes || {});
+				const initialIndex = findNextQuestionIndex(result.responses || {}, questions, result.personAttributes || {});
 				if (initialIndex >= questions.length) {
 					setStage("complete");
 				} else {
@@ -1119,7 +1124,12 @@ export default function ResearchLinkPage() {
 						setEmail(urlEmail);
 						setResponseId(result.responseId);
 						setResponses(result.responses || {});
-						const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
+						setPersonAttributes(result.personAttributes || {});
+						const initialIndex = findNextQuestionIndex(
+							result.responses || {},
+							questions,
+							result.personAttributes || {}
+						);
 						if (initialIndex >= questions.length) {
 							setStage("complete");
 						} else {
@@ -1162,7 +1172,12 @@ export default function ResearchLinkPage() {
 					.then((result) => {
 						setResponseId(result.responseId);
 						setResponses(result.responses || {});
-						const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
+						setPersonAttributes(result.personAttributes || {});
+						const initialIndex = findNextQuestionIndex(
+							result.responses || {},
+							questions,
+							result.personAttributes || {}
+						);
 						if (initialIndex >= questions.length) {
 							setStage("complete");
 						} else {
@@ -1224,8 +1239,9 @@ export default function ResearchLinkPage() {
 			});
 			setResponseId(result.responseId);
 			setResponses(result.responses || {});
+			setPersonAttributes(result.personAttributes || {});
 
-			const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
+			const initialIndex = findNextQuestionIndex(result.responses || {}, questions, result.personAttributes || {});
 			if (initialIndex >= questions.length) {
 				setStage("complete");
 				return;
@@ -1290,8 +1306,9 @@ export default function ResearchLinkPage() {
 			});
 			setResponseId(result.responseId);
 			setResponses(result.responses || {});
+			setPersonAttributes(result.personAttributes || {});
 
-			const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
+			const initialIndex = findNextQuestionIndex(result.responses || {}, questions, result.personAttributes || {});
 			if (initialIndex >= questions.length) {
 				setStage("complete");
 				return;
@@ -1382,8 +1399,9 @@ export default function ResearchLinkPage() {
 			});
 			setResponseId(result.responseId);
 			setResponses(result.responses || {});
+			setPersonAttributes(result.personAttributes || {});
 
-			const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
+			const initialIndex = findNextQuestionIndex(result.responses || {}, questions, result.personAttributes || {});
 			if (initialIndex >= questions.length) {
 				setStage("complete");
 			} else {
@@ -1415,7 +1433,8 @@ export default function ResearchLinkPage() {
 		setIsSaving(true);
 		try {
 			// Use branching engine to determine next question
-			const nextIndex = getNextQuestionIndex(currentIndex, questions, nextResponses);
+			const context = buildBranchingContext(nextResponses, questions, personAttributes);
+			const nextIndex = getNextQuestionIndex(currentIndex, questions, context);
 			const isComplete = nextIndex >= questions.length;
 			await saveProgress(slug, {
 				responseId,
@@ -2273,14 +2292,35 @@ export default function ResearchLinkPage() {
 	);
 }
 
-function findNextQuestionIndex(responses: ResponseRecord, questions: ResearchLinkQuestion[]) {
-	for (let index = 0; index < questions.length; index++) {
-		const question = questions[index];
-		const value = responses?.[question.id];
-		if (!isQuestionAnswerComplete(question, value)) {
-			return index;
+function findNextQuestionIndex(
+	responses: ResponseRecord,
+	questions: ResearchLinkQuestion[],
+	personAttributes: PersonAttributeRecord
+) {
+	const activeQuestions = questions.filter(
+		(question): question is ResearchLinkQuestion & { id: string } => !question.hidden && Boolean(question.id)
+	);
+	const questionById = new Map(activeQuestions.map((question, index) => [question.id, index] as const));
+	const context = buildBranchingContext(responses, activeQuestions, personAttributes);
+	let currentQuestion = activeQuestions[0] ?? null;
+	const visited = new Set<string>();
+	let guard = 0;
+
+	while (currentQuestion && guard < activeQuestions.length * 4) {
+		const value = responses[currentQuestion.id];
+		if (!isQuestionAnswerComplete(currentQuestion, value)) {
+			return questionById.get(currentQuestion.id) ?? questions.length;
 		}
+
+		visited.add(currentQuestion.id);
+		const nextId = getNextQuestionId(currentQuestion, activeQuestions, context);
+		if (!nextId || visited.has(nextId)) {
+			return questions.length;
+		}
+		currentQuestion = activeQuestions.find((question) => question.id === nextId) ?? null;
+		guard += 1;
 	}
+
 	return questions.length;
 }
 

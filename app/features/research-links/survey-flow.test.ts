@@ -65,7 +65,7 @@ describe("summarizeSurveyFlow", () => {
 							targetSectionId: "path_a",
 							conditions: {
 								logic: "or",
-								conditions: [{ questionId: "q1", operator: "equals", value: "Founder" }],
+								conditions: [{ sourceType: "question", questionId: "q1", operator: "equals", value: "Founder" }],
 							},
 						},
 						{
@@ -74,7 +74,7 @@ describe("summarizeSurveyFlow", () => {
 							targetSectionId: "path_b",
 							conditions: {
 								logic: "or",
-								conditions: [{ questionId: "q1", operator: "equals", value: "Investor" }],
+								conditions: [{ sourceType: "question", questionId: "q1", operator: "equals", value: "Investor" }],
 							},
 						},
 					],
@@ -94,7 +94,7 @@ describe("summarizeSurveyFlow", () => {
 							action: "end_survey",
 							conditions: {
 								logic: "or",
-								conditions: [{ questionId: "q1", operator: "equals", value: "Founder" }],
+								conditions: [{ sourceType: "question", questionId: "q1", operator: "equals", value: "Founder" }],
 							},
 						},
 					],
@@ -137,7 +137,9 @@ describe("summarizeSurveyFlow", () => {
 							targetSectionId: "service_path",
 							conditions: {
 								logic: "or",
-								conditions: [{ questionId: "q1", operator: "equals", value: "Service provider" }],
+								conditions: [
+									{ sourceType: "question", questionId: "q1", operator: "equals", value: "Service provider" },
+								],
 							},
 						},
 					],
@@ -158,7 +160,9 @@ describe("summarizeSurveyFlow", () => {
 							targetSectionId: "shared_close",
 							conditions: {
 								logic: "or",
-								conditions: [{ questionId: "q1", operator: "not_equals", value: "Service provider" }],
+								conditions: [
+									{ sourceType: "question", questionId: "q1", operator: "not_equals", value: "Service provider" },
+								],
 							},
 						},
 					],
@@ -178,7 +182,9 @@ describe("summarizeSurveyFlow", () => {
 							targetSectionId: "shared_close",
 							conditions: {
 								logic: "or",
-								conditions: [{ questionId: "q1", operator: "equals", value: "Service provider" }],
+								conditions: [
+									{ sourceType: "question", questionId: "q1", operator: "equals", value: "Service provider" },
+								],
 							},
 						},
 					],
@@ -215,7 +221,9 @@ describe("summarizeSurveyFlow", () => {
 							targetSectionId: "service_path",
 							conditions: {
 								logic: "or",
-								conditions: [{ questionId: "q1", operator: "equals", value: "Service provider" }],
+								conditions: [
+									{ sourceType: "question", questionId: "q1", operator: "equals", value: "Service provider" },
+								],
 							},
 						},
 					],
@@ -243,7 +251,7 @@ describe("summarizeSurveyFlow", () => {
 							targetSectionId: "shared_close",
 							conditions: {
 								logic: "or",
-								conditions: [{ questionId: "q3", operator: "answered" }],
+								conditions: [{ sourceType: "question", questionId: "q3", operator: "answered" }],
 							},
 						},
 					],
@@ -277,5 +285,58 @@ describe("summarizeSurveyFlow", () => {
 		expect(summary.paths).toHaveLength(2);
 		expect(summary.minQuestions).toBe(4);
 		expect(summary.maxQuestions).toBe(4);
+	});
+
+	it("includes person-attribute-triggered paths in simulation", () => {
+		const questions: ResearchLinkQuestion[] = [
+			makeQuestion({
+				id: "q1",
+				prompt: "Warmup",
+				type: "short_text",
+				sectionId: "intro",
+				sectionTitle: "Intro",
+				branching: {
+					rules: [
+						{
+							id: "members-skip",
+							action: "skip_to",
+							targetSectionId: "member_path",
+							conditions: {
+								logic: "or",
+								conditions: [
+									{
+										sourceType: "person_attribute",
+										attributeKey: "membership_status",
+										operator: "equals",
+										value: "active",
+									},
+								],
+							},
+						},
+					],
+					defaultNext: "q2",
+				},
+			}),
+			makeQuestion({
+				id: "q2",
+				prompt: "Non-member qualifier",
+				type: "short_text",
+				sectionId: "non_member",
+				sectionTitle: "Non-member",
+			}),
+			makeQuestion({
+				id: "q3",
+				prompt: "Member follow-up",
+				type: "short_text",
+				sectionId: "member_path",
+				sectionTitle: "Member path",
+			}),
+		];
+
+		const summary = summarizeSurveyFlow(questions);
+		expect(summary.hasBranching).toBe(true);
+		expect(summary.paths).toHaveLength(2);
+		expect(summary.paths.some((path) => path.triggerLabel?.includes("membership status is active"))).toBe(true);
+		expect(formatPathBreakdown(summary)).toContain("membership status is active");
 	});
 });
