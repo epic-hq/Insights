@@ -1,13 +1,13 @@
 /**
  * @getupsight/mcp-server
  *
- * Thin stdio→HTTP proxy that connects Claude Desktop / Cursor
- * to the hosted UpSight MCP server.
+ * Thin stdio→HTTP proxy that connects Claude Desktop, Cursor, OpenClaw,
+ * and other stdio-based MCP clients to the hosted UpSight MCP server.
  *
  * All logic runs on getupsight.com — this package just bridges
- * stdio transport to HTTP SSE transport with API key auth.
+ * stdio transport to Streamable HTTP transport with API key auth.
  *
- * Usage in claude_desktop_config.json:
+ * Usage in claude_desktop_config.json / OpenClaw config:
  * {
  *   "mcpServers": {
  *     "upsight": {
@@ -20,6 +20,7 @@
  */
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -39,23 +40,38 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-async function main() {
-  // Connect to the hosted UpSight MCP server over SSE
-  const sseUrl = new URL("/mcp", UPSIGHT_BASE_URL);
-  const sseTransport = new SSEClientTransport(sseUrl, {
-    requestInit: {
-      headers: {
-        Authorization: `Bearer ${API_KEY}`,
-      },
-    },
+async function connectToRemote(): Promise<Client> {
+  const mcpUrl = new URL("/mcp", UPSIGHT_BASE_URL);
+  const headers = { Authorization: `Bearer ${API_KEY}` };
+
+  const remoteClient = new Client({
+    name: "upsight-proxy",
+    version: "0.2.0",
   });
 
-  const remoteClient = new Client({ name: "upsight-proxy", version: "0.1.0" });
-  await remoteClient.connect(sseTransport);
+  // Try Streamable HTTP first, fall back to SSE for backwards compatibility
+  try {
+    const transport = new StreamableHTTPClientTransport(mcpUrl, {
+      requestInit: { headers },
+    });
+    await remoteClient.connect(transport);
+    return remoteClient;
+  } catch {
+    // Fall back to SSE transport (older server versions)
+    const sseTransport = new SSEClientTransport(mcpUrl, {
+      requestInit: { headers },
+    });
+    await remoteClient.connect(sseTransport);
+    return remoteClient;
+  }
+}
+
+async function main() {
+  const remoteClient = await connectToRemote();
 
   // Create a local stdio server that proxies to the remote
   const localServer = new Server(
-    { name: "upsight", version: "0.1.0" },
+    { name: "upsight", version: "0.2.0" },
     {
       capabilities: {
         tools: {},
