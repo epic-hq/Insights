@@ -335,8 +335,12 @@ export default await createHonoServer({
     // and schema conversion, but connects to a web-standard transport for Hono compat.
     async function handleMcpRequest(rawRequest: Request) {
       const { MCPServer, mcpTools } = await getMcpToolsAndClass();
-      const { WebStandardStreamableHTTPServerTransport } =
-        await import("@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js");
+      // Dynamic import with variable to prevent Vite/Rollup from resolving at build time
+      const mcpSdkPath =
+        "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+      const { WebStandardStreamableHTTPServerTransport } = await import(
+        /* @vite-ignore */ mcpSdkPath
+      );
 
       // Create a Mastra MCPServer instance with all tools properly registered
       const mcpServer = new MCPServer({
