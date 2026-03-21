@@ -48,6 +48,7 @@ interface ApiKeyRecord {
   scopes: string[];
   last_used_at: string | null;
   created_at: string;
+  oauth_client_id?: string | null;
 }
 
 interface CreateResponse {
@@ -203,6 +204,11 @@ export function ApiKeyManager({
                   <Badge variant="outline" className="text-xs">
                     {key.scopes.join(", ")}
                   </Badge>
+                  {key.oauth_client_id && (
+                    <Badge variant="secondary" className="text-xs">
+                      OAuth
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 text-muted-foreground text-xs">
                   <code className="rounded bg-muted px-1.5 py-0.5">

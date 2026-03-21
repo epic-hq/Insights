@@ -7,6 +7,13 @@ import { createHonoServer } from "react-router-hono-server/node";
 import { i18next } from "remix-hono/i18next";
 import i18nextOpts from "../localization/i18n.server";
 import { resolveApiKey } from "../lib/api-keys.server";
+import {
+  getOAuthMetadata,
+  getProtectedResourceMetadata,
+  registerClient,
+  exchangeCodeForTokens,
+  refreshAccessToken,
+} from "../lib/oauth.server";
 import { createSupabaseAdminClient } from "../lib/supabase/client.server";
 import { getLoadContext } from "./load-context";
 
@@ -334,6 +341,104 @@ export default await createHonoServer({
       });
     }
 
+    // -----------------------------------------------------------------------
+    // OAuth 2.1 — Authorization Server Metadata (RFC 8414)
+    // -----------------------------------------------------------------------
+
+    server.get("/.well-known/oauth-authorization-server", (c) => {
+      const origin = new URL(c.req.url).origin;
+      return c.json(getOAuthMetadata(origin));
+    });
+
+    // OAuth 2.1 — Protected Resource Metadata (RFC 9728)
+    server.get("/.well-known/oauth-protected-resource", (c) => {
+      const origin = new URL(c.req.url).origin;
+      return c.json(getProtectedResourceMetadata(`${origin}/mcp`, origin));
+    });
+
+    // OAuth 2.1 — Dynamic Client Registration (RFC 7591)
+    server.post("/oauth/register", async (c) => {
+      try {
+        const body = await c.req.json();
+        const supabase = createSupabaseAdminClient();
+        const result = await registerClient(supabase, body);
+        return c.json(result, 201);
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Registration failed";
+        consola.error("[oauth] Registration error:", message);
+        return c.json(
+          { error: "invalid_client_metadata", error_description: message },
+          400,
+        );
+      }
+    });
+
+    // OAuth 2.1 — Token Endpoint
+    server.post("/oauth/token", async (c) => {
+      const contentType = c.req.header("Content-Type") ?? "";
+      let body: Record<string, string>;
+
+      // OAuth spec requires application/x-www-form-urlencoded
+      if (contentType.includes("application/x-www-form-urlencoded")) {
+        const parsed = await c.req.parseBody();
+        body = Object.fromEntries(
+          Object.entries(parsed).map(([k, v]) => [k, String(v)]),
+        );
+      } else if (contentType.includes("application/json")) {
+        // Some clients send JSON — accept it gracefully
+        body = await c.req.json();
+      } else {
+        return c.json(
+          {
+            error: "invalid_request",
+            error_description:
+              "Content-Type must be application/x-www-form-urlencoded",
+          },
+          400,
+        );
+      }
+
+      const supabase = createSupabaseAdminClient();
+      const grantType = body.grant_type;
+
+      try {
+        if (grantType === "authorization_code") {
+          const result = await exchangeCodeForTokens(supabase, {
+            code: body.code,
+            clientId: body.client_id,
+            redirectUri: body.redirect_uri,
+            codeVerifier: body.code_verifier,
+          });
+          return c.json(result);
+        }
+
+        if (grantType === "refresh_token") {
+          const result = await refreshAccessToken(supabase, {
+            refreshToken: body.refresh_token,
+            clientId: body.client_id,
+          });
+          return c.json(result);
+        }
+
+        return c.json(
+          {
+            error: "unsupported_grant_type",
+            error_description: `Grant type '${grantType}' is not supported`,
+          },
+          400,
+        );
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Token exchange failed";
+        consola.error("[oauth] Token error:", message);
+        return c.json(
+          { error: "invalid_grant", error_description: message },
+          400,
+        );
+      }
+    });
+
     server.all("/mcp/*", async (c) => {
       const authHeader = c.req.header("Authorization") ?? "";
       const rawKey = authHeader.startsWith("Bearer ")
@@ -343,13 +448,16 @@ export default await createHonoServer({
         return c.json(
           { error: "Missing Authorization: Bearer <api_key>" },
           401,
+          { "WWW-Authenticate": "Bearer" },
         );
       }
 
       const supabase = createSupabaseAdminClient();
       const resolved = await resolveApiKey(supabase, rawKey);
       if (!resolved) {
-        return c.json({ error: "Invalid, revoked, or expired API key" }, 401);
+        return c.json({ error: "Invalid, revoked, or expired API key" }, 401, {
+          "WWW-Authenticate": "Bearer",
+        });
       }
 
       // Inject project/account context for tools

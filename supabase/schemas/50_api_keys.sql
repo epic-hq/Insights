@@ -15,7 +15,10 @@ create table if not exists public.project_api_keys (
   expires_at timestamptz,
   created_by uuid references auth.users (id),
   created_at timestamptz not null default now(),
-  revoked_at timestamptz                     -- soft-delete / revoke
+  revoked_at timestamptz,                    -- soft-delete / revoke
+  refresh_token_hash text,                   -- SHA-256 hash of refresh token (OAuth-created keys only)
+  oauth_client_id text                       -- FK to oauth_clients.client_id (OAuth-created keys only)
+    references public.oauth_clients (client_id) on delete set null
 );
 
 -- Fast lookup by hash (only active keys)
@@ -27,6 +30,11 @@ create index if not exists idx_project_api_keys_hash
 create index if not exists idx_project_api_keys_project
   on public.project_api_keys (project_id, created_at desc)
   where revoked_at is null;
+
+-- Fast lookup by refresh token hash (only active keys)
+create index if not exists idx_project_api_keys_refresh_token
+  on public.project_api_keys (refresh_token_hash)
+  where refresh_token_hash is not null and revoked_at is null;
 
 -- RLS: keys are managed by the application layer (service role) not end-users
 alter table public.project_api_keys enable row level security;
