@@ -1,7 +1,3 @@
-npm warn Unknown project config "enable-pre-post-scripts". This will stop working in the next major version of npm.
-npm warn Unknown project config "side-effects-cache". This will stop working in the next major version of npm.
-npm warn Unknown project config "node-linker". This will stop working in the next major version of npm.
-Connecting to db 5432
 export type Json =
   | string
   | number
@@ -8179,5 +8175,3 @@ export const Constants = {
   },
 } as const
 
-A new version of Supabase CLI is available: v2.78.1 (currently installed v2.67.2)
-We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
