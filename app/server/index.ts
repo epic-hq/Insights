@@ -330,15 +330,71 @@ export default await createHonoServer({
       return mcpToolsPromise;
     }
 
-    // Create a fresh MCPServer per connection (MCP SDK requires one transport per server instance)
-    async function createMcpServer() {
-      const { MCPServer, mcpTools } = await getMcpToolsAndClass();
-      return new MCPServer({
-        id: "upsight-intelligence",
-        name: "UpSight Intelligence",
-        version: "1.1.0",
-        tools: mcpTools,
+    // Create a fresh MCP Server + Streamable HTTP transport per request (stateless/serverless mode)
+    async function handleMcpRequest(rawRequest: Request) {
+      const { mcpTools } = await getMcpToolsAndClass();
+      const { Server } =
+        await import("@modelcontextprotocol/sdk/server/index.js");
+      const { WebStandardStreamableHTTPServerTransport } =
+        await import("@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js");
+      const { ListToolsRequestSchema, CallToolRequestSchema } =
+        await import("@modelcontextprotocol/sdk/types.js");
+
+      const transport = new WebStandardStreamableHTTPServerTransport({
+        sessionIdGenerator: undefined, // stateless mode
       });
+
+      const server = new Server(
+        { name: "upsight-intelligence", version: "1.1.0" },
+        { capabilities: { tools: {} } },
+      );
+
+      // Register tools on the MCP SDK Server
+      server.setRequestHandler(ListToolsRequestSchema, async () => ({
+        tools: Object.entries(mcpTools).map(([name, tool]: [string, any]) => ({
+          name,
+          description: tool.description ?? "",
+          inputSchema: tool.inputSchema
+            ? typeof tool.inputSchema.jsonSchema === "function"
+              ? tool.inputSchema.jsonSchema
+              : tool.inputSchema
+            : { type: "object", properties: {} },
+        })),
+      }));
+
+      server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
+        const toolName = request.params?.name;
+        const toolArgs = request.params?.arguments ?? {};
+        const tool = mcpTools[toolName];
+
+        if (!tool) {
+          return {
+            content: [{ type: "text", text: `Unknown tool: ${toolName}` }],
+            isError: true,
+          };
+        }
+
+        try {
+          const result = await tool.execute(toolArgs, undefined);
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  typeof result === "string" ? result : JSON.stringify(result),
+              },
+            ],
+          };
+        } catch (err: any) {
+          return {
+            content: [{ type: "text", text: `Error: ${err?.message ?? err}` }],
+            isError: true,
+          };
+        }
+      });
+
+      await server.connect(transport);
+      return transport.handleRequest(rawRequest);
     }
 
     // -----------------------------------------------------------------------
@@ -454,7 +510,7 @@ export default await createHonoServer({
       }
     });
 
-    server.all("/mcp/*", async (c) => {
+    server.all("/mcp", async (c) => {
       const authHeader = c.req.header("Authorization") ?? "";
       const rawKey = authHeader.startsWith("Bearer ")
         ? authHeader.slice(7)
@@ -479,15 +535,7 @@ export default await createHonoServer({
       process.env.__MCP_PROJECT_ID = resolved.projectId;
       process.env.__MCP_ACCOUNT_ID = resolved.accountId;
 
-      const mcpServer = await createMcpServer();
-      const url = new URL(c.req.url);
-
-      return mcpServer.startHonoSSE({
-        url,
-        ssePath: "/mcp",
-        messagePath: "/mcp/message",
-        context: c,
-      });
+      return handleMcpRequest(c.req.raw);
     });
 
     // Handle stale asset requests after deployments.
