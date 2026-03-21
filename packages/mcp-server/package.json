@@ -1,5 +1,5 @@
 {
-  "name": "@getupsight/mcp-server",
+  "name": "@agentcrm/mcp-server",
   "version": "0.2.0",
   "description": "UpSight MCP Server — connect AI agents to your customer intelligence",
   "license": "MIT",
