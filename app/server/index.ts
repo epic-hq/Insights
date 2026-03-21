@@ -330,70 +330,34 @@ export default await createHonoServer({
       return mcpToolsPromise;
     }
 
-    // Create a fresh MCP Server + Streamable HTTP transport per request (stateless/serverless mode)
+    // Handle MCP requests using Streamable HTTP transport (stateless/serverless mode).
+    // Uses Mastra's MCPServer.createServerInstance() for proper tool registration
+    // and schema conversion, but connects to a web-standard transport for Hono compat.
     async function handleMcpRequest(rawRequest: Request) {
-      const { mcpTools } = await getMcpToolsAndClass();
-      const { Server } =
-        await import("@modelcontextprotocol/sdk/server/index.js");
+      const { MCPServer, mcpTools } = await getMcpToolsAndClass();
       const { WebStandardStreamableHTTPServerTransport } =
         await import("@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js");
-      const { ListToolsRequestSchema, CallToolRequestSchema } =
-        await import("@modelcontextprotocol/sdk/types.js");
 
+      // Create a Mastra MCPServer instance with all tools properly registered
+      const mcpServer = new MCPServer({
+        id: "upsight-intelligence",
+        name: "UpSight Intelligence",
+        version: "1.1.0",
+        tools: mcpTools,
+      });
+
+      // Use Mastra's createServerInstance() which calls registerHandlersOnServer()
+      // — this handles Zod→JSON Schema conversion and tool execution correctly
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const serverInstance = (mcpServer as any).createServerInstance();
+
+      // Connect to a web-standard Streamable HTTP transport (works with Hono's Request/Response)
       const transport = new WebStandardStreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // stateless mode
+        enableJsonResponse: true,
       });
 
-      const server = new Server(
-        { name: "upsight-intelligence", version: "1.1.0" },
-        { capabilities: { tools: {} } },
-      );
-
-      // Register tools on the MCP SDK Server
-      server.setRequestHandler(ListToolsRequestSchema, async () => ({
-        tools: Object.entries(mcpTools).map(([name, tool]: [string, any]) => ({
-          name,
-          description: tool.description ?? "",
-          inputSchema: tool.inputSchema
-            ? typeof tool.inputSchema.jsonSchema === "function"
-              ? tool.inputSchema.jsonSchema
-              : tool.inputSchema
-            : { type: "object", properties: {} },
-        })),
-      }));
-
-      server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
-        const toolName = request.params?.name;
-        const toolArgs = request.params?.arguments ?? {};
-        const tool = mcpTools[toolName];
-
-        if (!tool) {
-          return {
-            content: [{ type: "text", text: `Unknown tool: ${toolName}` }],
-            isError: true,
-          };
-        }
-
-        try {
-          const result = await tool.execute(toolArgs, undefined);
-          return {
-            content: [
-              {
-                type: "text",
-                text:
-                  typeof result === "string" ? result : JSON.stringify(result),
-              },
-            ],
-          };
-        } catch (err: any) {
-          return {
-            content: [{ type: "text", text: `Error: ${err?.message ?? err}` }],
-            isError: true,
-          };
-        }
-      });
-
-      await server.connect(transport);
+      await serverInstance.connect(transport);
       return transport.handleRequest(rawRequest);
     }
 
