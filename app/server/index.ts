@@ -345,14 +345,22 @@ export default await createHonoServer({
     // OAuth 2.1 — Authorization Server Metadata (RFC 8414)
     // -----------------------------------------------------------------------
 
+    /** Resolve origin respecting x-forwarded-proto behind reverse proxy. */
+    function getOrigin(c: {
+      req: { header: (name: string) => string | undefined; url: string };
+    }) {
+      const proto = c.req.header("x-forwarded-proto") ?? "https";
+      const host = c.req.header("host") ?? new URL(c.req.url).host;
+      return `${proto}://${host}`;
+    }
+
     server.get("/.well-known/oauth-authorization-server", (c) => {
-      const origin = new URL(c.req.url).origin;
-      return c.json(getOAuthMetadata(origin));
+      return c.json(getOAuthMetadata(getOrigin(c)));
     });
 
     // OAuth 2.1 — Protected Resource Metadata (RFC 9728)
     server.get("/.well-known/oauth-protected-resource", (c) => {
-      const origin = new URL(c.req.url).origin;
+      const origin = getOrigin(c);
       return c.json(getProtectedResourceMetadata(`${origin}/mcp`, origin));
     });
 
