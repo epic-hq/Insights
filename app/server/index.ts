@@ -345,23 +345,30 @@ export default await createHonoServer({
     // OAuth 2.1 — Authorization Server Metadata (RFC 8414)
     // -----------------------------------------------------------------------
 
-    /** Resolve origin respecting x-forwarded-proto behind reverse proxy. */
+    /** Resolve origin, always using HTTPS in production (TLS terminated at proxy). */
     function getOrigin(c: {
       req: { header: (name: string) => string | undefined; url: string };
     }) {
-      const proto = c.req.header("x-forwarded-proto") ?? "https";
       const host = c.req.header("host") ?? new URL(c.req.url).host;
-      return `${proto}://${host}`;
+      const isLocalhost =
+        host.startsWith("localhost") || host.startsWith("127.0.0.1");
+      return `${isLocalhost ? "http" : "https"}://${host}`;
     }
 
     server.get("/.well-known/oauth-authorization-server", (c) => {
-      return c.json(getOAuthMetadata(getOrigin(c)));
+      return c.json(getOAuthMetadata(getOrigin(c)), 200, {
+        "Cache-Control": "no-store",
+      });
     });
 
     // OAuth 2.1 — Protected Resource Metadata (RFC 9728)
     server.get("/.well-known/oauth-protected-resource", (c) => {
       const origin = getOrigin(c);
-      return c.json(getProtectedResourceMetadata(`${origin}/mcp`, origin));
+      return c.json(
+        getProtectedResourceMetadata(`${origin}/mcp`, origin),
+        200,
+        { "Cache-Control": "no-store" },
+      );
     });
 
     // OAuth 2.1 — Dynamic Client Registration (RFC 7591)
