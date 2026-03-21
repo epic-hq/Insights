@@ -29,6 +29,10 @@ export const PERSON_ATTRIBUTE_KEYS = [
 
 export type PersonAttributeKey = (typeof PERSON_ATTRIBUTE_KEYS)[number]["key"];
 
+const PERSON_ATTRIBUTE_LABELS: Record<PersonAttributeKey, string> = Object.fromEntries(
+	PERSON_ATTRIBUTE_KEYS.map((entry) => [entry.key, entry.label])
+) as Record<PersonAttributeKey, string>;
+
 const PERSON_ATTRIBUTE_KEY_SET = new Set<string>(PERSON_ATTRIBUTE_KEYS.map((entry) => entry.key));
 
 const TAXONOMY_TO_PERSON_ATTRIBUTE: Partial<Record<string, PersonAttributeKey>> = {
@@ -115,7 +119,11 @@ function normalizeAttributeValue(attributeKey: string, value: ResponseValue): Re
 	return value;
 }
 
-function deriveAttributeKey(question: ResearchLinkQuestion): PersonAttributeKey | null {
+export function getPersonAttributeLabel(attributeKey: PersonAttributeKey): string {
+	return PERSON_ATTRIBUTE_LABELS[attributeKey];
+}
+
+export function getQuestionPersonAttributeKey(question: ResearchLinkQuestion): PersonAttributeKey | null {
 	const explicit = normalizeKey(question.personFieldKey ?? null);
 	if (explicit && PERSON_ATTRIBUTE_KEY_SET.has(explicit)) {
 		return explicit as PersonAttributeKey;
@@ -141,7 +149,7 @@ export function buildBranchingContext(
 	const mergedPersonAttributes: PersonAttributeRecord = { ...(personAttributes ?? {}) };
 
 	for (const question of questions) {
-		const attributeKey = deriveAttributeKey(question);
+		const attributeKey = getQuestionPersonAttributeKey(question);
 		if (!attributeKey || !question.id) continue;
 		const responseValue = responses[question.id];
 		if (!hasValue(responseValue)) continue;

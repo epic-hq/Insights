@@ -33,6 +33,7 @@ import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button
 import { getNextQuestionId, getNextQuestionIndex, hasResponseValue } from "~/features/research-links/branching";
 import { buildBranchingContext, type PersonAttributeRecord } from "~/features/research-links/branching-context";
 import { VideoRecorder } from "~/features/research-links/components/VideoRecorder";
+import { getKnownPersonValueForQuestion } from "~/features/research-links/known-person-values";
 import {
 	getFieldKeys,
 	isFieldRequired,
@@ -855,6 +856,7 @@ export default function ResearchLinkPage() {
 	const [personAttributes, setPersonAttributes] = useState<PersonAttributeRecord>({});
 	const [currentIndex, setCurrentIndex] = useState(0);
 	const [currentAnswer, setCurrentAnswer] = useState<ResponseValue>("");
+	const [dismissedKnownValueQuestionIds, setDismissedKnownValueQuestionIds] = useState<string[]>([]);
 	const [isSaving, setIsSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [initializing, setInitializing] = useState(true);
@@ -1013,6 +1015,7 @@ export default function ResearchLinkPage() {
 		setResponses({});
 		setCurrentIndex(0);
 		setCurrentAnswer("");
+		setDismissedKnownValueQuestionIds([]);
 		setRedirectCountdown(null);
 		setError(null);
 		setInitializing(true);
@@ -1214,6 +1217,13 @@ export default function ResearchLinkPage() {
 
 	const currentQuestion = useMemo(() => questions[currentIndex], [currentIndex, questions]);
 	const currentQuestionMediaUrl = currentQuestion?.mediaUrl ?? currentQuestion?.videoUrl ?? null;
+	const currentKnownPersonValue = useMemo(() => {
+		if (!currentQuestion) return null;
+		if (dismissedKnownValueQuestionIds.includes(currentQuestion.id)) return null;
+		if (hasDraftResponseValue(currentAnswer)) return null;
+		if (hasResponseValue(responses[currentQuestion.id])) return null;
+		return getKnownPersonValueForQuestion(currentQuestion, personAttributes);
+	}, [currentAnswer, currentQuestion, dismissedKnownValueQuestionIds, personAttributes, responses]);
 
 	const _answeredCount = useMemo(() => {
 		return questions.filter((q) => {
@@ -1502,6 +1512,19 @@ export default function ResearchLinkPage() {
 			// On first question, go back to demographics form
 			setStage("name");
 		}
+	}
+
+	function handleDismissKnownValue() {
+		if (!currentQuestion?.id) return;
+		setDismissedKnownValueQuestionIds((previous) =>
+			previous.includes(currentQuestion.id) ? previous : [...previous, currentQuestion.id]
+		);
+	}
+
+	function handleUseKnownValue() {
+		if (!currentKnownPersonValue) return;
+		setCurrentAnswer(currentKnownPersonValue.responseValue);
+		void handleAnswerSubmit(currentKnownPersonValue.responseValue);
 	}
 
 	function handleJumpToQuestion(targetIndex: number) {
@@ -2112,6 +2135,42 @@ export default function ResearchLinkPage() {
 									</div>
 
 									<div className="space-y-8">
+										{currentKnownPersonValue && (
+											<Alert
+												className="border-sky-400/30 bg-sky-400/10 text-sky-50"
+												data-testid="survey-known-value-banner"
+											>
+												<AlertTitle className="text-sky-100">Use saved profile info?</AlertTitle>
+												<AlertDescription className="space-y-3">
+													<p className="text-sky-50/90 text-sm">
+														We already know your {currentKnownPersonValue.attributeLabel.toLowerCase()} as{" "}
+														<span className="font-medium text-sky-50">{currentKnownPersonValue.displayValue}</span>.
+													</p>
+													<div className="flex flex-wrap gap-2">
+														<Button
+															type="button"
+															size="sm"
+															onClick={handleUseKnownValue}
+															disabled={isSaving}
+															className="bg-sky-50 text-sky-950 hover:bg-sky-100"
+															data-testid="survey-use-known-value"
+														>
+															Use saved value
+														</Button>
+														<Button
+															type="button"
+															size="sm"
+															variant="ghost"
+															onClick={handleDismissKnownValue}
+															className="text-sky-100 hover:bg-sky-50/10 hover:text-sky-50"
+															data-testid="survey-dismiss-known-value"
+														>
+															Update it instead
+														</Button>
+													</div>
+												</AlertDescription>
+											</Alert>
+										)}
 										{renderQuestionInput({
 											question: currentQuestion,
 											value: currentAnswer,
