@@ -131,6 +131,8 @@ export default defineConfig({
       "@trigger.dev/sdk",
       "@trigger.dev/core",
       "@trigger.dev/build",
+      // MCP SDK — uses Node.js APIs and dynamic imports that Rollup can't resolve
+      "@modelcontextprotocol/sdk",
       // Ensure unused heavy libs are not bundled into SSR
       "mermaid",
       "@mermaid-js/parser",
