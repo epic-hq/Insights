@@ -31,8 +31,8 @@ import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Textarea } from "~/components/ui/textarea";
 import { getGmailConnection } from "~/lib/integrations/gmail.server";
-import { cn } from "~/lib/utils";
 import { getServerClient } from "~/lib/supabase/client.server";
+import { cn } from "~/lib/utils";
 import { userContext } from "~/server/user-context";
 import { createR2PresignedUrl } from "~/utils/r2.server";
 import { createRouteDefinitions } from "~/utils/route-definitions";
@@ -79,9 +79,7 @@ function RespondentFieldsPicker({
 	};
 
 	const toggleRequired = (key: string) => {
-		onChange(
-			fields.map((f) => (f.key === key ? { ...f, required: !f.required } : f))
-		);
+		onChange(fields.map((f) => (f.key === key ? { ...f, required: !f.required } : f)));
 	};
 
 	const isFieldRequired = (key: string) => fields.find((f) => f.key === key)?.required ?? false;
@@ -340,7 +338,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		updatePayload.respondent_fields = payload.respondentFields;
 		// Keep collect_title in sync for backwards compatibility
 		const fields = payload.respondentFields ?? [];
-		const fieldKeys = Array.isArray(fields) ? fields.map((f: unknown) => typeof f === "string" ? f : (f as { key: string }).key) : [];
+		const fieldKeys = Array.isArray(fields)
+			? fields.map((f: unknown) => (typeof f === "string" ? f : (f as { key: string }).key))
+			: [];
 		updatePayload.collect_title = fieldKeys.includes("title");
 	}
 	if (formData.has("ai_autonomy")) {
@@ -1036,18 +1036,20 @@ export default function EditResearchLinkPage() {
 
 										{/* External email platforms */}
 										<div className="rounded-lg border bg-muted/20 p-3">
-											<p className="mb-1 font-medium text-foreground text-xs">Using Mailchimp, SendGrid, or another platform?</p>
+											<p className="mb-1 font-medium text-foreground text-xs">
+												Using Mailchimp, SendGrid, or another platform?
+											</p>
 											<p className="text-muted-foreground text-xs">
 												Copy your survey link above and add it to your email campaign. Append{" "}
 												<code className="rounded bg-muted px-1 text-[11px]">?email=*|EMAIL|*</code> (Mailchimp) or{" "}
-												<code className="rounded bg-muted px-1 text-[11px]">{"?email={{email}}"}</code> (SendGrid/Postmark) to
-												pre-fill the respondent's email for automatic identity matching.
+												<code className="rounded bg-muted px-1 text-[11px]">{"?email={{email}}"}</code>{" "}
+												(SendGrid/Postmark) to pre-fill the respondent's email for automatic identity matching.
 											</p>
 											<p className="mt-1 text-muted-foreground text-xs">
-												You can also pass{" "}
-												<code className="rounded bg-muted px-1 text-[11px]">name</code>,{" "}
+												You can also pass <code className="rounded bg-muted px-1 text-[11px]">name</code>,{" "}
 												<code className="rounded bg-muted px-1 text-[11px]">company</code>,{" "}
-												<code className="rounded bg-muted px-1 text-[11px]">title</code>, and more to pre-fill profile fields.
+												<code className="rounded bg-muted px-1 text-[11px]">title</code>, and more to pre-fill profile
+												fields.
 											</p>
 											<Link to="/docs/survey-distribution" className="mt-2 inline-block text-primary text-xs underline">
 												See full email platform setup guide
@@ -1086,7 +1088,8 @@ export default function EditResearchLinkPage() {
 											<div>
 												<p className="font-medium text-sm">Share on Slack, Teams, or Social</p>
 												<p className="text-muted-foreground text-xs">
-													Paste your survey link in channels, DMs, or social posts. Respondents will self-identify when they start.
+													Paste your survey link in channels, DMs, or social posts. Respondents will self-identify when
+													they start.
 												</p>
 											</div>
 										</div>

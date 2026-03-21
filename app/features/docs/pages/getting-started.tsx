@@ -150,8 +150,8 @@ export default function GettingStarted() {
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<p className="text-muted-foreground">
-							Don't have interviews yet? Skip straight to collecting feedback by creating an AI-powered survey. Our
-							AI will help you design questions based on your research plan — just tell it what you want to learn.
+							Don't have interviews yet? Skip straight to collecting feedback by creating an AI-powered survey. Our AI
+							will help you design questions based on your research plan — just tell it what you want to learn.
 						</p>
 						<div className="space-y-2">
 							<div className="flex items-start gap-2">
@@ -176,9 +176,7 @@ export default function GettingStarted() {
 							</div>
 							<div className="flex items-start gap-2">
 								<CheckCircle2 className="mt-0.5 h-4 w-4 text-green-600" />
-								<span className="text-sm">
-									Distribute via link, email, QR code, or embed on your website
-								</span>
+								<span className="text-sm">Distribute via link, email, QR code, or embed on your website</span>
 							</div>
 						</div>
 						<div className="rounded-lg border-purple-500 border-l-4 bg-purple-50 p-3 dark:bg-purple-950/30">

@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher } from "react-router-dom";
-import { type RespondentFieldConfig, parseRespondentFields, serializeRespondentFields } from "../respondent-fields";
+import { parseRespondentFields, type RespondentFieldConfig, serializeRespondentFields } from "../respondent-fields";
 import type { ResearchLinkQuestion } from "../schemas";
 
 export type AutoSaveStatus = "idle" | "saving" | "saved" | "error";

@@ -33,32 +33,28 @@ vi.mock("consola", () => ({
 	},
 }));
 
+import { fetchConversationLensesTool } from "../fetch-conversation-lenses";
 import { fetchEvidenceTool } from "../fetch-evidence";
 import { fetchInterviewContextTool } from "../fetch-interview-context";
 import { fetchPeopleDetailsTool } from "../fetch-people-details";
 import { fetchPersonasTool } from "../fetch-personas";
 import { fetchProjectStatusContextTool } from "../fetch-project-status-context";
+import { fetchResearchPulseTool } from "../fetch-research-pulse";
 import { fetchSegmentsTool } from "../fetch-segments";
 import { fetchSurveysTool } from "../fetch-surveys";
 import { fetchThemesTool } from "../fetch-themes";
+import { fetchTopThemesWithPeopleTool } from "../fetch-top-themes-with-people";
+import { generateProjectRoutesTool } from "../generate-project-routes";
+import { generateResearchRecommendationsTool } from "../generate-research-recommendations";
 import { manageAnnotationsTool } from "../manage-annotations";
+import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../manage-opportunities";
+import { manageOrganizationsTool } from "../manage-organizations";
 import { managePeopleTool } from "../manage-people";
 import { createTaskTool, deleteTaskTool, updateTaskTool } from "../manage-tasks";
 import { markTaskCompleteTool } from "../mark-task-complete";
 import { searchSurveyResponsesTool } from "../search-survey-responses";
-import { fetchConversationLensesTool } from "../fetch-conversation-lenses";
-import { fetchResearchPulseTool } from "../fetch-research-pulse";
-import { fetchTopThemesWithPeopleTool } from "../fetch-top-themes-with-people";
-import { generateProjectRoutesTool } from "../generate-project-routes";
-import { generateResearchRecommendationsTool } from "../generate-research-recommendations";
 import { semanticSearchEvidenceTool } from "../semantic-search-evidence";
 import { semanticSearchPeopleTool } from "../semantic-search-people";
-import {
-	createOpportunityTool,
-	fetchOpportunitiesTool,
-	updateOpportunityTool,
-} from "../manage-opportunities";
-import { manageOrganizationsTool } from "../manage-organizations";
 import { upsertPersonTool } from "../upsert-person";
 
 // ---------------------------------------------------------------------------
@@ -104,7 +100,13 @@ const ALL_TOOLS = { ...PHASE_1_TOOLS, ...PHASE_2_TOOLS };
 // Shared helper: run a structural assertion over every tool in a registry
 // ---------------------------------------------------------------------------
 
-type AnyTool = { id: string; description?: string; inputSchema?: { safeParse: (v: unknown) => { success: boolean } }; outputSchema?: unknown; execute?: unknown };
+type AnyTool = {
+	id: string;
+	description?: string;
+	inputSchema?: { safeParse: (v: unknown) => { success: boolean } };
+	outputSchema?: unknown;
+	execute?: unknown;
+};
 
 function forEachTool(registry: Record<string, AnyTool>, fn: (name: string, tool: AnyTool) => void) {
 	for (const [name, tool] of Object.entries(registry)) {
@@ -142,8 +144,8 @@ describe("MCP Server Phase 1 Tools", () => {
 	it("all tools have descriptions of at least 50 characters (LLMs route on this)", () => {
 		forEachTool(PHASE_1_TOOLS, (name, tool) => {
 			expect(
-				(tool.description?.length ?? 0),
-				`${name} description is too short ("${tool.description?.slice(0, 40)}...")`,
+				tool.description?.length ?? 0,
+				`${name} description is too short ("${tool.description?.slice(0, 40)}...")`
 			).toBeGreaterThanOrEqual(50);
 		});
 	});
@@ -157,10 +159,9 @@ describe("MCP Server Phase 1 Tools", () => {
 	it("all tools have a Zod inputSchema with safeParse", () => {
 		forEachTool(PHASE_1_TOOLS, (name, tool) => {
 			expect(tool.inputSchema, `${name} is missing inputSchema`).toBeDefined();
-			expect(
-				typeof tool.inputSchema?.safeParse,
-				`${name}.inputSchema must be a Zod schema (has safeParse)`,
-			).toBe("function");
+			expect(typeof tool.inputSchema?.safeParse, `${name}.inputSchema must be a Zod schema (has safeParse)`).toBe(
+				"function"
+			);
 		});
 	});
 
@@ -194,9 +195,17 @@ describe("MCP Server Phase 1 Tools", () => {
 
 	describe("generate_app_link — required field and entity type validation", () => {
 		const VALID_ENTITY_TYPES = [
-			"persona", "person", "opportunity", "organization",
-			"theme", "evidence", "insight", "interview", "segment",
-			"survey", "survey_response",
+			"persona",
+			"person",
+			"opportunity",
+			"organization",
+			"theme",
+			"evidence",
+			"insight",
+			"interview",
+			"segment",
+			"survey",
+			"survey_response",
 		] as const;
 
 		for (const entityType of VALID_ENTITY_TYPES) {
@@ -308,10 +317,7 @@ describe("MCP Server Phase 2 Tools (CRM Write)", () => {
 
 	it("all tools have descriptions of at least 50 characters", () => {
 		forEachTool(PHASE_2_TOOLS, (name, tool) => {
-			expect(
-				(tool.description?.length ?? 0),
-				`${name} description is too short`,
-			).toBeGreaterThanOrEqual(50);
+			expect(tool.description?.length ?? 0, `${name} description is too short`).toBeGreaterThanOrEqual(50);
 		});
 	});
 
@@ -383,15 +389,18 @@ describe("MCP Server All Tools — cross-registry integrity", () => {
 	it("all tool descriptions are at least 50 characters", () => {
 		forEachTool(ALL_TOOLS, (name, tool) => {
 			expect(
-				(tool.description?.length ?? 0),
-				`${name} description "${tool.description?.slice(0, 40)}..." is too short for LLM routing`,
+				tool.description?.length ?? 0,
+				`${name} description "${tool.description?.slice(0, 40)}..." is too short for LLM routing`
 			).toBeGreaterThanOrEqual(50);
 		});
 	});
 
 	it("all tools have outputSchema (MCP cannot parse responses without it)", () => {
 		forEachTool(ALL_TOOLS, (name, tool) => {
-			expect(tool.outputSchema, `${name} is missing outputSchema — add one or MCP responses will be unparseable`).toBeDefined();
+			expect(
+				tool.outputSchema,
+				`${name} is missing outputSchema — add one or MCP responses will be unparseable`
+			).toBeDefined();
 		});
 	});
 

@@ -199,11 +199,17 @@ export const ResearchLinkPayloadSchema = z.object({
 				try {
 					return JSON.parse(value) as unknown;
 				} catch {
-					return [{ key: "first_name", required: true }, { key: "last_name", required: false }];
+					return [
+						{ key: "first_name", required: true },
+						{ key: "last_name", required: false },
+					];
 				}
 			}
 			if (Array.isArray(value)) return value;
-			return [{ key: "first_name", required: true }, { key: "last_name", required: false }];
+			return [
+				{ key: "first_name", required: true },
+				{ key: "last_name", required: false },
+			];
 		})
 		.optional(),
 	questions: QuestionsJsonSchema,

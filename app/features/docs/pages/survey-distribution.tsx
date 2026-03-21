@@ -53,16 +53,15 @@ export default function SurveyDistributionGuide() {
 							<p className="font-medium text-foreground text-sm">Pre-filling respondent info</p>
 							<p className="mt-1 text-muted-foreground text-sm">
 								All distribution methods support URL parameters to pre-fill respondent data. When you append{" "}
-								<code className="rounded bg-muted px-1 text-xs">?email=jane@acme.com</code> to your survey link,
-								UpSight automatically matches the respondent to their imported profile — skipping identity questions
-								and enabling personalized AI conversations.
+								<code className="rounded bg-muted px-1 text-xs">?email=jane@acme.com</code> to your survey link, UpSight
+								automatically matches the respondent to their imported profile — skipping identity questions and
+								enabling personalized AI conversations.
 							</p>
 							<div className="mt-3 space-y-1.5">
 								<p className="font-medium text-foreground text-sm">Supported URL parameters</p>
 								<div className="grid gap-1.5 text-muted-foreground text-sm sm:grid-cols-2">
 									<div>
-										<code className="rounded bg-muted px-1 text-xs">email</code> — respondent email (primary
-										identifier)
+										<code className="rounded bg-muted px-1 text-xs">email</code> — respondent email (primary identifier)
 									</div>
 									<div>
 										<code className="rounded bg-muted px-1 text-xs">name</code> — full name (auto-splits into
@@ -81,8 +80,7 @@ export default function SurveyDistributionGuide() {
 										<code className="rounded bg-muted px-1 text-xs">title</code> — job title
 									</div>
 									<div>
-										<code className="rounded bg-muted px-1 text-xs">job_function</code> — e.g. Product,
-										Marketing
+										<code className="rounded bg-muted px-1 text-xs">job_function</code> — e.g. Product, Marketing
 									</div>
 									<div>
 										<code className="rounded bg-muted px-1 text-xs">industry</code> — e.g. SaaS, Healthcare
@@ -92,8 +90,8 @@ export default function SurveyDistributionGuide() {
 									</div>
 								</div>
 								<p className="text-muted-foreground text-xs">
-									When a known person's profile has missing fields, respondents see a pre-filled form to
-									confirm and complete their details before starting.
+									When a known person's profile has missing fields, respondents see a pre-filled form to confirm and
+									complete their details before starting.
 								</p>
 							</div>
 						</div>
@@ -112,8 +110,8 @@ export default function SurveyDistributionGuide() {
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<p className="text-muted-foreground text-sm">
-							The simplest way to share. Copy your public survey link from the Distribute tab and send it however
-							you like — email, DM, text message.
+							The simplest way to share. Copy your public survey link from the Distribute tab and send it however you
+							like — email, DM, text message.
 						</p>
 						<div className="rounded-md border bg-muted/30 p-3">
 							<p className="mb-1 font-medium text-foreground text-xs">Your survey URL</p>
@@ -146,8 +144,8 @@ export default function SurveyDistributionGuide() {
 						<div>
 							<h4 className="mb-2 font-semibold text-foreground text-sm">Option A: Send from UpSight (Gmail)</h4>
 							<p className="mb-3 text-muted-foreground text-sm">
-								Connect your Gmail account in the Distribute tab, then send personalized invites directly from
-								UpSight. You can select recipients from your People CRM or enter email addresses manually.
+								Connect your Gmail account in the Distribute tab, then send personalized invites directly from UpSight.
+								You can select recipients from your People CRM or enter email addresses manually.
 							</p>
 							<div className="space-y-2">
 								<div className="flex items-start gap-2">
@@ -171,12 +169,10 @@ export default function SurveyDistributionGuide() {
 
 						{/* External email platforms */}
 						<div>
-							<h4 className="mb-2 font-semibold text-foreground text-sm">
-								Option B: Use Your Email Platform
-							</h4>
+							<h4 className="mb-2 font-semibold text-foreground text-sm">Option B: Use Your Email Platform</h4>
 							<p className="mb-3 text-muted-foreground text-sm">
-								If you use Mailchimp, SendGrid, Postmark, ConvertKit, or any other email tool, include your survey
-								link in the campaign and use their merge tags to pre-fill the respondent's email.
+								If you use Mailchimp, SendGrid, Postmark, ConvertKit, or any other email tool, include your survey link
+								in the campaign and use their merge tags to pre-fill the respondent's email.
 							</p>
 
 							<div className="space-y-3">
@@ -184,8 +180,8 @@ export default function SurveyDistributionGuide() {
 								<div className="rounded-lg border p-4">
 									<p className="mb-2 font-medium text-foreground text-sm">Mailchimp</p>
 									<p className="mb-2 text-muted-foreground text-xs">
-										Add your survey URL as a button or link in your campaign template. Append merge tags so
-										each recipient's info is passed automatically:
+										Add your survey URL as a button or link in your campaign template. Append merge tags so each
+										recipient's info is passed automatically:
 									</p>
 									<div className="rounded-md bg-muted/50 p-2">
 										<code className="break-all text-xs">
@@ -195,13 +191,11 @@ export default function SurveyDistributionGuide() {
 									<p className="mt-2 text-muted-foreground text-xs">
 										<code className="rounded bg-muted px-1 text-[11px]">EMAIL</code>,{" "}
 										<code className="rounded bg-muted px-1 text-[11px]">FNAME</code>, and{" "}
-										<code className="rounded bg-muted px-1 text-[11px]">LNAME</code> are Mailchimp's built-in
-										merge tags. For custom fields like company or title, find the merge tag in{" "}
+										<code className="rounded bg-muted px-1 text-[11px]">LNAME</code> are Mailchimp's built-in merge
+										tags. For custom fields like company or title, find the merge tag in{" "}
 										<strong>Audience → Settings → Audience fields</strong> (it'll look like{" "}
 										<code className="rounded bg-muted px-1 text-[11px]">*|MMERGE5|*</code>) and append it:{" "}
-										<code className="rounded bg-muted px-1 text-[11px]">
-											&company=*|MMERGE5|*
-										</code>
+										<code className="rounded bg-muted px-1 text-[11px]">&company=*|MMERGE5|*</code>
 									</p>
 								</div>
 
@@ -213,13 +207,14 @@ export default function SurveyDistributionGuide() {
 									</p>
 									<div className="rounded-md bg-muted/50 p-2">
 										<code className="break-all text-xs">
-											{"https://getupsight.com/ask/your-survey?email={{email}}&first_name={{first_name}}&last_name={{last_name}}&company={{company}}"}
+											{
+												"https://getupsight.com/ask/your-survey?email={{email}}&first_name={{first_name}}&last_name={{last_name}}&company={{company}}"
+											}
 										</code>
 									</div>
 									<p className="mt-2 text-muted-foreground text-xs">
-										Both platforms use{" "}
-										<code className="rounded bg-muted px-1 text-[11px]">{"{{variable}}"}</code> syntax.
-										Check your platform's docs for exact field names — they may differ (e.g.{" "}
+										Both platforms use <code className="rounded bg-muted px-1 text-[11px]">{"{{variable}}"}</code>{" "}
+										syntax. Check your platform's docs for exact field names — they may differ (e.g.{" "}
 										<code className="rounded bg-muted px-1 text-[11px]">{"{{firstName}}"}</code> vs{" "}
 										<code className="rounded bg-muted px-1 text-[11px]">{"{{first_name}}"}</code>).
 									</p>
@@ -229,13 +224,10 @@ export default function SurveyDistributionGuide() {
 								<div className="rounded-lg border p-4">
 									<p className="mb-2 font-medium text-foreground text-sm">ConvertKit / HubSpot / Others</p>
 									<p className="text-muted-foreground text-xs">
-										Most email platforms support merge tags or personalization tokens. The pattern is the same:
-										append{" "}
-										<code className="rounded bg-muted px-1 text-[11px]">
-											?email=&first_name=&last_name=&company=
-										</code>{" "}
-										using your platform's merge tag syntax for each field. Check your platform's documentation
-										for the correct tag names.
+										Most email platforms support merge tags or personalization tokens. The pattern is the same: append{" "}
+										<code className="rounded bg-muted px-1 text-[11px]">?email=&first_name=&last_name=&company=</code>{" "}
+										using your platform's merge tag syntax for each field. Check your platform's documentation for the
+										correct tag names.
 									</p>
 								</div>
 							</div>
@@ -243,14 +235,14 @@ export default function SurveyDistributionGuide() {
 							<div className="mt-4 rounded-lg border-amber-500 border-l-4 bg-amber-50 p-3 dark:bg-amber-950/20">
 								<p className="font-medium text-sm">Why pre-fill respondent info?</p>
 								<p className="mt-1 text-muted-foreground text-sm">
-									When a respondent clicks a link with their details pre-filled, UpSight matches them to
-									their profile instantly — no "What's your email?" question. Pass{" "}
+									When a respondent clicks a link with their details pre-filled, UpSight matches them to their profile
+									instantly — no "What's your email?" question. Pass{" "}
 									<code className="rounded bg-muted px-1 text-xs">email</code>,{" "}
 									<code className="rounded bg-muted px-1 text-xs">first_name</code>,{" "}
 									<code className="rounded bg-muted px-1 text-xs">last_name</code>, and{" "}
-									<code className="rounded bg-muted px-1 text-xs">company</code>{" "}
-									for the best experience. The AI interviewer will know who they are, and they'll see a
-									pre-filled form to confirm any missing details before starting.
+									<code className="rounded bg-muted px-1 text-xs">company</code> for the best experience. The AI
+									interviewer will know who they are, and they'll see a pre-filled form to confirm any missing details
+									before starting.
 								</p>
 							</div>
 						</div>
@@ -282,8 +274,8 @@ export default function SurveyDistributionGuide() {
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<p className="text-muted-foreground text-sm">
-							Generate a QR code from the Distribute tab. Great for in-person events, printed materials,
-							presentations, or product packaging.
+							Generate a QR code from the Distribute tab. Great for in-person events, printed materials, presentations,
+							or product packaging.
 						</p>
 						<div className="space-y-2">
 							<div className="flex items-start gap-2">
@@ -294,9 +286,7 @@ export default function SurveyDistributionGuide() {
 							</div>
 							<div className="flex items-start gap-2">
 								<CheckCircle2 className="mt-0.5 h-4 w-4 text-green-600" />
-								<span className="text-muted-foreground text-sm">
-									Works on any smartphone camera — no app needed
-								</span>
+								<span className="text-muted-foreground text-sm">Works on any smartphone camera — no app needed</span>
 							</div>
 							<div className="flex items-start gap-2">
 								<CheckCircle2 className="mt-0.5 h-4 w-4 text-green-600" />
@@ -318,15 +308,14 @@ export default function SurveyDistributionGuide() {
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<p className="text-muted-foreground text-sm">
-							Embed the survey directly on your website using an iframe. Use the embed code generator in the
-							Distribute tab.
+							Embed the survey directly on your website using an iframe. Use the embed code generator in the Distribute
+							tab.
 						</p>
 						<div className="space-y-2">
 							<div className="flex items-start gap-2">
 								<CheckCircle2 className="mt-0.5 h-4 w-4 text-green-600" />
 								<span className="text-muted-foreground text-sm">
-									<strong className="text-foreground">Feedback widgets:</strong> add to your app's settings or help
-									page
+									<strong className="text-foreground">Feedback widgets:</strong> add to your app's settings or help page
 								</span>
 							</div>
 							<div className="flex items-start gap-2">
@@ -367,8 +356,8 @@ export default function SurveyDistributionGuide() {
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<p className="text-muted-foreground text-sm">
-							Paste your survey link directly into Slack channels, Teams chats, LinkedIn posts, Twitter/X, or
-							anywhere else. The link will generate a preview card automatically.
+							Paste your survey link directly into Slack channels, Teams chats, LinkedIn posts, Twitter/X, or anywhere
+							else. The link will generate a preview card automatically.
 						</p>
 						<div className="space-y-2">
 							<div className="flex items-start gap-2">

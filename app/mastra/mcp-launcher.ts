@@ -22,8 +22,8 @@ require("dotenv").config({ path: resolve(projectRoot, ".env") });
 
 // 2. Register ~/  → app/* path alias so all imports resolve
 require("tsconfig-paths").register({
-  baseUrl: projectRoot,
-  paths: { "~/*": ["./app/*"] },
+	baseUrl: projectRoot,
+	paths: { "~/*": ["./app/*"] },
 });
 
 // 3. Start the server

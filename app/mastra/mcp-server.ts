@@ -30,36 +30,28 @@ import { resolveApiKey } from "../lib/api-keys.server";
 import { createSupabaseAdminClient } from "../lib/supabase/client.server";
 import { fetchConversationLensesTool } from "./tools/fetch-conversation-lenses";
 import { fetchEvidenceTool } from "./tools/fetch-evidence";
-import { generateProjectRoutesTool } from "./tools/generate-project-routes";
 import { fetchInterviewContextTool } from "./tools/fetch-interview-context";
 import { fetchPeopleDetailsTool } from "./tools/fetch-people-details";
 import { fetchPersonasTool } from "./tools/fetch-personas";
 import { fetchProjectStatusContextTool } from "./tools/fetch-project-status-context";
+import { fetchResearchPulseTool } from "./tools/fetch-research-pulse";
 import { fetchSegmentsTool } from "./tools/fetch-segments";
 import { fetchSurveysTool } from "./tools/fetch-surveys";
 import { fetchThemesTool } from "./tools/fetch-themes";
+import { fetchTopThemesWithPeopleTool } from "./tools/fetch-top-themes-with-people";
+import { generateProjectRoutesTool } from "./tools/generate-project-routes";
+import { generateResearchRecommendationsTool } from "./tools/generate-research-recommendations";
 import { manageAnnotationsTool } from "./tools/manage-annotations";
+// Phase 2: CRM Write Tools
+import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "./tools/manage-opportunities";
+import { manageOrganizationsTool } from "./tools/manage-organizations";
 import { managePeopleTool } from "./tools/manage-people";
-import {
-	createTaskTool,
-	deleteTaskTool,
-	updateTaskTool,
-} from "./tools/manage-tasks";
+import { createTaskTool, deleteTaskTool, updateTaskTool } from "./tools/manage-tasks";
 import { markTaskCompleteTool } from "./tools/mark-task-complete";
 import { searchSurveyResponsesTool } from "./tools/search-survey-responses";
-import { fetchResearchPulseTool } from "./tools/fetch-research-pulse";
-import { fetchTopThemesWithPeopleTool } from "./tools/fetch-top-themes-with-people";
-import { generateResearchRecommendationsTool } from "./tools/generate-research-recommendations";
 // Phase 1: Intelligence Read Tools
 import { semanticSearchEvidenceTool } from "./tools/semantic-search-evidence";
 import { semanticSearchPeopleTool } from "./tools/semantic-search-people";
-// Phase 2: CRM Write Tools
-import {
-	createOpportunityTool,
-	fetchOpportunitiesTool,
-	updateOpportunityTool,
-} from "./tools/manage-opportunities";
-import { manageOrganizationsTool } from "./tools/manage-organizations";
 import { upsertPersonTool } from "./tools/upsert-person";
 // Workflows
 import { dailyBriefWorkflow } from "./workflows/daily-brief";
@@ -118,9 +110,7 @@ interface McpContext {
 async function resolveStdioApiKey(): Promise<McpContext | null> {
 	const rawKey = process.env.UPSIGHT_API_KEY;
 	if (!rawKey) {
-		consola.warn(
-			"[mcp-server] UPSIGHT_API_KEY not set — tools will require explicit project_id in input",
-		);
+		consola.warn("[mcp-server] UPSIGHT_API_KEY not set — tools will require explicit project_id in input");
 		return null;
 	}
 
@@ -128,9 +118,7 @@ async function resolveStdioApiKey(): Promise<McpContext | null> {
 	const resolved = await resolveApiKey(supabase, rawKey);
 
 	if (!resolved) {
-		consola.error(
-			"[mcp-server] UPSIGHT_API_KEY is invalid, revoked, or expired",
-		);
+		consola.error("[mcp-server] UPSIGHT_API_KEY is invalid, revoked, or expired");
 		process.exit(1);
 	}
 
@@ -174,25 +162,21 @@ export async function startMCPServer() {
 		// For stdio, we set default request context that all tool calls inherit.
 		const serverRecord = server as unknown as Record<string, unknown>;
 		if (typeof serverRecord.setDefaultContext === "function") {
-			(serverRecord.setDefaultContext as (ctx: Record<string, string>) => void)(
-				{
-					project_id: apiKeyContext.projectId,
-					account_id: apiKeyContext.accountId,
-				},
-			);
+			(serverRecord.setDefaultContext as (ctx: Record<string, string>) => void)({
+				project_id: apiKeyContext.projectId,
+				account_id: apiKeyContext.accountId,
+			});
 		} else {
 			// Fallback: set env vars that tools can read as context
 			process.env.__MCP_PROJECT_ID = apiKeyContext.projectId;
 			process.env.__MCP_ACCOUNT_ID = apiKeyContext.accountId;
-			consola.debug(
-				"[mcp-server] Set context via env vars (MCPServer.setDefaultContext not available)",
-			);
+			consola.debug("[mcp-server] Set context via env vars (MCPServer.setDefaultContext not available)");
 		}
 	}
 
 	await server.startStdio();
 	consola.info(
-		`[mcp-server] UpSight Intelligence started on stdio (${Object.keys(allTools).length} tools: ${Object.keys(PHASE_1_TOOLS).length} read + ${Object.keys(PHASE_2_TOOLS).length} write)`,
+		`[mcp-server] UpSight Intelligence started on stdio (${Object.keys(allTools).length} tools: ${Object.keys(PHASE_1_TOOLS).length} read + ${Object.keys(PHASE_2_TOOLS).length} write)`
 	);
 }
 

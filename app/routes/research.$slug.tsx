@@ -33,13 +33,13 @@ import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button
 import { getNextQuestionIndex, hasResponseValue } from "~/features/research-links/branching";
 import { VideoRecorder } from "~/features/research-links/components/VideoRecorder";
 import {
+	getFieldKeys,
+	isFieldRequired,
+	parseRespondentFields,
 	RESPONDENT_FIELD_DEFINITION_MAP,
 	type RespondentFieldConfig,
 	type RespondentFieldKey,
 	type RespondentFieldOption,
-	getFieldKeys,
-	isFieldRequired,
-	parseRespondentFields,
 } from "~/features/research-links/respondent-fields";
 import { type ResearchLinkQuestion, ResearchLinkQuestionSchema } from "~/features/research-links/schemas";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
