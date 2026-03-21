@@ -37,6 +37,13 @@ interface Project {
   account_id: string;
 }
 
+interface AccountWithProjects {
+  account_id: string;
+  name: string | null;
+  personal_account: boolean | null;
+  projects: Project[];
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -144,16 +151,21 @@ export async function loader({ request }: Route.LoaderArgs) {
     });
   }
 
-  // ---- Fetch user's projects ----
-  const { data: accounts } = await supabase.rpc("get_user_accounts");
-  const accountsList = (Array.isArray(accounts) ? accounts : []) as Array<{
+  // ---- Fetch user's accounts and projects (matching TeamSwitcher hierarchy) ----
+  const { data: rawAccounts } = await supabase.rpc("get_user_accounts");
+  const accountsList = (
+    Array.isArray(rawAccounts) ? rawAccounts : []
+  ) as Array<{
     account_id: string;
+    name?: string | null;
     personal_account?: boolean | null;
   }>;
 
-  const accountIds = accountsList.map((a) => a.account_id);
+  const accountIds = accountsList
+    .filter((a) => !a.personal_account)
+    .map((a) => a.account_id);
 
-  let projects: Project[] = [];
+  let allProjects: Project[] = [];
   if (accountIds.length > 0) {
     const { data: projectData } = await adminSupabase
       .from("projects")
@@ -161,13 +173,25 @@ export async function loader({ request }: Route.LoaderArgs) {
       .in("account_id", accountIds)
       .order("name");
 
-    projects = (projectData ?? []) as Project[];
+    allProjects = (projectData ?? []) as Project[];
   }
+
+  // Group projects under their accounts (same structure as TeamSwitcher)
+  const accounts: AccountWithProjects[] = accountsList
+    .filter((a) => !a.personal_account)
+    .map((a) => ({
+      account_id: a.account_id,
+      name: a.name ?? null,
+      personal_account: a.personal_account ?? null,
+      projects: allProjects.filter((p) => p.account_id === a.account_id),
+    }))
+    .filter((a) => a.projects.length > 0)
+    .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
   const clientName = client.client_name ?? "An application";
 
   return {
-    projects,
+    accounts,
     oauthParams: {
       clientId,
       redirectUri,
@@ -265,9 +289,10 @@ export async function action({ request }: Route.ActionArgs) {
 // ---------------------------------------------------------------------------
 
 export default function OAuthAuthorize({ loaderData }: Route.ComponentProps) {
-  const { projects, oauthParams, clientName } = loaderData;
+  const { accounts, oauthParams, clientName } = loaderData;
+  const allProjects = accounts.flatMap((a) => a.projects);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
-    projects.length === 1 ? projects[0].id : "",
+    allProjects.length === 1 ? allProjects[0].id : "",
   );
   const handleDeny = () => {
     const denyUrl = buildErrorRedirect(
@@ -386,7 +411,7 @@ export default function OAuthAuthorize({ loaderData }: Route.ComponentProps) {
                 </ul>
               </div>
 
-              {/* Project selector */}
+              {/* Project selector — grouped by team like TeamSwitcher */}
               <div className="mb-6">
                 <label
                   htmlFor="project-select"
@@ -395,12 +420,13 @@ export default function OAuthAuthorize({ loaderData }: Route.ComponentProps) {
                   Select a project
                 </label>
 
-                {projects.length === 0 ? (
+                {allProjects.length === 0 ? (
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     You don't have any projects yet. Create a project in UpSight
                     first.
                   </p>
-                ) : (
+                ) : accounts.length === 1 ? (
+                  // Single team — no need for optgroups
                   <select
                     id="project-select"
                     value={selectedProjectId}
@@ -408,10 +434,32 @@ export default function OAuthAuthorize({ loaderData }: Route.ComponentProps) {
                     className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                   >
                     <option value="">Choose a project...</option>
-                    {projects.map((project) => (
+                    {accounts[0].projects.map((project) => (
                       <option key={project.id} value={project.id}>
                         {project.name}
                       </option>
+                    ))}
+                  </select>
+                ) : (
+                  // Multiple teams — group projects under team names
+                  <select
+                    id="project-select"
+                    value={selectedProjectId}
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                  >
+                    <option value="">Choose a project...</option>
+                    {accounts.map((account) => (
+                      <optgroup
+                        key={account.account_id}
+                        label={account.name || "Untitled team"}
+                      >
+                        {account.projects.map((project) => (
+                          <option key={project.id} value={project.id}>
+                            {project.name}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 )}
@@ -429,7 +477,7 @@ export default function OAuthAuthorize({ loaderData }: Route.ComponentProps) {
               </button>
               <button
                 type="submit"
-                disabled={!selectedProjectId || projects.length === 0}
+                disabled={!selectedProjectId || allProjects.length === 0}
                 className="flex-1 rounded-lg bg-amber-500 px-4 py-2.5 font-medium text-sm text-white shadow-sm transition-colors hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-600 dark:hover:bg-amber-700"
               >
                 Allow
