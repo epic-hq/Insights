@@ -5,6 +5,23 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 
+declare const Deno: {
+	env: {
+		get(name: string): string | undefined
+	}
+	serve(handler: (req: Request) => Response | Promise<Response>): void
+	mkdir(path: string, options?: { recursive?: boolean }): Promise<void>
+	writeFile(path: string, data: Uint8Array): Promise<void>
+}
+
+type IllustrateBody = {
+	prompt: string
+	size?: "1024x1024" | "1536x1024" | "1024x1536" | null
+	returnMode?: "png" | "json" | null
+	localSave?: boolean
+	filename?: string | null
+}
+
 const logger = (req: Request, extra?: Record<string, unknown>) => {
 	try {
 		const url = new URL(req.url)
@@ -38,10 +55,12 @@ Deno.serve(async (req) => {
 
 		const isPngAccept = (req.headers.get("accept") || "").toLowerCase().includes("image/png")
 
-		const body = (await req.json()) as Body
+		const body = (await req.json()) as IllustrateBody
 		const { prompt, size = "1024x1024", returnMode, localSave = false, filename } = body
+		const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")
 
 		if (!prompt) return new Response("Missing prompt", { status: 400 })
+		if (!OPENAI_API_KEY) return new Response("Missing OPENAI_API_KEY", { status: 500 })
 
 		console.log("[illustrate] request meta", JSON.stringify(logger(req, { size, returnMode, localSave, filename })))
 

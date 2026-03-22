@@ -4,6 +4,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
+declare const Deno: {
+	env: {
+		get(name: string): string | undefined
+	}
+	serve(handler: (req: Request) => Response | Promise<Response>): void
+}
+
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
@@ -16,6 +23,10 @@ interface EmbedPersonFacetRequest {
 	kind_slug: string // From facet_kind_global.slug
 }
 
+type EmbeddingResponse = {
+	data: Array<{ embedding: number[] }>
+}
+
 Deno.serve(async (req) => {
 	try {
 		// Parse request body
@@ -26,6 +37,9 @@ Deno.serve(async (req) => {
 				JSON.stringify({ error: "Missing person_id, facet_account_id, or label" }),
 				{ status: 400, headers: { "Content-Type": "application/json" } }
 			)
+		}
+		if (!OPENAI_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+			throw new Error("Missing required environment variables")
 		}
 
 		console.log(`[embed-person-facet] Generating embedding for ${kind_slug}: "${label}"`)
@@ -50,7 +64,7 @@ Deno.serve(async (req) => {
 			throw new Error(`OpenAI API error: ${error}`)
 		}
 
-		const { data } = await openaiRes.json()
+		const { data } = (await openaiRes.json()) as EmbeddingResponse
 		const embedding: number[] = data[0].embedding
 
 		console.log(`[embed-person-facet] Generated embedding with ${embedding.length} dimensions`)
@@ -80,12 +94,13 @@ Deno.serve(async (req) => {
 			{ headers: { "Content-Type": "application/json" } }
 		)
 	} catch (err) {
+		const error = err instanceof Error ? err : new Error(String(err))
 		console.error(`[embed-person-facet] Error:`, err)
 		return new Response(
 			JSON.stringify({
 				success: false,
-				error: err.message,
-				stack: err.stack,
+				error: error.message,
+				stack: error.stack,
 			}),
 			{
 				status: 500,
