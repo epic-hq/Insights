@@ -12,6 +12,15 @@ import type { Database } from "../../../supabase/types";
 import type { SalesConversationExtraction } from "./schema";
 
 type DbClient = SupabaseClient<Database>;
+type EvidenceAnchor = {
+	start_ms?: number | null;
+	end_ms?: number | null;
+};
+
+const getFirstAnchor = (anchors: unknown): EvidenceAnchor | null => {
+	if (!Array.isArray(anchors) || anchors.length === 0) return null;
+	return (anchors[0] as EvidenceAnchor) ?? null;
+};
 
 /**
  * Build a sales lens extraction from interview evidence using BAML + semantic search
@@ -91,10 +100,32 @@ Notes: ${interview.observations_and_notes || "None"}
 		.eq("interview_id", interviewId);
 
 	// 8. Convert BAML extraction to SalesConversationExtraction format
+	const buildEvidencePointer = (evidenceId: string) => {
+		const ev = allEvidence.find((entry) => entry.id === evidenceId);
+		const anchor = getFirstAnchor(ev?.anchors);
+		return {
+			evidenceId,
+			startMs: anchor?.start_ms ?? null,
+			endMs: anchor?.end_ms ?? null,
+			transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
+		};
+	};
+
+	const attendeePersonIds = (participants || [])
+		.map((participant) => participant.person_id)
+		.filter((id): id is string => Boolean(id));
+
+	const attendeePersonKeys = (participants || [])
+		.map((participant) => participant.display_name || participant.person_id || participant.role || null)
+		.filter((value): value is string => Boolean(value));
+
 	const salesExtraction: SalesConversationExtraction = {
 		meetingId: interview.id,
 		accountId: interview.account_id,
 		projectId: interview.project_id,
+		opportunityId: null,
+		attendeePersonIds,
+		attendeePersonKeys,
 		frameworks: [
 			{
 				name: "BANT_GPCT",
@@ -109,8 +140,6 @@ Notes: ${interview.observations_and_notes || "None"}
 					{
 						slot: "budget",
 						label: "Budget",
-						description:
-							`${extraction.budget.amount_mentioned || "Not discussed"}. ${extraction.budget.pricing_sensitivity ? `Sensitivity: ${extraction.budget.pricing_sensitivity}` : ""}`.trim(),
 						summary: extraction.budget.amount_mentioned || "Not discussed",
 						textValue: extraction.budget.supporting_quote || null,
 						numericValue: null,
@@ -121,24 +150,13 @@ Notes: ${interview.observations_and_notes || "None"}
 						ownerPersonKey: null,
 						relatedPersonIds: [],
 						relatedOrganizationIds: [],
-						evidence: extraction.budget.evidence_ids.map((id) => {
-							const ev = allEvidence.find((e) => e.id === id);
-							return {
-								evidenceId: id,
-								startMs: ev?.anchors[0]?.start_ms || null,
-								endMs: ev?.anchors[0]?.end_ms || null,
-								transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
-							};
-						}),
+						evidence: extraction.budget.evidence_ids.map(buildEvidencePointer),
 						hygiene: [],
 					},
 					// Authority slot
 					{
 						slot: "authority",
 						label: "Authority",
-						description: extraction.authority.decision_maker_identified
-							? `${extraction.authority.decision_maker_name} (${extraction.authority.decision_maker_role || "role unclear"}). ${extraction.authority.approval_process || ""}`
-							: `Decision maker not identified. ${extraction.authority.approval_process || "Approval process unclear."}`,
 						summary: extraction.authority.decision_maker_name || "Decision maker not identified",
 						textValue: extraction.authority.approval_process || null,
 						numericValue: null,
@@ -149,15 +167,7 @@ Notes: ${interview.observations_and_notes || "None"}
 						ownerPersonKey: null,
 						relatedPersonIds: [],
 						relatedOrganizationIds: [],
-						evidence: extraction.authority.evidence_ids.map((id) => {
-							const ev = allEvidence.find((e) => e.id === id);
-							return {
-								evidenceId: id,
-								startMs: ev?.anchors[0]?.start_ms || null,
-								endMs: ev?.anchors[0]?.end_ms || null,
-								transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
-							};
-						}),
+						evidence: extraction.authority.evidence_ids.map(buildEvidencePointer),
 						hygiene: extraction.authority.blockers.map((blocker) => ({
 							code: "blocker",
 							severity: "critical" as const,
@@ -169,8 +179,6 @@ Notes: ${interview.observations_and_notes || "None"}
 					{
 						slot: "need",
 						label: "Need",
-						description:
-							`Pain severity: ${extraction.need.pain_severity}. ${extraction.need.impact_on_business || ""}`.trim(),
 						summary: extraction.need.primary_pain_points.join(", ") || "No clear need identified",
 						textValue: extraction.need.impact_on_business || null,
 						numericValue: null,
@@ -181,23 +189,13 @@ Notes: ${interview.observations_and_notes || "None"}
 						ownerPersonKey: null,
 						relatedPersonIds: [],
 						relatedOrganizationIds: [],
-						evidence: extraction.need.evidence_ids.map((id) => {
-							const ev = allEvidence.find((e) => e.id === id);
-							return {
-								evidenceId: id,
-								startMs: ev?.anchors[0]?.start_ms || null,
-								endMs: ev?.anchors[0]?.end_ms || null,
-								transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
-							};
-						}),
+						evidence: extraction.need.evidence_ids.map(buildEvidencePointer),
 						hygiene: [],
 					},
 					// Timeline slot
 					{
 						slot: "timeline",
 						label: "Timeline",
-						description:
-							`Urgency: ${extraction.timeline.urgency_level}. ${extraction.timeline.target_date ? `Target: ${extraction.timeline.target_date}` : ""}. ${extraction.timeline.external_drivers.length > 0 ? `Drivers: ${extraction.timeline.external_drivers.join(", ")}` : ""}`.trim(),
 						summary: extraction.timeline.target_date || `Urgency: ${extraction.timeline.urgency_level}`,
 						textValue: extraction.timeline.implementation_timeline || null,
 						numericValue: null,
@@ -210,23 +208,14 @@ Notes: ${interview.observations_and_notes || "None"}
 						ownerPersonKey: null,
 						relatedPersonIds: [],
 						relatedOrganizationIds: [],
-						evidence: extraction.timeline.evidence_ids.map((id) => {
-							const ev = allEvidence.find((e) => e.id === id);
-							return {
-								evidenceId: id,
-								startMs: ev?.anchors[0]?.start_ms || null,
-								endMs: ev?.anchors[0]?.end_ms || null,
-								transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
-							};
-						}),
+						evidence: extraction.timeline.evidence_ids.map(buildEvidencePointer),
 						hygiene: [],
 					},
 					// Next steps slots
-					...extraction.next_steps.map((step, idx) => ({
-						slot: `next_step_${idx + 1}`,
-						label: `Next Step ${idx + 1}`,
-						description: step.action_item,
-						summary: step.action_item,
+						...extraction.next_steps.map((step, idx) => ({
+							slot: `next_step_${idx + 1}`,
+							label: `Next Step ${idx + 1}`,
+							summary: step.action_item,
 						textValue: step.owner || null,
 						numericValue: null,
 						dateValue: step.due_date || null,
@@ -236,15 +225,7 @@ Notes: ${interview.observations_and_notes || "None"}
 						ownerPersonKey: null,
 						relatedPersonIds: [],
 						relatedOrganizationIds: [],
-						evidence: step.evidence_ids.map((id) => {
-							const ev = allEvidence.find((e) => e.id === id);
-							return {
-								evidenceId: id,
-								startMs: ev?.anchors[0]?.start_ms || null,
-								endMs: ev?.anchors[0]?.end_ms || null,
-								transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
-							};
-						}),
+							evidence: step.evidence_ids.map(buildEvidencePointer),
 						hygiene: [],
 					})),
 				],
@@ -281,17 +262,10 @@ Notes: ${interview.observations_and_notes || "None"}
 					organizationId: null,
 					email: null,
 					confidence: 0.7,
-					evidence: stakeholder.evidence_ids.map((id) => {
-						const ev = allEvidence.find((e) => e.id === id);
-						return {
-							evidenceId: id,
-							startMs: ev?.anchors[0]?.start_ms || null,
-							endMs: ev?.anchors[0]?.end_ms || null,
-							transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
-						};
-					}),
+					evidence: stakeholder.evidence_ids.map(buildEvidencePointer),
 				};
 			}),
+			objections: [],
 		},
 		nextStep:
 			extraction.next_steps.length > 0
@@ -303,15 +277,7 @@ Notes: ${interview.observations_and_notes || "None"}
 							? extraction.next_steps[0].due_date
 							: null,
 						confidence: 0.8,
-						evidence: extraction.next_steps[0].evidence_ids.map((id) => {
-							const ev = allEvidence.find((e) => e.id === id);
-							return {
-								evidenceId: id,
-								startMs: ev?.anchors[0]?.start_ms || null,
-								endMs: ev?.anchors[0]?.end_ms || null,
-								transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
-							};
-						}),
+						evidence: extraction.next_steps[0].evidence_ids.map(buildEvidencePointer),
 					}
 				: {
 						description: "No clear next steps identified",
@@ -321,19 +287,6 @@ Notes: ${interview.observations_and_notes || "None"}
 						confidence: 0.3,
 						evidence: [],
 					},
-		insights: extraction.key_insights.map((insight) => ({
-			text: insight,
-			category: "strategic",
-		})),
-		risks: extraction.risks_and_concerns.map((risk) => ({
-			description: risk,
-			severity: "medium",
-		})),
-		metadata: {
-			extractedAt: new Date().toISOString(),
-			evidenceCount: allEvidence.length,
-			qualificationScore: extraction.deal_qualification.overall_qualification,
-		},
 	};
 
 	return salesExtraction;

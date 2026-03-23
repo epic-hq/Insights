@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-03-22T17:59:31.193Z",
-  "totalDiagnostics": 686,
+  "generatedAt": "2026-03-23T15:09:01.765Z",
+  "totalDiagnostics": 653,
   "diagnostics": {
     "agents/livekit/agent.ts|TS2305|Module '\"@livekit/agents\"' has no exported member 'llm'.": 1,
     "agents/livekit/agent.ts|TS2503|Cannot find namespace 'metrics'.": 1,
@@ -263,10 +263,6 @@
     "app/lib/gen-ui/registered-components.tsx|TS2322|Type 'ZodObject<{ templateKey: ZodString; templateName: ZodCatch<ZodString>; interviewCount: ZodCatch<ZodNumber>; mode: ZodCatch<ZodEnum<[\"single\", \"aggregated\"]>>; ... 5 more ...; personName: ZodCatch<...>; }, \"strip\", ZodTypeAny, { ...; }, { ...; }>' is not assignable to type 'ZodType<ConversationLensInsightsData, ZodTypeDef, ConversationLensInsightsData>'.": 1,
     "app/lib/hooks/useJunctionTables.ts|TS2353|Object literal may only specify known properties, and 'role' does not exist in type 'ProjectPeopleStats'.": 1,
     "app/lib/integrations/calendar.server.ts|TS2769|No overload matches this call.": 1,
-    "app/lib/sales-lens/baml-extraction.server.ts|TS18047|'ev.anchors' is possibly 'null'.": 14,
-    "app/lib/sales-lens/baml-extraction.server.ts|TS2353|Object literal may only specify known properties, and 'description' does not exist in type '{ evidence: { evidenceId: string; startMs?: number | null | undefined; endMs?: number | null | undefined; transcriptSnippet?: string | null | undefined; }[]; hygiene: { code: string; severity: \"info\" | ... 1 more ... | \"warning\"; message?: string | ... 1 more ... | undefined; slot?: string | ... 1 more ... | undefin...'.": 4,
-    "app/lib/sales-lens/baml-extraction.server.ts|TS2741|Property 'objections' is missing in type '{ stakeholders: { personId: string | null; personKey: string; candidatePersonKey: string | null; displayName: string; role: string | null; influence: \"high\" | \"medium\" | \"low\"; labels: (\"economic_buyer\" | ... 3 more ... | \"decision_maker\")[]; organizationId: null; email: null; confidence: number; evidence: { ...; }[...' but required in type '{ stakeholders: { evidence: { evidenceId: string; startMs?: number | null | undefined; endMs?: number | null | undefined; transcriptSnippet?: string | null | undefined; }[]; influence: \"high\" | \"medium\" | \"low\"; ... 8 more ...; candidatePersonKey?: string | ... 1 more ... | undefined; }[]; objections: { ...; }[]; }'.": 1,
-    "app/lib/sales-lens/baml-extraction.server.ts|TS7053|Element implicitly has an 'any' type because expression of type '0' can't be used to index type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.": 14,
     "app/lib/supabase/client.server.ts|TS2769|No overload matches this call.": 1,
     "app/lib/supabase/middleware.ts|TS2307|Cannot find module 'next/server' or its corresponding type declarations.": 1,
     "app/lib/supabase/middleware.ts|TS2339|Property 'catch' does not exist on type 'void'.": 1,
