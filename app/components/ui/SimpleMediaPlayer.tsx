@@ -105,8 +105,23 @@ export function SimpleMediaPlayer({
 		setIsClient(true);
 	}, []);
 
+	useEffect(() => {
+		if (!mediaUrl) {
+			setSignedUrl(null);
+			setIsLoading(false);
+			setError(null);
+			setHasUserInteracted(false);
+			return;
+		}
+		setSignedUrl(null);
+		setIsLoading(false);
+		setError(null);
+		setHasUserInteracted(false);
+	}, [mediaUrl]);
+
 	// Fetch signed thumbnail URL on mount (lightweight, improves UX)
 	useEffect(() => {
+		setSignedThumbnailUrl(null);
 		if (!thumbnailUrl) return;
 
 		const fetchThumbnailUrl = async () => {
@@ -344,8 +359,6 @@ export function SimpleMediaPlayer({
 	}
 
 	const { isAudio, isVideo } = getMediaTypeInfo();
-	const has_thumbnail = Boolean(isVideo && signedThumbnailUrl);
-
 	return (
 		<div className={cn("relative w-full space-y-3", className)}>
 			<div className="flex items-center justify-between gap-3">

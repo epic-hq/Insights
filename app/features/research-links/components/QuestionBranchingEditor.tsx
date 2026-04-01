@@ -1,5 +1,5 @@
 /**
- * Skip logic editor with natural language input
+ * Branching editor with natural language input
  *
  * Supports two modes:
  * 1. NL input: "If they're a sponsor, skip to budget and probe on ROI"
@@ -11,18 +11,93 @@
 import { ChevronDown, ChevronRight, GitBranch, Loader2, MessageSquareText, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import type { BranchRule, ConditionOperator, QuestionBranching } from "../branching";
 import type { ResearchLinkQuestion } from "../schemas";
+import { deriveSurveySections, resolveSectionStartQuestionId } from "../sections";
 
 interface QuestionBranchingEditorProps {
 	question: ResearchLinkQuestion;
 	allQuestions: ResearchLinkQuestion[];
 	questionIndex: number;
 	onChange: (branching: QuestionBranching | null) => void;
+}
+
+function consolidateRulesByTarget(rules: BranchRule[]): BranchRule[] {
+	type MergeGroup = {
+		firstIndex: number;
+		firstRule: BranchRule;
+		values: Set<string>;
+	};
+
+	const passthrough = new Map<number, BranchRule>();
+	const mergeGroups = new Map<string, MergeGroup>();
+
+	for (const [index, rule] of rules.entries()) {
+		const primaryCondition = rule.conditions.conditions[0];
+		const canMerge =
+			rule.conditions.logic === "and" &&
+			rule.conditions.conditions.length === 1 &&
+			primaryCondition &&
+			(primaryCondition.operator === "equals" || primaryCondition.operator === "selected") &&
+			typeof primaryCondition.value === "string";
+
+		if (!canMerge) {
+			passthrough.set(index, rule);
+			continue;
+		}
+
+		const groupKey = `${rule.action}|${rule.targetQuestionId ?? "end"}|${primaryCondition.questionId}|${primaryCondition.operator}`;
+		const group = mergeGroups.get(groupKey);
+		if (!group) {
+			const initialValue = typeof primaryCondition.value === "string" ? primaryCondition.value : "";
+			mergeGroups.set(groupKey, {
+				firstIndex: index,
+				firstRule: rule,
+				values: new Set(initialValue ? [initialValue] : []),
+			});
+		} else {
+			if (typeof primaryCondition.value === "string" && primaryCondition.value.trim().length > 0) {
+				group.values.add(primaryCondition.value);
+			}
+		}
+	}
+
+	const consolidatedEntries: Array<{ index: number; rule: BranchRule }> = [
+		...Array.from(passthrough.entries()).map(([index, rule]) => ({ index, rule })),
+		...Array.from(mergeGroups.values()).map((group, mergeIndex) => {
+			const firstCondition = group.firstRule.conditions.conditions[0];
+			if (!firstCondition) {
+				return { index: group.firstIndex, rule: group.firstRule };
+			}
+			const values = [...group.values];
+			const conditions =
+				values.length > 1
+					? values.map((value) => ({
+							questionId: firstCondition.questionId,
+							operator: firstCondition.operator,
+							value,
+						}))
+					: [firstCondition];
+
+			const rule: BranchRule = {
+				...group.firstRule,
+				id: values.length > 1 ? `merged-${Date.now()}-${mergeIndex}` : group.firstRule.id,
+				conditions: {
+					logic: values.length > 1 ? "or" : "and",
+					conditions,
+				},
+			};
+
+			return { index: group.firstIndex, rule };
+		}),
+	];
+
+	return consolidatedEntries.sort((a, b) => a.index - b.index).map((entry) => entry.rule);
 }
 
 export function QuestionBranchingEditor({
@@ -41,13 +116,43 @@ export function QuestionBranchingEditor({
 
 	const branching = question.branching;
 	const rules = branching?.rules ?? [];
+	const defaultNext = branching?.defaultNext;
+	const normalizedPreview = rules.length > 1 ? consolidateRulesByTarget(rules) : rules;
+	const hasNormalizationOpportunity = JSON.stringify(normalizedPreview) !== JSON.stringify(rules);
+	const sections = deriveSurveySections(allQuestions);
+	const laterSections = sections.filter((section) => {
+		const startIndex = allQuestions.findIndex((q) => q.id === section.startQuestionId);
+		return startIndex > questionIndex;
+	});
 
 	// Get questions that come after this one (valid skip targets)
 	const laterQuestions = allQuestions.filter((_, idx) => idx > questionIndex);
+	// Questions up to this point can be used as condition sources
+	const conditionSourceQuestions = allQuestions.filter((_, idx) => idx <= questionIndex);
 
-	// Get options if this is a select question
-	const hasOptions = question.type === "single_select" || question.type === "multi_select";
-	const options = question.options ?? [];
+	// Pass current question options to NL parser for better grounding.
+	const currentQuestionOptions = question.options ?? [];
+
+	const emitBranching = useCallback(
+		(nextRules: BranchRule[], nextDefaultNext = defaultNext) => {
+			if (import.meta.env.DEV) {
+				console.debug("[QuestionBranchingEditor] branching change", {
+					questionId: question.id,
+					nextRuleCount: nextRules.length,
+					nextDefaultNext: nextDefaultNext ?? null,
+				});
+			}
+			if (nextRules.length === 0 && !nextDefaultNext) {
+				onChange(null);
+				return;
+			}
+			onChange({
+				rules: nextRules,
+				...(nextDefaultNext ? { defaultNext: nextDefaultNext } : {}),
+			});
+		},
+		[defaultNext, onChange, question.id]
+	);
 
 	// NL rule parsing via AI
 	const parseNlRule = useCallback(async () => {
@@ -65,7 +170,7 @@ export function QuestionBranchingEditor({
 					questionId: question.id,
 					questionPrompt: question.prompt,
 					questionType: question.type,
-					questionOptions: options,
+					questionOptions: currentQuestionOptions,
 					laterQuestions: laterQuestions.map((q, idx) => ({
 						id: q.id,
 						prompt: q.prompt,
@@ -84,7 +189,7 @@ export function QuestionBranchingEditor({
 				return;
 			}
 			if (data.rule) {
-				onChange({ rules: [...rules, data.rule] });
+				emitBranching([...rules, data.rule]);
 				setNlInput("");
 				setIsExpanded(true);
 			}
@@ -93,7 +198,17 @@ export function QuestionBranchingEditor({
 		} finally {
 			setIsParsing(false);
 		}
-	}, [nlInput, isParsing, accountId, projectId, question, options, laterQuestions, rules, onChange]);
+	}, [
+		nlInput,
+		isParsing,
+		accountId,
+		projectId,
+		question,
+		currentQuestionOptions,
+		laterQuestions,
+		rules,
+		emitBranching,
+	]);
 
 	const addManualRule = () => {
 		const newRule: BranchRule = {
@@ -113,19 +228,50 @@ export function QuestionBranchingEditor({
 			source: "user_ui",
 		};
 
-		onChange({ rules: [...rules, newRule] });
+		emitBranching([...rules, newRule]);
 		setIsExpanded(true);
 		setShowManualAdd(false);
 	};
 
 	const updateRule = (ruleIndex: number, updates: Partial<BranchRule>) => {
 		const nextRules = rules.map((rule, idx) => (idx === ruleIndex ? { ...rule, ...updates } : rule));
-		onChange({ rules: nextRules });
+		emitBranching(nextRules);
 	};
 
 	const removeRule = (ruleIndex: number) => {
 		const nextRules = rules.filter((_, idx) => idx !== ruleIndex);
-		onChange(nextRules.length > 0 ? { rules: nextRules } : null);
+		emitBranching(nextRules);
+	};
+
+	const consolidateRules = () => {
+		const consolidated = consolidateRulesByTarget(rules);
+		const didChange = JSON.stringify(consolidated) !== JSON.stringify(rules);
+		if (!didChange) {
+			toast("No consolidation opportunities found");
+			return;
+		}
+		emitBranching(consolidated);
+		toast.success(`Consolidated ${rules.length} rules into ${consolidated.length}`);
+	};
+
+	const updateConditionQuestionId = (ruleIndex: number, nextQuestionId: string) => {
+		const rule = rules[ruleIndex];
+		if (!rule) return;
+		const firstCondition = rule.conditions.conditions[0];
+		if (!firstCondition) return;
+
+		const updatedFirstCondition = {
+			...firstCondition,
+			questionId: nextQuestionId,
+			value: firstCondition.operator === "answered" || firstCondition.operator === "not_answered" ? undefined : "",
+		};
+
+		updateRule(ruleIndex, {
+			conditions: {
+				...rule.conditions,
+				conditions: [updatedFirstCondition, ...rule.conditions.conditions.slice(1)],
+			},
+		});
 	};
 
 	const updateConditionValue = (ruleIndex: number, value: string) => {
@@ -163,12 +309,42 @@ export function QuestionBranchingEditor({
 	};
 
 	// Find target question prompt for display
-	const getTargetLabel = (targetId?: string) => {
-		if (!targetId) return null;
-		const idx = allQuestions.findIndex((q) => q.id === targetId);
+	const getTargetLabel = (targetQuestionId?: string, targetSectionId?: string) => {
+		if (targetSectionId) {
+			const section = sections.find((entry) => entry.id === targetSectionId);
+			if (section) {
+				const startIndex = allQuestions.findIndex((q) => q.id === section.startQuestionId);
+				const startLabel = startIndex >= 0 ? `Q${startIndex + 1}` : "Unknown";
+				return `${section.title} (${startLabel})`;
+			}
+		}
+		if (!targetQuestionId) return null;
+		const idx = allQuestions.findIndex((q) => q.id === targetQuestionId);
 		if (idx < 0) return null;
 		const q = allQuestions[idx];
 		return `Q${idx + 1}: ${q.prompt.slice(0, 35)}${q.prompt.length > 35 ? "…" : ""}`;
+	};
+
+	const defaultNextSelectValue = (() => {
+		if (!defaultNext) return "__linear__";
+		const matchingSection = laterSections.find((section) => section.startQuestionId === defaultNext);
+		if (matchingSection) return `section:${matchingSection.id}`;
+		return `question:${defaultNext}`;
+	})();
+
+	const updateDefaultNext = (value: string) => {
+		if (value === "__linear__") {
+			emitBranching(rules, undefined);
+			return;
+		}
+		if (value.startsWith("section:")) {
+			const sectionId = value.slice("section:".length);
+			const targetQuestionId = resolveSectionStartQuestionId(allQuestions, sectionId, question.id);
+			emitBranching(rules, targetQuestionId ?? undefined);
+			return;
+		}
+		const targetQuestionId = value.startsWith("question:") ? value.slice("question:".length) : value;
+		emitBranching(rules, targetQuestionId);
 	};
 
 	return (
@@ -180,7 +356,7 @@ export function QuestionBranchingEditor({
 			>
 				{isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
 				<GitBranch className="h-3 w-3" />
-				<span>Skip Logic</span>
+				<span>Branching</span>
 				{rules.length > 0 && (
 					<span className="rounded bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary">
 						{rules.length} rule{rules.length > 1 ? "s" : ""}
@@ -190,6 +366,39 @@ export function QuestionBranchingEditor({
 
 			{isExpanded && (
 				<div className="mt-2 space-y-2">
+					<div className="space-y-1 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
+						<div className="flex flex-wrap items-center gap-2 text-[11px]">
+							<span className="font-medium text-foreground/90">
+								{rules.length > 0 ? "If no rule matches, go to" : "After this question, go to"}
+							</span>
+							<Select value={defaultNextSelectValue} onValueChange={updateDefaultNext}>
+								<SelectTrigger className="h-7 min-w-[210px] text-xs">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="__linear__">Continue linearly</SelectItem>
+									{laterSections.map((section) => {
+										const startIndex = allQuestions.findIndex((q) => q.id === section.startQuestionId);
+										return (
+											<SelectItem key={`default-section-${section.id}`} value={`section:${section.id}`}>
+												Section: {section.title} (starts Q{startIndex + 1})
+											</SelectItem>
+										);
+									})}
+									{laterQuestions.map((q, idx) => (
+										<SelectItem key={`default-question-${q.id}`} value={`question:${q.id}`}>
+											Q{questionIndex + idx + 2}: {q.prompt.slice(0, 40)}
+											{q.prompt.length > 40 ? "…" : ""}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<p className="text-[10px] text-muted-foreground">
+							Best for common branch exits like “when this path is done, continue to Shared closing.”
+						</p>
+					</div>
+
 					{/* NL Input — primary way to add rules */}
 					<div className="space-y-1.5">
 						<div className="relative">
@@ -223,7 +432,27 @@ export function QuestionBranchingEditor({
 								{isParsing ? "Parsing…" : "Add"}
 							</Button>
 						</div>
+						<p className="text-[10px] text-muted-foreground">
+							Plain English works here. Example: If role is founder, go to the founder section.
+						</p>
 						{parseError && <p className="text-[10px] text-destructive">{parseError}</p>}
+						{rules.length > 1 && (
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="h-7 text-xs"
+								onClick={consolidateRules}
+								disabled={!hasNormalizationOpportunity}
+							>
+								Normalize rules
+							</Button>
+						)}
+						{rules.length > 1 && hasNormalizationOpportunity && (
+							<p className="text-[10px] text-muted-foreground">
+								Merge duplicate routes into one compound rule per target.
+							</p>
+						)}
 					</div>
 
 					{/* Existing rules */}
@@ -232,6 +461,12 @@ export function QuestionBranchingEditor({
 						const isAiGenerated = rule.source === "ai_generated";
 						const hasSummary = Boolean(rule.summary);
 						const hasGuidance = Boolean(rule.guidance);
+						const conditionQuestion = condition
+							? (allQuestions.find((q) => q.id === condition.questionId) ?? question)
+							: question;
+						const conditionQuestionHasOptions =
+							conditionQuestion.type === "single_select" || conditionQuestion.type === "multi_select";
+						const conditionQuestionOptions = conditionQuestion.options ?? [];
 
 						return (
 							<div key={rule.id} className="space-y-1.5 rounded-lg border border-border/40 bg-muted/20 p-2">
@@ -270,6 +505,22 @@ export function QuestionBranchingEditor({
 									/* Manual rule — structured dropdowns */
 									<div className="flex flex-wrap items-center gap-1.5 text-xs">
 										<span className="text-muted-foreground">If answer</span>
+										<Select
+											value={condition?.questionId ?? question.id}
+											onValueChange={(v) => updateConditionQuestionId(ruleIndex, v)}
+										>
+											<SelectTrigger className="h-6 min-w-[110px] max-w-[220px] text-xs">
+												<SelectValue placeholder="Source question" />
+											</SelectTrigger>
+											<SelectContent>
+												{conditionSourceQuestions.map((q, idx) => (
+													<SelectItem key={q.id} value={q.id}>
+														Q{idx + 1}: {q.prompt.slice(0, 30)}
+														{q.prompt.length > 30 ? "…" : ""}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
 
 										<Select
 											value={condition?.operator ?? "equals"}
@@ -282,7 +533,7 @@ export function QuestionBranchingEditor({
 												<SelectItem value="equals">equals</SelectItem>
 												<SelectItem value="not_equals">doesn't equal</SelectItem>
 												<SelectItem value="contains">contains</SelectItem>
-												{hasOptions && (
+												{conditionQuestionHasOptions && (
 													<>
 														<SelectItem value="selected">includes</SelectItem>
 														<SelectItem value="not_selected">excludes</SelectItem>
@@ -293,34 +544,32 @@ export function QuestionBranchingEditor({
 											</SelectContent>
 										</Select>
 
-										{condition?.operator !== "answered" && condition?.operator !== "not_answered" && (
-											<>
-												{hasOptions && options.length > 0 ? (
-													<Select
-														value={(condition?.value as string) ?? ""}
-														onValueChange={(v) => updateConditionValue(ruleIndex, v)}
-													>
-														<SelectTrigger className="h-6 min-w-[100px] max-w-[180px] text-xs">
-															<SelectValue placeholder="Select value" />
-														</SelectTrigger>
-														<SelectContent>
-															{options.map((opt) => (
-																<SelectItem key={opt} value={opt}>
-																	{opt}
-																</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
-												) : (
-													<Input
-														value={(condition?.value as string) ?? ""}
-														onChange={(e) => updateConditionValue(ruleIndex, e.target.value)}
-														placeholder="value"
-														className="h-6 w-24 text-xs"
-													/>
-												)}
-											</>
-										)}
+										{condition?.operator !== "answered" &&
+											condition?.operator !== "not_answered" &&
+											(conditionQuestionHasOptions && conditionQuestionOptions.length > 0 ? (
+												<Select
+													value={(condition?.value as string) ?? ""}
+													onValueChange={(v) => updateConditionValue(ruleIndex, v)}
+												>
+													<SelectTrigger className="h-6 min-w-[100px] max-w-[180px] text-xs">
+														<SelectValue placeholder="Select value" />
+													</SelectTrigger>
+													<SelectContent>
+														{conditionQuestionOptions.map((opt) => (
+															<SelectItem key={opt} value={opt}>
+																{opt}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											) : (
+												<Input
+													value={(condition?.value as string) ?? ""}
+													onChange={(e) => updateConditionValue(ruleIndex, e.target.value)}
+													placeholder="value"
+													className="h-6 w-24 text-xs"
+												/>
+											))}
 
 										<span className="text-muted-foreground">→</span>
 
@@ -330,6 +579,7 @@ export function QuestionBranchingEditor({
 												updateRule(ruleIndex, {
 													action: v as "skip_to" | "end_survey",
 													targetQuestionId: v === "skip_to" ? laterQuestions[0]?.id : undefined,
+													targetSectionId: v === "skip_to" ? rule.targetSectionId : undefined,
 												})
 											}
 										>
@@ -344,13 +594,33 @@ export function QuestionBranchingEditor({
 
 										{rule.action === "skip_to" && (
 											<Select
-												value={rule.targetQuestionId ?? ""}
-												onValueChange={(v) => updateRule(ruleIndex, { targetQuestionId: v })}
+												value={rule.targetSectionId ? `section:${rule.targetSectionId}` : (rule.targetQuestionId ?? "")}
+												onValueChange={(v) => {
+													if (v.startsWith("section:")) {
+														const sectionId = v.slice("section:".length);
+														updateRule(ruleIndex, { targetSectionId: sectionId, targetQuestionId: undefined });
+														return;
+													}
+													updateRule(ruleIndex, { targetQuestionId: v, targetSectionId: undefined });
+												}}
 											>
 												<SelectTrigger className="h-6 max-w-[200px] text-xs">
-													<SelectValue placeholder="Select question" />
+													<SelectValue placeholder="Select question or section" />
 												</SelectTrigger>
 												<SelectContent>
+													{sections
+														.filter((section) => {
+															const startIndex = allQuestions.findIndex((q) => q.id === section.startQuestionId);
+															return startIndex > questionIndex;
+														})
+														.map((section) => {
+															const startIndex = allQuestions.findIndex((q) => q.id === section.startQuestionId);
+															return (
+																<SelectItem key={`section-${section.id}`} value={`section:${section.id}`}>
+																	Section: {section.title} (starts Q{startIndex + 1})
+																</SelectItem>
+															);
+														})}
 													{laterQuestions.map((q, idx) => (
 														<SelectItem key={q.id} value={q.id}>
 															Q{questionIndex + idx + 2}: {q.prompt.slice(0, 30)}
@@ -383,7 +653,7 @@ export function QuestionBranchingEditor({
 										<span className="rounded bg-muted/50 px-1.5 py-0.5">
 											{rule.action === "end_survey"
 												? "End survey"
-												: (getTargetLabel(rule.targetQuestionId) ?? "skip to…")}
+												: (getTargetLabel(rule.targetQuestionId, rule.targetSectionId) ?? "skip to…")}
 										</span>
 									</div>
 								)}

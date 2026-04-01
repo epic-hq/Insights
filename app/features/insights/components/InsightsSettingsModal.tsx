@@ -19,10 +19,10 @@ import {
 } from "~/components/ui/dialog";
 import { Label } from "~/components/ui/label";
 import { Slider } from "~/components/ui/slider";
-
-// Default thresholds matching SIMILARITY_THRESHOLDS in openai.server.ts
-const DEFAULT_THEME_DEDUP = 0.8;
-const DEFAULT_EVIDENCE_LINK = 0.4;
+import {
+	DEFAULT_EVIDENCE_LINK_THRESHOLD,
+	DEFAULT_THEME_DEDUP_THRESHOLD,
+} from "~/features/projects/utils/analysisSettings";
 
 interface InsightsSettingsModalProps {
 	projectId: string;
@@ -40,8 +40,8 @@ export function InsightsSettingsModal({ projectId, accountId, currentSettings, t
 	const [open, setOpen] = useState(false);
 	const fetcher = useFetcher();
 
-	const initialThemeDedup = currentSettings?.theme_dedup_threshold ?? DEFAULT_THEME_DEDUP;
-	const initialEvidenceLink = currentSettings?.evidence_link_threshold ?? DEFAULT_EVIDENCE_LINK;
+	const initialThemeDedup = currentSettings?.theme_dedup_threshold ?? DEFAULT_THEME_DEDUP_THRESHOLD;
+	const initialEvidenceLink = currentSettings?.evidence_link_threshold ?? DEFAULT_EVIDENCE_LINK_THRESHOLD;
 
 	const [themeDedupThreshold, setThemeDedupThreshold] = useState(initialThemeDedup);
 	const [evidenceLinkThreshold, setEvidenceLinkThreshold] = useState(initialEvidenceLink);

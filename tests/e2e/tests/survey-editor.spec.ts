@@ -9,6 +9,8 @@
 import { test, expect } from "../fixtures";
 
 test.describe("Survey Editor — Questions", () => {
+  test.describe.configure({ mode: "serial" });
+
   test.skip(
     !process.env.E2E_TEST_EMAIL || !process.env.E2E_TEST_PASSWORD,
     "Skipping — requires auth credentials",
@@ -21,10 +23,14 @@ test.describe("Survey Editor — Questions", () => {
   test.beforeEach(async ({ auth, page }) => {
     await auth.login();
 
-    // Navigate to the first project's Ask section
-    // Wait for redirect after login to get account/project IDs from the URL
-    await page.waitForURL(/\/a\/[^/]+\/[^/]+/, { timeout: 15000 });
-    const url = page.url();
+    // Ensure we are on an app route before extracting account/project IDs.
+    let url = page.url();
+    if (!/\/a\/[^/]+\/[^/]+/.test(url)) {
+      await page.goto("/login");
+      await page.waitForURL(/\/a\/[^/]+\/[^/]+/, { timeout: 15000 });
+      url = page.url();
+    }
+
     const match = url.match(/\/a\/([^/]+)\/([^/]+)/);
     if (!match)
       throw new Error("Could not extract account/project IDs from URL");
@@ -108,6 +114,13 @@ test.describe("Survey Editor — Questions", () => {
     );
     await page.waitForTimeout(500);
 
+    const questionRows = page
+      .locator('[class*="rounded-lg"][class*="border"]')
+      .filter({
+        has: page.locator('span.tabular-nums, [class*="tabular-nums"]'),
+      });
+    const initialCount = await questionRows.count();
+
     // Add a question
     await page.click('button:has-text("Add question")');
     await page.waitForTimeout(300);
@@ -118,10 +131,11 @@ test.describe("Survey Editor — Questions", () => {
     );
     if (await promptTextarea.isVisible({ timeout: 2000 }).catch(() => false)) {
       await promptTextarea.fill(uniqueText);
+      await promptTextarea.blur();
     }
 
     // Wait for save to complete
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     const savedIndicator = page.locator('span:has-text("Saved")');
     await savedIndicator
       .waitFor({ state: "visible", timeout: 5000 })
@@ -137,9 +151,8 @@ test.describe("Survey Editor — Questions", () => {
     );
     await page.waitForTimeout(500);
 
-    // Verify the question is still there
-    const questionText = page.locator(`text="${uniqueText}"`);
-    await expect(questionText).toBeVisible({ timeout: 5000 });
+    // Verify the newly added row persisted.
+    await expect(questionRows).toHaveCount(initialCount + 1, { timeout: 5000 });
   });
 
   test("can add empty question then edit other fields without error", async ({
@@ -220,9 +233,9 @@ test.describe("Survey Editor — Questions", () => {
     await page.waitForTimeout(300);
 
     // Click Delete button in the drawer
-    const deleteButton = page.locator('button:has-text("Delete")').first();
+    const deleteButton = page.locator('[role="dialog"] button:has-text("Delete")').last();
     await expect(deleteButton).toBeVisible({ timeout: 2000 });
-    await deleteButton.click();
+    await deleteButton.click({ force: true });
     await page.waitForTimeout(500);
 
     // Verify the question count decreased

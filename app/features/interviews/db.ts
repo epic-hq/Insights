@@ -1,6 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
+import { z } from "zod";
 import type { Database, InterviewWithPeople } from "~/types";
+
+const uuidSchema = z.string().uuid();
+
+export function isValidInterviewUuid(value: string): boolean {
+	return uuidSchema.safeParse(value).success;
+}
 
 export const getInterviews = async ({
 	supabase,
@@ -39,6 +46,8 @@ export const getInterviews = async ({
 					id,
 					name,
 					segment,
+					person_type,
+					default_organization:organizations!default_organization_id(name),
 					people_personas (
 						persona_id,
 						personas (
@@ -111,6 +120,13 @@ export const getInterviewById = async ({
 }) => {
 	// Fetch interview without nested relations (participants fetched separately)
 	consola.log("getInterviewById", projectId, id);
+	if (!isValidInterviewUuid(id)) {
+		consola.warn("getInterviewById: invalid interview id", { id });
+		return {
+			data: null,
+			error: { message: "Interview not found", code: "PGRST116" },
+		};
+	}
 	const { data, error } = await supabase
 		.from("interviews")
 		.select(
@@ -170,6 +186,10 @@ export const getInterviewParticipants = async ({
 	projectId: string;
 	interviewId: string;
 }) => {
+	if (!isValidInterviewUuid(interviewId)) {
+		consola.warn("getInterviewParticipants: invalid interview id", { interviewId });
+		return { data: [], error: null };
+	}
 	// Fetch participant data separately to avoid junction table query issues
 	return await supabase
 		.from("interview_people")
@@ -206,17 +226,24 @@ export const getInterviewParticipants = async ({
 export const getInterviewInsights = async ({
 	supabase,
 	interviewId,
+	minConfidence = 0,
 }: {
 	supabase: SupabaseClient<Database>;
 	interviewId: string;
+	minConfidence?: number;
 }) => {
+	if (!isValidInterviewUuid(interviewId)) {
+		consola.warn("getInterviewInsights: invalid interview id", { interviewId });
+		return { data: [], error: null };
+	}
 	// Fetch themes related to this interview via theme_evidence junction and evidence table
 	// Note: Themes are now project-level entities, not directly linked to interviews
-	const { data, error } = await supabase
+	let query = supabase
 		.from("theme_evidence")
 		.select(
 			`
 			theme_id,
+			confidence,
 			themes (
 				id,
 				name,
@@ -232,6 +259,12 @@ export const getInterviewInsights = async ({
 		`
 		)
 		.eq("evidence.interview_id", interviewId);
+
+	if (minConfidence > 0) {
+		query = query.or(`confidence.is.null,confidence.gte.${minConfidence}`);
+	}
+
+	const { data, error } = await query;
 
 	if (error) {
 		return { data: null, error };

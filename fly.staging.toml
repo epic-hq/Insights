@@ -35,14 +35,14 @@ primary_region = 'sjc'
     headers = { Host = "upsight-staging.fly.dev" }
 
 [machine]
-  memory = '1gb'
+  memory = '2gb'
   cpu_kind = 'shared'
   cpus = 1
 
 [[vm]]
-  size = 'shared-cpu-1x'
-  memory = '1gb'
+  size = 'shared-cpu-2x'
+  memory = '2gb'
 
 [processes]
-web   = '/usr/local/bin/dotenvx run -f .env.staging -- node ./build/server/index.js'
+web = '/usr/local/bin/dotenvx run -f .env.staging -- node ./build/server/index.js'
 mastra = '/usr/local/bin/dotenvx run -f .env.staging -- npx mastra dev --dir app/mastra'

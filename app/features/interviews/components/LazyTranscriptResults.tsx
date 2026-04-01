@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp, Download, FileText } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { useCurrentProject } from "~/contexts/current-project-context";
 import { normalizeTranscriptUtterances } from "~/utils/transcript/normalizeUtterances";
@@ -54,6 +54,15 @@ export function LazyTranscriptResults({
 	const [error, setError] = useState<string | null>(null);
 	const currentProject = useCurrentProject();
 	const projectId = currentProject?.projectId;
+
+	useEffect(() => {
+		if (!interviewId) return;
+		setTranscriptData(null);
+		setLoading(false);
+		setIsLoaded(false);
+		setIsExpanded(false);
+		setError(null);
+	}, [interviewId]);
 
 	const loadTranscript = async () => {
 		setLoading(true);

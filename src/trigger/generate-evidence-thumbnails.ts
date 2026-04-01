@@ -132,6 +132,9 @@ const Payload = z.object({
 export const generateEvidenceThumbnails = schemaTask({
   id: "generate-evidence-thumbnails",
   schema: Payload,
+  machine: {
+    preset: "small-1x", // 1GB RAM — ffmpeg parallel frame extraction
+  },
   retry: {
     maxAttempts: 2,
     factor: 2,

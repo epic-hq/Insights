@@ -35,7 +35,11 @@ vi.mock("~/lib/supabase/client.server", () => ({
 }));
 
 vi.mock("consola", () => ({
-	default: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+	default: {
+		error: vi.fn((...args: unknown[]) => console.error(...args)),
+		info: vi.fn((...args: unknown[]) => console.info(...args)),
+		warn: vi.fn((...args: unknown[]) => console.warn(...args)),
+	},
 }));
 
 // Test data IDs — unique per run to avoid collisions
@@ -87,6 +91,16 @@ async function seedSurveyData() {
 				id: "q-longtext",
 				prompt: "Describe your ideal pizza experience",
 				type: "long_text",
+			},
+			{
+				id: "q-matrix",
+				prompt: "Rate the pizza experience across these dimensions",
+				type: "matrix",
+				likertScale: 5,
+				matrixRows: [
+					{ id: "taste", label: "Taste" },
+					{ id: "value", label: "Value" },
+				],
 			},
 		],
 	});
@@ -165,6 +179,7 @@ describe("Survey Response Save Integration", () => {
 						"q-select": "Weekly",
 						"q-likert": "4",
 						"q-longtext": "A wood-fired oven, fresh mozzarella, and a cold drink on a summer evening",
+						"q-matrix": { taste: "5", value: "3" },
 					},
 					completed: true,
 				}),
@@ -175,8 +190,9 @@ describe("Survey Response Save Integration", () => {
 				params: { slug: RESEARCH_LINK_SLUG },
 				context: {},
 			} as never);
-			expect(response).toBeDefined();
-			expect((response as { ok: boolean }).ok).toBe(true);
+			expect(response).toBeInstanceOf(Response);
+			expect((response as Response).status).toBe(200);
+			await expect((response as Response).json()).resolves.toEqual({ ok: true });
 		});
 
 		it("should mark the response as completed in DB", async () => {
@@ -197,19 +213,45 @@ describe("Survey Response Save Integration", () => {
 			expect(people ?? []).toHaveLength(0);
 		});
 
-		it("should create evidence only for text questions (not likert/single_select)", async () => {
+		it("should create evidence for each answered survey question", async () => {
 			const { data: evidence } = await adminDb
 				.from("evidence")
 				.select("id, verbatim, method")
 				.eq("research_link_response_id", ANON_RESPONSE_ID);
 
 			expect(evidence).toBeTruthy();
-			expect(evidence!.length).toBe(2);
+			expect(evidence!.length).toBe(6);
 
 			const verbatims = evidence!.map((e) => e.verbatim);
 			expect(verbatims.some((v) => v?.includes("favorite pizza topping"))).toBe(true);
 			expect(verbatims.some((v) => v?.includes("ideal pizza experience"))).toBe(true);
+			expect(verbatims.some((v) => v?.includes("How often do you eat pizza?"))).toBe(true);
+			expect(verbatims.some((v) => v?.includes("Rate your pizza satisfaction"))).toBe(true);
+			expect(verbatims.some((v) => v?.includes("Taste"))).toBe(true);
+			expect(verbatims.some((v) => v?.includes("Value"))).toBe(true);
 			expect(evidence!.every((e) => e.method === "survey")).toBe(true);
+		});
+
+		it("should create survey_response evidence_facet rows for each answered question", async () => {
+			const { data: facets, error } = await adminDb
+				.from("evidence_facet")
+				.select("id, kind_slug, label, quote, person_id")
+				.eq("project_id", TEST_PROJECT_ID)
+				.eq("kind_slug", "survey_response")
+				.in(
+					"evidence_id",
+					(await adminDb.from("evidence").select("id").eq("research_link_response_id", ANON_RESPONSE_ID)).data?.map(
+						(row) => row.id
+					) ?? []
+				);
+
+			expect(error).toBeNull();
+			expect((facets ?? []).length).toBe(6);
+			expect((facets ?? []).every((row) => row.kind_slug === "survey_response")).toBe(true);
+			expect((facets ?? []).some((row) => row.label.includes("How often do you eat pizza"))).toBe(true);
+			expect((facets ?? []).some((row) => row.quote?.includes("Weekly"))).toBe(true);
+			expect((facets ?? []).some((row) => row.label.includes("Taste") && row.quote?.includes("5/5"))).toBe(true);
+			expect((facets ?? []).some((row) => row.label.includes("Value") && row.quote?.includes("3/5"))).toBe(true);
 		});
 	});
 
@@ -227,6 +269,7 @@ describe("Survey Response Save Integration", () => {
 						"q-select": "Monthly",
 						"q-likert": "5",
 						"q-longtext": "Simple ingredients, perfectly cooked",
+						"q-matrix": { taste: "4", value: "5" },
 					},
 					completed: true,
 				}),
@@ -237,8 +280,9 @@ describe("Survey Response Save Integration", () => {
 				params: { slug: RESEARCH_LINK_SLUG },
 				context: {},
 			} as never);
-			expect(response).toBeDefined();
-			expect((response as { ok: boolean }).ok).toBe(true);
+			expect(response).toBeInstanceOf(Response);
+			expect((response as Response).status).toBe(200);
+			await expect((response as Response).json()).resolves.toEqual({ ok: true });
 		});
 
 		it("should create a person record from email", async () => {
@@ -260,7 +304,7 @@ describe("Survey Response Save Integration", () => {
 				.eq("research_link_response_id", IDENTIFIED_RESPONSE_ID);
 
 			expect(evidence).toBeTruthy();
-			expect(evidence!.length).toBe(2);
+			expect(evidence!.length).toBe(6);
 
 			for (const ev of evidence!) {
 				const { data: links } = await adminDb
@@ -272,6 +316,26 @@ describe("Survey Response Save Integration", () => {
 				expect(links!.length).toBe(1);
 				expect(links![0].role).toBe("respondent");
 			}
+		});
+
+		it("should set person_id on survey_response evidence_facet rows for identified respondents", async () => {
+			const { data: person } = await adminDb.from("people").select("id").eq("primary_email", TEST_EMAIL).maybeSingle();
+			expect(person?.id).toBeTruthy();
+
+			const evidenceIds =
+				(await adminDb.from("evidence").select("id").eq("research_link_response_id", IDENTIFIED_RESPONSE_ID)).data?.map(
+					(row) => row.id
+				) ?? [];
+
+			const { data: facets, error } = await adminDb
+				.from("evidence_facet")
+				.select("person_id, kind_slug")
+				.eq("kind_slug", "survey_response")
+				.in("evidence_id", evidenceIds);
+
+			expect(error).toBeNull();
+			expect((facets ?? []).length).toBe(6);
+			expect((facets ?? []).every((row) => row.person_id === person?.id)).toBe(true);
 		});
 	});
 
@@ -325,6 +389,183 @@ describe("Survey Response Save Integration", () => {
 				context: {},
 			} as never);
 			expect((response as Response).status).toBe(404);
+		});
+	});
+
+	describe("embedding queue enqueue regressions", () => {
+		it("should enqueue facet embedding messages in pgmq after evidence_facet insert", async () => {
+			// Guards against the SECURITY DEFINER regression on enqueue_facet_embedding().
+			// If prosecdef=false, service_role gets "permission denied for table q_facet_embedding_queue"
+			// and embeddings silently never generate. Queue depth > 0 proves the trigger fired.
+			// Uses a narrow RPC (security definer) because pgmq schema is not exposed via PostgREST.
+			const { data: depth, error } = await adminDb.rpc("get_facet_embedding_queue_depth");
+
+			expect(error).toBeNull();
+			// At minimum the 4 facets from anonymous completion must have been enqueued
+			expect(Number(depth)).toBeGreaterThanOrEqual(4);
+		});
+
+		it("should enqueue evidence embedding messages in pgmq after evidence insert", async () => {
+			// Guards against enqueue_evidence_embedding() SECURITY DEFINER regression.
+			// Evidence rows use insights_embedding_queue with table='evidence'.
+			const { data: depth, error } = await adminDb.rpc("get_insights_embedding_queue_depth", {
+				filter_table: "evidence",
+			});
+
+			expect(error).toBeNull();
+			// At minimum the 4 evidence rows from anonymous completion must have been enqueued
+			expect(Number(depth)).toBeGreaterThanOrEqual(4);
+		});
+	});
+
+	describe("durability regressions", () => {
+		it("should merge partial saves by default without erasing existing answers", async () => {
+			const partialResponseId = crypto.randomUUID();
+			const { error: seedError } = await adminDb.from("research_link_responses").insert({
+				id: partialResponseId,
+				research_link_id: RESEARCH_LINK_ID,
+				email: null,
+				phone: null,
+				responses: {
+					"q-text": "Original long answer",
+					"q-select": "Weekly",
+				},
+				completed: false,
+			});
+			expect(seedError).toBeNull();
+
+			const { action } = await import("~/routes/api.research-links.$slug.save");
+			const request = new Request(`http://localhost/api/research-links/${RESEARCH_LINK_SLUG}/save`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					responseId: partialResponseId,
+					responses: {
+						"q-longtext": "New partial answer",
+					},
+				}),
+			});
+
+			const response = await action({
+				request,
+				params: { slug: RESEARCH_LINK_SLUG },
+				context: {},
+			} as never);
+			expect(response).toBeInstanceOf(Response);
+			expect((response as Response).status).toBe(200);
+			await expect((response as Response).json()).resolves.toEqual({ ok: true });
+
+			const { data } = await adminDb
+				.from("research_link_responses")
+				.select("responses")
+				.eq("id", partialResponseId)
+				.single();
+			expect(data?.responses).toMatchObject({
+				"q-text": "Original long answer",
+				"q-select": "Weekly",
+				"q-longtext": "New partial answer",
+			});
+
+			await adminDb.from("research_link_responses").delete().eq("id", partialResponseId);
+		});
+
+		it("should not unset completed on autosave when completed is omitted", async () => {
+			const completedResponseId = crypto.randomUUID();
+			const { error: seedError } = await adminDb.from("research_link_responses").insert({
+				id: completedResponseId,
+				research_link_id: RESEARCH_LINK_ID,
+				email: null,
+				phone: null,
+				responses: {
+					"q-text": "Completed answer",
+				},
+				completed: true,
+			});
+			expect(seedError).toBeNull();
+
+			const { action } = await import("~/routes/api.research-links.$slug.save");
+			const request = new Request(`http://localhost/api/research-links/${RESEARCH_LINK_SLUG}/save`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					responseId: completedResponseId,
+					responses: {
+						"q-longtext": "Autosaved later answer",
+					},
+				}),
+			});
+
+			const response = await action({
+				request,
+				params: { slug: RESEARCH_LINK_SLUG },
+				context: {},
+			} as never);
+			expect(response).toBeInstanceOf(Response);
+			expect((response as Response).status).toBe(200);
+			await expect((response as Response).json()).resolves.toEqual({ ok: true });
+
+			const { data } = await adminDb
+				.from("research_link_responses")
+				.select("completed, responses")
+				.eq("id", completedResponseId)
+				.single();
+			expect(data?.completed).toBe(true);
+			expect(data?.responses).toMatchObject({
+				"q-text": "Completed answer",
+				"q-longtext": "Autosaved later answer",
+			});
+
+			await adminDb.from("research_link_responses").delete().eq("id", completedResponseId);
+		});
+
+		it("should allow explicit fullSnapshot saves to intentionally remove answers", async () => {
+			const snapshotResponseId = crypto.randomUUID();
+			const { error: seedError } = await adminDb.from("research_link_responses").insert({
+				id: snapshotResponseId,
+				research_link_id: RESEARCH_LINK_ID,
+				email: null,
+				phone: null,
+				responses: {
+					"q-text": "Answer to remove",
+					"q-select": "Weekly",
+				},
+				completed: false,
+			});
+			expect(seedError).toBeNull();
+
+			const { action } = await import("~/routes/api.research-links.$slug.save");
+			const request = new Request(`http://localhost/api/research-links/${RESEARCH_LINK_SLUG}/save`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					responseId: snapshotResponseId,
+					responses: {
+						"q-select": "Weekly",
+					},
+					fullSnapshot: true,
+					completed: false,
+				}),
+			});
+
+			const response = await action({
+				request,
+				params: { slug: RESEARCH_LINK_SLUG },
+				context: {},
+			} as never);
+			expect(response).toBeInstanceOf(Response);
+			expect((response as Response).status).toBe(200);
+			await expect((response as Response).json()).resolves.toEqual({ ok: true });
+
+			const { data } = await adminDb
+				.from("research_link_responses")
+				.select("responses")
+				.eq("id", snapshotResponseId)
+				.single();
+			expect(data?.responses).toEqual({
+				"q-select": "Weekly",
+			});
+
+			await adminDb.from("research_link_responses").delete().eq("id", snapshotResponseId);
 		});
 	});
 });

@@ -128,6 +128,21 @@ describe("generateFallbackPersonName", () => {
 		);
 	});
 
+	it("ignores placeholder participant names", () => {
+		expect(
+			generateFallbackPersonName({
+				accountId: "test",
+				participantName: "Participant 1",
+			}),
+		).toBe("Unknown Participant");
+		expect(
+			generateFallbackPersonName({
+				accountId: "test",
+				participantName: "Speaker A",
+			}),
+		).toBe("Unknown Participant");
+	});
+
 	it("does NOT use interviewTitle as person name", () => {
 		expect(
 			generateFallbackPersonName({
@@ -269,13 +284,16 @@ describe("resolveName", () => {
 		expect(result).toEqual({ name: "Meta Name", source: "metadata" });
 	});
 
-	it("falls back to indexed 'Participant N' when nothing matches", () => {
+	it("falls back to 'Unknown Participant' when nothing matches", () => {
 		const result = resolveName(
 			{ ...baseParticipant, person_key: "" },
 			2,
 			{ accountId: "test" },
 		);
-		expect(result).toEqual({ name: "Participant 3", source: "fallback" });
+		expect(result).toEqual({
+			name: "Unknown Participant",
+			source: "fallback",
+		});
 	});
 
 	it("skips empty/whitespace-only candidates", () => {
@@ -285,5 +303,26 @@ describe("resolveName", () => {
 			{ accountId: "test" },
 		);
 		expect(result).toEqual({ name: "Real Name", source: "inferred" });
+	});
+
+	it("skips generic placeholder labels across all candidate sources", () => {
+		const result = resolveName(
+			{
+				...baseParticipant,
+				display_name: "Speaker A",
+				inferred_name: "Participant 1",
+				person_key: "participant_1",
+			},
+			0,
+			{
+				accountId: "test",
+				participantName: "Participant 1",
+				interviewerName: "Moderator",
+			},
+		);
+		expect(result).toEqual({
+			name: "Unknown Participant",
+			source: "fallback",
+		});
 	});
 });

@@ -64,15 +64,19 @@ ${surveyDescription ? `Description: ${surveyDescription}` : ""}
 ${existingContext}
 ${customInstructions}
 
-Guidelines:
-- Ask open-ended questions that elicit detailed, thoughtful responses
-- Focus on understanding motivations, pain points, and desired outcomes
-- Avoid yes/no questions
-- Make questions conversational and easy to understand
-- Each question should provide unique insight
+Survey design guidelines:
+- Default to quick, low-friction surveys for first-time/no-incentive respondents
+- Keep wording plain and simple (one idea per question, no jargon)
+- Prioritize past behavior and lived experiences over hypotheticals
+- Include a mix of: context, behavior/experience, pain/impact, and goals/outcomes
+- Avoid leading language and emotionally loaded wording
+- Avoid yes/no unless it is a true screener
+- Each question should provide unique insight (no redundancy)
+- Keep cognitive load low; avoid long or compound questions
+- Never add respondent-facing phrases like "Optional but encouraged"
 ${customPrompt ? "- Follow the user's specific instructions above" : ""}
 
-Generate questions that will help gather valuable research insights.`,
+Generate questions that maximize completion rate and produce actionable insights.`,
 		});
 
 		return Response.json({ questions: result.object.questions });

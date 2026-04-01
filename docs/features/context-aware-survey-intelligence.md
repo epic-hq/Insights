@@ -4,6 +4,13 @@
 
 Make survey question generation and the Uppy assistant context-aware by leveraging project research data (themes, insights, evidence, goals) to generate strategic, personalized survey questions.
 
+This should evolve into a broader **Smart Surveys** capability:
+- not just generating a full draft survey
+- but also recommending the **next most impactful questions** to ask a specific person, given:
+  - what we already know about them
+  - the current business intent
+  - what evidence or qualification gaps remain
+
 ## Problem Statement
 
 From user feedback:
@@ -38,6 +45,149 @@ From user feedback:
 | `research_questions` | text, evidence_types | Match research methodology |
 | `interview_prompts` | text, followups | Avoid duplication, leverage existing |
 | `research_link_responses` | responses by question | Know what's been answered |
+
+### Existing Building Blocks We Can Reuse
+
+These are useful foundations, but they do not yet provide a reusable "next best question" service:
+
+| Capability | Current file | What it already does | Gap |
+|--------|--------|-------------------|-----|
+| Generic survey draft questions | [app/features/research-links/api/generate-questions.tsx](/Users/richardmoy/Code/ai/Insights/app/features/research-links/api/generate-questions.tsx) | Generates 3-5 survey questions from name + description | No person context, no business intent model, no ordering rationale |
+| Personalized campaign questions | [app/features/research-links/api/generate-campaign-questions.tsx](/Users/richardmoy/Code/ai/Insights/app/features/research-links/api/generate-campaign-questions.tsx) | Generates draft questions per person for campaign surveys | Only works inside campaign flow, not a reusable UI/agent/MCP capability |
+| Person context enrichment | [app/features/research-links/lib/person-context.server.ts](/Users/richardmoy/Code/ai/Insights/app/features/research-links/lib/person-context.server.ts) | Fetches role, company, ICP band, themes, and facet-derived context | Not exposed as a survey decisioning or question-suggestion primitive |
+
+## New Requirement: Smart Survey Question Suggestions
+
+### JTBD
+
+When a user is trying to qualify a lead, move a deal forward, validate a theme, or close a knowledge gap, the system should be able to say:
+
+> "Given what we already know about John Doe and the current intent, here are the 3 highest-impact questions to ask next."
+
+This should work for:
+- the survey editor UI
+- Uppy / Mastra agents
+- the MCP server
+- future sales, research, and qualification workflows
+
+### What This Is
+
+A reusable recommendation layer that proposes **ordered next-best questions** for a specific person and intent.
+
+Inputs:
+- `projectId`
+- `personId` or person context payload
+- `intent`
+  - examples: `qualify`, `advance_deal`, `validate_theme`, `fill_profile_gap`, `segment`, `membership_followup`
+- optional `goal`
+- optional `existingSurveyId`
+- optional `knownResponses`
+- optional `questionBudget` (for example 3)
+
+Outputs:
+- ordered list of suggested questions
+- why each question matters
+- what known data or evidence it is using
+- what gap it is trying to close
+- suggested metadata:
+  - `personFieldKey`
+  - `taxonomyKey`
+  - recommended answer type
+  - whether it should be a screener, branch point, or follow-up
+
+### Product Behaviors
+
+1. **Editor support**
+   - Show "Suggested questions to learn next" for the selected audience/person/segment.
+   - Let users accept, edit, or ignore suggested questions.
+
+2. **Agent support**
+   - A Mastra tool can answer: "What 3 questions should I ask John Doe to qualify him for this deal?"
+   - Agents can use this in chat without creating a full survey first.
+
+3. **MCP support**
+   - External clients can request strategic question suggestions using the same logic and evidence sources.
+
+4. **Bridge to branching**
+   - Branching remains the deterministic routing layer for a chosen question set.
+   - Smart question suggestion decides **what should be in the question set in the first place**.
+
+### Proposed Capability: `suggestSmartSurveyQuestions`
+
+Create a shared service/tool rather than hard-coding this into one UI:
+
+**Potential files**
+- `app/features/research-links/lib/smart-survey-questioning.server.ts`
+- `app/mastra/tools/suggest-smart-survey-questions.ts`
+- MCP surface built on the same server helper
+
+```typescript
+interface SmartSurveyIntent =
+  | "qualify"
+  | "advance_deal"
+  | "validate_theme"
+  | "fill_profile_gap"
+  | "segment"
+  | "membership_followup";
+
+interface SuggestSmartSurveyQuestionsInput {
+  projectId: string;
+  personId?: string;
+  intent: SmartSurveyIntent;
+  goal?: string;
+  existingSurveyId?: string;
+  knownResponses?: Record<string, unknown>;
+  questionBudget?: number;
+}
+
+interface SuggestedQuestion {
+  prompt: string;
+  type: "select_one" | "select_many" | "long_text" | "likert" | "matrix";
+  rationale: string;
+  closesGap: string;
+  usesAttributes: string[];
+  evidenceSources: string[];
+  taxonomyKey?: string | null;
+  personFieldKey?: string | null;
+  branchRole?: "screener" | "path_decision" | "follow_up" | "shared";
+}
+
+interface SuggestSmartSurveyQuestionsResult {
+  suggestions: SuggestedQuestion[];
+  missingCriticalData: string[];
+  reasoningSummary: string;
+}
+```
+
+### Decisioning Heuristic
+
+The recommendation layer should rank questions using:
+- **intent fit**: does this question help achieve the current business outcome?
+- **knowledge gap**: do we already know the answer from CRM, facets, prior surveys, or evidence?
+- **decision value**: will the answer change routing, qualification, prioritization, or next action?
+- **respondent burden**: prefer the smallest number of highest-value questions
+- **reuse**: prefer canonical fields/taxonomies when answers should feed profile or branching logic later
+
+### Relationship To Person-Attribute Branching
+
+Person-attribute branching is still the right immediate priority.
+
+Why:
+- branching reduces respondent friction inside an existing survey
+- Smart Surveys decides which questions are worth asking at all
+
+Recommended order:
+1. Ship person-attribute-aware branching
+2. Reuse that person/response context in `suggestSmartSurveyQuestions`
+3. Add editor and agent surfaces for suggestion/acceptance
+
+### Acceptance Criteria For This Capability
+
+- The system can suggest 3-5 questions for a specific person and current intent, with rationale.
+- Suggestions reuse known person, org, facet, and evidence context where available.
+- Suggestions avoid asking for data we already know unless confirmation is strategically useful.
+- Agents and MCP can call the same underlying capability.
+- Suggested questions can carry canonical metadata (`personFieldKey`, `taxonomyKey`) for downstream branching/profile sync.
 
 ## Proposed Solution
 

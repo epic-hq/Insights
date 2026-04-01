@@ -68,7 +68,6 @@ interface AnalysisWorkspaceProps {
 	conversationUpdatedLabel: string | null;
 	onSourceClick?: (evidenceId: string) => void;
 	recommendations: Recommendation[];
-	openQuestions: string[];
 
 	// Lenses tab props
 	interviewId: string;
@@ -90,7 +89,6 @@ export function AnalysisWorkspace({
 	conversationUpdatedLabel,
 	onSourceClick,
 	recommendations,
-	openQuestions,
 	interviewId,
 	lensTemplates,
 	lensAnalyses,
@@ -137,8 +135,8 @@ export function AnalysisWorkspace({
 					onSourceClick={onSourceClick}
 					interviewId={interviewId}
 				/>
-				<InterviewRecommendations recommendations={recommendations} openQuestions={openQuestions} />
-				{aiKeyTakeaways.length === 0 && recommendations.length === 0 && openQuestions.length === 0 && (
+				<InterviewRecommendations recommendations={recommendations} />
+				{aiKeyTakeaways.length === 0 && recommendations.length === 0 && (
 					<div className="rounded-lg border border-dashed p-6 text-center">
 						<p className="text-muted-foreground text-sm">Insights will appear here once analysis is complete.</p>
 					</div>

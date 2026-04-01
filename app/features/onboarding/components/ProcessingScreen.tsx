@@ -38,11 +38,13 @@ export default function ProcessingScreen({
 	});
 	const { progress, label: processingStage, isComplete, hasError, status } = progressInfo;
 	const showUploadProgress = isUploading && uploadProgress != null;
+	const isOptimizing = showUploadProgress && uploadProgress.phase === "optimizing";
 	const displayProgress = showUploadProgress ? uploadProgress.percent : progress;
 
 	// Build stage text with part info if multipart upload
 	const displayStage = (() => {
 		if (!showUploadProgress) return processingStage;
+		if (uploadProgress.phase === "optimizing") return "Extracting audio...";
 		if (uploadProgress.phase === "completing") return "Finalizing upload...";
 		if (uploadProgress.part) {
 			return `Uploading part ${uploadProgress.part.index} of ${uploadProgress.part.total}`;
@@ -127,6 +129,7 @@ export default function ProcessingScreen({
 
 	// Derive display status
 	const getStatusText = () => {
+		if (isOptimizing) return "Optimizing";
 		if (showUploadProgress) return "Uploading";
 		if (hasError) return "Error";
 		if (isComplete) return "Complete";
@@ -150,6 +153,11 @@ export default function ProcessingScreen({
 				<div className="space-y-2">
 					<h1 className="font-medium text-foreground text-xl">{displayStage}</h1>
 					<p className="text-muted-foreground text-sm">{fileName}</p>
+					{isOptimizing && (
+						<p className="text-muted-foreground/70 text-xs">
+							Preparing {formatBytes(uploadProgress.totalBytes)} for analysis
+						</p>
+					)}
 				</div>
 
 				{/* Progress bar */}
@@ -162,9 +170,11 @@ export default function ProcessingScreen({
 					</div>
 					<div className="flex justify-between text-muted-foreground text-xs">
 						<span>
-							{showUploadProgress && uploadProgress.totalBytes > 0
-								? `${formatBytes(uploadProgress.bytesSent)} / ${formatBytes(uploadProgress.totalBytes)}`
-								: `${Math.round(displayProgress)}%`}
+							{isOptimizing
+								? `${Math.round(displayProgress)}%`
+								: showUploadProgress && uploadProgress.totalBytes > 0 && uploadProgress.phase !== "optimizing"
+									? `${formatBytes(uploadProgress.bytesSent)} / ${formatBytes(uploadProgress.totalBytes)}`
+									: `${Math.round(displayProgress)}%`}
 						</span>
 						<span>{getStatusText()}</span>
 					</div>

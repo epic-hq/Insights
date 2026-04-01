@@ -1,15 +1,62 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Mock Supabase client - explicit factory to prevent module-scope env validation
+vi.mock("~/lib/supabase/client.server", () => ({
+	getServerClient: vi.fn(),
+	createSupabaseAdminClient: vi.fn(),
+	getAuthenticatedUser: vi.fn(),
+}));
+
 import { getServerClient } from "~/lib/supabase/client.server";
 import { aggregateAutoInsightsData, formatDataForLLM } from "./autoInsightsData.server";
-
-// Mock Supabase client
-vi.mock("~/lib/supabase/client.server");
 
 const mockSupabase = {
 	from: vi.fn(),
 };
 
 const mockGetServerClient = vi.mocked(getServerClient);
+
+/**
+ * Creates a chainable mock query object that mimics Supabase's PostgREST builder.
+ * Every method returns `this` for chaining, and the object is also a thenable
+ * so it resolves to `defaultResult` when awaited.
+ */
+function createChainableMock(defaultResult: any = { data: [], error: null, count: 0 }) {
+	const mock: any = {
+		_result: defaultResult,
+		select: vi.fn().mockImplementation(function (this: any) {
+			return this;
+		}),
+		eq: vi.fn().mockImplementation(function (this: any) {
+			return this;
+		}),
+		order: vi.fn().mockImplementation(function (this: any) {
+			return this;
+		}),
+		limit: vi.fn().mockImplementation(function (this: any) {
+			return this;
+		}),
+		in: vi.fn().mockImplementation(function (this: any) {
+			return this;
+		}),
+		then: vi.fn().mockImplementation(function (this: any, resolve: any, reject?: any) {
+			return Promise.resolve(this._result).then(resolve, reject);
+		}),
+	};
+	// Bind all methods to mock so chaining works
+	for (const key of Object.keys(mock)) {
+		if (typeof mock[key] === "function" && key !== "then") {
+			mock[key].mockImplementation(function () {
+				return mock;
+			});
+		}
+	}
+	// Re-bind then to resolve _result
+	mock.then = vi.fn().mockImplementation(function (resolve: any, reject?: any) {
+		return Promise.resolve(mock._result).then(resolve, reject);
+	});
+	return mock;
+}
 
 describe("Auto-Insights Data Aggregation", () => {
 	beforeEach(() => {
@@ -22,29 +69,9 @@ describe("Auto-Insights Data Aggregation", () => {
 		const accountId = "account-123";
 
 		beforeEach(() => {
-			// Setup default successful responses
-			const mockQuery = {
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				order: vi.fn().mockReturnThis(),
-				limit: vi.fn().mockReturnThis(),
-				in: vi.fn().mockReturnThis(),
-			};
-
-			mockSupabase.from.mockReturnValue(mockQuery);
-
-			// Mock count queries
-			mockQuery.select.mockImplementation((_fields, options) => {
-				if (options?.count === "exact") {
-					return Promise.resolve({ count: 54, error: null });
-				}
-				return mockQuery;
-			});
-
-			// Mock data queries
-			mockQuery.eq.mockResolvedValue({
-				data: [],
-				error: null,
+			// Default: all tables return empty data with count 0
+			mockSupabase.from.mockImplementation(() => {
+				return createChainableMock({ data: [], error: null, count: 0 });
 			});
 		});
 
@@ -78,44 +105,14 @@ describe("Auto-Insights Data Aggregation", () => {
 
 			// Setup specific query responses
 			mockSupabase.from.mockImplementation((table) => {
-				const mockQuery = {
-					select: vi.fn().mockReturnThis(),
-					eq: vi.fn().mockReturnThis(),
-					order: vi.fn().mockReturnThis(),
-					limit: vi.fn().mockReturnThis(),
-					in: vi.fn().mockReturnThis(),
-				};
-
 				if (table === "themes") {
-					mockQuery.eq.mockResolvedValue({
-						data: mockInsights,
-						error: null,
-					});
-					mockQuery.select.mockImplementation((_fields, options) => {
-						if (options?.count === "exact") {
-							return Promise.resolve({ count: 54, error: null });
-						}
-						return mockQuery;
-					});
+					return createChainableMock({ data: mockInsights, error: null, count: 54 });
+				} else if (table === "insights_with_priority") {
+					return createChainableMock({ data: mockInsights, error: null });
 				} else if (table === "personas") {
-					mockQuery.eq.mockResolvedValue({
-						data: mockPersonas,
-						error: null,
-					});
-				} else {
-					mockQuery.eq.mockResolvedValue({
-						data: [],
-						error: null,
-					});
-					mockQuery.select.mockImplementation((_fields, options) => {
-						if (options?.count === "exact") {
-							return Promise.resolve({ count: 0, error: null });
-						}
-						return mockQuery;
-					});
+					return createChainableMock({ data: mockPersonas, error: null });
 				}
-
-				return mockQuery;
+				return createChainableMock({ data: [], error: null, count: 0 });
 			});
 
 			const result = await aggregateAutoInsightsData(mockRequest, accountId);
@@ -148,13 +145,14 @@ describe("Auto-Insights Data Aggregation", () => {
 		});
 
 		it("should handle database errors gracefully", async () => {
-			mockSupabase.from.mockReturnValue({
-				select: vi.fn().mockReturnValue({
-					eq: vi.fn().mockResolvedValue({
+			mockSupabase.from.mockImplementation((table) => {
+				if (table === "insights_with_priority") {
+					return createChainableMock({
 						data: null,
 						error: { message: "Database connection failed" },
-					}),
-				}),
+					});
+				}
+				return createChainableMock({ data: [], error: null, count: 0 });
 			});
 
 			await expect(aggregateAutoInsightsData(mockRequest, accountId)).rejects.toThrow(
@@ -164,33 +162,16 @@ describe("Auto-Insights Data Aggregation", () => {
 
 		it("should prioritize high-impact insights", async () => {
 			const mockInsights = [
-				{ id: "1", name: "Low Impact", impact: 2, novelty: 1 },
 				{ id: "2", name: "High Impact", impact: 5, novelty: 4 },
 				{ id: "3", name: "Medium Impact", impact: 3, novelty: 3 },
+				{ id: "1", name: "Low Impact", impact: 2, novelty: 1 },
 			];
 
 			mockSupabase.from.mockImplementation((table) => {
-				if (table === "themes") {
-					return {
-						select: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								order: vi.fn().mockReturnValue({
-									order: vi.fn().mockReturnValue({
-										limit: vi.fn().mockResolvedValue({
-											data: mockInsights,
-											error: null,
-										}),
-									}),
-								}),
-							}),
-						}),
-					};
+				if (table === "insights_with_priority") {
+					return createChainableMock({ data: mockInsights, error: null });
 				}
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-					}),
-				};
+				return createChainableMock({ data: [], error: null, count: 0 });
 			});
 
 			const result = await aggregateAutoInsightsData(mockRequest, accountId);
@@ -210,27 +191,13 @@ describe("Auto-Insights Data Aggregation", () => {
 			}));
 
 			mockSupabase.from.mockImplementation((table) => {
-				if (table === "themes") {
-					return {
-						select: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								order: vi.fn().mockReturnValue({
-									order: vi.fn().mockReturnValue({
-										limit: vi.fn().mockResolvedValue({
-											data: manyInsights.slice(0, 50), // Should be limited to 50
-											error: null,
-										}),
-									}),
-								}),
-							}),
-						}),
-					};
+				if (table === "insights_with_priority") {
+					return createChainableMock({
+						data: manyInsights.slice(0, 50), // Should be limited to 50
+						error: null,
+					});
 				}
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-					}),
-				};
+				return createChainableMock({ data: [], error: null, count: 0 });
 			});
 
 			const result = await aggregateAutoInsightsData(mockRequest, accountId);
@@ -317,7 +284,7 @@ describe("Auto-Insights Data Aggregation", () => {
 			expect(formatted).toContain("Time Management Struggles");
 			expect(formatted).toContain("Busy Professional (60% of users)");
 			expect(formatted).toContain("AI Planning Assistant");
-			expect(formatted).toContain("time_management: 15 insights");
+			expect(formatted).toContain("**time_management**: 15 insights");
 		});
 
 		it("should handle empty data gracefully", () => {
@@ -436,16 +403,9 @@ describe("Auto-Insights Data Aggregation", () => {
 			const mockRequest = new Request("http://localhost/test");
 			const accountId = "account-123";
 
-			// Mock insufficient data
-			mockSupabase.from.mockReturnValue({
-				select: vi.fn().mockImplementation((_fields, options) => {
-					if (options?.count === "exact") {
-						return Promise.resolve({ count: 2, error: null }); // Below minimum
-					}
-					return {
-						eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-					};
-				}),
+			// Mock insufficient data - all tables return count of 2
+			mockSupabase.from.mockImplementation(() => {
+				return createChainableMock({ data: [], error: null, count: 2 });
 			});
 
 			const result = await aggregateAutoInsightsData(mockRequest, accountId);
@@ -463,34 +423,10 @@ describe("Auto-Insights Data Aggregation", () => {
 			const mockInsights = [{ id: "insight-1", name: "Test", category: "Test" }];
 
 			mockSupabase.from.mockImplementation((table) => {
-				const mockQuery = {
-					select: vi.fn().mockReturnThis(),
-					eq: vi.fn().mockReturnThis(),
-					order: vi.fn().mockReturnThis(),
-					limit: vi.fn().mockReturnThis(),
-					in: vi.fn().mockReturnThis(),
-				};
-
-				if (table === "themes") {
-					mockQuery.eq.mockResolvedValue({
-						data: mockInsights,
-						error: null,
-					});
-				} else {
-					mockQuery.eq.mockResolvedValue({
-						data: [],
-						error: null,
-					});
+				if (table === "insights_with_priority") {
+					return createChainableMock({ data: mockInsights, error: null, count: 1 });
 				}
-
-				mockQuery.select.mockImplementation((_fields, options) => {
-					if (options?.count === "exact") {
-						return Promise.resolve({ count: 1, error: null });
-					}
-					return mockQuery;
-				});
-
-				return mockQuery;
+				return createChainableMock({ data: [], error: null, count: 1 });
 			});
 
 			const result = await aggregateAutoInsightsData(mockRequest, accountId);

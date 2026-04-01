@@ -123,6 +123,21 @@ Our CRM-powered AI interviewing is genuinely differentiated—we have rich perso
 3. **User experience**: No learning curve for "logic" configuration
 4. **Flexibility**: AI adapts to unexpected segments without pre-configuration
 
+### Branching As Foundation For Smart Surveys
+
+This branching system is only part of the larger Smart Surveys vision.
+
+- **Branching** decides how to route through a known question set.
+- **Smart Survey question suggestion** decides which questions are most worth asking in the first place, given:
+  - what we already know about the person
+  - the current intent or business goal
+  - what knowledge gaps still block qualification, segmentation, or decision-making
+
+Near-term priority remains deterministic branching. But the architecture here should be compatible with a later capability that can recommend:
+- "Ask these 3 questions to qualify this VP Sales lead"
+- "Ask these 2 questions to validate the pricing theme"
+- "Do not ask for company size again; we already know it"
+
 ---
 
 ## Detailed Design

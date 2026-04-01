@@ -61,6 +61,7 @@ function createMockContext(
 							}),
 						}),
 					}),
+					rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
 				};
 
 	return {

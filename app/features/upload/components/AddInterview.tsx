@@ -2,8 +2,10 @@ import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useNavigate } from "react-router-dom";
+import { OptimizationProgress } from "~/components/ui/OptimizationProgress";
 import { useNotification } from "~/contexts/NotificationContext";
 import type { ProcessingResult } from "~/features/upload/types";
+import { useMediaOptimizer } from "~/hooks/useMediaOptimizer";
 
 interface AddInterviewProps {
 	open: boolean;
@@ -20,6 +22,7 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const { showNotification } = useNotification();
 	const _navigate = useNavigate();
+	const optimizer = useMediaOptimizer();
 
 	const handleFileUpload = async (files: File[]) => {
 		if (!files.length) return;
@@ -30,11 +33,27 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 		setIsProcessing(true);
 		setProcessingMessage("Uploading file...");
 
-		try {
-			const formData = new FormData();
-			formData.append("file", file);
+		// Detect if this is a text file (no optimization needed)
+		const isTextFile =
+			file.type.startsWith("text/") ||
+			file.name.endsWith(".txt") ||
+			file.name.endsWith(".md") ||
+			file.name.endsWith(".markdown");
 
-			// TODO: Get accountId and projectId from AuthContext
+		try {
+			// Optimize media files before upload (text files skip optimization)
+			let fileToUpload = file;
+			if (!isTextFile) {
+				setProcessingMessage("Optimizing file for upload...");
+				fileToUpload = await optimizer.optimize(file);
+			}
+
+			const formData = new FormData();
+			formData.append("file", fileToUpload, fileToUpload.name);
+			formData.append("originalFilename", file.name);
+			formData.append("originalContentType", file.type || "application/octet-stream");
+			formData.append("originalFileSize", String(file.size));
+
 			formData.append("accountId", accountId);
 			formData.append("projectId", projectId);
 			formData.append("userCustomInstructions", "");
@@ -56,7 +75,7 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 
 			// Store results for debugging (accessible via window object in dev tools)
 			if (typeof window !== "undefined") {
-				(window as any).lastProcessingResult = result;
+				(window as unknown as Record<string, unknown>).lastProcessingResult = result;
 			}
 
 			// Call success callback if provided
@@ -68,6 +87,7 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 				setIsProcessing(false);
 				setSelectedFile(null);
 				setProcessingMessage("");
+				optimizer.reset();
 			}, 1500);
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
@@ -80,7 +100,7 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 
 			// Store error for debugging (accessible via window object in dev tools)
 			if (typeof window !== "undefined") {
-				(window as any).lastUploadError = err;
+				(window as unknown as Record<string, unknown>).lastUploadError = err;
 			}
 		}
 	};
@@ -102,6 +122,7 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 			setError(null);
 			setSelectedFile(null);
 			setProcessingMessage("");
+			optimizer.reset();
 		}
 	};
 
@@ -135,12 +156,6 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 									</div>
 								</div>
 							)}
-							{/* <Input
-								type="text"
-								placeholder="Enter URL"
-								value={mediaUrl}
-								onChange={(e) => setMediaUrl(e.target.value)}
-							/> */}
 
 							<div
 								{...getRootProps()}
@@ -178,8 +193,13 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 								)}
 							</div>
 
+							{/* Media Optimization Progress */}
+							{optimizer.state.status !== "idle" && (
+								<OptimizationProgress state={optimizer.state} onSkip={optimizer.skip} className="mb-4" />
+							)}
+
 							{/* Processing Status */}
-							{isProcessing && (
+							{isProcessing && optimizer.state.status !== "optimizing" && (
 								<div className="mb-4 rounded-md bg-blue-50 p-4 dark:bg-blue-900/20">
 									<div className="flex items-center">
 										<div className="mr-3 h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />

@@ -65,6 +65,7 @@ const routes = [
 		// Admin routes (platform admin only)
 		route("admin/usage", "./features/admin/pages/usage.tsx"),
 		route("admin/stuck-interviews", "./features/admin/pages/stuck-interviews.tsx"),
+		route("admin/activity", "./features/admin/pages/activity.tsx"),
 
 		// Protected API routes
 		route("api/tasks/deduplicate", "./routes/api.tasks.deduplicate.ts"),
@@ -175,6 +176,9 @@ const routes = [
 				route("api/evidence/semantic-search", "./routes/api.evidence.semantic-search.tsx"),
 				route("api/merge-people", "./routes/api.merge-people.tsx"),
 
+				// API key management (project-scoped)
+				route("api/api-keys", "./features/api-keys/api/manage.tsx"),
+
 				// Test routes (project-scoped, need project context)
 				route("test/gen-ui", "./routes/test.gen-ui.tsx"),
 			]),
@@ -197,6 +201,9 @@ const routes = [
 	route("accept-invite", "./routes/accept-invite.tsx"),
 	route("invites", "./routes/invites.tsx"),
 
+	// OAuth authorization endpoint (standalone page for MCP client auth)
+	route("oauth/authorize", "./routes/oauth.authorize.tsx"),
+
 	// Desktop API routes (for Electron app)
 	route("api/desktop/health", "./routes/api.desktop.health.ts"),
 	route("api/desktop/context", "./routes/api.desktop.context.ts"),
@@ -211,6 +218,7 @@ const routes = [
 
 	// API routes
 	route("api/upload-file", "./routes/api.upload-file.tsx"),
+	route("api/upload-files", "./routes/api.upload-files.tsx"),
 	route("api/upload-from-url", "./routes/api.upload-from-url.tsx"),
 	route("api/upload-image", "./routes/api.upload-image.tsx"),
 	route("api/upload/presigned-url", "./routes/api.upload.presigned-url.tsx"),
@@ -243,10 +251,10 @@ const routes = [
 	route("api/analyze-research-evidence", "./routes/api.analyze-research-evidence.tsx"),
 	route("api/agent-state/:agentId", "./routes/api.agent-state.$agentId.tsx"),
 	route("api/media/signed-url", "./routes/api.media.signed-url.tsx"),
+	route("api/interviews/check-transcription", "./routes/api.interviews.check-transcription.tsx"),
 	route("api/user-profile", "./routes/api/user-profile.ts"),
 	route("api.analysis-retry", "./routes/api.analysis-retry.tsx"),
 	route("api/generate-themes", "./routes/api/generate-themes.tsx"),
-	route("api/generate-persona-insights", "./routes/api/generate-persona-insights.ts"),
 	route("api/generate-icp-recommendations", "./routes/api.generate-icp-recommendations.ts"),
 	route("api/create-persona-from-icp", "./routes/api.create-persona-from-icp.ts"),
 	route("api/generate-followup-questions", "./routes/api.generate-followup-questions.tsx"),
@@ -283,6 +291,7 @@ const routes = [
 	route("api/reprocess-interview", "./routes/api.reprocess-interview.tsx"),
 	route("api/fix-stuck-interview", "./routes/api.fix-stuck-interview.tsx"),
 	route("api/interview-restart", "./routes/api.interview-restart.tsx"),
+	route("api/optimize-video", "./routes/api.optimize-video.tsx"),
 	route("api.generate-sales-lens", "./routes/api.generate-sales-lens.tsx"),
 	route("api/apply-lens", "./routes/api.apply-lens.tsx"),
 	route("api/lens-templates", "./routes/api.lens-templates.tsx"),
@@ -310,6 +319,9 @@ const routes = [
 
 	// Calendar OAuth callback (public - redirected from Google OAuth)
 	route("api/calendar/callback", "./routes/api.calendar.callback.tsx"),
+
+	// Download redirects
+	route("download/desktop", "./routes/download.desktop.ts"),
 
 	// Resource routes
 	route("/link", "./routes/link.tsx"),

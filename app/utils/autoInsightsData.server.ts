@@ -424,7 +424,7 @@ ${insights
 - **Pain**: ${insight.pain || "N/A"}
 - **Desired Outcome**: ${insight.desired_outcome || "N/A"}
 - **Evidence**: ${insight.evidence || "N/A"}
-- **Impact**: ${insight.impact}/5, **Novelty**: ${insight.novelty}/5
+- **Impact**: ${insight.impact != null ? `${insight.impact}/5` : "N/A"}, **Novelty**: ${insight.novelty != null ? `${insight.novelty}/5` : "N/A"}
 - **Journey Stage**: ${insight.journey_stage || "N/A"}
 - **JTBD**: ${insight.jtbd || "N/A"}
 - **Emotional Response**: ${insight.emotional_response || "N/A"}

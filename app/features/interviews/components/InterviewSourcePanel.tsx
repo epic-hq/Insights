@@ -64,16 +64,23 @@ export function InterviewSourcePanel({
 	};
 
 	const hasMedia = !!interview.media_url;
+	const mediaUrl = interview.media_url;
 
 	return (
 		<div className="space-y-4">
 			{/* Media player always visible when available */}
-			{hasMedia && (
+			{hasMedia && mediaUrl && (
 				<MediaPlayer
-					mediaUrl={interview.media_url!}
+					key={`${interview.id}:${mediaUrl}:${interview.thumbnail_url ?? ""}`}
+					mediaUrl={mediaUrl}
 					thumbnailUrl={interview.thumbnail_url}
 					startTime={playbackTime ?? undefined}
-					mediaType={deriveMediaFormat(interview.file_extension, interview.source_type, interview.media_type)}
+					mediaType={deriveMediaFormat(
+						interview.file_extension,
+						interview.source_type,
+						interview.media_type,
+						interview.media_url
+					)}
 					className="w-full"
 				/>
 			)}
@@ -96,6 +103,7 @@ export function InterviewSourcePanel({
 
 				<TabsContent value="transcript" className="space-y-4">
 					<LazyTranscriptResults
+						key={interview.id}
 						interviewId={interview.id}
 						hasTranscript={interview.hasTranscript}
 						hasFormattedTranscript={interview.hasFormattedTranscript}

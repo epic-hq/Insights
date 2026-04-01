@@ -257,6 +257,7 @@ execute: async (input, context?) => {
 - **Conform/Zod**: Form validation requires `useId()` for SSR-safe form element IDs
 - **AI SDK v5 tool parts**: Tool parts have `type: "tool-{toolName}"` (e.g. `"tool-update-survey-questions"`), NOT `"tool-invocation"`. Use `part.type.startsWith("tool-")` to detect tool parts, matching the SDK's own `isToolUIPart()`. State is directly on the part (`part.state`), not nested under `toolInvocation`
 - **AI SDK v5 `DefaultChatTransport` body**: Use `body: () => ({ ... })` (function form) with refs for values that change after mount. `useChat` stores the Chat instance in a ref — plain object `body` captures stale closure values
+- **Mastra tool input schema quirk**: For tool arg schemas, prefer Zod `.nullish()` on optional fields (instead of only `.optional()`), especially for arguments models often omit. This avoids false "Required" validation errors in some Mastra tool-validation paths.
 
 ---
 

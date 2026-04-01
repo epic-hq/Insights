@@ -191,32 +191,53 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 
 	type InterviewListItem = (typeof interviews)[number];
 
+	// Generic/placeholder names that don't represent real identified people
+	const GENERIC_NAMES = new Set([
+		"unknown participant",
+		"participant 1",
+		"participant 2",
+		"interviewer",
+		"attendee / organizer",
+		"anonymous",
+	]);
+	const isGenericName = (name: string) => {
+		const lower = name.toLowerCase().trim();
+		return (
+			GENERIC_NAMES.has(lower) || /^(participant|speaker|attendee)\s*\d*$/i.test(lower) || /^realtime\s/i.test(lower)
+		);
+	};
+
 	const get_interview_participants_summary = (interview: InterviewListItem) => {
 		const interview_people = interview.interview_people ?? [];
-		const sorted_people = [...interview_people].sort((a, b) => {
-			if (a.role === "participant") return -1;
-			if (b.role === "participant") return 1;
-			return 0;
-		});
+		const external = interview_people.filter((p) => (p.people as any)?.person_type !== "internal");
+		const internal = interview_people.filter((p) => (p.people as any)?.person_type === "internal");
 
-		const participant_names = Array.from(
-			new Set(sorted_people.map((p) => p.people?.name?.trim()).filter((name): name is string => Boolean(name)))
+		// Real names from external participants
+		const real_names = Array.from(
+			new Set(external.map((p) => p.people?.name?.trim()).filter((n): n is string => !!n && !isGenericName(n)))
 		);
-		const display_participant_names = participant_names.length > 0 ? participant_names : [interview.participant];
-		const displayed_participant_names = display_participant_names.slice(0, 3);
-		const remaining_participant_count = Math.max(
-			0,
-			display_participant_names.length - displayed_participant_names.length
+
+		// Count anonymous external people
+		const anon_count = external.length - external.filter((p) => p.people?.name && !isGenericName(p.people.name)).length;
+
+		// Team member names
+		const team_names = Array.from(
+			new Set(internal.map((p) => p.people?.name?.trim()).filter((n): n is string => Boolean(n)))
 		);
-		const names_label =
-			remaining_participant_count > 0
-				? `${displayed_participant_names.join(", ")} +${remaining_participant_count}`
-				: displayed_participant_names.join(", ");
+
+		// Build label: real names, then Anon/Anon(N), then team members
+		const parts: string[] = [...real_names.slice(0, 3)];
+		if (anon_count === 1) parts.push("Anon");
+		if (anon_count > 1) parts.push(`Anon (${anon_count})`);
+		parts.push(...team_names.slice(0, 2));
+		const names_label = parts.join(", ");
+
+		// Get org from first external participant with one
+		const org_name = external.find((p) => (p.people as any)?.default_organization?.name)?.people as any;
+		const org_label = org_name?.default_organization?.name || null;
 
 		const participant_segments = Array.from(
-			new Set(
-				sorted_people.map((p) => p.people?.segment?.trim()).filter((segment): segment is string => Boolean(segment))
-			)
+			new Set(external.map((p) => p.people?.segment?.trim()).filter((segment): segment is string => Boolean(segment)))
 		);
 		const display_segments = participant_segments.length > 0 ? participant_segments : ["Participant"];
 		const displayed_segments = display_segments.slice(0, 2);
@@ -226,7 +247,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 				? `${displayed_segments.join(", ")} +${remaining_segment_count}`
 				: displayed_segments.join(", ");
 
-		return { names_label, segments_label };
+		return { names_label, segments_label, org_label };
 	};
 
 	// Sort interviews chronologically
@@ -381,7 +402,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 								</thead>
 								<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
 									{allItems.map((interview) => {
-										const { names_label, segments_label } = get_interview_participants_summary(interview);
+										const { names_label, segments_label, org_label } = get_interview_participants_summary(interview);
 										return (
 											<tr key={interview.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
 												<td className="px-4 py-3">
@@ -396,6 +417,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 															/>
 															<div>
 																<div className="font-medium text-base text-foreground">{names_label}</div>
+																{org_label && <div className="text-foreground/50 text-xs">{org_label}</div>}
 																<div className="text-foreground/60 text-sm">{segments_label}</div>
 															</div>
 														</div>

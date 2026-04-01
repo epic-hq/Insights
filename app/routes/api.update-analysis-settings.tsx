@@ -7,6 +7,10 @@
 
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
+import {
+	DEFAULT_EVIDENCE_LINK_THRESHOLD,
+	DEFAULT_THEME_DEDUP_THRESHOLD,
+} from "~/features/projects/utils/analysisSettings";
 import { getServerClient } from "~/lib/supabase/client.server";
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -23,8 +27,8 @@ export async function action({ request }: ActionFunctionArgs) {
 		return Response.json({ error: "project_id is required" }, { status: 400 });
 	}
 
-	const themeDedup = Number.parseFloat(themeDedupStr || "0.8");
-	const evidenceLink = Number.parseFloat(evidenceLinkStr || "0.4");
+	const themeDedup = Number.parseFloat(themeDedupStr || `${DEFAULT_THEME_DEDUP_THRESHOLD}`);
+	const evidenceLink = Number.parseFloat(evidenceLinkStr || `${DEFAULT_EVIDENCE_LINK_THRESHOLD}`);
 
 	// Validate thresholds are within reasonable bounds
 	if (themeDedup < 0.5 || themeDedup > 0.95) {

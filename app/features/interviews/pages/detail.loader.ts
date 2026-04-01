@@ -6,7 +6,6 @@ import { convertMessages } from "@mastra/core/agent";
 import consola from "consola";
 import type { LoaderFunctionArgs } from "react-router";
 import { redirect } from "react-router";
-import type { Database } from "~/../supabase/types";
 import { getVoteCountsForEntities } from "~/features/annotations/db";
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db";
 import {
@@ -16,13 +15,14 @@ import {
 	loadLensTemplates,
 } from "~/features/lenses/lib/loadLensAnalyses.server";
 import { getPeopleOptions } from "~/features/people/db";
+import { getProjectAnalysisSettings } from "~/features/projects/utils/analysisSettings";
 import { getPostHogServerClient } from "~/lib/posthog.server";
 import { memory } from "~/mastra/memory";
 import type { UpsightMessage } from "~/mastra/message-types";
 import { userContext } from "~/server/user-context";
 import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server";
 import type { EvidenceRecord } from "../lib/interviewDetailHelpers";
-import { extractAnalysisFromInterview, matchTakeawaysToEvidence, parseFullName } from "../lib/interviewDetailHelpers";
+import { extractAnalysisFromInterview, matchTakeawaysToEvidence } from "../lib/interviewDetailHelpers";
 import {
 	CONVERSATION_OVERVIEW_TEMPLATE_KEY,
 	parseConversationAnalysisLegacy,
@@ -333,9 +333,17 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// Extract analysis job information from interview.conversation_analysis
 		const analysisJob = extractAnalysisFromInterview(interview);
 
+		const { data: projectData } = await supabase
+			.from("projects")
+			.select("project_settings")
+			.eq("id", projectId)
+			.maybeSingle();
+		const analysisSettings = getProjectAnalysisSettings(projectData?.project_settings);
+
 		const { data: insightsData, error } = await getInterviewInsights({
 			supabase,
 			interviewId: interviewId,
+			minConfidence: analysisSettings.evidence_link_threshold,
 		});
 
 		if (error) {
@@ -560,6 +568,31 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			evidenceCount: evidence?.length || 0,
 			assistantMessages: assistantMessages.length,
 		});
+
+		// Auto-generate thumbnail for video interviews that don't have one yet.
+		// Handles existing interviews processed before auto-generation was added.
+		if (interviewData.media_url && !interviewData.thumbnail_url && interviewData.status === "ready") {
+			const metadata = (interviewData.processing_metadata as Record<string, unknown> | null) ?? null;
+			const storedOriginalVideoKey =
+				typeof metadata?.original_video_r2_key === "string" ? metadata.original_video_r2_key : null;
+			const thumbnailSourceKey = storedOriginalVideoKey ?? interviewData.media_url;
+			const thumbnailSourcePath = thumbnailSourceKey?.split("?")[0]?.toLowerCase() ?? "";
+			const isVideo = /\.(mp4|mov|avi|mkv|webm|m4v)$/i.test(thumbnailSourcePath);
+			if (isVideo && thumbnailSourceKey) {
+				// Fire-and-forget: don't block page load, errors are non-fatal
+				import("@trigger.dev/sdk")
+					.then(({ tasks }) =>
+						tasks.trigger("generate-thumbnail", {
+							mediaKey: thumbnailSourceKey,
+							interviewId: interviewData.id,
+							timestampSec: 1,
+							accountId,
+						})
+					)
+					.then(() => consola.info("[detail.loader] Auto-triggered thumbnail for", interviewId))
+					.catch((err) => consola.warn("[detail.loader] Failed to auto-trigger thumbnail:", err));
+			}
+		}
 
 		// Track interview_detail_viewed event for PLG instrumentation
 		try {

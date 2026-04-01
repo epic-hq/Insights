@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher } from "react-router-dom";
+import { parseRespondentFields, type RespondentFieldConfig, serializeRespondentFields } from "../respondent-fields";
 import type { ResearchLinkQuestion } from "../schemas";
 
 export type AutoSaveStatus = "idle" | "saving" | "saved" | "error";
@@ -26,7 +27,7 @@ export interface SurveyFormFields {
 	isLive: boolean;
 	isArchived: boolean;
 	collectTitle: boolean;
-	respondentFields: string[];
+	respondentFields: RespondentFieldConfig[];
 	aiAutonomy: "strict" | "moderate" | "adaptive";
 	identityType: "anonymous" | "email" | "phone";
 	questions: ResearchLinkQuestion[];
@@ -61,8 +62,8 @@ export function extractFormFields(list: Record<string, unknown>, questions: Rese
 		isArchived: Boolean(list.is_archived),
 		collectTitle: Boolean(list.collect_title),
 		respondentFields: Array.isArray(list.respondent_fields)
-			? (list.respondent_fields as string[])
-			: ["first_name", "last_name"],
+			? parseRespondentFields(list.respondent_fields)
+			: parseRespondentFields(["first_name", "last_name"]),
 		aiAutonomy: (list.ai_autonomy as "strict" | "moderate" | "adaptive") ?? "strict",
 		identityType,
 		questions: questions.length > 0 ? questions : [],
@@ -89,7 +90,7 @@ export function serializeToFormData(fields: SurveyFormFields): Record<string, st
 		is_live: String(fields.isLive),
 		is_archived: String(fields.isArchived),
 		collect_title: String(fields.collectTitle),
-		respondent_fields: JSON.stringify(fields.respondentFields),
+		respondent_fields: JSON.stringify(serializeRespondentFields(fields.respondentFields)),
 		ai_autonomy: fields.aiAutonomy,
 		identity_type: fields.identityType,
 		questions: JSON.stringify(fields.questions),
@@ -106,6 +107,7 @@ export interface UseOptimisticFormReturn {
 	setText(key: keyof SurveyFormFields, value: string): void;
 	setImmediate<K extends keyof SurveyFormFields>(key: K, value: SurveyFormFields[K]): void;
 	setDirtyOnly<K extends keyof SurveyFormFields>(key: K, value: SurveyFormFields[K]): void;
+	clearDirtyField(key: keyof SurveyFormFields): void;
 	setQuestions(
 		questionsOrUpdater: ResearchLinkQuestion[] | ((previousQuestions: ResearchLinkQuestion[]) => ResearchLinkQuestion[])
 	): void;
@@ -125,7 +127,7 @@ function fieldValuesEqual(a: unknown, b: unknown): boolean {
 
 export function useOptimisticForm(
 	loaderFields: SurveyFormFields,
-	{ debounceMs = 1000, savedDisplayMs = 2000 }: UseOptimisticFormOptions = {}
+	{ debounceMs = 1500, savedDisplayMs = 2000 }: UseOptimisticFormOptions = {}
 ): UseOptimisticFormReturn {
 	const fetcher = useFetcher<{
 		ok?: boolean;
@@ -261,8 +263,18 @@ export function useOptimisticForm(
 		});
 	}, []);
 
-	/** Update questions: mark dirty immediately and debounce saves.
-	 *  If a question is still empty (e.g. just added), keep it dirty until prompt is filled. */
+	/** Clears one dirty field so loader data can show through immediately. */
+	const clearDirtyField = useCallback((key: keyof SurveyFormFields) => {
+		setDirtyMap((prev) => {
+			if (!(key in prev)) return prev;
+			const next = { ...prev };
+			delete next[key];
+			dirtyMapRef.current = next;
+			return next;
+		});
+	}, []);
+
+	/** Update questions: mark dirty immediately and debounce saves. */
 	const setQuestions = useCallback(
 		(
 			questionsOrUpdater:
@@ -274,11 +286,8 @@ export function useOptimisticForm(
 				[];
 			const questions =
 				typeof questionsOrUpdater === "function" ? questionsOrUpdater(currentQuestions) : questionsOrUpdater;
-			const hasEmptyPrompt = questions.some((q) => !q.prompt.trim());
 			setDirtyOnly("questions", questions);
-			if (!hasEmptyPrompt) {
-				debouncedSubmit();
-			}
+			debouncedSubmit();
 		},
 		[setDirtyOnly, debouncedSubmit]
 	);
@@ -338,6 +347,7 @@ export function useOptimisticForm(
 		setText,
 		setImmediate,
 		setDirtyOnly,
+		clearDirtyField,
 		setQuestions,
 		flush,
 		status,

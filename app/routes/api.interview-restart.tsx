@@ -95,83 +95,65 @@ export async function action({ request }: ActionFunctionArgs) {
 			});
 		}
 
-		// Case 2: Has media, needs transcription
+		// Case 2: Has media, needs transcription — use Trigger.dev orchestrator (no webhook)
 		const isAudioVideo = interview.source_type === "audio_upload" || interview.source_type === "video_upload";
 
 		if (interview.media_url && isAudioVideo && !interview.transcript) {
-			consola.info("[interview-restart] Submitting to AssemblyAI...");
+			consola.info("[interview-restart] Triggering orchestrator for transcription...");
 
-			// Generate presigned URL for AssemblyAI
-			const { createR2PresignedReadUrl } = await import("~/utils/r2.server");
-			const presignedUrl = createR2PresignedReadUrl(interview.media_url, 3600);
-
-			if (!presignedUrl) {
-				return Response.json({ error: "Failed to generate presigned URL" }, { status: 500 });
-			}
-
-			const apiKey = process.env.ASSEMBLYAI_API_KEY;
-			if (!apiKey) {
-				return Response.json({ error: "Transcription service not configured" }, { status: 500 });
-			}
-
-			// Determine webhook URL
-			const baseUrl = process.env.PUBLIC_TUNNEL_URL
-				? `https://${process.env.PUBLIC_TUNNEL_URL}`
-				: process.env.FLY_APP_NAME
-					? `https://${process.env.FLY_APP_NAME}.fly.dev`
-					: "https://getupsight.com";
-			const webhookUrl = `${baseUrl}/api/assemblyai-webhook`;
-
-			// Submit to AssemblyAI
-			const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
-				method: "POST",
-				headers: {
-					authorization: apiKey,
-					"content-type": "application/json",
-				},
-				body: JSON.stringify({
-					audio_url: presignedUrl,
-					webhook_url: webhookUrl,
-					speech_model: "slam-1",
-					speaker_labels: true,
-					format_text: true,
-					punctuate: true,
-					sentiment_analysis: false,
-				}),
-			});
-
-			if (!transcriptResponse.ok) {
-				const errorText = await transcriptResponse.text();
-				consola.error("[interview-restart] AssemblyAI failed:", errorText);
-				return Response.json({ error: "Failed to start transcription" }, { status: 500 });
-			}
-
-			const assemblyData = await transcriptResponse.json();
-			consola.info("[interview-restart] AssemblyAI job created:", assemblyData.id);
-
-			// Update interview status
 			await supabase
 				.from("interviews")
 				.update({
 					status: "processing" as const,
 					conversation_analysis: {
 						...conversationAnalysis,
-						current_step: "transcription",
-						transcript_data: {
-							status: "pending_transcription",
-							assemblyai_id: assemblyData.id,
-							external_url: presignedUrl,
-						},
-						status_detail: "Transcribing audio...",
+						current_step: "upload",
+						status_detail: "Starting transcription...",
+						completed_steps: [],
 					} as Json,
 				})
 				.eq("id", interviewId);
+
+			const handle = await tasks.trigger("interview.v2.orchestrator", {
+				analysisJobId: interviewId,
+				metadata: {
+					accountId: interview.account_id,
+					projectId: interview.project_id || undefined,
+					userId: user.sub,
+					interviewTitle: interview.title || undefined,
+					participantName: interview.participant_pseudonym || undefined,
+				},
+				transcriptData: {
+					needs_transcription: true,
+					file_type: "media",
+				},
+				mediaUrl: interview.media_url,
+				existingInterviewId: interviewId,
+				userCustomInstructions: "",
+				resumeFrom: "upload",
+				skipSteps: [],
+			});
+
+			await supabase
+				.from("interviews")
+				.update({
+					conversation_analysis: {
+						...conversationAnalysis,
+						trigger_run_id: handle.id,
+						current_step: "upload",
+						status_detail: "Transcription started...",
+					} as Json,
+				})
+				.eq("id", interviewId);
+
+			consola.info("[interview-restart] Orchestrator triggered:", handle.id);
 
 			return Response.json({
 				success: true,
 				action: "transcription_started",
 				status: "processing",
 				statusDetail: "Transcribing audio...",
+				runId: handle.id,
 				message: "Transcription started",
 			});
 		}

@@ -1,9 +1,11 @@
 import {
 	AlertTriangle,
 	CheckCircle,
+	Download,
 	File,
 	Link2,
 	Mic,
+	Monitor,
 	PenLine,
 	Search,
 	Sparkles,
@@ -46,6 +48,7 @@ interface UploadScreenProps {
 			sourceType?: string;
 		}
 	) => void;
+	onNextBatch?: (files: File[]) => Promise<void>;
 	onUploadFromUrl: (items: Array<{ url: string; personId?: string }>) => Promise<void>;
 	onBack: () => void;
 	projectId?: string;
@@ -90,6 +93,7 @@ function parsePastedUrls(input: string): string[] {
 
 export default function UploadScreen({
 	onNext,
+	onNextBatch,
 	onUploadFromUrl,
 	onBack: _onBack,
 	projectId,
@@ -98,6 +102,7 @@ export default function UploadScreen({
 }: UploadScreenProps) {
 	// File/URL state
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
+	const [batchFiles, setBatchFiles] = useState<File[]>([]);
 	const [urlToUpload, setUrlToUpload] = useState("");
 	const [urlAssignments, setUrlAssignments] = useState<UrlAssignment[]>([]);
 	const [uploadTab, setUploadTab] = useState<"file" | "url">("file");
@@ -120,6 +125,7 @@ export default function UploadScreen({
 	const [showCreatePerson, setShowCreatePerson] = useState(false);
 	const [newPersonFirstName, setNewPersonFirstName] = useState("");
 	const [newPersonLastName, setNewPersonLastName] = useState("");
+	const [newPersonCompany, setNewPersonCompany] = useState("");
 	const [matchingPeople, setMatchingPeople] = useState<Person[]>([]);
 	const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
 	const [duplicateError, setDuplicateError] = useState<string | null>(null);
@@ -186,15 +192,27 @@ export default function UploadScreen({
 		e.preventDefault();
 		setIsDragOver(false);
 		const files = e.dataTransfer.files;
-		if (files.length > 0) {
+		if (files.length === 0) return;
+		if (files.length === 1) {
 			handleFileSelect(files[0]);
+		} else {
+			// Multi-file: skip person-linking, queue them all
+			setBatchFiles(Array.from(files));
+			setUploadStep("associate");
+			setPendingAction("upload");
 		}
 	};
 
 	const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
-		if (files && files.length > 0) {
+		if (!files || files.length === 0) return;
+		if (files.length === 1) {
 			handleFileSelect(files[0]);
+		} else {
+			// Multi-file: skip person-linking, queue them all
+			setBatchFiles(Array.from(files));
+			setUploadStep("associate");
+			setPendingAction("upload");
 		}
 	};
 
@@ -429,6 +447,12 @@ export default function UploadScreen({
 					return;
 				}
 
+				// Batch upload path (no person linking)
+				if (batchFiles.length > 1 && onNextBatch) {
+					await onNextBatch(batchFiles);
+					return;
+				}
+
 				// Handle file upload (link first selected person)
 				const firstPersonId = personIds[0];
 				if (selectedFile) {
@@ -458,6 +482,7 @@ export default function UploadScreen({
 		},
 		[
 			selectedFile,
+			batchFiles,
 			urlAssignments,
 			selectedPeople,
 			showCreatePerson,
@@ -467,6 +492,7 @@ export default function UploadScreen({
 			supabase,
 			getFileType,
 			onNext,
+			onNextBatch,
 			onUploadFromUrl,
 			pendingAction,
 			handleStartRecording,
@@ -479,6 +505,7 @@ export default function UploadScreen({
 	const handleBack = () => {
 		setUploadStep("select");
 		setSelectedFile(null);
+		setBatchFiles([]);
 		setUrlToUpload("");
 		setUrlAssignments([]);
 		setSelectedPeople([]);
@@ -669,6 +696,57 @@ export default function UploadScreen({
 	// RENDER: Association Step
 	// ─────────────────────────────────────────────────────────────
 	if (uploadStep === "associate") {
+		// Batch upload confirmation (2+ files, no person linking)
+		if (batchFiles.length > 1) {
+			return (
+				<div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
+					<div className="relative mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-4 py-8">
+						<div className="mb-6 w-full">
+							<div className="flex flex-row justify-end">
+								<button
+									type="button"
+									onClick={handleBack}
+									className="mb-4 flex items-center gap-2 text-muted-foreground text-sm hover:text-foreground"
+								>
+									<X className="h-4 w-4" />
+									Cancel
+								</button>
+							</div>
+							<h2 className="font-semibold text-slate-900 text-xl dark:text-white">Upload {batchFiles.length} files</h2>
+							<p className="mt-1 text-muted-foreground text-sm">
+								Files will be uploaded sequentially without person linking.
+							</p>
+						</div>
+						<div className="w-full space-y-4">
+							<div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+								{batchFiles.map((f, i) => (
+									<div key={`${f.name}-${i}`} className="flex items-center gap-2 text-sm">
+										<Upload className="h-4 w-4 flex-shrink-0 text-slate-400" />
+										<span className="truncate text-slate-700 dark:text-slate-300">{f.name}</span>
+									</div>
+								))}
+							</div>
+							{urlError && <p className="text-red-500 text-sm">{urlError}</p>}
+							<Button
+								className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+								onClick={handleProcessAction}
+								disabled={isSubmitting}
+							>
+								{isSubmitting ? (
+									"Uploading..."
+								) : (
+									<>
+										<Sparkles className="mr-2 h-4 w-4" />
+										Upload {batchFiles.length} files
+									</>
+								)}
+							</Button>
+						</div>
+					</div>
+				</div>
+			);
+		}
+
 		const contentLabel = selectedFile
 			? selectedFile.name
 			: urlAssignments.length > 0
@@ -958,6 +1036,7 @@ export default function UploadScreen({
 			<input
 				ref={fileInputRef}
 				type="file"
+				multiple
 				onChange={handleFileInputChange}
 				accept="audio/*,video/*,.mp3,.mp4,.wav,.m4a,.mov,.avi,.txt,.md,.pdf,application/pdf"
 				className="hidden"
@@ -998,7 +1077,7 @@ export default function UploadScreen({
 							<h2 className="font-semibold text-base text-slate-900 dark:text-white">
 								{isCheckingQuestions ? "Checking..." : "Record"}
 							</h2>
-							{/* <p className="mt-1 text-muted-foreground text-xs">Live recording</p> */}
+							<p className="mt-1 text-muted-foreground text-xs">Browser mic only</p>
 						</div>
 					</button>
 
@@ -1043,6 +1122,44 @@ export default function UploadScreen({
 							<p className="mt-1 text-muted-foreground text-xs">Quick capture</p>
 						</div>
 					</button>
+				</div>
+
+				{/* Desktop App Banner */}
+				<div className="mt-6 w-full rounded-2xl border border-indigo-200/60 bg-indigo-50/80 p-4 backdrop-blur-sm dark:border-indigo-800/60 dark:bg-indigo-950/30">
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+						<div className="flex items-start gap-3">
+							<div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-sm">
+								<Monitor className="h-5 w-5 text-white" />
+							</div>
+							<div>
+								<p className="font-semibold text-indigo-900 text-sm dark:text-indigo-100">
+									Better with the UpSight desktop app
+								</p>
+								<p className="mt-0.5 text-indigo-700/80 text-xs dark:text-indigo-300/80">
+									Auto-captures meetings from Zoom, Meet & Teams — all participants, no upload needed.
+								</p>
+							</div>
+						</div>
+						<div className="flex flex-shrink-0 gap-2">
+							<a
+								href="upsight://"
+								onClick={(e) => e.stopPropagation()}
+								className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-300 bg-white px-3 py-1.5 font-medium text-indigo-700 text-xs shadow-sm transition-colors hover:bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200 dark:hover:bg-indigo-900"
+							>
+								Launch App
+							</a>
+							<a
+								href="/download/desktop"
+								target="_blank"
+								rel="noopener noreferrer"
+								onClick={(e) => e.stopPropagation()}
+								className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 font-medium text-white text-xs shadow-sm transition-colors hover:bg-indigo-700"
+							>
+								<Download className="h-3.5 w-3.5" />
+								Install
+							</a>
+						</div>
+					</div>
 				</div>
 			</div>
 

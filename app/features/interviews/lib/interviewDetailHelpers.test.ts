@@ -177,6 +177,10 @@ describe("deriveMediaFormat", () => {
 		// mp3 extension = audio, even if source_type says video
 		expect(deriveMediaFormat("mp3", "video_upload", null)).toBe("audio");
 	});
+
+	it("prefers the actual stored media url over stale original metadata", () => {
+		expect(deriveMediaFormat("mov", "video_upload", "interview", "interviews/example/upload.m4a")).toBe("audio");
+	});
 });
 
 // =============================================================================

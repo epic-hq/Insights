@@ -2,7 +2,7 @@
  * Top Navigation Configuration
  *
  * Defines the horizontal navigation structure with mega-menu dropdowns.
- * Categories: Plan, Sources, Insights, CRM
+ * Categories: Plan, Sources, Insights, People
  */
 
 import type { LucideIcon } from "lucide-react";
@@ -129,8 +129,7 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
 				title: "Top Themes",
 				description: "Patterns emerging from your research",
 				icon: Lightbulb,
-				to: () =>
-					"https://getupsight.com/a/d7b69d5e-a952-41a6-931f-e2fed1d82e85/6dbcbb68-0662-4ebc-9f84-dd13b8ff758d/insights/themes",
+				to: (routes) => routes.insights.themes(),
 				countKey: "themes",
 			},
 			{
@@ -174,7 +173,7 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
 	},
 	{
 		key: "crm",
-		title: "CRM",
+		title: "People",
 		icon: Users,
 		description: "Who you're talking to: people, companies, opportunities",
 		items: [
@@ -215,7 +214,6 @@ export const TOP_NAV_STANDALONE_ITEMS: TopNavItem[] = [
 		title: "Tasks",
 		icon: CheckSquare,
 		to: (routes) => routes.priorities(),
-		countKey: "highPriorityTasks",
 	},
 ];
 
@@ -227,6 +225,6 @@ export const TOP_NAV_UTILITY_ITEMS: TopNavItem[] = [
 		key: "settings",
 		title: "Settings",
 		icon: Settings,
-		to: (routes) => routes.projects.setup(),
+		to: (routes) => routes.settings(),
 	},
 ];

@@ -554,6 +554,7 @@ export function AIAssistantPanel({
 							projectId={projectId}
 							systemContext={systemContext}
 							embedded
+							embeddedTone="dark"
 							onClearChatRef={handleClearChatRef}
 							onLoadThreadRef={handleLoadThreadRef}
 							onTTSStateRef={handleTTSStateRef}

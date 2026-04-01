@@ -54,7 +54,7 @@ const RecommendationSchema = z.object({
 			name: z.string(),
 		})
 		.optional(),
-	metadata: z.record(z.unknown()).optional(),
+	metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 const ProjectStateSchema = z.object({

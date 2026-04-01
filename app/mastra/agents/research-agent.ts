@@ -91,6 +91,12 @@ When the user asks about interview prep, open questions, follow-ups, or "how do 
 	model: openai("gpt-4o"),
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
+		options: {
+			lastMessages: 20,
+			observationalMemory: {
+				model: "openai/gpt-4.1-mini",
+			},
+		},
 	}),
 	tools: wrapToolsWithStatusEvents({
 		fetchInterviewContext: fetchInterviewContextTool,

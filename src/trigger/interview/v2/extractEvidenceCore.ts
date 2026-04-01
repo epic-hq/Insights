@@ -209,6 +209,83 @@ function sanitizeVerbatim(input: unknown): string | null {
   return cleaned.length ? cleaned : null;
 }
 
+function normalizeEvidenceText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const LOW_SIGNAL_EVIDENCE_PATTERNS: RegExp[] = [
+  /^(yeah|yes|yep|yup|okay|ok|cool|nice|sure|right|got it|sounds good)\.?$/i,
+  /^(all good|that sounds really smart)\.?$/i,
+  /^(thanks|thank you|thanks so much)(?:\b.*)?$/i,
+  /^(of course)(?:\b.*)?$/i,
+];
+
+const PROCEDURAL_QUESTION_PATTERNS: RegExp[] = [
+  /^(all good|can you|could you|do you pay|how much time do you spend|what subjects|how about ai|how did that go|walk me through)/i,
+];
+
+function isLowSignalEvidenceText(value: string): boolean {
+  const normalized = normalizeEvidenceText(value);
+  if (!normalized) return true;
+  return LOW_SIGNAL_EVIDENCE_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function isProceduralQuestionText(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return PROCEDURAL_QUESTION_PATTERNS.some((pattern) => pattern.test(trimmed));
+}
+
+export function shouldSkipPersistedEvidenceTurn(params: {
+  personKey: string;
+  chunk: string;
+  gist: string;
+  verb: string;
+  facetMentionCount: number;
+  isQuestion: boolean;
+  isInterviewerTurn: boolean;
+  interactionContext:
+    | "research"
+    | "sales"
+    | "support"
+    | "internal"
+    | "debrief"
+    | "personal"
+    | null;
+}): boolean {
+  const {
+    personKey,
+    chunk,
+    gist,
+    verb,
+    facetMentionCount,
+    isQuestion,
+    isInterviewerTurn,
+    interactionContext,
+  } = params;
+  const lowSignalText =
+    isLowSignalEvidenceText(chunk) ||
+    isLowSignalEvidenceText(verb) ||
+    isLowSignalEvidenceText(gist);
+  const isProceduralQuestion = isQuestion && isProceduralQuestionText(chunk);
+  const isExplicitInterviewer = personKey.startsWith("interviewer-");
+  const shouldTreatAsInterviewer = isExplicitInterviewer || isInterviewerTurn;
+  const shouldSkipInterviewerScaffolding =
+    shouldTreatAsInterviewer &&
+    (facetMentionCount === 0 || isQuestion || isProceduralQuestion);
+  const shouldSkipLowSignalAck =
+    facetMentionCount === 0 &&
+    ((chunk.length < 90 && lowSignalText) ||
+      (isQuestion && chunk.length < 140) ||
+      isProceduralQuestion);
+
+  return shouldSkipInterviewerScaffolding || shouldSkipLowSignalAck;
+}
+
 // Generate a stable, short signature for dedupe/independence.
 // Not cryptographically strong; sufficient to cluster near-duplicates.
 function stringHash(input: string): string {
@@ -1760,6 +1837,34 @@ export async function extractEvidenceAndPeopleCore({
       ? ((ev as { facet_mentions?: FacetMention[] })
           .facet_mentions as FacetMention[])
       : [];
+    const participant = participantByKey.get(personKey) ?? null;
+    const isInterviewerTurn = isLikelyInterviewerSpeaker(
+      participant?.speaker_label ?? null,
+      firstTranscriptSpeakerLabel,
+    );
+    if (
+      shouldSkipPersistedEvidenceTurn({
+        personKey,
+        chunk,
+        gist,
+        verb,
+        facetMentionCount: facetMentions.length,
+        isQuestion: Boolean(ev.isQuestion),
+        isInterviewerTurn,
+        interactionContext,
+      })
+    ) {
+      consola.info("[extractEvidence] Skipping low-signal evidence turn", {
+        evidenceIndex,
+        personKey,
+        isInterviewerTurn,
+        isQuestion: ev.isQuestion ?? false,
+        interactionContext,
+        gist,
+        verb,
+      });
+      continue;
+    }
 
     if (facetMentions.length > 0) {
       consola.info(
@@ -2312,6 +2417,7 @@ export async function extractEvidenceAndPeopleCore({
           } else {
             internalPersonLinked = true;
             internalPersonHasTranscriptKey = true;
+            existingTranscriptKeys.add(internalTranscriptKey);
             consola.info(
               `  ✅ Linked internal person to speaker "${preferredInternalSpeaker}"`,
             );
@@ -2319,15 +2425,72 @@ export async function extractEvidenceAndPeopleCore({
         }
       }
 
-      // NOTE: We intentionally do NOT auto-create placeholder people records for
-      // unidentified transcript speakers. This prevents polluting the people table
-      // with generic "Speaker A", "Speaker B" entries when diarization over-segments.
-      // The transcript display shows raw speaker labels, and users can manually
-      // add participants via "Add Participant" in the UI when they know who's who.
-      if (missingSpeakers.length > 1) {
-        consola.info(
-          `🎙️  Remaining unlinked speakers: ${missingSpeakers.join(", ")}. Users can manually add via "Add Participant".`,
+      // Create placeholder interview_people rows for remaining unlinked speakers
+      // so the UI can show "Anon" entries and users know to go identify them.
+      // Filter out the speaker we just assigned to internalPerson above.
+      const remainingSpeakers = missingSpeakers.filter((speaker) => {
+        const normalized = speaker.toUpperCase();
+        // Skip the speaker we just linked to the internal person
+        return (
+          !existingTranscriptKeys.has(normalized) &&
+          !existingTranscriptKeys.has(`SPEAKER ${normalized}`)
         );
+      });
+
+      for (const speaker of remainingSpeakers) {
+        const transcriptKey = speaker.toUpperCase().startsWith("SPEAKER ")
+          ? speaker.toUpperCase()
+          : `SPEAKER ${speaker}`.toUpperCase();
+
+        // Re-check in case the internal person link above covered this speaker
+        const { data: alreadyLinked } = await db
+          .from("interview_people")
+          .select("id")
+          .eq("interview_id", interviewRecord.id)
+          .eq("transcript_key", transcriptKey)
+          .maybeSingle();
+
+        if (alreadyLinked) continue;
+
+        // Create a placeholder person for this unlinked speaker
+        const placeholderName = `Unknown Participant`;
+        const { data: placeholderPerson, error: personError } = await db
+          .from("people")
+          .insert({
+            name: placeholderName,
+            project_id: projectId,
+            account_id: accountId,
+          })
+          .select("id")
+          .single();
+
+        if (personError || !placeholderPerson) {
+          consola.warn(
+            `Failed to create placeholder person for speaker "${speaker}":`,
+            personError?.message,
+          );
+          continue;
+        }
+
+        const { error: linkError } = await db.from("interview_people").insert({
+          interview_id: interviewRecord.id,
+          person_id: placeholderPerson.id,
+          project_id: projectId ?? null,
+          role: "participant",
+          transcript_key: transcriptKey,
+          display_name: null,
+        });
+
+        if (linkError) {
+          consola.warn(
+            `Failed to link placeholder person to speaker "${speaker}":`,
+            linkError.message,
+          );
+        } else {
+          consola.info(
+            `  ✅ Created placeholder person + interview_people for unlinked speaker "${speaker}"`,
+          );
+        }
       }
     }
   }

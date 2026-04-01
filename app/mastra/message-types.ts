@@ -39,4 +39,29 @@ export const tools = {
 };
 
 type UpsightTools = InferMastraUITools<typeof tools>;
-export type UpsightMessage = UIMessage<{}, {}, UpsightTools>;
+type UpsightDataParts = {
+	a2ui: {
+		messages: Array<Record<string, unknown>>;
+	};
+	navigate: {
+		path: string;
+	};
+	"tool-progress": {
+		tool?: string;
+		status?: string;
+		message?: string;
+		progress?: number;
+	};
+	network: {
+		steps?: Array<{
+			name?: string;
+			status?: string;
+		}>;
+	};
+	status: {
+		status?: string;
+		message?: string;
+	};
+};
+
+export type UpsightMessage = UIMessage<Record<string, never>, UpsightDataParts, UpsightTools>;

@@ -1,0 +1,57 @@
+{
+  "name": "@agentcrm/mcp-server",
+  "version": "0.2.0",
+  "description": "AgentCRM.dev — MCP server for customer intelligence and CRM. Semantic search, evidence, themes, people, organizations, and opportunities. Works with Claude, OpenAI, Cursor, and any MCP-compatible agent.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "agentcrm": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@supabase/supabase-js": "^2.75.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "crm",
+    "customer-intelligence",
+    "agent",
+    "ai",
+    "claude",
+    "openai",
+    "cursor",
+    "supabase",
+    "semantic-search",
+    "evidence",
+    "agentcrm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/epic-hq/agentcrm-mcp-server"
+  },
+  "homepage": "https://agentcrm.dev",
+  "bugs": {
+    "url": "https://github.com/epic-hq/agentcrm-mcp-server/issues"
+  },
+  "author": "UpSight <hello@getupsight.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

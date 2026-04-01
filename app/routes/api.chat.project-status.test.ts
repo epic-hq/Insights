@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { handleChatStream, handleNetworkStream } from "@mastra/ai-sdk";
+import { handleChatStream } from "@mastra/ai-sdk";
 import { createUIMessageStream, createUIMessageStreamResponse, generateObject } from "ai";
 import type { ActionFunctionArgs } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,7 +9,6 @@ import { recordUsageOnly } from "~/lib/billing/usage.server";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
 import { createSurveyTool } from "~/mastra/tools/create-survey";
-import { HOST } from "~/paths";
 import { action, buildQuickLinksMarkdown } from "./api.chat.project-status";
 
 const mockLangfuseGenerationEnd = vi.hoisted(() => vi.fn());
@@ -18,7 +17,7 @@ const mockLangfuseTraceEnd = vi.hoisted(() => vi.fn());
 
 vi.mock("@mastra/ai-sdk", () => ({
 	handleChatStream: vi.fn(),
-	handleNetworkStream: vi.fn(),
+	// handleNetworkStream removed — all agents now use handleChatStream
 }));
 
 vi.mock("ai", () => ({
@@ -71,6 +70,7 @@ vi.mock("~/mastra/memory", () => ({
 		createThread: vi.fn(),
 		updateThread: vi.fn().mockResolvedValue({}),
 		deleteThread: vi.fn(),
+		saveMessages: vi.fn().mockResolvedValue({ messages: [] }),
 	},
 }));
 
@@ -103,7 +103,6 @@ vi.mock("~/server/user-context", () => ({
 }));
 
 const mockedHandleChatStream = vi.mocked(handleChatStream);
-const mockedHandleNetworkStream = vi.mocked(handleNetworkStream);
 const mockedGenerateObject = vi.mocked(generateObject);
 const mockedCreateUIMessageStream = vi.mocked(createUIMessageStream);
 const mockedCreateUIMessageStreamResponse = vi.mocked(createUIMessageStreamResponse);
@@ -118,6 +117,7 @@ type MockedMemory = {
 	createThread: ReturnType<typeof vi.fn>;
 	updateThread: ReturnType<typeof vi.fn>;
 	deleteThread: ReturnType<typeof vi.fn>;
+	saveMessages: ReturnType<typeof vi.fn>;
 };
 
 const mockedMemory = memory as unknown as MockedMemory;
@@ -239,10 +239,11 @@ describe("api.chat.project-status", () => {
 		});
 		mockedMemory.createThread.mockResolvedValue({ id: "thread-created" });
 		mockedMemory.updateThread.mockResolvedValue({ id: "thread-1" });
+		mockedMemory.saveMessages.mockResolvedValue({ messages: [] });
 		mockedHandleChatStream.mockResolvedValue({
 			kind: "live-chat-stream",
 		} as any);
-		mockedHandleNetworkStream.mockResolvedValue({
+		mockedHandleChatStream.mockResolvedValue({
 			kind: "network-stream",
 		} as any);
 		mockedGenerateObject.mockResolvedValue({
@@ -372,9 +373,9 @@ describe("api.chat.project-status", () => {
 		const response = await action(buildArgs({ message: "status update please" }));
 		expect(response.status).toBe(200);
 
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
-		expect(mockedHandleChatStream).not.toHaveBeenCalled();
-		const call = mockedHandleNetworkStream.mock.calls[0][0] as any;
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+		const call = mockedHandleChatStream.mock.calls[0][0] as any;
 		expect(call.agentId).toBe("projectStatusAgent");
 		expect(call.params.maxSteps).toBe(6);
 		expect(mockedCreateUIMessageStreamResponse).toHaveBeenCalled();
@@ -393,8 +394,7 @@ describe("api.chat.project-status", () => {
 		const response = await action(buildArgs({ message: "what are top 2 themes and who has them?" }));
 		expect(response.status).toBe(200);
 		expect(mockedGenerateObject).not.toHaveBeenCalled();
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
-		expect(mockedHandleChatStream).not.toHaveBeenCalled();
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
 	});
 
 	it("routes 'show top theme' through deterministic theme snapshot mode", async () => {
@@ -406,9 +406,9 @@ describe("api.chat.project-status", () => {
 		);
 		expect(response.status).toBe(200);
 		expect(mockedGenerateObject).not.toHaveBeenCalled();
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
-		expect(mockedHandleChatStream).not.toHaveBeenCalled();
-		const call = mockedHandleNetworkStream.mock.calls[0][0] as any;
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+		const call = mockedHandleChatStream.mock.calls[0][0] as any;
 		expect(call.agentId).toBe("projectStatusAgent");
 		expect(call.params.requestContext.get("response_mode")).toBe("theme_people_snapshot");
 	});
@@ -454,7 +454,6 @@ describe("api.chat.project-status", () => {
 				selectedIds: ["icp-high"],
 			}),
 		]);
-		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
 	});
 
 	it("routes people-comparison prompts through normal flow when classifier selects normal mode", async () => {
@@ -473,9 +472,9 @@ describe("api.chat.project-status", () => {
 			})
 		);
 		expect(response.status).toBe(200);
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
-		expect(mockedHandleChatStream).not.toHaveBeenCalled();
-		const call = mockedHandleNetworkStream.mock.calls[0][0] as any;
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+		const call = mockedHandleChatStream.mock.calls[0][0] as any;
 		expect(call.agentId).toBe("projectStatusAgent");
 		expect(call.params.requestContext.get("response_mode")).toBe("normal");
 		const routingPrompt = (mockedGenerateObject.mock.calls.at(-1)?.[0] as any)?.prompt as string;
@@ -496,10 +495,305 @@ describe("api.chat.project-status", () => {
 		expect(response.status).toBe(200);
 
 		expect(mockedGenerateObject).not.toHaveBeenCalled();
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
-		expect(mockedHandleChatStream).not.toHaveBeenCalled();
-		const call = mockedHandleNetworkStream.mock.calls[0][0] as any;
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+		const call = mockedHandleChatStream.mock.calls[0][0] as any;
 		expect(call.agentId).toBe("projectStatusAgent");
+	});
+
+	it("routes explicit survey creation to quick-create even when already on a survey page", async () => {
+		mockedGenerateObject.mockResolvedValueOnce({
+			object: {
+				name: "StartupSD Community Survey 2026",
+				description: "Understand who we serve and how StartupSD can improve.",
+				questions: [
+					{ prompt: "What best describes your role?", type: "single_select", options: ["Founder", "Service provider"] },
+					{
+						prompt: "How long have you been part of the community?",
+						type: "single_select",
+						options: ["<1 year", "1-3 years"],
+					},
+				],
+			},
+			usage: { inputTokens: 100, outputTokens: 50 },
+		} as any);
+
+		const response = await action(
+			buildArgs({
+				message: "create a new SSD-community survey based on this brief",
+				system:
+					"View: Survey editor (surveyId=e6374753-10cf-49c9-9453-e0566a8be411) /a/acct-url/project-1/ask/e6374753-10cf-49c9-9453-e0566a8be411/edit",
+			})
+		);
+
+		expect(response.status).toBe(200);
+		expect(mockedCreateSurveyTool.execute).toHaveBeenCalledTimes(1);
+		expect(mockedHandleChatStream).not.toHaveBeenCalled();
+	});
+
+	it("preserves detailed survey drafts with sections and branching in quick-create", async () => {
+		const detailedQuestions = Array.from({ length: 14 }, (_, index) => ({
+			id: `q${index + 1}`,
+			prompt: `Question ${index + 1}`,
+			type: index === 6 ? "likert" : "single_select",
+			required: true,
+			options: index === 6 ? null : ["Option A", "Option B"],
+			likertScale: index === 6 ? 4 : null,
+			likertLabels: index === 6 ? { low: "Needs work", high: "Strong" } : null,
+			sectionId:
+				index < 2
+					? "section_1"
+					: index < 5
+						? "section_a"
+						: index < 8
+							? "section_b"
+							: index < 12
+								? "section_c"
+								: "section_d",
+			sectionTitle:
+				index < 2
+					? "Who You Are"
+					: index < 5
+						? "Founders & Startup Ecosystem"
+						: index < 8
+							? "Service Providers & Partners"
+							: index < 12
+								? "Your Experience with StartupSD"
+								: "Looking Ahead",
+			helperText: index === 6 ? "Scale: Strong | Adequate | Needs work | Haven't experienced" : null,
+			branching:
+				index === 0
+					? {
+							rules: [
+								{
+									id: "rule-to-a",
+									conditions: {
+										logic: "or",
+										conditions: [
+											{ questionId: "q1", operator: "equals", value: "Founder / Co-founder" },
+											{ questionId: "q1", operator: "equals", value: "Investor" },
+										],
+									},
+									action: "skip_to",
+									targetSectionId: "section_a",
+								},
+								{
+									id: "rule-to-b",
+									conditions: {
+										logic: "and",
+										conditions: [{ questionId: "q1", operator: "equals", value: "Service provider" }],
+									},
+									action: "skip_to",
+									targetSectionId: "section_b",
+								},
+							],
+						}
+					: index === 4
+						? {
+								rules: [
+									{
+										id: "rule-a-to-c",
+										conditions: {
+											logic: "and",
+											conditions: [{ questionId: "q1", operator: "answered" }],
+										},
+										action: "skip_to",
+										targetSectionId: "section_c",
+									},
+								],
+							}
+						: index === 7
+							? {
+									rules: [
+										{
+											id: "rule-b-to-c",
+											conditions: {
+												logic: "and",
+												conditions: [{ questionId: "q1", operator: "answered" }],
+											},
+											action: "skip_to",
+											targetSectionId: "section_c",
+										},
+									],
+								}
+							: null,
+		}));
+
+		mockedGenerateObject.mockResolvedValueOnce({
+			object: {
+				name: "StartupSD Community Survey 2026",
+				description: "Understand who we serve, what they need, and how StartupSD can improve.",
+				questions: detailedQuestions,
+			},
+			usage: { inputTokens: 400, outputTokens: 350 },
+		} as any);
+
+		const response = await action(
+			buildArgs({
+				message: "create a new SSD-community survey based on this detailed brief",
+				system:
+					"View: Survey editor (surveyId=e6374753-10cf-49c9-9453-e0566a8be411) /a/acct-url/project-1/ask/e6374753-10cf-49c9-9453-e0566a8be411/edit",
+			})
+		);
+
+		expect(response.status).toBe(200);
+		expect(mockedCreateSurveyTool.execute).toHaveBeenCalledTimes(1);
+		const call = mockedCreateSurveyTool.execute.mock.calls[0][0] as {
+			questions: Array<Record<string, unknown>>;
+		};
+		expect(call.questions).toHaveLength(14);
+		expect(call.questions[0]).toMatchObject({
+			id: "q1",
+			sectionId: "section_1",
+			sectionTitle: "Who You Are",
+			branching: {
+				rules: expect.arrayContaining([
+					expect.objectContaining({ targetSectionId: "section_a", action: "skip_to" }),
+					expect.objectContaining({ targetSectionId: "section_b", action: "skip_to" }),
+				]),
+			},
+		});
+		expect(call.questions[6]).toMatchObject({
+			type: "likert",
+			likertScale: 4,
+			helperText: "Scale: Strong | Adequate | Needs work | Haven't experienced",
+		});
+	});
+
+	it("applies journey routing to sectioned quick-create surveys", async () => {
+		mockedGenerateObject.mockResolvedValueOnce({
+			object: {
+				name: "StartupSD Community Survey 2026",
+				description: "Community health and needs.",
+				questions: [
+					{
+						id: "q1",
+						prompt: "What best describes your primary role?",
+						type: "single_select",
+						required: true,
+						options: ["Founder", "Service provider", "Investor"],
+						sectionId: "shared_intro",
+						sectionTitle: "Shared intro",
+					},
+					{
+						id: "q2",
+						prompt: "How long have you been part of the community?",
+						type: "single_select",
+						options: ["<1 year", "1-3 years", "3+ years"],
+						sectionId: "shared_intro",
+						sectionTitle: "Shared intro",
+					},
+					{
+						id: "q3",
+						prompt: "What stage is your startup at right now?",
+						type: "single_select",
+						options: ["Idea", "Revenue", "Not applicable"],
+						sectionId: "founder_path",
+						sectionTitle: "Founder path",
+					},
+					{
+						id: "q4",
+						prompt: "What are your top needs right now?",
+						type: "multi_select",
+						options: ["Funding", "Hiring", "Mentorship"],
+						sectionId: "founder_path",
+						sectionTitle: "Founder path",
+					},
+					{
+						id: "q5",
+						prompt: "What type of organization do you represent?",
+						type: "single_select",
+						options: ["Law firm", "Marketing", "Other"],
+						sectionId: "service_provider_path",
+						sectionTitle: "Service provider path",
+					},
+					{
+						id: "q6",
+						prompt: "What is your primary goal in engaging with StartupSD?",
+						type: "multi_select",
+						options: ["Business development", "Mentorship", "Brand visibility"],
+						sectionId: "service_provider_path",
+						sectionTitle: "Service provider path",
+					},
+					{
+						id: "q7",
+						prompt: "How would you rate the overall quality of StartupSD events?",
+						type: "single_select",
+						options: ["Excellent", "Good", "Fair", "Poor"],
+						sectionId: "shared_closing",
+						sectionTitle: "Shared closing",
+					},
+					{
+						id: "q8",
+						prompt: "If you could change one thing about StartupSD, what would it be?",
+						type: "long_text",
+						sectionId: "shared_closing",
+						sectionTitle: "Shared closing",
+					},
+				],
+				journey: {
+					decisionQuestionId: "q1",
+					routes: [
+						{
+							label: "Founders and operators",
+							matchValues: ["Founder", "Investor"],
+							targetSectionId: "founder_path",
+						},
+						{
+							label: "Service providers",
+							matchValues: ["Service provider"],
+							targetSectionId: "service_provider_path",
+						},
+					],
+					sharedClosingSectionIds: ["shared_closing"],
+				},
+			},
+			usage: { inputTokens: 240, outputTokens: 160 },
+		} as any);
+
+		const response = await action(
+			buildArgs({
+				message: "create a StartupSD community survey with role-based branching",
+			})
+		);
+
+		expect(response.status).toBe(200);
+		expect(mockedCreateSurveyTool.execute).toHaveBeenCalledTimes(1);
+		const call = mockedCreateSurveyTool.execute.mock.calls[0][0] as {
+			questions: Array<Record<string, any>>;
+		};
+
+		expect(call.questions[0].branching?.rules).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					action: "skip_to",
+					targetSectionId: "founder_path",
+					conditions: expect.objectContaining({
+						logic: "or",
+					}),
+				}),
+				expect.objectContaining({
+					action: "skip_to",
+					targetSectionId: "service_provider_path",
+				}),
+			])
+		);
+		expect(call.questions[3].branching?.rules).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					action: "skip_to",
+					targetSectionId: "shared_closing",
+				}),
+			])
+		);
+		expect(call.questions[5].branching?.rules).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					action: "skip_to",
+					targetSectionId: "shared_closing",
+				}),
+			])
+		);
 	});
 
 	it("routes how-to prompts to howtoAgent with ux_research_mode", async () => {
@@ -508,7 +802,7 @@ describe("api.chat.project-status", () => {
 
 		expect(mockedGenerateObject).not.toHaveBeenCalled();
 		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
-		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
+
 		const call = mockedHandleChatStream.mock.calls[0][0] as any;
 		expect(call.agentId).toBe("howtoAgent");
 		expect(call.params.requestContext.get("response_mode")).toBe("ux_research_mode");
@@ -544,7 +838,7 @@ describe("api.chat.project-status", () => {
 		expect(text.toLowerCase()).toContain("prompt template");
 		expect(text.toLowerCase()).toContain("quick links");
 		expect(text.toLowerCase()).toContain("if stuck");
-		expect(text).toContain(`[People](${HOST}/a/acct-1/project-1/people)`);
+		expect(text).toContain("[People](/a/acct-1/project-1/people)");
 	});
 
 	it("injects a fallback message when stream finishes without assistant text", async () => {
@@ -600,7 +894,7 @@ describe("api.chat.project-status", () => {
 			.join("\n");
 		expect(text.length).toBeGreaterThan(0);
 		expect(text.toLowerCase()).toContain("quick links");
-		expect(text).toContain(`${HOST}/a/acct-1/project-1/`);
+		expect(text).toContain("/a/acct-1/project-1/");
 	});
 
 	it("supports /debug prefix, strips it from execution prompt, and appends a debug trace", async () => {
@@ -670,8 +964,8 @@ describe("api.chat.project-status", () => {
 		expect(response.status).toBe(200);
 		expect(mockedGenerateObject).toHaveBeenCalledTimes(1);
 		expect(mockedCreateSurveyTool.execute as any).toHaveBeenCalledTimes(1);
-		expect(mockedHandleChatStream).not.toHaveBeenCalled();
-		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
+		expect(mockedMemory.saveMessages).toHaveBeenCalledTimes(1);
+
 		expect(mockLangfuseGenerationEnd).toHaveBeenCalledWith(
 			expect.objectContaining({
 				usage: { input: 100, output: 40, total: 140 },
@@ -682,8 +976,17 @@ describe("api.chat.project-status", () => {
 
 		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
 		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+		const hasA2UISignal = chunks.some((chunk) => {
+			if (chunk.type !== "data-a2ui") return false;
+			const data = (chunk as { data?: unknown }).data as { messages?: unknown } | undefined;
+			return Array.isArray(data?.messages) && data.messages.length > 0;
+		});
 		const hasNavigateSignal = chunks.some((chunk) => {
 			if (chunk.type === "tool-input-available") return true;
+			if (chunk.type === "data-navigate") {
+				const data = (chunk as { data?: unknown }).data as { path?: string } | undefined;
+				return typeof data?.path === "string";
+			}
 			if (chunk.type !== "data") return false;
 			const data = (chunk as { data?: unknown }).data;
 			if (!Array.isArray(data)) return false;
@@ -695,6 +998,7 @@ describe("api.chat.project-status", () => {
 					typeof (part as { path?: unknown }).path === "string"
 			);
 		});
+		expect(hasA2UISignal).toBe(true);
 		expect(hasNavigateSignal).toBe(true);
 	});
 
@@ -809,7 +1113,7 @@ describe("api.chat.project-status", () => {
 				rationale: "people/task operational request",
 			},
 		} as any);
-		mockedHandleNetworkStream.mockResolvedValue(
+		mockedHandleChatStream.mockResolvedValue(
 			makeTextStream({
 				text: "Found 5 people missing title or company and queued 2 follow-up tasks.",
 				toolName: "fetchProjectStatusContext",
@@ -824,10 +1128,10 @@ describe("api.chat.project-status", () => {
 		);
 		expect(peopleResponse.status).toBe(200);
 		expect(mockedGenerateObject).not.toHaveBeenCalled();
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
-		expect((mockedHandleNetworkStream.mock.calls[0][0] as any).agentId).toBe("projectStatusAgent");
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+		expect((mockedHandleChatStream.mock.calls[0][0] as any).agentId).toBe("projectStatusAgent");
 
-		mockedHandleNetworkStream.mockResolvedValue(
+		mockedHandleChatStream.mockResolvedValue(
 			makeTextStream({
 				text: "Created a follow-up task for Mona with due date tomorrow.",
 				toolName: "taskAgent",
@@ -840,8 +1144,8 @@ describe("api.chat.project-status", () => {
 			})
 		);
 		expect(taskResponse.status).toBe(200);
-		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(2);
-		expect((mockedHandleNetworkStream.mock.calls[1][0] as any).agentId).toBe("projectStatusAgent");
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(2);
+		expect((mockedHandleChatStream.mock.calls[1][0] as any).agentId).toBe("projectStatusAgent");
 	});
 
 	it("injects fallback even when upstream stream closes without finish chunk", async () => {
@@ -864,6 +1168,82 @@ describe("api.chat.project-status", () => {
 			.map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""))
 			.join("\n");
 		expect(text).toContain("Sorry, I couldn't answer that just now. Please try again.");
+		expect(chunks.some((chunk) => chunk.type === "finish")).toBe(true);
+	});
+
+	it("normalizes legacy data chunks to typed data-* chunks for transport safety", async () => {
+		mockedHandleChatStream.mockResolvedValue(
+			new ReadableStream({
+				start(controller) {
+					controller.enqueue({ type: "start" });
+					controller.enqueue({
+						type: "data",
+						id: "legacy-nav",
+						data: [
+							{
+								type: "navigate",
+								path: "/a/acct-1/project-1/ask/survey-1/edit",
+							},
+						],
+					});
+					controller.enqueue({ type: "finish", finishReason: "stop" });
+					controller.close();
+				},
+			}) as any
+		);
+
+		const response = await action(
+			buildArgs({
+				message: "show top theme",
+				userId: "user-legacy-data-normalization",
+			})
+		);
+		expect(response.status).toBe(200);
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+
+		expect(chunks.some((chunk) => chunk.type === "data")).toBe(false);
+		expect(
+			chunks.some((chunk) => {
+				if (chunk.type !== "data-navigate") return false;
+				const data = (chunk as { data?: unknown }).data as { path?: string } | undefined;
+				return data?.path === "/a/acct-1/project-1/ask/survey-1/edit" && chunk.id === "legacy-nav";
+			})
+		).toBe(true);
+	});
+
+	it("drops unrecognized legacy data chunks instead of forwarding invalid transport payloads", async () => {
+		mockedHandleChatStream.mockResolvedValue(
+			new ReadableStream({
+				start(controller) {
+					controller.enqueue({ type: "start" });
+					controller.enqueue({
+						type: "data",
+						id: "legacy-unknown",
+						data: { foo: "bar" },
+					});
+					controller.enqueue({ type: "finish", finishReason: "stop" });
+					controller.close();
+				},
+			}) as any
+		);
+
+		const response = await action(
+			buildArgs({
+				message: "show top theme",
+				userId: "user-legacy-data-drop",
+			})
+		);
+		expect(response.status).toBe(200);
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+
+		expect(chunks.some((chunk) => chunk.type === "data")).toBe(false);
+		expect(chunks.some((chunk) => chunk.type === "data-navigate")).toBe(false);
 		expect(chunks.some((chunk) => chunk.type === "finish")).toBe(true);
 	});
 
@@ -1049,7 +1429,47 @@ describe("api.chat.project-status", () => {
 		});
 
 		expect(quickLinks).toContain("Quick links:");
-		expect(quickLinks).toContain(`[People](${HOST}/a/acct-1/project-1/people)`);
-		expect(quickLinks).toContain(`[Insights](${HOST}/a/acct-1/project-1/insights/table)`);
+		expect(quickLinks).toContain("[People](/a/acct-1/project-1/people)");
+		expect(quickLinks).toContain("[Insights](/a/acct-1/project-1/insights/table)");
+	});
+
+	it("does not append quick links when the assistant is already asking for a clear next-action choice", async () => {
+		mockedHandleChatStream.mockResolvedValue(
+			new ReadableStream({
+				start(controller) {
+					controller.enqueue({ type: "start" });
+					controller.enqueue({ type: "start-step" });
+					controller.enqueue({ type: "text-start", id: "chunk-a" });
+					controller.enqueue({
+						type: "text-delta",
+						id: "chunk-a",
+						delta:
+							"To update this survey accurately, would you like me to:\n\n- Replace the current survey content entirely with this new structure\n- Update only the questions that differ, keeping any existing responses and IDs\n\nPlease confirm your preference so I can proceed.",
+					});
+					controller.enqueue({ type: "text-end", id: "chunk-a" });
+					controller.enqueue({ type: "finish", finishReason: "stop" });
+					controller.close();
+				},
+			}) as any
+		);
+
+		const response = await action(
+			buildArgs({
+				message: "update this survey to match my brief",
+				system:
+					"View: Survey editor (surveyId=e6374753-10cf-49c9-9453-e0566a8be411) /a/acct-url/project-1/ask/e6374753-10cf-49c9-9453-e0566a8be411/edit",
+			})
+		);
+		expect(response.status).toBe(200);
+
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+		const text = chunks
+			.filter((chunk) => chunk.type === "text-delta")
+			.map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""))
+			.join("\n");
+
+		expect(text).toContain("Please confirm your preference");
+		expect(text).not.toContain("Quick links:");
 	});
 });

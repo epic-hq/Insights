@@ -48,7 +48,7 @@ interface QuestionStats {
 	questionText: string;
 	questionType: string;
 	/** Inferred type used for display (handles "auto" → actual type) */
-	effectiveType: "likert" | "single_select" | "multi_select" | "text";
+	effectiveType: "likert" | "matrix" | "single_select" | "multi_select" | "text";
 	responseCount: number;
 	totalResponses: number;
 	/** For numeric/likert questions */
@@ -58,6 +58,16 @@ interface QuestionStats {
 		max: number;
 		scale: number; // The max scale value (e.g., 5 for 1-5)
 		distribution: Record<number, number>; // value -> count
+	};
+	matrix?: {
+		scale: number;
+		rows: Array<{
+			id: string;
+			label: string;
+			average: number | null;
+			responseCount: number;
+			distribution: Record<number, number>;
+		}>;
 	};
 	/** For single/multi select questions */
 	choices?: {
@@ -102,8 +112,9 @@ interface SavedAiAnalysis {
 }
 
 /** Map question type string to effective display type */
-function mapQuestionType(type: string): "likert" | "single_select" | "multi_select" | "text" {
+function mapQuestionType(type: string): "likert" | "matrix" | "single_select" | "multi_select" | "text" {
 	if (type === "likert") return "likert";
+	if (type === "matrix") return "matrix";
 	if (type === "single_select" || type === "image_select") return "single_select";
 	if (type === "multi_select") return "multi_select";
 	return "text";
@@ -116,9 +127,10 @@ function mapQuestionType(type: string): "likert" | "single_select" | "multi_sele
 function inferEffectiveType(
 	question: ResearchLinkQuestion,
 	answers: unknown[]
-): "likert" | "single_select" | "multi_select" | "text" {
+): "likert" | "matrix" | "single_select" | "multi_select" | "text" {
 	// Explicit types map directly
 	if (question.type === "likert") return "likert";
+	if (question.type === "matrix") return "matrix";
 	if (question.type === "single_select" || question.type === "image_select") return "single_select";
 	if (question.type === "multi_select") return "multi_select";
 	if (question.type === "short_text" || question.type === "long_text") return "text";
@@ -131,6 +143,7 @@ function inferEffectiveType(
 	}
 
 	// If question has likert config, it's likert
+	if (question.matrixRows?.length) return "matrix";
 	if (question.likertScale) return "likert";
 
 	// Check if all non-empty responses are numeric
@@ -193,6 +206,41 @@ function computeQuestionStats(
 					distribution,
 				};
 			}
+		} else if (effectiveType === "matrix") {
+			const rows = question.matrixRows ?? [];
+			const scale = question.likertScale ?? 5;
+			base.matrix = {
+				scale,
+				rows: rows.map((row) => {
+					const numericAnswers = nonEmptyAnswers
+						.map((answer) => {
+							if (!answer || typeof answer !== "object" || Array.isArray(answer)) return Number.NaN;
+							const rowValue = (answer as Record<string, unknown>)[row.id];
+							return typeof rowValue === "number"
+								? rowValue
+								: typeof rowValue === "string"
+									? Number.parseFloat(rowValue)
+									: Number.NaN;
+						})
+						.filter((entry) => !Number.isNaN(entry));
+
+					const distribution: Record<number, number> = {};
+					for (const value of numericAnswers) {
+						distribution[value] = (distribution[value] || 0) + 1;
+					}
+
+					return {
+						id: row.id,
+						label: row.label,
+						average:
+							numericAnswers.length > 0
+								? numericAnswers.reduce((sum, entry) => sum + entry, 0) / numericAnswers.length
+								: null,
+						responseCount: numericAnswers.length,
+						distribution,
+					};
+				}),
+			};
 		} else if (effectiveType === "single_select" || effectiveType === "multi_select") {
 			const optionCounts: Record<string, number> = {};
 
@@ -465,6 +513,110 @@ interface DetailedAnalysisResult {
 	data_quality_notes: string[];
 }
 
+// ============================================================================
+// Route/Path Detection for Branched Surveys
+// ============================================================================
+
+interface SurveyRoute {
+	id: string;
+	label: string;
+	/** Question IDs that belong to this route (excluding shared questions) */
+	questionIds: string[];
+	/** How a respondent is identified as being on this route */
+	matchCondition: {
+		questionId: string;
+		values: string[];
+	};
+}
+
+/**
+ * Detect branching paths from survey question definitions.
+ * Returns route definitions if branching is detected, null otherwise.
+ */
+function detectSurveyRoutes(questions: ResearchLinkQuestion[]): SurveyRoute[] | null {
+	// Find questions with branching rules that use skip_to
+	const branchingQuestions = questions.filter((q) =>
+		q.branching?.rules?.some((r) => r.action === "skip_to" || r.action === "end_survey")
+	);
+	if (branchingQuestions.length === 0) return null;
+
+	// Find the primary branching question (first one with skip_to rules)
+	const primaryBranch = branchingQuestions.find((q) => q.branching?.rules?.some((r) => r.action === "skip_to"));
+	if (!primaryBranch?.branching) return null;
+
+	const routes: SurveyRoute[] = [];
+	const questionIdList = questions.map((q) => q.id);
+
+	for (const rule of primaryBranch.branching.rules) {
+		if (rule.action !== "skip_to" || !rule.targetQuestionId) continue;
+
+		// Determine which values trigger this route
+		const matchValues: string[] = [];
+		const matchQuestionId = rule.conditions?.conditions?.[0]?.questionId;
+		if (!matchQuestionId) continue;
+
+		for (const cond of rule.conditions?.conditions ?? []) {
+			if (cond.operator === "equals" && typeof cond.value === "string") {
+				matchValues.push(cond.value);
+			}
+		}
+
+		// Find question range for this route
+		const targetIdx = questionIdList.indexOf(rule.targetQuestionId);
+		if (targetIdx === -1) continue;
+
+		// Find where this route ends (next route's start or end of survey)
+		const routeQuestionIds: string[] = [];
+		for (let i = targetIdx; i < questions.length; i++) {
+			routeQuestionIds.push(questions[i].id);
+			// Check if this question has an end_survey rule for these same values
+			const endRule = questions[i].branching?.rules?.find((r) => r.action === "end_survey");
+			if (endRule) break;
+		}
+
+		// Extract a user-friendly label from the rule summary
+		let routeLabel = `Route ${routes.length + 1}`;
+		if (rule.summary) {
+			// Try to extract the target section name: "...proceed to the founder/employee section."
+			const sectionMatch = rule.summary.match(/proceed to (?:the )?(.+?)(?:\s+section)?\.?$/i);
+			if (sectionMatch?.[1]) {
+				routeLabel = sectionMatch[1].charAt(0).toUpperCase() + sectionMatch[1].slice(1);
+			}
+		}
+		// Build a short label from the matching values if we didn't extract one well
+		if (routeLabel.startsWith("Route ") && matchValues.length > 0) {
+			// Use first match value shortened: "Founder / Co-founder" → "Founder"
+			routeLabel = matchValues[0].split(/[/,]/)[0].trim();
+		}
+
+		routes.push({
+			id: rule.id || `route-${routes.length}`,
+			label: routeLabel,
+			questionIds: routeQuestionIds,
+			matchCondition: { questionId: matchQuestionId, values: matchValues },
+		});
+	}
+
+	return routes.length >= 2 ? routes : null;
+}
+
+/**
+ * Determine which route a response took based on its answers.
+ */
+function getResponseRoute(
+	response: { responses: Record<string, unknown> | null },
+	routes: SurveyRoute[]
+): SurveyRoute | null {
+	if (!response.responses) return null;
+	for (const route of routes) {
+		const answer = response.responses[route.matchCondition.questionId];
+		if (typeof answer === "string" && route.matchCondition.values.includes(answer)) {
+			return route;
+		}
+	}
+	return null;
+}
+
 function normalizeInsightText(value: string): string {
 	return value
 		.toLowerCase()
@@ -528,6 +680,7 @@ function QuestionBreakdown({
 	aiInsight,
 	hideHeader = false,
 	showTextSamples = true,
+	routeLabel,
 }: {
 	stat: QuestionStats;
 	idx: number;
@@ -538,15 +691,23 @@ function QuestionBreakdown({
 	aiInsight?: QuestionInsight;
 	hideHeader?: boolean;
 	showTextSamples?: boolean;
+	routeLabel?: string;
 }) {
 	return (
 		<div className={`space-y-3 ${showDivider ? "border-b pb-6 last:border-b-0 last:pb-0" : ""}`}>
 			{!hideHeader && (
 				<div className="flex items-start justify-between gap-2">
 					<div className="space-y-1">
-						<h4 className="font-semibold text-base">
-							{idx + 1}. {stat.questionText}
-						</h4>
+						<div className="flex items-center gap-2">
+							<h4 className="font-semibold text-base">
+								{idx + 1}. {stat.questionText}
+							</h4>
+							{routeLabel && (
+								<Badge variant="secondary" className="font-normal text-[10px]">
+									{routeLabel}
+								</Badge>
+							)}
+						</div>
 						<p className="text-muted-foreground text-xs">
 							{stat.responseCount}/{stat.totalResponses} answered
 						</p>
@@ -581,8 +742,8 @@ function QuestionBreakdown({
 						</div>
 					</div>
 					<div className="space-y-1">
-						{Array.from({ length: stat.numeric.scale }, (_, i) => stat.numeric!.scale - i).map((value) => {
-							const count = stat.numeric!.distribution[value] || 0;
+						{Array.from({ length: stat.numeric.scale }, (_, i) => stat.numeric.scale - i).map((value) => {
+							const count = stat.numeric.distribution[value] || 0;
 							const pct = stat.responseCount > 0 ? Math.round((count / stat.responseCount) * 100) : 0;
 							return (
 								<div key={value} className="flex items-center gap-2 text-sm">
@@ -597,6 +758,37 @@ function QuestionBreakdown({
 							);
 						})}
 					</div>
+				</div>
+			)}
+
+			{stat.effectiveType === "matrix" && stat.matrix && (
+				<div className="space-y-3">
+					{stat.matrix.rows.map((row) => (
+						<div key={row.id} className="space-y-1.5">
+							<div className="flex items-center gap-3">
+								<span className="min-w-0 flex-1 text-sm">{row.label}</span>
+								<span className="font-semibold text-sm">{row.average != null ? row.average.toFixed(1) : "—"}</span>
+								<span className="text-muted-foreground text-xs">/ {stat.matrix?.scale}</span>
+							</div>
+							<div className="space-y-1">
+								{Array.from({ length: stat.matrix.scale }, (_, index) => stat.matrix.scale - index).map((value) => {
+									const count = row.distribution[value] || 0;
+									const pct = row.responseCount > 0 ? Math.round((count / row.responseCount) * 100) : 0;
+									return (
+										<div key={value} className="flex items-center gap-2 text-xs">
+											<span className="w-4 text-right font-medium">{value}</span>
+											<div className="h-3 flex-1 overflow-hidden rounded bg-muted">
+												<div className="h-full bg-primary/70" style={{ width: `${pct}%` }} />
+											</div>
+											<span className="w-14 text-right text-muted-foreground">
+												{pct}% ({count})
+											</span>
+										</div>
+									);
+								})}
+							</div>
+						</div>
+					))}
 				</div>
 			)}
 
@@ -749,7 +941,7 @@ export default function ResearchLinkResponsesPage() {
 		}
 		analyzeFetcher.submit(payload, {
 			method: "POST",
-			action: routes.ask.index() + "/api/analyze-responses",
+			action: `${routes.ask.index()}/api/analyze-responses`,
 		});
 		setShowCustomInstructions(false);
 	};
@@ -866,8 +1058,36 @@ export default function ResearchLinkResponsesPage() {
 		videoResponses.length,
 	]);
 
+	// Detect branching routes
+	const surveyRoutes = detectSurveyRoutes(questions);
+	const sharedQuestionIds = surveyRoutes
+		? questions.filter((q) => !surveyRoutes.some((r) => r.questionIds.includes(q.id))).map((q) => q.id)
+		: [];
+
+	// Compute per-route response counts
+	const routeResponseCounts = surveyRoutes
+		? surveyRoutes.map((route) => ({
+				route,
+				count: responses.filter(
+					(r) =>
+						getResponseRoute(
+							{
+								responses: r.responses as Record<string, unknown> | null,
+							},
+							surveyRoutes
+						)?.id === route.id
+				).length,
+			}))
+		: [];
+
+	/** Get which route a question belongs to (null = shared) */
+	const getQuestionRoute = (questionId: string): SurveyRoute | null => {
+		if (!surveyRoutes) return null;
+		return surveyRoutes.find((r) => r.questionIds.includes(questionId)) ?? null;
+	};
+
 	return (
-		<PageContainer className="space-y-6">
+		<PageContainer className="space-y-6 pb-12">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div className="space-y-2">
 					<div className="flex items-center gap-2">
@@ -937,6 +1157,19 @@ export default function ResearchLinkResponsesPage() {
 							</Button>
 						)}
 					</div>
+
+					{/* Survey Routes - show path breakdown if branching detected */}
+					{surveyRoutes && routeResponseCounts.length > 0 && (
+						<div className="flex flex-wrap items-center gap-2">
+							<span className="text-muted-foreground text-sm">Routes:</span>
+							{routeResponseCounts.map(({ route, count }) => (
+								<Badge key={route.id} variant="outline" className="gap-1.5 text-xs">
+									{route.label}
+									<span className="font-semibold">{count}</span>
+								</Badge>
+							))}
+						</div>
+					)}
 
 					{/* Email Distribution Stats */}
 					{emailStats && (
@@ -1279,17 +1512,52 @@ export default function ResearchLinkResponsesPage() {
 							</div>
 							<Card>
 								<CardContent className="space-y-6 pt-6">
-									{questionStats.map((stat, idx) => (
-										<QuestionBreakdown
-											key={stat.questionId}
-											stat={stat}
-											idx={idx}
-											compact
-											onOpenFullScreen={openBreakdownModal}
-											showFullScreenTrigger
-											aiInsight={getQuestionInsight(stat.questionId, stat.questionText, idx)}
-										/>
-									))}
+									{questionStats.map((stat, idx) => {
+										const questionRoute = getQuestionRoute(stat.questionId);
+										const isFirstInRoute =
+											surveyRoutes &&
+											questionRoute &&
+											idx > 0 &&
+											getQuestionRoute(questionStats[idx - 1]?.questionId)?.id !== questionRoute.id;
+										const isFirstShared =
+											surveyRoutes &&
+											!questionRoute &&
+											idx > 0 &&
+											getQuestionRoute(questionStats[idx - 1]?.questionId) !== null;
+										return (
+											<div key={stat.questionId}>
+												{/* Route section header */}
+												{isFirstInRoute && (
+													<div className="mb-4 flex items-center gap-2 border-t pt-4">
+														<Badge variant="secondary" className="text-xs">
+															{questionRoute.label}
+														</Badge>
+														<span className="text-muted-foreground text-xs">
+															— {routeResponseCounts.find((rc) => rc.route.id === questionRoute.id)?.count ?? 0}{" "}
+															responses on this path
+														</span>
+													</div>
+												)}
+												{isFirstShared && (
+													<div className="mb-4 flex items-center gap-2 border-t pt-4">
+														<Badge variant="outline" className="text-xs">
+															Shared
+														</Badge>
+														<span className="text-muted-foreground text-xs">— all respondents</span>
+													</div>
+												)}
+												<QuestionBreakdown
+													stat={stat}
+													idx={idx}
+													compact
+													onOpenFullScreen={openBreakdownModal}
+													showFullScreenTrigger
+													routeLabel={questionRoute?.label}
+													aiInsight={getQuestionInsight(stat.questionId, stat.questionText, idx)}
+												/>
+											</div>
+										);
+									})}
 								</CardContent>
 							</Card>
 						</>
@@ -1432,7 +1700,9 @@ export default function ResearchLinkResponsesPage() {
 													<div className="space-y-2">
 														{responses
 															.map((r) => {
-																const answer = r.responses?.[activeBreakdown.questionId];
+																const answer = (r.responses as Record<string, unknown> | null)?.[
+																	activeBreakdown.questionId
+																];
 																if (typeof answer !== "string" || !answer.trim()) return null;
 																return {
 																	answer: answer.trim(),
@@ -1441,17 +1711,19 @@ export default function ResearchLinkResponsesPage() {
 																};
 															})
 															.filter(Boolean)
-															.map((item, i) => (
-																<div
-																	key={i}
-																	className="rounded-lg border-muted-foreground/30 border-l-2 bg-muted/30 py-3 pr-3 pl-4"
-																>
-																	<p className="whitespace-pre-wrap text-base leading-relaxed">"{item!.answer}"</p>
-																	<p className="mt-1.5 text-muted-foreground text-sm">
-																		— {item!.name || item!.email || "Anonymous"}
-																	</p>
-																</div>
-															))}
+															.map((item, i) =>
+																item ? (
+																	<div
+																		key={i}
+																		className="rounded-lg border-muted-foreground/30 border-l-2 bg-muted/30 py-3 pr-3 pl-4"
+																	>
+																		<p className="whitespace-pre-wrap text-base leading-relaxed">"{item.answer}"</p>
+																		<p className="mt-1.5 text-muted-foreground text-sm">
+																			— {item.name || item.email || "Anonymous"}
+																		</p>
+																	</div>
+																) : null
+															)}
 													</div>
 												</div>
 											)}

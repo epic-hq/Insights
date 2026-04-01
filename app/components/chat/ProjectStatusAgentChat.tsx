@@ -42,6 +42,7 @@ import {
 import { cn } from "~/lib/utils";
 import type { UpsightMessage } from "~/mastra/message-types";
 import { HOST, PRODUCTION_HOST } from "~/paths";
+import { extractSurveyQuestionUpdateDetails } from "./survey-question-sync";
 
 function WizardIcon({ className }: { className?: string }) {
 	return (
@@ -104,6 +105,63 @@ const USER_INPUT_MESSAGE_PREFIX = "[UserInput]";
 
 function buildUserInputPayloadKey(payload: UserInputPayload): string {
 	return `${payload.prompt}::${payload.selectionMode}::${payload.options.map((option) => option.id).join(",")}`;
+}
+
+function extractDecisionSuggestions(messageText: string): string[] {
+	const markerIndex = messageText.toLowerCase().lastIndexOf("would you like me to:");
+	if (markerIndex < 0) return [];
+
+	const lines = messageText.slice(markerIndex).split(/\r?\n/).slice(1);
+	const suggestions: string[] = [];
+	let sawBullet = false;
+
+	for (const line of lines) {
+		const trimmed = line.trim();
+		if (!trimmed) {
+			if (sawBullet) break;
+			continue;
+		}
+
+		const bulletMatch = trimmed.match(/^[-*•]\s+(.+)$/);
+		if (!bulletMatch) {
+			if (sawBullet) break;
+			continue;
+		}
+
+		const suggestion = bulletMatch[1]?.trim();
+		if (!suggestion) continue;
+		suggestions.push(suggestion.replace(/[.:]\s*$/, ""));
+		sawBullet = true;
+	}
+
+	return Array.from(new Set(suggestions)).slice(0, 3);
+}
+
+function deriveDeterministicSuggestions(messageText: string, currentPageContext: string): string[] {
+	if (!messageText) return [];
+
+	const explicitDecisionSuggestions = extractDecisionSuggestions(messageText);
+	if (explicitDecisionSuggestions.length > 0) {
+		return explicitDecisionSuggestions;
+	}
+
+	const isSurveyEditor = /View:\s*Survey editor/i.test(currentPageContext);
+	if (!isSurveyEditor) return [];
+
+	const normalized = messageText.toLowerCase();
+	if (
+		normalized.includes("please confirm your preference") ||
+		normalized.includes("replace the current survey content entirely") ||
+		normalized.includes("update only the questions that differ")
+	) {
+		return [
+			"Replace the current survey entirely",
+			"Update only the changed questions and keep existing IDs",
+			"Review the branching before applying",
+		];
+	}
+
+	return [];
 }
 
 interface PeopleImportApiResponse {
@@ -247,6 +305,20 @@ function formatProgressLabel(name: string): string {
 		.replace(/([A-Z])/g, " $1")
 		.replace(/^./, (str: string) => str.toUpperCase())
 		.trim();
+}
+
+function formatAssistantTransportError(error: unknown): string {
+	const raw = error instanceof Error ? error.message : String(error);
+	const normalized = raw.toLowerCase();
+	const isRateLimit =
+		normalized.includes("rate limit") ||
+		normalized.includes("rate_limit") ||
+		normalized.includes("429") ||
+		normalized.includes("too many requests");
+	if (isRateLimit) {
+		return "Assistant hit a rate limit. No update was completed. Retry in about a minute.";
+	}
+	return "Assistant request failed before completion. No update was confirmed.";
 }
 
 type NetworkStep = {
@@ -804,6 +876,8 @@ interface ProjectStatusAgentChatProps {
 	onCollapsedChange?: (collapsed: boolean) => void;
 	/** When true, hides the card header/chrome - used when embedded in AIAssistantPanel */
 	embedded?: boolean;
+	/** Embedded tone: dark for floating panel, light for split/inline embeds */
+	embeddedTone?: "dark" | "light";
 	/** Ref callback to expose clearChat to parent (used by AIAssistantPanel) */
 	onClearChatRef?: (clearFn: (() => void) | null) => void;
 	/** Ref callback to expose loadThread to parent (used by AIAssistantPanel) */
@@ -884,6 +958,13 @@ const ensureProjectScopedPath = (
 		return { resolved: `${projectBase}${normalized}` };
 	}
 
+	const crossAccountProjectMatch = normalized.match(/^\/a\/[^/]+\/([^/]+)(\/.*)?$/);
+	if (crossAccountProjectMatch?.[1] === projectId) {
+		// Allow canonical account correction when the destination is still the current project.
+		// This unblocks navigation when server-side context resolves a different accountId than the current URL.
+		return { resolved: normalized };
+	}
+
 	if (normalized === projectBase || normalized.startsWith(`${projectBase}/`)) {
 		return { resolved: normalized };
 	}
@@ -897,16 +978,14 @@ export function ProjectStatusAgentChat({
 	systemContext,
 	onCollapsedChange,
 	embedded,
+	embeddedTone = "dark",
 	onClearChatRef,
 	onLoadThreadRef,
 	onTTSStateRef,
 }: ProjectStatusAgentChatProps) {
 	const { isMobile } = useDeviceDetection();
 	const [input, setInput] = useState("");
-	const [isCollapsed, setIsCollapsed] = useState(() => {
-		if (typeof window === "undefined") return false;
-		return localStorage.getItem("project-chat-collapsed") === "true";
-	});
+	const [isCollapsed, setIsCollapsed] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
 	// Use stick-to-bottom for auto-scrolling chat messages
@@ -1011,6 +1090,7 @@ export function ProjectStatusAgentChat({
 
 	const activeThreadIdRef = useRef(activeThreadId);
 	activeThreadIdRef.current = activeThreadId;
+	const [chatErrorMessage, setChatErrorMessage] = useState<string | null>(null);
 
 	const { messages, sendMessage, status, addToolResult, stop, setMessages } = useChat<UpsightMessage>({
 		transport: new DefaultChatTransport({
@@ -1025,6 +1105,16 @@ export function ProjectStatusAgentChat({
 		// We load history for display but don't need to send it back since the server
 		// already includes it via the memory thread.
 		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+		onError: (error) => {
+			const message = formatAssistantTransportError(error);
+			setChatErrorMessage(message);
+			consola.error("project-status-chat: transport error", {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			toast.error("Assistant request failed", {
+				description: message,
+			});
+		},
 		onToolCall: async ({ toolCall }) => {
 			if (toolCall.dynamic) return;
 
@@ -1206,7 +1296,28 @@ export function ProjectStatusAgentChat({
 		}
 	}, [messages, a2uiSurface]);
 
-	// Auto-navigate when the server sends a data part with { type: "navigate", path }.
+	// A2UI: Support typed data parts that carry A2UI payloads (e.g. survey_quick_create fast path)
+	const lastA2UIDataMessageIdRef = useRef<string | null>(null);
+	useEffect(() => {
+		if (!a2uiSurface) return;
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const msg = messages[i];
+			if (msg.id === lastA2UIDataMessageIdRef.current) break;
+			if (msg.role !== "assistant" || !msg.parts) continue;
+			for (const part of msg.parts) {
+				const anyPart = part as { type?: string; data?: unknown };
+				if (anyPart.type !== "data-a2ui") continue;
+				const payload = anyPart.data as { messages?: unknown } | undefined;
+				if (!Array.isArray(payload?.messages)) continue;
+				a2uiSurface.applyMessages(payload.messages as Parameters<typeof a2uiSurface.applyMessages>[0]);
+			}
+		}
+		if (messages.length > 0) {
+			lastA2UIDataMessageIdRef.current = messages[messages.length - 1].id;
+		}
+	}, [messages, a2uiSurface]);
+
+	// Auto-navigate when the server sends a typed data part with a path payload.
 	// Used by survey_quick_create to navigate to the editor without a fake tool call
 	// (which previously caused an infinite create loop via sendAutomatically).
 	const lastNavigateMessageIdRef = useRef<string | null>(null);
@@ -1216,16 +1327,24 @@ export function ProjectStatusAgentChat({
 			if (msg.id === lastNavigateMessageIdRef.current) break;
 			if (msg.role !== "assistant" || !msg.parts) continue;
 			for (const part of msg.parts) {
-				const anyPart = part as { type: string; data?: unknown[] };
+				const anyPart = part as { type: string; data?: unknown };
+
+				// Preferred AI SDK v5 typed data part shape.
+				if (anyPart.type === "data-navigate") {
+					const navData = anyPart.data as { path?: string } | undefined;
+					if (navData?.path) {
+						const { resolved } = ensureProjectScopedPath(navData.path, accountId, projectId);
+						if (resolved) navigate(resolved);
+					}
+				}
+
+				// Backward compatibility for older "data" wrapper shape.
 				if (anyPart.type === "data" && Array.isArray(anyPart.data)) {
 					for (const item of anyPart.data) {
 						const navItem = item as { type?: string; path?: string };
-						if (navItem.type === "navigate" && navItem.path) {
-							const { resolved } = ensureProjectScopedPath(navItem.path, accountId, projectId);
-							if (resolved) {
-								navigate(resolved);
-							}
-						}
+						if (navItem.type !== "navigate" || !navItem.path) continue;
+						const { resolved } = ensureProjectScopedPath(navItem.path, accountId, projectId);
+						if (resolved) navigate(resolved);
 					}
 				}
 			}
@@ -1498,6 +1617,12 @@ export function ProjectStatusAgentChat({
 	const isError = status === "error";
 	const awaitingAssistant = isBusy;
 
+	useEffect(() => {
+		if (isBusy) {
+			setChatErrorMessage(null);
+		}
+	}, [isBusy]);
+
 	// Map voice states to VoiceButton states
 	const voiceButtonState: VoiceButtonState = voiceError
 		? "error"
@@ -1509,7 +1634,8 @@ export function ProjectStatusAgentChat({
 
 	// Voice-only status message (errors and recording state)
 	const statusMessage =
-		voiceError || (isError ? "Something went wrong. Try again." : isVoiceRecording ? "Recording..." : null);
+		voiceError ||
+		(isError ? chatErrorMessage || "Something went wrong. Try again." : isVoiceRecording ? "Recording..." : null);
 
 	const displayableMessages = useMemo(() => {
 		if (!messages) return [];
@@ -1536,14 +1662,18 @@ export function ProjectStatusAgentChat({
 
 	// Auto-focus the textarea when component mounts
 	useEffect(() => {
-		if (typeof window !== "undefined") {
-			localStorage.setItem("project-chat-collapsed", String(isCollapsed));
+		if (import.meta.env.DEV) {
+			consola.debug("project-status-chat: collapse state changed", {
+				isCollapsed,
+				embedded: Boolean(embedded),
+				pathname: location.pathname,
+			});
 		}
 		if (textareaRef.current && !isCollapsed) {
 			textareaRef.current.focus();
 		}
 		onCollapsedChange?.(isCollapsed);
-	}, [isCollapsed, onCollapsedChange]);
+	}, [embedded, isCollapsed, location.pathname, onCollapsedChange]);
 
 	// State for LLM-generated suggestions (fallback)
 	const [generatedSuggestions, setGeneratedSuggestions] = useState<string[]>([]);
@@ -1627,6 +1757,14 @@ export function ProjectStatusAgentChat({
 			return;
 		}
 
+		const hasInlineActionControls =
+			extractUserInputPayloads(lastMsg).length > 0 || Boolean(extractSuggestActionsPayload(lastMsg));
+		if (hasInlineActionControls) {
+			setGeneratedSuggestions([]);
+			lastProcessedMessageId.current = lastMsg.id;
+			return;
+		}
+
 		// Otherwise, generate new ones via API
 		lastProcessedMessageId.current = lastMsg.id;
 
@@ -1636,6 +1774,12 @@ export function ProjectStatusAgentChat({
 				.map((p) => p.text)
 				.join("\n") || "";
 		if (!lastText) return;
+
+		const deterministicSuggestions = deriveDeterministicSuggestions(lastText, currentPageContext);
+		if (deterministicSuggestions.length > 0) {
+			setGeneratedSuggestions(deterministicSuggestions);
+			return;
+		}
 
 		fetch("/api/generate-suggestions", {
 			method: "POST",
@@ -1690,6 +1834,19 @@ export function ProjectStatusAgentChat({
 			if (hasCompletedTool) {
 				revalidatedToolMsgIdsRef.current.add(msg.id);
 				shouldRevalidate = true;
+				const surveyQuestionUpdates = extractSurveyQuestionUpdateDetails(msg);
+				for (const update of surveyQuestionUpdates) {
+					window.dispatchEvent(
+						new CustomEvent("upsight:survey-questions-updated", {
+							detail: {
+								messageId: msg.id,
+								surveyId: update.surveyId,
+								action: update.action,
+								updatedCount: update.updatedCount,
+							},
+						})
+					);
+				}
 			}
 		}
 
@@ -1778,6 +1935,8 @@ export function ProjectStatusAgentChat({
 		navigate(normalizedPath, { preventScrollReset: true });
 	};
 
+	const isEmbeddedDark = Boolean(embedded && embeddedTone === "dark");
+
 	// Shared chat content renderer (used by both embedded and card modes)
 	const chatContent = (
 		<>
@@ -1813,7 +1972,10 @@ export function ProjectStatusAgentChat({
 			<div className="min-h-0 flex-1 overflow-hidden">
 				{visibleMessages.length === 0 ? (
 					<div
-						className={cn("flex flex-row gap-2 text-xs sm:text-sm", embedded ? "text-slate-400" : "text-foreground/70")}
+						className={cn(
+							"flex flex-row gap-2 text-xs sm:text-sm",
+							embedded ? (isEmbeddedDark ? "text-slate-400" : "text-muted-foreground") : "text-foreground/70"
+						)}
 					>
 						<Bot />
 						Hey, how can I help?
@@ -1846,7 +2008,11 @@ export function ProjectStatusAgentChat({
 											<div
 												className={cn(
 													"mb-1 text-[10px] uppercase tracking-wide",
-													embedded ? "text-slate-500" : "text-foreground/60"
+													embedded
+														? isEmbeddedDark
+															? "text-slate-500"
+															: "text-muted-foreground/80"
+														: "text-foreground/60"
 												)}
 											>
 												{isUser ? "You" : "Uppy Assistant"}
@@ -1857,9 +2023,12 @@ export function ProjectStatusAgentChat({
 													isUser
 														? "bg-blue-600 text-white"
 														: embedded
-															? "bg-slate-700/50 text-slate-200 ring-1 ring-white/[0.06]"
+															? isEmbeddedDark
+																? "bg-slate-700/50 text-slate-200 ring-1 ring-white/[0.06]"
+																: "bg-muted/70 text-foreground ring-1 ring-border/60"
 															: "bg-background text-foreground ring-1 ring-border/60",
-													isThisMessagePlaying && (embedded ? "ring-blue-500/30" : "ring-blue-300")
+													isThisMessagePlaying &&
+														(embedded ? (isEmbeddedDark ? "ring-blue-500/30" : "ring-blue-300/60") : "ring-blue-300")
 												)}
 												onClick={!isUser ? handleAssistantLinkClick : undefined}
 											>
@@ -2031,7 +2200,7 @@ export function ProjectStatusAgentChat({
 													isPlaying={isThisMessagePlaying}
 													onPlay={() => tts.playText(messageText, message.id)}
 													onStop={() => tts.stopPlayback()}
-													variant={embedded ? "dark" : "light"}
+													variant={embedded ? (isEmbeddedDark ? "dark" : "light") : "light"}
 												/>
 											</div>
 										)}
@@ -2070,7 +2239,9 @@ export function ProjectStatusAgentChat({
 							className={cn(
 								"min-h-[60px] resize-none rounded-xl pr-20 pl-10 shadow-sm focus-visible:ring-1",
 								embedded
-									? "border border-white/10 bg-slate-700/60 text-slate-100 placeholder:text-slate-400 focus-visible:border-blue-500/50 focus-visible:ring-blue-500/20"
+									? isEmbeddedDark
+										? "border border-white/10 bg-slate-700/60 text-slate-100 placeholder:text-slate-400 focus-visible:border-blue-500/50 focus-visible:ring-blue-500/20"
+										: "border border-border/70 bg-background text-foreground placeholder:text-muted-foreground focus-visible:border-primary/60 focus-visible:ring-primary/20"
 									: "border-2 border-border bg-white focus-visible:border-primary focus-visible:ring-primary/30 dark:bg-zinc-900"
 							)}
 						/>

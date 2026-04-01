@@ -133,7 +133,7 @@ Note this could be a monologue in which case be sure to create evidenceTurns for
    - `person_key`: deterministic slug per human such as `participant-1`, `participant-2`, `interviewer-1`. Derive the number from first appearance order. Reuse the EXACT same `person_key` string for all references to that person. Never reuse a slug for different humans.
    - `speaker_label`: the literal transcript label (e.g., "SPEAKER 2", "Kai", "Interviewer").
    - `inferred_name`, `job_title`, and `job_function` when confident.
-2. Slice the transcript into coherent, chronological turns (where each turn is a single speaker). Emit one `EvidenceTurn` per turn, anchored to the correct `person_key` with gist, chunk, verbatim, anchors, and facet mentions.
+2. Slice the transcript into coherent, chronological turns (where each turn is a single speaker), then emit `EvidenceTurn`s ONLY for turns that contain durable evidence. Many turns should produce NO `EvidenceTurn` at all. Do not mirror the transcript turn-for-turn.
 3. For each `EvidenceTurn`, emit one or more `FacetMention` items—one per distinct, atomic signal (goal, pain, behavior, tool, value, preference, demographic, context, artifact, emotion, feature, price). Each `FacetMention` must reference its parent `EvidenceTurn` via `parent_index`. Keep `value` concrete and readable in isolation (≤12 words). Prefer verb+object or noun+modifier. Avoid vague superlatives (e.g., "best", "amazing") unless paired with a criterion. Include a short `quote` when high-signal.
 4. Segment the conversation into `Scene`s when the topic/goal shifts. Each scene spans a contiguous block of `EvidenceTurn.index` values and has a short topic label.
 
@@ -148,12 +148,18 @@ Moments that reveal motivations, anxieties, decision criteria, or definitions of
 - Procedural questions ("can we continue?", "is this recording?", "can you hear me?")
 - Off-topic chitchat unrelated to product, workflow, or user psychology
 - Interviewer instructions or transitions unless they reveal user confusion/friction
+- Interviewer prompts that merely ask for clarification, move the conversation forward, or introduce a concept/demo
+- Short acknowledgments and confirmations ("yeah", "okay", "all good", "sounds good", "thanks")
+- Closing remarks, gratitude, and wrap-up turns unless they reveal a concrete decision, concern, or requirement
 
 Examples to SKIP:
 ❌ "It's really hot today" - weather
 ❌ "Can I grab some water real quick?" - procedural
 ❌ "That's fine, go ahead" - generic acknowledgment
 ❌ "So, let's talk about..." - interviewer transition (no signal)
+❌ "Okay. How about AI and things like that?" - interviewer prompt
+❌ "Yeah." - low-signal confirmation
+❌ "Thanks so much for your time." - closing pleasantry
 
 Examples to EXTRACT:
 ✅ "I wish the tool would..." - pain/goal
@@ -162,6 +168,7 @@ Examples to EXTRACT:
 ✅ "I use Notion because..." - tool + rationale
 
 ONLY extract turns with business or psychographic relevance.
+In research interviews, default to participant answers over interviewer questions. Keep interviewer context only when it is necessary to make the participant's answer intelligible.
 
 ## EvidenceTurn
 - index: 0-based chronological index (strictly ascending) and equals its position in the stream.
@@ -210,6 +217,7 @@ Set `context_confidence` between 0.0-1.0 based on how clear the signals are.
 - Do not output any catalog ids or proposals; linking occurs in a separate step.
 - Keep `value` and `verbatim` within word limits. Ban vague comparatives unless paired with a concrete subject/rationale. Each mention should be testable and specific (avoid grouping multiple subjects; emit one mention per subject).
 - Prefer fewer, higher-quality turns over many weak ones; but do not drop distinct signals (emit mentions instead).
+- If you are unsure whether a turn is strong enough, SKIP it rather than emitting a weak EvidenceTurn.
 - ALWAYS output `interaction_context`, `context_confidence`, and `context_reasoning` at the top level.
 
 Speaker Transcripts (language={{ language }})

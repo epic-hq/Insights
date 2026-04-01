@@ -2,8 +2,8 @@
  * AppLayout - Main application layout wrapper
  *
  * Layout modes (selected via ?layout= URL param):
- * - (default): Agent-first layout — chat centered or two-column with canvas
- * - ?layout=legacy: Old floating AI panel overlay layout
+ * - (default): Floating AI panel overlay layout (collapsible)
+ * - ?layout=split: Agent-first layout — chat centered or two-column with canvas
  * - ?layout=sidebar: Legacy sidebar layout
  */
 
@@ -82,12 +82,21 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 
 	const layoutMode = searchParams.get("layout");
 
-	// Default: agent-first layout
+	// Default: floating/collapsible panel layout
 	if (!layoutMode) {
+		return (
+			<Suspense fallback={null}>
+				<LegacyFloatingPanelLayout showJourneyNav={showJourneyNav} />
+			</Suspense>
+		);
+	}
+
+	// Split-pane layout (explicit opt-in via ?layout=split)
+	if (layoutMode === "split") {
 		return <SplitPaneLayout showJourneyNav={showJourneyNav} />;
 	}
 
-	// Legacy floating panel layout (accessible via ?layout=legacy)
+	// Backward-compatible alias for floating layout
 	if (layoutMode === "legacy") {
 		return (
 			<Suspense fallback={null}>
@@ -101,7 +110,7 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 		<SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
 			{showMainNav && !isMobile && <AppSidebar />}
 			<SidebarInset>
-				<main className={cn("flex min-h-screen flex-1 flex-col", showMobileNav ? "pb-[72px]" : "")}>
+				<main className={cn("flex min-h-0 flex-1 flex-col", showMobileNav ? "pb-[72px]" : "")}>
 					<Outlet />
 				</main>
 

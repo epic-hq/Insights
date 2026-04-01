@@ -3,12 +3,90 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Button } from "~/components/ui/button";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
+import { extractAudioOnly, isVideoFile, optimizeMediaFile, shouldOptimize } from "~/utils/media-optimizer.client";
 import { type UploadProgress, uploadToR2WithProgress } from "~/utils/r2-upload.client";
 import ProcessingScreen from "./ProcessingScreen";
 import ProjectGoalsScreen from "./ProjectGoalsScreen";
 import ProjectStatusScreen from "./ProjectStatusScreen";
 import QuestionsScreen from "./QuestionsScreen";
 import UploadScreen from "./UploadScreen";
+
+/**
+ * Capture a thumbnail frame from a video file using a hidden video element + canvas.
+ * Seeks to 1 second (or 0 if short) and captures a 640px-wide JPEG.
+ */
+async function captureVideoThumbnail(file: File): Promise<Blob | null> {
+	return new Promise((resolve) => {
+		const video = document.createElement("video");
+		video.preload = "metadata";
+		video.muted = true;
+		video.playsInline = true;
+
+		const url = URL.createObjectURL(file);
+		let resolved = false;
+
+		const cleanup = () => {
+			URL.revokeObjectURL(url);
+			video.removeAttribute("src");
+			video.load();
+		};
+
+		const timeout = setTimeout(() => {
+			if (!resolved) {
+				resolved = true;
+				cleanup();
+				resolve(null);
+			}
+		}, 10000);
+
+		video.onloadedmetadata = () => {
+			// Seek to 1 second or 10% of duration, whichever is smaller
+			video.currentTime = Math.min(1, video.duration * 0.1);
+		};
+
+		video.onseeked = () => {
+			if (resolved) return;
+			resolved = true;
+			clearTimeout(timeout);
+
+			try {
+				const canvas = document.createElement("canvas");
+				const scale = Math.min(1, 640 / video.videoWidth);
+				canvas.width = Math.round(video.videoWidth * scale);
+				canvas.height = Math.round(video.videoHeight * scale);
+				const ctx = canvas.getContext("2d");
+				if (!ctx) {
+					cleanup();
+					resolve(null);
+					return;
+				}
+				ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+				canvas.toBlob(
+					(blob) => {
+						cleanup();
+						resolve(blob);
+					},
+					"image/jpeg",
+					0.8
+				);
+			} catch {
+				cleanup();
+				resolve(null);
+			}
+		};
+
+		video.onerror = () => {
+			if (!resolved) {
+				resolved = true;
+				clearTimeout(timeout);
+				cleanup();
+				resolve(null);
+			}
+		};
+
+		video.src = url;
+	});
+}
 
 type OnboardingStep = "welcome" | "questions" | "upload" | "processing" | "complete";
 
@@ -46,8 +124,42 @@ type UploadResponse<T> =
 			error: string;
 	  };
 
+interface OnboardingStartResponseData {
+	interview?: {
+		id?: string;
+		account_id?: string;
+	};
+	project?: {
+		id?: string;
+		account_id?: string;
+	};
+	triggerRun?: {
+		id?: string;
+		publicToken?: string | null;
+	};
+}
+
 const MULTIPART_COMPLETE_TIMEOUT_MS = 2 * 60 * 1000;
 const MULTIPART_ABORT_TIMEOUT_MS = 30 * 1000;
+
+type UploadSourceType = "audio_upload" | "video_upload" | "document" | "transcript";
+
+type PresignedUploadResponse =
+	| {
+			type: "single";
+			uploadUrl: string;
+			key: string;
+			expiresAt: string;
+	  }
+	| {
+			type: "multipart";
+			key: string;
+			uploadId: string;
+			partUrls: Record<number, string>;
+			partSize: number;
+			totalParts: number;
+			expiresAt: string;
+	  };
 
 function postFormDataWithProgress<T>({
 	url,
@@ -162,6 +274,169 @@ async function fetchWithTimeout(
 	}
 }
 
+function getUploadSourceType(file: File): UploadSourceType {
+	const extension = file.name.split(".").pop()?.toLowerCase();
+	const mimeType = file.type.toLowerCase();
+
+	if (mimeType.startsWith("text/") || ["txt", "md", "markdown"].includes(extension || "")) {
+		return "transcript";
+	}
+	if (mimeType === "application/pdf" || extension === "pdf") {
+		return "transcript";
+	}
+	if (
+		mimeType.includes("document") ||
+		mimeType.includes("spreadsheet") ||
+		["doc", "docx", "csv", "xlsx"].includes(extension || "")
+	) {
+		return "document";
+	}
+	if (mimeType.startsWith("video/") || ["mp4", "mov", "avi", "mkv", "webm"].includes(extension || "")) {
+		return "video_upload";
+	}
+	if (mimeType.startsWith("audio/") || ["mp3", "wav", "m4a", "ogg", "flac"].includes(extension || "")) {
+		return "audio_upload";
+	}
+	return "document";
+}
+
+function isAudioVideoSourceType(sourceType: UploadSourceType): boolean {
+	return sourceType === "audio_upload" || sourceType === "video_upload";
+}
+
+function createOnboardingPayload(data: OnboardingData, mediaType: string) {
+	return {
+		target_orgs: data.target_orgs,
+		target_roles: data.target_roles,
+		research_goal: data.research_goal,
+		research_goal_details: data.research_goal_details,
+		decision_questions: data.decision_questions,
+		assumptions: data.assumptions,
+		unknowns: data.unknowns,
+		custom_instructions: data.custom_instructions,
+		questions: data.questions,
+		mediaType,
+	};
+}
+
+async function requestPresignedUpload({
+	projectId,
+	file,
+}: {
+	projectId: string;
+	file: File;
+}): Promise<PresignedUploadResponse> {
+	let presignedResponse: Response | null = null;
+	for (let attempt = 0; attempt < 3; attempt++) {
+		presignedResponse = await fetch("/api/upload/presigned-url", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				projectId,
+				filename: file.name,
+				contentType: file.type || "application/octet-stream",
+				fileSize: file.size,
+			}),
+		});
+
+		if (presignedResponse.status !== 503 || attempt === 2) break;
+		console.warn(`[Upload] Presigned URL returned 503, retrying (attempt ${attempt + 1}/3)...`);
+		await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+	}
+
+	if (!presignedResponse?.ok) {
+		const errorData = await presignedResponse?.json().catch(() => ({}));
+		throw new Error(errorData?.error || `Failed to get upload URL (${presignedResponse?.status ?? "unknown"})`);
+	}
+
+	return (await presignedResponse.json()) as PresignedUploadResponse;
+}
+
+async function uploadFileWithPresignedUrl({
+	file,
+	presignedData,
+	onProgress,
+	onMultipartPhase,
+}: {
+	file: File;
+	presignedData: PresignedUploadResponse;
+	onProgress: (progress: UploadProgress) => void;
+	onMultipartPhase?: (progress: UploadProgress) => void;
+}): Promise<string> {
+	if (presignedData.type === "multipart") {
+		await uploadToR2WithProgress({
+			file,
+			singlePartUrl: "",
+			contentType: file.type || "application/octet-stream",
+			multipartThresholdBytes: 0,
+			partSizeBytes: presignedData.partSize,
+			multipartHandlers: {
+				createMultipartUpload: async () => ({
+					uploadId: presignedData.uploadId,
+					partUrls: presignedData.partUrls,
+				}),
+				completeMultipartUpload: async ({ parts }) => {
+					const completeResponse = await fetchWithTimeout(
+						"/api/upload/presigned-url?action=complete",
+						{
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								key: presignedData.key,
+								uploadId: presignedData.uploadId,
+								parts: parts.map((part) => ({
+									partNumber: part.partNumber,
+									etag: part.etag,
+								})),
+							}),
+						},
+						MULTIPART_COMPLETE_TIMEOUT_MS
+					);
+
+					if (!completeResponse.ok) {
+						const errorData = await completeResponse.json().catch(() => ({}));
+						throw new Error(errorData.error || "Failed to complete multipart upload");
+					}
+				},
+				abortMultipartUpload: async () => {
+					const abortResponse = await fetchWithTimeout(
+						"/api/upload/presigned-url?action=abort",
+						{
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								key: presignedData.key,
+								uploadId: presignedData.uploadId,
+							}),
+						},
+						MULTIPART_ABORT_TIMEOUT_MS
+					);
+
+					if (!abortResponse.ok) {
+						const errorData = await abortResponse.json().catch(() => ({}));
+						throw new Error(errorData.error || "Failed to abort multipart upload");
+					}
+				},
+			},
+			onProgress: (progress) => {
+				onMultipartPhase?.(progress);
+				onProgress(progress);
+			},
+		});
+
+		return presignedData.key;
+	}
+
+	await uploadToR2WithProgress({
+		file,
+		singlePartUrl: presignedData.uploadUrl,
+		contentType: file.type || "application/octet-stream",
+		onProgress,
+	});
+
+	return presignedData.key;
+}
+
 interface OnboardingFlowProps {
 	onComplete: (data: OnboardingData) => void;
 	onAddMoreInterviews: () => void;
@@ -185,9 +460,9 @@ interface OnboardingFlowProps {
 
 export default function OnboardingFlow({
 	onComplete,
-	onAddMoreInterviews,
-	onViewResults,
-	onRefresh,
+	onAddMoreInterviews: _onAddMoreInterviews,
+	onViewResults: _onViewResults,
+	onRefresh: _onRefresh,
 	projectId,
 	accountId,
 	existingProject,
@@ -306,132 +581,166 @@ export default function OnboardingFlow({
 			});
 
 			try {
-				// Determine if we should use direct R2 upload
-				// Only use for audio/video files that need transcription
-				const isAudioVideo =
-					file.type.startsWith("audio/") ||
-					file.type.startsWith("video/") ||
-					attachmentData?.sourceType === "audio_upload" ||
-					attachmentData?.sourceType === "video_upload";
+				const sourceType = (attachmentData?.sourceType as UploadSourceType | undefined) || getUploadSourceType(file);
+				const isAudioVideo = isAudioVideoSourceType(sourceType);
+
+				// Smart media optimization:
+				// - Video files: extract audio only (instant) for transcription
+				//   Paid accounts also upload original video for server-side optimization
+				// - Audio files: re-encode to 128k AAC if large (fast in WASM)
+				let uploadFile = file;
+				let originalVideoR2Key: string | null = null;
+				let thumbnailR2Key: string | null = null;
+
+				if (isAudioVideo && isVideoFile(file)) {
+					// Video: extract audio track (near-instant, no re-encoding)
+					console.log(
+						"[Upload] Extracting audio from video:",
+						file.name,
+						`(${(file.size / 1024 / 1024).toFixed(1)} MB)`
+					);
+					setUploadProgress({
+						bytesSent: 0,
+						totalBytes: file.size,
+						percent: 0,
+						phase: "optimizing",
+					});
+
+					// Generate thumbnail from video before we discard it
+					let thumbnailBlob: Blob | null = null;
+					try {
+						thumbnailBlob = await captureVideoThumbnail(file);
+						if (thumbnailBlob) {
+							console.log("[Upload] Thumbnail captured:", `${(thumbnailBlob.size / 1024).toFixed(1)} KB`);
+						}
+					} catch (thumbErr) {
+						console.warn("[Upload] Thumbnail capture failed:", thumbErr);
+					}
+
+					const audioResult = await extractAudioOnly(file, {
+						onProgress: (p) => {
+							setUploadProgress({
+								bytesSent: 0,
+								totalBytes: file.size,
+								percent: Math.round(p.percent),
+								phase: "optimizing",
+							});
+						},
+					});
+					uploadFile = audioResult.file;
+					console.log(
+						"[Upload] Audio extracted:",
+						`${(file.size / 1024 / 1024).toFixed(1)} MB → ${(audioResult.finalSize / 1024 / 1024).toFixed(1)} MB`
+					);
+
+					// Upload thumbnail to R2 if we captured one
+					if (thumbnailBlob && uploadProjectId) {
+						try {
+							const thumbFile = new File([thumbnailBlob], "thumbnail.jpg", {
+								type: "image/jpeg",
+							});
+							const thumbPresigned = await requestPresignedUpload({
+								projectId: uploadProjectId,
+								file: thumbFile,
+							});
+							const thumbR2Key = await uploadFileWithPresignedUrl({
+								file: thumbFile,
+								presignedData: thumbPresigned,
+								onProgress: () => {},
+							});
+							thumbnailR2Key = thumbR2Key;
+							console.log("[Upload] Thumbnail uploaded:", thumbR2Key);
+						} catch (thumbUploadErr) {
+							console.warn("[Upload] Thumbnail upload failed:", thumbUploadErr);
+						}
+					}
+
+					// Upload original video for server-side optimization + playback
+					if (uploadProjectId) {
+						console.log("[Upload] Uploading original video for server-side optimization");
+						try {
+							const videoPresigned = await requestPresignedUpload({
+								projectId: uploadProjectId,
+								file,
+							});
+							originalVideoR2Key = await uploadFileWithPresignedUrl({
+								file,
+								presignedData: videoPresigned,
+								onProgress: handleUploadProgress,
+							});
+							console.log("[Upload] Original video uploaded:", originalVideoR2Key);
+						} catch (videoUploadError) {
+							// Non-fatal: analysis still works from audio
+							console.warn("[Upload] Video upload failed, continuing with audio-only:", videoUploadError);
+						}
+					}
+				} else if (isAudioVideo && shouldOptimize(file)) {
+					// Audio: re-encode to 128k AAC (fast in WASM)
+					console.log(
+						"[Upload] Optimizing audio before upload:",
+						file.name,
+						`(${(file.size / 1024 / 1024).toFixed(1)} MB)`
+					);
+					setUploadProgress({
+						bytesSent: 0,
+						totalBytes: file.size,
+						percent: 0,
+						phase: "optimizing",
+					});
+					const result = await optimizeMediaFile(file, {
+						onProgress: (p) => {
+							setUploadProgress({
+								bytesSent: 0,
+								totalBytes: file.size,
+								percent: Math.round(p.percent),
+								phase: "optimizing",
+							});
+						},
+					});
+					uploadFile = result.file;
+					if (result.wasOptimized) {
+						console.log(
+							"[Upload] Audio optimized:",
+							`${(file.size / 1024 / 1024).toFixed(1)} MB → ${(result.finalSize / 1024 / 1024).toFixed(1)} MB`
+						);
+					}
+				}
 
 				let r2Key: string | null = null;
 
 				// Audio/video files MUST go through direct R2 upload — no server fallback
 				if (isAudioVideo && uploadProjectId) {
-					console.log("[Upload] Direct R2 upload for", file.name, "to project", uploadProjectId);
-
-					// Step 1: Get presigned upload URL from server
-					const presignedResponse = await fetch("/api/upload/presigned-url", {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							projectId: uploadProjectId,
-							filename: file.name,
-							contentType: file.type || "application/octet-stream",
-							fileSize: file.size,
-						}),
+					console.log("[Upload] Direct R2 upload for", uploadFile.name, "to project", uploadProjectId);
+					const presignedData = await requestPresignedUpload({
+						projectId: uploadProjectId,
+						file: uploadFile,
 					});
-
-					if (!presignedResponse.ok) {
-						const errorData = await presignedResponse.json().catch(() => ({}));
-						throw new Error(errorData.error || `Failed to get upload URL (${presignedResponse.status})`);
-					}
-
-					const presignedData = await presignedResponse.json();
 					console.log("[Upload] Got presigned URL:", presignedData.type);
 
-					// Step 2: Upload directly to R2
-					if (presignedData.type === "multipart") {
-						// Large file - use multipart upload
-						console.log("[Upload] Starting multipart upload with", presignedData.totalParts, "parts");
-						let lastPartStarted = 0;
-						let lastPartCompleted = 0;
-						let loggedCompleting = false;
-						await uploadToR2WithProgress({
-							file,
-							singlePartUrl: "", // Not used for multipart
-							contentType: file.type || "application/octet-stream",
-							multipartThresholdBytes: 0, // Force multipart
-							partSizeBytes: presignedData.partSize,
-							multipartHandlers: {
-								createMultipartUpload: async () => ({
-									uploadId: presignedData.uploadId,
-									partUrls: presignedData.partUrls,
-								}),
-								completeMultipartUpload: async ({ parts }) => {
-									const completeResponse = await fetchWithTimeout(
-										"/api/upload/presigned-url?action=complete",
-										{
-											method: "POST",
-											headers: { "Content-Type": "application/json" },
-											body: JSON.stringify({
-												key: presignedData.key,
-												uploadId: presignedData.uploadId,
-												parts: parts.map((p) => ({
-													partNumber: p.partNumber,
-													etag: p.etag,
-												})),
-											}),
-										},
-										MULTIPART_COMPLETE_TIMEOUT_MS
-									);
+					let lastPartStarted = 0;
+					let lastPartCompleted = 0;
+					let loggedCompleting = false;
+					r2Key = await uploadFileWithPresignedUrl({
+						file: uploadFile,
+						presignedData,
+						onProgress: handleUploadProgress,
+						onMultipartPhase: (progress) => {
+							if (progress.phase === "completing" && !loggedCompleting) {
+								loggedCompleting = true;
+								console.log("[Upload] Finalizing multipart upload");
+							}
 
-									if (!completeResponse.ok) {
-										const errorData = await completeResponse.json().catch(() => ({}));
-										throw new Error(errorData.error || "Failed to complete multipart upload");
-									}
-								},
-								abortMultipartUpload: async () => {
-									const abortResponse = await fetchWithTimeout(
-										"/api/upload/presigned-url?action=abort",
-										{
-											method: "POST",
-											headers: { "Content-Type": "application/json" },
-											body: JSON.stringify({
-												key: presignedData.key,
-												uploadId: presignedData.uploadId,
-											}),
-										},
-										MULTIPART_ABORT_TIMEOUT_MS
-									);
-
-									if (!abortResponse.ok) {
-										const errorData = await abortResponse.json().catch(() => ({}));
-										throw new Error(errorData.error || "Failed to abort multipart upload");
-									}
-								},
-							},
-							onProgress: (progress) => {
-								handleUploadProgress(progress);
-
-								if (progress.phase === "completing" && !loggedCompleting) {
-									loggedCompleting = true;
-									console.log("[Upload] Finalizing multipart upload");
-								}
-
-								if (!progress.part) return;
-								if (progress.part.bytesSent === 0 && progress.part.index !== lastPartStarted) {
-									lastPartStarted = progress.part.index;
-									console.log(`[Upload] Multipart part ${progress.part.index}/${progress.part.total} started`);
-								}
-								if (progress.part.bytesSent === progress.part.size && progress.part.index !== lastPartCompleted) {
-									lastPartCompleted = progress.part.index;
-									console.log(`[Upload] Multipart part ${progress.part.index}/${progress.part.total} complete`);
-								}
-							},
-						});
-						r2Key = presignedData.key;
-					} else {
-						// Small file - single PUT upload
-						console.log("[Upload] Starting single PUT upload");
-						await uploadToR2WithProgress({
-							file,
-							singlePartUrl: presignedData.uploadUrl,
-							contentType: file.type || "application/octet-stream",
-							onProgress: handleUploadProgress,
-						});
-						r2Key = presignedData.key;
-					}
+							if (!progress.part) return;
+							if (progress.part.bytesSent === 0 && progress.part.index !== lastPartStarted) {
+								lastPartStarted = progress.part.index;
+								console.log(`[Upload] Multipart part ${progress.part.index}/${progress.part.total} started`);
+							}
+							if (progress.part.bytesSent === progress.part.size && progress.part.index !== lastPartCompleted) {
+								lastPartCompleted = progress.part.index;
+								console.log(`[Upload] Multipart part ${progress.part.index}/${progress.part.total} complete`);
+							}
+						},
+					});
 
 					console.log("[Upload] Direct R2 upload complete:", r2Key);
 				}
@@ -444,6 +753,12 @@ export default function OnboardingFlow({
 					formData.append("originalFilename", file.name);
 					formData.append("originalFileSize", String(file.size));
 					formData.append("originalContentType", file.type);
+					if (originalVideoR2Key) {
+						formData.append("originalVideoR2Key", originalVideoR2Key);
+					}
+					if (thumbnailR2Key) {
+						formData.append("thumbnailR2Key", thumbnailR2Key);
+					}
 				} else if (isAudioVideo) {
 					// Should never reach here — R2 upload is mandatory for audio/video
 					throw new Error("Upload failed: could not upload file to storage. Please try again.");
@@ -451,23 +766,12 @@ export default function OnboardingFlow({
 					// Non-audio/video files (documents, text) can go through server
 					formData.append("file", file);
 				}
-				formData.append(
-					"onboardingData",
-					JSON.stringify({
-						target_orgs: data.target_orgs,
-						target_roles: data.target_roles,
-						research_goal: data.research_goal,
-						research_goal_details: data.research_goal_details,
-						decision_questions: data.decision_questions,
-						assumptions: data.assumptions,
-						unknowns: data.unknowns,
-						custom_instructions: data.custom_instructions,
-						questions: data.questions,
-						mediaType,
-					})
-				);
+				formData.append("onboardingData", JSON.stringify(createOnboardingPayload(data, mediaType)));
 				if (uploadProjectId) {
 					formData.append("projectId", uploadProjectId);
+				}
+				if (accountId) {
+					formData.append("accountId", accountId);
 				}
 				if (data.personId) {
 					formData.append("personId", data.personId);
@@ -486,21 +790,30 @@ export default function OnboardingFlow({
 						formData.append("sourceType", attachmentData.sourceType);
 					}
 				}
+				if (!formData.has("fileExtension")) {
+					formData.append("fileExtension", file.name.split(".").pop()?.toLowerCase() || "");
+				}
+				if (!formData.has("sourceType")) {
+					formData.append("sourceType", sourceType);
+				}
 
 				// Call the onboarding-start API
 				// For direct R2 uploads, this just triggers processing (no file upload)
 				// For non-audio files, this uploads through server (small files only)
-				const response = r2Key
+				const response: UploadResponse<OnboardingStartResponseData> = r2Key
 					? await fetch("/api/onboarding-start", {
 							method: "POST",
 							body: formData,
-						}).then(async (res) => ({
-							ok: res.ok,
-							status: res.status,
-							data: await res.json(),
-							error: res.ok ? undefined : (await res.json().catch(() => ({}))).error,
-						}))
-					: await postFormDataWithProgress<Record<string, any>>({
+						}).then(async (res) => {
+							const body = await res.json().catch(() => ({}));
+							return {
+								ok: res.ok,
+								status: res.status,
+								data: body as Record<string, unknown>,
+								error: res.ok ? undefined : (body as { error?: string }).error,
+							};
+						})
+					: await postFormDataWithProgress<OnboardingStartResponseData>({
 							url: "/api/onboarding-start",
 							formData,
 							onProgress: (percent) =>
@@ -513,10 +826,10 @@ export default function OnboardingFlow({
 						});
 
 				if (!response.ok) {
-					throw new Error((response as any).error || "Upload failed");
+					throw new Error(response.error || "Upload failed");
 				}
 
-				const result = (response as any).data;
+				const result = response.data;
 				setIsUploading(false);
 				setUploadProgress(null);
 
@@ -540,7 +853,7 @@ export default function OnboardingFlow({
 
 					const interviewUrl = `/a/${finalAccountId}/${result.project.id}/interviews/${result.interview.id}`;
 					console.log("Redirecting to:", interviewUrl);
-					window.location.href = interviewUrl;
+					navigate(interviewUrl, { replace: true });
 					return;
 				}
 
@@ -594,7 +907,211 @@ export default function OnboardingFlow({
 				setCurrentStep("upload"); // Return to upload screen so user can retry
 			}
 		},
-		[data, accountId, handleUploadProgress]
+		[data, accountId, handleUploadProgress, navigate]
+	);
+
+	const handleUploadNextBatch = useCallback(
+		async (files: File[]) => {
+			setCurrentStep("processing");
+			setIsUploading(true);
+			const uploadProjectId = data.projectId || projectId;
+			setData((prev) => ({
+				...prev,
+				file: undefined,
+				mediaType: "interview",
+				uploadLabel: `${files.length} files`,
+				triggerRunId: undefined,
+				triggerAccessToken: null,
+				error: undefined,
+			}));
+
+			try {
+				if (!uploadProjectId) {
+					throw new Error("A project is required before uploading multiple files.");
+				}
+
+				const setBatchProgress = (fileIndex: number, filePercent: number) => {
+					setUploadProgress({
+						bytesSent: 0,
+						totalBytes: 0,
+						percent: Math.round(((fileIndex + filePercent / 100) / files.length) * 100),
+						phase: "uploading",
+					});
+				};
+
+				for (let i = 0; i < files.length; i++) {
+					const file = files[i];
+					const sourceType = getUploadSourceType(file);
+					const isAudioVideo = isAudioVideoSourceType(sourceType);
+					const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
+
+					const formData = new FormData();
+					let uploadFile = file;
+					let r2Key: string | null = null;
+					let batchOriginalVideoR2Key: string | null = null;
+					let batchThumbnailR2Key: string | null = null;
+
+					if (isAudioVideo && isVideoFile(file)) {
+						// Video: extract audio (instant)
+						setUploadProgress({
+							bytesSent: 0,
+							totalBytes: file.size,
+							percent: 0,
+							phase: "optimizing",
+						});
+						const audioResult = await extractAudioOnly(file, {
+							onProgress: (progress) => {
+								setUploadProgress({
+									bytesSent: 0,
+									totalBytes: file.size,
+									percent: Math.round(progress.percent),
+									phase: "optimizing",
+								});
+							},
+						});
+						uploadFile = audioResult.file;
+
+						try {
+							const thumbnailBlob = await captureVideoThumbnail(file);
+							if (thumbnailBlob) {
+								const thumbFile = new File([thumbnailBlob], "thumbnail.jpg", {
+									type: "image/jpeg",
+								});
+								const thumbPresigned = await requestPresignedUpload({
+									projectId: uploadProjectId,
+									file: thumbFile,
+								});
+								batchThumbnailR2Key = await uploadFileWithPresignedUrl({
+									file: thumbFile,
+									presignedData: thumbPresigned,
+									onProgress: () => {},
+								});
+								console.log("[BatchUpload] Thumbnail uploaded:", batchThumbnailR2Key);
+							}
+						} catch (thumbError) {
+							console.warn("[BatchUpload] Thumbnail capture/upload failed for", file.name, thumbError);
+						}
+
+						try {
+							const videoPresigned = await requestPresignedUpload({
+								projectId: uploadProjectId,
+								file,
+							});
+							batchOriginalVideoR2Key = await uploadFileWithPresignedUrl({
+								file,
+								presignedData: videoPresigned,
+								onProgress: (progress) => {
+									setBatchProgress(i, progress.percent * 0.3);
+								},
+							});
+						} catch {
+							console.warn("[BatchUpload] Video upload failed for", file.name);
+						}
+					} else if (isAudioVideo && shouldOptimize(file)) {
+						// Audio: re-encode to 128k AAC
+						setUploadProgress({
+							bytesSent: 0,
+							totalBytes: file.size,
+							percent: 0,
+							phase: "optimizing",
+						});
+						const optimizationResult = await optimizeMediaFile(file, {
+							onProgress: (progress) => {
+								setUploadProgress({
+									bytesSent: 0,
+									totalBytes: file.size,
+									percent: Math.round(progress.percent),
+									phase: "optimizing",
+								});
+							},
+						});
+						uploadFile = optimizationResult.file;
+					}
+
+					if (isAudioVideo) {
+						const presignedData = await requestPresignedUpload({
+							projectId: uploadProjectId,
+							file: uploadFile,
+						});
+						r2Key = await uploadFileWithPresignedUrl({
+							file: uploadFile,
+							presignedData,
+							onProgress: (progress) => {
+								const filePercent = 30 + progress.percent * 0.65;
+								setBatchProgress(i, filePercent);
+							},
+						});
+
+						formData.append("r2Key", r2Key);
+						formData.append("originalFilename", file.name);
+						formData.append("originalFileSize", String(file.size));
+						formData.append("originalContentType", file.type || "application/octet-stream");
+						if (batchOriginalVideoR2Key) {
+							formData.append("originalVideoR2Key", batchOriginalVideoR2Key);
+						}
+						if (batchThumbnailR2Key) {
+							formData.append("thumbnailR2Key", batchThumbnailR2Key);
+						}
+					} else {
+						formData.append("file", file);
+					}
+
+					formData.append("onboardingData", JSON.stringify(createOnboardingPayload(data, "interview")));
+					formData.append("projectId", uploadProjectId);
+					if (accountId) {
+						formData.append("accountId", accountId);
+					}
+					formData.append("attachType", "skip");
+					formData.append("sourceType", sourceType);
+					formData.append("fileExtension", fileExtension);
+
+					const response = r2Key
+						? await fetch("/api/onboarding-start", {
+								method: "POST",
+								body: formData,
+							}).then(async (res) => {
+								const body = await res.json().catch(() => ({}));
+								return {
+									ok: res.ok,
+									status: res.status,
+									data: body as Record<string, unknown>,
+									error: res.ok ? undefined : (body as { error?: string }).error,
+								};
+							})
+						: await postFormDataWithProgress<Record<string, unknown>>({
+								url: "/api/onboarding-start",
+								formData,
+								onProgress: (percent) => {
+									const filePercent = 30 + percent * 0.65;
+									setBatchProgress(i, filePercent);
+								},
+							});
+
+					if (!response.ok) {
+						throw new Error((response as { error?: string }).error || `Failed to start processing for ${file.name}`);
+					}
+
+					setBatchProgress(i, 100);
+				}
+
+				setIsUploading(false);
+				setUploadProgress(null);
+
+				// Redirect to interviews list after all files are uploaded
+				const finalAccountId = accountId;
+				if (finalAccountId && uploadProjectId) {
+					window.location.href = `/a/${finalAccountId}/${uploadProjectId}/interviews`;
+				}
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : "Batch upload failed";
+				console.error("[BatchUpload] Failed:", errorMessage, error);
+				setIsUploading(false);
+				setUploadProgress(null);
+				setData((prev) => ({ ...prev, error: errorMessage }));
+				setCurrentStep("upload");
+			}
+		},
+		[accountId, data, projectId]
 	);
 
 	const handleProcessingComplete = useCallback(() => {
@@ -766,6 +1283,7 @@ export default function OnboardingFlow({
 				return (
 					<UploadScreen
 						onNext={handleUploadNext}
+						onNextBatch={handleUploadNextBatch}
 						onUploadFromUrl={handleUploadFromUrl}
 						onBack={handleBack}
 						projectId={currentProjectId}
@@ -801,6 +1319,7 @@ export default function OnboardingFlow({
 		handleQuestionsNext,
 		handleBack,
 		handleUploadNext,
+		handleUploadNextBatch,
 		handleUploadFromUrl,
 		handleProcessingComplete,
 		getProjectName,

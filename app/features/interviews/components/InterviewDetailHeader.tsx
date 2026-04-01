@@ -7,17 +7,17 @@ import {
 	AlertTriangle,
 	ArrowUpRight,
 	Briefcase,
+	ChevronLeft,
 	Edit2,
+	Film,
 	Loader2,
 	MoreVertical,
 	RefreshCw,
-	Sparkles,
 	Trash2,
 	Users,
 	XCircle,
 } from "lucide-react";
-import { Link, useFetcher, useNavigate, useRevalidator } from "react-router";
-import { BackButton } from "~/components/ui/back-button";
+import { Link, useFetcher, useRevalidator } from "react-router";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -53,6 +53,7 @@ interface InterviewDetailHeaderProps {
 		created_at: string;
 		duration_sec: number | null;
 		media_url: string | null;
+		processing_metadata?: Record<string, unknown> | null;
 		status: string;
 		share_enabled?: boolean | null;
 		share_token?: string | null;
@@ -71,7 +72,7 @@ interface InterviewDetailHeaderProps {
 	isRealtimeLive: boolean;
 	hasError: boolean;
 	routes: {
-		interviews: { edit: (id: string) => string };
+		interviews: { index: () => string; edit: (id: string) => string };
 		people: { detail: (id: string) => string };
 		evidence: { index: () => string };
 		insights: { themes: () => string };
@@ -119,7 +120,7 @@ function getStatusLabel(status: string): string {
 export function InterviewDetailHeader({
 	interview,
 	accountId,
-	projectId,
+	projectId: _projectId,
 	evidenceCount,
 	insightCount,
 	creatorName,
@@ -135,7 +136,6 @@ export function InterviewDetailHeader({
 	onDelete,
 }: InterviewDetailHeaderProps) {
 	const fetcher = useFetcher();
-	const navigate = useNavigate();
 	const revalidator = useRevalidator();
 
 	const interviewTitle = interview.title || "Untitled Interview";
@@ -155,10 +155,23 @@ export function InterviewDetailHeader({
 		const person = p.people as { id?: string; name?: string | null } | null;
 		return person?.id && person?.name && !/^(Participant|Interviewer)\s*\d*$/i.test(person.name ?? "");
 	});
+	const mediaUrlPath = interview.media_url?.split("?")[0]?.toLowerCase() ?? "";
+	const currentMediaLooksVideo = /\.(mp4|mov|avi|mkv|m4v|webm)$/i.test(mediaUrlPath);
+	const storedOriginalVideoKey =
+		typeof interview.processing_metadata?.original_video_r2_key === "string"
+			? interview.processing_metadata.original_video_r2_key
+			: null;
+	const hasVideoSource = Boolean(storedOriginalVideoKey || currentMediaLooksVideo);
 
 	return (
 		<div className="space-y-3">
-			<BackButton />
+			<Link
+				to={routes.interviews.index()}
+				className="inline-flex items-center gap-1 text-muted-foreground text-sm hover:text-foreground"
+			>
+				<ChevronLeft className="h-4 w-4" />
+				Conversations
+			</Link>
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 				<div className="min-w-0 flex-1">
 					<InlineEdit
@@ -246,6 +259,49 @@ export function InterviewDetailHeader({
 								<RefreshCw className="mr-2 h-4 w-4" />
 								Re-run Analysis
 							</DropdownMenuItem>
+							{hasVideoSource && (
+								<>
+									<DropdownMenuItem
+										onClick={async () => {
+											try {
+												await fetch("/api/optimize-video", {
+													method: "POST",
+													headers: { "Content-Type": "application/json" },
+													body: JSON.stringify({
+														interviewId: interview.id,
+														thumbnailOnly: true,
+													}),
+												});
+											} catch (e) {
+												consola.error("Extract thumbnail failed", e);
+											}
+										}}
+										disabled={fetcher.state !== "idle"}
+										className="text-violet-600 focus:text-violet-600"
+									>
+										<Film className="mr-2 h-4 w-4" />
+										Extract Thumbnail
+									</DropdownMenuItem>
+									<DropdownMenuItem
+										onClick={async () => {
+											try {
+												await fetch("/api/optimize-video", {
+													method: "POST",
+													headers: { "Content-Type": "application/json" },
+													body: JSON.stringify({ interviewId: interview.id }),
+												});
+											} catch (e) {
+												consola.error("Optimize video failed", e);
+											}
+										}}
+										disabled={fetcher.state !== "idle"}
+										className="text-muted-foreground focus:text-foreground"
+									>
+										<Film className="mr-2 h-4 w-4" />
+										Optimize Video
+									</DropdownMenuItem>
+								</>
+							)}
 							<DropdownMenuItem
 								onClick={() => {
 									try {
@@ -261,30 +317,6 @@ export function InterviewDetailHeader({
 								className="text-blue-600 focus:text-blue-600"
 							>
 								Apply Lenses
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={async () => {
-									try {
-										const response = await fetch("/api/regenerate-conversation-analysis", {
-											method: "POST",
-											headers: { "Content-Type": "application/json" },
-											body: JSON.stringify({ interviewId: interview.id }),
-										});
-										const result = await response.json();
-										if (result.success) {
-											revalidator.revalidate();
-										} else {
-											consola.error("Regenerate analysis failed:", result.error);
-										}
-									} catch (e) {
-										consola.error("Regenerate analysis failed", e);
-									}
-								}}
-								disabled={fetcher.state !== "idle"}
-								className="text-amber-600 focus:text-amber-600"
-							>
-								<Sparkles className="mr-2 h-4 w-4" />
-								Regenerate Analysis
 							</DropdownMenuItem>
 							{linkedOpportunity ? (
 								<DropdownMenuItem asChild>
@@ -414,17 +446,13 @@ export function InterviewDetailHeader({
 						</Link>
 					</>
 				)}
-				{insightCount > 0 && (
-					<>
-						<span>&middot;</span>
-						<Link to={insightsFilterLink} className="inline-flex items-center gap-1 text-primary hover:text-primary/80">
-							<span>
-								{insightCount} {insightCount === 1 ? "theme" : "themes"}
-							</span>
-							<ArrowUpRight className="h-3.5 w-3.5" />
-						</Link>
-					</>
-				)}
+				<span>&middot;</span>
+				<Link to={insightsFilterLink} className="inline-flex items-center gap-1 text-primary hover:text-primary/80">
+					<span>
+						{insightCount} {insightCount === 1 ? "theme" : "themes"}
+					</span>
+					<ArrowUpRight className="h-3.5 w-3.5" />
+				</Link>
 			</div>
 		</div>
 	);

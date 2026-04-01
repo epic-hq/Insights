@@ -1,11 +1,6 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
-	// Allows to automatically instantiate createClient with right options
-	// instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-	__InternalSupabase: {
-		PostgrestVersion: "12.2.3 (519615d)";
-	};
 	accounts: {
 		Tables: {
 			account_user: {
@@ -759,6 +754,20 @@ export type Database = {
 						foreignKeyName: "actions_insight_id_fkey";
 						columns: ["insight_id"];
 						isOneToOne: false;
+						referencedRelation: "insights_current";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "actions_insight_id_fkey";
+						columns: ["insight_id"];
+						isOneToOne: false;
+						referencedRelation: "insights_with_priority";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "actions_insight_id_fkey";
+						columns: ["insight_id"];
+						isOneToOne: false;
 						referencedRelation: "themes";
 						referencedColumns: ["id"];
 					},
@@ -767,6 +776,20 @@ export type Database = {
 						columns: ["project_id"];
 						isOneToOne: false;
 						referencedRelation: "projects";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "actions_theme_id_fkey";
+						columns: ["theme_id"];
+						isOneToOne: false;
+						referencedRelation: "insights_current";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "actions_theme_id_fkey";
+						columns: ["theme_id"];
+						isOneToOne: false;
+						referencedRelation: "insights_with_priority";
 						referencedColumns: ["id"];
 					},
 					{
@@ -1054,6 +1077,13 @@ export type Database = {
 						columns: ["evidence_id"];
 						isOneToOne: false;
 						referencedRelation: "evidence";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "asset_evidence_project_id_fkey";
+						columns: ["project_id"];
+						isOneToOne: false;
+						referencedRelation: "projects";
 						referencedColumns: ["id"];
 					},
 				];
@@ -1438,7 +1468,21 @@ export type Database = {
 						foreignKeyName: "comments_insight_id_fkey";
 						columns: ["insight_id"];
 						isOneToOne: false;
-						referencedRelation: "insights";
+						referencedRelation: "insights_current";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "comments_insight_id_fkey";
+						columns: ["insight_id"];
+						isOneToOne: false;
+						referencedRelation: "insights_with_priority";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "comments_insight_id_fkey";
+						columns: ["insight_id"];
+						isOneToOne: false;
+						referencedRelation: "themes";
 						referencedColumns: ["id"];
 					},
 				];
@@ -1793,6 +1837,53 @@ export type Database = {
 					},
 					{
 						foreignKeyName: "decision_questions_project_id_fkey";
+						columns: ["project_id"];
+						isOneToOne: false;
+						referencedRelation: "projects";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			decks: {
+				Row: {
+					account_id: string | null;
+					created_at: string | null;
+					created_by: string | null;
+					html_content: string;
+					id: string;
+					project_id: string | null;
+					share_enabled: boolean | null;
+					title: string | null;
+					token: string;
+					updated_at: string | null;
+				};
+				Insert: {
+					account_id?: string | null;
+					created_at?: string | null;
+					created_by?: string | null;
+					html_content: string;
+					id?: string;
+					project_id?: string | null;
+					share_enabled?: boolean | null;
+					title?: string | null;
+					token: string;
+					updated_at?: string | null;
+				};
+				Update: {
+					account_id?: string | null;
+					created_at?: string | null;
+					created_by?: string | null;
+					html_content?: string;
+					id?: string;
+					project_id?: string | null;
+					share_enabled?: boolean | null;
+					title?: string | null;
+					token?: string;
+					updated_at?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "decks_project_id_fkey";
 						columns: ["project_id"];
 						isOneToOne: false;
 						referencedRelation: "projects";
@@ -2361,6 +2452,42 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			gmail_connections: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					email: string | null;
+					id: string;
+					is_active: boolean;
+					pica_connection_id: string;
+					pica_connection_key: string;
+					updated_at: string;
+					user_id: string;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					email?: string | null;
+					id?: string;
+					is_active?: boolean;
+					pica_connection_id: string;
+					pica_connection_key: string;
+					updated_at?: string;
+					user_id: string;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					email?: string | null;
+					id?: string;
+					is_active?: boolean;
+					pica_connection_id?: string;
+					pica_connection_key?: string;
+					updated_at?: string;
+					user_id?: string;
+				};
+				Relationships: [];
+			};
 			icp_recommendations: {
 				Row: {
 					created_at: string;
@@ -2428,6 +2555,20 @@ export type Database = {
 					tag_id?: string;
 				};
 				Relationships: [
+					{
+						foreignKeyName: "insight_tags_insight_id_fkey";
+						columns: ["insight_id"];
+						isOneToOne: false;
+						referencedRelation: "insights_current";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "insight_tags_insight_id_fkey";
+						columns: ["insight_id"];
+						isOneToOne: false;
+						referencedRelation: "insights_with_priority";
+						referencedColumns: ["id"];
+					},
 					{
 						foreignKeyName: "insight_tags_insight_id_fkey";
 						columns: ["insight_id"];
@@ -2540,20 +2681,6 @@ export type Database = {
 					updated_by?: string | null;
 				};
 				Relationships: [
-					{
-						foreignKeyName: "insights_interview_id_fkey";
-						columns: ["interview_id"];
-						isOneToOne: false;
-						referencedRelation: "conversations";
-						referencedColumns: ["id"];
-					},
-					{
-						foreignKeyName: "insights_interview_id_fkey";
-						columns: ["interview_id"];
-						isOneToOne: false;
-						referencedRelation: "interviews";
-						referencedColumns: ["id"];
-					},
 					{
 						foreignKeyName: "insights_project_id_fkey";
 						columns: ["project_id"];
@@ -3060,6 +3187,7 @@ export type Database = {
 					share_expires_at: string | null;
 					share_token: string | null;
 					source_type: string | null;
+					source_url: string | null;
 					speaker_review_needed: boolean | null;
 					status: Database["public"]["Enums"]["interview_status"];
 					thumbnail_url: string | null;
@@ -3106,6 +3234,7 @@ export type Database = {
 					share_expires_at?: string | null;
 					share_token?: string | null;
 					source_type?: string | null;
+					source_url?: string | null;
 					speaker_review_needed?: boolean | null;
 					status?: Database["public"]["Enums"]["interview_status"];
 					thumbnail_url?: string | null;
@@ -3152,6 +3281,7 @@ export type Database = {
 					share_expires_at?: string | null;
 					share_token?: string | null;
 					source_type?: string | null;
+					source_url?: string | null;
 					speaker_review_needed?: boolean | null;
 					status?: Database["public"]["Enums"]["interview_status"];
 					thumbnail_url?: string | null;
@@ -3185,522 +3315,6 @@ export type Database = {
 						referencedColumns: ["id"];
 					},
 				];
-			};
-			mastra_agents: {
-				Row: {
-					agents: Json | null;
-					createdAt: string;
-					createdAtZ: string | null;
-					defaultOptions: Json | null;
-					description: string | null;
-					id: string;
-					inputProcessors: Json | null;
-					instructions: string;
-					memory: Json | null;
-					metadata: Json | null;
-					model: Json;
-					name: string;
-					outputProcessors: Json | null;
-					scorers: Json | null;
-					tools: Json | null;
-					updatedAt: string;
-					updatedAtZ: string | null;
-					workflows: Json | null;
-				};
-				Insert: {
-					agents?: Json | null;
-					createdAt: string;
-					createdAtZ?: string | null;
-					defaultOptions?: Json | null;
-					description?: string | null;
-					id: string;
-					inputProcessors?: Json | null;
-					instructions: string;
-					memory?: Json | null;
-					metadata?: Json | null;
-					model: Json;
-					name: string;
-					outputProcessors?: Json | null;
-					scorers?: Json | null;
-					tools?: Json | null;
-					updatedAt: string;
-					updatedAtZ?: string | null;
-					workflows?: Json | null;
-				};
-				Update: {
-					agents?: Json | null;
-					createdAt?: string;
-					createdAtZ?: string | null;
-					defaultOptions?: Json | null;
-					description?: string | null;
-					id?: string;
-					inputProcessors?: Json | null;
-					instructions?: string;
-					memory?: Json | null;
-					metadata?: Json | null;
-					model?: Json;
-					name?: string;
-					outputProcessors?: Json | null;
-					scorers?: Json | null;
-					tools?: Json | null;
-					updatedAt?: string;
-					updatedAtZ?: string | null;
-					workflows?: Json | null;
-				};
-				Relationships: [];
-			};
-			mastra_ai_spans: {
-				Row: {
-					attributes: Json | null;
-					createdAt: string;
-					createdAtZ: string | null;
-					endedAt: string | null;
-					endedAtZ: string | null;
-					entityId: string | null;
-					entityName: string | null;
-					entityType: string | null;
-					environment: string | null;
-					error: Json | null;
-					input: Json | null;
-					isEvent: boolean;
-					links: Json | null;
-					metadata: Json | null;
-					name: string;
-					organizationId: string | null;
-					output: Json | null;
-					parentSpanId: string | null;
-					requestId: string | null;
-					resourceId: string | null;
-					runId: string | null;
-					scope: Json | null;
-					serviceName: string | null;
-					sessionId: string | null;
-					source: string | null;
-					spanId: string;
-					spanType: string;
-					startedAt: string;
-					startedAtZ: string | null;
-					tags: Json | null;
-					threadId: string | null;
-					traceId: string;
-					updatedAt: string | null;
-					updatedAtZ: string | null;
-					userId: string | null;
-				};
-				Insert: {
-					attributes?: Json | null;
-					createdAt: string;
-					createdAtZ?: string | null;
-					endedAt?: string | null;
-					endedAtZ?: string | null;
-					entityId?: string | null;
-					entityName?: string | null;
-					entityType?: string | null;
-					environment?: string | null;
-					error?: Json | null;
-					input?: Json | null;
-					isEvent: boolean;
-					links?: Json | null;
-					metadata?: Json | null;
-					name: string;
-					organizationId?: string | null;
-					output?: Json | null;
-					parentSpanId?: string | null;
-					requestId?: string | null;
-					resourceId?: string | null;
-					runId?: string | null;
-					scope?: Json | null;
-					serviceName?: string | null;
-					sessionId?: string | null;
-					source?: string | null;
-					spanId: string;
-					spanType: string;
-					startedAt: string;
-					startedAtZ?: string | null;
-					tags?: Json | null;
-					threadId?: string | null;
-					traceId: string;
-					updatedAt?: string | null;
-					updatedAtZ?: string | null;
-					userId?: string | null;
-				};
-				Update: {
-					attributes?: Json | null;
-					createdAt?: string;
-					createdAtZ?: string | null;
-					endedAt?: string | null;
-					endedAtZ?: string | null;
-					entityId?: string | null;
-					entityName?: string | null;
-					entityType?: string | null;
-					environment?: string | null;
-					error?: Json | null;
-					input?: Json | null;
-					isEvent?: boolean;
-					links?: Json | null;
-					metadata?: Json | null;
-					name?: string;
-					organizationId?: string | null;
-					output?: Json | null;
-					parentSpanId?: string | null;
-					requestId?: string | null;
-					resourceId?: string | null;
-					runId?: string | null;
-					scope?: Json | null;
-					serviceName?: string | null;
-					sessionId?: string | null;
-					source?: string | null;
-					spanId?: string;
-					spanType?: string;
-					startedAt?: string;
-					startedAtZ?: string | null;
-					tags?: Json | null;
-					threadId?: string | null;
-					traceId?: string;
-					updatedAt?: string | null;
-					updatedAtZ?: string | null;
-					userId?: string | null;
-				};
-				Relationships: [];
-			};
-			mastra_evals: {
-				Row: {
-					agent_name: string;
-					created_at: string;
-					created_atZ: string | null;
-					createdAt: string | null;
-					createdAtZ: string | null;
-					global_run_id: string;
-					input: string;
-					instructions: string;
-					metric_name: string;
-					output: string;
-					result: Json;
-					run_id: string;
-					test_info: Json | null;
-				};
-				Insert: {
-					agent_name: string;
-					created_at: string;
-					created_atZ?: string | null;
-					createdAt?: string | null;
-					createdAtZ?: string | null;
-					global_run_id: string;
-					input: string;
-					instructions: string;
-					metric_name: string;
-					output: string;
-					result: Json;
-					run_id: string;
-					test_info?: Json | null;
-				};
-				Update: {
-					agent_name?: string;
-					created_at?: string;
-					created_atZ?: string | null;
-					createdAt?: string | null;
-					createdAtZ?: string | null;
-					global_run_id?: string;
-					input?: string;
-					instructions?: string;
-					metric_name?: string;
-					output?: string;
-					result?: Json;
-					run_id?: string;
-					test_info?: Json | null;
-				};
-				Relationships: [];
-			};
-			mastra_messages: {
-				Row: {
-					content: string;
-					createdAt: string;
-					createdAtZ: string | null;
-					id: string;
-					resourceId: string | null;
-					role: string;
-					thread_id: string;
-					type: string;
-				};
-				Insert: {
-					content: string;
-					createdAt: string;
-					createdAtZ?: string | null;
-					id: string;
-					resourceId?: string | null;
-					role: string;
-					thread_id: string;
-					type: string;
-				};
-				Update: {
-					content?: string;
-					createdAt?: string;
-					createdAtZ?: string | null;
-					id?: string;
-					resourceId?: string | null;
-					role?: string;
-					thread_id?: string;
-					type?: string;
-				};
-				Relationships: [];
-			};
-			mastra_resources: {
-				Row: {
-					createdAt: string;
-					createdAtZ: string | null;
-					id: string;
-					metadata: Json | null;
-					updatedAt: string;
-					updatedAtZ: string | null;
-					workingMemory: string | null;
-				};
-				Insert: {
-					createdAt: string;
-					createdAtZ?: string | null;
-					id: string;
-					metadata?: Json | null;
-					updatedAt: string;
-					updatedAtZ?: string | null;
-					workingMemory?: string | null;
-				};
-				Update: {
-					createdAt?: string;
-					createdAtZ?: string | null;
-					id?: string;
-					metadata?: Json | null;
-					updatedAt?: string;
-					updatedAtZ?: string | null;
-					workingMemory?: string | null;
-				};
-				Relationships: [];
-			};
-			mastra_scorers: {
-				Row: {
-					additionalContext: Json | null;
-					analyzePrompt: string | null;
-					analyzeStepResult: Json | null;
-					createdAt: string;
-					createdAtZ: string | null;
-					entity: Json | null;
-					entityId: string | null;
-					entityType: string | null;
-					extractPrompt: string | null;
-					extractStepResult: Json | null;
-					generateReasonPrompt: string | null;
-					generateScorePrompt: string | null;
-					id: string;
-					input: Json;
-					metadata: Json | null;
-					output: Json;
-					preprocessPrompt: string | null;
-					preprocessStepResult: Json | null;
-					reason: string | null;
-					reasonPrompt: string | null;
-					requestContext: Json | null;
-					resourceId: string | null;
-					runId: string;
-					runtimeContext: Json | null;
-					score: number;
-					scorer: Json;
-					scorerId: string;
-					source: string;
-					spanId: string | null;
-					threadId: string | null;
-					traceId: string | null;
-					updatedAt: string;
-					updatedAtZ: string | null;
-				};
-				Insert: {
-					additionalContext?: Json | null;
-					analyzePrompt?: string | null;
-					analyzeStepResult?: Json | null;
-					createdAt: string;
-					createdAtZ?: string | null;
-					entity?: Json | null;
-					entityId?: string | null;
-					entityType?: string | null;
-					extractPrompt?: string | null;
-					extractStepResult?: Json | null;
-					generateReasonPrompt?: string | null;
-					generateScorePrompt?: string | null;
-					id: string;
-					input: Json;
-					metadata?: Json | null;
-					output: Json;
-					preprocessPrompt?: string | null;
-					preprocessStepResult?: Json | null;
-					reason?: string | null;
-					reasonPrompt?: string | null;
-					requestContext?: Json | null;
-					resourceId?: string | null;
-					runId: string;
-					runtimeContext?: Json | null;
-					score: number;
-					scorer: Json;
-					scorerId: string;
-					source: string;
-					spanId?: string | null;
-					threadId?: string | null;
-					traceId?: string | null;
-					updatedAt: string;
-					updatedAtZ?: string | null;
-				};
-				Update: {
-					additionalContext?: Json | null;
-					analyzePrompt?: string | null;
-					analyzeStepResult?: Json | null;
-					createdAt?: string;
-					createdAtZ?: string | null;
-					entity?: Json | null;
-					entityId?: string | null;
-					entityType?: string | null;
-					extractPrompt?: string | null;
-					extractStepResult?: Json | null;
-					generateReasonPrompt?: string | null;
-					generateScorePrompt?: string | null;
-					id?: string;
-					input?: Json;
-					metadata?: Json | null;
-					output?: Json;
-					preprocessPrompt?: string | null;
-					preprocessStepResult?: Json | null;
-					reason?: string | null;
-					reasonPrompt?: string | null;
-					requestContext?: Json | null;
-					resourceId?: string | null;
-					runId?: string;
-					runtimeContext?: Json | null;
-					score?: number;
-					scorer?: Json;
-					scorerId?: string;
-					source?: string;
-					spanId?: string | null;
-					threadId?: string | null;
-					traceId?: string | null;
-					updatedAt?: string;
-					updatedAtZ?: string | null;
-				};
-				Relationships: [];
-			};
-			mastra_threads: {
-				Row: {
-					createdAt: string;
-					createdAtZ: string | null;
-					id: string;
-					metadata: string | null;
-					resourceId: string;
-					title: string;
-					updatedAt: string;
-					updatedAtZ: string | null;
-				};
-				Insert: {
-					createdAt: string;
-					createdAtZ?: string | null;
-					id: string;
-					metadata?: string | null;
-					resourceId: string;
-					title: string;
-					updatedAt: string;
-					updatedAtZ?: string | null;
-				};
-				Update: {
-					createdAt?: string;
-					createdAtZ?: string | null;
-					id?: string;
-					metadata?: string | null;
-					resourceId?: string;
-					title?: string;
-					updatedAt?: string;
-					updatedAtZ?: string | null;
-				};
-				Relationships: [];
-			};
-			mastra_traces: {
-				Row: {
-					attributes: Json | null;
-					createdAt: string;
-					createdAtZ: string | null;
-					endTime: number;
-					events: Json | null;
-					id: string;
-					kind: number;
-					links: Json | null;
-					name: string;
-					other: string | null;
-					parentSpanId: string | null;
-					scope: string;
-					startTime: number;
-					status: Json | null;
-					traceId: string;
-				};
-				Insert: {
-					attributes?: Json | null;
-					createdAt: string;
-					createdAtZ?: string | null;
-					endTime: number;
-					events?: Json | null;
-					id: string;
-					kind: number;
-					links?: Json | null;
-					name: string;
-					other?: string | null;
-					parentSpanId?: string | null;
-					scope: string;
-					startTime: number;
-					status?: Json | null;
-					traceId: string;
-				};
-				Update: {
-					attributes?: Json | null;
-					createdAt?: string;
-					createdAtZ?: string | null;
-					endTime?: number;
-					events?: Json | null;
-					id?: string;
-					kind?: number;
-					links?: Json | null;
-					name?: string;
-					other?: string | null;
-					parentSpanId?: string | null;
-					scope?: string;
-					startTime?: number;
-					status?: Json | null;
-					traceId?: string;
-				};
-				Relationships: [];
-			};
-			mastra_workflow_snapshot: {
-				Row: {
-					createdAt: string;
-					createdAtZ: string | null;
-					resourceId: string | null;
-					run_id: string;
-					snapshot: string;
-					updatedAt: string;
-					updatedAtZ: string | null;
-					workflow_name: string;
-				};
-				Insert: {
-					createdAt: string;
-					createdAtZ?: string | null;
-					resourceId?: string | null;
-					run_id: string;
-					snapshot: string;
-					updatedAt: string;
-					updatedAtZ?: string | null;
-					workflow_name: string;
-				};
-				Update: {
-					createdAt?: string;
-					createdAtZ?: string | null;
-					resourceId?: string | null;
-					run_id?: string;
-					snapshot?: string;
-					updatedAt?: string;
-					updatedAtZ?: string | null;
-					workflow_name?: string;
-				};
-				Relationships: [];
 			};
 			opportunities: {
 				Row: {
@@ -3831,6 +3445,20 @@ export type Database = {
 					weight?: number | null;
 				};
 				Relationships: [
+					{
+						foreignKeyName: "opportunity_insights_insight_id_fkey";
+						columns: ["insight_id"];
+						isOneToOne: false;
+						referencedRelation: "insights_current";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "opportunity_insights_insight_id_fkey";
+						columns: ["insight_id"];
+						isOneToOne: false;
+						referencedRelation: "insights_with_priority";
+						referencedColumns: ["id"];
+					},
 					{
 						foreignKeyName: "opportunity_insights_insight_id_fkey";
 						columns: ["insight_id"];
@@ -4607,6 +4235,20 @@ export type Database = {
 						foreignKeyName: "persona_insights_insight_id_fkey";
 						columns: ["insight_id"];
 						isOneToOne: false;
+						referencedRelation: "insights_current";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "persona_insights_insight_id_fkey";
+						columns: ["insight_id"];
+						isOneToOne: false;
+						referencedRelation: "insights_with_priority";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "persona_insights_insight_id_fkey";
+						columns: ["insight_id"];
+						isOneToOne: false;
 						referencedRelation: "themes";
 						referencedColumns: ["id"];
 					},
@@ -4629,6 +4271,91 @@ export type Database = {
 						columns: ["project_id"];
 						isOneToOne: false;
 						referencedRelation: "projects";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			personalized_surveys: {
+				Row: {
+					account_id: string;
+					approved_at: string | null;
+					completed_at: string | null;
+					created_at: string;
+					evidence_count: number;
+					evidence_extracted: boolean;
+					extraction_metadata: Json | null;
+					generation_metadata: Json;
+					id: string;
+					opened_at: string | null;
+					person_id: string;
+					project_id: string | null;
+					questions: Json;
+					research_link_id: string;
+					sent_at: string | null;
+					status: string;
+					survey_goal: string;
+					updated_at: string;
+				};
+				Insert: {
+					account_id: string;
+					approved_at?: string | null;
+					completed_at?: string | null;
+					created_at?: string;
+					evidence_count?: number;
+					evidence_extracted?: boolean;
+					extraction_metadata?: Json | null;
+					generation_metadata: Json;
+					id?: string;
+					opened_at?: string | null;
+					person_id: string;
+					project_id?: string | null;
+					questions?: Json;
+					research_link_id: string;
+					sent_at?: string | null;
+					status?: string;
+					survey_goal: string;
+					updated_at?: string;
+				};
+				Update: {
+					account_id?: string;
+					approved_at?: string | null;
+					completed_at?: string | null;
+					created_at?: string;
+					evidence_count?: number;
+					evidence_extracted?: boolean;
+					extraction_metadata?: Json | null;
+					generation_metadata?: Json;
+					id?: string;
+					opened_at?: string | null;
+					person_id?: string;
+					project_id?: string | null;
+					questions?: Json;
+					research_link_id?: string;
+					sent_at?: string | null;
+					status?: string;
+					survey_goal?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "personalized_surveys_person_id_fkey";
+						columns: ["person_id"];
+						isOneToOne: false;
+						referencedRelation: "people";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "personalized_surveys_project_id_fkey";
+						columns: ["project_id"];
+						isOneToOne: false;
+						referencedRelation: "projects";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "personalized_surveys_research_link_id_fkey";
+						columns: ["research_link_id"];
+						isOneToOne: false;
+						referencedRelation: "research_links";
 						referencedColumns: ["id"];
 					},
 				];
@@ -5044,6 +4771,59 @@ export type Database = {
 					},
 				];
 			};
+			project_api_keys: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					created_by: string | null;
+					expires_at: string | null;
+					id: string;
+					key_hash: string;
+					key_prefix: string;
+					last_used_at: string | null;
+					name: string;
+					project_id: string;
+					revoked_at: string | null;
+					scopes: string[];
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					created_by?: string | null;
+					expires_at?: string | null;
+					id?: string;
+					key_hash: string;
+					key_prefix: string;
+					last_used_at?: string | null;
+					name: string;
+					project_id: string;
+					revoked_at?: string | null;
+					scopes?: string[];
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					created_by?: string | null;
+					expires_at?: string | null;
+					id?: string;
+					key_hash?: string;
+					key_prefix?: string;
+					last_used_at?: string | null;
+					name?: string;
+					project_id?: string;
+					revoked_at?: string | null;
+					scopes?: string[];
+				};
+				Relationships: [
+					{
+						foreignKeyName: "project_api_keys_project_id_fkey";
+						columns: ["project_id"];
+						isOneToOne: false;
+						referencedRelation: "projects";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			project_assets: {
 				Row: {
 					account_id: string;
@@ -5059,6 +4839,7 @@ export type Database = {
 					embedding: string | null;
 					embedding_generated_at: string | null;
 					embedding_model: string | null;
+					error_message: string | null;
 					file_extension: string | null;
 					file_size_bytes: number | null;
 					id: string;
@@ -5068,10 +4849,9 @@ export type Database = {
 					processing_metadata: Json | null;
 					project_id: string;
 					row_count: number | null;
-					source_metadata: Json | null;
 					source_type: string | null;
 					source_url: string | null;
-					status: string | null;
+					status: Database["public"]["Enums"]["interview_status"];
 					table_data: Json | null;
 					tags: string[] | null;
 					thumbnail_key: string | null;
@@ -5093,6 +4873,7 @@ export type Database = {
 					embedding?: string | null;
 					embedding_generated_at?: string | null;
 					embedding_model?: string | null;
+					error_message?: string | null;
 					file_extension?: string | null;
 					file_size_bytes?: number | null;
 					id?: string;
@@ -5102,10 +4883,9 @@ export type Database = {
 					processing_metadata?: Json | null;
 					project_id: string;
 					row_count?: number | null;
-					source_metadata?: Json | null;
 					source_type?: string | null;
 					source_url?: string | null;
-					status?: string | null;
+					status?: Database["public"]["Enums"]["interview_status"];
 					table_data?: Json | null;
 					tags?: string[] | null;
 					thumbnail_key?: string | null;
@@ -5127,6 +4907,7 @@ export type Database = {
 					embedding?: string | null;
 					embedding_generated_at?: string | null;
 					embedding_model?: string | null;
+					error_message?: string | null;
 					file_extension?: string | null;
 					file_size_bytes?: number | null;
 					id?: string;
@@ -5136,10 +4917,9 @@ export type Database = {
 					processing_metadata?: Json | null;
 					project_id?: string;
 					row_count?: number | null;
-					source_metadata?: Json | null;
 					source_type?: string | null;
 					source_url?: string | null;
-					status?: string | null;
+					status?: Database["public"]["Enums"]["interview_status"];
 					table_data?: Json | null;
 					tags?: string[] | null;
 					thumbnail_key?: string | null;
@@ -5468,13 +5248,16 @@ export type Database = {
 					completed: boolean;
 					created_at: string;
 					email: string | null;
+					evidence_count: number | null;
+					evidence_extracted: boolean | null;
 					evidence_id: string | null;
 					id: string;
-					person_id: string | null;
+					personalized_survey_id: string | null;
 					phone: string | null;
 					research_link_id: string;
 					response_mode: string;
 					responses: Json;
+					title: string | null;
 					updated_at: string;
 					utm_params: Json | null;
 					video_url: string | null;
@@ -5483,13 +5266,16 @@ export type Database = {
 					completed?: boolean;
 					created_at?: string;
 					email?: string | null;
+					evidence_count?: number | null;
+					evidence_extracted?: boolean | null;
 					evidence_id?: string | null;
 					id?: string;
-					person_id?: string | null;
+					personalized_survey_id?: string | null;
 					phone?: string | null;
 					research_link_id: string;
 					response_mode?: string;
 					responses?: Json;
+					title?: string | null;
 					updated_at?: string;
 					utm_params?: Json | null;
 					video_url?: string | null;
@@ -5498,13 +5284,16 @@ export type Database = {
 					completed?: boolean;
 					created_at?: string;
 					email?: string | null;
+					evidence_count?: number | null;
+					evidence_extracted?: boolean | null;
 					evidence_id?: string | null;
 					id?: string;
-					person_id?: string | null;
+					personalized_survey_id?: string | null;
 					phone?: string | null;
 					research_link_id?: string;
 					response_mode?: string;
 					responses?: Json;
+					title?: string | null;
 					updated_at?: string;
 					utm_params?: Json | null;
 					video_url?: string | null;
@@ -5518,10 +5307,10 @@ export type Database = {
 						referencedColumns: ["id"];
 					},
 					{
-						foreignKeyName: "research_link_responses_person_id_fkey";
-						columns: ["person_id"];
+						foreignKeyName: "research_link_responses_personalized_survey_id_fkey";
+						columns: ["personalized_survey_id"];
 						isOneToOne: false;
-						referencedRelation: "people";
+						referencedRelation: "personalized_surveys";
 						referencedColumns: ["id"];
 					},
 					{
@@ -5539,13 +5328,19 @@ export type Database = {
 					ai_analysis: Json | null;
 					ai_analysis_updated_at: string | null;
 					ai_autonomy: string;
+					ai_recommendation_metadata: Json | null;
 					allow_chat: boolean;
 					allow_video: boolean;
 					allow_voice: boolean;
 					calendar_url: string | null;
+					campaign_goal: string | null;
+					campaign_status: string;
+					campaign_strategy: string | null;
+					collect_title: boolean;
 					created_at: string;
 					default_response_mode: string;
 					description: string | null;
+					generation_metadata: Json | null;
 					hero_cta_helper: string | null;
 					hero_cta_label: string | null;
 					hero_subtitle: string | null;
@@ -5554,15 +5349,19 @@ export type Database = {
 					identity_field: string;
 					identity_mode: string;
 					instructions: string | null;
+					is_archived: boolean;
 					is_live: boolean;
 					name: string;
+					personalized_for: string | null;
 					project_id: string | null;
 					questions: Json;
 					redirect_url: string | null;
 					research_goals: Json | null;
+					respondent_fields: Json;
 					slug: string;
 					statistics: Json | null;
 					stats_updated_at: string | null;
+					survey_goal: string | null;
 					updated_at: string;
 					walkthrough_thumbnail_url: string | null;
 					walkthrough_video_url: string | null;
@@ -5572,13 +5371,19 @@ export type Database = {
 					ai_analysis?: Json | null;
 					ai_analysis_updated_at?: string | null;
 					ai_autonomy?: string;
+					ai_recommendation_metadata?: Json | null;
 					allow_chat?: boolean;
 					allow_video?: boolean;
 					allow_voice?: boolean;
 					calendar_url?: string | null;
+					campaign_goal?: string | null;
+					campaign_status?: string;
+					campaign_strategy?: string | null;
+					collect_title?: boolean;
 					created_at?: string;
 					default_response_mode?: string;
 					description?: string | null;
+					generation_metadata?: Json | null;
 					hero_cta_helper?: string | null;
 					hero_cta_label?: string | null;
 					hero_subtitle?: string | null;
@@ -5587,15 +5392,19 @@ export type Database = {
 					identity_field?: string;
 					identity_mode?: string;
 					instructions?: string | null;
+					is_archived?: boolean;
 					is_live?: boolean;
 					name: string;
+					personalized_for?: string | null;
 					project_id?: string | null;
 					questions?: Json;
 					redirect_url?: string | null;
 					research_goals?: Json | null;
+					respondent_fields?: Json;
 					slug: string;
 					statistics?: Json | null;
 					stats_updated_at?: string | null;
+					survey_goal?: string | null;
 					updated_at?: string;
 					walkthrough_thumbnail_url?: string | null;
 					walkthrough_video_url?: string | null;
@@ -5605,13 +5414,19 @@ export type Database = {
 					ai_analysis?: Json | null;
 					ai_analysis_updated_at?: string | null;
 					ai_autonomy?: string;
+					ai_recommendation_metadata?: Json | null;
 					allow_chat?: boolean;
 					allow_video?: boolean;
 					allow_voice?: boolean;
 					calendar_url?: string | null;
+					campaign_goal?: string | null;
+					campaign_status?: string;
+					campaign_strategy?: string | null;
+					collect_title?: boolean;
 					created_at?: string;
 					default_response_mode?: string;
 					description?: string | null;
+					generation_metadata?: Json | null;
 					hero_cta_helper?: string | null;
 					hero_cta_label?: string | null;
 					hero_subtitle?: string | null;
@@ -5620,20 +5435,31 @@ export type Database = {
 					identity_field?: string;
 					identity_mode?: string;
 					instructions?: string | null;
+					is_archived?: boolean;
 					is_live?: boolean;
 					name?: string;
+					personalized_for?: string | null;
 					project_id?: string | null;
 					questions?: Json;
 					redirect_url?: string | null;
 					research_goals?: Json | null;
+					respondent_fields?: Json;
 					slug?: string;
 					statistics?: Json | null;
 					stats_updated_at?: string | null;
+					survey_goal?: string | null;
 					updated_at?: string;
 					walkthrough_thumbnail_url?: string | null;
 					walkthrough_video_url?: string | null;
 				};
 				Relationships: [
+					{
+						foreignKeyName: "research_links_personalized_for_fkey";
+						columns: ["personalized_for"];
+						isOneToOne: false;
+						referencedRelation: "people";
+						referencedColumns: ["id"];
+					},
 					{
 						foreignKeyName: "research_links_project_id_fkey";
 						columns: ["project_id"];
@@ -6143,6 +5969,116 @@ export type Database = {
 					},
 				];
 			};
+			survey_sends: {
+				Row: {
+					account_id: string;
+					completed_at: string | null;
+					created_at: string;
+					error_message: string | null;
+					from_email: string;
+					gmail_connection_id: string;
+					gmail_message_id: string | null;
+					gmail_thread_id: string | null;
+					id: string;
+					last_nudged_at: string | null;
+					next_nudge_at: string | null;
+					nudge_count: number;
+					nudge_enabled: boolean;
+					opened_at: string | null;
+					person_id: string | null;
+					personalized_link: string | null;
+					project_id: string;
+					sent_at: string;
+					status: string;
+					subject: string;
+					survey_id: string;
+					to_email: string;
+					to_name: string | null;
+					updated_at: string;
+				};
+				Insert: {
+					account_id: string;
+					completed_at?: string | null;
+					created_at?: string;
+					error_message?: string | null;
+					from_email: string;
+					gmail_connection_id: string;
+					gmail_message_id?: string | null;
+					gmail_thread_id?: string | null;
+					id?: string;
+					last_nudged_at?: string | null;
+					next_nudge_at?: string | null;
+					nudge_count?: number;
+					nudge_enabled?: boolean;
+					opened_at?: string | null;
+					person_id?: string | null;
+					personalized_link?: string | null;
+					project_id: string;
+					sent_at?: string;
+					status?: string;
+					subject: string;
+					survey_id: string;
+					to_email: string;
+					to_name?: string | null;
+					updated_at?: string;
+				};
+				Update: {
+					account_id?: string;
+					completed_at?: string | null;
+					created_at?: string;
+					error_message?: string | null;
+					from_email?: string;
+					gmail_connection_id?: string;
+					gmail_message_id?: string | null;
+					gmail_thread_id?: string | null;
+					id?: string;
+					last_nudged_at?: string | null;
+					next_nudge_at?: string | null;
+					nudge_count?: number;
+					nudge_enabled?: boolean;
+					opened_at?: string | null;
+					person_id?: string | null;
+					personalized_link?: string | null;
+					project_id?: string;
+					sent_at?: string;
+					status?: string;
+					subject?: string;
+					survey_id?: string;
+					to_email?: string;
+					to_name?: string | null;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "survey_sends_gmail_connection_id_fkey";
+						columns: ["gmail_connection_id"];
+						isOneToOne: false;
+						referencedRelation: "gmail_connections";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "survey_sends_person_id_fkey";
+						columns: ["person_id"];
+						isOneToOne: false;
+						referencedRelation: "people";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "survey_sends_project_id_fkey";
+						columns: ["project_id"];
+						isOneToOne: false;
+						referencedRelation: "projects";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "survey_sends_survey_id_fkey";
+						columns: ["survey_id"];
+						isOneToOne: false;
+						referencedRelation: "research_links";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			tags: {
 				Row: {
 					account_id: string;
@@ -6385,6 +6321,20 @@ export type Database = {
 						foreignKeyName: "tasks_source_theme_id_fkey";
 						columns: ["source_theme_id"];
 						isOneToOne: false;
+						referencedRelation: "insights_current";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "tasks_source_theme_id_fkey";
+						columns: ["source_theme_id"];
+						isOneToOne: false;
+						referencedRelation: "insights_with_priority";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "tasks_source_theme_id_fkey";
+						columns: ["source_theme_id"];
+						isOneToOne: false;
 						referencedRelation: "themes";
 						referencedColumns: ["id"];
 					},
@@ -6437,6 +6387,20 @@ export type Database = {
 						columns: ["project_id"];
 						isOneToOne: false;
 						referencedRelation: "projects";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "theme_evidence_theme_id_fkey";
+						columns: ["theme_id"];
+						isOneToOne: false;
+						referencedRelation: "insights_current";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "theme_evidence_theme_id_fkey";
+						columns: ["theme_id"];
+						isOneToOne: false;
+						referencedRelation: "insights_with_priority";
 						referencedColumns: ["id"];
 					},
 					{
@@ -6735,6 +6699,7 @@ export type Database = {
 					image_url: string | null;
 					industry: string | null;
 					is_platform_admin: boolean;
+					job_function: string | null;
 					language: string | null;
 					last_name: string | null;
 					last_used_account_id: string | null;
@@ -6746,7 +6711,6 @@ export type Database = {
 					onboarding_completed: boolean;
 					onboarding_steps: Json;
 					referral_source: string | null;
-					role: string | null;
 					signup_data: Json | null;
 					theme: string | null;
 					title: string | null;
@@ -6766,6 +6730,7 @@ export type Database = {
 					image_url?: string | null;
 					industry?: string | null;
 					is_platform_admin?: boolean;
+					job_function?: string | null;
 					language?: string | null;
 					last_name?: string | null;
 					last_used_account_id?: string | null;
@@ -6777,7 +6742,6 @@ export type Database = {
 					onboarding_completed?: boolean;
 					onboarding_steps?: Json;
 					referral_source?: string | null;
-					role?: string | null;
 					signup_data?: Json | null;
 					theme?: string | null;
 					title?: string | null;
@@ -6797,6 +6761,7 @@ export type Database = {
 					image_url?: string | null;
 					industry?: string | null;
 					is_platform_admin?: boolean;
+					job_function?: string | null;
 					language?: string | null;
 					last_name?: string | null;
 					last_used_account_id?: string | null;
@@ -6808,7 +6773,6 @@ export type Database = {
 					onboarding_completed?: boolean;
 					onboarding_steps?: Json;
 					referral_source?: string | null;
-					role?: string | null;
 					signup_data?: Json | null;
 					theme?: string | null;
 					title?: string | null;
@@ -7009,6 +6973,193 @@ export type Database = {
 				Relationships: [
 					{
 						foreignKeyName: "decision_questions_project_id_fkey";
+						columns: ["project_id"];
+						isOneToOne: false;
+						referencedRelation: "projects";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			insights_current: {
+				Row: {
+					account_id: string | null;
+					anti_examples: string[] | null;
+					category: string | null;
+					confidence: number | null;
+					contradictions: string | null;
+					created_at: string | null;
+					created_by: string | null;
+					desired_outcome: string | null;
+					details: string | null;
+					embedding: string | null;
+					embedding_generated_at: string | null;
+					embedding_model: string | null;
+					emotional_response: string | null;
+					evidence: string | null;
+					exclusion_criteria: string | null;
+					id: string | null;
+					impact: string | null;
+					inclusion_criteria: string | null;
+					interview_id: string | null;
+					journey_stage: string | null;
+					jtbd: string | null;
+					motivation: string | null;
+					name: string | null;
+					novelty: string | null;
+					opportunity_ideas: string[] | null;
+					pain: string | null;
+					project_id: string | null;
+					related_tags: string[] | null;
+					statement: string | null;
+					synonyms: string[] | null;
+					updated_at: string | null;
+					updated_by: string | null;
+				};
+				Insert: {
+					account_id?: string | null;
+					anti_examples?: string[] | null;
+					category?: string | null;
+					confidence?: number | null;
+					contradictions?: string | null;
+					created_at?: string | null;
+					created_by?: string | null;
+					desired_outcome?: string | null;
+					details?: string | null;
+					embedding?: string | null;
+					embedding_generated_at?: string | null;
+					embedding_model?: string | null;
+					emotional_response?: string | null;
+					evidence?: string | null;
+					exclusion_criteria?: string | null;
+					id?: string | null;
+					impact?: string | null;
+					inclusion_criteria?: string | null;
+					interview_id?: string | null;
+					journey_stage?: string | null;
+					jtbd?: string | null;
+					motivation?: string | null;
+					name?: string | null;
+					novelty?: string | null;
+					opportunity_ideas?: string[] | null;
+					pain?: string | null;
+					project_id?: string | null;
+					related_tags?: string[] | null;
+					statement?: string | null;
+					synonyms?: string[] | null;
+					updated_at?: string | null;
+					updated_by?: string | null;
+				};
+				Update: {
+					account_id?: string | null;
+					anti_examples?: string[] | null;
+					category?: string | null;
+					confidence?: number | null;
+					contradictions?: string | null;
+					created_at?: string | null;
+					created_by?: string | null;
+					desired_outcome?: string | null;
+					details?: string | null;
+					embedding?: string | null;
+					embedding_generated_at?: string | null;
+					embedding_model?: string | null;
+					emotional_response?: string | null;
+					evidence?: string | null;
+					exclusion_criteria?: string | null;
+					id?: string | null;
+					impact?: string | null;
+					inclusion_criteria?: string | null;
+					interview_id?: string | null;
+					journey_stage?: string | null;
+					jtbd?: string | null;
+					motivation?: string | null;
+					name?: string | null;
+					novelty?: string | null;
+					opportunity_ideas?: string[] | null;
+					pain?: string | null;
+					project_id?: string | null;
+					related_tags?: string[] | null;
+					statement?: string | null;
+					synonyms?: string[] | null;
+					updated_at?: string | null;
+					updated_by?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "themes_interview_id_fkey";
+						columns: ["interview_id"];
+						isOneToOne: false;
+						referencedRelation: "conversations";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "themes_interview_id_fkey";
+						columns: ["interview_id"];
+						isOneToOne: false;
+						referencedRelation: "interviews";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "themes_project_id_fkey";
+						columns: ["project_id"];
+						isOneToOne: false;
+						referencedRelation: "projects";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			insights_with_priority: {
+				Row: {
+					account_id: string | null;
+					anti_examples: string[] | null;
+					category: string | null;
+					confidence: number | null;
+					contradictions: string | null;
+					created_at: string | null;
+					created_by: string | null;
+					desired_outcome: string | null;
+					details: string | null;
+					embedding: string | null;
+					embedding_generated_at: string | null;
+					embedding_model: string | null;
+					emotional_response: string | null;
+					evidence: string | null;
+					exclusion_criteria: string | null;
+					id: string | null;
+					impact: string | null;
+					inclusion_criteria: string | null;
+					interview_id: string | null;
+					journey_stage: string | null;
+					jtbd: string | null;
+					motivation: string | null;
+					name: string | null;
+					novelty: string | null;
+					opportunity_ideas: string[] | null;
+					pain: string | null;
+					priority: number | null;
+					project_id: string | null;
+					related_tags: string[] | null;
+					statement: string | null;
+					synonyms: string[] | null;
+					updated_at: string | null;
+					updated_by: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "themes_interview_id_fkey";
+						columns: ["interview_id"];
+						isOneToOne: false;
+						referencedRelation: "conversations";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "themes_interview_id_fkey";
+						columns: ["interview_id"];
+						isOneToOne: false;
+						referencedRelation: "interviews";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "themes_project_id_fkey";
 						columns: ["project_id"];
 						isOneToOne: false;
 						referencedRelation: "projects";
@@ -7223,10 +7374,6 @@ export type Database = {
 				Returns: Json;
 			};
 			delete_invitation: { Args: { invitation_id: string }; Returns: undefined };
-			delete_themes_for_interview: {
-				Args: { p_interview_id: string };
-				Returns: undefined;
-			};
 			find_duplicate_themes: {
 				Args: { project_id_param: string; similarity_threshold?: number };
 				Returns: {
@@ -7507,6 +7654,35 @@ export type Database = {
 					count: number;
 				}[];
 			};
+			get_campaign_recommendations: {
+				Args: {
+					p_account_id: string;
+					p_limit?: number;
+					p_project_id: string;
+					p_strategy: string;
+				};
+				Returns: {
+					evidence_count: number;
+					icp_score: number;
+					person_email: string;
+					person_id: string;
+					person_name: string;
+					person_title: string;
+					recommendation_reason: string;
+					recommendation_score: number;
+				}[];
+			};
+			get_campaign_stats: {
+				Args: { p_research_link_id: string };
+				Returns: {
+					avg_evidence_per_response: number;
+					completion_rate: number;
+					total_completed: number;
+					total_evidence_extracted: number;
+					total_opened: number;
+					total_sent: number;
+				}[];
+			};
 			get_cluster_strength: {
 				Args: { cluster_facet_ids: string[]; project_id_param: string };
 				Returns: {
@@ -7538,6 +7714,13 @@ export type Database = {
 					total_cost_usd: number;
 					total_credits: number;
 					total_tokens: number;
+				}[];
+			};
+			get_person_top_themes: {
+				Args: { p_limit?: number; p_person_id: string };
+				Returns: {
+					evidence_count: number;
+					theme_name: string;
 				}[];
 			};
 			get_personal_account: { Args: never; Returns: Json };
@@ -7596,19 +7779,6 @@ export type Database = {
 					p_value: Json;
 				};
 				Returns: Json;
-			};
-			insert_theme: {
-				Args: {
-					p_account_id: string;
-					p_created_by?: string;
-					p_inclusion_criteria?: string;
-					p_interview_id: string;
-					p_name: string;
-					p_project_id: string;
-					p_statement?: string;
-					p_updated_by?: string;
-				};
-				Returns: string;
 			};
 			invoke_edge_function: {
 				Args: { func_name: string; payload: Json };

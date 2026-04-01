@@ -9,7 +9,7 @@
 import { ChevronDown, LayoutGrid, Rows, X, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { LoaderFunctionArgs } from "react-router";
-import { Link, useFetcher, useLoaderData, useLocation, useSearchParams } from "react-router-dom";
+import { useFetcher, useLoaderData, useLocation, useSearchParams } from "react-router-dom";
 import { Badge } from "~/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
 import { Separator } from "~/components/ui/separator";
@@ -48,7 +48,11 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	// Fetch insights + trending + total people in parallel
 	const [insightsResult, trendingMap, totalPeopleResult] = await Promise.all([
-		getInsights({ supabase, accountId, projectId, offset, limit: limit + 1 }),
+		getInsights(
+			filterInterviewId
+				? { supabase, accountId, projectId, interviewId: filterInterviewId }
+				: { supabase, accountId, projectId, offset, limit: limit + 1 }
+		),
 		getTrendingData({ supabase, projectId }),
 		supabase.from("people").select("*", { count: "exact", head: true }).eq("project_id", projectId).is("user_id", null),
 	]);
@@ -56,8 +60,8 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	if (insightsResult.error) throw new Response("Failed to load insights", { status: 500 });
 
 	const allInsights = insightsResult.data || [];
-	const insights = allInsights.slice(0, limit);
-	const hasMore = allInsights.length > limit;
+	const insights = filterInterviewId ? allInsights : allInsights.slice(0, limit);
+	const hasMore = filterInterviewId ? false : allInsights.length > limit;
 	const nextOffset = offset + insights.length;
 	const totalPeople = totalPeopleResult.count ?? 0;
 
@@ -106,7 +110,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	let filteredThemes = sorted;
 	let filterInterviewTitle: string | null = null;
 	if (filterInterviewId) {
-		filteredThemes = sorted.filter((t: any) => t.interviews?.some((i: any) => i.id === filterInterviewId));
+		filteredThemes = sorted.filter((theme) =>
+			theme.interviews?.some((interview) => interview?.id === filterInterviewId)
+		);
 		// Fetch interview title for the filter badge
 		const { data: interviewRow } = await supabase
 			.from("interviews")
@@ -224,6 +230,8 @@ export default function ThemesPage() {
 		return actions;
 	}, [allThemes, weakSignals]);
 
+	const remainingThemes = useMemo(() => allThemes.slice(3), [allThemes]);
+
 	return (
 		<div className="space-y-6">
 			{/* Lens toggle (no sub-view toggle here; it moves next to "All Themes") */}
@@ -259,68 +267,72 @@ export default function ThemesPage() {
 					{/* ── Divider ── */}
 					<Separator />
 
-					{/* ── Layer 2: All Themes (collapsed by default) ── */}
-					<Collapsible open={showAllThemes} onOpenChange={setShowAllThemes}>
-						<div className="flex items-center justify-between">
-							<CollapsibleTrigger asChild>
-								<button
-									type="button"
-									className="flex items-center gap-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider transition-colors hover:text-foreground"
-								>
-									<ChevronDown className={`h-4 w-4 transition-transform ${showAllThemes ? "rotate-180" : ""}`} />
-									All Themes ({allThemes.length})
-								</button>
-							</CollapsibleTrigger>
-							{showAllThemes && (
-								<ToggleGroup
-									type="single"
-									value={subView}
-									onValueChange={(v) => v && setSubView(v as "cards" | "table")}
-									size="sm"
-									className="shrink-0"
-								>
-									<ToggleGroupItem value="cards" aria-label="Cards view" className="gap-1.5">
-										<LayoutGrid className="h-3.5 w-3.5" />
-										Cards
-									</ToggleGroupItem>
-									<ToggleGroupItem value="table" aria-label="Table view" className="gap-1.5">
-										<Rows className="h-3.5 w-3.5" />
-										Table
-									</ToggleGroupItem>
-								</ToggleGroup>
-							)}
-						</div>
-						<CollapsibleContent className="mt-4">
-							{subView === "cards" ? (
-								<div className="grid gap-4 md:grid-cols-2">
-									{allThemes.map((theme) => (
-										<ThemeCard key={theme.id} theme={theme} totalPeople={totalPeople} />
-									))}
+					{/* ── Layer 2: Remaining Themes (collapsed by default) ── */}
+					{remainingThemes.length > 0 && (
+						<>
+							<Collapsible open={showAllThemes} onOpenChange={setShowAllThemes}>
+								<div className="flex items-center justify-between">
+									<CollapsibleTrigger asChild>
+										<button
+											type="button"
+											className="flex items-center gap-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider transition-colors hover:text-foreground"
+										>
+											<ChevronDown className={`h-4 w-4 transition-transform ${showAllThemes ? "rotate-180" : ""}`} />
+											Show Remaining Themes ({remainingThemes.length})
+										</button>
+									</CollapsibleTrigger>
+									{showAllThemes && (
+										<ToggleGroup
+											type="single"
+											value={subView}
+											onValueChange={(v) => v && setSubView(v as "cards" | "table")}
+											size="sm"
+											className="shrink-0"
+										>
+											<ToggleGroupItem value="cards" aria-label="Cards view" className="gap-1.5">
+												<LayoutGrid className="h-3.5 w-3.5" />
+												Cards
+											</ToggleGroupItem>
+											<ToggleGroupItem value="table" aria-label="Table view" className="gap-1.5">
+												<Rows className="h-3.5 w-3.5" />
+												Table
+											</ToggleGroupItem>
+										</ToggleGroup>
+									)}
 								</div>
-							) : (
-								<p className="text-muted-foreground text-sm">
-									Table view coming soon — use the existing Table route for now.
-								</p>
-							)}
+								<CollapsibleContent className="mt-4">
+									{subView === "cards" ? (
+										<div className="grid gap-4 md:grid-cols-2">
+											{remainingThemes.map((theme) => (
+												<ThemeCard key={theme.id} theme={theme} totalPeople={totalPeople} />
+											))}
+										</div>
+									) : (
+										<p className="text-muted-foreground text-sm">
+											Table view coming soon — use the existing Table route for now.
+										</p>
+									)}
 
-							{/* Load more */}
-							{hasMore && (
-								<div className="mt-6 flex justify-center">
-									<button
-										type="button"
-										onClick={() => loadMoreFetcher.load(loadMoreHref)}
-										disabled={loadMoreFetcher.state !== "idle"}
-										className="rounded border border-border bg-background px-4 py-2 text-foreground text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-									>
-										{loadMoreFetcher.state === "loading" ? "Loading..." : "Load more"}
-									</button>
-								</div>
-							)}
-						</CollapsibleContent>
-					</Collapsible>
+									{/* Load more */}
+									{hasMore && (
+										<div className="mt-6 flex justify-center">
+											<button
+												type="button"
+												onClick={() => loadMoreFetcher.load(loadMoreHref)}
+												disabled={loadMoreFetcher.state !== "idle"}
+												className="rounded border border-border bg-background px-4 py-2 text-foreground text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+											>
+												{loadMoreFetcher.state === "loading" ? "Loading..." : "Load more"}
+											</button>
+										</div>
+									)}
+								</CollapsibleContent>
+							</Collapsible>
 
-					{/* ── Divider ── */}
-					<Separator />
+							{/* ── Divider ── */}
+							<Separator />
+						</>
+					)}
 
 					{/* ── Layer 3: Blind Spots & Weak Signals ── */}
 					<GapsPanel weakSignals={weakSignals} />

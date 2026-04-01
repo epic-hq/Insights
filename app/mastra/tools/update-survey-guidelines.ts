@@ -6,7 +6,12 @@
 import { createTool } from "@mastra/core/tools";
 import consola from "consola";
 import { z } from "zod";
-import { asQuestionArray, resolveBoundSurveyTarget } from "./survey-mutation-guards";
+import {
+	asQuestionArray,
+	isRetryableSurveyMutationError,
+	resolveBoundSurveyTarget,
+	withSurveyMutationRetry,
+} from "./survey-mutation-guards";
 
 const BranchRuleSchema = z.object({
 	id: z.string(),
@@ -31,6 +36,7 @@ const BranchRuleSchema = z.object({
 	}),
 	action: z.enum(["skip_to", "end_survey"]),
 	targetQuestionId: z.string().optional(),
+	targetSectionId: z.string().optional(),
 	naturalLanguage: z.string().optional(),
 	summary: z.string().optional(),
 	guidance: z.string().optional(),
@@ -80,6 +86,16 @@ If the confidence is low, it will suggest clarifications.`,
 			})
 			.optional(),
 		surveyId: z.string().optional(),
+		requestedRuleCount: z.number().nullish(),
+		appliedRuleCount: z.number().nullish(),
+		skippedRuleCount: z.number().nullish(),
+		verification: z
+			.object({
+				verified: z.boolean(),
+				status: z.string(),
+				missingRuleIds: z.array(z.string()).optional(),
+			})
+			.optional(),
 	}),
 	execute: async (input, context?) => {
 		try {
@@ -147,6 +163,7 @@ If the confidence is low, it will suggest clarifications.`,
 				questionInputs,
 				existingGuidelines
 			);
+			const requestedRuleCount = parseResult.guidelines.length;
 
 			consola.info("update-survey-guidelines: parse result", {
 				guidelineCount: parseResult.guidelines.length,
@@ -163,6 +180,13 @@ If the confidence is low, it will suggest clarifications.`,
 						...parseResult.suggestedClarifications,
 						...parseResult.unparseableSegments.map((s) => `Could not understand: "${s}"`),
 					],
+					requestedRuleCount,
+					appliedRuleCount: 0,
+					skippedRuleCount: requestedRuleCount,
+					verification: {
+						verified: false,
+						status: "parse_low_confidence",
+					},
 				};
 			}
 
@@ -243,38 +267,78 @@ If the confidence is low, it will suggest clarifications.`,
 					success: false,
 					message: "No valid rules could be created from the guidelines",
 					clarificationsNeeded: parseResult.suggestedClarifications,
+					requestedRuleCount,
+					appliedRuleCount: 0,
+					skippedRuleCount: requestedRuleCount,
+					verification: {
+						verified: false,
+						status: "no_valid_rules",
+					},
 				};
 			}
 
 			// Update the survey with the new questions (including branching)
-			const { error: updateError } = await supabase
-				.from("research_links")
-				.update({ questions: updatedQuestions })
-				.eq("id", surveyId)
-				.eq("project_id", projectId);
+			const { error: updateError } = await withSurveyMutationRetry({
+				operation: "update-survey-guidelines.save",
+				run: async () => {
+					const result = await supabase
+						.from("research_links")
+						.update({ questions: updatedQuestions })
+						.eq("id", surveyId)
+						.eq("project_id", projectId);
+					if (result.error && isRetryableSurveyMutationError(result.error)) {
+						throw result.error;
+					}
+					return result;
+				},
+			});
 
 			if (updateError) {
 				consola.error("update-survey-guidelines: update error", updateError);
 				return {
 					success: false,
-					message: `Failed to save guidelines: ${updateError.message}`,
+					message: `Write failed. Applied 0/${requestedRuleCount} guideline rules. Error: ${updateError.message}`,
 					error: { code: "DB_ERROR", message: updateError.message },
+					surveyId,
+					requestedRuleCount,
+					appliedRuleCount: 0,
+					skippedRuleCount: requestedRuleCount,
+					verification: {
+						verified: false,
+						status: "write_failed",
+					},
 				};
 			}
 
-			const { data: persistedSurvey, error: persistedError } = await supabase
-				.from("research_links")
-				.select("id, questions")
-				.eq("id", surveyId)
-				.eq("project_id", projectId)
-				.single();
+			const { data: persistedSurvey, error: persistedError } = await withSurveyMutationRetry({
+				operation: "update-survey-guidelines.verify-read",
+				run: async () => {
+					const result = await supabase
+						.from("research_links")
+						.select("id, questions")
+						.eq("id", surveyId)
+						.eq("project_id", projectId)
+						.single();
+					if (result.error && isRetryableSurveyMutationError(result.error)) {
+						throw result.error;
+					}
+					return result;
+				},
+			});
 
 			if (persistedError || !persistedSurvey) {
 				return {
 					success: false,
-					message: "Saved guideline changes but failed to verify persisted rules. Please refresh and retry.",
+					message: `Write may have succeeded but verification read failed. Applied unknown/${requestedRuleCount}. Please refresh and retry.`,
 					surveyId,
 					error: { code: "VERIFY_READ_FAILED", message: "Unable to fetch persisted survey after write" },
+					requestedRuleCount,
+					appliedRuleCount: null,
+					skippedRuleCount: null,
+					verification: {
+						verified: false,
+						status: "verify_read_failed",
+					},
 				};
 			}
 
@@ -299,14 +363,22 @@ If the confidence is low, it will suggest clarifications.`,
 					addedRuleIds,
 					missingRuleIds,
 				});
+				const appliedRuleCount = Math.max(addedRuleIds.length - missingRuleIds.length, 0);
 				return {
 					success: false,
-					message:
-						"Guideline write verification failed. Some generated rules were not persisted, so no success was reported.",
+					message: `Verification failed. Applied ${appliedRuleCount}/${requestedRuleCount} guideline rules.`,
 					surveyId,
 					error: {
 						code: "VERIFY_RULE_MISMATCH",
 						message: `Missing persisted rule ids: ${missingRuleIds.join(", ")}`,
+					},
+					requestedRuleCount,
+					appliedRuleCount,
+					skippedRuleCount: requestedRuleCount - appliedRuleCount,
+					verification: {
+						verified: false,
+						status: "mismatch",
+						missingRuleIds,
 					},
 				};
 			}
@@ -323,11 +395,18 @@ If the confidence is low, it will suggest clarifications.`,
 
 			return {
 				success: true,
-				message: summaryText,
+				message: `${summaryText}. Applied ${addedRules.length}/${requestedRuleCount}. Verification passed.`,
 				addedRules,
 				surveyId,
 				clarificationsNeeded:
 					parseResult.suggestedClarifications.length > 0 ? parseResult.suggestedClarifications : undefined,
+				requestedRuleCount,
+				appliedRuleCount: addedRules.length,
+				skippedRuleCount: requestedRuleCount - addedRules.length,
+				verification: {
+					verified: true,
+					status: "verified",
+				},
 			};
 		} catch (error) {
 			consola.error("update-survey-guidelines: unexpected error", error);
@@ -337,6 +416,13 @@ If the confidence is low, it will suggest clarifications.`,
 				error: {
 					code: "UNEXPECTED_ERROR",
 					message: error instanceof Error ? error.message : "Failed to update guidelines",
+				},
+				requestedRuleCount: 0,
+				appliedRuleCount: 0,
+				skippedRuleCount: 0,
+				verification: {
+					verified: false,
+					status: "unexpected_error",
 				},
 			};
 		}

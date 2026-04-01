@@ -20,6 +20,7 @@ export interface RouteDefinitions {
 	help: () => string;
 	docs: () => string;
 	accountHome: () => string;
+	settings: () => string;
 
 	// Interviews
 	interviews: {
@@ -239,6 +240,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		help: () => PATHS.HELP,
 		docs: () => PATHS.DOCS,
 		accountHome: () => `${base.replace(/\/[^/]+$/, "")}/home`,
+		settings: () => `${base}/settings`,
 
 		// Interviews
 		interviews: {

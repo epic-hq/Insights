@@ -3,7 +3,7 @@
 
 class ResponseTheme {
   theme string @description("Key theme identified across responses (3-5 words)")
-  description string @description("Brief description with specific numbers, e.g. '7 of 12 respondents (58%) mentioned onboarding friction'")
+  description string @description("Brief description with counts, e.g. '7 of 12 people mentioned onboarding friction'. Use 'early signal' for themes from <3 people.")
   frequency int @description("Number of responses mentioning this theme")
   percentage int @description("Percentage of total responses mentioning this theme (0-100)")
   sentiment string @description("Overall sentiment: Positive | Neutral | Negative | Mixed")
@@ -18,15 +18,15 @@ class AnswerDistribution {
 
 class QuestionInsight {
   question string @description("The survey question")
-  summary string @description("Concise summary with specific numbers. BAD: 'Respondents come from various sectors'. GOOD: '42% Sales, 25% Engineering, 17% Marketing, 16% Other'")
-  answer_distribution AnswerDistribution[] @description("Breakdown of answers by category with counts and percentages. For open-ended: group into meaningful categories. For select: use exact option values.")
-  key_findings string[] @description("Top 3 key findings. Each MUST include a specific number or percentage. BAD: 'Many are at early stages'. GOOD: '8 of 12 (67%) are pre-revenue or MVP stage'")
+  summary string @description("Plain-English summary. Start with how many people answered. BAD: 'Respondents come from various sectors'. GOOD: '10 of 12 answered — mostly Sales (5) and Engineering (3)'")
+  answer_distribution AnswerDistribution[] @description("Breakdown of answers by category with counts. For open-ended: group into meaningful categories. For select: use exact option values. Only include people who actually answered.")
+  key_findings string[] @description("Top 2-3 findings in plain language. Use counts first, percentages optional. BAD: 'Many are at early stages'. GOOD: '8 of 12 are pre-revenue or MVP stage'. If <5 answered, be brief and honest about the thin data.")
   notable_outliers string[] @description("Interesting outlier responses worth noting — include the quote")
 }
 
 class SegmentPattern {
-  segment_name string @description("Descriptive name for this response segment, e.g. 'Technical Founders (42%)'")
-  segment_description string @description("What characterizes this group — be specific about count and percentage")
+  segment_name string @description("Descriptive name for this group, e.g. 'Technical Founders (5 people)'")
+  segment_description string @description("What makes this group different — use counts, keep it plain")
   respondent_count int @description("Number of respondents in this segment")
   percentage int @description("Percentage of total respondents in this segment (0-100)")
   key_characteristics string[] @description("Defining characteristics of this segment")
@@ -34,17 +34,17 @@ class SegmentPattern {
 }
 
 class AskLinkInsightsResponse {
-  executive_summary string @description("2-3 sentence overview. MUST include specific numbers. BAD: 'Respondents range from early to late stage'. GOOD: 'Of 12 respondents, 67% (8) are pre-revenue startups, while 25% (3) are Series A/B. The dominant pain point is onboarding friction, cited by 58% (7).'")
+  executive_summary string @description("2-3 sentence plain-English overview. Lead with the most useful takeaway. If response rates are low, say so upfront. E.g. 'We heard from 12 people. 8 are pre-revenue startups, and the biggest pain point is onboarding — 7 people brought it up.'")
   total_responses int @description("Total number of responses analyzed")
   completion_rate int @description("Percentage of responses that were completed")
 
-  top_themes ResponseTheme[] @description("Top 3-5 themes across all responses, each with frequency count and percentage")
-  question_insights QuestionInsight[] @description("Insights for each survey question with answer distributions")
-  response_segments SegmentPattern[] @description("Distinct patterns/segments in respondents with counts and percentages")
+  top_themes ResponseTheme[] @description("Top 3-5 themes across all responses, each with frequency count. Themes based on <3 responses should be labeled 'early signal'")
+  question_insights QuestionInsight[] @description("Insights for each survey question — always note how many people actually answered vs total")
+  response_segments SegmentPattern[] @description("Distinct patterns/segments in respondents. If <10 total responses, return empty array with a note in data_quality_notes instead")
 
   recommended_followups string[] @description("Suggested follow-up questions or research")
-  actionable_insights string[] @description("Clear, actionable insights. Each MUST cite a specific number. BAD: 'Improve onboarding'. GOOD: '58% cited onboarding friction — prioritize guided setup flow'")
-  data_quality_notes string[] @description("Notes about data quality or gaps")
+  actionable_insights string[] @description("Practical advice tied to specific findings. E.g. '7 people flagged onboarding friction — worth prioritizing a guided setup'. If data is thin, lead with 'Get more responses before making big decisions'")
+  data_quality_notes string[] @description("Honest notes about data quality, low response rates, drop-off patterns, or anything that limits confidence in the findings")
 }
 
 function AnalyzeAskLinkResponses(
@@ -55,7 +55,8 @@ function AnalyzeAskLinkResponses(
 ) -> AskLinkInsightsResponse {
   client "CustomGPT4o"
   prompt #"
-    You are a research analyst specializing in survey analysis and qualitative data synthesis.
+    You are a sharp, no-BS business advisor who tells it like it is. You speak plainly —
+    like you're explaining findings to a smart friend over coffee, not writing a corporate report.
 
     ## Ask Link Survey: {{ ask_link_name }}
 
@@ -69,51 +70,88 @@ function AnalyzeAskLinkResponses(
     {{ context }}
 
     ## Your Task
-    Analyze all survey responses to generate comprehensive, QUANTITATIVE insights.
+    Analyze the survey responses and tell the reader what actually matters — in plain language.
 
-    ## CRITICAL: Be Specific and Numeric
-    Every finding MUST include concrete numbers and percentages. The reader should never see
-    vague phrases like "across various sectors", "many respondents", "some users", or "a range of stages".
+    ## CRITICAL: Honesty Over Spin
 
-    EXAMPLES OF BAD vs GOOD OUTPUT:
-    - BAD: "Stages range from pre-startup to Series A/B, with a focus on early-stage development"
-    - GOOD: "67% (8 of 12) are pre-revenue or MVP stage, 25% (3) are Series A/B, 8% (1) is pre-idea"
+    ### Non-responses are NOT data
+    If only 3 out of 12 people answered a question, do NOT say "75% have not yet identified challenges."
+    Say "Only 3 people answered this, so we can't draw strong conclusions yet. Here's what those 3 said..."
+    Non-response means they skipped it — never frame skipping as a finding.
 
-    - BAD: "Many are at very early or MVP stages"
-    - GOOD: "5 of 12 respondents (42%) are at MVP stage, 3 (25%) are pre-revenue"
+    ### Small numbers = use counts, not percentages
+    When fewer than 10 people answered a question, lead with raw counts. "2 people mentioned marketing"
+    is honest. "17% identified marketing as a skill gap" from 2 people is misleading.
+    - Under 10 responses: "2 out of 12 said X" (count first, percentage optional in parentheses)
+    - 10+ responses: percentages are fine as the primary format
+    - NEVER use percentages to make tiny samples sound statistically meaningful
 
-    - BAD: "Respondents come from various industries"
-    - GOOD: "33% SaaS/Tech, 25% Consulting, 17% Healthcare, 8% Education, 17% Other"
+    ### Flag drop-off as an insight
+    If a question has much lower response rates than earlier questions, call that out explicitly.
+    "Only 2 of 12 people answered this — that drop-off itself might mean the question felt irrelevant
+    or came too late in the survey."
+
+    ### Write like a human, not a consultant
+    - BAD: "Funding and time management are significant obstacles (17%)"
+    - GOOD: "One person flagged funding concerns, another mentioned time management — but with only 2 answers, it's too early to call these trends."
+
+    - BAD: "83% have not yet identified specific challenges"
+    - GOOD: "10 people skipped this question entirely. The 2 who answered mentioned funding and time management."
+
+    - BAD: "Marketing is the most cited need, mentioned by 17%"
+    - GOOD: "Both people who answered this question mentioned needing marketing skills."
+
+    ## Be Specific and Numeric (but honestly)
+    Use real numbers — just don't use them to inflate weak data.
+
+    EXAMPLES:
+    - GOOD: "8 of 12 (67%) are pre-revenue — this is clearly an early-stage group"
+    - GOOD: "Only 2 people answered, so take this lightly: both mentioned marketing"
+    - BAD: "Respondents come from various industries" (too vague)
+    - BAD: "17% identified marketing as a skill gap" (misleading when n=2)
 
     ## Analysis Steps
 
     1. **Executive Summary** (2-3 sentences)
-       - Lead with the most striking number: "Of N respondents, X% said..."
-       - Mention the #1 theme with its percentage
+       - Lead with the most useful takeaway, stated plainly
+       - If response rates are low, acknowledge that upfront
+       - Mention the #1 theme with actual count
 
     2. **Theme Analysis** (3-5 themes)
-       - Each theme: count + percentage + representative quotes
+       - Each theme: count + representative quotes
        - Sort by frequency (most common first)
+       - If a "theme" is based on fewer than 3 responses, label it as "early signal" not a finding
 
     3. **Question-by-Question Analysis**
-       - For EVERY question, produce an answer_distribution breaking responses into categories
+       - You MUST produce a question_insight for EVERY question in the survey, even if only 1 person answered
+       - For each question, note how many people actually answered vs total
        - For select/likert: use exact option values with counts
-       - For open-ended: categorize responses into meaningful groups (e.g. "Sales 30%, Marketing 20%, Engineering 25%, Other 25%")
-       - Each key_finding must include a number
+       - For open-ended: group responses into categories with counts
+       - For text questions with 1-2 responses: still provide a brief summary and include the response(s) as findings
+       - If <5 people answered, keep the analysis brief and honest about limitations
+       - If this is a branched survey, note which path/route the question belongs to
 
     4. **Response Segmentation**
-       - Name segments with their percentage: "Technical Founders (42%)"
-       - Include respondent_count AND percentage for each segment
+       - Only create segments if you have enough data (10+ responses) to make them meaningful
+       - For smaller datasets, skip segmentation and say "Not enough responses to identify reliable segments"
 
     5. **Actionable Recommendations**
-       - Tie each recommendation to a specific finding with its number
-       - "58% cited onboarding friction → prioritize guided setup"
+       - Tie each recommendation to what you actually saw
+       - If data is thin, the #1 recommendation should be "Get more responses before making decisions"
+       - Be practical: "Here's what I'd do with this info" not "It is recommended that stakeholders..."
 
-    ## Rules
+    ## Tone Rules
+    - Write like a smart advisor talking to a founder, not a research report
+    - Short sentences. No jargon. No corporate filler.
+    - Say "people" not "respondents." Say "answered" not "indicated."
+    - If something is unclear or inconclusive, just say so — don't dress it up
+    - It's okay to say "we don't have enough data to know" — that IS an insight
+
+    ## Number Rules
     - Count responses carefully — your numbers must add up
     - Percentages should sum to ~100% within each distribution
-    - Use "X of Y (Z%)" format for precision
-    - For small samples (<10), show both count and percentage
+    - For small samples (<10), lead with "X of Y" counts, percentages in parentheses only
+    - For larger samples (10+), "X% (N)" format is fine
     - Never round to make numbers look cleaner if it loses accuracy
 
     {{ ctx.output_format }}

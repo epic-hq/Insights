@@ -113,6 +113,10 @@ export default defineConfig({
       "@boundaryml/baml-darwin-arm64",
       "@conform-to/zod",
       "zod/v4",
+      "@ffmpeg/ffmpeg",
+      "@ffmpeg/util",
+      "@ffmpeg/core",
+      "@ffmpeg/core-mt",
     ],
   },
   ssr: {
@@ -123,6 +127,12 @@ export default defineConfig({
       "@aws-sdk/credential-provider-sso",
       "@aws-sdk/token-providers",
       "@langchain/aws",
+      // Trigger.dev 4.4.3 has broken ESM exports in @trigger.dev/core
+      "@trigger.dev/sdk",
+      "@trigger.dev/core",
+      "@trigger.dev/build",
+      // MCP SDK — uses Node.js APIs and dynamic imports that Rollup can't resolve
+      "@modelcontextprotocol/sdk",
       // Ensure unused heavy libs are not bundled into SSR
       "mermaid",
       "@mermaid-js/parser",

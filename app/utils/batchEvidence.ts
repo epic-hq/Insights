@@ -23,6 +23,107 @@ type EvidenceResult = {
 	scenes: any[];
 };
 
+function toMs(value: number | string | null): number | null {
+	if (typeof value === "number" && Number.isFinite(value)) return value;
+	if (typeof value === "string" && value.trim().length > 0) {
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+	return null;
+}
+
+function normalizeText(value: string): string {
+	return value
+		.toLowerCase()
+		.replace(/[^a-z0-9\s]/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
+}
+
+function hasTerminalPunctuation(value: string): boolean {
+	return /[.!?]["')\]]*$/.test(value.trim());
+}
+
+function endsWithDanglingWord(value: string): boolean {
+	const normalized = normalizeText(value);
+	if (!normalized) return false;
+	const words = normalized.split(" ");
+	const lastWord = words[words.length - 1];
+	return new Set(["a", "an", "and", "because", "for", "if", "of", "or", "so", "that", "the", "to", "with"]).has(
+		lastWord
+	);
+}
+
+function startsLikeContinuation(value: string): boolean {
+	const trimmed = value.trim();
+	if (!trimmed) return false;
+	return /^[a-z]/.test(trimmed) || /^(and|but|because|so|or|that|which|who|when|where)\b/i.test(trimmed);
+}
+
+function isLikelySplitThought(current: SpeakerUtterance, next: SpeakerUtterance): boolean {
+	const currentText = current.text.trim();
+	const nextText = next.text.trim();
+	if (!currentText || !nextText) return false;
+
+	const currentLength = currentText.length;
+	const nextLength = nextText.length;
+	const currentEnd = toMs(current.end);
+	const nextStart = toMs(next.start);
+	const gapMs = currentEnd !== null && nextStart !== null ? Math.max(0, nextStart - currentEnd) : 0;
+
+	if (gapMs > 1600) return false;
+
+	if (current.speaker === next.speaker) {
+		return (
+			currentLength < 180 ||
+			nextLength < 100 ||
+			!hasTerminalPunctuation(currentText) ||
+			endsWithDanglingWord(currentText)
+		);
+	}
+
+	// Handle diarization churn where a single thought is split across adjacent speaker labels.
+	return (
+		currentLength < 220 &&
+		nextLength < 100 &&
+		(!hasTerminalPunctuation(currentText) || endsWithDanglingWord(currentText)) &&
+		startsLikeContinuation(nextText)
+	);
+}
+
+export function coalesceSpeakerTranscripts(speakerTranscripts: SpeakerUtterance[]): SpeakerUtterance[] {
+	const cleaned = speakerTranscripts.filter((item) => typeof item?.text === "string" && item.text.trim().length > 0);
+	if (cleaned.length <= 1) return cleaned;
+
+	const merged: SpeakerUtterance[] = [];
+	let current: SpeakerUtterance | null = null;
+
+	for (const utterance of cleaned) {
+		if (!current) {
+			current = { ...utterance, text: utterance.text.trim() };
+			continue;
+		}
+
+		if (isLikelySplitThought(current, utterance)) {
+			current = {
+				...current,
+				text: `${current.text.trim()} ${utterance.text.trim()}`.replace(/\s+/g, " ").trim(),
+				end: utterance.end ?? current.end,
+			};
+			continue;
+		}
+
+		merged.push(current);
+		current = { ...utterance, text: utterance.text.trim() };
+	}
+
+	if (current) {
+		merged.push(current);
+	}
+
+	return merged;
+}
+
 function normalizeSpeakerKey(value: unknown): string | null {
 	if (typeof value !== "string") return null;
 	const trimmed = value.trim();
@@ -91,13 +192,20 @@ export async function batchExtractEvidence(
 	extractFn: (batch: SpeakerUtterance[]) => Promise<EvidenceResult>,
 	onProgress?: BatchProgressCallback
 ): Promise<EvidenceResult> {
-	const ENABLE_BATCHING = speakerTranscripts.length > BATCH_SIZE;
+	const coalescedSpeakerTranscripts = coalesceSpeakerTranscripts(speakerTranscripts);
+	const ENABLE_BATCHING = coalescedSpeakerTranscripts.length > BATCH_SIZE;
 
 	if (!ENABLE_BATCHING) {
 		// Single call for small transcripts
-		consola.info(`⚡ Single-batch mode: ${speakerTranscripts.length} utterances (≤${BATCH_SIZE}, batching disabled)`);
+		consola.info(
+			`⚡ Single-batch mode: ${coalescedSpeakerTranscripts.length} utterances ` +
+				`(coalesced from ${speakerTranscripts.length}, ≤${BATCH_SIZE}, batching disabled)`
+		);
 		const startTime = Date.now();
-		const result = await withHeartbeatWhilePending(() => extractFn(speakerTranscripts), BATCH_HEARTBEAT_INTERVAL_MS);
+		const result = await withHeartbeatWhilePending(
+			() => extractFn(coalescedSpeakerTranscripts),
+			BATCH_HEARTBEAT_INTERVAL_MS
+		);
 		const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 		consola.success(`✅ Single batch completed in ${duration}s`);
 
@@ -114,12 +222,15 @@ export async function batchExtractEvidence(
 		return result;
 	}
 
-	consola.info(`🚀 Batching enabled: processing ${speakerTranscripts.length} utterances in chunks of ${BATCH_SIZE}`);
+	consola.info(
+		`🚀 Batching enabled: processing ${coalescedSpeakerTranscripts.length} utterances ` +
+			`(coalesced from ${speakerTranscripts.length}) in chunks of ${BATCH_SIZE}`
+	);
 
 	// Split into batches
 	const batches: SpeakerUtterance[][] = [];
-	for (let i = 0; i < speakerTranscripts.length; i += BATCH_SIZE) {
-		batches.push(speakerTranscripts.slice(i, i + BATCH_SIZE));
+	for (let i = 0; i < coalescedSpeakerTranscripts.length; i += BATCH_SIZE) {
+		batches.push(coalescedSpeakerTranscripts.slice(i, i + BATCH_SIZE));
 	}
 
 	consola.info(`📦 Created ${batches.length} batches (max ${MAX_CONCURRENT_BATCHES} concurrent)`);

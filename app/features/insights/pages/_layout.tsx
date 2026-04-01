@@ -19,6 +19,7 @@ import { ConsolidateProgressBar } from "~/features/insights/components/Consolida
 import { InsightsExplainerCard } from "~/features/insights/components/InsightsExplainerCard";
 import { InsightsSettingsModal } from "~/features/insights/components/InsightsSettingsModal";
 import { useConsolidateProgress } from "~/features/insights/hooks/useConsolidateProgress";
+import { DEFAULT_THEME_DEDUP_THRESHOLD } from "~/features/projects/utils/analysisSettings";
 import { currentProjectContext } from "~/server/current-project-context";
 import { userContext } from "~/server/user-context";
 
@@ -209,7 +210,7 @@ export default function InsightsLayout() {
 
 	const handleConsolidateThemes = () => {
 		if (!projectId || !accountId) return;
-		const threshold = analysisSettings?.theme_dedup_threshold ?? 0.85;
+		const threshold = analysisSettings?.theme_dedup_threshold ?? DEFAULT_THEME_DEDUP_THRESHOLD;
 		consolidateFetcher.submit(
 			{
 				project_id: projectId,
@@ -237,7 +238,7 @@ export default function InsightsLayout() {
 	const handleRefreshAll = () => {
 		if (!projectId || !accountId) return;
 		setRefreshStep("consolidate");
-		const threshold = analysisSettings?.theme_dedup_threshold ?? 0.85;
+		const threshold = analysisSettings?.theme_dedup_threshold ?? DEFAULT_THEME_DEDUP_THRESHOLD;
 		consolidateFetcher.submit(
 			{
 				project_id: projectId,
@@ -331,7 +332,7 @@ export default function InsightsLayout() {
 					projectId={projectId}
 					accountId={accountId}
 					hasConsolidated={hasConsolidated}
-					similarityThreshold={analysisSettings?.theme_dedup_threshold ?? 0.85}
+					similarityThreshold={analysisSettings?.theme_dedup_threshold ?? DEFAULT_THEME_DEDUP_THRESHOLD}
 				/>
 			)}
 

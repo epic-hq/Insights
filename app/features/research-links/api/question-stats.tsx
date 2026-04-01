@@ -71,6 +71,36 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	};
 
 	// Type-specific aggregation
+	if (question.type === "matrix" && question.matrixRows?.length) {
+		const scale = question.likertScale ?? 5;
+		const matrixRows = question.matrixRows.map((row) => {
+			const buckets = new Map<number, number>();
+			let sum = 0;
+			let count = 0;
+			for (const value of answerValues) {
+				if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+				const rowValue = (value as Record<string, unknown>)[row.id];
+				const num = Number(rowValue);
+				if (Number.isNaN(num)) continue;
+				buckets.set(num, (buckets.get(num) ?? 0) + 1);
+				sum += num;
+				count++;
+			}
+			return {
+				id: row.id,
+				label: row.label,
+				answered: count,
+				avg: count > 0 ? Math.round((sum / count) * 10) / 10 : null,
+				distribution: Array.from({ length: scale }, (_, index) => ({
+					value: index + 1,
+					count: buckets.get(index + 1) ?? 0,
+				})),
+			};
+		});
+		stats.matrixRows = matrixRows;
+		return Response.json(stats);
+	}
+
 	if (question.type === "single_select" || question.type === "multi_select" || question.type === "image_select") {
 		// Count each answer option
 		const counts = new Map<string, number>();

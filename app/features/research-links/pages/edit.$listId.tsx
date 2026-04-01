@@ -5,16 +5,20 @@ import {
 	Check,
 	ChevronDown,
 	ChevronRight,
+	Code,
 	Copy,
 	ExternalLink,
+	Link2,
 	Loader2,
 	Mail,
 	Pencil,
+	QrCode,
 	Send,
+	Share2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
-import { Link, useLoaderData } from "react-router-dom";
+import { Link, useLoaderData, useRevalidator } from "react-router-dom";
 import { toast } from "sonner";
 import { PicaConnectButton } from "~/components/integrations/PicaConnectButton";
 import { PageContainer } from "~/components/layout/PageContainer";
@@ -28,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Textarea } from "~/components/ui/textarea";
 import { getGmailConnection } from "~/lib/integrations/gmail.server";
 import { getServerClient } from "~/lib/supabase/client.server";
+import { cn } from "~/lib/utils";
 import { userContext } from "~/server/user-context";
 import { createR2PresignedUrl } from "~/utils/r2.server";
 import { createRouteDefinitions } from "~/utils/route-definitions";
@@ -39,6 +44,7 @@ import { SendSurveyDialog } from "../components/SendSurveyDialog";
 import { WalkthroughRecorder } from "../components/WalkthroughRecorder";
 import { getResearchLinkById } from "../db";
 import { extractFormFields, useOptimisticForm } from "../hooks/useOptimisticForm";
+import { RESPONDENT_FIELD_DEFINITIONS, type RespondentFieldConfig } from "../respondent-fields";
 import {
 	createEmptyQuestion,
 	ResearchLinkPayloadSchema,
@@ -46,35 +52,37 @@ import {
 	ResearchLinkQuestionSchema,
 } from "../schemas";
 
-/** Available respondent fields with labels and descriptions */
-const RESPONDENT_FIELD_OPTIONS = [
-	{ key: "first_name", label: "First name" },
-	{ key: "last_name", label: "Last name" },
-	{ key: "company", label: "Company" },
-	{ key: "title", label: "Job title" },
-	{ key: "phone", label: "Phone number" },
-] as const;
-
 /** Multi-picker for selecting which respondent fields to collect */
 function RespondentFieldsPicker({
 	fields,
 	onChange,
 	identityType,
 }: {
-	fields: string[];
-	onChange: (fields: string[]) => void;
+	fields: RespondentFieldConfig[];
+	onChange: (fields: RespondentFieldConfig[]) => void;
 	identityType: "anonymous" | "email" | "phone";
 }) {
 	const [expanded, setExpanded] = useState(fields.length > 0);
 	const activeCount = fields.length;
 
 	// Filter out phone if identity is already phone-based
-	const options = RESPONDENT_FIELD_OPTIONS.filter((opt) => !(opt.key === "phone" && identityType === "phone"));
+	const options = RESPONDENT_FIELD_DEFINITIONS.filter((opt) => !(opt.key === "phone" && identityType === "phone"));
+
+	const fieldKeys = fields.map((f) => f.key);
 
 	const toggleField = (key: string) => {
-		const next = fields.includes(key) ? fields.filter((f) => f !== key) : [...fields, key];
-		onChange(next);
+		if (fieldKeys.includes(key)) {
+			onChange(fields.filter((f) => f.key !== key));
+		} else {
+			onChange([...fields, { key, required: false }]);
+		}
 	};
+
+	const toggleRequired = (key: string) => {
+		onChange(fields.map((f) => (f.key === key ? { ...f, required: !f.required } : f)));
+	};
+
+	const isFieldRequired = (key: string) => fields.find((f) => f.key === key)?.required ?? false;
 
 	return (
 		<div className="rounded-md border px-3 py-2.5">
@@ -106,15 +114,35 @@ function RespondentFieldsPicker({
 			</button>
 			{expanded && (
 				<div className="mt-2 space-y-1 border-t pt-2">
-					{options.map((opt) => (
-						<label
-							key={opt.key}
-							className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 hover:bg-muted/30"
-						>
-							<Checkbox checked={fields.includes(opt.key)} onCheckedChange={() => toggleField(opt.key)} />
-							<span className="text-sm">{opt.label}</span>
-						</label>
-					))}
+					{options.map((opt) => {
+						const isEnabled = fieldKeys.includes(opt.key);
+						const isReq = isFieldRequired(opt.key);
+						return (
+							<div
+								key={opt.key}
+								className="flex items-center justify-between gap-2 rounded-md px-1 py-1.5 hover:bg-muted/30"
+							>
+								<label className="flex flex-1 cursor-pointer items-center gap-2.5">
+									<Checkbox checked={isEnabled} onCheckedChange={() => toggleField(opt.key)} />
+									<span className="text-sm">{opt.label}</span>
+								</label>
+								{isEnabled && (
+									<button
+										type="button"
+										onClick={() => toggleRequired(opt.key)}
+										className={cn(
+											"rounded px-1.5 py-0.5 font-medium text-[10px] transition-colors",
+											isReq
+												? "bg-red-500/15 text-red-600 dark:text-red-400"
+												: "bg-muted text-muted-foreground hover:bg-muted/80"
+										)}
+									>
+										{isReq ? "Required" : "Optional"}
+									</button>
+								)}
+							</div>
+						);
+					})}
 				</div>
 			)}
 		</div>
@@ -148,7 +176,24 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 		throw new Response("Ask link not found", { status: 404 });
 	}
 	const responseCount = responseCountResult.count ?? 0;
-	const questionsResult = ResearchLinkQuestionSchema.array().safeParse(data.questions);
+	const rawQuestions = Array.isArray(data.questions) ? data.questions : [];
+	const parsedQuestions: ResearchLinkQuestion[] = [];
+	let invalidQuestionCount = 0;
+	for (const rawQuestion of rawQuestions) {
+		const parsedQuestion = ResearchLinkQuestionSchema.safeParse(rawQuestion);
+		if (parsedQuestion.success) {
+			parsedQuestions.push(parsedQuestion.data);
+		} else {
+			invalidQuestionCount += 1;
+		}
+	}
+	if (invalidQuestionCount > 0) {
+		console.warn("edit.$listId loader: dropped invalid survey questions", {
+			listId,
+			invalidQuestionCount,
+			totalRawQuestions: rawQuestions.length,
+		});
+	}
 
 	// Generate signed URLs for walkthrough video + thumbnail if they exist
 	let walkthroughSignedUrl: string | null = null;
@@ -210,7 +255,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 		listId,
 		userId: userId ?? "",
 		list: data,
-		questions: questionsResult.success ? questionsResult.data : [],
+		questions: parsedQuestions,
 		walkthroughSignedUrl,
 		walkthroughThumbnailUrl,
 		gmailConnected,
@@ -293,7 +338,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		updatePayload.respondent_fields = payload.respondentFields;
 		// Keep collect_title in sync for backwards compatibility
 		const fields = payload.respondentFields ?? [];
-		updatePayload.collect_title = fields.includes("title");
+		const fieldKeys = Array.isArray(fields)
+			? fields.map((f: unknown) => (typeof f === "string" ? f : (f as { key: string }).key))
+			: [];
+		updatePayload.collect_title = fieldKeys.includes("title");
 	}
 	if (formData.has("ai_autonomy")) {
 		const autonomy = formData.get("ai_autonomy");
@@ -353,7 +401,6 @@ export default function EditResearchLinkPage() {
 		peopleWithEmails,
 		responseCount,
 		aiAnalysis,
-		aiAnalysisUpdatedAt,
 	} = useLoaderData<typeof loader>();
 	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
 
@@ -363,8 +410,9 @@ export default function EditResearchLinkPage() {
 		[initialQuestions]
 	);
 	const loaderFields = useMemo(() => extractFormFields(list, questionsWithDefault), [list, questionsWithDefault]);
-	const { fields, setText, setImmediate, setDirtyOnly, setQuestions, flush, status, errors } =
+	const { fields, setText, setImmediate, setDirtyOnly, clearDirtyField, setQuestions, status, errors } =
 		useOptimisticForm(loaderFields);
+	const revalidator = useRevalidator();
 
 	// UI-only state (not form fields)
 	const [slugEdited, setSlugEdited] = useState(true);
@@ -410,6 +458,41 @@ export default function EditResearchLinkPage() {
 		if (typeof window === "undefined") return path;
 		return `${window.location.origin}${path}`;
 	}, [routes, fields.slug]);
+
+	const surveyCoachingContext = useMemo(() => {
+		const parts = [
+			`Survey name: ${fields.name || "Untitled survey"}`,
+			`Survey description: ${(list.description as string | null) ?? "Not provided"}`,
+			`Landing subtitle: ${fields.heroSubtitle || "Not provided"}`,
+			`Instructions: ${fields.instructions || "Not provided"}`,
+			`Identity mode: ${fields.identityType}`,
+			`Respondent fields: ${fields.respondentFields.join(", ") || "none"}`,
+			"Assume low-commitment respondents unless context says otherwise (new audience, no incentives).",
+		];
+		return parts.join("\n");
+	}, [
+		fields.name,
+		fields.heroSubtitle,
+		fields.instructions,
+		fields.identityType,
+		fields.respondentFields,
+		list.description,
+	]);
+
+	useEffect(() => {
+		const handleSurveyQuestionsUpdated = (event: Event) => {
+			const custom = event as CustomEvent<{ surveyId?: string }>;
+			const updatedSurveyId = custom.detail?.surveyId;
+			if (updatedSurveyId && updatedSurveyId !== listId) return;
+			clearDirtyField("questions");
+			revalidator.revalidate();
+		};
+
+		window.addEventListener("upsight:survey-questions-updated", handleSurveyQuestionsUpdated);
+		return () => {
+			window.removeEventListener("upsight:survey-questions-updated", handleSurveyQuestionsUpdated);
+		};
+	}, [listId, clearDirtyField, revalidator]);
 
 	const handleCopyLink = async () => {
 		try {
@@ -584,11 +667,20 @@ export default function EditResearchLinkPage() {
 												Phone
 											</span>
 										)}
-										{fields.respondentFields.map((key) => {
-											const opt = RESPONDENT_FIELD_OPTIONS.find((o) => o.key === key);
+										{fields.respondentFields.map((fc) => {
+											const opt = RESPONDENT_FIELD_DEFINITIONS.find((o) => o.key === fc.key);
 											return (
-												<span key={key} className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground/70">
-													{opt?.label ?? key}
+												<span
+													key={fc.key}
+													className={cn(
+														"rounded-full px-2 py-0.5 text-[11px]",
+														fc.required
+															? "bg-red-500/10 font-medium text-red-600 dark:text-red-400"
+															: "bg-muted text-foreground/70"
+													)}
+												>
+													{opt?.label ?? fc.key}
+													{fc.required ? " *" : ""}
 												</span>
 											);
 										})}
@@ -600,6 +692,7 @@ export default function EditResearchLinkPage() {
 											questions={fields.questions}
 											onChange={setQuestions}
 											listId={listId}
+											coachingContext={surveyCoachingContext}
 											aiAnalysis={aiAnalysis}
 											responseCount={responseCount}
 										/>
@@ -815,10 +908,14 @@ export default function EditResearchLinkPage() {
 								</Card>
 							</TabsContent>
 
-							<TabsContent value="distribute" className="min-w-0 space-y-4 overflow-hidden">
-								{/* Public Link + Slug */}
+							<TabsContent value="distribute" className="min-w-0 space-y-5 overflow-hidden">
+								{/* Your Survey Link */}
 								<Card>
 									<CardContent className="space-y-3 py-3">
+										<div className="flex items-center gap-2">
+											<Link2 className="h-4 w-4 text-primary" />
+											<p className="font-semibold text-sm">Your Survey Link</p>
+										</div>
 										<div className="space-y-1.5">
 											<Label htmlFor="slug" className="text-muted-foreground text-xs">
 												URL slug
@@ -839,7 +936,6 @@ export default function EditResearchLinkPage() {
 											/>
 											{errors?.slug ? <p className="text-destructive text-xs">{errors.slug}</p> : null}
 										</div>
-										<p className="font-medium text-sm">Public link</p>
 										<div className="rounded-md border bg-muted/40 px-2.5 py-2 text-foreground/70 text-xs">
 											<span className="break-all font-mono">{publicLink}</span>
 										</div>
@@ -854,16 +950,41 @@ export default function EditResearchLinkPage() {
 													Open in new tab
 												</a>
 											</Button>
+										</div>
+									</CardContent>
+								</Card>
+
+								{/* Share via QR Code */}
+								<Card>
+									<CardContent className="py-3">
+										<div className="flex items-center justify-between gap-3">
+											<div className="flex items-center gap-3">
+												<div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+													<QrCode className="h-4 w-4 text-muted-foreground" />
+												</div>
+												<div>
+													<p className="font-medium text-sm">Share via QR code</p>
+													<p className="text-muted-foreground text-xs">
+														Print or display at events, on packaging, or in presentations.
+													</p>
+												</div>
+											</div>
 											<QRCodeButton url={publicLink} onClick={() => setIsQRModalOpen(true)} />
 										</div>
 									</CardContent>
 								</Card>
 
-								{/* Email Distribution */}
+								{/* Send via Email (Gmail) */}
 								<Card>
-									<CardContent className="py-3">
+									<CardContent className="space-y-3 py-3">
+										<div className="flex items-center gap-2">
+											<Mail className="h-4 w-4 text-primary" />
+											<p className="font-semibold text-sm">Send via Email</p>
+										</div>
+
+										{/* Gmail direct send */}
 										{gmailConnected ? (
-											<div className="flex items-center gap-3">
+											<div className="flex items-center gap-3 rounded-md border bg-green-50/50 p-3 dark:bg-green-950/20">
 												<div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
 													<Mail className="h-4 w-4 text-green-600 dark:text-green-400" />
 												</div>
@@ -874,7 +995,7 @@ export default function EditResearchLinkPage() {
 															<span className="ml-1 font-normal text-muted-foreground">({gmailEmail})</span>
 														)}
 													</p>
-													<p className="text-muted-foreground text-xs">Send survey invites from your email.</p>
+													<p className="text-muted-foreground text-xs">Send survey invites directly from UpSight.</p>
 												</div>
 												<Button type="button" size="sm" onClick={() => setSendDialogOpen(true)} className="gap-2">
 													<Send className="h-4 w-4" />
@@ -882,15 +1003,15 @@ export default function EditResearchLinkPage() {
 												</Button>
 											</div>
 										) : (
-											<div className="flex items-center justify-between gap-3">
+											<div className="flex items-center justify-between gap-3 rounded-md border p-3">
 												<div className="flex items-center gap-3">
 													<div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
 														<Mail className="h-4 w-4 text-muted-foreground" />
 													</div>
 													<div>
-														<p className="font-medium text-sm">Send via email</p>
+														<p className="font-medium text-sm">Send from Gmail</p>
 														<p className="text-muted-foreground text-xs">
-															Connect Gmail to send invites from your own address.
+															Connect Gmail to send invites directly from UpSight.
 														</p>
 													</div>
 												</div>
@@ -912,15 +1033,40 @@ export default function EditResearchLinkPage() {
 												</PicaConnectButton>
 											</div>
 										)}
+
+										{/* External email platforms */}
+										<div className="rounded-lg border bg-muted/20 p-3">
+											<p className="mb-1 font-medium text-foreground text-xs">
+												Using Mailchimp, SendGrid, or another platform?
+											</p>
+											<p className="text-muted-foreground text-xs">
+												Copy your survey link above and add it to your email campaign. Append{" "}
+												<code className="rounded bg-muted px-1 text-[11px]">?email=*|EMAIL|*</code> (Mailchimp) or{" "}
+												<code className="rounded bg-muted px-1 text-[11px]">{"?email={{email}}"}</code>{" "}
+												(SendGrid/Postmark) to pre-fill the respondent's email for automatic identity matching.
+											</p>
+											<p className="mt-1 text-muted-foreground text-xs">
+												You can also pass <code className="rounded bg-muted px-1 text-[11px]">name</code>,{" "}
+												<code className="rounded bg-muted px-1 text-[11px]">company</code>,{" "}
+												<code className="rounded bg-muted px-1 text-[11px]">title</code>, and more to pre-fill profile
+												fields.
+											</p>
+											<Link to="/docs/survey-distribution" className="mt-2 inline-block text-primary text-xs underline">
+												See full email platform setup guide
+											</Link>
+										</div>
 									</CardContent>
 								</Card>
 
-								{/* Embed Code */}
+								{/* Embed on Website */}
 								<Card>
 									<CardContent className="space-y-2 py-3">
-										<p className="font-medium text-sm">Embed on your website</p>
+										<div className="flex items-center gap-2">
+											<Code className="h-4 w-4 text-primary" />
+											<p className="font-semibold text-sm">Embed on Your Website</p>
+										</div>
 										<p className="text-muted-foreground text-xs">
-											Add this form to your website for waitlists, feedback collection, or lead capture.
+											Add this survey to your website for waitlists, feedback collection, or lead capture.
 										</p>
 										<EmbedCodeGenerator
 											slug={fields.slug}
@@ -929,6 +1075,24 @@ export default function EditResearchLinkPage() {
 											walkthroughVideoUrl={walkthroughVideoUrl}
 											walkthroughThumbnailUrl={walkthroughThumbnailUrl}
 										/>
+									</CardContent>
+								</Card>
+
+								{/* Share on Social / Messaging */}
+								<Card>
+									<CardContent className="py-3">
+										<div className="flex items-center gap-3">
+											<div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+												<Share2 className="h-4 w-4 text-muted-foreground" />
+											</div>
+											<div>
+												<p className="font-medium text-sm">Share on Slack, Teams, or Social</p>
+												<p className="text-muted-foreground text-xs">
+													Paste your survey link in channels, DMs, or social posts. Respondents will self-identify when
+													they start.
+												</p>
+											</div>
+										</div>
 									</CardContent>
 								</Card>
 							</TabsContent>

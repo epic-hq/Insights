@@ -13,6 +13,9 @@ permissions:
   contents: read
   issues: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   agent-smoke-tests:
     name: Agent Domain Smoke Tests
@@ -79,7 +82,22 @@ jobs:
       - name: Deploy to Fly.io
         if: success()
         run: |
-          flyctl deploy --remote-only
+          set -euo pipefail
+
+          max_attempts=3
+          for attempt in $(seq 1 "$max_attempts"); do
+            echo "Fly deploy attempt ${attempt}/${max_attempts} (Depot)..."
+            if flyctl deploy --remote-only; then
+              echo "Fly deploy succeeded on attempt ${attempt}."
+              exit 0
+            fi
+            if [ "$attempt" -lt "$max_attempts" ]; then
+              sleep 20
+            fi
+          done
+
+          echo "Depot deploy failed after ${max_attempts} attempts. Falling back to non-Depot remote builder..."
+          flyctl deploy --remote-only --depot=false
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
@@ -95,7 +113,7 @@ jobs:
       # --------------------------
       - name: Deploy Trigger.dev Cloud
         run: |
-          pnpm exec dotenvx run -f .env.production -- pnpm dlx trigger.dev@4.4.1 deploy
+          pnpm exec dotenvx run -f .env.production -- pnpm dlx trigger.dev@4.4.3 deploy
         env:
           DOTENVX_KEY: ${{ secrets.DOTENVX_KEY }}
           DOTENV_PRIVATE_KEY_PRODUCTION: ${{ secrets.DOTENV_PRIVATE_KEY_PRODUCTION }}

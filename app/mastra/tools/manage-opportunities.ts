@@ -31,7 +31,7 @@ const opportunityOutputSchema = z.object({
 	closeDate: z.string().nullable().optional(),
 	ownerId: z.string().nullable().optional(),
 	relatedInsightIds: z.array(z.string()).nullable().optional(),
-	metadata: z.record(z.unknown()).nullable().optional(),
+	metadata: z.record(z.string(), z.unknown()).nullable().optional(),
 	createdAt: z.string().nullable().optional(),
 	updatedAt: z.string().nullable().optional(),
 	detailRoute: z.string().nullable().optional(),
@@ -182,7 +182,7 @@ const sharedOpportunityFields = {
 		),
 	relatedInsightIds: z.array(z.string()).nullish().describe("Insight IDs linked to this opportunity"),
 	linkedInterviewId: z.string().nullish().describe("Interview ID that inspired this opportunity"),
-	metadata: z.record(z.unknown()).nullish().describe("Additional structured metadata to store"),
+	metadata: z.record(z.string(), z.unknown()).nullish().describe("Additional structured metadata to store"),
 };
 
 export const createOpportunityTool = createTool({

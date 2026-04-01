@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Zap } from "lucide-react";
 import { Link } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -135,6 +135,62 @@ export default function GettingStarted() {
 								Questions are automatically linked: Interview prompts connect to research questions, which connect to
 								decision questions—giving you a clear hierarchy from strategic goals down to specific interview
 								questions.
+							</p>
+						</div>
+					</CardContent>
+				</Card>
+
+				{/* Quick Survey Option */}
+				<Card className="border-purple-200 bg-purple-50/50 dark:border-purple-900/30 dark:bg-purple-950/20">
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2">
+							<Zap className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+							Quick Option: Send a Survey Instead
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-3">
+						<p className="text-muted-foreground">
+							Don't have interviews yet? Skip straight to collecting feedback by creating an AI-powered survey. Our AI
+							will help you design questions based on your research plan — just tell it what you want to learn.
+						</p>
+						<div className="space-y-2">
+							<div className="flex items-start gap-2">
+								<CheckCircle2 className="mt-0.5 h-4 w-4 text-green-600" />
+								<span className="text-sm">
+									Go to <strong>Ask</strong> in your project sidebar and create a new survey
+								</span>
+							</div>
+							<div className="flex items-start gap-2">
+								<CheckCircle2 className="mt-0.5 h-4 w-4 text-green-600" />
+								<span className="text-sm">
+									Use <strong>AI-generated questions</strong> — describe your goal and the AI creates survey questions
+									tied to your research plan
+								</span>
+							</div>
+							<div className="flex items-start gap-2">
+								<CheckCircle2 className="mt-0.5 h-4 w-4 text-green-600" />
+								<span className="text-sm">
+									Choose a response mode: <strong>Form</strong> (standard), <strong>Chat</strong> (conversational AI),
+									or <strong>Voice</strong> (spoken)
+								</span>
+							</div>
+							<div className="flex items-start gap-2">
+								<CheckCircle2 className="mt-0.5 h-4 w-4 text-green-600" />
+								<span className="text-sm">Distribute via link, email, QR code, or embed on your website</span>
+							</div>
+						</div>
+						<div className="rounded-lg border-purple-500 border-l-4 bg-purple-50 p-3 dark:bg-purple-950/30">
+							<p className="font-medium text-sm">⚡ Fastest way to start collecting insights</p>
+							<p className="mt-1 text-muted-foreground text-sm">
+								Surveys can start collecting responses in minutes. Read the{" "}
+								<Link to="/docs/survey-distribution" className="text-primary underline">
+									Survey Distribution guide
+								</Link>{" "}
+								for detailed setup and sharing options, or the{" "}
+								<Link to="/docs/sending-surveys" className="text-primary underline">
+									Email Distribution guide
+								</Link>{" "}
+								to send via Mailchimp or other email platforms.
 							</p>
 						</div>
 					</CardContent>

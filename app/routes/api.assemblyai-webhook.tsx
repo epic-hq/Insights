@@ -38,6 +38,13 @@ export async function action({ request }: ActionFunctionArgs) {
 		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
+	// DEPRECATED: New uploads use Trigger.dev orchestrator instead of webhooks.
+	// This endpoint is kept alive for in-flight AssemblyAI jobs submitted before the migration.
+	// Safe to remove after 2026-03-20 (1 week grace period).
+	consola.warn(
+		"[assemblyai-webhook] DEPRECATED: Received webhook callback. New uploads should use Trigger.dev orchestrator."
+	);
+
 	const langfuse = getLangfuseClient();
 	let trace: LangfuseTraceClient | undefined;
 	let traceEndPayload: TraceEndPayload | undefined;

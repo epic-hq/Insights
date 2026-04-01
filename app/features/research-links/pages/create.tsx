@@ -144,6 +144,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	const { client: supabase } = getServerClient(request);
 	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
 
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+
 	const { data, error } = await supabase
 		.from("research_links")
 		.insert({
@@ -161,6 +165,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			allow_chat: payload.allowChat,
 			default_response_mode: payload.defaultResponseMode,
 			is_live: payload.isLive,
+			survey_owner_user_id: user?.id ?? null,
 		})
 		.select("id")
 		.maybeSingle();
@@ -724,7 +729,7 @@ export default function CreateResearchLinkPage() {
 															setShowClarifications(false);
 														}}
 													>
-														I'll review the skip logic below
+														I'll review the branching below
 													</Button>
 												</div>
 											</div>

@@ -161,6 +161,7 @@ export function QuestionTypeBadge({ type }: { type: string }) {
 		single_select: "Select one",
 		multi_select: "Select many",
 		likert: "Likert",
+		matrix: "Matrix",
 		image_select: "Image select",
 	};
 	const label = labels[type] ?? type;

@@ -1,3 +1,4 @@
+import { ExternalLink } from "lucide-react";
 import type * as React from "react";
 import { useFetcher } from "react-router";
 import InlineEdit from "~/components/ui/inline-edit";
@@ -70,7 +71,7 @@ function JsonKV({ data, level = 0 }: { data: JSONValue; level?: number }) {
 		return (
 			<ul className="space-y-1">
 				{data.map((item, i) => (
-					<li key={i} className="rounded-md border border-gray-200 p-2">
+					<li key={i} className="rounded-md border border-gray-200 p-2 dark:border-gray-700">
 						<JsonKV data={item} level={level + 1} />
 					</li>
 				))}
@@ -83,10 +84,10 @@ function JsonKV({ data, level = 0 }: { data: JSONValue; level?: number }) {
 			<dl className={cn("grid gap-2", level === 0 ? "sm:grid-cols-2" : "")}>
 				{Object.entries(data as Record<string, JSONValue>).map(([k, v]) => (
 					<div key={k} className="flex flex-col">
-						<dt className="font-medium text-gray-500 text-xs uppercase tracking-wide">{k}</dt>
+						<dt className="font-medium text-gray-500 text-xs uppercase tracking-wide dark:text-gray-400">{k}</dt>
 						<dd className="text-sm">
 							{typeof v === "object" && v !== null ? (
-								<div className="mt-1 rounded-md border border-gray-200 p-2">
+								<div className="mt-1 rounded-md border border-gray-200 p-2 dark:border-gray-700">
 									<JsonKV data={v} level={level + 1} />
 								</div>
 							) : (
@@ -106,7 +107,7 @@ function JsonKV({ data, level = 0 }: { data: JSONValue; level?: number }) {
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
 	return (
 		<div className="grid grid-cols-3 gap-3 py-2">
-			<div className="col-span-1 font-medium text-gray-600 text-sm">{label}</div>
+			<div className="col-span-1 font-medium text-gray-600 text-sm dark:text-gray-400">{label}</div>
 			<div className="col-span-2 text-sm">{value}</div>
 		</div>
 	);
@@ -136,7 +137,7 @@ function EditableRow({
 
 	return (
 		<div className="grid grid-cols-3 gap-3 py-2">
-			<div className="col-span-1 font-medium text-gray-600 text-sm">{label}</div>
+			<div className="col-span-1 font-medium text-gray-600 text-sm dark:text-gray-400">{label}</div>
 			<div className="col-span-2 text-sm">
 				<InlineEdit
 					value={value || ""}
@@ -147,6 +148,54 @@ function EditableRow({
 					autoFocus={true}
 					multiline={multiline}
 				/>
+			</div>
+		</div>
+	);
+}
+
+function CompanyNameRow({
+	value,
+	companyUrl,
+	companyName,
+}: {
+	value?: string | null;
+	companyUrl: string | null;
+	companyName?: string | null;
+}) {
+	const fetcher = useFetcher();
+
+	const handleSubmit = (newValue: string) => {
+		const formData = new FormData();
+		formData.append("field", "company_name");
+		formData.append("value", newValue);
+		fetcher.submit(formData, { method: "post" });
+	};
+
+	return (
+		<div className="grid grid-cols-3 gap-3 py-2">
+			<div className="col-span-1 font-medium text-gray-600 text-sm dark:text-gray-400">Company Name</div>
+			<div className="col-span-2 flex items-center gap-2 text-sm">
+				<div className="flex-1">
+					<InlineEdit
+						value={value || ""}
+						onSubmit={handleSubmit}
+						placeholder="Add company name"
+						textClassName="text-sm"
+						inputClassName="text-sm"
+						autoFocus={true}
+					/>
+				</div>
+				{companyName && companyUrl && (
+					<a
+						href={companyUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="shrink-0 text-gray-400 transition-colors hover:text-primary dark:text-gray-500 dark:hover:text-primary"
+						title={`Visit ${companyName}`}
+					>
+						<ExternalLink className="h-4 w-4" />
+					</a>
+				)}
 			</div>
 		</div>
 	);
@@ -194,26 +243,36 @@ function UserSettings({
 
 	const isIncomplete = missingFields.length > 0;
 
+	const companyUrl = settings.company_website
+		? settings.company_website.startsWith("http")
+			? settings.company_website
+			: `https://${settings.company_website}`
+		: null;
+
 	return (
 		<section className={cn("w-full", className)}>
 			<header className="mb-4">
-				<h2 className="font-semibold text-xl">{title}</h2>
+				<h2 className="font-semibold text-xl dark:text-gray-100">{title}</h2>
 				{isIncomplete && (
-					<p className="mt-1 text-amber-600 text-sm">
+					<p className="mt-1 text-amber-600 text-sm dark:text-amber-400">
 						Complete your profile to help us personalize your experience. Missing: {missingFields.join(", ")}
 					</p>
 				)}
 			</header>
 
 			{/* Identity */}
-			<div className="rounded-xl border bg-white p-4 shadow-sm">
+			<div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
 				<div className="mb-3">
-					<h3 className="font-semibold text-gray-500 text-sm uppercase tracking-wide">Profile Information</h3>
-					<p className="mt-1 text-gray-500 text-xs">Click any field to edit. Changes save automatically.</p>
+					<h3 className="font-semibold text-gray-500 text-sm uppercase tracking-wide dark:text-gray-400">
+						Profile Information
+					</h3>
+					<p className="mt-1 text-gray-500 text-xs dark:text-gray-500">
+						Click any field to edit. Changes save automatically.
+					</p>
 				</div>
-				<div className="divide-y">
+				<div className="divide-y divide-gray-100 dark:divide-gray-800">
 					<div className="grid grid-cols-3 gap-3 py-2">
-						<div className="col-span-1 font-medium text-gray-600 text-sm">Avatar</div>
+						<div className="col-span-1 font-medium text-gray-600 text-sm dark:text-gray-400">Avatar</div>
 						<div className="col-span-2">
 							{/* Show custom URL if set, otherwise OAuth avatar */}
 							{(settings.image_url || oauthAvatar) && (
@@ -221,12 +280,12 @@ function UserSettings({
 									<img
 										src={settings.image_url || oauthAvatar || ""}
 										alt="avatar"
-										className="h-16 w-16 rounded-full object-cover ring-2 ring-gray-200"
+										className="h-16 w-16 rounded-full object-cover ring-2 ring-gray-200 dark:ring-gray-700"
 									/>
 									{settings.image_url ? (
-										<p className="mt-1 text-gray-500 text-xs">Custom profile picture</p>
+										<p className="mt-1 text-gray-500 text-xs dark:text-gray-400">Custom profile picture</p>
 									) : oauthAvatar ? (
-										<p className="mt-1 text-gray-500 text-xs">From your OAuth provider</p>
+										<p className="mt-1 text-gray-500 text-xs dark:text-gray-400">From your OAuth provider</p>
 									) : null}
 								</div>
 							)}
@@ -247,20 +306,18 @@ function UserSettings({
 									fetcher.submit(formData);
 								}}
 								placeholder={oauthAvatar ? "Add a custom URL override" : "Paste a URL to your profile picture"}
-								textClassName="text-xs text-gray-500"
+								textClassName="text-xs text-gray-500 dark:text-gray-400"
 								inputClassName="text-sm"
 								autoFocus={true}
 							/>
-							{/* <p className="mt-1 text-gray-400 text-xs">
-								{oauthAvatar
-									? "Add a custom URL to override your OAuth avatar"
-									: "Paste a URL to your profile picture"}
-							</p> */}
 						</div>
 					</div>
 					<EditableRow label="First Name" field="first_name" value={settings.first_name} />
 					<EditableRow label="Last Name" field="last_name" value={settings.last_name} />
-					<Row label="Email" value={settings.email || <span className="text-gray-400 text-sm italic">Not set</span>} />
+					<Row
+						label="Email"
+						value={settings.email || <span className="text-gray-400 text-sm italic dark:text-gray-500">Not set</span>}
+					/>
 					<EditableRow
 						label="Mobile"
 						field="mobile_phone"
@@ -271,9 +328,11 @@ function UserSettings({
 			</div>
 
 			{/* Professional Info */}
-			<div className="mt-6 rounded-xl border bg-white p-4 shadow-sm">
-				<h3 className="mb-2 font-semibold text-gray-500 text-sm uppercase tracking-wide">Professional Information</h3>
-				<div className="divide-y">
+			<div className="mt-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+				<h3 className="mb-2 font-semibold text-gray-500 text-sm uppercase tracking-wide dark:text-gray-400">
+					Professional Information
+				</h3>
+				<div className="divide-y divide-gray-100 dark:divide-gray-800">
 					<EditableRow
 						label="Job Title"
 						field="title"
@@ -302,15 +361,13 @@ function UserSettings({
 			</div>
 
 			{/* Company Info */}
-			<div className="mt-6 rounded-xl border bg-white p-4 shadow-sm">
-				<h3 className="mb-2 font-semibold text-gray-500 text-sm uppercase tracking-wide">Company Information</h3>
-				<div className="divide-y">
-					<EditableRow
-						label="Company Name"
-						field="company_name"
-						value={settings.company_name}
-						placeholder="Add company name"
-					/>
+			<div className="mt-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+				<h3 className="mb-2 font-semibold text-gray-500 text-sm uppercase tracking-wide dark:text-gray-400">
+					Company Information
+				</h3>
+				<div className="divide-y divide-gray-100 dark:divide-gray-800">
+					{/* Company name — editable with external link to website when set */}
+					<CompanyNameRow value={settings.company_name} companyUrl={companyUrl} companyName={settings.company_name} />
 					<EditableRow
 						label="Website"
 						field="company_website"
@@ -328,9 +385,11 @@ function UserSettings({
 			</div>
 
 			{/* Preferences */}
-			<div className="mt-6 rounded-xl border bg-white p-4 shadow-sm">
-				<h3 className="mb-2 font-semibold text-gray-500 text-sm uppercase tracking-wide">Preferences</h3>
-				<div className="divide-y">
+			<div className="mt-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+				<h3 className="mb-2 font-semibold text-gray-500 text-sm uppercase tracking-wide dark:text-gray-400">
+					Preferences
+				</h3>
+				<div className="divide-y divide-gray-100 dark:divide-gray-800">
 					<EditableRow label="Theme" field="theme" value={settings.theme} placeholder="light, dark, or system" />
 					<EditableRow label="Language" field="language" value={settings.language} placeholder="en" />
 				</div>
@@ -339,8 +398,8 @@ function UserSettings({
 			{/* Advanced Preferences - Only show if they exist */}
 			<div className="mt-6 grid gap-6 md:grid-cols-1">
 				{!isEmptyJson(settings.notification_preferences) && (
-					<div className="rounded-xl border bg-white p-4 shadow-sm">
-						<h3 className="mb-2 font-semibold text-gray-500 text-sm uppercase tracking-wide">
+					<div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+						<h3 className="mb-2 font-semibold text-gray-500 text-sm uppercase tracking-wide dark:text-gray-400">
 							Notification Preferences
 						</h3>
 						<JsonKV data={settings.notification_preferences as JSONValue} />
@@ -348,8 +407,10 @@ function UserSettings({
 				)}
 
 				{!isEmptyJson(settings.ui_preferences) && (
-					<div className="rounded-xl border bg-white p-4 shadow-sm">
-						<h3 className="mb-2 font-semibold text-gray-500 text-sm uppercase tracking-wide">UI Preferences</h3>
+					<div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+						<h3 className="mb-2 font-semibold text-gray-500 text-sm uppercase tracking-wide dark:text-gray-400">
+							UI Preferences
+						</h3>
 						<JsonKV data={settings.ui_preferences as JSONValue} />
 					</div>
 				)}

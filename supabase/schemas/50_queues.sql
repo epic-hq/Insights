@@ -91,7 +91,10 @@ USING (true);
 -- b) trigger fn to enqueue changed rows
 -- Update functions to use extensions schema for pgmq and cron
 create or replace function public.enqueue_insight_embedding()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql
+security definer
+set search_path = public, pgmq
+as $$
 begin
   if (TG_OP = 'INSERT'
       or (TG_OP = 'UPDATE' and old.pain is distinct from new.pain)) then
@@ -124,7 +127,10 @@ comment on trigger trg_enqueue_theme on public.themes is 'Enqueue theme for embe
 -- Evidence facet enqueue function
 -- Note: For survey_response facets, we embed label (question) + quote (answer) together
 create or replace function public.enqueue_facet_embedding()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql
+security definer
+set search_path = public, pgmq
+as $$
 begin
   if (TG_OP = 'INSERT'
       or (TG_OP = 'UPDATE' and (old.label is distinct from new.label or old.quote is distinct from new.quote))) then
@@ -148,7 +154,10 @@ create or replace trigger trg_enqueue_facet
 
 -- Person facet enqueue function (needs to fetch label from facet_account)
 create or replace function public.enqueue_person_facet_embedding()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql
+security definer
+set search_path = public, pgmq
+as $$
 declare
   facet_label text;
   kind_slug text;
@@ -186,7 +195,10 @@ create or replace trigger trg_enqueue_person_facet
 -- Evidence embedding enqueue function
 -- Reuses the insights_embedding_queue but passes table='evidence'
 create or replace function public.enqueue_evidence_embedding()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql
+security definer
+set search_path = public, pgmq
+as $$
 begin
   -- Enqueue if embedding is NULL:
   -- - On INSERT: always enqueue if no embedding
@@ -388,7 +400,10 @@ USING (true);
 -- b) trigger fn to enqueue transcription job
 -- Update functions to use extensions schema for pgmq and cron
 create or replace function public.enqueue_transcribe_interview()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql
+security definer
+set search_path = public, pgmq
+as $$
 begin
   if (TG_OP = 'INSERT'
       or (TG_OP = 'UPDATE' and old.media_url is distinct from new.media_url)) then
@@ -452,5 +467,90 @@ $$;
 --   'select public.process_transcribe_queue()'
 -- );
 
+
+-- Idempotent guard: ensure facet_embedding_queue exists even if schema is applied fresh
+do $$
+begin
+  perform pgmq.create('facet_embedding_queue');
+exception
+  when duplicate_table then null;
+  when duplicate_object then null;
+  when sqlstate '42P07' then null;
+end;
+$$;
+
+-- RPC helper: create facet_embedding_queue idempotently (used by test setup)
+create or replace function public.ensure_facet_embedding_queue()
+returns void
+language plpgsql
+security definer
+set search_path = public, pgmq
+as $$
+begin
+  perform pgmq.create('facet_embedding_queue');
+exception
+  when duplicate_table then null;
+  when duplicate_object then null;
+  when sqlstate '42P07' then null;
+end;
+$$;
+
+grant execute on function public.ensure_facet_embedding_queue() to service_role;
+
+-- Queue depth RPCs for integration test assertions.
+-- These run as SECURITY DEFINER (postgres owner) so they can read pgmq tables
+-- without requiring the pgmq schema to be exposed via PostgREST.
+-- Only service_role can call these — not used in the application path.
+
+create or replace function public.get_facet_embedding_queue_depth()
+returns bigint
+language sql
+security definer
+set search_path = public, pgmq
+as $$
+  select count(*) from pgmq.q_facet_embedding_queue;
+$$;
+
+grant execute on function public.get_facet_embedding_queue_depth() to service_role;
+revoke execute on function public.get_facet_embedding_queue_depth() from public, authenticated;
+
+create or replace function public.get_insights_embedding_queue_depth(filter_table text default null)
+returns bigint
+language sql
+security definer
+set search_path = public, pgmq
+as $$
+  select count(*)
+  from pgmq.q_insights_embedding_queue
+  where filter_table is null
+     or message->>'table' = filter_table;
+$$;
+
+grant execute on function public.get_insights_embedding_queue_depth(text) to service_role;
+revoke execute on function public.get_insights_embedding_queue_depth(text) from public, authenticated;
+
+create or replace function public.get_person_facet_embedding_queue_depth()
+returns bigint
+language sql
+security definer
+set search_path = public, pgmq
+as $$
+  select count(*) from pgmq.q_person_facet_embedding_queue;
+$$;
+
+grant execute on function public.get_person_facet_embedding_queue_depth() to service_role;
+revoke execute on function public.get_person_facet_embedding_queue_depth() from public, authenticated;
+
+create or replace function public.get_transcribe_queue_depth()
+returns bigint
+language sql
+security definer
+set search_path = public, pgmq
+as $$
+  select count(*) from pgmq.q_transcribe_interview_queue;
+$$;
+
+grant execute on function public.get_transcribe_queue_depth() to service_role;
+revoke execute on function public.get_transcribe_queue_depth() from public, authenticated;
 
 -- TODO: create edge function 'transcribe' to call AssemblyAI

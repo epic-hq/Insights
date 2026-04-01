@@ -46,7 +46,7 @@ export function InterviewTasks({ tasks, routes }: InterviewTasksProps) {
 				</div>
 			</div>
 
-			{tasks.length > 0 ? (
+			{tasks.length > 0 && (
 				<div className="space-y-2">
 					{tasks.slice(0, 6).map((task) => (
 						<div
@@ -77,8 +77,6 @@ export function InterviewTasks({ tasks, routes }: InterviewTasksProps) {
 						</Link>
 					)}
 				</div>
-			) : (
-				<p className="text-muted-foreground text-sm">No linked tasks yet.</p>
 			)}
 		</div>
 	);

@@ -205,48 +205,22 @@ export const fetchPeopleDetailsTool = createTool({
 		}
 
 		try {
-			// First try project-scoped search using project_people junction table
+			// Query people by people.project_id (matches the People list page behavior).
+			// NOTE: We use people.project_id directly instead of project_people junction table
+			// because junction records may not always be created/maintained.
 			const { data: projectPeopleData, error: peopleError } = await supabase
 				.from("people")
-				.select("*, project_people!inner(project_id), default_organization:organizations!default_organization_id(name)")
-				.eq("project_people.project_id", projectId)
+				.select("*, default_organization:organizations!default_organization_id(name)")
+				.eq("project_id", projectId)
 				.eq("account_id", accountId || "")
 				.limit(sanitizedPersonSearch ? 100 : peopleLimit);
 
 			let searchScope: "project" | "account" = "project";
-			let peopleData: Person[] | null = projectPeopleData as Person[] | null;
-
-			// If searching and no results in project, expand to account level
-			if (sanitizedPersonSearch && (!peopleData || peopleData.length === 0) && accountId) {
-				consola.debug("fetch-people-details: no project results, expanding to account scope", {
-					projectId,
-					accountId,
-					searchTerm: sanitizedPersonSearch,
-				});
-
-				const accountQuery = await supabase
-					.from("people")
-					.select("*, default_organization:organizations!default_organization_id(name)")
-					.eq("account_id", accountId)
-					.limit(100);
-
-				if (accountQuery.data && accountQuery.data.length > 0) {
-					peopleData = accountQuery.data as Person[];
-					searchScope = "account";
-					consola.debug("fetch-people-details: found results at account scope", {
-						count: peopleData?.length || 0,
-					});
-				}
-			}
+			const peopleData: Person[] | null = projectPeopleData as Person[] | null;
 
 			if (peopleError) {
 				consola.error("fetch-people-details: failed to fetch people", peopleError);
 				throw peopleError;
-			}
-
-			// Debug: Log raw response to see exact structure
-			if (peopleData && peopleData.length > 0) {
-				consola.debug("fetch-people-details: RAW first result", JSON.stringify(peopleData[0], null, 2));
 			}
 
 			let people = peopleData ?? [];
@@ -255,22 +229,12 @@ export const fetchPeopleDetailsTool = createTool({
 				projectId,
 				searchTerm: sanitizedPersonSearch,
 				rawResultsCount: people.length,
-				sampleResult:
-					people.length > 0
-						? {
-								person_id: people[0].id,
-								name: people[0].name,
-								title: people[0].title,
-								company: (people[0] as any).default_organization?.name ?? null,
-							}
-						: null,
 			});
 
 			// Application-side search filtering
 			if (sanitizedPersonSearch) {
 				const searchLower = sanitizedPersonSearch.toLowerCase();
 
-				// Filter to only matching records
 				people = people.filter((person) => {
 					const nameMatch = person.name?.toLowerCase().includes(searchLower);
 					const titleMatch = person.title?.toLowerCase().includes(searchLower);
@@ -286,6 +250,41 @@ export const fetchPeopleDetailsTool = createTool({
 					searchTerm: sanitizedPersonSearch,
 					filteredResultsCount: people.length,
 				});
+
+				// If search found nothing in project, expand to account level
+				// This catches people who exist on the account but aren't linked to this project
+				if (people.length === 0 && accountId) {
+					consola.debug("fetch-people-details: no project matches, expanding to account scope", {
+						projectId,
+						accountId,
+						searchTerm: sanitizedPersonSearch,
+					});
+
+					const accountQuery = await supabase
+						.from("people")
+						.select("*, default_organization:organizations!default_organization_id(name)")
+						.eq("account_id", accountId)
+						.limit(100);
+
+					if (accountQuery.data && accountQuery.data.length > 0) {
+						const accountPeople = (accountQuery.data as Person[]).filter((person) => {
+							const nameMatch = person.name?.toLowerCase().includes(searchLower);
+							const titleMatch = person.title?.toLowerCase().includes(searchLower);
+							const orgName = (person as any).default_organization?.name;
+							const companyMatch = orgName?.toLowerCase().includes(searchLower);
+							const roleMatch = person.role?.toLowerCase().includes(searchLower);
+							return nameMatch || titleMatch || companyMatch || roleMatch;
+						});
+
+						if (accountPeople.length > 0) {
+							people = accountPeople;
+							searchScope = "account";
+							consola.debug("fetch-people-details: found matches at account scope", {
+								count: accountPeople.length,
+							});
+						}
+					}
+				}
 			}
 
 			// Apply specific person IDs filter if provided
@@ -306,7 +305,8 @@ export const fetchPeopleDetailsTool = createTool({
 				includePersonas && personIds.length > 0
 					? supabase
 							.from("people_personas")
-							.select(`
+							.select(
+								`
 						person_id,
 						personas:persona_id(
 							id,
@@ -316,7 +316,8 @@ export const fetchPeopleDetailsTool = createTool({
 						),
 						assigned_at,
 						confidence_score
-					`)
+					`
+							)
 							.in("person_id", personIds)
 							.eq("project_id", projectId)
 					: Promise.resolve({ data: null }),
@@ -324,7 +325,8 @@ export const fetchPeopleDetailsTool = createTool({
 				includeEvidence && personIds.length > 0
 					? supabase
 							.from("interview_people")
-							.select(`
+							.select(
+								`
 						person_id,
 						interview:interview_id(
 							id,
@@ -332,7 +334,8 @@ export const fetchPeopleDetailsTool = createTool({
 							interview_date,
 							status
 						)
-					`)
+					`
+							)
 							.eq("project_id", projectId)
 							.in("person_id", personIds)
 							.order("created_at", { ascending: false })
@@ -341,7 +344,8 @@ export const fetchPeopleDetailsTool = createTool({
 				includeEvidence && personIds.length > 0
 					? supabase
 							.from("evidence")
-							.select(`
+							.select(
+								`
 						id,
 						gist,
 						verbatim,
@@ -353,7 +357,8 @@ export const fetchPeopleDetailsTool = createTool({
 							title,
 							interview_date
 						)
-					`)
+					`
+							)
 							.eq("project_id", projectId)
 							.in(
 								"interview_id",
@@ -374,7 +379,8 @@ export const fetchPeopleDetailsTool = createTool({
 				includeFacets && personIds.length > 0
 					? supabase
 							.from("person_facet")
-							.select(`
+							.select(
+								`
 						person_id,
 						facet_account_id,
 						source,
@@ -391,7 +397,8 @@ export const fetchPeopleDetailsTool = createTool({
 								label
 							)
 						)
-					`)
+					`
+							)
 							.eq("project_id", projectId)
 							.in("person_id", personIds)
 					: Promise.resolve({ data: null }),
@@ -399,7 +406,8 @@ export const fetchPeopleDetailsTool = createTool({
 				includeFacets && personIds.length > 0
 					? supabase
 							.from("person_scale")
-							.select(`
+							.select(
+								`
 						person_id,
 						kind_slug,
 						score,
@@ -407,7 +415,8 @@ export const fetchPeopleDetailsTool = createTool({
 						source,
 						confidence,
 						noted_at
-					`)
+					`
+							)
 							.eq("project_id", projectId)
 							.in("person_id", personIds)
 					: Promise.resolve({ data: null }),

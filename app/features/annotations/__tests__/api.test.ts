@@ -1,57 +1,95 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Mock modules that trigger env validation at module scope
+vi.mock("~/lib/supabase/client.server", () => ({
+	getServerClient: vi.fn(() => ({ client: {} })),
+	createSupabaseAdminClient: vi.fn(),
+	getAuthenticatedUser: vi.fn(),
+}));
+vi.mock("~/lib/posthog.server", () => ({
+	getPostHogServerClient: vi.fn(() => ({
+		capture: vi.fn(),
+	})),
+}));
+vi.mock("consola", () => ({
+	default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn(), debug: vi.fn() },
+}));
+vi.mock("~/server/user-context", () => ({
+	userContext: "FAKE_USER_CONTEXT",
+}));
+vi.mock("~/server/current-project-context", () => ({
+	currentProjectContext: "FAKE_CURRENT_PROJECT_CONTEXT",
+}));
+
+// Mock the db module so handlers don't touch real supabase chains
+const mockGetAnnotationsForEntity = vi.fn();
+const mockCreateAnnotation = vi.fn();
+const mockUpdateAnnotation = vi.fn();
+const mockDeleteAnnotation = vi.fn();
+const mockGetVoteCountsForEntity = vi.fn();
+const mockGetVoteCountsForEntities = vi.fn();
+const mockUpsertVote = vi.fn();
+const mockRemoveVote = vi.fn();
+const mockGetUserFlagsForEntity = vi.fn();
+const mockSetEntityFlag = vi.fn();
+
+vi.mock("../db", () => ({
+	getAnnotationsForEntity: (...args: unknown[]) => mockGetAnnotationsForEntity(...args),
+	createAnnotation: (...args: unknown[]) => mockCreateAnnotation(...args),
+	updateAnnotation: (...args: unknown[]) => mockUpdateAnnotation(...args),
+	deleteAnnotation: (...args: unknown[]) => mockDeleteAnnotation(...args),
+	getVoteCountsForEntity: (...args: unknown[]) => mockGetVoteCountsForEntity(...args),
+	getVoteCountsForEntities: (...args: unknown[]) => mockGetVoteCountsForEntities(...args),
+	upsertVote: (...args: unknown[]) => mockUpsertVote(...args),
+	removeVote: (...args: unknown[]) => mockRemoveVote(...args),
+	getUserFlagsForEntity: (...args: unknown[]) => mockGetUserFlagsForEntity(...args),
+	setEntityFlag: (...args: unknown[]) => mockSetEntityFlag(...args),
+}));
+
 import { action as annotationsAction, loader as annotationsLoader } from "../api/annotations";
 import { action as entityFlagsAction, loader as entityFlagsLoader } from "../api/entity-flags";
 import { action as votesAction, loader as votesLoader } from "../api/votes";
 
-// Mock Supabase client
+// Valid UUIDs for tests
+const ACCOUNT_ID = "d7b69d5e-a952-4a7b-8c9d-0e1f2a3b4c5d";
+const PROJECT_ID = "e8c7af6f-b063-5b8c-9dae-1f2g3h4i5j6k";
+const USER_ID = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
+const ENTITY_ID = "f9d8e7c6-b5a4-4321-8765-fedcba987654";
+
+// Mock Supabase client (used by votes handler which calls getServerClient directly)
 const mockSupabase = {
-	from: vi.fn(() => ({
-		select: vi.fn(() => ({
-			eq: vi.fn(() => ({
-				eq: vi.fn(() => ({
-					single: vi.fn(() => Promise.resolve({ data: null, error: null })),
-					maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
-				})),
-			})),
-		})),
-		insert: vi.fn(() => ({
-			select: vi.fn(() => ({
-				single: vi.fn(() => Promise.resolve({ data: null, error: null })),
-			})),
-		})),
-		update: vi.fn(() => ({
-			eq: vi.fn(() => ({
-				eq: vi.fn(() => ({
-					select: vi.fn(() => ({
-						single: vi.fn(() => Promise.resolve({ data: null, error: null })),
-					})),
-				})),
-			})),
-		})),
-		delete: vi.fn(() => ({
-			eq: vi.fn(() => ({
-				eq: vi.fn(() => Promise.resolve({ error: null })),
-			})),
-		})),
-		upsert: vi.fn(() => ({
-			select: vi.fn(() => ({
-				single: vi.fn(() => Promise.resolve({ data: null, error: null })),
-			})),
-		})),
-	})),
-	rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
+	from: vi.fn(),
+	rpc: vi.fn(),
+	auth: {
+		getClaims: vi.fn(() => Promise.resolve({ data: { claims: { sub: USER_ID, account_id: ACCOUNT_ID } } })),
+	},
 };
 
-// Mock user context
-const mockUserContext = {
-	supabase: mockSupabase,
-	account_id: "00000000-0000-0000-0000-000000000001",
-	claims: { sub: "00000000-0000-0000-0000-000000000003" },
-};
+// Build a mock context whose .get() returns different values based on the context key
+function buildMockContext(overrides?: {
+	userCtx?: Record<string, unknown>;
+	projectCtx?: Record<string, unknown>;
+}) {
+	const userCtx = overrides?.userCtx ?? {
+		supabase: mockSupabase,
+		account_id: ACCOUNT_ID,
+		claims: { sub: USER_ID },
+	};
+	const projectCtx = overrides?.projectCtx ?? {
+		accountId: ACCOUNT_ID,
+		projectId: PROJECT_ID,
+		account: null,
+		project: null,
+	};
 
-const mockContext = {
-	get: vi.fn(() => mockUserContext),
-};
+	return {
+		get: vi.fn((key: unknown) => {
+			if (key === "FAKE_USER_CONTEXT") return userCtx;
+			if (key === "FAKE_CURRENT_PROJECT_CONTEXT") return projectCtx;
+			return undefined;
+		}),
+	};
+}
 
 describe("Annotations API Routes", () => {
 	beforeEach(() => {
@@ -60,32 +98,23 @@ describe("Annotations API Routes", () => {
 
 	describe("/api/annotations", () => {
 		it("should handle GET request for annotations", async () => {
-			const request = new Request("http://localhost/api/annotations?entity_type=insight&entity_id=test-id");
+			const request = new Request(
+				`http://localhost/api/annotations?entityType=insight&entityId=${ENTITY_ID}`
+			);
 
-			mockSupabase.from.mockReturnValue({
-				select: vi.fn(() => ({
-					eq: vi.fn(() => ({
-						eq: vi.fn(() => ({
-							eq: vi.fn(() => ({
-								order: vi.fn(() =>
-									Promise.resolve({
-										data: [
-											{
-												id: "1",
-												content: "Test comment",
-												annotation_type: "comment",
-												created_at: new Date().toISOString(),
-											},
-										],
-										error: null,
-									})
-								),
-							})),
-						})),
-					})),
-				})),
+			mockGetAnnotationsForEntity.mockResolvedValue({
+				data: [
+					{
+						id: "1",
+						content: "Test comment",
+						annotation_type: "comment",
+						created_at: new Date().toISOString(),
+					},
+				],
+				error: null,
 			});
 
+			const mockContext = buildMockContext();
 			const response = await annotationsLoader({ request, context: mockContext, params: {} });
 
 			expect(response.status).toBe(200);
@@ -96,35 +125,27 @@ describe("Annotations API Routes", () => {
 
 		it("should handle POST request to create annotation", async () => {
 			const formData = new FormData();
-			formData.append("entity_type", "insight");
-			formData.append("entity_id", "test-id");
-			formData.append("annotation_type", "comment");
+			formData.append("action", "add-comment");
+			formData.append("entityType", "insight");
+			formData.append("entityId", ENTITY_ID);
 			formData.append("content", "New comment");
-			formData.append("project_id", "project-id");
 
 			const request = new Request("http://localhost/api/annotations", {
 				method: "POST",
 				body: formData,
 			});
 
-			mockSupabase.from.mockReturnValue({
-				insert: vi.fn(() => ({
-					select: vi.fn(() => ({
-						single: vi.fn(() =>
-							Promise.resolve({
-								data: {
-									id: "1",
-									content: "New comment",
-									annotation_type: "comment",
-									created_at: new Date().toISOString(),
-								},
-								error: null,
-							})
-						),
-					})),
-				})),
+			mockCreateAnnotation.mockResolvedValue({
+				data: {
+					id: "1",
+					content: "New comment",
+					annotation_type: "comment",
+					created_at: new Date().toISOString(),
+				},
+				error: null,
 			});
 
+			const mockContext = buildMockContext();
 			const response = await annotationsAction({ request, context: mockContext, params: {} });
 
 			expect(response.status).toBe(200);
@@ -135,14 +156,16 @@ describe("Annotations API Routes", () => {
 
 		it("should handle validation errors", async () => {
 			const formData = new FormData();
-			// Missing required fields
-			formData.append("entity_type", "insight");
+			// "add-comment" action but missing entityId and content
+			formData.append("action", "add-comment");
+			formData.append("entityType", "insight");
 
 			const request = new Request("http://localhost/api/annotations", {
 				method: "POST",
 				body: formData,
 			});
 
+			const mockContext = buildMockContext();
 			const response = await annotationsAction({ request, context: mockContext, params: {} });
 
 			expect(response.status).toBe(400);
@@ -153,14 +176,21 @@ describe("Annotations API Routes", () => {
 
 	describe("/api/votes", () => {
 		it("should handle GET request for vote counts", async () => {
-			const request = new Request("http://localhost/api/votes?entity_type=insight&entity_id=test-id");
+			const request = new Request(
+				`http://localhost/api/votes?entityType=insight&entityId=${ENTITY_ID}`
+			);
 
-			mockSupabase.rpc.mockResolvedValue({
+			mockGetVoteCountsForEntity.mockResolvedValue({
 				data: { upvotes: 5, downvotes: 2 },
 				error: null,
 			});
 
-			const response = await votesLoader({ request, context: mockContext, params: {} });
+			const mockContext = buildMockContext();
+			const response = await votesLoader({
+				request,
+				context: mockContext,
+				params: { projectId: PROJECT_ID },
+			});
 
 			expect(response.status).toBe(200);
 			const data = await response.json();
@@ -171,34 +201,36 @@ describe("Annotations API Routes", () => {
 
 		it("should handle POST request to upsert vote", async () => {
 			const formData = new FormData();
-			formData.append("entity_type", "insight");
-			formData.append("entity_id", "test-id");
-			formData.append("vote_value", "1");
-			formData.append("project_id", "project-id");
+			formData.append("action", "upsert-vote");
+			formData.append("entityType", "insight");
+			formData.append("entityId", ENTITY_ID);
+			formData.append("voteValue", "1");
 
 			const request = new Request("http://localhost/api/votes", {
 				method: "POST",
 				body: formData,
 			});
 
-			mockSupabase.from.mockReturnValue({
-				upsert: vi.fn(() => ({
-					select: vi.fn(() => ({
-						single: vi.fn(() =>
-							Promise.resolve({
-								data: {
-									id: "1",
-									vote_value: 1,
-									created_at: new Date().toISOString(),
-								},
-								error: null,
-							})
-						),
-					})),
-				})),
+			mockUpsertVote.mockResolvedValue({
+				data: {
+					id: "1",
+					vote_value: 1,
+					created_at: new Date().toISOString(),
+				},
+				error: null,
 			});
 
-			const response = await votesAction({ request, context: mockContext, params: {} });
+			mockGetVoteCountsForEntity.mockResolvedValue({
+				data: { upvotes: 1, downvotes: 0 },
+				error: null,
+			});
+
+			const mockContext = buildMockContext();
+			const response = await votesAction({
+				request,
+				context: mockContext,
+				params: { projectId: PROJECT_ID },
+			});
 
 			expect(response.status).toBe(200);
 			const data = await response.json();
@@ -208,28 +240,28 @@ describe("Annotations API Routes", () => {
 
 		it("should handle vote removal", async () => {
 			const formData = new FormData();
-			formData.append("entity_type", "insight");
-			formData.append("entity_id", "test-id");
-			formData.append("_action", "remove");
+			formData.append("action", "remove-vote");
+			formData.append("entityType", "insight");
+			formData.append("entityId", ENTITY_ID);
 
 			const request = new Request("http://localhost/api/votes", {
 				method: "POST",
 				body: formData,
 			});
 
-			mockSupabase.from.mockReturnValue({
-				delete: vi.fn(() => ({
-					eq: vi.fn(() => ({
-						eq: vi.fn(() => ({
-							eq: vi.fn(() => ({
-								eq: vi.fn(() => Promise.resolve({ error: null })),
-							})),
-						})),
-					})),
-				})),
+			mockRemoveVote.mockResolvedValue({ error: null });
+
+			mockGetVoteCountsForEntity.mockResolvedValue({
+				data: { upvotes: 0, downvotes: 0 },
+				error: null,
 			});
 
-			const response = await votesAction({ request, context: mockContext, params: {} });
+			const mockContext = buildMockContext();
+			const response = await votesAction({
+				request,
+				context: mockContext,
+				params: { projectId: PROJECT_ID },
+			});
 
 			expect(response.status).toBe(200);
 			const data = await response.json();
@@ -239,33 +271,28 @@ describe("Annotations API Routes", () => {
 
 	describe("/api/entity-flags", () => {
 		it("should handle GET request for user flags", async () => {
-			const request = new Request("http://localhost/api/entity-flags?entity_type=insight&entity_id=test-id");
+			const request = new Request(
+				`http://localhost/api/entity-flags?entityType=insight&entityId=${ENTITY_ID}`
+			);
 
-			mockSupabase.from.mockReturnValue({
-				select: vi.fn(() => ({
-					eq: vi.fn(() => ({
-						eq: vi.fn(() => ({
-							eq: vi.fn(() => ({
-								eq: vi.fn(() =>
-									Promise.resolve({
-										data: [
-											{
-												id: "1",
-												flag_type: "starred",
-												flag_value: true,
-												created_at: new Date().toISOString(),
-											},
-										],
-										error: null,
-									})
-								),
-							})),
-						})),
-					})),
-				})),
+			mockGetUserFlagsForEntity.mockResolvedValue({
+				data: [
+					{
+						id: "1",
+						flag_type: "starred",
+						flag_value: true,
+						created_at: new Date().toISOString(),
+					},
+				],
+				error: null,
 			});
 
-			const response = await entityFlagsLoader({ request, context: mockContext, params: {} });
+			const mockContext = buildMockContext();
+			const response = await entityFlagsLoader({
+				request,
+				context: mockContext,
+				params: { projectId: PROJECT_ID },
+			});
 
 			expect(response.status).toBe(200);
 			const data = await response.json();
@@ -275,36 +302,45 @@ describe("Annotations API Routes", () => {
 
 		it("should handle POST request to set flag", async () => {
 			const formData = new FormData();
-			formData.append("entity_type", "insight");
-			formData.append("entity_id", "test-id");
-			formData.append("flag_type", "archived");
-			formData.append("flag_value", "true");
-			formData.append("project_id", "project-id");
+			formData.append("action", "set-flag");
+			formData.append("entityType", "insight");
+			formData.append("entityId", ENTITY_ID);
+			formData.append("flagType", "archived");
+			formData.append("flagValue", "true");
 
 			const request = new Request("http://localhost/api/entity-flags", {
 				method: "POST",
 				body: formData,
 			});
 
-			mockSupabase.from.mockReturnValue({
-				upsert: vi.fn(() => ({
-					select: vi.fn(() => ({
-						single: vi.fn(() =>
-							Promise.resolve({
-								data: {
-									id: "1",
-									flag_type: "archived",
-									flag_value: true,
-									created_at: new Date().toISOString(),
-								},
-								error: null,
-							})
-						),
-					})),
-				})),
+			mockSetEntityFlag.mockResolvedValue({
+				data: {
+					id: "1",
+					flag_type: "archived",
+					flag_value: true,
+					created_at: new Date().toISOString(),
+				},
+				error: null,
 			});
 
-			const response = await entityFlagsAction({ request, context: mockContext, params: {} });
+			mockGetUserFlagsForEntity.mockResolvedValue({
+				data: [
+					{
+						id: "1",
+						flag_type: "archived",
+						flag_value: true,
+						created_at: new Date().toISOString(),
+					},
+				],
+				error: null,
+			});
+
+			const mockContext = buildMockContext();
+			const response = await entityFlagsAction({
+				request,
+				context: mockContext,
+				params: { projectId: PROJECT_ID, accountId: ACCOUNT_ID },
+			});
 
 			expect(response.status).toBe(200);
 			const data = await response.json();
@@ -316,25 +352,16 @@ describe("Annotations API Routes", () => {
 
 	describe("Error Handling", () => {
 		it("should handle database errors gracefully", async () => {
-			const request = new Request("http://localhost/api/annotations?entity_type=insight&entity_id=test-id");
+			const request = new Request(
+				`http://localhost/api/annotations?entityType=insight&entityId=${ENTITY_ID}`
+			);
 
-			mockSupabase.from.mockReturnValue({
-				select: vi.fn(() => ({
-					eq: vi.fn(() => ({
-						eq: vi.fn(() => ({
-							eq: vi.fn(() => ({
-								order: vi.fn(() =>
-									Promise.resolve({
-										data: null,
-										error: { message: "Database error" },
-									})
-								),
-							})),
-						})),
-					})),
-				})),
+			mockGetAnnotationsForEntity.mockResolvedValue({
+				data: null,
+				error: { message: "Database error" },
 			});
 
+			const mockContext = buildMockContext();
 			const response = await annotationsLoader({ request, context: mockContext, params: {} });
 
 			expect(response.status).toBe(500);
@@ -343,15 +370,19 @@ describe("Annotations API Routes", () => {
 		});
 
 		it("should handle missing authentication", async () => {
-			const request = new Request("http://localhost/api/annotations?entity_type=insight&entity_id=test-id");
+			const request = new Request(
+				`http://localhost/api/annotations?entityType=insight&entityId=${ENTITY_ID}`
+			);
 
-			const mockContextNoAuth = {
-				get: vi.fn(() => ({ supabase: mockSupabase, account_id: null, claims: null })),
-			};
+			// annotations loader checks accountId and projectId - returns 400 when missing
+			const mockContext = buildMockContext({
+				userCtx: { supabase: mockSupabase, account_id: null, claims: null },
+				projectCtx: { accountId: null, projectId: null, account: null, project: null },
+			});
 
-			const response = await annotationsLoader({ request, context: mockContextNoAuth, params: {} });
+			const response = await annotationsLoader({ request, context: mockContext, params: {} });
 
-			expect(response.status).toBe(401);
+			expect(response.status).toBe(400);
 			const data = await response.json();
 			expect(data.error).toBeDefined();
 		});

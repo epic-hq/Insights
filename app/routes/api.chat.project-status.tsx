@@ -1,5 +1,6 @@
-import { handleChatStream, handleNetworkStream } from "@mastra/ai-sdk";
+import { handleChatStream } from "@mastra/ai-sdk";
 import { RequestContext } from "@mastra/core/di";
+import type { MastraDBMessage } from "@mastra/core/memory";
 import { createUIMessageStream, createUIMessageStreamResponse, generateObject } from "ai";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
@@ -23,6 +24,7 @@ import {
 	userBillingContext,
 } from "~/lib/billing/instrumented-openai.server";
 import { recordUsageOnly } from "~/lib/billing/usage.server";
+import { buildSingleComponentSurface } from "~/lib/gen-ui/tool-helpers";
 import { UI_EVENT_DISPATCH_TEXT, type UiEvent, uiEventBatchSchema } from "~/lib/gen-ui/ui-events";
 import { getLangfuseClient } from "~/lib/langfuse.server";
 import { getPostHogServerClient } from "~/lib/posthog.server";
@@ -32,7 +34,6 @@ import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
 import { createSurveyTool } from "~/mastra/tools/create-survey";
 import { navigateToPageTool } from "~/mastra/tools/navigate-to-page";
 import { switchAgentTool } from "~/mastra/tools/switch-agent";
-import { HOST } from "~/paths";
 import { userContext } from "~/server/user-context";
 import { createRouteDefinitions } from "~/utils/route-definitions";
 
@@ -111,7 +112,7 @@ Agents:
 - surveyAgent: survey editing, question review/rephrase/reorder/hide, survey settings, response analysis. NOT survey creation (that uses researchAgent fast path via survey_quick_create mode).
 - feedbackAgent: classify feedback/bug/feature requests and submit to PostHog.
 - howtoAgent: procedural guidance ("how do I [specific task]", "best way to [do X]", "teach me"). NOT for "where should I start" or "what should I do" — those go to chiefOfStaffAgent.
-- projectStatusAgent: factual status/data lookup (themes, ICP, people, evidence, interviews, research gaps, coverage analysis, what's missing).
+- projectStatusAgent: factual status/data lookup (themes, ICP, people, evidence, interviews, research gaps, coverage analysis, what's missing). Also handles people management: add, remove, delete, merge, edit people or organizations.
 
 Modes:
 - fast_standardized: DEPRECATED, do not use. Always use normal mode.
@@ -148,12 +149,62 @@ const SURVEY_QUESTION_TYPE_VALUES = [
 	"single_select",
 	"multi_select",
 	"likert",
+	"matrix",
+	"image_select",
 ] as const;
+const surveyBranchConditionDraftSchema = z.object({
+	questionId: z.string().min(1),
+	operator: z.enum([
+		"equals",
+		"not_equals",
+		"contains",
+		"not_contains",
+		"selected",
+		"not_selected",
+		"answered",
+		"not_answered",
+	]),
+	value: z.union([z.string(), z.array(z.string())]).optional(),
+});
+const surveyBranchRuleDraftSchema = z.object({
+	id: z.string().min(1).nullish(),
+	conditions: z.object({
+		logic: z.enum(["and", "or"]),
+		conditions: z.array(surveyBranchConditionDraftSchema).min(1),
+	}),
+	action: z.enum(["skip_to", "end_survey"]),
+	targetQuestionId: z.string().min(1).nullish(),
+	targetSectionId: z.string().min(1).nullish(),
+	label: z.string().nullish(),
+	naturalLanguage: z.string().nullish(),
+	summary: z.string().nullish(),
+	guidance: z.string().nullish(),
+	source: z.enum(["user_ui", "user_voice", "ai_generated"]).nullish(),
+	confidence: z.enum(["high", "medium", "low"]).nullish(),
+	createdAt: z.string().nullish(),
+});
+const surveyQuestionBranchingDraftSchema = z.object({
+	rules: z.array(surveyBranchRuleDraftSchema),
+	defaultNext: z.string().min(1).nullish(),
+});
+const surveyJourneyRouteDraftSchema = z.object({
+	label: z.string().nullish(),
+	matchValues: z.array(z.string().min(1)).min(1),
+	targetSectionId: z.string().min(1),
+});
+const surveyJourneyDraftSchema = z.object({
+	decisionQuestionId: z.string().min(1),
+	routes: z.array(surveyJourneyRouteDraftSchema).min(1),
+	sharedClosingSectionIds: z.array(z.string().min(1)).nullish(),
+});
 const surveyQuestionDraftSchema = z
 	.object({
+		id: z.string().min(1).nullish(),
 		prompt: z.string().min(1),
 		type: z.enum(SURVEY_QUESTION_TYPE_VALUES).nullish(),
 		required: z.boolean().nullish(),
+		helperText: z.string().nullish(),
+		allowOther: z.boolean().nullish(),
 		options: z.array(z.string()).nullish(),
 		likertScale: z.number().int().min(3).max(10).nullish(),
 		likertLabels: z
@@ -162,13 +213,169 @@ const surveyQuestionDraftSchema = z
 				high: z.string().nullish(),
 			})
 			.nullish(),
+		matrixRows: z
+			.array(
+				z.object({
+					id: z.string().min(1).nullish(),
+					label: z.string().min(1),
+				})
+			)
+			.nullish(),
+		sectionId: z.string().min(1).nullish(),
+		sectionTitle: z.string().min(1).nullish(),
+		branching: surveyQuestionBranchingDraftSchema.nullish(),
 	})
 	.passthrough();
 const surveyQuickCreateDraftSchema = z.object({
 	name: z.string().min(2),
 	description: z.string().nullish(),
-	questions: z.array(surveyQuestionDraftSchema).min(3).max(8),
+	questions: z.array(surveyQuestionDraftSchema).min(3).max(24),
+	journey: surveyJourneyDraftSchema.nullish(),
 });
+
+function slugifySurveyToken(input: string): string {
+	return input
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "")
+		.slice(0, 40);
+}
+
+function dedupeBranchRules(
+	rules: Array<{
+		id?: string | null;
+		conditions: {
+			logic: "and" | "or";
+			conditions: Array<{ questionId: string; operator: string; value?: string | string[] }>;
+		};
+		action: "skip_to" | "end_survey";
+		targetQuestionId?: string | null;
+		targetSectionId?: string | null;
+		label?: string | null;
+		naturalLanguage?: string | null;
+		summary?: string | null;
+		guidance?: string | null;
+		source?: "user_ui" | "user_voice" | "ai_generated" | null;
+		confidence?: "high" | "medium" | "low" | null;
+		createdAt?: string | null;
+	}>
+) {
+	const seen = new Set<string>();
+	return rules.filter((rule) => {
+		const key = JSON.stringify({
+			action: rule.action,
+			targetQuestionId: rule.targetQuestionId ?? null,
+			targetSectionId: rule.targetSectionId ?? null,
+			conditions: rule.conditions,
+		});
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+}
+
+function applyJourneyArchitectureToDraft(
+	draft: z.infer<typeof surveyQuickCreateDraftSchema>
+): z.infer<typeof surveyQuickCreateDraftSchema> {
+	if (!draft.journey) return draft;
+
+	const questions = draft.questions.map((question) => ({
+		...question,
+		branching: question.branching
+			? {
+					...question.branching,
+					rules: [...question.branching.rules],
+				}
+			: null,
+	}));
+	const questionById = new Map(questions.map((question) => [question.id ?? "", question] as const));
+	const decisionQuestion = questionById.get(draft.journey.decisionQuestionId);
+	const decisionQuestionId = decisionQuestion?.id;
+	if (!decisionQuestionId) {
+		return draft;
+	}
+
+	const sectionQuestionIds = new Map<string, string[]>();
+	for (const question of questions) {
+		const sectionId = question.sectionId?.trim();
+		const questionId = question.id?.trim();
+		if (!sectionId || !questionId) continue;
+		const existing = sectionQuestionIds.get(sectionId) ?? [];
+		existing.push(questionId);
+		sectionQuestionIds.set(sectionId, existing);
+	}
+
+	const routeRules = draft.journey.routes
+		.filter((route) => sectionQuestionIds.has(route.targetSectionId))
+		.map((route, index) => ({
+			id: `journey-route-${slugifySurveyToken(route.label ?? route.targetSectionId)}-${index + 1}`,
+			conditions: {
+				logic: "or" as const,
+				conditions: route.matchValues.map((value) => ({
+					questionId: decisionQuestionId,
+					operator: decisionQuestion.type === "multi_select" ? ("selected" as const) : ("equals" as const),
+					value,
+				})),
+			},
+			action: "skip_to" as const,
+			targetSectionId: route.targetSectionId,
+			label: route.label ?? `Route to ${route.targetSectionId}`,
+			summary: route.label ?? `Route to ${route.targetSectionId}`,
+			source: "ai_generated" as const,
+			confidence: "high" as const,
+		}));
+
+	if (routeRules.length > 0) {
+		decisionQuestion.branching = {
+			...(decisionQuestion.branching ?? {}),
+			rules: dedupeBranchRules([...(decisionQuestion.branching?.rules ?? []), ...routeRules]),
+		};
+	}
+
+	const firstSharedClosingSectionId = draft.journey.sharedClosingSectionIds?.[0];
+	if (!firstSharedClosingSectionId || !sectionQuestionIds.has(firstSharedClosingSectionId)) {
+		return {
+			...draft,
+			questions,
+		};
+	}
+
+	const routedSectionIds = Array.from(new Set(draft.journey.routes.map((route) => route.targetSectionId))).filter(
+		(sectionId) => sectionId !== firstSharedClosingSectionId && sectionQuestionIds.has(sectionId)
+	);
+
+	for (const sectionId of routedSectionIds) {
+		const questionIds = sectionQuestionIds.get(sectionId) ?? [];
+		const lastQuestionId = questionIds.at(-1);
+		if (!lastQuestionId) continue;
+		const lastQuestion = questionById.get(lastQuestionId);
+		if (!lastQuestion?.id) continue;
+
+		const rejoinRule = {
+			id: `journey-rejoin-${slugifySurveyToken(sectionId)}-to-${slugifySurveyToken(firstSharedClosingSectionId)}`,
+			conditions: {
+				logic: "and" as const,
+				conditions: [{ questionId: lastQuestion.id, operator: "answered" as const }],
+			},
+			action: "skip_to" as const,
+			targetSectionId: firstSharedClosingSectionId,
+			label: `Continue to ${firstSharedClosingSectionId}`,
+			summary: `Continue to ${firstSharedClosingSectionId}`,
+			source: "ai_generated" as const,
+			confidence: "high" as const,
+		};
+
+		lastQuestion.branching = {
+			...(lastQuestion.branching ?? {}),
+			rules: dedupeBranchRules([...(lastQuestion.branching?.rules ?? []), rejoinRule]),
+		};
+	}
+
+	return {
+		...draft,
+		questions,
+	};
+}
 
 function mapUsageToLangfuse(usage?: { inputTokens?: number; outputTokens?: number }) {
 	if (!usage) return { usage: undefined, usageDetails: undefined };
@@ -372,7 +579,11 @@ function streamPlainAssistantText(text: string) {
 	});
 }
 
-function streamSurveyQuickCreateResult(options: { text: string; navigatePath?: string }) {
+function streamSurveyQuickCreateResult(options: {
+	text: string;
+	navigatePath?: string;
+	a2uiMessages?: Array<Record<string, unknown>>;
+}) {
 	return createUIMessageStream({
 		execute: async ({ writer }) => {
 			const messageChunkId = `survey-${Date.now().toString(36)}`;
@@ -389,11 +600,17 @@ function streamSurveyQuickCreateResult(options: { text: string; navigatePath?: s
 			// NOTE: Do NOT emit a synthetic tool-input-available here.
 			// That causes the client to call addToolResult() → sendAutomatically re-triggers
 			// the server request → matches survey_quick_create again → infinite loop.
-			// Instead, emit a data part with the navigate path for the client to handle.
+			// Instead, emit a typed custom data part the client can handle directly.
+			if (options.a2uiMessages?.length) {
+				writer.write({
+					type: "data-a2ui",
+					data: { messages: options.a2uiMessages },
+				});
+			}
 			if (options.navigatePath) {
 				writer.write({
-					type: "data",
-					data: [{ type: "navigate", path: options.navigatePath }],
+					type: "data-navigate",
+					data: { path: options.navigatePath },
 				});
 			}
 
@@ -401,6 +618,124 @@ function streamSurveyQuickCreateResult(options: { text: string; navigatePath?: s
 			writer.write({ type: "finish", finishReason: "stop" });
 		},
 	});
+}
+
+type StreamChunk = Record<string, unknown>;
+
+function ensureSurveyEditPath(path: string): string {
+	const normalizedInput = (() => {
+		if (!path || path.startsWith("/")) return path;
+		try {
+			const parsed = new URL(path);
+			return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+		} catch {
+			return path;
+		}
+	})();
+
+	const [beforeHash, hashFragment] = normalizedInput.split("#", 2);
+	const [pathnameRaw, searchRaw] = beforeHash.split("?", 2);
+	const pathname = pathnameRaw.replace(/\/+$/, "");
+	const askMatch = pathname.match(/^(.*\/ask\/[^/]+)(\/edit)?$/);
+	if (!askMatch) return normalizedInput;
+	const normalizedPathname = `${askMatch[1]}/edit`;
+	const search = typeof searchRaw === "string" && searchRaw.length > 0 ? `?${searchRaw}` : "";
+	const hash = typeof hashFragment === "string" && hashFragment.length > 0 ? `#${hashFragment}` : "";
+	return `${normalizedPathname}${search}${hash}`;
+}
+
+async function persistQuickCreateTurn(options: {
+	threadId: string;
+	threadResourceId: string;
+	userText: string;
+	assistantText: string;
+}) {
+	const now = new Date();
+	const baseTimestamp = now.getTime();
+	const messages: MastraDBMessage[] = [
+		{
+			id: `quick-user-${baseTimestamp.toString(36)}`,
+			role: "user",
+			createdAt: now,
+			threadId: options.threadId,
+			resourceId: options.threadResourceId,
+			content: {
+				format: 2,
+				parts: [{ type: "text", text: options.userText }],
+			},
+		},
+		{
+			id: `quick-assistant-${(baseTimestamp + 1).toString(36)}`,
+			role: "assistant",
+			createdAt: new Date(baseTimestamp + 1),
+			threadId: options.threadId,
+			resourceId: options.threadResourceId,
+			content: {
+				format: 2,
+				parts: [{ type: "text", text: options.assistantText }],
+			},
+		},
+	];
+
+	await memory.saveMessages({ messages });
+}
+
+function convertLegacyDataPayloadToTypedChunks(payload: unknown, inheritedId?: string): StreamChunk[] {
+	if (!payload) return [];
+
+	const toChunk = (type: string, data: unknown): StreamChunk | null => {
+		if (!type.startsWith("data-")) return null;
+		const normalized: StreamChunk = { type, data };
+		if (typeof inheritedId === "string" && inheritedId.length > 0) {
+			normalized.id = inheritedId;
+		}
+		return normalized;
+	};
+
+	const fromObject = (value: Record<string, unknown>): StreamChunk[] => {
+		const nestedType = typeof value.type === "string" ? value.type : null;
+
+		if (nestedType?.startsWith("data-")) {
+			const normalized = toChunk(nestedType, "data" in value ? value.data : value);
+			return normalized ? [normalized] : [];
+		}
+
+		if (nestedType === "navigate" && typeof value.path === "string") {
+			const normalized = toChunk("data-navigate", { path: value.path });
+			return normalized ? [normalized] : [];
+		}
+
+		if (nestedType === "a2ui" && Array.isArray(value.messages)) {
+			const normalized = toChunk("data-a2ui", { messages: value.messages });
+			return normalized ? [normalized] : [];
+		}
+
+		// Common legacy progress payload shape from writer.custom().
+		if ("tool" in value || "status" in value || "progress" in value || "message" in value) {
+			const normalized = toChunk("data-tool-progress", value);
+			return normalized ? [normalized] : [];
+		}
+
+		return [];
+	};
+
+	if (Array.isArray(payload)) {
+		return payload.flatMap((entry) => {
+			if (!entry || typeof entry !== "object") return [];
+			return fromObject(entry as Record<string, unknown>);
+		});
+	}
+
+	if (typeof payload === "object") {
+		return fromObject(payload as Record<string, unknown>);
+	}
+
+	return [];
+}
+
+function normalizeStreamChunk(chunk: StreamChunk): StreamChunk[] {
+	if (chunk?.type !== "data") return [chunk];
+	return convertLegacyDataPayloadToTypedChunks(chunk.data, typeof chunk.id === "string" ? chunk.id : undefined);
 }
 
 function stripDebugPrefix(prompt: string): string {
@@ -491,7 +826,6 @@ export function buildQuickLinksMarkdown(options: {
 
 	const projectPath = `/a/${accountId}/${projectId}`;
 	const routes = createRouteDefinitions(projectPath);
-	const withHost = (path: string) => `${HOST}${path}`;
 	const normalizedPrompt = lastUserText.toLowerCase();
 	const mentionsPeople = /\b(people|person|contact|contacts|icp)\b/.test(normalizedPrompt);
 	const mentionsSurvey = /\b(survey|ask link|ask|questionnaire|responses?)\b/.test(normalizedPrompt);
@@ -501,35 +835,46 @@ export function buildQuickLinksMarkdown(options: {
 	);
 
 	const links: string[] = [];
-	if (mentionsPeople) links.push(`[People](${withHost(routes.people.index())})`);
-	if (mentionsSurvey || targetAgentId === "researchAgent") links.push(`[Ask](${withHost(routes.ask.index())})`);
+	if (mentionsPeople) links.push(`[People](${routes.people.index()})`);
+	if (mentionsSurvey || targetAgentId === "researchAgent") links.push(`[Ask](${routes.ask.index()})`);
 	if (mentionsLens) {
 		// Link to specific lens if we can detect which one
 		if (/\b(jtbd|jobs.to.be.done)\b/.test(normalizedPrompt)) {
-			links.push(`[JTBD Lens](${withHost(routes.lenses.jtbdConversationPipeline())})`);
+			links.push(`[JTBD Lens](${routes.lenses.jtbdConversationPipeline()})`);
 		} else if (/\b(bant)\b/.test(normalizedPrompt)) {
-			links.push(`[Sales BANT](${withHost(routes.lenses.salesBant())})`);
+			links.push(`[Sales BANT](${routes.lenses.salesBant()})`);
 		} else if (/\b(customer.discovery)\b/.test(normalizedPrompt)) {
-			links.push(`[Customer Discovery](${withHost(routes.lenses.customerDiscovery())})`);
+			links.push(`[Customer Discovery](${routes.lenses.customerDiscovery()})`);
 		} else {
-			links.push(`[Lenses](${withHost(routes.lenses.library())})`);
+			links.push(`[Lenses](${routes.lenses.library()})`);
 		}
 	}
-	if (mentionsThemes || targetAgentId === "projectStatusAgent")
-		links.push(`[Insights](${withHost(routes.insights.table())})`);
+	if (mentionsThemes || targetAgentId === "projectStatusAgent") links.push(`[Insights](${routes.insights.table()})`);
 
 	if (links.length === 0) {
-		links.push(`[Insights](${withHost(routes.insights.table())})`);
-		links.push(`[People](${withHost(routes.people.index())})`);
+		links.push(`[Insights](${routes.insights.table()})`);
+		links.push(`[People](${routes.people.index()})`);
 	}
 
 	return `Quick links: ${links.join(" · ")}`;
 }
 
+function responseHasExplicitNextActionPrompt(text: string): boolean {
+	const normalized = text.toLowerCase();
+	return (
+		normalized.includes("would you like me to:") ||
+		normalized.includes("please confirm your preference") ||
+		normalized.includes("choose one of these options") ||
+		normalized.includes("pick one of these options") ||
+		normalized.includes("select one of these options") ||
+		normalized.includes("reply with your choice")
+	);
+}
+
 type StreamLike = ReadableStream<Record<string, unknown>>;
 
 function augmentStreamForReliability(
-	stream: Awaited<ReturnType<typeof handleNetworkStream>> | Awaited<ReturnType<typeof handleChatStream>>,
+	stream: Awaited<ReturnType<typeof handleChatStream>>,
 	options: {
 		debugRequested: boolean;
 		targetAgentId: RoutingTargetAgent;
@@ -617,6 +962,7 @@ function augmentStreamForReliability(
 		if (options.csvListContract) return;
 		if (!sawTextDelta) return;
 		if (MARKDOWN_LINK_REGEX.test(accumulatedAssistantText)) return;
+		if (responseHasExplicitNextActionPrompt(accumulatedAssistantText)) return;
 		const quickLinks = buildQuickLinksMarkdown({
 			accountId: options.accountId,
 			projectId: options.projectId,
@@ -661,52 +1007,59 @@ function augmentStreamForReliability(
 	const transformed = (stream as StreamLike).pipeThrough(
 		new TransformStream<Record<string, unknown>, Record<string, unknown>>({
 			transform(chunk, controller) {
-				if (chunk?.type === "text-delta" && typeof chunk.delta === "string" && chunk.delta.trim().length > 0) {
-					sawTextDelta = true;
-					accumulatedAssistantText += chunk.delta;
-				}
-
-				if (chunk?.type === "tool-input-available" && typeof chunk.toolName === "string") {
-					toolCalls.push(chunk.toolName);
-				}
-
-				// A2UI tool results count as valid output — don't show "Sorry" fallback.
-				// handleChatStream emits tool-result chunks; handleNetworkStream may emit tool-output-available.
-				if (chunk?.type === "tool-output-available" || chunk?.type === "tool-result") {
-					const payload = (chunk.output ?? chunk.result) as Record<string, unknown> | undefined;
-					if (typeof payload === "object" && payload && "a2ui" in payload) {
+				const normalizedChunks = normalizeStreamChunk(chunk);
+				for (const normalizedChunk of normalizedChunks) {
+					if (
+						normalizedChunk?.type === "text-delta" &&
+						typeof normalizedChunk.delta === "string" &&
+						normalizedChunk.delta.trim().length > 0
+					) {
 						sawTextDelta = true;
+						accumulatedAssistantText += normalizedChunk.delta;
 					}
 
-					const extractedResults = extractWebResearchResultsFromPayload(payload);
-					if (extractedResults.length > 0) {
-						const existing = new Set(
-							capturedWebResearchResults.map((item) => `${item.title.toLowerCase()}::${item.url.toLowerCase()}`)
-						);
-						for (const result of extractedResults) {
-							const key = `${result.title.toLowerCase()}::${result.url.toLowerCase()}`;
-							if (existing.has(key)) continue;
-							existing.add(key);
-							capturedWebResearchResults.push(result);
+					if (normalizedChunk?.type === "tool-input-available" && typeof normalizedChunk.toolName === "string") {
+						toolCalls.push(normalizedChunk.toolName);
+					}
+
+					// A2UI tool results count as valid output — don't show "Sorry" fallback.
+					// handleChatStream emits tool-result chunks; handleNetworkStream may emit tool-output-available.
+					if (normalizedChunk?.type === "tool-output-available" || normalizedChunk?.type === "tool-result") {
+						const payload = (normalizedChunk.output ?? normalizedChunk.result) as Record<string, unknown> | undefined;
+						if (typeof payload === "object" && payload && "a2ui" in payload) {
+							sawTextDelta = true;
+						}
+
+						const extractedResults = extractWebResearchResultsFromPayload(payload);
+						if (extractedResults.length > 0) {
+							const existing = new Set(
+								capturedWebResearchResults.map((item) => `${item.title.toLowerCase()}::${item.url.toLowerCase()}`)
+							);
+							for (const result of extractedResults) {
+								const key = `${result.title.toLowerCase()}::${result.url.toLowerCase()}`;
+								if (existing.has(key)) continue;
+								existing.add(key);
+								capturedWebResearchResults.push(result);
+							}
 						}
 					}
-				}
 
-				if (chunk?.type === "error") {
-					maybeEnqueueSafetyMessage(controller);
-				}
+					if (normalizedChunk?.type === "error") {
+						maybeEnqueueSafetyMessage(controller);
+					}
 
-				if (chunk?.type === "finish") {
-					sawFinishChunk = true;
-					maybeEnqueueSafetyMessage(controller);
-					maybeEnqueueHowtoContractPatch(controller);
-					maybeEnqueueCsvCorrection(controller);
-					maybeEnqueueQuickLinks(controller);
-					maybeEnqueueDebugTrace(controller);
-					maybeLogHowtoStreamTelemetry();
-				}
+					if (normalizedChunk?.type === "finish") {
+						sawFinishChunk = true;
+						maybeEnqueueSafetyMessage(controller);
+						maybeEnqueueHowtoContractPatch(controller);
+						maybeEnqueueCsvCorrection(controller);
+						maybeEnqueueQuickLinks(controller);
+						maybeEnqueueDebugTrace(controller);
+						maybeLogHowtoStreamTelemetry();
+					}
 
-				controller.enqueue(chunk);
+					controller.enqueue(normalizedChunk);
+				}
 			},
 			flush(controller) {
 				maybeEnqueueSafetyMessage(controller);
@@ -837,7 +1190,20 @@ function routeByDeterministicPrompt(
 		};
 	}
 
-	// Survey editing/review → surveyAgent (must be checked BEFORE creation)
+	const asksForSurveyCreate =
+		hasAny("survey", "waitlist", "ask link", "questionnaire") &&
+		hasAny("create", "make", "build", "draft", "generate") &&
+		!looksLikeFailureReport;
+	if (asksForSurveyCreate) {
+		return {
+			targetAgentId: "researchAgent",
+			confidence: 1,
+			responseMode: "survey_quick_create",
+			rationale: "deterministic routing for direct survey creation",
+		};
+	}
+
+	// Survey editing/review → surveyAgent
 	const surveyIdFromContext = extractSurveyIdFromSystemContext(systemContext);
 	const asksForSurveyEdit =
 		hasAny("survey", "ask link", "question", "questionnaire") &&
@@ -890,19 +1256,6 @@ function routeByDeterministicPrompt(
 			confidence: 0.9,
 			responseMode: "normal",
 			rationale: "deterministic routing: user is on survey page (catch-all)",
-		};
-	}
-
-	const asksForSurveyCreate =
-		hasAny("survey", "waitlist", "ask link", "questionnaire") &&
-		hasAny("create", "make", "build", "draft", "generate") &&
-		!looksLikeFailureReport;
-	if (asksForSurveyCreate) {
-		return {
-			targetAgentId: "researchAgent",
-			confidence: 1,
-			responseMode: "survey_quick_create",
-			rationale: "deterministic routing for direct survey creation",
 		};
 	}
 
@@ -968,7 +1321,8 @@ function routeByDeterministicPrompt(
 	}
 
 	const asksForPeopleOrTaskOps =
-		(hasAny("people", "person", "contacts") && hasAny("missing", "update", "find", "show", "list")) ||
+		(hasAny("people", "person", "contacts") &&
+			hasAny("missing", "update", "find", "show", "list", "remove", "delete", "merge", "add", "edit")) ||
 		(hasAny("task", "tasks", "todo", "to-do") && hasAny("create", "add", "update", "complete", "done", "close"));
 	if (asksForPeopleOrTaskOps) {
 		return {
@@ -1102,12 +1456,13 @@ async function executeSurveyQuickCreate(options: {
 	success: boolean;
 	text: string;
 	navigatePath?: string;
+	a2uiMessages?: Array<Record<string, unknown>>;
 	usage?: { inputTokens?: number; outputTokens?: number };
 }> {
 	const draft = await generateObject({
 		model: instrumentedOpenai("gpt-4o"),
 		schema: surveyQuickCreateDraftSchema,
-		temperature: 0.2,
+		temperature: 0.1,
 		prompt: `Create a ready-to-launch survey draft from the user request.
 
 User request:
@@ -1116,21 +1471,31 @@ User request:
 Project context:
 ${options.systemContext || "No extra context."}
 
-Requirements:
-- Return 3-6 practical questions.
-- Use question types that match intent (auto, short_text, long_text, single_select, multi_select, likert).
+	Requirements:
+- If the user provides an explicit survey outline, numbered questions, sections, options, or branching, preserve that structure faithfully instead of summarizing it.
+- Keep the total question count close to the user's explicit brief. Do not collapse a detailed 10-20 question survey into a short starter survey.
+- Prefer a block journey architecture when segments diverge: shared intro -> conditional path blocks -> shared closing block.
+- Use question types that match intent (auto, short_text, long_text, single_select, multi_select, likert, matrix).
 - Only include options for select questions.
 - Only include likertScale/likertLabels for likert questions.
-- Keep prompts concise and natural.
+- Use matrix when several rows share the exact same rating scale and should be answered together. For matrix, include matrixRows plus likertScale/likertLabels.
+- Include sectionId and sectionTitle whenever the brief is organized into sections.
+- Include branching whenever the brief specifies conditional paths. Prefer targetSectionId-based skip rules for screeners and branch exit points.
+- When the brief implies block routing, include a journey object with decisionQuestionId, routes, and sharedClosingSectionIds so the survey can be post-processed into reliable section routing.
+- Preserve provided answer options and required flags.
+- Keep prompts concise and natural, but do not rewrite away the user's intent.
+- Never add respondent-facing phrases like "Optional but encouraged".
 - Survey must be immediately usable without follow-up.`,
 	});
+
+	const normalizedDraft = applyJourneyArchitectureToDraft(draft.object);
 
 	const created = await createSurveyTool.execute(
 		{
 			projectId: options.projectId,
-			name: draft.object.name,
-			description: draft.object.description ?? null,
-			questions: draft.object.questions,
+			name: normalizedDraft.name,
+			description: normalizedDraft.description ?? null,
+			questions: normalizedDraft.questions,
 			isLive: true,
 		},
 		{ requestContext: options.requestContext }
@@ -1144,13 +1509,26 @@ Requirements:
 		};
 	}
 
-	const editPath = created.editUrl;
-	const editUrl = `${HOST}${editPath}`;
+	const editPath = ensureSurveyEditPath(created.editUrl);
+	const publicUrl = created.publicUrl ?? editPath;
+	const surveyCardSurface = buildSingleComponentSurface({
+		surfaceId: `survey-created-${created.surveyId ?? Date.now().toString(36)}`,
+		componentType: "SurveyCreated",
+		componentId: `survey-created-${created.surveyId ?? "new"}`,
+		data: {
+			surveyId: created.surveyId ?? "new-survey",
+			name: normalizedDraft.name,
+			questionCount: created.questionCount ?? normalizedDraft.questions.length,
+			editUrl: editPath,
+			publicUrl,
+		},
+	});
 
 	return {
 		success: true,
-		text: `Created "${draft.object.name}" and prefilled the questions. Opening the editor now: [Open survey](${editUrl})`,
+		text: `Created "${normalizedDraft.name}". Opening it in Edit mode now: [Open survey](${editPath})`,
 		navigatePath: editPath,
+		a2uiMessages: surveyCardSurface.messages,
 		usage: draft.usage,
 	};
 }
@@ -1539,11 +1917,23 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				},
 			});
 			requestTrace?.end?.();
+			await persistQuickCreateTurn({
+				threadId,
+				threadResourceId,
+				userText: lastUserText,
+				assistantText: quickCreate.text,
+			}).catch((error) => {
+				consola.warn("project-status: failed to persist survey quick-create turn", {
+					error: error instanceof Error ? error.message : String(error),
+					threadId,
+				});
+			});
 
 			return createUIMessageStreamResponse({
 				stream: streamSurveyQuickCreateResult({
 					text: quickCreate.text,
 					navigatePath: quickCreate.navigatePath,
+					a2uiMessages: quickCreate.a2uiMessages,
 				}),
 			});
 		} catch (error) {
@@ -1567,8 +1957,20 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				},
 			});
 			requestTrace?.end?.();
+			const fallbackText = `I couldn't create the survey yet: ${errorMessage}`;
+			await persistQuickCreateTurn({
+				threadId,
+				threadResourceId,
+				userText: lastUserText,
+				assistantText: fallbackText,
+			}).catch((persistError) => {
+				consola.warn("project-status: failed to persist survey quick-create failure", {
+					error: persistError instanceof Error ? persistError.message : String(persistError),
+					threadId,
+				});
+			});
 			return createUIMessageStreamResponse({
-				stream: streamPlainAssistantText(`I couldn't create the survey yet: ${errorMessage}`),
+				stream: streamPlainAssistantText(fallbackText),
 			});
 		}
 	}
@@ -1789,44 +2191,36 @@ The user requested CSV output with exactly ${csvListContract.requestedRows} data
 		},
 	});
 
-	let stream:
-		| Awaited<ReturnType<typeof handleNetworkStream>>
-		| Awaited<ReturnType<typeof handleChatStream>>
-		| undefined;
+	// Use handleChatStream for ALL agents, including projectStatusAgent.
+	// Previously projectStatusAgent used handleNetworkStream (agent.network()),
+	// but that emits internal "Completion Check Results" text into the response stream.
+	// handleChatStream still supports sub-agent delegation via the agents: {} config
+	// on the agent definition — Mastra makes sub-agents available as callable tools.
+	let stream: Awaited<ReturnType<typeof handleChatStream>> | undefined;
 	try {
-		stream =
-			targetAgentId === "projectStatusAgent"
-				? await handleNetworkStream({
-						mastra,
-						agentId: targetAgentId,
-						params: buildAgentParams(threadId),
-					})
-				: await handleChatStream({
-						mastra,
-						agentId: targetAgentId,
-						params: buildAgentParams(threadId),
-						sendReasoning: false,
-						sendSources: !isFastStandardized,
-					});
+		stream = await handleChatStream({
+			mastra,
+			agentId: targetAgentId,
+			params: buildAgentParams(threadId),
+			sendReasoning: false,
+			sendSources: !isFastStandardized,
+		});
 	} catch (error) {
 		// Check if this is the "No tool call found" error from corrupted memory
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		if (errorMessage.includes("No tool call found") || errorMessage.includes("function call output")) {
+		if (
+			errorMessage.includes("No tool call found") ||
+			errorMessage.includes("function call output") ||
+			errorMessage.includes("Duplicate item found")
+		) {
 			threadId = await handleCorruptedThread(threadId, errorMessage);
-			stream =
-				targetAgentId === "projectStatusAgent"
-					? await handleNetworkStream({
-							mastra,
-							agentId: targetAgentId,
-							params: buildAgentParams(threadId),
-						})
-					: await handleChatStream({
-							mastra,
-							agentId: targetAgentId,
-							params: buildAgentParams(threadId),
-							sendReasoning: false,
-							sendSources: !isFastStandardized,
-						});
+			stream = await handleChatStream({
+				mastra,
+				agentId: targetAgentId,
+				params: buildAgentParams(threadId),
+				sendReasoning: false,
+				sendSources: !isFastStandardized,
+			});
 		} else {
 			consola.error("project-status: failed to initialize stream", {
 				error: errorMessage,

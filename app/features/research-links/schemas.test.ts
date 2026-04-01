@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	ResearchLinkAnonymousStartSchema,
+	ResearchLinkCreatePersonSchema,
 	ResearchLinkPayloadSchema,
 	ResearchLinkQuestionSchema,
 	ResearchLinkResponseSaveSchema,
@@ -29,6 +30,7 @@ describe("ResearchLinkResponseSaveSchema", () => {
 			expect(result.data.completed).toBe(true);
 			expect(result.data.responseId).toBe("22c66a0c-cfbb-4caf-a1c6-704ac5596bda");
 			expect(result.data.merge).toBe(false); // default
+			expect(result.data.fullSnapshot).toBe(false);
 		}
 	});
 
@@ -54,6 +56,19 @@ describe("ResearchLinkResponseSaveSchema", () => {
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data.merge).toBe(true);
+		}
+	});
+
+	it("should accept fullSnapshot flag", () => {
+		const payload = {
+			responseId: "22c66a0c-cfbb-4caf-a1c6-704ac5596bda",
+			responses: { q1: "Updated answer" },
+			fullSnapshot: true,
+		};
+		const result = ResearchLinkResponseSaveSchema.safeParse(payload);
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.fullSnapshot).toBe(true);
 		}
 	});
 
@@ -108,6 +123,20 @@ describe("ResearchLinkResponseSaveSchema", () => {
 		const payload = {
 			responseId: "22c66a0c-cfbb-4caf-a1c6-704ac5596bda",
 			responses: { q1: null },
+		};
+		const result = ResearchLinkResponseSaveSchema.safeParse(payload);
+		expect(result.success).toBe(true);
+	});
+
+	it("should accept matrix row response objects", () => {
+		const payload = {
+			responseId: "22c66a0c-cfbb-4caf-a1c6-704ac5596bda",
+			responses: {
+				q7: {
+					networking: "4",
+					mentors: "3",
+				},
+			},
 		};
 		const result = ResearchLinkResponseSaveSchema.safeParse(payload);
 		expect(result.success).toBe(true);
@@ -177,7 +206,16 @@ describe("ResearchLinkQuestionSchema", () => {
 	});
 
 	it("should accept all question types", () => {
-		const types = ["auto", "short_text", "long_text", "single_select", "multi_select", "likert", "image_select"];
+		const types = [
+			"auto",
+			"short_text",
+			"long_text",
+			"single_select",
+			"multi_select",
+			"likert",
+			"matrix",
+			"image_select",
+		];
 		for (const type of types) {
 			const result = ResearchLinkQuestionSchema.safeParse({
 				id: "q1",
@@ -223,6 +261,21 @@ describe("ResearchLinkQuestionSchema", () => {
 			type: "likert",
 			likertScale: 5,
 			likertLabels: { low: null, high: null },
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it("should accept matrix config", () => {
+		const result = ResearchLinkQuestionSchema.safeParse({
+			id: "q7",
+			prompt: "Rate these StartupSD capabilities",
+			type: "matrix",
+			likertScale: 4,
+			likertLabels: { low: "Needs work", high: "Strong" },
+			matrixRows: [
+				{ id: "networking", label: "Networking and making valuable connections" },
+				{ id: "mentors", label: "Access to mentors and advisors" },
+			],
 		});
 		expect(result.success).toBe(true);
 	});
@@ -278,7 +331,12 @@ describe("ResearchLinkPayloadSchema — respondentFields", () => {
 		questions: JSON.stringify([{ id: "q1", prompt: "Test?" }]),
 	};
 
-	it("should parse a JSON string of field names", () => {
+	const defaultConfigs = [
+		{ key: "first_name", required: true },
+		{ key: "last_name", required: false },
+	];
+
+	it("should parse a JSON string of field names (legacy format)", () => {
 		const result = ResearchLinkPayloadSchema.safeParse({
 			...basePayload,
 			respondentFields: JSON.stringify(["first_name", "company", "phone"]),
@@ -286,6 +344,21 @@ describe("ResearchLinkPayloadSchema — respondentFields", () => {
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data.respondentFields).toEqual(["first_name", "company", "phone"]);
+		}
+	});
+
+	it("should parse a JSON string of config objects (new format)", () => {
+		const configs = [
+			{ key: "first_name", required: true },
+			{ key: "company", required: true },
+		];
+		const result = ResearchLinkPayloadSchema.safeParse({
+			...basePayload,
+			respondentFields: JSON.stringify(configs),
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.respondentFields).toEqual(configs);
 		}
 	});
 
@@ -300,7 +373,7 @@ describe("ResearchLinkPayloadSchema — respondentFields", () => {
 		}
 	});
 
-	it("should be undefined when omitted (optional field)", () => {
+	it("should default when omitted (optional field)", () => {
 		const result = ResearchLinkPayloadSchema.safeParse(basePayload);
 		expect(result.success).toBe(true);
 		if (result.success) {
@@ -315,7 +388,7 @@ describe("ResearchLinkPayloadSchema — respondentFields", () => {
 		});
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data.respondentFields).toEqual(["first_name", "last_name"]);
+			expect(result.data.respondentFields).toEqual(defaultConfigs);
 		}
 	});
 
@@ -326,7 +399,30 @@ describe("ResearchLinkPayloadSchema — respondentFields", () => {
 		});
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data.respondentFields).toEqual(["first_name", "last_name"]);
+			expect(result.data.respondentFields).toEqual(defaultConfigs);
+		}
+	});
+});
+
+describe("ResearchLinkCreatePersonSchema", () => {
+	it("accepts extended respondent profile fields", () => {
+		const result = ResearchLinkCreatePersonSchema.safeParse({
+			email: "jane@example.com",
+			firstName: "Jane",
+			lastName: "Doe",
+			company: "Acme",
+			title: "VP Product",
+			jobFunction: "Product",
+			industry: "SaaS",
+			companySize: "201-500",
+			phone: "+15551234567",
+			responseId: "22c66a0c-cfbb-4caf-a1c6-704ac5596bda",
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.jobFunction).toBe("Product");
+			expect(result.data.industry).toBe("SaaS");
+			expect(result.data.companySize).toBe("201-500");
 		}
 	});
 });

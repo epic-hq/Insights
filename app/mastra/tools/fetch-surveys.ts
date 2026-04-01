@@ -90,6 +90,30 @@ Returns survey metadata including:
 						),
 					})
 					.optional(),
+				sectionGraph: z
+					.object({
+						entrySectionId: z.string().nullable(),
+						nodes: z.array(
+							z.object({
+								id: z.string(),
+								title: z.string(),
+								order: z.number(),
+								startQuestionId: z.string(),
+								questionCount: z.number(),
+							})
+						),
+						edges: z.array(
+							z.object({
+								fromSectionId: z.string(),
+								fromQuestionId: z.string(),
+								action: z.enum(["skip_to", "end_survey", "linear"]),
+								conditionSummary: z.string(),
+								targetSectionId: z.string().nullable(),
+								targetQuestionId: z.string().nullable(),
+							})
+						),
+					})
+					.optional(),
 			})
 		),
 		total: z.number(),
@@ -138,6 +162,9 @@ Returns survey metadata including:
 		try {
 			const surveyHelpers = input.includeQuestions ? await import("../../features/research-links/survey-flow") : null;
 			const sectionHelpers = input.includeQuestions ? await import("../../features/research-links/sections") : null;
+			const sectionGraphHelpers = input.includeQuestions
+				? await import("../../features/research-links/section-graph")
+				: null;
 
 			// Build query
 			let query = supabase
@@ -263,6 +290,24 @@ Returns survey metadata including:
 							estimatedMinutesLabel: string;
 						}>;
 					};
+					sectionGraph?: {
+						entrySectionId: string | null;
+						nodes: Array<{
+							id: string;
+							title: string;
+							order: number;
+							startQuestionId: string;
+							questionCount: number;
+						}>;
+						edges: Array<{
+							fromSectionId: string;
+							fromQuestionId: string;
+							action: "skip_to" | "end_survey" | "linear";
+							conditionSummary: string;
+							targetSectionId: string | null;
+							targetQuestionId: string | null;
+						}>;
+					};
 				} = {
 					id: survey.id,
 					name: survey.name,
@@ -323,6 +368,30 @@ Returns survey metadata including:
 								estimatedMinutesLabel: path.estimatedMinutesLabel,
 							})),
 						};
+
+						if (sectionGraphHelpers) {
+							const graph = sectionGraphHelpers.buildSurveySectionGraph(
+								questions as unknown as Parameters<typeof sectionGraphHelpers.buildSurveySectionGraph>[0]
+							);
+							result.sectionGraph = {
+								entrySectionId: graph.entrySectionId,
+								nodes: graph.nodes.map((node) => ({
+									id: node.id,
+									title: node.title,
+									order: node.order,
+									startQuestionId: node.startQuestionId,
+									questionCount: node.questionIds.length,
+								})),
+								edges: graph.edges.map((edge) => ({
+									fromSectionId: edge.fromSectionId,
+									fromQuestionId: edge.fromQuestionId,
+									action: edge.action,
+									conditionSummary: edge.conditionSummary,
+									targetSectionId: edge.targetSectionId,
+									targetQuestionId: edge.targetQuestionId,
+								})),
+							};
+						}
 					}
 				}
 

@@ -115,7 +115,13 @@ export type QuestionBranching = z.infer<typeof QuestionBranchingSchema>;
 // Response Types
 // ============================================================================
 
-export type ResponseValue = string | string[] | boolean | null | undefined;
+type MatrixResponseValue = Record<string, string | number | null | undefined>;
+
+export type ResponseValue = string | string[] | boolean | MatrixResponseValue | null | undefined;
+
+function isMatrixResponseValue(value: ResponseValue): value is MatrixResponseValue {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 export type ResponseRecord = Record<string, ResponseValue>;
 
@@ -130,17 +136,27 @@ function normalizeValue(value: ResponseValue): string {
 	if (value === null || value === undefined) return "";
 	if (typeof value === "boolean") return value ? "true" : "false";
 	if (Array.isArray(value)) return value.join(",");
+	if (isMatrixResponseValue(value)) {
+		return Object.values(value)
+			.map((entry) => (entry == null ? "" : String(entry).trim()))
+			.filter(Boolean)
+			.join(",");
+	}
 	return String(value);
 }
 
 /**
- * Check if a response has a meaningful value
+ * Check if a response has a meaningful value.
+ * Shared by form mode and chat mode to keep branching behavior consistent.
  */
-function hasValue(value: ResponseValue): boolean {
-	if (value === null || value === undefined) return false;
-	if (typeof value === "string") return value.trim().length > 0;
+export function hasResponseValue(value: ResponseValue): boolean {
 	if (Array.isArray(value)) return value.length > 0;
-	return true;
+	if (typeof value === "string") return value.trim().length > 0;
+	if (typeof value === "boolean") return true;
+	if (isMatrixResponseValue(value)) {
+		return Object.values(value).some((entry) => entry != null && String(entry).trim().length > 0);
+	}
+	return false;
 }
 
 /**
@@ -180,10 +196,10 @@ export function evaluateCondition(condition: Condition, responses: ResponseRecor
 			return !answer.includes(expectedValue as string);
 
 		case "answered":
-			return hasValue(answer);
+			return hasResponseValue(answer);
 
 		case "not_answered":
-			return !hasValue(answer);
+			return !hasResponseValue(answer);
 
 		default:
 			return false;

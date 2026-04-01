@@ -12,7 +12,7 @@ import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { getProjectContextGeneric } from "~/features/questions/db";
-import { getNextQuestionId, type ResponseRecord } from "~/features/research-links/branching";
+import { getNextQuestionId, hasResponseValue, type ResponseRecord } from "~/features/research-links/branching";
 import { type ResearchLinkQuestion, ResearchLinkQuestionSchema } from "~/features/research-links/schemas";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { mastra } from "~/mastra";
@@ -39,7 +39,7 @@ function computeReachablePath(
 	while (currentIndex < questions.length) {
 		const question = questions[currentIndex];
 		const answer = responses[question.id];
-		const hasAnswer = answer !== undefined && answer !== null && answer !== "";
+		const hasAnswer = hasResponseValue(answer);
 
 		if (hasAnswer) {
 			// Record this answered question
@@ -83,10 +83,7 @@ function computeReachablePath(
 	// (following linear order from current position)
 	const remainingQuestions = surveyComplete
 		? []
-		: questions.slice(currentIndex).filter((q) => {
-				const answer = responses[q.id];
-				return answer === undefined || answer === null || answer === "";
-			});
+		: questions.slice(currentIndex).filter((q) => !hasResponseValue(responses[q.id]));
 
 	return {
 		answeredPath,
@@ -306,8 +303,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	consola.info("research-link-chat: fetched responses from DB", {
 		responseId: payload.responseId,
 		responseKeys: Object.keys(currentResponses),
-		responseCount: Object.keys(currentResponses).filter(
-			(k) => currentResponses[k] !== undefined && currentResponses[k] !== null && currentResponses[k] !== ""
+		responseCount: Object.keys(currentResponses).filter((k) =>
+			hasResponseValue(currentResponses[k] as string | string[] | boolean | null | undefined)
 		).length,
 		questionCount: questions.length,
 		firstQuestionId: questions[0]?.id,

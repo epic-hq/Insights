@@ -15,7 +15,6 @@ import {
 	MessageSquare,
 	Mic,
 	Send,
-	Video,
 } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { LoaderFunctionArgs, MetaFunction } from "react-router";
@@ -27,11 +26,21 @@ import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button";
-import { getNextQuestionIndex } from "~/features/research-links/branching";
+import { getNextQuestionIndex, hasResponseValue } from "~/features/research-links/branching";
 import { VideoRecorder } from "~/features/research-links/components/VideoRecorder";
+import {
+	getFieldKeys,
+	isFieldRequired,
+	parseRespondentFields,
+	RESPONDENT_FIELD_DEFINITION_MAP,
+	type RespondentFieldConfig,
+	type RespondentFieldKey,
+	type RespondentFieldOption,
+} from "~/features/research-links/respondent-fields";
 import { type ResearchLinkQuestion, ResearchLinkQuestionSchema } from "~/features/research-links/schemas";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
@@ -73,8 +82,72 @@ function QuestionMedia({ url }: { url: string }) {
 }
 
 // Type definitions used by ChatSection (moved before component)
-type ResponseValue = string | string[] | boolean | null;
+type MatrixResponseValue = Record<string, string | null | undefined>;
+type ResponseValue = string | string[] | boolean | MatrixResponseValue | null;
 type ResponseRecord = Record<string, ResponseValue>;
+
+function isMatrixResponseValue(value: ResponseValue): value is MatrixResponseValue {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasDraftResponseValue(value: ResponseValue): boolean {
+	if (Array.isArray(value)) return value.length > 0;
+	if (typeof value === "string") return value.trim().length > 0;
+	if (typeof value === "boolean") return true;
+	if (isMatrixResponseValue(value)) {
+		return Object.values(value).some((entry) => typeof entry === "string" && entry.trim().length > 0);
+	}
+	return false;
+}
+
+function normalizeResponseValue(value: ResponseValue): ResponseValue {
+	if (Array.isArray(value)) {
+		return value.filter((entry) => typeof entry === "string" && entry.trim().length > 0);
+	}
+	if (typeof value === "string") return value.trim();
+	if (isMatrixResponseValue(value)) {
+		const entries = Object.entries(value).flatMap(([rowId, rowValue]) => {
+			if (typeof rowValue !== "string") return [];
+			const trimmed = rowValue.trim();
+			return trimmed.length > 0 ? ([[rowId, trimmed]] as const) : [];
+		});
+		return entries.length > 0 ? Object.fromEntries(entries) : null;
+	}
+	return value ?? null;
+}
+
+function responseValuesEqual(a: ResponseValue, b: ResponseValue) {
+	const aHasValue = hasDraftResponseValue(a);
+	const bHasValue = hasDraftResponseValue(b);
+	if (!aHasValue && !bHasValue) return true;
+	if (Array.isArray(a) || Array.isArray(b)) {
+		if (!Array.isArray(a) || !Array.isArray(b)) return false;
+		if (a.length !== b.length) return false;
+		return a.every((entry, idx) => entry === b[idx]);
+	}
+	if (isMatrixResponseValue(a) || isMatrixResponseValue(b)) {
+		if (!isMatrixResponseValue(a) || !isMatrixResponseValue(b)) return false;
+		const aEntries = Object.entries(a).sort(([left], [right]) => left.localeCompare(right));
+		const bEntries = Object.entries(b).sort(([left], [right]) => left.localeCompare(right));
+		if (aEntries.length !== bEntries.length) return false;
+		return aEntries.every(([rowId, value], index) => rowId === bEntries[index]?.[0] && value === bEntries[index]?.[1]);
+	}
+	return a === b;
+}
+
+function isQuestionAnswerComplete(question: ResearchLinkQuestion, value: ResponseValue): boolean {
+	const normalized = normalizeResponseValue(value);
+	if (question.type === "matrix") {
+		if (!isMatrixResponseValue(normalized)) return false;
+		const rows = question.matrixRows ?? [];
+		if (rows.length === 0) return false;
+		return rows.every((row) => {
+			const rowValue = normalized[row.id];
+			return typeof rowValue === "string" && rowValue.trim().length > 0;
+		});
+	}
+	return hasResponseValue(normalized);
+}
 
 /**
  * Chat section component - isolated to ensure useChat is initialized with valid responseId
@@ -583,11 +656,52 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		return { ...q, mediaUrl: presigned?.url ?? null };
 	});
 
+	const respondentFieldConfigs = parseRespondentFields(
+		Array.isArray(list.respondent_fields)
+			? list.respondent_fields
+			: list.collect_title
+				? ["first_name", "last_name", "company", "title"]
+				: ["first_name", "last_name", "company"]
+	);
+	const respondentFields = getFieldKeys(respondentFieldConfigs);
+	const selectFieldDefinitions = respondentFields
+		.map((field) => RESPONDENT_FIELD_DEFINITION_MAP[field as RespondentFieldKey])
+		.filter(
+			(
+				field
+			): field is Extract<(typeof RESPONDENT_FIELD_DEFINITION_MAP)[RespondentFieldKey], { inputType: "select" }> =>
+				Boolean(field && field.inputType === "select" && field.facetKindSlug)
+		);
+
+	const respondentFieldOptions: Partial<Record<RespondentFieldKey, RespondentFieldOption[]>> = {};
+	const kindSlugs = Array.from(new Set(selectFieldDefinitions.map((field) => field.facetKindSlug)));
+	if (kindSlugs.length > 0) {
+		const { data: kindRows } = await supabase.from("facet_kind_global").select("id, slug").in("slug", kindSlugs);
+		const kindIdToSlug = new Map((kindRows ?? []).map((row) => [row.id, row.slug]));
+		const { data: globalRows } = await supabase
+			.from("facet_global")
+			.select("kind_id, slug, label")
+			.in("kind_id", Array.from(kindIdToSlug.keys()))
+			.order("label");
+
+		for (const field of selectFieldDefinitions) {
+			const options = (globalRows ?? [])
+				.filter((row) => kindIdToSlug.get(row.kind_id) === field.facetKindSlug)
+				.map((row) => ({
+					value: field.optionValueMode === "slug" ? row.slug : row.label,
+					label: row.label,
+				}));
+			respondentFieldOptions[field.key] = options;
+		}
+	}
+
 	return {
 		slug,
 		list,
 		questions: signedQuestions,
 		walkthroughSignedUrl,
+		respondentFieldOptions,
+		respondentFieldConfigs,
 	};
 }
 
@@ -623,6 +737,8 @@ type LoaderData = {
 	};
 	questions: Array<ResearchLinkQuestion>;
 	walkthroughSignedUrl: string | null;
+	respondentFieldOptions: Partial<Record<RespondentFieldKey, RespondentFieldOption[]>>;
+	respondentFieldConfigs: RespondentFieldConfig[];
 };
 
 type Stage = "email" | "phone" | "name" | "instructions" | "survey" | "video" | "complete";
@@ -633,6 +749,16 @@ type StartSignupResult = {
 	responses: ResponseRecord;
 	completed: boolean;
 	personId: string | null;
+	/** Profile fields returned when a known person is found, so the client can pre-fill the name form */
+	personProfile?: {
+		firstName?: string | null;
+		lastName?: string | null;
+		company?: string | null;
+		title?: string | null;
+		jobFunction?: string | null;
+		industry?: string | null;
+		companySize?: string | null;
+	} | null;
 };
 
 type StartSignupPayload =
@@ -641,6 +767,11 @@ type StartSignupPayload =
 			firstName?: string | null;
 			lastName?: string | null;
 			company?: string | null;
+			title?: string | null;
+			jobFunction?: string | null;
+			industry?: string | null;
+			companySize?: string | null;
+			phone?: string | null;
 			responseId?: string | null;
 			responseMode?: Mode;
 			utmParams?: Record<string, string> | null;
@@ -676,6 +807,7 @@ async function saveProgress(
 		responseId: string;
 		responses: ResponseRecord;
 		completed?: boolean;
+		fullSnapshot?: boolean;
 	}
 ) {
 	const response = await fetch(`/api/research-links/${slug}/save`, {
@@ -690,7 +822,8 @@ async function saveProgress(
 }
 
 export default function ResearchLinkPage() {
-	const { slug, list, questions, walkthroughSignedUrl } = useLoaderData() as LoaderData;
+	const { slug, list, questions, walkthroughSignedUrl, respondentFieldOptions, respondentFieldConfigs } =
+		useLoaderData() as LoaderData;
 	const [searchParams] = useSearchParams();
 	const ffVoice = searchParams.get("ffVoice") === "true";
 	const emailId = useId();
@@ -712,6 +845,9 @@ export default function ResearchLinkPage() {
 	const [lastName, setLastName] = useState("");
 	const [company, setCompany] = useState("");
 	const [respondentTitle, setRespondentTitle] = useState("");
+	const [jobFunction, setJobFunction] = useState("");
+	const [industry, setIndustry] = useState("");
+	const [companySize, setCompanySize] = useState("");
 	const [responseId, setResponseId] = useState<string | null>(null);
 	const [responses, setResponses] = useState<ResponseRecord>({});
 	const [currentIndex, setCurrentIndex] = useState(0);
@@ -721,21 +857,25 @@ export default function ResearchLinkPage() {
 	const [initializing, setInitializing] = useState(true);
 	const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
 	const utmParamsRef = useRef<Record<string, string> | undefined>(undefined);
+	const hasMatrixQuestions = useMemo(() => questions.some((question) => question.type === "matrix"), [questions]);
+	const supportsChatMode = list.allow_chat && !hasMatrixQuestions;
 
-	const resolvedMode = list.allow_chat ? mode : "form";
+	const resolvedMode = supportsChatMode ? mode : "form";
 	const voiceEnabled = list.allow_voice && ffVoice;
-	const hasMultipleModes = list.allow_chat || voiceEnabled;
+	const hasMultipleModes = supportsChatMode || voiceEnabled;
 
-	// Respondent fields configuration (falls back to collect_title for backwards compat)
-	const respondentFields = useMemo(() => {
-		const fields = list.respondent_fields;
-		if (Array.isArray(fields)) return fields as string[];
-		// Backwards compat: old surveys only have collect_title
-		const defaults = ["first_name", "last_name", "company"];
-		return list.collect_title ? [...defaults, "title"] : defaults;
-	}, [list.respondent_fields, list.collect_title]);
+	// Respondent fields configuration (uses parsed configs from loader)
+	const respondentFields = useMemo(() => getFieldKeys(respondentFieldConfigs), [respondentFieldConfigs]);
 
 	const hasField = useCallback((key: string) => respondentFields.includes(key), [respondentFields]);
+	const isRequired = useCallback(
+		(key: string) => isFieldRequired(respondentFieldConfigs, key),
+		[respondentFieldConfigs]
+	);
+	const getFieldOptions = useCallback(
+		(key: RespondentFieldKey) => respondentFieldOptions[key] ?? [],
+		[respondentFieldOptions]
+	);
 	const hasNameFields = hasField("first_name") || hasField("last_name");
 	const isEmailValid = emailSchema.safeParse(email).success;
 	const isPhoneValid = phoneSchema.safeParse(phone).success;
@@ -744,6 +884,8 @@ export default function ResearchLinkPage() {
 	const handleModeSwitch = useCallback(
 		async (newMode: Mode) => {
 			if (newMode === mode) return;
+
+			if (newMode === "chat" && !supportsChatMode) return;
 
 			// Refresh responses from DB for ANY identity mode (not just email)
 			console.log("[handleModeSwitch]", {
@@ -783,7 +925,7 @@ export default function ResearchLinkPage() {
 			}
 			setMode(newMode);
 		},
-		[mode, responseId, stage, email, phone, slug, questions]
+		[mode, responseId, stage, email, phone, slug, questions, supportsChatMode]
 	);
 
 	// Mode switcher component for survey stages
@@ -802,7 +944,7 @@ export default function ResearchLinkPage() {
 					<ClipboardList className="h-3.5 w-3.5" />
 					Form
 				</button>
-				{list.allow_chat && (
+				{supportsChatMode && (
 					<button
 						type="button"
 						onClick={() => void handleModeSwitch("chat")}
@@ -860,6 +1002,9 @@ export default function ResearchLinkPage() {
 		setLastName("");
 		setCompany("");
 		setRespondentTitle("");
+		setJobFunction("");
+		setIndustry("");
+		setCompanySize("");
 		setResponseId(null);
 		setResponses({});
 		setCurrentIndex(0);
@@ -867,7 +1012,7 @@ export default function ResearchLinkPage() {
 		setRedirectCountdown(null);
 		setError(null);
 		setInitializing(true);
-	}, []);
+	}, [getInitialStage]);
 
 	// Auto-reset after 5 seconds on completion (fresh start for next respondent)
 	useEffect(() => {
@@ -934,10 +1079,10 @@ export default function ResearchLinkPage() {
 				: "idle";
 
 	useEffect(() => {
-		if (!list.allow_chat && mode === "chat") {
+		if (!supportsChatMode && mode === "chat") {
 			setMode("form");
 		}
-	}, [list.allow_chat, mode]);
+	}, [supportsChatMode, mode]);
 
 	useEffect(() => {
 		if (typeof window === "undefined") return;
@@ -951,6 +1096,11 @@ export default function ResearchLinkPage() {
 			const urlPhone = urlParams.get("phone");
 			const urlFirstName = urlParams.get("first_name") || urlParams.get("name")?.split(" ")[0] || null;
 			const urlLastName = urlParams.get("last_name") || urlParams.get("name")?.split(" ").slice(1).join(" ") || null;
+			const urlCompany = urlParams.get("company");
+			const urlTitle = urlParams.get("title");
+			const urlJobFunction = urlParams.get("job_function");
+			const urlIndustry = urlParams.get("industry");
+			const urlCompanySize = urlParams.get("company_size");
 
 			// Extract UTM params for campaign attribution (store in ref for manual submits)
 			const utmParams = extractUtmParamsFromSearch(urlParams);
@@ -990,104 +1140,18 @@ export default function ResearchLinkPage() {
 				return;
 			}
 
-			// Personalized link: standalone ?email (no responseId) — auto-submit for known people
-			if (urlEmail && !urlResponseId && list.identity_field === "email") {
-				setEmail(urlEmail);
-				if (urlFirstName) setFirstName(urlFirstName);
-				if (urlLastName) setLastName(urlLastName);
-				void startSignup(slug, {
-					email: urlEmail,
-					responseMode: resolvedMode,
-					utmParams: utmPayload,
-				})
-					.then((result) => {
-						setResponseId(result.responseId);
-						setResponses(result.responses || {});
-						const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
-						if (initialIndex >= questions.length) {
-							setStage("complete");
-						} else if (result.personId) {
-							// Known person — skip identity gate entirely
-							setCurrentIndex(initialIndex);
-							setStage(list.instructions ? "instructions" : "survey");
-							const existingValue = result.responses?.[questions[initialIndex]?.id];
-							setCurrentAnswer(existingValue ?? "");
-						} else if (urlFirstName) {
-							// Unknown person but name provided via URL — create person and skip to survey
-							void startSignup(slug, {
-								email: urlEmail,
-								firstName: urlFirstName,
-								lastName: urlLastName,
-								responseId: result.responseId,
-								responseMode: resolvedMode,
-								utmParams: utmPayload,
-							})
-								.then((personResult) => {
-									setResponseId(personResult.responseId);
-									setResponses(personResult.responses || {});
-									setCurrentIndex(initialIndex);
-									setStage(list.instructions ? "instructions" : "survey");
-									const existingValue = personResult.responses?.[questions[initialIndex]?.id];
-									setCurrentAnswer(existingValue ?? "");
-								})
-								.catch(() => {
-									// Fall through — person creation failed, show name form
-									setCurrentIndex(initialIndex);
-									setStage("name");
-								});
-						} else {
-							// Unknown person, no name — show name collection form
-							setCurrentIndex(initialIndex);
-							setStage("name");
-						}
-					})
-					.catch(() => {
-						// Auto-submit failed — show pre-filled email form for manual confirmation
-						setInitializing(false);
-					})
-					.finally(() => {
-						setInitializing(false);
-					});
-				return;
-			}
-
-			// Personalized link: standalone ?phone (no responseId)
-			if (urlPhone && !urlResponseId && list.identity_field === "phone") {
-				setPhone(urlPhone);
-				void startSignup(slug, {
-					phone: urlPhone,
-					responseMode: resolvedMode,
-					utmParams: utmPayload,
-				})
-					.then((result) => {
-						setResponseId(result.responseId);
-						setResponses(result.responses || {});
-						const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
-						if (initialIndex >= questions.length) {
-							setStage("complete");
-						} else {
-							// Phone-identified: skip to survey (person lookup happens server-side)
-							setCurrentIndex(initialIndex);
-							setStage(list.instructions ? "instructions" : "survey");
-							const existingValue = result.responses?.[questions[initialIndex]?.id];
-							setCurrentAnswer(existingValue ?? "");
-						}
-					})
-					.catch(() => {
-						// Auto-submit failed — show pre-filled phone form
-						setInitializing(false);
-					})
-					.finally(() => {
-						setInitializing(false);
-					});
-				return;
-			}
-
-			// Pre-fill only (email/phone present but identity_field doesn't match — just populate the field)
+			// Personalized link: prefill fields from URL params and show landing page.
+			// The user sees the landing page with prefilled values and clicks the CTA to proceed.
+			// startSignup() will be called in handleEmailSubmit/handlePhoneSubmit when they click.
 			if (urlEmail) setEmail(urlEmail);
 			if (urlPhone) setPhone(urlPhone);
 			if (urlFirstName) setFirstName(urlFirstName);
 			if (urlLastName) setLastName(urlLastName);
+			if (urlCompany) setCompany(urlCompany);
+			if (urlTitle) setRespondentTitle(urlTitle);
+			if (urlJobFunction) setJobFunction(urlJobFunction);
+			if (urlIndustry) setIndustry(urlIndustry);
+			if (urlCompanySize) setCompanySize(urlCompanySize);
 
 			// For anonymous mode, auto-start the survey with a fresh session
 			if (list.identity_mode === "anonymous") {
@@ -1134,6 +1198,7 @@ export default function ResearchLinkPage() {
 	}, [stage, currentIndex, questions, responses, resolvedMode]);
 
 	const currentQuestion = useMemo(() => questions[currentIndex], [currentIndex, questions]);
+	const currentQuestionMediaUrl = currentQuestion?.mediaUrl ?? currentQuestion?.videoUrl ?? null;
 
 	const _answeredCount = useMemo(() => {
 		return questions.filter((q) => {
@@ -1160,18 +1225,45 @@ export default function ResearchLinkPage() {
 			setResponseId(result.responseId);
 			setResponses(result.responses || {});
 
-			// If no person linked, we need to collect name info
-			if (!result.personId) {
-				setStage("name");
-				return;
-			}
-
-			// Person was found, proceed to survey
 			const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
 			if (initialIndex >= questions.length) {
 				setStage("complete");
+				return;
+			}
+			setCurrentIndex(initialIndex);
+
+			// Pre-fill profile fields: URL params override DB values
+			if (result.personId && result.personProfile) {
+				const profile = result.personProfile;
+				if (!firstName && profile.firstName) setFirstName(profile.firstName);
+				if (!lastName && profile.lastName) setLastName(profile.lastName);
+				if (!company && profile.company) setCompany(profile.company);
+				if (!respondentTitle && profile.title) setRespondentTitle(profile.title);
+				if (!jobFunction && profile.jobFunction) setJobFunction(profile.jobFunction);
+				if (!industry && profile.industry) setIndustry(profile.industry);
+				if (!companySize && profile.companySize) setCompanySize(profile.companySize);
+			}
+
+			// Check if any configured respondent fields need collection
+			const currentFields: Record<string, string> = {
+				first_name: firstName || result.personProfile?.firstName || "",
+				last_name: lastName || result.personProfile?.lastName || "",
+				company: company || result.personProfile?.company || "",
+				title: respondentTitle || result.personProfile?.title || "",
+				job_function: jobFunction || result.personProfile?.jobFunction || "",
+				industry: industry || result.personProfile?.industry || "",
+				company_size: companySize || result.personProfile?.companySize || "",
+			};
+			// Show name form if there are configured non-phone fields to fill
+			const nonPhoneConfigs = respondentFieldConfigs.filter((c) => c.key !== "phone");
+			const hasEmptyField = nonPhoneConfigs.some((c) => !currentFields[c.key]);
+
+			if (hasEmptyField) {
+				// Show name form pre-populated so user can fill missing fields
+				setStage("name");
+			} else if (list.instructions) {
+				setStage("instructions");
 			} else {
-				setCurrentIndex(initialIndex);
 				setStage("survey");
 			}
 		} catch (caught) {
@@ -1199,17 +1291,48 @@ export default function ResearchLinkPage() {
 			setResponseId(result.responseId);
 			setResponses(result.responses || {});
 
-			// Phone-identified surveys don't collect name, go straight to survey
 			const initialIndex = findNextQuestionIndex(result.responses || {}, questions);
 			if (initialIndex >= questions.length) {
 				setStage("complete");
-			} else {
-				setCurrentIndex(initialIndex);
-				if (list.instructions) {
-					setStage("instructions");
-				} else {
-					setStage("survey");
+				return;
+			}
+			setCurrentIndex(initialIndex);
+
+			// Pre-fill profile fields from DB if available
+			if (result.personId && result.personProfile) {
+				const profile = result.personProfile;
+				if (!firstName && profile.firstName) setFirstName(profile.firstName);
+				if (!lastName && profile.lastName) setLastName(profile.lastName);
+				if (!company && profile.company) setCompany(profile.company);
+				if (!respondentTitle && profile.title) setRespondentTitle(profile.title);
+				if (!jobFunction && profile.jobFunction) setJobFunction(profile.jobFunction);
+				if (!industry && profile.industry) setIndustry(profile.industry);
+				if (!companySize && profile.companySize) setCompanySize(profile.companySize);
+			}
+
+			// Check if any configured respondent fields still need filling
+			const nonPhoneConfigs = respondentFieldConfigs.filter((c) => c.key !== "phone");
+			if (nonPhoneConfigs.length > 0) {
+				const currentFields: Record<string, string> = {
+					first_name: firstName || result.personProfile?.firstName || "",
+					last_name: lastName || result.personProfile?.lastName || "",
+					company: company || result.personProfile?.company || "",
+					title: respondentTitle || result.personProfile?.title || "",
+					job_function: jobFunction || result.personProfile?.jobFunction || "",
+					industry: industry || result.personProfile?.industry || "",
+					company_size: companySize || result.personProfile?.companySize || "",
+				};
+				const hasEmptyField = nonPhoneConfigs.some((c) => !currentFields[c.key]);
+				if (hasEmptyField) {
+					setStage("name");
+					return;
 				}
+			}
+
+			if (list.instructions) {
+				setStage("instructions");
+			} else {
+				setStage("survey");
 			}
 		} catch (caught) {
 			setError(caught instanceof Error ? caught.message : "Something went wrong");
@@ -1221,9 +1344,22 @@ export default function ResearchLinkPage() {
 	async function handleNameSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setError(null);
-		if (hasField("first_name") && !firstName.trim()) {
-			setError("Enter your first name to continue");
-			return;
+		// Validate all required fields
+		const requiredChecks: Array<{ key: string; value: string; label: string }> = [
+			{ key: "first_name", value: firstName, label: "first name" },
+			{ key: "last_name", value: lastName, label: "last name" },
+			{ key: "company", value: company, label: "company" },
+			{ key: "title", value: respondentTitle, label: "job title" },
+			{ key: "job_function", value: jobFunction, label: "job function" },
+			{ key: "industry", value: industry, label: "industry" },
+			{ key: "company_size", value: companySize, label: "company size" },
+			{ key: "phone", value: phone, label: "phone number" },
+		];
+		for (const check of requiredChecks) {
+			if (isRequired(check.key) && !check.value.trim()) {
+				setError(`Please enter your ${check.label} to continue`);
+				return;
+			}
 		}
 		if (!responseId) {
 			setError("Something went wrong. Please refresh and try again.");
@@ -1236,6 +1372,11 @@ export default function ResearchLinkPage() {
 				firstName: firstName.trim(),
 				lastName: lastName.trim() || null,
 				company: company.trim() || null,
+				title: respondentTitle.trim() || null,
+				jobFunction: jobFunction.trim() || null,
+				industry: industry.trim() || null,
+				companySize: companySize || null,
+				phone: phone.trim() || null,
 				responseId,
 				responseMode: resolvedMode,
 			});
@@ -1262,7 +1403,7 @@ export default function ResearchLinkPage() {
 			return;
 		}
 		const normalizedValue = normalizeResponseValue(value);
-		if (currentQuestion?.required && !hasResponseValue(normalizedValue)) {
+		if (currentQuestion?.required && !isQuestionAnswerComplete(currentQuestion, normalizedValue)) {
 			setError("This question is required");
 			return;
 		}
@@ -1280,6 +1421,7 @@ export default function ResearchLinkPage() {
 				responseId,
 				responses: nextResponses,
 				completed: isComplete,
+				fullSnapshot: true,
 			});
 			setResponses(nextResponses);
 			if (isComplete) {
@@ -1313,7 +1455,7 @@ export default function ResearchLinkPage() {
 		if (responseValuesEqual(normalized, existing)) return;
 
 		const nextResponses: ResponseRecord = { ...responses };
-		if (hasResponseValue(normalized)) {
+		if (hasDraftResponseValue(normalized)) {
 			nextResponses[questionId] = normalized;
 		} else {
 			delete nextResponses[questionId];
@@ -1324,6 +1466,7 @@ export default function ResearchLinkPage() {
 				responseId,
 				responses: nextResponses,
 				completed: false,
+				fullSnapshot: true,
 			});
 		} catch (caught) {
 			console.warn("[survey] Failed to save draft while navigating", caught);
@@ -1336,13 +1479,17 @@ export default function ResearchLinkPage() {
 			const prevIndex = currentIndex - 1;
 			setCurrentIndex(prevIndex);
 			setCurrentAnswer(responses[questions[prevIndex]?.id] ?? "");
+		} else if (respondentFieldConfigs.length > 0) {
+			// On first question, go back to demographics form
+			setStage("name");
 		}
 	}
 
 	function handleJumpToQuestion(targetIndex: number) {
 		if (targetIndex < 0 || targetIndex >= questions.length) return;
 		// Allow jumping to any answered question or current question
-		const isAnswered = hasResponseValue(responses[questions[targetIndex]?.id]);
+		const targetQuestion = questions[targetIndex];
+		const isAnswered = targetQuestion ? isQuestionAnswerComplete(targetQuestion, responses[targetQuestion.id]) : false;
 		const isCurrent = targetIndex === currentIndex;
 		const isPrevious = targetIndex < currentIndex;
 		if (isAnswered || isCurrent || isPrevious) {
@@ -1402,7 +1549,7 @@ export default function ResearchLinkPage() {
 							{list.instructions && <p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>}
 
 							{/* Mode selector - show when multiple modes available */}
-							{(list.allow_chat || voiceEnabled || list.calendar_url) && (
+							{(supportsChatMode || voiceEnabled || list.calendar_url) && (
 								<div className="space-y-2">
 									<p className="text-white/60 text-xs">How would you like to respond?</p>
 									<div className="flex gap-2">
@@ -1419,7 +1566,7 @@ export default function ResearchLinkPage() {
 											<ClipboardList className="h-5 w-5" />
 											<span className="font-medium text-xs">Form</span>
 										</button>
-										{list.allow_chat && (
+										{supportsChatMode && (
 											<button
 												type="button"
 												onClick={() => setMode("chat")}
@@ -1525,7 +1672,7 @@ export default function ResearchLinkPage() {
 							{list.instructions && <p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>}
 
 							{/* Mode selector - show when multiple modes available */}
-							{(list.allow_chat || voiceEnabled || list.calendar_url) && (
+							{(supportsChatMode || voiceEnabled || list.calendar_url) && (
 								<div className="space-y-2">
 									<p className="text-white/60 text-xs">How would you like to respond?</p>
 									<div className="flex gap-2">
@@ -1542,7 +1689,7 @@ export default function ResearchLinkPage() {
 											<ClipboardList className="h-5 w-5" />
 											<span className="font-medium text-xs">Form</span>
 										</button>
-										{list.allow_chat && (
+										{supportsChatMode && (
 											<button
 												type="button"
 												onClick={() => setMode("chat")}
@@ -1627,7 +1774,11 @@ export default function ResearchLinkPage() {
 							animate={{ opacity: 1, y: 0 }}
 							className="space-y-4"
 						>
-							<p className="text-sm text-white/80 leading-relaxed">Tell us a bit about yourself to continue.</p>
+							<p className="text-sm text-white/80 leading-relaxed">
+								{firstName
+									? "Please confirm your details before we begin."
+									: "Tell us a bit about yourself to continue."}
+							</p>
 
 							{/* Name fields */}
 							{hasNameFields && (
@@ -1640,7 +1791,12 @@ export default function ResearchLinkPage() {
 									{hasField("first_name") && (
 										<div className="space-y-2">
 											<Label className="text-white/90">
-												First Name <span className="text-red-400">*</span>
+												First Name{" "}
+												{isRequired("first_name") ? (
+													<span className="text-red-400">*</span>
+												) : (
+													<span className="text-white/40">(optional)</span>
+												)}
 											</Label>
 											<Input
 												type="text"
@@ -1648,20 +1804,28 @@ export default function ResearchLinkPage() {
 												onChange={(e) => setFirstName(e.target.value)}
 												placeholder="Jane"
 												className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-												required
+												required={isRequired("first_name")}
 												autoFocus
 											/>
 										</div>
 									)}
 									{hasField("last_name") && (
 										<div className="space-y-2">
-											<Label className="text-white/90">Last Name</Label>
+											<Label className="text-white/90">
+												Last Name{" "}
+												{isRequired("last_name") ? (
+													<span className="text-red-400">*</span>
+												) : (
+													<span className="text-white/40">(optional)</span>
+												)}
+											</Label>
 											<Input
 												type="text"
 												value={lastName}
 												onChange={(e) => setLastName(e.target.value)}
 												placeholder="Doe"
 												className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+												required={isRequired("last_name")}
 											/>
 										</div>
 									)}
@@ -1671,13 +1835,21 @@ export default function ResearchLinkPage() {
 							{/* Company field */}
 							{hasField("company") && (
 								<div className="space-y-2">
-									<Label className="text-white/90">Company</Label>
+									<Label className="text-white/90">
+										Company{" "}
+										{isRequired("company") ? (
+											<span className="text-red-400">*</span>
+										) : (
+											<span className="text-white/40">(optional)</span>
+										)}
+									</Label>
 									<Input
 										type="text"
 										value={company}
 										onChange={(e) => setCompany(e.target.value)}
 										placeholder="Acme Inc"
 										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+										required={isRequired("company")}
 									/>
 								</div>
 							)}
@@ -1686,7 +1858,12 @@ export default function ResearchLinkPage() {
 							{hasField("title") && (
 								<div className="space-y-2">
 									<Label className="text-white/90">
-										Job Title <span className="text-white/40">(optional)</span>
+										Job Title{" "}
+										{isRequired("title") ? (
+											<span className="text-red-400">*</span>
+										) : (
+											<span className="text-white/40">(optional)</span>
+										)}
 									</Label>
 									<Input
 										type="text"
@@ -1694,7 +1871,125 @@ export default function ResearchLinkPage() {
 										onChange={(e) => setRespondentTitle(e.target.value)}
 										placeholder="e.g., Product Manager"
 										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+										required={isRequired("title")}
 									/>
+								</div>
+							)}
+
+							{hasField("job_function") && (
+								<div className="space-y-2">
+									<Label className="text-white/90">
+										Job Function{" "}
+										{isRequired("job_function") ? (
+											<span className="text-red-400">*</span>
+										) : (
+											<span className="text-white/40">(optional)</span>
+										)}
+									</Label>
+									{getFieldOptions("job_function").length > 0 ? (
+										<Select
+											value={jobFunction || "__empty__"}
+											onValueChange={(value) => setJobFunction(value === "__empty__" ? "" : value)}
+										>
+											<SelectTrigger className="border-white/10 bg-black/40 text-white">
+												<SelectValue placeholder="Select a job function" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="__empty__">Not specified</SelectItem>
+												{getFieldOptions("job_function").map((option) => (
+													<SelectItem key={option.value} value={option.value}>
+														{option.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									) : (
+										<Input
+											type="text"
+											value={jobFunction}
+											onChange={(e) => setJobFunction(e.target.value)}
+											placeholder="e.g., Product, Marketing, Operations"
+											className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+										/>
+									)}
+								</div>
+							)}
+
+							{hasField("industry") && (
+								<div className="space-y-2">
+									<Label className="text-white/90">
+										Industry{" "}
+										{isRequired("industry") ? (
+											<span className="text-red-400">*</span>
+										) : (
+											<span className="text-white/40">(optional)</span>
+										)}
+									</Label>
+									{getFieldOptions("industry").length > 0 ? (
+										<Select
+											value={industry || "__empty__"}
+											onValueChange={(value) => setIndustry(value === "__empty__" ? "" : value)}
+										>
+											<SelectTrigger className="border-white/10 bg-black/40 text-white">
+												<SelectValue placeholder="Select an industry" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="__empty__">Not specified</SelectItem>
+												{getFieldOptions("industry").map((option) => (
+													<SelectItem key={option.value} value={option.value}>
+														{option.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									) : (
+										<Input
+											type="text"
+											value={industry}
+											onChange={(e) => setIndustry(e.target.value)}
+											placeholder="e.g., Healthcare, FinTech, SaaS"
+											className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+										/>
+									)}
+								</div>
+							)}
+
+							{hasField("company_size") && (
+								<div className="space-y-2">
+									<Label className="text-white/90">
+										Company Size{" "}
+										{isRequired("company_size") ? (
+											<span className="text-red-400">*</span>
+										) : (
+											<span className="text-white/40">(optional)</span>
+										)}
+									</Label>
+									{getFieldOptions("company_size").length > 0 ? (
+										<Select
+											value={companySize || "__empty__"}
+											onValueChange={(value) => setCompanySize(value === "__empty__" ? "" : value)}
+										>
+											<SelectTrigger className="border-white/10 bg-black/40 text-white">
+												<SelectValue placeholder="Select a size range" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="__empty__">Not specified</SelectItem>
+												{getFieldOptions("company_size").map((option) => (
+													<SelectItem key={option.value} value={option.value}>
+														{option.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									) : (
+										<Input
+											type="text"
+											value={companySize}
+											onChange={(e) => setCompanySize(e.target.value)}
+											placeholder="e.g., 51-200"
+											className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+										/>
+									)}
 								</div>
 							)}
 
@@ -1702,7 +1997,12 @@ export default function ResearchLinkPage() {
 							{hasField("phone") && list.identity_field !== "phone" && (
 								<div className="space-y-2">
 									<Label className="text-white/90">
-										Phone <span className="text-white/40">(optional)</span>
+										Phone{" "}
+										{isRequired("phone") ? (
+											<span className="text-red-400">*</span>
+										) : (
+											<span className="text-white/40">(optional)</span>
+										)}
 									</Label>
 									<Input
 										type="tel"
@@ -1710,6 +2010,7 @@ export default function ResearchLinkPage() {
 										onChange={(e) => setPhone(e.target.value)}
 										placeholder="+1 (555) 123-4567"
 										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
+										required={isRequired("phone")}
 									/>
 								</div>
 							)}
@@ -1770,10 +2071,14 @@ export default function ResearchLinkPage() {
 								exit={{ opacity: 0, x: -20 }}
 								transition={{ duration: 0.2 }}
 								className="space-y-10"
+								data-testid="survey-question"
 							>
 								<div className="space-y-6">
 									<div className="space-y-3">
-										<h2 className="flex items-start gap-3 font-medium text-white text-xl sm:text-2xl">
+										<h2
+											className="flex items-start gap-3 font-medium text-white text-xl sm:text-2xl"
+											data-testid="survey-question-prompt"
+										>
 											<span className="shrink-0 text-white/40">{currentIndex + 1}.</span>
 											<span>
 												{currentQuestion.prompt}
@@ -1781,9 +2086,7 @@ export default function ResearchLinkPage() {
 											</span>
 										</h2>
 										{/* Question media (image, video, or audio) */}
-										{(currentQuestion.mediaUrl ?? currentQuestion.videoUrl) && (
-											<QuestionMedia url={(currentQuestion.mediaUrl ?? currentQuestion.videoUrl)!} />
-										)}
+										{currentQuestionMediaUrl && <QuestionMedia url={currentQuestionMediaUrl} />}
 										{currentQuestion.helperText && (
 											<p className="text-base text-white/50">{currentQuestion.helperText}</p>
 										)}
@@ -1807,8 +2110,9 @@ export default function ResearchLinkPage() {
 										variant="ghost"
 										size="sm"
 										onClick={handleBack}
-										disabled={currentIndex === 0}
+										disabled={currentIndex === 0 && respondentFieldConfigs.length === 0}
 										className="text-white/50 hover:bg-white/10 hover:text-white"
+										data-testid="survey-back-button"
 									>
 										<ArrowLeft className="mr-1 h-3.5 w-3.5" />
 										Back
@@ -1816,8 +2120,12 @@ export default function ResearchLinkPage() {
 									<Button
 										type="button"
 										onClick={() => void handleAnswerSubmit(currentAnswer)}
-										disabled={isSaving || (currentQuestion?.required && !hasResponseValue(currentAnswer))}
+										disabled={
+											isSaving ||
+											(currentQuestion?.required && !isQuestionAnswerComplete(currentQuestion, currentAnswer))
+										}
 										className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
+										data-testid="survey-next-button"
 									>
 										{isSaving ? (
 											<Loader2 className="h-4 w-4 animate-spin" />
@@ -1833,7 +2141,7 @@ export default function ResearchLinkPage() {
 								{/* Progress indicator - minimal dots */}
 								<div className="flex items-center justify-center gap-1.5">
 									{questions.map((q, idx) => {
-										const isAnswered = hasResponseValue(responses[q.id]);
+										const isAnswered = isQuestionAnswerComplete(q, responses[q.id]);
 										const isCurrent = idx === currentIndex;
 										const canJump = isAnswered || isCurrent || idx < currentIndex;
 										return (
@@ -1920,6 +2228,7 @@ export default function ResearchLinkPage() {
 							initial={{ opacity: 0, scale: 0.95 }}
 							animate={{ opacity: 1, scale: 1 }}
 							className="flex flex-col items-center gap-4 rounded-xl border border-white/10 bg-white/10 p-8 text-center"
+							data-testid="survey-complete"
 						>
 							<CheckCircle2 className="h-12 w-12 text-emerald-300" />
 							<div className="space-y-2">
@@ -1968,36 +2277,11 @@ function findNextQuestionIndex(responses: ResponseRecord, questions: ResearchLin
 	for (let index = 0; index < questions.length; index++) {
 		const question = questions[index];
 		const value = responses?.[question.id];
-		if (!hasResponseValue(value)) {
+		if (!isQuestionAnswerComplete(question, value)) {
 			return index;
 		}
 	}
 	return questions.length;
-}
-
-function hasResponseValue(value: ResponseValue) {
-	if (Array.isArray(value)) return value.length > 0;
-	if (typeof value === "string") return value.trim().length > 0;
-	if (typeof value === "boolean") return true;
-	return false;
-}
-
-function responseValuesEqual(a: ResponseValue, b: ResponseValue) {
-	const aHasValue = hasResponseValue(a);
-	const bHasValue = hasResponseValue(b);
-	if (!aHasValue && !bHasValue) return true;
-	if (Array.isArray(a) || Array.isArray(b)) {
-		if (!Array.isArray(a) || !Array.isArray(b)) return false;
-		if (a.length !== b.length) return false;
-		return a.every((entry, idx) => entry === b[idx]);
-	}
-	return a === b;
-}
-
-function normalizeResponseValue(value: ResponseValue): ResponseValue {
-	if (Array.isArray(value)) return value.filter((entry) => typeof entry === "string" && entry.trim().length > 0);
-	if (typeof value === "string") return value.trim();
-	return value ?? null;
 }
 
 function renderQuestionInput({
@@ -2018,43 +2302,14 @@ function renderQuestionInput({
 	const resolved = resolveQuestionInput(question);
 
 	if (resolved.kind === "select") {
-		const currentValue = typeof value === "string" ? value : "";
-		const isOtherSelected = currentValue !== "" && !resolved.options.includes(currentValue);
 		return (
-			<div className="space-y-2">
-				<Select
-					value={isOtherSelected ? "__other__" : currentValue}
-					onValueChange={(next) => {
-						if (next === "__other__") {
-							onChange(""); // Clear so user can type
-						} else {
-							onChange(next);
-						}
-					}}
-				>
-					<SelectTrigger className="border-white/10 bg-black/30 text-white">
-						<SelectValue placeholder="Select an option" />
-					</SelectTrigger>
-					<SelectContent>
-						{resolved.options.map((option) => (
-							<SelectItem key={option} value={option}>
-								{option}
-							</SelectItem>
-						))}
-						{resolved.allowOther && <SelectItem value="__other__">Other...</SelectItem>}
-					</SelectContent>
-				</Select>
-				{resolved.allowOther && (isOtherSelected || currentValue === "") && (
-					<Input
-						type="text"
-						value={isOtherSelected ? currentValue : ""}
-						onChange={(e) => onChange(e.target.value)}
-						placeholder="Type your answer..."
-						className="border-white/10 bg-black/30 text-white placeholder:text-white/40"
-						autoFocus={isOtherSelected}
-					/>
-				)}
-			</div>
+			<SingleSelectInput
+				question={question}
+				value={value}
+				onChange={onChange}
+				options={resolved.options}
+				allowOther={resolved.allowOther}
+			/>
 		);
 	}
 
@@ -2075,7 +2330,7 @@ function renderQuestionInput({
 									onChange(nextChecked ? [...selected, option] : selected.filter((entry) => entry !== option));
 								}}
 							/>
-							<span>{option}</span>
+							<span data-testid="survey-multi-option">{option}</span>
 						</label>
 					);
 				})}
@@ -2086,9 +2341,9 @@ function renderQuestionInput({
 							type="text"
 							value={otherText}
 							onChange={(e) => {
-								const newOther = e.target.value.trim();
+								const newOther = e.target.value;
 								const withoutOld = selected.filter((v) => resolved.options.includes(v));
-								if (newOther) {
+								if (newOther.trim().length > 0) {
 									onChange([...withoutOld, newOther]);
 								} else {
 									onChange(withoutOld);
@@ -2096,6 +2351,7 @@ function renderQuestionInput({
 							}}
 							placeholder="Type your answer..."
 							className="border-white/10 bg-black/30 text-white placeholder:text-white/40"
+							data-testid="survey-text-input"
 						/>
 					</div>
 				)}
@@ -2114,6 +2370,8 @@ function renderQuestionInput({
 							key={point}
 							type="button"
 							onClick={() => onChange(String(point))}
+							aria-label={`Rate ${point}`}
+							data-testid={`survey-likert-${point}`}
 							className={cn(
 								"flex h-10 w-10 items-center justify-center rounded-lg border font-medium text-sm transition-all",
 								selectedValue === String(point)
@@ -2135,6 +2393,123 @@ function renderQuestionInput({
 		);
 	}
 
+	if (resolved.kind === "matrix") {
+		const selectedValues = isMatrixResponseValue(value) ? value : {};
+		const scalePoints = Array.from({ length: resolved.scale }, (_, i) => i + 1);
+		const hasScaleLabels = Boolean(resolved.labels.low || resolved.labels.high);
+		const updateMatrixValue = (rowId: string, nextValue: string) => {
+			onChange({
+				...selectedValues,
+				[rowId]: nextValue,
+			});
+		};
+
+		return (
+			<div className="space-y-4">
+				<div className="hidden overflow-x-auto rounded-xl border border-white/10 bg-black/20 md:block">
+					<table className="min-w-full border-collapse">
+						<thead>
+							{hasScaleLabels && (
+								<tr className="border-white/10 border-b text-white/50 text-xs">
+									<th className="px-4 pt-3 pb-1" />
+									<th colSpan={scalePoints.length} className="px-2 pt-3 pb-1">
+										<div className="flex items-center justify-between gap-4 px-1">
+											<span>{resolved.labels.low}</span>
+											<span className="text-right">{resolved.labels.high}</span>
+										</div>
+									</th>
+								</tr>
+							)}
+							<tr className="border-white/10 border-b text-white/50 text-xs">
+								<th className="px-4 py-3 text-left font-medium">Area</th>
+								{scalePoints.map((point) => (
+									<th key={point} className="px-2 py-3 text-center font-medium">
+										{point}
+									</th>
+								))}
+							</tr>
+						</thead>
+						<tbody>
+							{resolved.rows.map((row) => (
+								<tr
+									key={row.id}
+									className="border-white/10 border-b last:border-b-0"
+									data-testid={`survey-matrix-row-${row.id}`}
+								>
+									<td className="px-4 py-3 text-sm text-white/85">{row.label}</td>
+									{scalePoints.map((point) => {
+										const isSelected = selectedValues[row.id] === String(point);
+										return (
+											<td key={point} className="px-2 py-3 text-center">
+												<button
+													type="button"
+													onClick={() => updateMatrixValue(row.id, String(point))}
+													aria-label={`Rate ${row.label} ${point}`}
+													data-testid={`survey-matrix-${row.id}-${point}`}
+													className={cn(
+														"mx-auto flex h-9 w-9 items-center justify-center rounded-md border font-medium text-sm transition-all",
+														isSelected
+															? "border-white bg-white text-black"
+															: "border-white/20 bg-white/5 text-white/70 hover:border-white/40 hover:bg-white/10 hover:text-white"
+													)}
+												>
+													{point}
+												</button>
+											</td>
+										);
+									})}
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
+
+				{hasScaleLabels && (
+					<div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 md:hidden">
+						<div className="flex items-center justify-between gap-4 px-1 text-white/50 text-xs">
+							<span>{resolved.labels.low}</span>
+							<span className="text-right">{resolved.labels.high}</span>
+						</div>
+					</div>
+				)}
+
+				<div className="space-y-4 md:hidden">
+					{resolved.rows.map((row) => (
+						<div
+							key={row.id}
+							className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4"
+							data-testid={`survey-matrix-row-${row.id}`}
+						>
+							<p className="text-sm text-white/85">{row.label}</p>
+							<div className="flex items-center justify-between gap-2">
+								{scalePoints.map((point) => {
+									const isSelected = selectedValues[row.id] === String(point);
+									return (
+										<button
+											key={point}
+											type="button"
+											onClick={() => updateMatrixValue(row.id, String(point))}
+											aria-label={`Rate ${row.label} ${point}`}
+											data-testid={`survey-matrix-${row.id}-${point}`}
+											className={cn(
+												"flex h-10 w-10 items-center justify-center rounded-lg border font-medium text-sm transition-all",
+												isSelected
+													? "border-white bg-white text-black"
+													: "border-white/20 bg-white/5 text-white/70 hover:border-white/40 hover:bg-white/10 hover:text-white"
+											)}
+										>
+											{point}
+										</button>
+									);
+								})}
+							</div>
+						</div>
+					))}
+				</div>
+			</div>
+		);
+	}
+
 	if (resolved.kind === "image_select") {
 		const selectedValue = typeof value === "string" ? value : "";
 		return (
@@ -2144,6 +2519,7 @@ function renderQuestionInput({
 						key={option.label}
 						type="button"
 						onClick={() => onChange(option.label)}
+						data-testid="survey-image-option"
 						className={cn(
 							"group relative overflow-hidden rounded-xl border-2 transition-all",
 							selectedValue === option.label
@@ -2192,6 +2568,7 @@ function renderQuestionInput({
 					style={{ minHeight: "220px" }}
 					className="w-full resize-none border-white/10 bg-black/20 pr-14 text-lg text-white placeholder:text-white/30 focus:border-white/20 md:text-xl"
 					autoFocus
+					data-testid="survey-textarea-input"
 				/>
 				{voiceSupported && toggleRecording && voiceButtonState && (
 					<div className="absolute top-2 right-2">
@@ -2220,6 +2597,7 @@ function renderQuestionInput({
 				onChange={(event) => onChange(event.target.value)}
 				placeholder="Type your response..."
 				className={cn("border-white/10 bg-black/30 text-white placeholder:text-white/40", showVoice && "pr-12")}
+				data-testid="survey-text-input"
 			/>
 			{showVoice && (
 				<div className="-translate-y-1/2 absolute top-1/2 right-2">
@@ -2259,6 +2637,14 @@ function resolveQuestionInput(question: ResearchLinkQuestion) {
 			labels: question.likertLabels ?? { low: "", high: "" },
 		};
 	}
+	if (question.type === "matrix" && question.matrixRows?.length) {
+		return {
+			kind: "matrix" as const,
+			rows: question.matrixRows,
+			scale: question.likertScale ?? 5,
+			labels: question.likertLabels ?? { low: "", high: "" },
+		};
+	}
 	if (question.type === "image_select" && question.imageOptions?.length) {
 		return {
 			kind: "image_select" as const,
@@ -2283,4 +2669,120 @@ function resolveQuestionInput(question: ResearchLinkQuestion) {
 		return { kind: "input" as const, inputType: "tel" as const };
 	}
 	return { kind: "textarea" as const };
+}
+
+function SingleSelectInput({
+	question,
+	value,
+	onChange,
+	options,
+	allowOther,
+}: {
+	question: ResearchLinkQuestion;
+	value: ResponseValue;
+	onChange: (value: ResponseValue) => void;
+	options: string[];
+	allowOther?: boolean;
+}) {
+	const currentValue = typeof value === "string" ? value : "";
+	const isOtherValue = currentValue !== "" && !options.includes(currentValue);
+	const [otherSelected, setOtherSelected] = useState(isOtherValue);
+
+	useEffect(() => {
+		if (isOtherValue) {
+			setOtherSelected(true);
+			return;
+		}
+		if (currentValue !== "") {
+			setOtherSelected(false);
+		}
+	}, [currentValue, isOtherValue]);
+
+	const selectedValue = isOtherValue ? "__other__" : otherSelected ? "__other__" : currentValue;
+
+	return (
+		<div className="space-y-3">
+			<RadioGroup
+				value={selectedValue}
+				onValueChange={(next) => {
+					if (next === "__other__") {
+						setOtherSelected(true);
+						if (isOtherValue) return;
+						onChange("");
+						return;
+					}
+
+					setOtherSelected(false);
+					onChange(next);
+				}}
+				className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+				data-testid="survey-select-input"
+			>
+				{options.map((option, index) => {
+					const optionId = `${question.id}-option-${index}`;
+					const selected = currentValue === option;
+					return (
+						<Label
+							key={option}
+							htmlFor={optionId}
+							data-testid="survey-select-option"
+							className={cn(
+								"group flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border p-4 text-left transition-all",
+								selected
+									? "border-white bg-white text-black"
+									: "border-white/15 bg-white/5 text-white/85 hover:border-white/35 hover:bg-white/10"
+							)}
+						>
+							<RadioGroupItem
+								value={option}
+								id={optionId}
+								className={cn(
+									"mt-0.5 border-white/35 shadow-none",
+									selected && "border-black text-black",
+									!selected && "text-white"
+								)}
+							/>
+							<span className="flex-1 text-sm leading-relaxed">{option}</span>
+						</Label>
+					);
+				})}
+
+				{allowOther && (
+					<Label
+						htmlFor={`${question.id}-option-other`}
+						data-testid="survey-select-option"
+						className={cn(
+							"group flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border p-4 text-left transition-all",
+							selectedValue === "__other__"
+								? "border-white bg-white text-black"
+								: "border-white/15 bg-white/5 text-white/85 hover:border-white/35 hover:bg-white/10"
+						)}
+					>
+						<RadioGroupItem
+							value="__other__"
+							id={`${question.id}-option-other`}
+							className={cn(
+								"mt-0.5 border-white/35 shadow-none",
+								selectedValue === "__other__" && "border-black text-black",
+								selectedValue !== "__other__" && "text-white"
+							)}
+						/>
+						<span className="flex-1 text-sm leading-relaxed">Other</span>
+					</Label>
+				)}
+			</RadioGroup>
+
+			{allowOther && (otherSelected || isOtherValue) && (
+				<Input
+					type="text"
+					value={isOtherValue ? currentValue : ""}
+					onChange={(e) => onChange(e.target.value)}
+					placeholder="Type your answer..."
+					className="border-white/10 bg-black/30 text-white placeholder:text-white/40"
+					autoFocus={selectedValue === "__other__"}
+					data-testid="survey-text-input"
+				/>
+			)}
+		</div>
+	);
 }

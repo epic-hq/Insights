@@ -39,10 +39,10 @@ export function SuggestionBadges({ badges, disabled, onSendMessage, onNavigate }
 						onClick={() => handleClick(badge)}
 						className={cn(
 							"flex items-center gap-2 rounded-full border px-3 py-1.5 text-left text-sm transition-all duration-200",
-							"border-border/60 bg-card/80 shadow-sm",
+							"border-border/60 bg-card/80 text-foreground shadow-sm",
 							disabled
 								? "cursor-default opacity-50"
-								: "hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 hover:shadow-lg active:translate-y-0",
+								: "hover:-translate-y-0.5 hover:border-primary/40 hover:bg-accent hover:text-accent-foreground hover:shadow-lg active:translate-y-0",
 							"focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
 							"dark:bg-slate-900/60"
 						)}

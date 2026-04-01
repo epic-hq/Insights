@@ -61,6 +61,7 @@ export { loader } from "./detail.loader";
  */
 export function shouldRevalidate({
 	formAction,
+	defaultShouldRevalidate,
 	currentUrl,
 	nextUrl,
 }: {
@@ -71,9 +72,14 @@ export function shouldRevalidate({
 }) {
 	// Always revalidate on form submissions (actions)
 	if (formAction) return true;
-	// Skip revalidation when only search params changed on the same page
-	if (currentUrl.pathname === nextUrl.pathname) return false;
-	return true;
+	// Skip revalidation only when the URL change is purely search params on the same page
+	// (tab, lens, source are client-only UI state).
+	// Do NOT skip when URLs are identical — that's an explicit revalidator.revalidate() call
+	// from realtime subscriptions or fallback polling.
+	if (currentUrl.pathname === nextUrl.pathname && currentUrl.search !== nextUrl.search) {
+		return false;
+	}
+	return defaultShouldRevalidate;
 }
 
 const ACTIVE_ANALYSIS_STATUSES = new Set<Database["public"]["Enums"]["job_status"]>([
@@ -680,6 +686,23 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		}
 	}, [progressInfo.isComplete, revalidator]);
 
+	// Catch race condition: if we land on the page after processing already completed
+	// but the loader ran while it was still in-flight, the data is stale.
+	// Detect this by checking if status is "ready" but we have no evidence/analysis yet.
+	const initialRevalidateRef = useRef(false);
+	useEffect(() => {
+		if (initialRevalidateRef.current) return;
+		if (currentStatus === "ready" && evidence.length === 0 && !conversationAnalysis?.summary) {
+			initialRevalidateRef.current = true;
+			consola.info("[detail] Stale data detected (ready but no evidence), revalidating");
+			setTimeout(() => {
+				if (revalidatorRef.current.state === "idle") {
+					revalidatorRef.current.revalidate();
+				}
+			}, 500);
+		}
+	}, [currentStatus, evidence.length, conversationAnalysis?.summary]);
+
 	// Fallback polling: periodically revalidate while processing to catch completion
 	// when realtime subscriptions (Supabase / Trigger.dev) fail to deliver updates
 	useEffect(() => {
@@ -792,10 +815,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 				{/* 2-column layout: Insights (left ~58%) + Sources (right ~42%) */}
 				<div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
-					{/* Left column: Tasks + Analysis Workspace */}
+					{/* Left column: Analysis Workspace + Tasks */}
 					<div className="space-y-6">
-						<InterviewTasks tasks={linkedTasks} routes={routes} />
-
 						<AnalysisWorkspace
 							activeTab={activeTab}
 							onTabChange={(tab) => {
@@ -812,7 +833,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							conversationUpdatedLabel={conversationUpdatedLabel}
 							onSourceClick={handleSourceClick}
 							recommendations={conversationAnalysis?.recommendations ?? []}
-							openQuestions={conversationAnalysis?.openQuestions ?? []}
 							interviewId={interview.id}
 							lensTemplates={lensTemplates}
 							lensAnalyses={lensAnalyses}
@@ -832,12 +852,17 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							notesValue={(interview.observations_and_notes as string) ?? ""}
 							onNotesUpdate={(value) => submitInterviewFieldUpdate("observations_and_notes", value)}
 						/>
+
+						<InterviewTasks tasks={linkedTasks} routes={routes} />
 					</div>
 
 					{/* Right column: Sources (sticky) */}
 					<div className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-2 lg:[scrollbar-gutter:stable]">
 						<InterviewSourcePanel
-							interview={interview}
+							interview={{
+								...interview,
+								thumbnail_url: interviewState?.thumbnail_url ?? interview.thumbnail_url,
+							}}
 							evidence={evidence}
 							accountId={accountId}
 							projectId={projectId}

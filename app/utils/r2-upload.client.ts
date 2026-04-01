@@ -10,7 +10,7 @@ const PART_UPLOAD_MAX_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_PART_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 1000;
 
-export type UploadPhase = "uploading" | "completing" | "done";
+export type UploadPhase = "optimizing" | "uploading" | "completing" | "done";
 
 export interface UploadProgress {
 	bytesSent: number;

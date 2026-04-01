@@ -1,4 +1,5 @@
 import consola from "consola";
+import { getProjectAnalysisSettings } from "~/features/projects/utils/analysisSettings";
 import {
 	type BillingContext,
 	generateEmbeddingWithBilling,
@@ -7,6 +8,11 @@ import {
 	systemBillingContext,
 } from "~/lib/billing";
 import { SIMILARITY_THRESHOLDS } from "~/lib/embeddings/openai.server";
+import {
+	findLocalEvidenceMatchesForTheme,
+	limitThemeLinksPerEvidence,
+	mergeThemeEvidenceMatches,
+} from "~/lib/evidence/theme-linking.server";
 import type { SupabaseClient, Theme, Theme_EvidenceInsert, ThemeInsert } from "~/types";
 import { deleteOrphanedThemes } from "./services/segmentThemeQueries.server";
 
@@ -49,6 +55,8 @@ async function findSimilarEvidenceForTheme(
 // Input shape for evidence rows we pass to BAML. Mirrors columns in `public.evidence`.
 interface EvidenceForTheme {
 	id: string;
+	gist?: string | null;
+	chunk?: string | null;
 	verbatim: string;
 	kind_tags: string[] | null;
 	personas: string[] | null;
@@ -72,6 +80,14 @@ type AutoGroupThemesResult = {
 	themes: Theme[];
 };
 
+type ProposedThemeResult = {
+	name: string;
+	statement: string;
+	inclusion_criteria: string;
+	exclusion_criteria?: string | null;
+	synonyms?: string[];
+};
+
 // Select evidence rows to analyze
 async function loadEvidence(
 	supabase: SupabaseClient,
@@ -87,7 +103,7 @@ async function loadEvidence(
 
 	let query = supabase
 		.from("evidence")
-		.select("id, verbatim, personas, segments, journey_stage, support, is_question")
+		.select("id, gist, chunk, verbatim, personas, segments, journey_stage, support, is_question")
 		.eq("project_id", project_id)
 		.or("is_question.is.null,is_question.eq.false"); // Filter out interviewer questions
 
@@ -187,7 +203,8 @@ async function findSemanticallySimilarTheme(
 async function upsertTheme(
 	supabase: SupabaseClient,
 	payload: Omit<ThemeInsert, "id"> & { id?: string },
-	billingCtx: BillingContext
+	billingCtx: BillingContext,
+	themeDedupThreshold = SIMILARITY_THRESHOLDS.THEME_DEDUPLICATION
 ): Promise<Theme> {
 	// 1. Try exact name match first (fastest)
 	const { data: existing, error: findErr } = await supabase
@@ -226,8 +243,8 @@ async function upsertTheme(
 			supabase,
 			payload.project_id,
 			searchText,
-			billingCtx
-			// Uses SIMILARITY_THRESHOLDS.THEME_DEDUPLICATION (0.8) by default
+			billingCtx,
+			themeDedupThreshold
 		);
 
 		if (similarTheme) {
@@ -383,9 +400,13 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 
 	// Create billing context for all LLM operations
 	const billingCtx = systemBillingContext(account_id, "theme_generation", project_id ?? undefined);
+	const { data: projectData } = project_id
+		? await supabase.from("projects").select("project_settings").eq("id", project_id).maybeSingle()
+		: { data: null };
+	const analysisSettings = getProjectAnalysisSettings(projectData?.project_settings);
 
 	// 2) Call BAML
-	let resp;
+	let resp: { themes?: ProposedThemeResult[] } | undefined;
 	try {
 		const evidence_json = JSON.stringify(evidence);
 		consola.log("[autoGroupThemesAndApply] Calling BAML with evidence length:", evidence_json.length);
@@ -425,6 +446,12 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 	const created_theme_ids: string[] = [];
 	const themes: Theme[] = [];
 	let link_count = 0;
+	const pendingLinks: Array<{
+		themeId: string;
+		evidenceId: string;
+		confidence: number;
+		rationale: string;
+	}> = [];
 
 	const themesFromBaml = Array.isArray(resp?.themes) ? resp.themes : [];
 	if (!themesFromBaml.length) {
@@ -453,7 +480,8 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 					synonyms: t.synonyms ?? [],
 					anti_examples: [],
 				},
-				billingCtx
+				billingCtx,
+				analysisSettings.theme_dedup_threshold
 			);
 		} catch (themeErr) {
 			consola.warn("[autoGroupThemesAndApply] Failed to upsert theme", {
@@ -468,40 +496,65 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 		// Use semantic search to find evidence matching this theme
 		if (project_id) {
 			// Build search query from theme's statement and inclusion criteria
-			const searchQuery = [t.statement, t.inclusion_criteria, t.name].filter(Boolean).join(". ");
+			const searchQuery = [t.statement, t.inclusion_criteria, t.name, ...(t.synonyms ?? [])].filter(Boolean).join(". ");
 			consola.log(`[autoGroupThemesAndApply] Searching evidence for theme "${t.name}"...`);
 
 			try {
+				const localEvidenceMatches = findLocalEvidenceMatchesForTheme({
+					candidates: evidence,
+					themeName: t.name,
+					statement: t.statement ?? null,
+					inclusionCriteria: t.inclusion_criteria ?? null,
+					synonyms: t.synonyms ?? [],
+					limit: 12,
+				});
+
 				const similarEvidence = await findSimilarEvidenceForTheme(
 					supabase,
 					project_id,
 					searchQuery,
 					billingCtx,
-					0.4, // threshold - balance between coverage and relevance
+					analysisSettings.evidence_link_threshold,
 					50 // max matches per theme
 				);
 
-				consola.log(`[autoGroupThemesAndApply] Found ${similarEvidence.length} similar evidence for "${t.name}"`);
+				const evidenceMatches = mergeThemeEvidenceMatches(localEvidenceMatches, similarEvidence).filter(
+					(match) => match.confidence >= analysisSettings.evidence_link_threshold
+				);
 
-				// Create theme_evidence links for each match
-				for (const match of similarEvidence) {
-					try {
-						await upsertThemeEvidence(supabase, {
-							account_id,
-							project_id,
-							theme_id: theme.id,
-							evidence_id: match.id,
-							rationale: `Semantic match (${Math.round(match.similarity * 100)}%)`,
-							confidence: match.similarity,
-						});
-						link_count += 1;
-					} catch (linkErr) {
-						// Silently skip - likely duplicate or FK error
-					}
+				consola.log(
+					`[autoGroupThemesAndApply] Found ${evidenceMatches.length} total evidence matches for "${t.name}" ` +
+						`(${localEvidenceMatches.length} local, ${similarEvidence.length} semantic)`
+				);
+
+				for (const match of evidenceMatches) {
+					pendingLinks.push({
+						themeId: theme.id,
+						evidenceId: match.id,
+						rationale: match.rationale,
+						confidence: match.confidence,
+					});
 				}
 			} catch (searchErr) {
 				consola.warn(`[autoGroupThemesAndApply] Semantic search failed for theme "${t.name}":`, searchErr);
 			}
+		}
+	}
+
+	const prunedLinks = limitThemeLinksPerEvidence(pendingLinks, evidence.length);
+	for (const link of prunedLinks) {
+		try {
+			await upsertThemeEvidence(supabase, {
+				account_id,
+				project_id,
+				theme_id: link.themeId,
+				evidence_id: link.evidenceId,
+				rationale: link.rationale,
+				confidence: link.confidence,
+			});
+			link_count += 1;
+		} catch (_linkErr) {
+			// Silently skip - likely duplicate or FK error
 		}
 	}
 

@@ -14,6 +14,7 @@ import { Link } from "react-router";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
+import { formatQuestionAnswerValue } from "~/features/research-links/utils";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,6 +72,7 @@ interface ResearchLinkResponse {
 			options?: string[];
 			likertScale?: number;
 			likertLabels?: { low: string; high: string };
+			matrixRows?: Array<{ id: string; label: string }>;
 		}> | null;
 	} | null;
 }
@@ -152,13 +154,51 @@ function getSourceLabel(category: Exclude<SourceFilter, "all">) {
 }
 
 /** Format a research-link answer for display */
-function formatResearchAnswer(answer: unknown, question: { type: string; likertScale?: number }): string {
-	if (typeof answer === "string") return answer;
-	if (Array.isArray(answer)) return answer.join(", ");
-	if (typeof answer === "number") {
-		return question.type === "likert" ? `${answer}/${question.likertScale || 5}` : String(answer);
+function formatResearchAnswer(
+	answer: unknown,
+	question: {
+		id?: string;
+		prompt?: string;
+		type: string;
+		likertScale?: number;
+		matrixRows?: Array<{ id: string; label: string }>;
 	}
-	return JSON.stringify(answer);
+): string {
+	return (
+		formatQuestionAnswerValue(
+			{
+				id: question.id ?? "unknown",
+				prompt: question.prompt ?? "",
+				required: false,
+				type: question.type as
+					| "auto"
+					| "short_text"
+					| "long_text"
+					| "single_select"
+					| "multi_select"
+					| "likert"
+					| "matrix"
+					| "image_select",
+				placeholder: null,
+				helperText: null,
+				options: null,
+				allowOther: true,
+				likertScale: question.likertScale ?? null,
+				likertLabels: null,
+				matrixRows: question.matrixRows ?? null,
+				imageOptions: null,
+				mediaUrl: null,
+				videoUrl: null,
+				sectionId: null,
+				sectionTitle: null,
+				taxonomyKey: null,
+				personFieldKey: null,
+				hidden: false,
+				branching: null,
+			},
+			answer
+		) || JSON.stringify(answer)
+	);
 }
 
 // ---------------------------------------------------------------------------

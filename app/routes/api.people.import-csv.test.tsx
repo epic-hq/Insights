@@ -42,7 +42,13 @@ function buildMockAdminClient() {
 			if (table === "facet_kind_global") {
 				return {
 					select: vi.fn().mockResolvedValue({
-						data: [{ slug: "custom" }, { slug: "tool" }],
+						data: [
+							{ slug: "custom" },
+							{ slug: "tool" },
+							{ slug: "membership_status" },
+							{ slug: "membership_year" },
+							{ slug: "membership_expiration" },
+						],
 						error: null,
 					}),
 				};
@@ -242,5 +248,72 @@ describe("api.people.import-csv", () => {
 
 		expect(parseSpreadsheetTool.execute).toHaveBeenCalledTimes(1);
 		expect(importPeopleFromTableTool.execute).toHaveBeenCalledTimes(1);
+	});
+
+	it("passes membership-style facet columns through to the import tool", async () => {
+		vi.mocked(parseSpreadsheetTool.execute).mockResolvedValue({
+			success: true,
+			message: "Parsed",
+			assetId: "11111111-1111-4111-8111-111111111111",
+			headers: ["email", "ssd_member", "membership_year", "membership_expires_at"],
+			rowCount: 1,
+			columnCount: 4,
+		});
+
+		vi.mocked(importPeopleFromTableTool.execute).mockResolvedValue({
+			success: true,
+			message: "Imported",
+			imported: {
+				people: 1,
+				updated: 0,
+				organizations: 0,
+				facets: 3,
+				skipped: 0,
+			},
+		});
+
+		const request = new Request("http://localhost/test", {
+			method: "POST",
+			body: JSON.stringify({
+				csvContent: "email,ssd_member,membership_year,membership_expires_at\\nuser@example.com,true,2026,2026-12-31",
+				verify: false,
+				facetColumns: [
+					{ column: "ssd_member", facetKind: "membership_status" },
+					{ column: "membership_year", facetKind: "membership_year" },
+					{ column: "membership_expires_at", facetKind: "membership_expiration" },
+				],
+			}),
+			headers: { "Content-Type": "application/json" },
+		});
+
+		const args = {
+			request,
+			context: {
+				get: vi.fn((key) =>
+					key === userContext
+						? {
+								supabase: {},
+								claims: { sub: "user-1" },
+								account_id: "account-ctx",
+							}
+						: null
+				),
+			},
+			params: { projectId: "project-1", accountId: "account-1" },
+		} as unknown as ActionFunctionArgs;
+
+		const response = await action(args);
+		expect(response.status).toBe(200);
+
+		expect(importPeopleFromTableTool.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				facetColumns: [
+					{ column: "ssd_member", facetKind: "membership_status" },
+					{ column: "membership_year", facetKind: "membership_year" },
+					{ column: "membership_expires_at", facetKind: "membership_expiration" },
+				],
+			}),
+			expect.anything()
+		);
 	});
 });

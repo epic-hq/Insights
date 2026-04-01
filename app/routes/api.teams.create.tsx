@@ -1,4 +1,4 @@
-import { parseWithZod } from "@conform-to/zod";
+import { parseWithZod } from "@conform-to/zod/v4";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { data } from "react-router";

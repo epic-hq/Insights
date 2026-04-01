@@ -10,6 +10,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { AdminNav } from "~/features/admin/components/admin-nav";
 import type { Route } from "./+types/stuck-interviews";
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -97,6 +98,7 @@ export default function StuckInterviews({ loaderData }: Route.ComponentProps) {
 
 	return (
 		<div className="container mx-auto space-y-6 py-8">
+			<AdminNav />
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="font-semibold text-3xl">Stuck Interviews</h1>

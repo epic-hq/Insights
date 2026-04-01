@@ -32,7 +32,9 @@ export const displayComponentTool = createTool({
 			.describe(
 				"The registered component type to render. Must exactly match one of the available component types listed in the tool description."
 			),
-		data: z.record(z.unknown()).describe("The data to pass to the component. Must conform to the component's schema."),
+		data: z
+			.record(z.string(), z.unknown())
+			.describe("The data to pass to the component. Must conform to the component's schema."),
 		title: z
 			.string()
 			.optional()

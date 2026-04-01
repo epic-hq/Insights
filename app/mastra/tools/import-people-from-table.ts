@@ -64,6 +64,9 @@ const columnMappingSchema = z.object({
 	// Segmentation
 	segment: z.string().nullish().describe("Column name containing customer segment"),
 	lifecycle_stage: z.string().nullish().describe("Column name containing lifecycle stage"),
+	member_status: z.string().nullish().describe("Column name containing membership status (e.g. true, active, expired)"),
+	membership_year: z.string().nullish().describe("Column name containing membership year"),
+	membership_expires_at: z.string().nullish().describe("Column name containing membership expiration date"),
 });
 
 type ColumnMapping = z.infer<typeof columnMappingSchema>;
@@ -188,6 +191,15 @@ function autoDetectMappings(headers: string[]): ColumnMapping {
 		// Segmentation
 		segment: ["segment", "customersegment", "type", "category"],
 		lifecycle_stage: ["lifecyclestage", "leadstatus", "customerstatus"],
+		member_status: ["memberstatus", "membershipstatus", "ssdmember", "member", "is_member", "ismember"],
+		membership_year: ["membershipyear", "memberyear", "ssdmemberyear", "yearmember", "member_since_year"],
+		membership_expires_at: [
+			"membershipexpiresat",
+			"membershipexpiration",
+			"memberexpires",
+			"memberexpirationdate",
+			"membershipenddate",
+		],
 	};
 
 	for (const [field, fieldPatterns] of Object.entries(patterns)) {
@@ -950,6 +962,9 @@ The tool will:
 						{ field: "role", kindSlug: "role" },
 						{ field: "industry", kindSlug: "industry" },
 						{ field: "location", kindSlug: "location" },
+						{ field: "member_status", kindSlug: "membership_status" },
+						{ field: "membership_year", kindSlug: "membership_year" },
+						{ field: "membership_expires_at", kindSlug: "membership_expiration" },
 					];
 
 					for (const { field, kindSlug } of facetFields) {

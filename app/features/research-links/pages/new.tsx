@@ -132,6 +132,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	const { client: supabase } = getServerClient(request);
 	const routes = createRouteDefinitions(`/a/${accountId}`);
 
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+
 	const insertPayload = {
 		account_id: accountId,
 		name: payload.name,
@@ -147,6 +151,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		allow_chat: payload.allowChat,
 		default_response_mode: payload.defaultResponseMode,
 		is_live: payload.isLive,
+		survey_owner_user_id: user?.id ?? null,
 	};
 
 	const { data, error } = await supabase.from("research_links").insert(insertPayload).select("id").maybeSingle();

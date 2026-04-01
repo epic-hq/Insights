@@ -6,7 +6,7 @@
  */
 
 import consola from "consola";
-import { Calendar, Check, CheckCircle, CreditCard, Users, X } from "lucide-react";
+import { Calendar, Check, CheckCircle, CreditCard, Crown, Users, X } from "lucide-react";
 import { useEffect } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData, useSearchParams } from "react-router";
@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
-import { PLANS, type PlanId } from "~/config/plans";
+import { PLAN_IDS, PLANS, type PlanId } from "~/config/plans";
 import { getPostHogServerClient } from "~/lib/posthog.server";
 import { supabaseAdmin } from "~/lib/supabase/client.server";
 import { userContext } from "~/server/user-context";
@@ -39,43 +39,79 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.single();
 
 	// Get current plan from billing_subscriptions (single source of truth)
+	// First check the current account, then fall back to any account where this user is owner
+	// This handles the case where the subscription is on a different account than the one being viewed
 	let currentPlan: PlanId = "free";
+	let billingAccountId = accountId;
+
 	const { data: subscription, error: subError } = await supabaseAdmin
 		.schema("accounts")
 		.from("billing_subscriptions")
-		.select("plan_name, status, current_period_end")
+		.select("plan_name, status, current_period_end, account_id")
 		.eq("account_id", accountId)
 		.in("status", ["active", "trialing"])
 		.order("created_at", { ascending: false })
 		.limit(1)
 		.maybeSingle();
 
+	// If no subscription on current account, check accounts where user is owner
+	let ownerSubscription = subscription;
+	if (!subscription) {
+		const userId = ctx.claims.sub;
+		const { data: ownerAccounts } = await supabaseAdmin
+			.schema("accounts")
+			.from("account_user")
+			.select("account_id")
+			.eq("user_id", userId)
+			.eq("account_role", "owner");
+
+		if (ownerAccounts?.length) {
+			const ownerAccountIds = ownerAccounts.map((a) => a.account_id);
+			const { data: ownerSub } = await supabaseAdmin
+				.schema("accounts")
+				.from("billing_subscriptions")
+				.select("plan_name, status, current_period_end, account_id")
+				.in("account_id", ownerAccountIds)
+				.in("status", ["active", "trialing"])
+				.order("created_at", { ascending: false })
+				.limit(1)
+				.maybeSingle();
+
+			if (ownerSub) {
+				ownerSubscription = ownerSub;
+				billingAccountId = ownerSub.account_id;
+			}
+		}
+	}
+
 	consola.info("[billing] Subscription query", {
 		accountId,
-		subscription,
+		billingAccountId,
+		subscription: ownerSubscription,
 		error: subError?.message,
 	});
 
-	if (subscription?.plan_name) {
-		const planKey = subscription.plan_name.toLowerCase() as PlanId;
+	if (ownerSubscription?.plan_name) {
+		const planKey = ownerSubscription.plan_name.toLowerCase() as PlanId;
 		if (planKey in PLANS) {
 			currentPlan = planKey;
 		}
 	}
 
 	// Check if Polar customer exists (needed for "Manage Subscription" button)
+	// Look on the billing account (may differ from the currently viewed account)
 	const { data: billingCustomer } = await supabaseAdmin
 		.schema("accounts")
 		.from("billing_customers")
 		.select("id")
-		.eq("account_id", accountId)
+		.eq("account_id", billingAccountId)
 		.eq("provider", "polar")
 		.maybeSingle();
 
 	// Format renewal date if available
 	let renewalDate: string | null = null;
-	if (subscription?.current_period_end) {
-		renewalDate = new Date(subscription.current_period_end).toLocaleDateString("en-US", {
+	if (ownerSubscription?.current_period_end) {
+		renewalDate = new Date(ownerSubscription.current_period_end).toLocaleDateString("en-US", {
 			month: "long",
 			day: "numeric",
 			year: "numeric",
@@ -92,9 +128,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				event: "billing_page_viewed",
 				properties: {
 					account_id: accountId,
+					billing_account_id: billingAccountId,
 					current_plan: currentPlan,
-					has_active_subscription: !!subscription,
-					subscription_status: subscription?.status || null,
+					has_active_subscription: !!ownerSubscription,
+					subscription_status: ownerSubscription?.status || null,
 					$groups: { account: accountId },
 				},
 			});
@@ -103,12 +140,25 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		consola.warn("[BILLING_PAGE] PostHog tracking failed:", trackingError);
 	}
 
+	// Get billing account name if it differs from current account
+	let billingAccountName: string | null = null;
+	if (billingAccountId !== accountId) {
+		const { data: billingAccount } = await supabaseAdmin
+			.schema("accounts")
+			.from("accounts")
+			.select("name")
+			.eq("id", billingAccountId)
+			.maybeSingle();
+		billingAccountName = billingAccount?.name ?? null;
+	}
+
 	return {
 		currentPlan,
-		subscriptionStatus: (subscription?.status as "active" | "trialing") ?? null,
+		subscriptionStatus: (ownerSubscription?.status as "active" | "trialing") ?? null,
 		accountName: (account?.accounts as { name?: string })?.name ?? "Your Account",
 		renewalDate,
 		hasBillingCustomer: !!billingCustomer,
+		billingAccountName,
 	};
 }
 
@@ -128,7 +178,7 @@ const FEATURE_LABELS: Record<string, string> = {
 };
 
 export default function BillingPage() {
-	const { currentPlan, subscriptionStatus, accountName, renewalDate, hasBillingCustomer } =
+	const { currentPlan, subscriptionStatus, accountName, renewalDate, hasBillingCustomer, billingAccountName } =
 		useLoaderData<typeof loader>();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const plan = PLANS[currentPlan];
@@ -207,6 +257,16 @@ export default function BillingPage() {
 				<p className="text-muted-foreground text-sm">Manage your subscription for {accountName}.</p>
 			</div>
 
+			{/* Banner when billing lives on a different account */}
+			{billingAccountName && (
+				<div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-blue-800 text-sm dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-200">
+					<Crown className="h-4 w-4 shrink-0 text-amber-500" />
+					<span>
+						Billing is managed by your <strong>{billingAccountName}</strong> account.
+					</span>
+				</div>
+			)}
+
 			{/* Current Plan Card - compact inline style */}
 			<div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border bg-card px-5 py-4">
 				<div className="flex items-center gap-3">
@@ -259,15 +319,19 @@ export default function BillingPage() {
 					{(Object.entries(PLANS) as [PlanId, (typeof PLANS)[PlanId]][]).map(([key, p]) => {
 						const isCurrent = key === currentPlan;
 						const isTrialPlan = isCurrent && isTrialing;
-						const isHighlighted = p.badge === "Most Popular";
+						// Don't highlight lower plans as "Most Popular" when user is on a higher plan
+						const currentPlanIndex = PLAN_IDS.indexOf(currentPlan);
+						const thisPlanIndex = PLAN_IDS.indexOf(key);
+						const isDownsell = !isTrialing && thisPlanIndex < currentPlanIndex;
+						const isHighlighted = p.badge === "Most Popular" && !isDownsell;
 
 						return (
 							<Card
 								key={key}
 								className={`relative ${isCurrent && !isTrialPlan ? "border-primary ring-1 ring-primary" : ""} ${isTrialPlan ? "border-amber-500 ring-1 ring-amber-500" : ""} ${isHighlighted && !isCurrent ? "border-amber-500/50" : ""}`}
 							>
-								{/* Badge */}
-								{p.badge && !isCurrent && (
+								{/* Badge - suppress for lower plans when user is on a higher plan */}
+								{p.badge && !isCurrent && !isDownsell && (
 									<div className="-top-3 -translate-x-1/2 absolute left-1/2">
 										<span className="whitespace-nowrap rounded-full bg-amber-500 px-3 py-1 font-semibold text-stone-900 text-xs">
 											{p.badge}
@@ -351,14 +415,22 @@ export default function BillingPage() {
 										</Button>
 									) : !hasBillingCustomer ? (
 										// Users without billing customer (free or trial): go through checkout
-										<Button variant={p.cta.style === "primary" ? "default" : "outline"} className="w-full" asChild>
+										<Button
+											variant={isDownsell || p.cta.style !== "primary" ? "outline" : "default"}
+											className="w-full"
+											asChild
+										>
 											<Link to={`/api/billing/checkout?plan=${key}`}>
 												{isTrialing ? "Switch Plan" : currentPlan === "free" ? "Upgrade" : "Subscribe"}
 											</Link>
 										</Button>
 									) : (
 										// Paying subscribers: use portal for plan changes
-										<Button variant={p.cta.style === "primary" ? "default" : "outline"} className="w-full" asChild>
+										<Button
+											variant={isDownsell || p.cta.style !== "primary" ? "outline" : "default"}
+											className="w-full"
+											asChild
+										>
 											<Link to="/api/billing/portal">Switch Plan</Link>
 										</Button>
 									)}

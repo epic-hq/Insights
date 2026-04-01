@@ -13,7 +13,7 @@ const createSurveyInputSchema = z
 		projectId: z.string().nullish().default(""),
 		name: z.string(),
 		description: z.string().nullish().default(null),
-		questions: z.array(z.record(z.unknown())).min(1),
+		questions: z.array(z.record(z.string(), z.unknown())).min(1),
 		isLive: z.boolean().nullish(),
 	})
 	.passthrough();

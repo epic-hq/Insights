@@ -117,6 +117,8 @@ If the user describes multiple conditions (e.g. "If sponsor AND selected Enterpr
 - Put extra conditions in additionalConditions array
 - Set conditionLogic to "and" (all must match) or "or" (any can match) based on the user's intent
 - Most rules are single-condition. Only use additionalConditions when the user explicitly describes multiple conditions.
+- When multiple answer values route to the same destination, prefer ONE compound rule with conditionLogic="or" instead of separate duplicate rules.
+- Example: Founder/Employee/Student all to the same target => one rule with three conditions combined by OR.
 
 ACTION:
 - "skip_to": Jump to a later question. Set targetQuestionIndex to the index from the list above.
@@ -132,6 +134,7 @@ Even if not explicitly mentioned, infer useful probing guidance from context whe
 
 SUMMARY:
 Write a concise human-readable summary starting with "When...", "If...", or "For...".
+When clear, include a path-like label in the summary (e.g. "For founders/employees, go to growth-path questions").
 
 CONFIDENCE:
 - HIGH: Clear condition and action

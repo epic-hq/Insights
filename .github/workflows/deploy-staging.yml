@@ -11,8 +11,51 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
+  lint:
+    name: ⬣ Biome lint
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip lint]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: biomejs/setup-biome@v2
+      - run: biome ci . --reporter=github --error-on-warnings=false || true
+
+  typecheck:
+    name: 🔎 Type check
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip typecheck]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "package.json"
+          cache: "pnpm"
+      - run: pnpm install --prefer-offline --frozen-lockfile
+      - run: pnpm run typecheck
+
+  vitest:
+    needs: [lint, typecheck]
+    name: ⚡ Unit Tests
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip test]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "package.json"
+          cache: "pnpm"
+      - run: pnpm install --prefer-offline --frozen-lockfile
+      - run: pnpm exec playwright install chromium --with-deps
+      - run: pnpm run test:cov
+
   deploy:
+    needs: [lint, typecheck, vitest]
     if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
     runs-on: ubuntu-latest
     concurrency:
@@ -47,7 +90,22 @@ jobs:
       - name: Deploy to Fly.io (staging)
         if: success()
         run: |
-          flyctl deploy -c fly.staging.toml --remote-only
+          set -euo pipefail
+
+          max_attempts=3
+          for attempt in $(seq 1 "$max_attempts"); do
+            echo "Staging fly deploy attempt ${attempt}/${max_attempts} (Depot)..."
+            if flyctl deploy -c fly.staging.toml --remote-only; then
+              echo "Staging deploy succeeded on attempt ${attempt}."
+              exit 0
+            fi
+            if [ "$attempt" -lt "$max_attempts" ]; then
+              sleep 20
+            fi
+          done
+
+          echo "Staging depot deploy failed after ${max_attempts} attempts. Falling back to non-Depot remote builder..."
+          flyctl deploy -c fly.staging.toml --remote-only --depot=false
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
@@ -69,3 +127,58 @@ jobs:
             echo "- Fly app: upsight-staging"
             echo "- URL: https://upsight-staging.fly.dev"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  smoke-tests:
+    needs: deploy
+    if: ${{ !contains(github.event.head_commit.message, '[skip tests]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.3.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Wait for staging to be ready
+        run: |
+          echo "Waiting for staging to respond..."
+          for i in $(seq 1 30); do
+            if curl -sf https://upsight-staging.fly.dev/healthcheck > /dev/null 2>&1; then
+              echo "Staging is ready!"
+              exit 0
+            fi
+            echo "Attempt $i/30 - waiting 10s..."
+            sleep 10
+          done
+          echo "Staging did not become ready in time"
+          exit 1
+
+      - name: Run smoke tests
+        run: pnpm test:e2e:smoke
+        env:
+          E2E_BASE_URL: https://upsight-staging.fly.dev
+          E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7

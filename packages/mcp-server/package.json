@@ -1,0 +1,40 @@
+{
+  "name": "@agentcrm/mcp-server",
+  "version": "0.2.0",
+  "description": "UpSight MCP Server — connect AI agents to your customer intelligence",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "upsight-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "cursor",
+    "ai",
+    "crm",
+    "customer-intelligence",
+    "upsight"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/getupsight/upsight",
+    "directory": "packages/mcp-server"
+  },
+  "homepage": "https://getupsight.com",
+  "scripts": {
+    "build": "tsup",
+    "prepublishOnly": "tsup"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.24.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.8.0"
+  }
+}

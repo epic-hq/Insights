@@ -9,13 +9,29 @@ import consola from "consola";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 import { validateUUID } from "./context-utils";
-import { areCanonicallyEqual, asQuestionArray, resolveBoundSurveyTarget } from "./survey-mutation-guards";
+import {
+	areCanonicallyEqual,
+	asQuestionArray,
+	isRetryableSurveyMutationError,
+	resolveBoundSurveyTarget,
+	withSurveyMutationRetry,
+} from "./survey-mutation-guards";
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 8);
 
-const QUESTION_TYPES = ["auto", "short_text", "long_text", "single_select", "multi_select", "likert"] as const;
+const QUESTION_TYPES = [
+	"auto",
+	"short_text",
+	"long_text",
+	"single_select",
+	"multi_select",
+	"likert",
+	"matrix",
+] as const;
 type SurveyQuestionType = (typeof QUESTION_TYPES)[number];
 const QUESTION_TYPE_SET = new Set<string>(QUESTION_TYPES);
+const NPS_PROMPT_PATTERN =
+	/\b(nps|net promoter|how likely are you to recommend|recommend (us|this|startupsd|our)\b|recommend .* (colleague|friend|peer))\b/i;
 
 function toNonEmptyString(value: unknown): string | null {
 	if (typeof value !== "string") return null;
@@ -23,8 +39,218 @@ function toNonEmptyString(value: unknown): string | null {
 	return trimmed.length > 0 ? trimmed : null;
 }
 
+function sanitizeSurveyCopy(value: string | null): string | null {
+	if (!value) return null;
+	const sanitized = value
+		.replace(/\boptional\s*,?\s*but\s*encouraged\b/gi, "")
+		.replace(/\s{2,}/g, " ")
+		.replace(/\s+([,.;:!?])/g, "$1")
+		.trim();
+	return sanitized.length > 0 ? sanitized : null;
+}
+
+function normalizeTaxonomyKey(value: unknown): string | null {
+	const raw = toNonEmptyString(value);
+	if (!raw) return null;
+	const key = raw.toLowerCase().replace(/[\s-]+/g, "_");
+	const aliases: Record<string, string> = {
+		role: "role_type",
+		role_type: "role_type",
+		job_title: "job_title",
+		title: "job_title",
+		job_function: "job_function",
+		function: "job_function",
+		seniority: "seniority_level",
+		seniority_level: "seniority_level",
+		tenure: "tenure_in_role",
+		tenure_in_role: "tenure_in_role",
+		industry: "industry_vertical",
+		industry_vertical: "industry_vertical",
+		company_stage: "company_stage",
+		stage: "company_stage",
+		team_size: "team_size",
+		company_size: "team_size",
+		geographic_scope: "geographic_scope",
+		funding_stage: "funding_stage",
+		discovery_channel: "discovery_channel",
+	};
+	return aliases[key] ?? null;
+}
+
+function inferTaxonomyKeyFromPrompt(prompt: string): string | null {
+	const patterns: Array<{ taxonomyKey: string; pattern: RegExp }> = [
+		{ taxonomyKey: "job_title", pattern: /\b(job title|current title|professional title)\b/i },
+		{ taxonomyKey: "job_function", pattern: /\b(job function|function|department)\b/i },
+		{ taxonomyKey: "industry_vertical", pattern: /\b(industry|vertical|sector)\b/i },
+		{ taxonomyKey: "role_type", pattern: /\b(primary role|best describes your role|role in)\b/i },
+		{ taxonomyKey: "seniority_level", pattern: /\b(seniority|years? of experience|experience level)\b/i },
+		{ taxonomyKey: "tenure_in_role", pattern: /\b(years? in (your )?role|tenure in role)\b/i },
+		{ taxonomyKey: "team_size", pattern: /\b(team size|how many (people|employees)|company size)\b/i },
+		{ taxonomyKey: "company_stage", pattern: /\b(company stage|startup stage|business stage|arr)\b/i },
+		{ taxonomyKey: "funding_stage", pattern: /\b(funding stage|pre-seed|seed|series [a-z])\b/i },
+		{ taxonomyKey: "discovery_channel", pattern: /\b(how did you hear|discovery channel|heard about)\b/i },
+		{ taxonomyKey: "geographic_scope", pattern: /\b(geographic scope|region|where.*operate|market scope)\b/i },
+	];
+	for (const entry of patterns) {
+		if (entry.pattern.test(prompt)) return entry.taxonomyKey;
+	}
+	return null;
+}
+
+function derivePersonFieldKey(taxonomyKey: string | null): string | null {
+	if (!taxonomyKey) return null;
+	if (taxonomyKey === "job_title") return "title";
+	if (taxonomyKey === "job_function") return "job_function";
+	if (taxonomyKey === "seniority_level" || taxonomyKey === "tenure_in_role") return "seniority_level";
+	if (taxonomyKey === "role_type") return "role";
+	return null;
+}
+
+function normalizeQuestionId(value: unknown, index: number): string {
+	const candidate = toNonEmptyString(value);
+	return candidate ?? `q${index + 1}`;
+}
+
+function normalizeMatrixRows(input: unknown, questionId: string) {
+	if (!Array.isArray(input) || input.length === 0) return null;
+	const rows = input
+		.map((row, index) => {
+			if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+			const candidate = row as Record<string, unknown>;
+			const label = toNonEmptyString(candidate.label);
+			if (!label) return null;
+			return {
+				id: toNonEmptyString(candidate.id) ?? `${questionId}_row_${index + 1}`,
+				label,
+			};
+		})
+		.filter((row): row is { id: string; label: string } => Boolean(row));
+	return rows.length > 0 ? rows : null;
+}
+
+function normalizeBranching(input: unknown) {
+	if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+	const branching = input as {
+		rules?: unknown;
+		defaultNext?: unknown;
+	};
+	if (!Array.isArray(branching.rules) || branching.rules.length === 0) return null;
+
+	const rules = branching.rules
+		.map((rule, index) => {
+			if (!rule || typeof rule !== "object" || Array.isArray(rule)) return null;
+			const candidate = rule as Record<string, unknown>;
+			const conditionsGroup =
+				candidate.conditions && typeof candidate.conditions === "object" && !Array.isArray(candidate.conditions)
+					? (candidate.conditions as Record<string, unknown>)
+					: null;
+			const logic = conditionsGroup?.logic === "or" ? "or" : "and";
+			const conditions = Array.isArray(conditionsGroup?.conditions)
+				? conditionsGroup.conditions
+						.map((condition) => {
+							if (!condition || typeof condition !== "object" || Array.isArray(condition)) return null;
+							const candidateCondition = condition as Record<string, unknown>;
+							const questionId = toNonEmptyString(candidateCondition.questionId);
+							const operator = toNonEmptyString(candidateCondition.operator);
+							if (!questionId || !operator) return null;
+							if (
+								![
+									"equals",
+									"not_equals",
+									"contains",
+									"not_contains",
+									"selected",
+									"not_selected",
+									"answered",
+									"not_answered",
+								].includes(operator)
+							) {
+								return null;
+							}
+							const rawValue = candidateCondition.value;
+							const value =
+								typeof rawValue === "string"
+									? rawValue
+									: Array.isArray(rawValue)
+										? rawValue.filter((entry): entry is string => typeof entry === "string")
+										: undefined;
+							return { questionId, operator, value };
+						})
+						.filter((condition): condition is { questionId: string; operator: string; value?: string | string[] } =>
+							Boolean(condition)
+						)
+				: [];
+			if (conditions.length === 0) return null;
+
+			const action =
+				candidate.action === "end_survey" ? "end_survey" : candidate.action === "skip_to" ? "skip_to" : null;
+			if (!action) return null;
+
+			return {
+				id: toNonEmptyString(candidate.id) ?? `branch-rule-${index + 1}`,
+				conditions: { logic, conditions },
+				action,
+				targetQuestionId: toNonEmptyString(candidate.targetQuestionId) ?? undefined,
+				targetSectionId: toNonEmptyString(candidate.targetSectionId) ?? undefined,
+				label: toNonEmptyString(candidate.label) ?? undefined,
+				naturalLanguage: toNonEmptyString(candidate.naturalLanguage) ?? undefined,
+				summary: toNonEmptyString(candidate.summary) ?? undefined,
+				guidance: toNonEmptyString(candidate.guidance) ?? undefined,
+				source:
+					candidate.source === "user_ui" || candidate.source === "user_voice" || candidate.source === "ai_generated"
+						? candidate.source
+						: undefined,
+				confidence:
+					candidate.confidence === "high" || candidate.confidence === "medium" || candidate.confidence === "low"
+						? candidate.confidence
+						: undefined,
+				createdAt: toNonEmptyString(candidate.createdAt) ?? undefined,
+			};
+		})
+		.filter(
+			(
+				rule
+			): rule is {
+				id: string;
+				conditions: {
+					logic: "and" | "or";
+					conditions: Array<{ questionId: string; operator: string; value?: string | string[] }>;
+				};
+				action: "skip_to" | "end_survey";
+				targetQuestionId?: string;
+				targetSectionId?: string;
+				label?: string;
+				naturalLanguage?: string;
+				summary?: string;
+				guidance?: string;
+				source?: "user_ui" | "user_voice" | "ai_generated";
+				confidence?: "high" | "medium" | "low";
+				createdAt?: string;
+			} => Boolean(rule)
+		);
+
+	if (rules.length === 0) return null;
+
+	return {
+		rules,
+		defaultNext: toNonEmptyString(branching.defaultNext) ?? undefined,
+	};
+}
+
 function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) {
-	const prompt = toNonEmptyString(input.prompt) ?? `Question ${index + 1}`;
+	const id = normalizeQuestionId(input.id, index);
+	const prompt = sanitizeSurveyCopy(toNonEmptyString(input.prompt)) ?? `Question ${index + 1}`;
+	const isNpsPrompt = NPS_PROMPT_PATTERN.test(prompt);
+	const explicitTaxonomy = normalizeTaxonomyKey(input.taxonomyKey);
+	const taxonomyKey = explicitTaxonomy ?? inferTaxonomyKeyFromPrompt(prompt);
+	const explicitPersonFieldKey = toNonEmptyString(input.personFieldKey);
+	const personFieldKey = explicitPersonFieldKey ?? derivePersonFieldKey(taxonomyKey);
+	const helperText = sanitizeSurveyCopy(toNonEmptyString(input.helperText));
+	const sectionId = toNonEmptyString(input.sectionId);
+	const sectionTitle = sanitizeSurveyCopy(toNonEmptyString(input.sectionTitle));
+	const allowOther = input.allowOther !== false;
+	const branching = normalizeBranching(input.branching);
+	const matrixRows = normalizeMatrixRows(input.matrixRows, id);
 
 	const rawType = typeof input.type === "string" ? input.type : "";
 	let type: SurveyQuestionType = QUESTION_TYPE_SET.has(rawType) ? (rawType as SurveyQuestionType) : "auto";
@@ -67,20 +293,56 @@ function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) 
 			: null;
 
 	if (type === "likert") {
-		likertScale ??= 5;
-		likertLabels ??= { low: null, high: null };
+		if (isNpsPrompt) {
+			likertScale = 10;
+			likertLabels ??= { low: "1 = Not at all likely", high: "10 = Extremely likely" };
+		} else {
+			likertScale ??= 5;
+			likertLabels ??= { low: null, high: null };
+		}
 		return {
-			id: crypto.randomUUID(),
+			id,
 			prompt,
 			type,
 			required,
 			placeholder: null,
-			helperText: null,
+			helperText,
 			options: null,
+			allowOther,
 			likertScale,
 			likertLabels,
 			imageOptions: null,
 			videoUrl: null,
+			sectionId,
+			sectionTitle,
+			taxonomyKey,
+			personFieldKey,
+			branching,
+		};
+	}
+
+	if (type === "matrix") {
+		likertScale ??= 5;
+		likertLabels ??= { low: "Needs work", high: "Strong" };
+		return {
+			id,
+			prompt,
+			type,
+			required,
+			placeholder: null,
+			helperText,
+			options: null,
+			allowOther,
+			likertScale,
+			likertLabels,
+			matrixRows,
+			imageOptions: null,
+			videoUrl: null,
+			sectionId,
+			sectionTitle,
+			taxonomyKey,
+			personFieldKey,
+			branching,
 		};
 	}
 
@@ -89,17 +351,24 @@ function normalizeSurveyQuestion(input: Record<string, unknown>, index: number) 
 	}
 
 	return {
-		id: crypto.randomUUID(),
+		id,
 		prompt,
 		type,
 		required,
 		placeholder: null,
-		helperText: null,
+		helperText,
 		options: type === "single_select" || type === "multi_select" ? options : null,
+		allowOther,
 		likertScale: null,
 		likertLabels: null,
+		matrixRows: null,
 		imageOptions: null,
 		videoUrl: null,
+		sectionId,
+		sectionTitle,
+		taxonomyKey,
+		personFieldKey,
+		branching,
 	};
 }
 
@@ -117,7 +386,9 @@ Question types:
 - "long_text": Multi-line text area
 - "single_select": Choose one option from a list (requires options array)
 - "multi_select": Choose multiple options (requires options array)
-- "likert": Rating scale (use likertScale for size, likertLabels for endpoints)`,
+- "likert": Rating scale (use likertScale for size, likertLabels for endpoints)
+- "matrix": Multi-row shared rating grid (use matrixRows plus likertScale/likertLabels)
+- NPS standard in this product: use 1-10 scale with labeled endpoints`,
 	inputSchema: z
 		.object({
 			projectId: z
@@ -128,10 +399,10 @@ Question types:
 			name: z.string().describe("Survey name/title"),
 			description: z.string().nullish().default(null).describe("Brief description of the survey purpose"),
 			questions: z
-				.array(z.record(z.unknown()))
+				.array(z.record(z.string(), z.unknown()))
 				.min(1)
 				.describe(
-					"Array of question objects. Missing fields are normalized server-side (type/required/options/likertScale/likertLabels)."
+					"Array of question objects. Missing fields are normalized server-side (type/required/options/likertScale/likertLabels/matrixRows). Optional metadata: taxonomyKey and personFieldKey for canonical response mapping."
 				),
 			isLive: z.boolean().nullish().describe("Whether the survey is immediately live (default: true)"),
 		})
@@ -182,11 +453,16 @@ Question types:
 			const { createSupabaseAdminClient } = await import("../../lib/supabase/client.server");
 			const supabase = createSupabaseAdminClient();
 
-			const { data: project, error: projectError } = await supabase
-				.from("projects")
-				.select("account_id")
-				.eq("id", projectId)
-				.single();
+			const { data: project, error: projectError } = await withSurveyMutationRetry({
+				operation: "create-survey.load-project",
+				run: async () => {
+					const result = await supabase.from("projects").select("account_id").eq("id", projectId).single();
+					if (result.error && isRetryableSurveyMutationError(result.error)) {
+						throw result.error;
+					}
+					return result;
+				},
+			});
 
 			if (projectError || !project) {
 				return {
@@ -224,20 +500,29 @@ Question types:
 					questionCount: questions.length,
 				});
 
-				const { data, error } = await supabase
-					.from("research_links")
-					.update({
-						name: surveyName,
-						description: surveyDescription,
-						questions,
-						is_live: isLive,
-						hero_title: surveyName,
-						hero_subtitle: surveyDescription,
-					})
-					.eq("id", surveyId)
-					.eq("project_id", persistedProjectId)
-					.select("id, slug")
-					.single();
+				const { data, error } = await withSurveyMutationRetry({
+					operation: "create-survey.update-survey",
+					run: async () => {
+						const result = await supabase
+							.from("research_links")
+							.update({
+								name: surveyName,
+								description: surveyDescription,
+								questions,
+								is_live: isLive,
+								hero_title: surveyName,
+								hero_subtitle: surveyDescription,
+							})
+							.eq("id", surveyId)
+							.eq("project_id", persistedProjectId)
+							.select("id, slug")
+							.single();
+						if (result.error && isRetryableSurveyMutationError(result.error)) {
+							throw result.error;
+						}
+						return result;
+					},
+				});
 
 				if (error) {
 					consola.error("create-survey: update error", error);
@@ -248,12 +533,21 @@ Question types:
 					};
 				}
 
-				const { data: persistedSurvey, error: persistedError } = await supabase
-					.from("research_links")
-					.select("id, slug, name, description, is_live, hero_title, hero_subtitle, questions")
-					.eq("id", surveyId)
-					.eq("project_id", persistedProjectId)
-					.single();
+				const { data: persistedSurvey, error: persistedError } = await withSurveyMutationRetry({
+					operation: "create-survey.verify-update",
+					run: async () => {
+						const result = await supabase
+							.from("research_links")
+							.select("id, slug, name, description, is_live, hero_title, hero_subtitle, questions")
+							.eq("id", surveyId)
+							.eq("project_id", persistedProjectId)
+							.single();
+						if (result.error && isRetryableSurveyMutationError(result.error)) {
+							throw result.error;
+						}
+						return result;
+					},
+				});
 
 				if (persistedError || !persistedSurvey) {
 					return {
@@ -321,25 +615,38 @@ Question types:
 				accountId,
 			});
 
-			const { data, error } = await supabase
-				.from("research_links")
-				.insert({
-					account_id: accountId,
-					project_id: projectId,
-					name: surveyName,
-					slug,
-					description: surveyDescription,
-					questions,
-					is_live: isLive,
-					allow_chat: true,
-					default_response_mode: "form",
-					hero_title: surveyName,
-					hero_subtitle: surveyDescription,
-					hero_cta_label: "Start",
-					hero_cta_helper: null,
-				})
-				.select("id, slug")
-				.single();
+			const contextUserId = context?.requestContext?.get?.("user_id");
+			const surveyOwnerUserId = typeof contextUserId === "string" ? contextUserId : null;
+
+			const { data, error } = await withSurveyMutationRetry({
+				operation: "create-survey.insert",
+				run: async () => {
+					const result = await supabase
+						.from("research_links")
+						.insert({
+							account_id: accountId,
+							project_id: projectId,
+							name: surveyName,
+							slug,
+							description: surveyDescription,
+							questions,
+							is_live: isLive,
+							allow_chat: true,
+							default_response_mode: "form",
+							hero_title: surveyName,
+							hero_subtitle: surveyDescription,
+							hero_cta_label: "Start",
+							hero_cta_helper: null,
+							survey_owner_user_id: surveyOwnerUserId,
+						})
+						.select("id, slug")
+						.single();
+					if (result.error && isRetryableSurveyMutationError(result.error)) {
+						throw result.error;
+					}
+					return result;
+				},
+			});
 
 			if (error) {
 				consola.error("create-survey: database error", error);
@@ -353,12 +660,21 @@ Question types:
 			const editUrl = `/a/${accountId}/${projectId}/ask/${data.id}/edit`;
 			const publicUrl = `/research/${data.slug}`;
 
-			const { data: persistedSurvey, error: persistedError } = await supabase
-				.from("research_links")
-				.select("id, slug, project_id, account_id, name, description, is_live, questions")
-				.eq("id", data.id)
-				.eq("project_id", projectId)
-				.single();
+			const { data: persistedSurvey, error: persistedError } = await withSurveyMutationRetry({
+				operation: "create-survey.verify-insert",
+				run: async () => {
+					const result = await supabase
+						.from("research_links")
+						.select("id, slug, project_id, account_id, name, description, is_live, questions")
+						.eq("id", data.id)
+						.eq("project_id", projectId)
+						.single();
+					if (result.error && isRetryableSurveyMutationError(result.error)) {
+						throw result.error;
+					}
+					return result;
+				},
+			});
 
 			if (persistedError || !persistedSurvey) {
 				return {

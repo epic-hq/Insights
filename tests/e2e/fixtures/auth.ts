@@ -42,10 +42,15 @@ async function setupAuth(page: Page): Promise<AuthFixture> {
       // Click the Login button (not the Google OAuth button which is also type="submit")
       await page.click('button[type="submit"]:has-text("Login")');
 
-      // Wait for successful redirect
-      await page.waitForURL(/\/(projects|login_success|onboarding|a\/)/, {
-        timeout: 15000,
-      });
+      // App login can route client-side; poll URL instead of relying on a nav event.
+      const loginSuccessPattern =
+        /\/(projects|login_success|onboarding)(?:\/|$)|\/a\/[^/]+\/[^/]+/;
+      const deadline = Date.now() + 15000;
+      while (Date.now() < deadline) {
+        if (loginSuccessPattern.test(page.url())) return;
+        await page.waitForTimeout(150);
+      }
+      throw new Error(`Login did not reach an authenticated route. Final URL: ${page.url()}`);
     },
     async isLoggedIn() {
       return isLoggedIn();

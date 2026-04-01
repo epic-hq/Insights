@@ -118,7 +118,7 @@ export namespace partial_types {
     export interface CoachingNudge {
       questionIndex?: number | null
       reasoning?: string | null
-      issue?: "leading" | "double_barreled" | "closed_ended" | "too_long" | "too_vague" | "biased" | "jargon" | "redundant" | "survey_fatigue" | null
+      issue?: "leading" | "double_barreled" | "closed_ended" | "too_long" | "too_vague" | "biased" | "jargon" | "redundant" | "survey_fatigue" | "hypothetical" | "not_behavioral" | "too_complex" | null
       summary?: string | null
       alternatives: string[]
     }

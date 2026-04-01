@@ -1,9 +1,11 @@
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import { OptimizationProgress } from "~/components/ui/OptimizationProgress";
 import { useCurrentProject } from "~/contexts/current-project-context";
 import { useNotification } from "~/contexts/NotificationContext";
 import type { ProcessingResult } from "~/features/upload/types";
+import { useMediaOptimizer } from "~/hooks/useMediaOptimizer";
 
 interface UploadModalProps {
 	open: boolean;
@@ -18,6 +20,7 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const { showNotification } = useNotification();
 	const { accountId, projectId } = useCurrentProject();
+	const optimizer = useMediaOptimizer();
 
 	const handleFileUpload = async (files: File[]) => {
 		if (!files.length) return;
@@ -34,17 +37,27 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 			file.name.endsWith(".md") ||
 			file.name.endsWith(".markdown");
 
-		setProcessingMessage(
-			isTextFile ? "📝 Reading and analyzing your transcript..." : "🎙️ Transcribing your audio/video..."
-		);
-
 		try {
 			if (!accountId || !projectId) {
 				throw new Error("Missing account or project context");
 			}
 
+			// Optimize media files before upload (text files skip optimization)
+			let fileToUpload = file;
+			if (!isTextFile) {
+				setProcessingMessage("Optimizing file for upload...");
+				fileToUpload = await optimizer.optimize(file);
+			}
+
+			setProcessingMessage(
+				isTextFile ? "📝 Reading and analyzing your transcript..." : "🎙️ Uploading and transcribing..."
+			);
+
 			const formData = new FormData();
-			formData.append("file", file);
+			formData.append("file", fileToUpload, fileToUpload.name);
+			formData.append("originalFilename", file.name);
+			formData.append("originalContentType", file.type || "application/octet-stream");
+			formData.append("originalFileSize", String(file.size));
 			formData.append("accountId", accountId);
 			formData.append("projectId", projectId);
 
@@ -92,6 +105,7 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 				setIsProcessing(false);
 				setSelectedFile(null);
 				setProcessingMessage("");
+				optimizer.reset();
 			}, 1500);
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
@@ -126,6 +140,7 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 			setError(null);
 			setSelectedFile(null);
 			setProcessingMessage("");
+			optimizer.reset();
 		}
 	};
 
@@ -198,8 +213,13 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 								)}
 							</div>
 
+							{/* Media Optimization Progress */}
+							{optimizer.state.status !== "idle" && (
+								<OptimizationProgress state={optimizer.state} onSkip={optimizer.skip} className="mb-4" />
+							)}
+
 							{/* Processing Status */}
-							{isProcessing && (
+							{isProcessing && optimizer.state.status !== "optimizing" && (
 								<div className="mb-4 rounded-md bg-blue-50 p-4 dark:bg-blue-900/20">
 									<div className="flex items-center">
 										<div className="mr-3 h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />

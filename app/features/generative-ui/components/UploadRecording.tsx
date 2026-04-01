@@ -9,6 +9,8 @@ import { CheckCircle, FileAudio, FileText, FileVideo, Loader2, Upload, X } from 
 import { useCallback, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { Link } from "react-router";
+import { OptimizationProgress } from "~/components/ui/OptimizationProgress";
+import { useMediaOptimizer } from "~/hooks/useMediaOptimizer";
 import { cn } from "~/lib/utils";
 
 export interface UploadRecordingData {
@@ -77,6 +79,7 @@ export function UploadRecording({ data }: { data: UploadRecordingData; isStreami
 		detailUrl?: string;
 	} | null>(null);
 	const abortRef = useRef<AbortController | null>(null);
+	const optimizer = useMediaOptimizer();
 
 	const handleUpload = useCallback(
 		async (file: File) => {
@@ -89,19 +92,27 @@ export function UploadRecording({ data }: { data: UploadRecordingData; isStreami
 			abortRef.current = controller;
 
 			try {
+				// Optimize media files before upload
+				const isText =
+					file.type.startsWith("text/") ||
+					file.name.endsWith(".txt") ||
+					file.name.endsWith(".md") ||
+					file.name.endsWith(".pdf");
+
+				let fileToUpload = file;
+				if (!isText) {
+					setStatusMsg("Optimizing file...");
+					fileToUpload = await optimizer.optimize(file);
+				}
+
 				const formData = new FormData();
-				formData.append("file", file);
+				formData.append("file", fileToUpload);
 				formData.append("projectId", data.projectId);
 				formData.append("accountId", data.accountId);
 				if (data.participantName) formData.append("participantName", data.participantName);
 				if (data.participantOrganization) formData.append("participantOrganization", data.participantOrganization);
 
 				setState("processing");
-				const isText =
-					file.type.startsWith("text/") ||
-					file.name.endsWith(".txt") ||
-					file.name.endsWith(".md") ||
-					file.name.endsWith(".pdf");
 				setStatusMsg(isText ? "Reading and extracting insights..." : "Transcribing and analyzing...");
 
 				const response = await fetch("/api/upload-file", {
@@ -258,10 +269,17 @@ export function UploadRecording({ data }: { data: UploadRecordingData; isStreami
 							)}
 						</div>
 
+						{optimizer.state.status !== "idle" && (
+							<OptimizationProgress state={optimizer.state} onSkip={optimizer.skip} className="mt-3" />
+						)}
+
 						{isWorking && (
 							<button
 								type="button"
-								onClick={handleCancel}
+								onClick={() => {
+									handleCancel();
+									optimizer.reset();
+								}}
 								className="mt-2 text-muted-foreground text-xs hover:text-foreground"
 							>
 								Cancel

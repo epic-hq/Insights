@@ -7,14 +7,15 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
 	AlertTriangle,
 	ArrowDown,
-	ArrowRight,
 	ArrowUp,
 	BarChart3,
+	Check,
 	ChevronDown as ChevronDownIcon,
 	GitBranch,
 	Image,
 	Loader2,
 	Paperclip,
+	Pencil,
 	Plus,
 	Sparkles,
 	Trash2,
@@ -35,11 +36,17 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
-import { type BranchRule, getNextQuestionId } from "../branching";
+import type { BranchRule } from "../branching";
 import type { ResearchLinkQuestion } from "../schemas";
 import { createEmptyQuestion } from "../schemas";
+import { buildSurveySectionGraph } from "../section-graph";
 import { DEFAULT_SECTION_ID, deriveSurveySections } from "../sections";
-import { formatFlowAverageLabel, formatPathBreakdown, summarizeSurveyFlow } from "../survey-flow";
+import {
+	formatFlowMinutesLabel,
+	formatFlowQuestionCountLabel,
+	formatPathBreakdown,
+	summarizeSurveyFlow,
+} from "../survey-flow";
 import { getMediaType, isR2Key } from "../utils";
 import { QuestionBranchingEditor } from "./QuestionBranchingEditor";
 import { QuestionMediaEditor } from "./QuestionMediaEditor";
@@ -70,6 +77,16 @@ function formatQuestionsForClipboard(questions: ResearchLinkQuestion[]): string 
 			const low = q.likertLabels?.low ?? "1";
 			const high = q.likertLabels?.high ?? String(scale);
 			lines.push(`   Scale 1–${scale}: ${low} → ${high}`);
+		}
+
+		if (q.type === "matrix" && q.matrixRows?.length) {
+			const scale = q.likertScale ?? 5;
+			const low = q.likertLabels?.low ?? "1";
+			const high = q.likertLabels?.high ?? String(scale);
+			lines.push(`   Matrix scale 1–${scale}: ${low} → ${high}`);
+			for (const row of q.matrixRows) {
+				lines.push(`   - ${row.label}`);
+			}
 		}
 	}
 	return lines.join("\n");
@@ -160,6 +177,7 @@ function questionTypeLabel(type: string): string {
 		single_select: "Select one",
 		multi_select: "Select many",
 		likert: "Likert scale",
+		matrix: "Matrix grid",
 		image_select: "Image select",
 	};
 	return labels[type] ?? type;
@@ -284,6 +302,7 @@ function groupRulesByTarget(
 			ruleCount: entry.ruleCount,
 			conditionSummary,
 			rules: entry.rules,
+			ruleIds: entry.rules.map((rule) => rule.id),
 		};
 	});
 }
@@ -295,6 +314,7 @@ const QUESTION_SECONDS_BY_TYPE: Record<string, number> = {
 	single_select: 9,
 	multi_select: 14,
 	likert: 9,
+	matrix: 20,
 	image_select: 14,
 };
 const SURVEY_LENGTH_WARN_SECONDS = 5 * 60;
@@ -308,61 +328,23 @@ function formatEstimatedMinutes(totalSeconds: number): string {
 	return `~${Math.max(1, Math.round(totalSeconds / 60))} min`;
 }
 
-function estimatePathPreviewForTargetGroup(
-	questions: ResearchLinkQuestion[],
-	group: { rules: BranchRule[] }
-): { questionCount: number; estimatedMinutes: string } | null {
-	if (questions.length === 0) return null;
+function normalizeSectionTitleInput(value: string): string {
+	return value.replace(/\s+/g, " ").trim();
+}
 
-	const seedResponses: Record<string, string | string[]> = {};
-	const representativeCondition = group.rules
-		.flatMap((rule) => rule.conditions.conditions)
-		.find((condition) => {
-			if (typeof condition.value !== "string") return false;
-			return (
-				(condition.operator === "equals" || condition.operator === "contains" || condition.operator === "selected") &&
-				condition.value.trim().length > 0
-			);
-		});
-
-	if (representativeCondition && typeof representativeCondition.value === "string") {
-		if (representativeCondition.operator === "selected") {
-			seedResponses[representativeCondition.questionId] = [representativeCondition.value];
-		} else {
-			seedResponses[representativeCondition.questionId] = representativeCondition.value;
-		}
+function buildSectionIdFromTitle(title: string, existingIds: Set<string>): string {
+	const base =
+		normalizeSectionTitleInput(title)
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "-")
+			.replace(/^-+|-+$/g, "") || "section";
+	let candidate = base;
+	let suffix = 2;
+	while (existingIds.has(candidate)) {
+		candidate = `${base}-${suffix}`;
+		suffix += 1;
 	}
-
-	const activeQuestions = questions.filter(
-		(question): question is ResearchLinkQuestion & { id: string } => Boolean(question.id) && !question.hidden
-	);
-	const visited = new Set<string>();
-	const questionById = new Map(activeQuestions.map((question) => [question.id, question]));
-	let currentQuestion = activeQuestions[0] ?? null;
-	let guard = 0;
-
-	while (currentQuestion && guard < activeQuestions.length * 3) {
-		visited.add(currentQuestion.id);
-		const nextId = getNextQuestionId(currentQuestion, activeQuestions, seedResponses);
-		if (!nextId) break;
-		const nextQuestion = questionById.get(nextId) ?? null;
-		if (!nextQuestion) break;
-		currentQuestion = nextQuestion;
-		guard += 1;
-	}
-
-	if (visited.size === 0) return null;
-
-	const totalSeconds = Array.from(visited).reduce((acc, questionId) => {
-		const question = questionById.get(questionId);
-		if (!question) return acc;
-		return acc + estimateQuestionSeconds(question);
-	}, 0);
-
-	return {
-		questionCount: visited.size,
-		estimatedMinutes: formatEstimatedMinutes(totalSeconds),
-	};
+	return candidate;
 }
 
 type QuestionEditorAction =
@@ -685,6 +667,7 @@ function QuestionEditDrawer({
 	isOpen,
 	onClose,
 	updateQuestion,
+	reassignQuestionToSection,
 	removeQuestion,
 	moveQuestion,
 	aiInsight,
@@ -700,6 +683,7 @@ function QuestionEditDrawer({
 	isOpen: boolean;
 	onClose: () => void;
 	updateQuestion: (id: string, updates: Partial<ResearchLinkQuestion>) => void;
+	reassignQuestionToSection: (questionId: string, section: { id: string; title: string }) => void;
 	removeQuestion: (id: string) => void;
 	moveQuestion: (id: string, direction: -1 | 1) => void;
 	aiInsight?: AiQuestionInsight;
@@ -710,6 +694,8 @@ function QuestionEditDrawer({
 }) {
 	// Image upload state
 	const [uploadingImageKey, setUploadingImageKey] = useState<string | null>(null);
+	const [showCreateSectionInput, setShowCreateSectionInput] = useState(false);
+	const [newSectionTitle, setNewSectionTitle] = useState("");
 	const imageInputRef = useRef<HTMLInputElement>(null);
 	const pendingUploadRef = useRef<{
 		questionId: string;
@@ -772,12 +758,32 @@ function QuestionEditDrawer({
 		[commitQuestionUpdates, flushPendingQuestionUpdates]
 	);
 
+	const sectionOptions = useMemo(() => deriveSurveySections(questions), [questions]);
+
+	const assignSection = useCallback(
+		(section: { id: string; title: string }) => {
+			reassignQuestionToSection(question.id, section);
+			setDraft((prev) => {
+				const next = {
+					...prev,
+					sectionId: section.id === DEFAULT_SECTION_ID ? null : section.id,
+					sectionTitle: section.title,
+				};
+				draftRef.current = next;
+				return next;
+			});
+		},
+		[question.id, reassignQuestionToSection]
+	);
+
 	useEffect(() => {
 		const sessionKey = `${question.id}:${isOpen ? "open" : "closed"}`;
 		if (draftSessionKeyRef.current === sessionKey) return;
 		draftSessionKeyRef.current = sessionKey;
 		setDraft(question);
 		draftRef.current = question;
+		setShowCreateSectionInput(false);
+		setNewSectionTitle("");
 		pendingQuestionUpdateRef.current = null;
 		if (pendingQuestionUpdateTimerRef.current) {
 			clearTimeout(pendingQuestionUpdateTimerRef.current);
@@ -929,6 +935,91 @@ function QuestionEditDrawer({
 						/>
 					</div>
 
+					{/* Journey block assignment */}
+					<div className="space-y-1.5">
+						<Label className="text-xs">Journey block</Label>
+						<Select
+							value={draft.sectionId?.trim() || DEFAULT_SECTION_ID}
+							onValueChange={(value) => {
+								if (value === "__create__") {
+									setShowCreateSectionInput(true);
+									return;
+								}
+								const target =
+									sectionOptions.find((section) => section.id === value) ??
+									sectionOptions.find((section) => section.id === DEFAULT_SECTION_ID) ??
+									null;
+								if (!target) return;
+								assignSection({ id: target.id, title: target.title });
+							}}
+						>
+							<SelectTrigger className="h-9 text-xs">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								{sectionOptions.map((section) => (
+									<SelectItem key={section.id} value={section.id}>
+										{section.title}
+									</SelectItem>
+								))}
+								<SelectItem value="__create__">Create new block…</SelectItem>
+							</SelectContent>
+						</Select>
+						{showCreateSectionInput && (
+							<div className="flex items-center gap-2">
+								<Input
+									value={newSectionTitle}
+									onChange={(event) => setNewSectionTitle(event.target.value)}
+									onKeyDown={(event) => {
+										if (event.key === "Escape") {
+											setShowCreateSectionInput(false);
+											setNewSectionTitle("");
+										}
+										if (event.key !== "Enter") return;
+										event.preventDefault();
+										const nextTitle = normalizeSectionTitleInput(newSectionTitle);
+										if (!nextTitle) return;
+										const nextId = buildSectionIdFromTitle(nextTitle, new Set(sectionOptions.map((s) => s.id)));
+										assignSection({ id: nextId, title: nextTitle });
+										setShowCreateSectionInput(false);
+										setNewSectionTitle("");
+										toast.success(`Created block "${nextTitle}"`);
+									}}
+									placeholder="Block name (e.g., Shared close)"
+									className="h-8 text-xs"
+								/>
+								<Button
+									type="button"
+									size="sm"
+									className="h-8"
+									onClick={() => {
+										const nextTitle = normalizeSectionTitleInput(newSectionTitle);
+										if (!nextTitle) return;
+										const nextId = buildSectionIdFromTitle(nextTitle, new Set(sectionOptions.map((s) => s.id)));
+										assignSection({ id: nextId, title: nextTitle });
+										setShowCreateSectionInput(false);
+										setNewSectionTitle("");
+										toast.success(`Created block "${nextTitle}"`);
+									}}
+								>
+									Create
+								</Button>
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="h-8"
+									onClick={() => {
+										setShowCreateSectionInput(false);
+										setNewSectionTitle("");
+									}}
+								>
+									Cancel
+								</Button>
+							</div>
+						)}
+					</div>
+
 					{/* Type + Required */}
 					<div className="flex items-center gap-3">
 						<div className="flex-1 space-y-1.5">
@@ -950,6 +1041,16 @@ function QuestionEditDrawer({
 											low: "Strongly disagree",
 											high: "Strongly agree",
 										};
+									} else if (value === "matrix") {
+										updates.likertScale = draft.likertScale ?? 5;
+										updates.likertLabels = draft.likertLabels ?? {
+											low: "Needs work",
+											high: "Strong",
+										};
+										updates.matrixRows = draft.matrixRows ?? [
+											{ id: `${draft.id}_row_1`, label: "Row 1" },
+											{ id: `${draft.id}_row_2`, label: "Row 2" },
+										];
 									} else if (value === "image_select") {
 										updates.imageOptions = draft.imageOptions ?? [{ label: "", imageUrl: "" }];
 									}
@@ -966,6 +1067,7 @@ function QuestionEditDrawer({
 									<SelectItem value="single_select">Select one</SelectItem>
 									<SelectItem value="multi_select">Select many</SelectItem>
 									<SelectItem value="likert">Likert scale</SelectItem>
+									<SelectItem value="matrix">Matrix grid</SelectItem>
 									<SelectItem value="image_select">Image select</SelectItem>
 								</SelectContent>
 							</Select>
@@ -1187,6 +1289,122 @@ function QuestionEditDrawer({
 									placeholder="High label (e.g., Strongly agree)"
 									className="h-8 text-xs"
 								/>
+							</div>
+						</div>
+					)}
+
+					{draft.type === "matrix" && (
+						<div className="space-y-4">
+							<div className="space-y-2">
+								<Label className="text-xs">Rows</Label>
+								<div className="space-y-2">
+									{(draft.matrixRows ?? []).map((row, rowIndex) => (
+										<div key={row.id} className="flex items-center gap-2">
+											<Input
+												value={row.label}
+												onChange={(e) => {
+													const nextRows = [...(draft.matrixRows ?? [])];
+													nextRows[rowIndex] = {
+														...nextRows[rowIndex],
+														label: e.target.value,
+													};
+													applyDraftUpdates({ matrixRows: nextRows }, "debounced");
+												}}
+												onBlur={() => flushPendingQuestionUpdates()}
+												placeholder={`Row ${rowIndex + 1}`}
+												className="h-8 text-xs"
+											/>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="h-7 w-7 shrink-0 opacity-60 hover:text-destructive hover:opacity-100"
+												onClick={() => {
+													const nextRows = (draft.matrixRows ?? []).filter((_, index) => index !== rowIndex);
+													applyDraftUpdates({
+														matrixRows: nextRows.length > 0 ? nextRows : [{ id: `${draft.id}_row_1`, label: "Row 1" }],
+													});
+												}}
+											>
+												<X className="h-3.5 w-3.5" />
+											</Button>
+										</div>
+									))}
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										className="h-7 text-muted-foreground text-xs hover:text-foreground"
+										onClick={() => {
+											const nextRows = [
+												...(draft.matrixRows ?? []),
+												{
+													id: `${draft.id}_row_${(draft.matrixRows?.length ?? 0) + 1}`,
+													label: "",
+												},
+											];
+											applyDraftUpdates({ matrixRows: nextRows });
+										}}
+									>
+										<Plus className="mr-1 h-3 w-3" /> Add row
+									</Button>
+								</div>
+							</div>
+
+							<div className="space-y-3">
+								<div className="flex items-center gap-2">
+									<Label className="text-xs">Scale</Label>
+									<Select
+										value={String(draft.likertScale ?? 5)}
+										onValueChange={(value) => applyDraftUpdates({ likertScale: Number(value) })}
+									>
+										<SelectTrigger className="h-8 w-20 text-xs">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="3">1-3</SelectItem>
+											<SelectItem value="4">1-4</SelectItem>
+											<SelectItem value="5">1-5</SelectItem>
+											<SelectItem value="7">1-7</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+								<div className="flex gap-2">
+									<Input
+										value={draft.likertLabels?.low ?? ""}
+										onChange={(e) =>
+											applyDraftUpdates(
+												{
+													likertLabels: {
+														...draft.likertLabels,
+														low: e.target.value || undefined,
+													},
+												},
+												"debounced"
+											)
+										}
+										onBlur={() => flushPendingQuestionUpdates()}
+										placeholder="Low label (e.g., Needs work)"
+										className="h-8 text-xs"
+									/>
+									<Input
+										value={draft.likertLabels?.high ?? ""}
+										onChange={(e) =>
+											applyDraftUpdates(
+												{
+													likertLabels: {
+														...draft.likertLabels,
+														high: e.target.value || undefined,
+													},
+												},
+												"debounced"
+											)
+										}
+										onBlur={() => flushPendingQuestionUpdates()}
+										placeholder="High label (e.g., Strong)"
+										className="h-8 text-xs"
+									/>
+								</div>
 							</div>
 						</div>
 					)}
@@ -1474,6 +1692,8 @@ export function QuestionListEditor({
 }: QuestionListEditorProps) {
 	const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
 	const [expandedBranchingQuestionId, setExpandedBranchingQuestionId] = useState<string | null>(null);
+	const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+	const [editingSectionTitle, setEditingSectionTitle] = useState("");
 	const [highlightedTargetQuestionId, setHighlightedTargetQuestionId] = useState<string | null>(null);
 	const [collapsedSectionIds, setCollapsedSectionIds] = useState<Set<string>>(new Set());
 	const [hoveredQuestionId, setHoveredQuestionId] = useState<string | null>(null);
@@ -1560,46 +1780,99 @@ export function QuestionListEditor({
 		[dispatchQuestionAction]
 	);
 
-	const moveRoutingDecisionPoint = useCallback(
-		(fromQuestionId: string, toQuestionId: string) => {
-			if (fromQuestionId === toQuestionId) return;
+	const reassignQuestionToSection = useCallback(
+		(questionId: string, section: { id: string; title: string }) => {
+			const sectionId = section.id?.trim() || DEFAULT_SECTION_ID;
+			const sectionTitle = normalizeSectionTitleInput(section.title) || "Shared block";
 			onChange((previousQuestions) => {
-				const fromIndex = previousQuestions.findIndex((q) => q.id === fromQuestionId);
-				const toIndex = previousQuestions.findIndex((q) => q.id === toQuestionId);
-				if (fromIndex < 0 || toIndex < 0) return previousQuestions;
-
-				const fromQuestion = previousQuestions[fromIndex];
-				const toQuestion = previousQuestions[toIndex];
-				if (!fromQuestion.branching) return previousQuestions;
-
-				const sourceBranching = fromQuestion.branching;
-				const targetExisting = toQuestion.branching;
-				const mergedRules = [...(targetExisting?.rules ?? []), ...sourceBranching.rules];
-				const mergedDefaultNext = sourceBranching.defaultNext ?? targetExisting?.defaultNext;
+				const currentIndex = previousQuestions.findIndex((q) => q.id === questionId);
+				if (currentIndex < 0) return previousQuestions;
 
 				const nextQuestions = [...previousQuestions];
-				nextQuestions[fromIndex] = { ...fromQuestion, branching: null };
-				nextQuestions[toIndex] = {
-					...toQuestion,
-					branching: {
-						rules: mergedRules,
-						...(mergedDefaultNext ? { defaultNext: mergedDefaultNext } : {}),
-					},
+				const [movingQuestion] = nextQuestions.splice(currentIndex, 1);
+				if (!movingQuestion) return previousQuestions;
+
+				const updatedQuestion: ResearchLinkQuestion = {
+					...movingQuestion,
+					sectionId: sectionId === DEFAULT_SECTION_ID ? null : sectionId,
+					sectionTitle,
 				};
 
-				if (import.meta.env.DEV) {
-					console.debug("[QuestionListEditor] moved routing decision point", {
-						fromQuestionId,
-						toQuestionId,
-						movedRuleCount: sourceBranching.rules.length,
-					});
+				let insertAt = nextQuestions.length;
+				for (let idx = 0; idx < nextQuestions.length; idx += 1) {
+					const candidateSectionId = nextQuestions[idx]?.sectionId?.trim() || DEFAULT_SECTION_ID;
+					if (candidateSectionId === sectionId) {
+						insertAt = idx + 1;
+					}
 				}
 
+				nextQuestions.splice(insertAt, 0, updatedQuestion);
 				return nextQuestions;
 			});
+		},
+		[onChange]
+	);
 
-			setExpandedBranchingQuestionId(toQuestionId);
-			toast.success("Routing decision point moved");
+	const updateBranchTargetForRuleGroup = useCallback(
+		(
+			sourceQuestionId: string,
+			groupRuleIds: string[],
+			target: { action: "skip_to" | "end_survey"; targetQuestionId?: string; targetSectionId?: string }
+		) => {
+			if (groupRuleIds.length === 0) return;
+			const groupRuleIdSet = new Set(groupRuleIds);
+			onChange((previousQuestions) =>
+				previousQuestions.map((candidate) => {
+					if (candidate.id !== sourceQuestionId || !candidate.branching) return candidate;
+					const nextRules = candidate.branching.rules.map((rule) => {
+						if (!groupRuleIdSet.has(rule.id)) return rule;
+						if (target.action === "end_survey") {
+							return {
+								...rule,
+								action: "end_survey" as const,
+								targetQuestionId: undefined,
+								targetSectionId: undefined,
+							};
+						}
+						return {
+							...rule,
+							action: "skip_to" as const,
+							targetQuestionId: target.targetQuestionId,
+							targetSectionId: target.targetSectionId,
+						};
+					});
+					return {
+						...candidate,
+						branching: {
+							...candidate.branching,
+							rules: nextRules,
+						},
+					};
+				})
+			);
+			toast.success("Updated branch destination");
+		},
+		[onChange]
+	);
+
+	const renameSection = useCallback(
+		(sectionId: string, nextTitleRaw: string) => {
+			const nextTitle = nextTitleRaw.trim();
+			if (!nextTitle) return;
+			onChange((previousQuestions) =>
+				previousQuestions.map((candidate) => {
+					const candidateSectionId = candidate.sectionId?.trim() || DEFAULT_SECTION_ID;
+					if (candidateSectionId !== sectionId) return candidate;
+					return {
+						...candidate,
+						sectionId,
+						sectionTitle: nextTitle,
+					};
+				})
+			);
+			setEditingSectionId(null);
+			setEditingSectionTitle("");
+			toast.success(`Renamed section to "${nextTitle}"`);
 		},
 		[onChange]
 	);
@@ -1616,9 +1889,13 @@ export function QuestionListEditor({
 
 	const questionTypes = useMemo(() => questions.map((q) => q.type), [questions]);
 	const flowSummary = useMemo(() => summarizeSurveyFlow(questions), [questions]);
+	const flowCountLabel = useMemo(() => {
+		if (!flowSummary.hasBranching || flowSummary.paths.length < 2) return undefined;
+		return `Respondents see ${formatFlowQuestionCountLabel(flowSummary)}`;
+	}, [flowSummary]);
 	const flowEstimateLabel = useMemo(() => {
 		if (!flowSummary.hasBranching || flowSummary.paths.length < 2) return undefined;
-		return formatFlowAverageLabel(flowSummary);
+		return formatFlowMinutesLabel(flowSummary);
 	}, [flowSummary]);
 	const flowEstimateIsLong = flowSummary.hasBranching && flowSummary.maxSeconds > SURVEY_LENGTH_WARN_SECONDS;
 	const flowEstimateDebug = useMemo(() => {
@@ -1733,6 +2010,40 @@ export function QuestionListEditor({
 		});
 	}, [questions]);
 
+	const sectionGraph = useMemo(() => buildSurveySectionGraph(questions), [questions]);
+
+	const journeyBlockSummaries = useMemo(() => {
+		const inboundPairs = new Map<string, Set<string>>();
+		const outboundPairs = new Map<string, Set<string>>();
+		for (const edge of sectionGraph.edges) {
+			if (!edge.targetSectionId || edge.targetSectionId === edge.fromSectionId) continue;
+			const outbound = outboundPairs.get(edge.fromSectionId) ?? new Set<string>();
+			outbound.add(edge.targetSectionId);
+			outboundPairs.set(edge.fromSectionId, outbound);
+
+			const inbound = inboundPairs.get(edge.targetSectionId) ?? new Set<string>();
+			inbound.add(edge.fromSectionId);
+			inboundPairs.set(edge.targetSectionId, inbound);
+		}
+
+		return sectionSummaries.map((section) => {
+			const inboundCount = inboundPairs.get(section.id)?.size ?? 0;
+			const outboundCount = outboundPairs.get(section.id)?.size ?? 0;
+			let roleLabel = "Path";
+			if (section.id === sectionGraph.entrySectionId) {
+				roleLabel = "Entry";
+			} else if (outboundCount > 1) {
+				roleLabel = "Branch";
+			} else if (inboundCount > 1) {
+				roleLabel = "Shared";
+			}
+			return {
+				...section,
+				roleLabel,
+			};
+		});
+	}, [sectionGraph, sectionSummaries]);
+
 	const sectionSummaryById = useMemo(
 		() => new Map(sectionSummaries.map((section) => [section.id, section] as const)),
 		[sectionSummaries]
@@ -1764,6 +2075,7 @@ export function QuestionListEditor({
 		<UnifiedQuestionList
 			count={questions.length}
 			questionTypes={questionTypes}
+			countLabelOverride={flowCountLabel}
 			timeLabelOverride={flowEstimateLabel}
 			timeIsLongOverride={flowEstimateLabel ? flowEstimateIsLong : undefined}
 			showTimeBar
@@ -1780,6 +2092,37 @@ export function QuestionListEditor({
 				) : undefined
 			}
 		>
+			{journeyBlockSummaries.length > 1 && (
+				<div className="mb-2 rounded-md border border-violet-500/20 bg-violet-500/[0.03]">
+					<div className="border-violet-500/15 border-b px-2 py-1 font-medium text-[10px] text-violet-600 uppercase tracking-wide dark:text-violet-300">
+						Journey blocks
+					</div>
+					<div className="flex flex-wrap gap-1.5 p-2">
+						{journeyBlockSummaries.map((block) => (
+							<button
+								key={`journey-${block.id}`}
+								type="button"
+								className="flex items-center gap-1 rounded-full border border-violet-500/30 bg-background/70 px-2 py-1 text-[10px] text-foreground transition-colors hover:border-violet-500/60 hover:bg-violet-500/[0.06]"
+								onClick={() => {
+									setCollapsedSectionIds((current) => {
+										const next = new Set(current);
+										next.delete(block.id);
+										return next;
+									});
+									setSelectedQuestionId(block.startQuestionId);
+								}}
+								title={`Open ${block.title}`}
+							>
+								<span className="rounded-full bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-700 dark:text-violet-200">
+									{block.roleLabel}
+								</span>
+								<span className="max-w-[170px] truncate">{block.title}</span>
+							</button>
+						))}
+					</div>
+				</div>
+			)}
+
 			{/* Question rows */}
 			<AnimatePresence initial={false}>
 				{questions.map((question, index) => {
@@ -1806,14 +2149,11 @@ export function QuestionListEditor({
 					});
 					const groupedTargets = groupRulesByTarget(branchRuleRows);
 					const branchTargets = groupedTargets.map((group) => group.targetLabel);
-					const pathPreviewByTargetKey = new Map(
-						groupedTargets.map((group) => {
-							const preview = estimatePathPreviewForTargetGroup(questions, group);
-							const key = `${group.targetLabel}:${group.targetQuestionId ?? "none"}`;
-							return [key, preview] as const;
-						})
-					);
 					const isBranchingExpanded = expandedBranchingQuestionId === question.id;
+					const branchSummaryLabel =
+						groupedTargets.length === 1
+							? `Branch: to ${branchTargets[0]}`
+							: `Branch: to ${branchTargets.slice(0, 3).join(", ")}${branchTargets.length > 3 ? ` +${branchTargets.length - 3} more` : ""}`;
 					const coaching = coachingFlags.get(index + 1);
 					const flagColor = coaching
 						? ["leading", "double_barreled", "closed_ended"].includes(coaching.issue)
@@ -1825,19 +2165,76 @@ export function QuestionListEditor({
 						<Fragment key={question.id}>
 							{isSectionStart && sectionSummary && (
 								<div className="mt-2 mb-1 ml-1 flex items-center justify-between rounded-md border border-border/50 bg-muted/25 px-2 py-1">
-									<button
-										type="button"
-										className="flex items-center gap-1.5 text-left text-xs"
-										onClick={() => toggleSectionCollapse(sectionSummary.id)}
-									>
-										<ChevronDownIcon
-											className={cn("h-3 w-3 transition-transform", isSectionCollapsed ? "-rotate-90" : "")}
-										/>
-										<span className="font-medium">{sectionSummary.title}</span>
-									</button>
-									<span className="text-[10px] text-muted-foreground">
-										{sectionSummary.questionCount} questions • {sectionSummary.estimatedMinutes}
-									</span>
+									<div className="flex min-w-0 items-center gap-1.5">
+										<button
+											type="button"
+											className="flex items-center gap-1.5 text-left text-xs"
+											onClick={() => toggleSectionCollapse(sectionSummary.id)}
+										>
+											<ChevronDownIcon
+												className={cn("h-3 w-3 transition-transform", isSectionCollapsed ? "-rotate-90" : "")}
+											/>
+										</button>
+										{editingSectionId === sectionSummary.id ? (
+											<div className="flex items-center gap-1">
+												<Input
+													autoFocus
+													value={editingSectionTitle}
+													onChange={(event) => setEditingSectionTitle(event.target.value)}
+													onKeyDown={(event) => {
+														if (event.key === "Enter") {
+															event.preventDefault();
+															renameSection(sectionSummary.id, editingSectionTitle);
+														}
+														if (event.key === "Escape") {
+															event.preventDefault();
+															setEditingSectionId(null);
+															setEditingSectionTitle("");
+														}
+													}}
+													className="h-6 min-w-[180px] text-xs"
+												/>
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													className="h-5 w-5"
+													onClick={() => renameSection(sectionSummary.id, editingSectionTitle)}
+												>
+													<Check className="h-3 w-3" />
+												</Button>
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													className="h-5 w-5"
+													onClick={() => {
+														setEditingSectionId(null);
+														setEditingSectionTitle("");
+													}}
+												>
+													<X className="h-3 w-3" />
+												</Button>
+											</div>
+										) : (
+											<>
+												<span className="truncate font-medium text-xs">{sectionSummary.title}</span>
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													className="h-5 w-5 text-muted-foreground hover:text-foreground"
+													title="Rename section"
+													onClick={() => {
+														setEditingSectionId(sectionSummary.id);
+														setEditingSectionTitle(sectionSummary.title);
+													}}
+												>
+													<Pencil className="h-3 w-3" />
+												</Button>
+											</>
+										)}
+									</div>
 								</div>
 							)}
 							{isSectionCollapsed ? null : (
@@ -1899,21 +2296,17 @@ export function QuestionListEditor({
 										<div className="ml-12 py-1">
 											<button
 												type="button"
-												className="group/branch flex items-center gap-2 rounded-md px-1 py-0.5 text-[10px] text-violet-600 transition-colors hover:bg-violet-500/5 dark:text-violet-400"
+												className="group/branch flex items-center gap-2 rounded-md px-1 py-0.5 text-[11px] text-foreground transition-colors hover:bg-violet-500/10"
 												onClick={() =>
 													setExpandedBranchingQuestionId((current) => (current === question.id ? null : question.id))
 												}
-												title="Edit routing rules or move the routing decision point"
+												title="View and edit branching"
 											>
-												<span className="rounded-full border border-violet-500/40 bg-violet-500/10 px-1.5 py-0.5 font-medium">
-													Routing after Q{index + 1}
+												<span className="rounded-full border border-violet-500/40 bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-700 dark:text-violet-200">
+													{branchSummaryLabel}
 												</span>
-												<span className="max-w-[420px] truncate text-violet-500/90">
-													{groupedTargets.length} target{groupedTargets.length === 1 ? "" : "s"}:{" "}
-													{branchTargets.join(", ")}
-												</span>
-												<span className="rounded-full border border-violet-500/25 bg-violet-500/5 px-1 py-0.5 text-[9px] text-violet-500/80 uppercase tracking-wide">
-													Edit / Move
+												<span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-1 py-0.5 font-medium text-[9px] text-violet-700 uppercase tracking-wide dark:text-violet-200">
+													Edit branch
 												</span>
 												<ChevronDownIcon
 													className={cn(
@@ -1925,64 +2318,97 @@ export function QuestionListEditor({
 											</button>
 
 											{isBranchingExpanded && (
-												<div className="mt-1 space-y-1 rounded-md border border-violet-500/20 bg-violet-500/[0.03] p-2">
-													<div className="flex flex-wrap items-center gap-2 rounded-md border border-violet-500/20 border-dashed bg-violet-500/[0.04] px-2 py-1.5">
-														<span className="text-[10px] text-violet-600/90 dark:text-violet-300/90">
-															Move routing decision point
-														</span>
-														<Select
-															value={question.id}
-															onValueChange={(nextQuestionId) => moveRoutingDecisionPoint(question.id, nextQuestionId)}
+												<div className="mt-1 space-y-2 rounded-md border border-violet-500/20 bg-violet-500/[0.03] p-2">
+													<div className="flex items-center justify-between">
+														<div className="text-[11px] text-foreground/70">Quick branch editor</div>
+														<Button
+															type="button"
+															variant="link"
+															size="sm"
+															className="h-6 px-0 text-[11px] text-violet-600 dark:text-violet-300"
+															onClick={() => setSelectedQuestionId(question.id)}
 														>
-															<SelectTrigger className="h-6 min-w-[180px] border-violet-500/20 bg-background text-xs">
-																<SelectValue />
-															</SelectTrigger>
-															<SelectContent>
-																{questions.map((candidate, candidateIndex) => (
-																	<SelectItem key={candidate.id} value={candidate.id}>
-																		After Q{candidateIndex + 1}: {candidate.prompt.slice(0, 34)}
-																		{candidate.prompt.length > 34 ? "…" : ""}
-																	</SelectItem>
-																))}
-															</SelectContent>
-														</Select>
+															Open full branch editor
+														</Button>
 													</div>
-
 													{groupedTargets.map((group, rowIndex) => (
 														<div
 															key={`${group.targetLabel}-${rowIndex}`}
-															className="group/rule flex items-center justify-between gap-2 rounded px-1 py-0.5 text-[11px]"
+															className="group/rule space-y-1 rounded-md border border-violet-500/20 bg-background/40 px-2 py-1.5 text-[11px]"
+															onMouseEnter={() => setHighlightedTargetQuestionId(group.targetQuestionId)}
+															onMouseLeave={() => setHighlightedTargetQuestionId(null)}
 														>
-															<span className="min-w-0 truncate text-foreground/80">
-																{group.conditionSummary === "otherwise" ? "Otherwise" : `If ${group.conditionSummary}`}
-																{group.ruleCount > 1 ? ` (${group.ruleCount} rules)` : ""}
-															</span>
-															<div className="flex items-center gap-1.5">
-																{(() => {
-																	const key = `${group.targetLabel}:${group.targetQuestionId ?? "none"}`;
-																	const preview = pathPreviewByTargetKey.get(key) ?? null;
-																	if (!preview) return null;
-																	return (
-																		<span className="rounded-full border border-violet-500/25 bg-violet-500/[0.08] px-1.5 py-0.5 text-[10px] text-violet-600/90 dark:text-violet-200/90">
-																			{preview.questionCount} questions • {preview.estimatedMinutes}
-																		</span>
-																	);
-																})()}
-																<span
-																	className="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 font-medium text-violet-600 dark:text-violet-300"
-																	onMouseEnter={() => setHighlightedTargetQuestionId(group.targetQuestionId)}
-																	onMouseLeave={() => setHighlightedTargetQuestionId(null)}
-																	title={
-																		group.targetPrompt
-																			? `${group.targetLabel}: ${group.targetPrompt}`
-																			: group.targetLabel
-																	}
-																>
-																	<ArrowRight className="h-3 w-3 opacity-0 transition-opacity group-hover/rule:opacity-100" />
-																	{group.targetPrompt
-																		? `${group.targetLabel} • ${group.targetPrompt.slice(0, 28)}`
-																		: group.targetLabel}
+															<div className="flex items-start gap-1">
+																<span className="min-w-[76px] font-medium text-muted-foreground">Branch:</span>
+																<span className="truncate text-foreground">to {group.targetLabel}</span>
+															</div>
+															<div className="flex items-start gap-1">
+																<span className="min-w-[76px] font-medium text-muted-foreground">Condition:</span>
+																<span className="truncate text-foreground/90">
+																	{group.conditionSummary === "otherwise"
+																		? "otherwise"
+																		: `if ${group.conditionSummary}`}
+																	{group.ruleCount > 1 ? ` (${group.ruleCount} rules)` : ""}
 																</span>
+															</div>
+															<div className="flex flex-wrap items-center gap-2">
+																<span className="min-w-[76px] font-medium text-muted-foreground">Destination:</span>
+																<Select
+																	value={
+																		group.rules[0]?.action === "end_survey"
+																			? "__end__"
+																			: group.rules[0]?.targetSectionId
+																				? `section:${group.rules[0].targetSectionId}`
+																				: (group.rules[0]?.targetQuestionId ?? "__end__")
+																	}
+																	onValueChange={(value) => {
+																		if (value === "__end__") {
+																			updateBranchTargetForRuleGroup(question.id, group.ruleIds, {
+																				action: "end_survey",
+																			});
+																			return;
+																		}
+																		if (value.startsWith("section:")) {
+																			updateBranchTargetForRuleGroup(question.id, group.ruleIds, {
+																				action: "skip_to",
+																				targetSectionId: value.slice("section:".length),
+																			});
+																			return;
+																		}
+																		updateBranchTargetForRuleGroup(question.id, group.ruleIds, {
+																			action: "skip_to",
+																			targetQuestionId: value,
+																		});
+																	}}
+																>
+																	<SelectTrigger className="h-6 min-w-[210px] border-violet-500/30 bg-background text-[11px]">
+																		<SelectValue />
+																	</SelectTrigger>
+																	<SelectContent>
+																		<SelectItem value="__end__">End survey</SelectItem>
+																		{sections
+																			.filter((section) => {
+																				const startIndex = questions.findIndex((q) => q.id === section.startQuestionId);
+																				return startIndex > index;
+																			})
+																			.map((section) => {
+																				const startIndex = questions.findIndex((q) => q.id === section.startQuestionId);
+																				return (
+																					<SelectItem
+																						key={`inline-section-${section.id}`}
+																						value={`section:${section.id}`}
+																					>
+																						Section: {section.title} (Q{startIndex + 1})
+																					</SelectItem>
+																				);
+																			})}
+																		{questions.slice(index + 1).map((candidate, candidateOffset) => (
+																			<SelectItem key={`inline-question-${candidate.id}`} value={candidate.id}>
+																				Q{index + candidateOffset + 2}
+																			</SelectItem>
+																		))}
+																	</SelectContent>
+																</Select>
 															</div>
 														</div>
 													))}
@@ -2018,6 +2444,7 @@ export function QuestionListEditor({
 					isOpen={selectedQuestionId !== null}
 					onClose={() => setSelectedQuestionId(null)}
 					updateQuestion={updateQuestion}
+					reassignQuestionToSection={reassignQuestionToSection}
 					removeQuestion={removeQuestion}
 					moveQuestion={moveQuestion}
 					aiInsight={getQuestionInsight(selectedQuestion, selectedIndex)}

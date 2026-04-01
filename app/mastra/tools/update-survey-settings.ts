@@ -6,7 +6,12 @@
 import { createTool } from "@mastra/core/tools";
 import consola from "consola";
 import { z } from "zod";
-import { areCanonicallyEqual, resolveBoundSurveyTarget } from "./survey-mutation-guards";
+import {
+	areCanonicallyEqual,
+	isRetryableSurveyMutationError,
+	resolveBoundSurveyTarget,
+	withSurveyMutationRetry,
+} from "./survey-mutation-guards";
 
 export const updateSurveySettingsTool = createTool({
 	id: "update-survey-settings",
@@ -37,6 +42,16 @@ Use this when the user wants to change settings like making a survey anonymous, 
 		message: z.string(),
 		updatedFields: z.array(z.string()).nullish(),
 		surveyId: z.string().nullish(),
+		requestedFieldCount: z.number().nullish(),
+		appliedFieldCount: z.number().nullish(),
+		skippedFieldCount: z.number().nullish(),
+		verification: z
+			.object({
+				verified: z.boolean(),
+				status: z.string(),
+				mismatchFields: z.array(z.string()).nullish(),
+			})
+			.nullish(),
 	}),
 	execute: async (input, context?) => {
 		try {
@@ -48,7 +63,7 @@ Use this when the user wants to change settings like making a survey anonymous, 
 				supabase,
 				surveyIdInput: input.surveyId,
 				select:
-					"id, name, description, is_live, allow_chat, allow_voice, allow_video, default_response_mode, identity_type, respondent_fields, hero_title, hero_subtitle, hero_cta_label, calendar_url, redirect_url, project_id, account_id",
+					"id, name, description, is_live, allow_chat, allow_voice, allow_video, default_response_mode, identity_mode, identity_field, respondent_fields, hero_title, hero_subtitle, hero_cta_label, calendar_url, redirect_url, project_id, account_id",
 			});
 
 			// Build the update payload, only including fields that were actually provided
@@ -84,7 +99,16 @@ Use this when the user wants to change settings like making a survey anonymous, 
 				updatedFields.push("defaultResponseMode");
 			}
 			if (input.identityType != null) {
-				updatePayload.identity_type = input.identityType;
+				if (input.identityType === "anonymous") {
+					updatePayload.identity_mode = "anonymous";
+					updatePayload.identity_field = "email";
+				} else if (input.identityType === "email") {
+					updatePayload.identity_mode = "identified";
+					updatePayload.identity_field = "email";
+				} else if (input.identityType === "phone") {
+					updatePayload.identity_mode = "identified";
+					updatePayload.identity_field = "phone";
+				}
 				updatedFields.push("identityType");
 			}
 			if (input.respondentFields !== undefined) {
@@ -112,41 +136,95 @@ Use this when the user wants to change settings like making a survey anonymous, 
 				updatedFields.push("redirectUrl");
 			}
 
+			const requestedFieldCount = updatedFields.length;
 			if (Object.keys(updatePayload).length === 0) {
-				return { success: false, message: "No settings provided to update." };
+				return {
+					success: false,
+					message: "No settings provided to update.",
+					surveyId,
+					updatedFields: null,
+					requestedFieldCount: 0,
+					appliedFieldCount: 0,
+					skippedFieldCount: 0,
+					verification: {
+						verified: false,
+						status: "no_changes_requested",
+						mismatchFields: null,
+					},
+				};
 			}
 
-			const { error } = await supabase
-				.from("research_links")
-				.update(updatePayload)
-				.eq("id", surveyId)
-				.eq("project_id", projectId);
+			const { error } = await withSurveyMutationRetry({
+				operation: "update-survey-settings.save",
+				run: async () => {
+					const result = await supabase
+						.from("research_links")
+						.update(updatePayload)
+						.eq("id", surveyId)
+						.eq("project_id", projectId);
+					if (result.error && isRetryableSurveyMutationError(result.error)) {
+						throw result.error;
+					}
+					return result;
+				},
+			});
 
 			if (error) {
 				consola.error("update-survey-settings: save error", error);
-				return { success: false, message: `Failed to update: ${error.message}` };
+				return {
+					success: false,
+					message: `Write failed. Applied 0/${requestedFieldCount} field(s). Error: ${error.message}`,
+					surveyId,
+					updatedFields: null,
+					requestedFieldCount,
+					appliedFieldCount: 0,
+					skippedFieldCount: requestedFieldCount,
+					verification: {
+						verified: false,
+						status: "write_failed",
+						mismatchFields: null,
+					},
+				};
 			}
 
-			const { data: persisted, error: persistedError } = await supabase
-				.from("research_links")
-				.select(
-					"id, name, description, is_live, allow_chat, allow_voice, allow_video, default_response_mode, identity_type, respondent_fields, hero_title, hero_subtitle, hero_cta_label, calendar_url, redirect_url"
-				)
-				.eq("id", surveyId)
-				.eq("project_id", projectId)
-				.single();
+			const { data: persisted, error: persistedError } = await withSurveyMutationRetry({
+				operation: "update-survey-settings.verify-read",
+				run: async () => {
+					const result = await supabase
+						.from("research_links")
+						.select(
+							"id, name, description, is_live, allow_chat, allow_voice, allow_video, default_response_mode, identity_mode, identity_field, respondent_fields, hero_title, hero_subtitle, hero_cta_label, calendar_url, redirect_url"
+						)
+						.eq("id", surveyId)
+						.eq("project_id", projectId)
+						.single();
+					if (result.error && isRetryableSurveyMutationError(result.error)) {
+						throw result.error;
+					}
+					return result;
+				},
+			});
 
 			if (persistedError || !persisted) {
 				return {
 					success: false,
-					message: "Saved settings but failed to verify persisted state. Please refresh and retry.",
+					message: `Write may have been applied but verification read failed. Applied unknown/${requestedFieldCount}. Please refresh and retry.`,
 					updatedFields: null,
 					surveyId,
+					requestedFieldCount,
+					appliedFieldCount: null,
+					skippedFieldCount: null,
+					verification: {
+						verified: false,
+						status: "verify_read_failed",
+						mismatchFields: null,
+					},
 				};
 			}
+			const persistedRecord = persisted as unknown as Record<string, unknown>;
 
 			const mismatchFields = Object.entries(updatePayload)
-				.filter(([column, expectedValue]) => !areCanonicallyEqual(persisted[column], expectedValue))
+				.filter(([column, expectedValue]) => !areCanonicallyEqual(persistedRecord[column], expectedValue))
 				.map(([column]) => column);
 
 			if (mismatchFields.length > 0) {
@@ -154,25 +232,51 @@ Use this when the user wants to change settings like making a survey anonymous, 
 					surveyId,
 					mismatchFields,
 				});
+				const appliedFieldCount = requestedFieldCount - mismatchFields.length;
 				return {
 					success: false,
-					message: `Survey settings verification failed for: ${mismatchFields.join(", ")}.`,
+					message: `Verification failed. Applied ${appliedFieldCount}/${requestedFieldCount} field(s). Mismatched: ${mismatchFields.join(", ")}.`,
 					updatedFields: null,
 					surveyId,
+					requestedFieldCount,
+					appliedFieldCount,
+					skippedFieldCount: mismatchFields.length,
+					verification: {
+						verified: false,
+						status: "mismatch",
+						mismatchFields,
+					},
 				};
 			}
 
 			return {
 				success: true,
-				message: `Updated ${updatedFields.length} setting(s): ${updatedFields.join(", ")}.`,
+				message: `Updated ${updatedFields.length} setting(s): ${updatedFields.join(", ")}. Verification: applied ${updatedFields.length}/${requestedFieldCount}.`,
 				updatedFields,
 				surveyId,
+				requestedFieldCount,
+				appliedFieldCount: updatedFields.length,
+				skippedFieldCount: 0,
+				verification: {
+					verified: true,
+					status: "verified",
+					mismatchFields: null,
+				},
 			};
 		} catch (error) {
 			consola.error("update-survey-settings: unexpected error", error);
 			return {
 				success: false,
 				message: error instanceof Error ? error.message : "Unexpected error",
+				updatedFields: null,
+				requestedFieldCount: null,
+				appliedFieldCount: null,
+				skippedFieldCount: null,
+				verification: {
+					verified: false,
+					status: "unexpected_error",
+					mismatchFields: null,
+				},
 			};
 		}
 	},

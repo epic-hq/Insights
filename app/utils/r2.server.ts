@@ -758,7 +758,7 @@ export function createR2PresignedUploadUrl(options: R2PresignedUploadOptions): R
 	const config = getR2Config();
 	if (!config) return null;
 
-	const { key, contentType, expiresInSeconds = 3600 } = options; // Default 1 hour for uploads
+	const { key, expiresInSeconds = 3600 } = options; // Default 1 hour for uploads
 	const expires = clamp(Math.floor(expiresInSeconds), 1, 60 * 60 * 24 * 7); // 1 second to 7 days
 
 	try {
@@ -921,6 +921,53 @@ export interface CompleteMultipartParams {
 	parts: Array<{ partNumber: number; etag: string }>;
 }
 
+interface MultipartUploadedPart {
+	PartNumber: number;
+	ETag: string;
+}
+
+export function parseMultipartUploadPartsXml(xml: string): MultipartUploadedPart[] {
+	const parts: MultipartUploadedPart[] = [];
+	const partPattern = /<Part>\s*<PartNumber>(\d+)<\/PartNumber>[\s\S]*?<ETag>([^<]+)<\/ETag>[\s\S]*?<\/Part>/g;
+
+	for (const match of xml.matchAll(partPattern)) {
+		const partNumber = Number.parseInt(match[1] ?? "", 10);
+		const etag = match[2]?.trim();
+		if (!Number.isFinite(partNumber) || !etag) continue;
+		parts.push({ PartNumber: partNumber, ETag: etag });
+	}
+
+	return parts.sort((a, b) => a.PartNumber - b.PartNumber);
+}
+
+export function buildAuthoritativeMultipartParts(params: {
+	requestedParts: Array<{ partNumber: number; etag: string }>;
+	listedParts: MultipartUploadedPart[];
+}): { success: true; parts: MultipartUploadedPart[] } | { success: false; missingPartNumbers: number[] } {
+	const requestedPartNumbers = params.requestedParts
+		.map((part) => part.partNumber)
+		.filter((partNumber, index, all) => Number.isFinite(partNumber) && all.indexOf(partNumber) === index)
+		.sort((a, b) => a - b);
+
+	if (requestedPartNumbers.length === 0) {
+		return { success: true, parts: params.listedParts };
+	}
+
+	const listedPartsByNumber = new Map(params.listedParts.map((part) => [part.PartNumber, part]));
+	const missingPartNumbers = requestedPartNumbers.filter((partNumber) => !listedPartsByNumber.has(partNumber));
+
+	if (missingPartNumbers.length > 0) {
+		return { success: false, missingPartNumbers };
+	}
+
+	return {
+		success: true,
+		parts: requestedPartNumbers
+			.map((partNumber) => listedPartsByNumber.get(partNumber))
+			.filter(Boolean) as MultipartUploadedPart[],
+	};
+}
+
 export async function completeMultipartUploadServer(
 	params: CompleteMultipartParams
 ): Promise<{ success: true } | { success: false; error?: string }> {
@@ -930,11 +977,38 @@ export async function completeMultipartUploadServer(
 	}
 
 	const { key, uploadId, parts } = params;
+	const listedParts = await listMultipartUploadParts({
+		key,
+		uploadId,
+		config,
+	});
 
-	// Transform parts to expected format
-	const formattedParts = parts.map((p) => ({
-		PartNumber: p.partNumber,
-		ETag: p.etag.startsWith('"') ? p.etag : `"${p.etag}"`,
+	if (!listedParts || listedParts.length === 0) {
+		return { success: false, error: "No uploaded multipart parts found in storage" };
+	}
+
+	const authoritativeParts = buildAuthoritativeMultipartParts({
+		requestedParts: parts,
+		listedParts,
+	});
+
+	if (!authoritativeParts.success) {
+		consola.error("Multipart completion requested missing parts", {
+			key,
+			uploadId,
+			requestedParts: parts.map((part) => part.partNumber),
+			listedParts: listedParts.map((part) => part.PartNumber),
+			missingPartNumbers: authoritativeParts.missingPartNumbers,
+		});
+		return {
+			success: false,
+			error: `Multipart upload incomplete; missing parts ${authoritativeParts.missingPartNumbers.join(", ")}`,
+		};
+	}
+
+	const formattedParts = authoritativeParts.parts.map((part) => ({
+		PartNumber: part.PartNumber,
+		ETag: part.ETag.startsWith('"') ? part.ETag : `"${part.ETag}"`,
 	}));
 
 	const success = await completeMultipartUpload({
@@ -950,6 +1024,68 @@ export async function completeMultipartUploadServer(
 
 	consola.info("Multipart upload completed via server", { key, uploadId });
 	return { success: true };
+}
+
+async function listMultipartUploadParts({
+	key,
+	uploadId,
+	config,
+}: {
+	key: string;
+	uploadId: string;
+	config: R2Config;
+}): Promise<MultipartUploadedPart[] | null> {
+	const { endpoint, bucket, region, accessKeyId, secretAccessKey } = config;
+	const encodedKey = encodeKey(key);
+	const requestPath = `/${bucket}/${encodedKey}`;
+	const queryString = `uploadId=${encodeURIComponent(uploadId)}`;
+	const url = `${endpoint}/${bucket}/${encodedKey}?${queryString}`;
+	const host = new URL(endpoint).host;
+
+	const now = new Date();
+	const amzDate = toAmzDate(now);
+	const dateStamp = amzDate.slice(0, 8);
+
+	const headers: Record<string, string> = {
+		host,
+		"x-amz-content-sha256": "UNSIGNED-PAYLOAD",
+		"x-amz-date": amzDate,
+	};
+
+	const canonicalHeaders = buildCanonicalHeaders(headers);
+	const signedHeaders = Object.keys(headers)
+		.map((name) => name.toLowerCase())
+		.sort()
+		.join(";");
+
+	const canonicalRequest = ["GET", requestPath, queryString, canonicalHeaders, signedHeaders, "UNSIGNED-PAYLOAD"].join(
+		"\n"
+	);
+	const credentialScope = `${dateStamp}/${region}/s3/aws4_request`;
+	const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, hashHex(canonicalRequest)].join("\n");
+
+	const signingKey = getSigningKey(secretAccessKey, dateStamp, region, "s3");
+	const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex");
+
+	headers.authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+	try {
+		const response = await fetch(url, {
+			method: "GET",
+			headers,
+		});
+
+		if (!response.ok) {
+			const errorText = await safeRead(response);
+			consola.error("Failed to list multipart upload parts", response.status, errorText?.slice(0, 200));
+			return null;
+		}
+
+		return parseMultipartUploadPartsXml(await response.text());
+	} catch (error) {
+		consola.error("Error listing multipart upload parts:", error);
+		return null;
+	}
 }
 
 /**

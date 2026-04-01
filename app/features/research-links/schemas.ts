@@ -2,6 +2,22 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 import { QuestionBranchingSchema } from "./branching";
 
+export const MATRIX_ROW_SCHEMA = z.object({
+	id: z.string().min(1, "Row id is required"),
+	label: z.string().min(1, "Row label is required"),
+});
+
+export const RESEARCH_LINK_QUESTION_TYPES = [
+	"auto",
+	"short_text",
+	"long_text",
+	"single_select",
+	"multi_select",
+	"likert",
+	"matrix",
+	"image_select",
+] as const;
+
 export const ResearchLinkQuestionSchema = z.object({
 	id: z.string().min(1, "Question id is required"),
 	prompt: z.string().default(""),
@@ -10,15 +26,7 @@ export const ResearchLinkQuestionSchema = z.object({
 		.string()
 		.default("auto")
 		.transform((val) => {
-			const valid = [
-				"auto",
-				"short_text",
-				"long_text",
-				"single_select",
-				"multi_select",
-				"likert",
-				"image_select",
-			] as const;
+			const valid = RESEARCH_LINK_QUESTION_TYPES;
 			return (valid as readonly string[]).includes(val) ? (val as (typeof valid)[number]) : "short_text";
 		}),
 	placeholder: z.string().optional().nullable(),
@@ -35,6 +43,7 @@ export const ResearchLinkQuestionSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+	matrixRows: z.array(MATRIX_ROW_SCHEMA).optional().nullable(),
 	// Image options configuration (label + imageUrl pairs)
 	imageOptions: z
 		.array(
@@ -79,6 +88,7 @@ export function createEmptyQuestion(): ResearchLinkQuestion {
 		allowOther: true,
 		likertScale: null,
 		likertLabels: null,
+		matrixRows: null,
 		imageOptions: null,
 		mediaUrl: null,
 		videoUrl: null,
@@ -96,7 +106,7 @@ const QuestionsJsonSchema = z
 		try {
 			const parsed = JSON.parse(value ?? "[]");
 			return parsed;
-		} catch (error) {
+		} catch (_error) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: "Invalid questions payload",
@@ -183,17 +193,23 @@ export const ResearchLinkPayloadSchema = z.object({
 	isArchived: booleanFlag,
 	collectTitle: booleanFlag,
 	respondentFields: z
-		.union([z.string(), z.array(z.string()), z.null(), z.undefined()])
+		.unknown()
 		.transform((value) => {
 			if (typeof value === "string") {
 				try {
-					return JSON.parse(value) as string[];
+					return JSON.parse(value) as unknown;
 				} catch {
-					return ["first_name", "last_name"];
+					return [
+						{ key: "first_name", required: true },
+						{ key: "last_name", required: false },
+					];
 				}
 			}
 			if (Array.isArray(value)) return value;
-			return ["first_name", "last_name"];
+			return [
+				{ key: "first_name", required: true },
+				{ key: "last_name", required: false },
+			];
 		})
 		.optional(),
 	questions: QuestionsJsonSchema,
@@ -205,7 +221,7 @@ export const ResearchLinkResponseStartSchema = z.object({
 	email: z.string({ required_error: "Email is required" }).email("Enter a valid email"),
 	responseId: z.string().uuid().optional().nullable(),
 	responseMode: z.enum(["form", "chat"]).optional(),
-	utmParams: z.record(z.string()).optional().nullable(),
+	utmParams: z.record(z.string(), z.string()).optional().nullable(),
 });
 
 /**
@@ -214,7 +230,7 @@ export const ResearchLinkResponseStartSchema = z.object({
 export const ResearchLinkAnonymousStartSchema = z.object({
 	responseId: z.string().uuid().optional().nullable(),
 	responseMode: z.enum(["form", "chat"]).optional(),
-	utmParams: z.record(z.string()).optional().nullable(),
+	utmParams: z.record(z.string(), z.string()).optional().nullable(),
 });
 
 /**
@@ -224,7 +240,7 @@ export const ResearchLinkPhoneStartSchema = z.object({
 	phone: z.string({ required_error: "Phone number is required" }).min(7, "Enter a valid phone number"),
 	responseId: z.string().uuid().optional().nullable(),
 	responseMode: z.enum(["form", "chat"]).optional(),
-	utmParams: z.record(z.string()).optional().nullable(),
+	utmParams: z.record(z.string(), z.string()).optional().nullable(),
 });
 
 /**
@@ -235,19 +251,34 @@ export const ResearchLinkCreatePersonSchema = z.object({
 	firstName: z.string({ required_error: "First name is required" }).min(1, "First name is required"),
 	lastName: z.string().optional().nullable(),
 	company: z.string().optional().nullable(),
+	title: z.string().optional().nullable(),
+	jobFunction: z.string().optional().nullable(),
+	industry: z.string().optional().nullable(),
+	companySize: z.string().optional().nullable(),
+	phone: z.string().optional().nullable(),
 	responseId: z.string().uuid({ message: "Response ID is required" }),
 	responseMode: z.enum(["form", "chat"]).optional(),
-	utmParams: z.record(z.string()).optional().nullable(),
+	utmParams: z.record(z.string(), z.string()).optional().nullable(),
 });
 
 export const ResearchLinkResponseSaveSchema = z.object({
 	responseId: z.string().uuid({ message: "Response id is required" }),
 	responses: z
-		.record(z.union([z.string(), z.array(z.string()), z.boolean(), z.null()]))
+		.record(
+			z.string(),
+			z.union([
+				z.string(),
+				z.array(z.string()),
+				z.boolean(),
+				z.null(),
+				z.record(z.string(), z.union([z.string(), z.null()])),
+			])
+		)
 		.optional()
 		.default({}),
 	completed: z.boolean().optional(),
 	merge: z.boolean().optional().default(false), // If true, merge responses with existing instead of replacing
+	fullSnapshot: z.boolean().optional().default(false),
 });
 
 export type ResearchLinkResponsePayload = z.infer<typeof ResearchLinkResponseSaveSchema>;

@@ -33,6 +33,7 @@ create table if not exists public.research_links (
     ai_analysis_updated_at timestamptz default null,
     identity_mode text not null default 'identified' check (identity_mode in ('anonymous', 'identified')),
     identity_field text not null default 'email' check (identity_field in ('email', 'phone')),
+    survey_owner_user_id uuid references auth.users (id) on delete set null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );

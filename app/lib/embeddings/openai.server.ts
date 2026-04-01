@@ -19,12 +19,12 @@ const MAX_INPUT_LENGTH = 8000; // OpenAI token limit safety
  * These are tuned based on empirical testing with text-embedding-3-small.
  */
 export const SIMILARITY_THRESHOLDS = {
-	/** Theme-to-theme deduplication (strict - 80%+ means same concept) */
-	THEME_DEDUPLICATION: 0.8,
+	/** Theme-to-theme deduplication (strict - 85%+ means same concept) */
+	THEME_DEDUPLICATION: 0.85,
 	/** Theme merging in clustering (very strict) */
 	THEME_MERGE: 0.85,
-	/** Evidence-to-theme linking (broader match for coverage) */
-	EVIDENCE_TO_THEME: 0.4,
+	/** Evidence-to-theme linking (strict enough to avoid noisy interview counts) */
+	EVIDENCE_TO_THEME: 0.65,
 	/** General semantic search (balanced) */
 	SEMANTIC_SEARCH: 0.5,
 	/** Facet clustering */

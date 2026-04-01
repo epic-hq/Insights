@@ -23,6 +23,7 @@ export function ResearchLinkPreview({
 }: ResearchLinkPreviewProps) {
 	const firstQuestion = questions[0];
 	const usesLongText = firstQuestion?.type === "long_text";
+	const usesMatrix = firstQuestion?.type === "matrix" && Boolean(firstQuestion.matrixRows?.length);
 
 	return (
 		<div className="sticky top-6">
@@ -55,7 +56,22 @@ export function ResearchLinkPreview({
 								<p className="mb-2 font-medium text-white/90 text-xs">
 									{firstQuestion.prompt || "Your question here..."}
 								</p>
-								{usesLongText ? (
+								{usesMatrix ? (
+									<div className="space-y-1.5">
+										{firstQuestion.matrixRows?.slice(0, 3).map((row) => (
+											<div key={row.id} className="space-y-1">
+												<div className="truncate text-[10px] text-white/70">{row.label}</div>
+												<div className="flex gap-1">
+													{Array.from({ length: Math.min(firstQuestion.likertScale ?? 5, 5) }, (_, idx) => idx + 1).map(
+														(point) => (
+															<div key={point} className="h-5 w-5 rounded border border-white/20 bg-white/10" />
+														)
+													)}
+												</div>
+											</div>
+										))}
+									</div>
+								) : usesLongText ? (
 									<Textarea
 										readOnly
 										rows={2}

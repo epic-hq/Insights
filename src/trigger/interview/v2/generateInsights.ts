@@ -26,6 +26,12 @@ import {
 } from "~/lib/billing";
 import { SIMILARITY_THRESHOLDS } from "~/lib/embeddings/openai.server";
 import { searchEvidenceForTheme } from "~/lib/evidence/semantic-search.server";
+import {
+	findLocalEvidenceMatchesForTheme,
+	limitThemeLinksPerEvidence,
+	mergeThemeEvidenceMatches,
+} from "~/lib/evidence/theme-linking.server";
+import { getProjectAnalysisSettings } from "~/features/projects/utils/analysisSettings";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { generateInterviewInsightsFromEvidenceCore } from "./extractEvidenceCore";
 import {
@@ -153,6 +159,15 @@ export const generateInsightsTaskV2 = task({
         );
       }
 
+      const { data: projectData } = await client
+        .from("projects")
+        .select("project_settings")
+        .eq("id", interview.project_id)
+        .maybeSingle();
+      const analysisSettings = getProjectAnalysisSettings(
+        projectData?.project_settings,
+      );
+
       // Create billing context for embedding operations
       const billingCtx = systemBillingContext(
         interview.account_id,
@@ -176,6 +191,18 @@ export const generateInsightsTaskV2 = task({
         details: string | null;
         evidence: string | null;
       }[] = [];
+      const { data: interviewEvidenceRows, error: evidenceLoadError } = await client
+        .from("evidence")
+        .select("id, gist, chunk, verbatim")
+        .in("id", evidenceIds);
+
+      if (evidenceLoadError) {
+        throw new Error(
+          `Failed to load evidence rows for insight linking: ${evidenceLoadError.message}`,
+        );
+      }
+
+      const candidateEvidenceRows = interviewEvidenceRows ?? [];
 
       for (const insight of insights.insights) {
         // 1. Check if theme with this exact name already exists in the project
@@ -221,7 +248,7 @@ export const generateInsightsTaskV2 = task({
           interview.project_id,
           searchText,
           billingCtx,
-          // Uses SIMILARITY_THRESHOLDS.THEME_DEDUPLICATION by default
+          analysisSettings.theme_dedup_threshold,
         );
 
         if (similarTheme) {
@@ -323,6 +350,12 @@ export const generateInsightsTaskV2 = task({
       // This replaces the old cross-product approach (every theme × every evidence)
       let linkCount = 0;
       const themesWithNoLinks: string[] = [];
+      const pendingLinks: Array<{
+        themeId: string;
+        evidenceId: string;
+        confidence: number;
+        rationale: string;
+      }> = [];
 
       if (createdThemes.length > 0) {
         consola.info(
@@ -340,52 +373,46 @@ export const generateInsightsTaskV2 = task({
             const similarEvidence = await searchEvidenceForTheme(client, {
               themeQuery: searchQuery,
               interviewId,
-              matchThreshold: SIMILARITY_THRESHOLDS.EVIDENCE_TO_THEME, // 0.4
+              matchThreshold: analysisSettings.evidence_link_threshold,
               matchCount: 20,
             });
 
-            if (similarEvidence.length === 0) {
+            const localEvidenceMatches = findLocalEvidenceMatchesForTheme({
+              candidates: candidateEvidenceRows,
+              themeName: theme.name,
+              statement: theme.details,
+              inclusionCriteria: theme.evidence,
+              evidenceQuote: theme.evidence,
+              limit: 8,
+            });
+
+            const evidenceMatches = mergeThemeEvidenceMatches(
+              localEvidenceMatches,
+              similarEvidence,
+            ).filter(
+              (match) =>
+                match.confidence >= analysisSettings.evidence_link_threshold,
+            );
+
+            if (evidenceMatches.length === 0) {
               consola.warn(
                 `[generateInsights] No matching evidence found for theme "${theme.name}" (query: "${searchQuery.substring(0, 100)}...")`,
               );
               themesWithNoLinks.push(theme.name);
             } else {
               consola.debug(
-                `[generateInsights] Found ${similarEvidence.length} matching evidence for theme "${theme.name}"`,
+                `[generateInsights] Found ${evidenceMatches.length} matching evidence for theme "${theme.name}" ` +
+                  `(${localEvidenceMatches.length} local, ${similarEvidence.length} semantic)`,
               );
             }
 
-            // Create links with semantic confidence scores
-            let linksCreatedForTheme = 0;
-            for (const match of similarEvidence) {
-              const { error: linkError } = await client
-                .from("theme_evidence")
-                .upsert(
-                  {
-                    account_id: interview.account_id,
-                    project_id: interview.project_id,
-                    theme_id: theme.id,
-                    evidence_id: match.id,
-                    rationale: `Semantic match (${Math.round(match.similarity * 100)}%)`,
-                    confidence: match.similarity,
-                  },
-                  {
-                    onConflict: "theme_id,evidence_id,account_id",
-                    ignoreDuplicates: false, // Update confidence if already exists
-                  },
-                );
-
-              if (!linkError) {
-                linkCount++;
-                linksCreatedForTheme++;
-              }
-            }
-
-            if (linksCreatedForTheme === 0 && similarEvidence.length > 0) {
-              consola.warn(
-                `[generateInsights] Failed to create links for theme "${theme.name}" despite finding ${similarEvidence.length} matches`,
-              );
-              themesWithNoLinks.push(theme.name);
+            for (const match of evidenceMatches) {
+              pendingLinks.push({
+                themeId: theme.id,
+                evidenceId: match.id,
+                rationale: match.rationale,
+                confidence: match.confidence,
+              });
             }
           } catch (searchErr) {
             consola.warn(
@@ -396,8 +423,44 @@ export const generateInsightsTaskV2 = task({
           }
         }
 
+        const prunedLinks = limitThemeLinksPerEvidence(
+          pendingLinks,
+          candidateEvidenceRows.length,
+        );
+        const linkedThemeIds = new Set(prunedLinks.map((link) => link.themeId));
+
+        for (const theme of createdThemes) {
+          if (!linkedThemeIds.has(theme.id)) {
+            themesWithNoLinks.push(theme.name);
+          }
+        }
+
+        for (const link of prunedLinks) {
+          const { error: linkError } = await client
+            .from("theme_evidence")
+            .upsert(
+              {
+                account_id: interview.account_id,
+                project_id: interview.project_id,
+                theme_id: link.themeId,
+                evidence_id: link.evidenceId,
+                rationale: link.rationale,
+                confidence: link.confidence,
+              },
+              {
+                onConflict: "theme_id,evidence_id,account_id",
+                ignoreDuplicates: false,
+              },
+            );
+
+          if (!linkError) {
+            linkCount++;
+          }
+        }
+
         consola.success(
-          `[generateInsights] Created ${linkCount} semantic theme_evidence links`,
+          `[generateInsights] Created ${linkCount} semantic/theme-grounded theme_evidence links ` +
+            `(kept ${prunedLinks.length}/${pendingLinks.length} after evidence caps)`,
         );
 
         // Log warning if any themes got no links

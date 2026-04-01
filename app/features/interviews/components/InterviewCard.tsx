@@ -1,9 +1,9 @@
 import consola from "consola";
 import { formatDistance } from "date-fns";
 import { motion } from "framer-motion";
-import { Calendar, Clock, FileText, Loader2, MoreVertical, RefreshCw, Trash2, Users } from "lucide-react";
+import { Building2, Calendar, Clock, FileText, Loader2, MoreVertical, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useFetcher, useNavigate } from "react-router";
+import { Link, useFetcher, useRevalidator } from "react-router";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -36,7 +36,7 @@ interface InterviewCardProps {
 		persona: string;
 		created_at: string;
 		duration: string;
-		insightCount: number;
+		insightCount?: number;
 		evidenceCount?: number;
 		topThemes?: Array<{
 			id: string;
@@ -47,6 +47,8 @@ interface InterviewCardProps {
 			people?: {
 				name?: string;
 				segment?: string;
+				person_type?: string | null;
+				default_organization?: { name: string } | null;
 			};
 			role?: string;
 		}>;
@@ -59,7 +61,6 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const { projectPath, projectId } = useCurrentProject();
 	const routes = useProjectRoutes(projectPath || "");
-	const navigate = useNavigate();
 	const deleteFetcher = useFetcher<{
 		success?: boolean;
 		redirectTo?: string;
@@ -67,15 +68,16 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 	}>();
 	const reprocessFetcher = useFetcher();
 
+	const { revalidate } = useRevalidator();
 	const isDeleting = deleteFetcher.state !== "idle";
 	const isReprocessing = reprocessFetcher.state !== "idle";
 
-	// Navigate after successful delete
+	// Revalidate list after successful delete (stay on current page, refresh data)
 	useEffect(() => {
-		if (deleteFetcher.data?.success && deleteFetcher.data?.redirectTo) {
-			navigate(deleteFetcher.data.redirectTo);
+		if (deleteFetcher.data?.success) {
+			revalidate();
 		}
-	}, [deleteFetcher.data, navigate]);
+	}, [deleteFetcher.data, revalidate]);
 
 	const handleReprocess = (e: React.MouseEvent) => {
 		e.preventDefault();
@@ -90,43 +92,65 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 		);
 	};
 
-	// Get all participants, sorted to put "participant" role first
-	const allParticipants = interview.interview_people || [];
-	const sortedParticipants = [...allParticipants].sort((a, b) => {
-		if (a.role === "participant") return -1;
-		if (b.role === "participant") return 1;
-		return 0;
-	});
-	const primaryParticipant = sortedParticipants[0];
-	const participant = primaryParticipant?.people;
-	const participantName = participant?.name || "Unknown Participant";
+	// Generic/placeholder names that don't represent a real identified person
+	const GENERIC_NAMES = new Set([
+		"unknown participant",
+		"participant 1",
+		"participant 2",
+		"interviewer",
+		"attendee / organizer",
+		"anonymous",
+	]);
+	const isGenericName = (name: string) => {
+		const lower = name.toLowerCase().trim();
+		return (
+			GENERIC_NAMES.has(lower) || /^(participant|speaker|attendee)\s*\d*$/i.test(lower) || /^realtime\s/i.test(lower)
+		);
+	};
 
-	const participant_names = Array.from(
-		new Set(sortedParticipants.map((p) => p.people?.name?.trim()).filter((name): name is string => Boolean(name)))
+	// Separate participants from team members (internal)
+	const allPeople = interview.interview_people || [];
+	const externalPeople = allPeople.filter((p) => p.people?.person_type !== "internal");
+	const teamMembers = allPeople.filter((p) => p.people?.person_type === "internal");
+
+	// From external people, separate real names from generic placeholders
+	const realNamedPeople = externalPeople.filter((p) => p.people?.name && !isGenericName(p.people.name));
+	const displayParticipants = realNamedPeople.length > 0 ? realNamedPeople : externalPeople;
+
+	// Build participant names (real names only, no generics)
+	const realParticipantNames = Array.from(
+		new Set(externalPeople.map((p) => p.people?.name?.trim()).filter((n): n is string => !!n && !isGenericName(n)))
 	);
-	const display_participant_names = participant_names.length > 0 ? participant_names : [participantName];
-	const displayed_participant_names = display_participant_names.slice(0, 3);
-	const remaining_participant_count = Math.max(
-		0,
-		display_participant_names.length - displayed_participant_names.length
+
+	// Count how many external people have generic/missing names
+	const anonCount =
+		externalPeople.length - externalPeople.filter((p) => p.people?.name && !isGenericName(p.people.name)).length;
+
+	// Team member names (for the heading line)
+	const teamMemberNames = Array.from(
+		new Set(teamMembers.map((p) => p.people?.name?.trim()).filter((n): n is string => Boolean(n)))
 	);
-	const participants_label =
-		remaining_participant_count > 0
-			? `${displayed_participant_names.join(", ")} +${remaining_participant_count}`
-			: displayed_participant_names.join(", ");
 
-	// Interview title (prefer actual title over participant name)
-	const interviewTitle = interview.title || `Interview with ${participantName}`;
+	// Build the heading: real names first, then "Anon" / "Anon (N)", then team members
+	const headingParts: string[] = [...realParticipantNames.slice(0, 3)];
+	if (anonCount === 1) headingParts.push("Anon");
+	if (anonCount > 1) headingParts.push(`Anon (${anonCount})`);
+	// Add team members after participants
+	headingParts.push(...teamMemberNames.slice(0, 2));
+	const overflowCount = Math.max(0, realParticipantNames.length - 3 + Math.max(0, teamMemberNames.length - 2));
 
+	// Get organization from first external participant
+	const primaryOrg = externalPeople.find((p) => p.people?.default_organization?.name)?.people?.default_organization
+		?.name;
+
+	// Thumbnail handling
 	const audio_extensions = ["mp3", "wav", "m4a", "ogg", "flac", "aac"];
 	const image_extensions = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
-
 	const file_extension = interview.file_extension?.toLowerCase() || "";
 	const is_audio_only =
 		interview.media_type === "voice_memo" ||
 		interview.source_type?.includes("audio") ||
 		audio_extensions.includes(file_extension);
-
 	const is_image = image_extensions.includes(file_extension);
 	const media_preview_url = interview.thumbnail_url || (is_image ? interview.media_url : null);
 	const [signed_media_preview_url, setSignedMediaPreviewUrl] = useState<string | null>(null);
@@ -175,11 +199,10 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 		};
 	}, [media_preview_url]);
 
-	// Status color mapping
 	const getStatusColor = (status: string) => {
 		switch (status) {
 			case "ready":
-				return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+				return "border border-green-300 bg-transparent text-green-700 dark:border-green-700 dark:text-green-400";
 			case "transcribed":
 				return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
 			case "processing":
@@ -188,6 +211,8 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 				return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
 		}
 	};
+
+	const hasVideoThumbnail = !!media_preview_url;
 
 	return (
 		<>
@@ -204,7 +229,7 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 					whileHover={{ y: -2, scale: 1.01 }}
 					transition={{ duration: 0.3, ease: "easeOut" }}
 				>
-					{/* Action Menu - top right, visible on hover */}
+					{/* Action Menu */}
 					<div
 						className={cn(
 							"absolute top-2 right-2 z-10 opacity-0 transition-opacity group-hover:opacity-100",
@@ -242,76 +267,65 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 						</DropdownMenu>
 					</div>
 
-					{/* Card Content */}
-					<div className="p-5">
-						{media_preview_url ? (
-							<div className="mb-4 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
-								<div className="relative aspect-video w-full">
-									{signed_media_preview_url ? (
-										<img src={signed_media_preview_url} alt="" className="h-full w-full object-cover" loading="lazy" />
-									) : (
-										<div className="h-full w-full bg-muted/40" />
-									)}
-								</div>
-							</div>
-						) : is_audio_only ? (
-							<div className="mb-4 flex h-16 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
-								<MediaTypeIcon
-									mediaType={interview.media_type}
-									sourceType={interview.source_type}
-									showLabel={false}
-									iconClassName="h-7 w-7"
-								/>
-							</div>
-						) : null}
-
-						{/* Header - Title on left, Media Type on right */}
-						<div className="mb-3 flex items-start justify-between gap-3">
-							<h3 className="line-clamp-2 font-semibold text-foreground text-lg leading-tight dark:text-foreground">
-								{interviewTitle}
-							</h3>
-							<div className="flex shrink-0 items-center gap-2">
-								<MediaTypeIcon
-									mediaType={interview.media_type}
-									sourceType={interview.source_type}
-									showLabel={false}
-									iconClassName="h-4 w-4"
-								/>
+					{/* Video thumbnail — only for video content */}
+					{hasVideoThumbnail && (
+						<div className="overflow-hidden border-gray-200 border-b bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+							<div className="relative aspect-video w-full">
+								{signed_media_preview_url ? (
+									<img src={signed_media_preview_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+								) : (
+									<div className="h-full w-full bg-muted/40" />
+								)}
 							</div>
 						</div>
+					)}
 
-						{/* Participant Info */}
-						<div className="mb-4 flex items-center gap-2">
-							<Users className="h-4 w-4 shrink-0 text-gray-500" />
-							<div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
-								<span className="text-gray-600 text-sm dark:text-gray-400">{participants_label}</span>
-							</div>
+					{/* Card Content */}
+					<div className="p-4">
+						{/* Primary: People names */}
+						<div className="mb-1 flex items-start justify-between gap-2">
+							<h3 className="line-clamp-1 font-bold text-foreground text-lg leading-snug">
+								{headingParts.join(", ")}
+								{overflowCount > 0 && <span className="font-normal text-muted-foreground"> +{overflowCount}</span>}
+							</h3>
 							<Badge className={cn("shrink-0 font-medium text-xs", getStatusColor(interview.status))}>
 								{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 							</Badge>
 						</div>
 
-						{/* Metadata Grid */}
-						<div className="grid grid-cols-3 gap-3 text-sm">
-							{/* Evidence Count - Most Important */}
-							<div className="flex items-center gap-1.5">
-								<FileText className="h-3.5 w-3.5 text-muted-foreground" />
-								<span className="font-medium text-muted-foreground">
-									{interview.evidenceCount || interview.insightCount || 0}
-								</span>
-								<span className="text-muted-foreground text-xs">evidence</span>
+						{/* Secondary: Organization */}
+						{primaryOrg && (
+							<div className="mb-2 flex items-center gap-1.5">
+								<Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+								<span className="text-muted-foreground text-sm">{primaryOrg}</span>
 							</div>
+						)}
 
-							{/* Duration */}
-							<div className="flex items-center gap-1.5">
-								<Clock className="h-3.5 w-3.5 text-gray-500" />
-								<span className="text-gray-600 dark:text-gray-400">{interview.duration}</span>
+						{/* Tertiary: Title/filename + media type indicator */}
+						<div className="mb-3 flex items-center gap-1.5">
+							<MediaTypeIcon
+								mediaType={interview.media_type}
+								sourceType={interview.source_type}
+								showLabel={false}
+								iconClassName="h-3.5 w-3.5 text-muted-foreground/70"
+							/>
+							<span className="line-clamp-1 text-muted-foreground/70 text-xs">{interview.title || "Untitled"}</span>
+						</div>
+
+						{/* Metadata row */}
+						<div className="flex items-center gap-4 text-muted-foreground text-xs">
+							<div className="flex items-center gap-1">
+								<FileText className="h-3 w-3" />
+								<span className="font-medium">{interview.evidenceCount || interview.insightCount || 0}</span>
+								<span>evidence</span>
 							</div>
-
-							{/* Date */}
-							<div className="flex items-center gap-1.5">
-								<Calendar className="h-3.5 w-3.5 text-gray-500" />
-								<span className="text-gray-600 text-xs dark:text-gray-400">
+							<div className="flex items-center gap-1">
+								<Clock className="h-3 w-3" />
+								<span>{interview.duration}</span>
+							</div>
+							<div className="flex items-center gap-1">
+								<Calendar className="h-3 w-3" />
+								<span>
 									{formatDistance(new Date(interview.created_at), new Date(), {
 										addSuffix: true,
 									})}
@@ -320,7 +334,7 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 						</div>
 					</div>
 
-					{/* Subtle Hover Effect */}
+					{/* Hover Effect */}
 					<motion.div
 						className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-blue-50/50 to-purple-50/50 opacity-0 dark:from-blue-900/20 dark:to-purple-900/20"
 						animate={{ opacity: isHovered ? 1 : 0 }}

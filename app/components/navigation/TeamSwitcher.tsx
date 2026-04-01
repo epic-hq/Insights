@@ -1,6 +1,6 @@
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Crown, Plus, Settings } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useNavigate, useRouteLoaderData } from "react-router-dom";
+import { Link, useNavigate, useRouteLoaderData } from "react-router-dom";
 import { Button } from "~/components/ui/button";
 import {
 	Command,
@@ -14,8 +14,10 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
 import { SidebarMenu, SidebarMenuItem } from "~/components/ui/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
 import { useCurrentProject } from "~/contexts/current-project-context";
 import { CreateTeamForm } from "~/features/teams/components/CreateTeamForm";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 import { cn } from "~/lib/utils";
 import { createRouteDefinitions } from "~/utils/route-definitions";
 
@@ -28,6 +30,7 @@ interface ProjectRecord {
 
 interface AccountRecord {
 	account_id: string;
+	account_role?: string | null;
 	name?: string | null;
 	personal_account?: boolean | null;
 	projects?: ProjectRecord[] | null;
@@ -132,6 +135,12 @@ export function TeamSwitcher({ accounts: propAccounts, collapsed = false }: Team
 	const currentAccountLabel = projectAccount?.name || currentAccount?.name || "Select an account";
 	const initials = currentProject?.name?.charAt(0)?.toUpperCase() || "P";
 
+	// Settings route for the gear icon
+	const effectiveAccountId = projectAccount?.account_id || accountId || "";
+	const effectiveProjectId = currentProject?.id || projectId || "";
+	const projectPath = effectiveAccountId && effectiveProjectId ? `/a/${effectiveAccountId}/${effectiveProjectId}` : "";
+	const routes = useProjectRoutes(projectPath);
+
 	const handleSelectProject = async (acctId: string, projId: string) => {
 		if (!acctId || !projId) {
 			console.error("Cannot navigate: missing accountId or projectId", {
@@ -181,70 +190,99 @@ export function TeamSwitcher({ accounts: propAccounts, collapsed = false }: Team
 	return (
 		<SidebarMenu className="">
 			<SidebarMenuItem>
-				<Popover open={open} onOpenChange={setOpen}>
-					<PopoverTrigger asChild>
-						<Button
-							variant="ghost"
-							role="combobox"
-							aria-expanded={open}
-							className={cn(
-								"w-full justify-start gap-2 overflow-hidden hover:bg-sidebar-accent",
-								collapsed ? "-ml-1 h-10 w-10 justify-center p-0" : "-ml-2 px-1"
-							)}
-						>
-							<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground">
-								<span className="font-semibold text-sm">{initials}</span>
-							</div>
-							{!collapsed && (
-								<div className="flex min-w-0 flex-1 flex-col items-start text-left">
-									<span className="truncate font-medium text-sm">{currentProjectLabel}</span>
+				<div className="flex items-center gap-0.5">
+					<Popover open={open} onOpenChange={setOpen}>
+						<PopoverTrigger asChild>
+							<Button
+								variant="ghost"
+								role="combobox"
+								aria-expanded={open}
+								className={cn(
+									"min-w-0 flex-1 justify-start gap-2 overflow-hidden hover:bg-sidebar-accent",
+									collapsed ? "-ml-1 h-10 w-10 justify-center p-0" : "-ml-2 px-1"
+								)}
+							>
+								<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground">
+									<span className="font-semibold text-sm">{initials}</span>
 								</div>
-							)}
-							{!collapsed && <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />}
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent align="start" className="w-72 p-0">
-						<Command>
-							<CommandInput placeholder="Search projects..." />
-							<CommandList>
-								<CommandEmpty>No projects found.</CommandEmpty>
-								{accounts.map((account) => (
-									<CommandGroup key={account.account_id} heading={account.name || "Untitled account"}>
-										{(account.projects ?? []).map((project) => {
-											// Use currentProject/projectAccount for active state instead of URL params
-											// This ensures checkmark shows correctly even on routes without projectId in URL
-											const isActive =
-												account.account_id === projectAccount?.account_id && project.id === currentProject?.id;
-											return (
-												<CommandItem
-													key={`${account.account_id}:${project.id}`}
-													value={`${project.name || "Untitled project"} ${account.name || ""}`}
-													onSelect={() => handleSelectProject(account.account_id, project.id)}
-												>
-													<Check className={cn("mr-2 h-4 w-4", isActive ? "opacity-100" : "opacity-0")} />
-													<span className="truncate">{project.name || "Untitled project"}</span>
-												</CommandItem>
-											);
-										})}
+								{!collapsed && (
+									<div className="flex min-w-0 flex-1 flex-col items-start text-left">
+										<span className="truncate font-medium text-sm">{currentProjectLabel}</span>
+									</div>
+								)}
+								{!collapsed && <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />}
+							</Button>
+						</PopoverTrigger>
+						<PopoverContent align="start" className="w-72 p-0">
+							<Command>
+								<CommandInput placeholder="Search projects..." />
+								<CommandList>
+									<CommandEmpty>No projects found.</CommandEmpty>
+									{accounts.map((account) => (
+										<CommandGroup
+											key={account.account_id}
+											heading={
+												<span className="flex items-center gap-1.5">
+													{account.name || "Untitled account"}
+													{account.account_role === "owner" && <Crown className="h-3 w-3 text-amber-500" />}
+												</span>
+											}
+										>
+											{(account.projects ?? []).map((project) => {
+												// Use currentProject/projectAccount for active state instead of URL params
+												// This ensures checkmark shows correctly even on routes without projectId in URL
+												const isActive =
+													account.account_id === projectAccount?.account_id && project.id === currentProject?.id;
+												return (
+													<CommandItem
+														key={`${account.account_id}:${project.id}`}
+														value={`${project.name || "Untitled project"} ${account.name || ""}`}
+														onSelect={() => handleSelectProject(account.account_id, project.id)}
+													>
+														<Check className={cn("mr-2 h-4 w-4", isActive ? "opacity-100" : "opacity-0")} />
+														<span className="truncate">{project.name || "Untitled project"}</span>
+													</CommandItem>
+												);
+											})}
+										</CommandGroup>
+									))}
+									<CommandSeparator />
+									<CommandGroup>
+										<CommandItem
+											onSelect={() => {
+												setOpen(false);
+												setShowCreateDialog(true);
+											}}
+											className="text-primary"
+										>
+											<Plus className="mr-2 h-4 w-4" />
+											<span>Create Team</span>
+										</CommandItem>
 									</CommandGroup>
-								))}
-								<CommandSeparator />
-								<CommandGroup>
-									<CommandItem
-										onSelect={() => {
-											setOpen(false);
-											setShowCreateDialog(true);
-										}}
-										className="text-primary"
-									>
-										<Plus className="mr-2 h-4 w-4" />
-										<span>Create Team</span>
-									</CommandItem>
-								</CommandGroup>
-							</CommandList>
-						</Command>
-					</PopoverContent>
-				</Popover>
+								</CommandList>
+							</Command>
+						</PopoverContent>
+					</Popover>
+					{/* Settings gear icon - visible when sidebar is expanded */}
+					{!collapsed && projectPath && (
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+									asChild
+								>
+									<Link to={routes.settings()}>
+										<Settings className="h-3.5 w-3.5" />
+										<span className="sr-only">Project settings</span>
+									</Link>
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent side="right">Project settings</TooltipContent>
+						</Tooltip>
+					)}
+				</div>
 
 				{/* Create Team Dialog */}
 				<Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>

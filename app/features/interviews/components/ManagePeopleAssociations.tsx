@@ -482,6 +482,31 @@ export function ManagePeopleAssociations({
 							</div>
 						);
 					})}
+					{/* Unassigned transcript speakers — shown inline so user sees all speakers */}
+					{unassignedSpeakers.map((speaker) => (
+						<div
+							key={`unassigned-${speaker.key}`}
+							className="flex items-center gap-2 rounded-md border border-amber-300/60 border-dashed bg-amber-50/30 px-3 py-2 dark:border-amber-700/40 dark:bg-amber-950/20"
+						>
+							<div className="min-w-[100px] font-medium text-amber-700 text-sm dark:text-amber-400">
+								{speaker.label}
+							</div>
+							<div className="h-4 w-4" />
+							<Button
+								variant="outline"
+								size="sm"
+								className="flex h-8 min-w-[200px] items-center justify-between text-muted-foreground text-sm"
+								onClick={() => {
+									setSelectedSpeakerKey(speaker.key);
+									setShowAddPersonDialog(true);
+								}}
+								disabled={isSubmitting}
+							>
+								<span className="text-muted-foreground text-xs">Link person</span>
+								<ChevronDown className="ml-2 h-3.5 w-3.5 shrink-0" />
+							</Button>
+						</div>
+					))}
 				</div>
 
 				{/* Add new participant button */}
