@@ -3,7 +3,7 @@
  * Tests the API route for backfilling missing people records
  */
 
-import { beforeEach, describe, expect, it, type MockedFunction, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { action } from "./api.backfill-people";
 
 // Mock dependencies
@@ -14,30 +14,34 @@ vi.mock("~/utils/backfillPeople.server", () => ({
 
 vi.mock("~/lib/supabase/client.server", () => ({
 	getServerClient: vi.fn(),
+	getAuthenticatedUser: vi.fn(),
 }));
+
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server";
+import { backfillMissingPeople, getInterviewPeopleStats } from "~/utils/backfillPeople.server";
+
+const mockGetAuthenticatedUser = vi.mocked(getAuthenticatedUser);
+const mockGetServerClient = vi.mocked(getServerClient);
+const mockBackfillMissingPeople = vi.mocked(backfillMissingPeople);
+const mockGetInterviewPeopleStats = vi.mocked(getInterviewPeopleStats);
 
 describe("api.backfill-people", () => {
 	let mockRequest: Request;
-	let mockSupabaseClient: any;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 
-		// Mock Supabase client
-		mockSupabaseClient = {
-			auth: {
-				getUser: vi.fn(),
-				getSession: vi.fn(),
-			},
-		};
+		// Default: authenticated user with account ID
+		mockGetAuthenticatedUser.mockResolvedValue({
+			user: { id: "user-123", sub: "account-123" },
+		} as any);
 
-		const { getServerClient } = require("~/lib/supabase/client.server");
-		(getServerClient as MockedFunction<any>).mockReturnValue(mockSupabaseClient);
+		mockGetServerClient.mockReturnValue({} as any);
 	});
 
 	describe("Authentication", () => {
 		it("should return 401 when user is not authenticated", async () => {
-			mockSupabaseClient.auth.getUser.mockResolvedValue({ data: { user: null } });
+			mockGetAuthenticatedUser.mockResolvedValue({ user: null } as any);
 
 			const formData = new FormData();
 			formData.append("action", "stats");
@@ -55,12 +59,9 @@ describe("api.backfill-people", () => {
 		});
 
 		it("should return 400 when account ID is not found", async () => {
-			mockSupabaseClient.auth.getUser.mockResolvedValue({
-				data: { user: { id: "user-123" } },
-			});
-			mockSupabaseClient.auth.getSession.mockResolvedValue({
-				data: { session: { user: { app_metadata: { claims: {} } } } },
-			});
+			mockGetAuthenticatedUser.mockResolvedValue({
+				user: { id: undefined, sub: undefined },
+			} as any);
 
 			const formData = new FormData();
 			formData.append("action", "stats");
@@ -79,24 +80,6 @@ describe("api.backfill-people", () => {
 	});
 
 	describe("Stats Action", () => {
-		beforeEach(() => {
-			// Setup authenticated user
-			mockSupabaseClient.auth.getUser.mockResolvedValue({
-				data: { user: { id: "user-123" } },
-			});
-			mockSupabaseClient.auth.getSession.mockResolvedValue({
-				data: {
-					session: {
-						user: {
-							app_metadata: {
-								claims: { sub: "account-123" },
-							},
-						},
-					},
-				},
-			});
-		});
-
 		it("should return stats when action is stats", async () => {
 			const mockStats = {
 				totalInterviews: 10,
@@ -106,8 +89,7 @@ describe("api.backfill-people", () => {
 				duplicatePeople: 1,
 			};
 
-			const { getInterviewPeopleStats } = require("~/utils/backfillPeople.server");
-			(getInterviewPeopleStats as MockedFunction<any>).mockResolvedValue(mockStats);
+			mockGetInterviewPeopleStats.mockResolvedValue(mockStats as any);
 
 			const formData = new FormData();
 			formData.append("action", "stats");
@@ -123,12 +105,11 @@ describe("api.backfill-people", () => {
 			expect(response.status).toBe(200);
 			expect(data.success).toBe(true);
 			expect(data.stats).toEqual(mockStats);
-			expect(getInterviewPeopleStats).toHaveBeenCalledWith(mockRequest, "account-123");
+			expect(mockGetInterviewPeopleStats).toHaveBeenCalledWith(mockRequest, "account-123");
 		});
 
 		it("should handle stats errors gracefully", async () => {
-			const { getInterviewPeopleStats } = require("~/utils/backfillPeople.server");
-			(getInterviewPeopleStats as MockedFunction<any>).mockRejectedValue(new Error("Database connection failed"));
+			mockGetInterviewPeopleStats.mockRejectedValue(new Error("Database connection failed"));
 
 			const formData = new FormData();
 			formData.append("action", "stats");
@@ -147,24 +128,6 @@ describe("api.backfill-people", () => {
 	});
 
 	describe("Backfill Action", () => {
-		beforeEach(() => {
-			// Setup authenticated user
-			mockSupabaseClient.auth.getUser.mockResolvedValue({
-				data: { user: { id: "user-123" } },
-			});
-			mockSupabaseClient.auth.getSession.mockResolvedValue({
-				data: {
-					session: {
-						user: {
-							app_metadata: {
-								claims: { sub: "account-123" },
-							},
-						},
-					},
-				},
-			});
-		});
-
 		it("should run backfill in production mode", async () => {
 			const mockResult = {
 				totalInterviews: 10,
@@ -174,8 +137,7 @@ describe("api.backfill-people", () => {
 				errors: [],
 			};
 
-			const { backfillMissingPeople } = require("~/utils/backfillPeople.server");
-			(backfillMissingPeople as MockedFunction<any>).mockResolvedValue(mockResult);
+			mockBackfillMissingPeople.mockResolvedValue(mockResult as any);
 
 			const formData = new FormData();
 			formData.append("action", "backfill");
@@ -193,7 +155,7 @@ describe("api.backfill-people", () => {
 			expect(data.success).toBe(true);
 			expect(data.result).toEqual(mockResult);
 			expect(data.message).toBe("Backfill completed: Created 3 people and 3 links");
-			expect(backfillMissingPeople).toHaveBeenCalledWith(mockRequest, {
+			expect(mockBackfillMissingPeople).toHaveBeenCalledWith(mockRequest, {
 				accountId: "account-123",
 				dryRun: false,
 			});
@@ -208,8 +170,7 @@ describe("api.backfill-people", () => {
 				errors: [],
 			};
 
-			const { backfillMissingPeople } = require("~/utils/backfillPeople.server");
-			(backfillMissingPeople as MockedFunction<any>).mockResolvedValue(mockResult);
+			mockBackfillMissingPeople.mockResolvedValue(mockResult as any);
 
 			const formData = new FormData();
 			formData.append("action", "backfill");
@@ -227,15 +188,14 @@ describe("api.backfill-people", () => {
 			expect(data.success).toBe(true);
 			expect(data.result).toEqual(mockResult);
 			expect(data.message).toBe("Dry run completed: Would create 3 people and 3 links");
-			expect(backfillMissingPeople).toHaveBeenCalledWith(mockRequest, {
+			expect(mockBackfillMissingPeople).toHaveBeenCalledWith(mockRequest, {
 				accountId: "account-123",
 				dryRun: true,
 			});
 		});
 
 		it("should handle backfill errors gracefully", async () => {
-			const { backfillMissingPeople } = require("~/utils/backfillPeople.server");
-			(backfillMissingPeople as MockedFunction<any>).mockRejectedValue(new Error("Failed to connect to database"));
+			mockBackfillMissingPeople.mockRejectedValue(new Error("Failed to connect to database"));
 
 			const formData = new FormData();
 			formData.append("action", "backfill");
@@ -265,8 +225,7 @@ describe("api.backfill-people", () => {
 				],
 			};
 
-			const { backfillMissingPeople } = require("~/utils/backfillPeople.server");
-			(backfillMissingPeople as MockedFunction<any>).mockResolvedValue(mockResult);
+			mockBackfillMissingPeople.mockResolvedValue(mockResult as any);
 
 			const formData = new FormData();
 			formData.append("action", "backfill");
@@ -288,24 +247,6 @@ describe("api.backfill-people", () => {
 	});
 
 	describe("Invalid Actions", () => {
-		beforeEach(() => {
-			// Setup authenticated user
-			mockSupabaseClient.auth.getUser.mockResolvedValue({
-				data: { user: { id: "user-123" } },
-			});
-			mockSupabaseClient.auth.getSession.mockResolvedValue({
-				data: {
-					session: {
-						user: {
-							app_metadata: {
-								claims: { sub: "account-123" },
-							},
-						},
-					},
-				},
-			});
-		});
-
 		it("should return 400 for invalid action", async () => {
 			const formData = new FormData();
 			formData.append("action", "invalid");
@@ -339,24 +280,6 @@ describe("api.backfill-people", () => {
 	});
 
 	describe("Edge Cases", () => {
-		beforeEach(() => {
-			// Setup authenticated user
-			mockSupabaseClient.auth.getUser.mockResolvedValue({
-				data: { user: { id: "user-123" } },
-			});
-			mockSupabaseClient.auth.getSession.mockResolvedValue({
-				data: {
-					session: {
-						user: {
-							app_metadata: {
-								claims: { sub: "account-123" },
-							},
-						},
-					},
-				},
-			});
-		});
-
 		it("should handle malformed form data gracefully", async () => {
 			// Create request with invalid form data
 			mockRequest = new Request("http://localhost:3000", {
@@ -380,8 +303,7 @@ describe("api.backfill-people", () => {
 				errors: [],
 			};
 
-			const { backfillMissingPeople } = require("~/utils/backfillPeople.server");
-			(backfillMissingPeople as MockedFunction<any>).mockResolvedValue(mockResult);
+			mockBackfillMissingPeople.mockResolvedValue(mockResult as any);
 
 			const formData = new FormData();
 			formData.append("action", "backfill");
@@ -396,19 +318,19 @@ describe("api.backfill-people", () => {
 			const _data = await response.json();
 
 			expect(response.status).toBe(200);
-			expect(backfillMissingPeople).toHaveBeenCalledWith(mockRequest, {
+			expect(mockBackfillMissingPeople).toHaveBeenCalledWith(mockRequest, {
 				accountId: "account-123",
 				dryRun: false, // Should default to false
 			});
 		});
 
-		it("should handle session without user gracefully", async () => {
-			mockSupabaseClient.auth.getUser.mockResolvedValue({
-				data: { user: { id: "user-123" } },
-			});
-			mockSupabaseClient.auth.getSession.mockResolvedValue({
-				data: { session: null },
-			});
+		it("should handle user with no sub, falling back to id", async () => {
+			mockGetAuthenticatedUser.mockResolvedValue({
+				user: { id: "user-123", sub: undefined },
+			} as any);
+
+			const mockStats = { totalInterviews: 5 };
+			mockGetInterviewPeopleStats.mockResolvedValue(mockStats as any);
 
 			const formData = new FormData();
 			formData.append("action", "stats");
@@ -421,8 +343,9 @@ describe("api.backfill-people", () => {
 			const response = await action({ request: mockRequest } as any);
 			const data = await response.json();
 
-			expect(response.status).toBe(400);
-			expect(data.error).toBe("Account ID not found in user claims");
+			expect(response.status).toBe(200);
+			expect(data.success).toBe(true);
+			expect(mockGetInterviewPeopleStats).toHaveBeenCalledWith(mockRequest, "user-123");
 		});
 	});
 });

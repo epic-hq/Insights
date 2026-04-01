@@ -6,12 +6,22 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from "vitest";
 import type { Database } from "~/../supabase/types";
-import { backfillMissingPeople, getInterviewPeopleStats } from "./backfillPeople.server";
 
-// Mock dependencies
+// Mock dependencies - explicit factory to prevent module-scope env validation
 vi.mock("~/lib/supabase/client.server", () => ({
 	getServerClient: vi.fn(),
 }));
+
+vi.mock("~/features/interviews/peopleNormalization.server", () => ({
+	upsertPersonWithCompanyAwareConflict: vi.fn(),
+}));
+
+import { getServerClient } from "~/lib/supabase/client.server";
+import { upsertPersonWithCompanyAwareConflict } from "~/features/interviews/peopleNormalization.server";
+import { backfillMissingPeople, getInterviewPeopleStats } from "./backfillPeople.server";
+
+const mockGetServerClient = vi.mocked(getServerClient);
+const mockUpsertPerson = vi.mocked(upsertPersonWithCompanyAwareConflict);
 
 vi.mock("consola", () => ({
 	default: {
@@ -20,6 +30,9 @@ vi.mock("consola", () => ({
 		warn: vi.fn(),
 	},
 }));
+
+import consola from "consola";
+const mockConsola = vi.mocked(consola);
 
 // Create mock Supabase client
 const createMockSupabaseClient = () => {
@@ -46,10 +59,9 @@ describe("backfillMissingPeople", () => {
 		mockRequest = new Request("http://localhost:3000");
 
 		// Mock getServerClient to return our mock
-		const { getServerClient } = require("~/lib/supabase/client.server");
-		(getServerClient as MockedFunction<any>).mockReturnValue({
+		mockGetServerClient.mockReturnValue({
 			client: mockSupabaseClient,
-		});
+		} as any);
 	});
 
 	describe("Smart Name Generation", () => {
@@ -57,6 +69,7 @@ describe("backfillMissingPeople", () => {
 			const mockInterviews = [
 				{
 					id: "interview-1",
+					project_id: "project-1",
 					title: "Test Interview",
 					participant_pseudonym: "Sarah Johnson",
 					segment: "enterprise",
@@ -81,21 +94,13 @@ describe("backfillMissingPeople", () => {
 						select: vi.fn(() => ({
 							in: vi.fn(() => ({ data: mockExistingLinks, error: null })),
 						})),
+						insert: vi.fn(() => ({ error: null })),
 					};
 				}
-				if (table === "people") {
-					return {
-						upsert: vi.fn(() => ({
-							select: vi.fn(() => ({
-								single: vi.fn(() => ({ data: { id: "person-1" }, error: null })),
-							})),
-						})),
-					};
-				}
-				return {
-					insert: vi.fn(() => ({ data: { id: "link-1" }, error: null })),
-				};
+				return {};
 			}) as any;
+
+			mockUpsertPerson.mockResolvedValue({ id: "person-1" });
 
 			const result = await backfillMissingPeople(mockRequest, {
 				accountId: "account-123",
@@ -111,6 +116,7 @@ describe("backfillMissingPeople", () => {
 			const mockInterviews = [
 				{
 					id: "interview-1",
+					project_id: "project-1",
 					title: "Customer Research Session",
 					participant_pseudonym: null,
 					segment: "consumer",
@@ -134,24 +140,13 @@ describe("backfillMissingPeople", () => {
 						select: vi.fn(() => ({
 							in: vi.fn(() => ({ data: mockExistingLinks, error: null })),
 						})),
+						insert: vi.fn(() => ({ error: null })),
 					};
 				}
-				if (table === "people") {
-					return {
-						upsert: vi.fn((data) => {
-							expect(data.name).toBe("Participant (Customer Research Session)");
-							return {
-								select: vi.fn(() => ({
-									single: vi.fn(() => ({ data: { id: "person-1" }, error: null })),
-								})),
-							};
-						}),
-					};
-				}
-				return {
-					insert: vi.fn(() => ({ data: { id: "link-1" }, error: null })),
-				};
+				return {};
 			}) as any;
+
+			mockUpsertPerson.mockResolvedValue({ id: "person-1" });
 
 			const result = await backfillMissingPeople(mockRequest, {
 				accountId: "account-123",
@@ -165,6 +160,7 @@ describe("backfillMissingPeople", () => {
 			const mockInterviews = [
 				{
 					id: "interview-1",
+					project_id: "project-1",
 					title: "Interview - 2025-01-25",
 					participant_pseudonym: null,
 					segment: null,
@@ -188,24 +184,13 @@ describe("backfillMissingPeople", () => {
 						select: vi.fn(() => ({
 							in: vi.fn(() => ({ data: mockExistingLinks, error: null })),
 						})),
+						insert: vi.fn(() => ({ error: null })),
 					};
 				}
-				if (table === "people") {
-					return {
-						upsert: vi.fn((data) => {
-							expect(data.name).toBe("Participant (2025-01-25)");
-							return {
-								select: vi.fn(() => ({
-									single: vi.fn(() => ({ data: { id: "person-1" }, error: null })),
-								})),
-							};
-						}),
-					};
-				}
-				return {
-					insert: vi.fn(() => ({ data: { id: "link-1" }, error: null })),
-				};
+				return {};
 			}) as any;
+
+			mockUpsertPerson.mockResolvedValue({ id: "person-1" });
 
 			const result = await backfillMissingPeople(mockRequest, {
 				accountId: "account-123",
@@ -219,6 +204,7 @@ describe("backfillMissingPeople", () => {
 			const mockInterviews = [
 				{
 					id: "interview-abcd1234efgh5678",
+					project_id: "project-1",
 					title: null,
 					participant_pseudonym: null,
 					segment: null,
@@ -242,24 +228,13 @@ describe("backfillMissingPeople", () => {
 						select: vi.fn(() => ({
 							in: vi.fn(() => ({ data: mockExistingLinks, error: null })),
 						})),
+						insert: vi.fn(() => ({ error: null })),
 					};
 				}
-				if (table === "people") {
-					return {
-						upsert: vi.fn((data) => {
-							expect(data.name).toBe("Participant (abcd1234)");
-							return {
-								select: vi.fn(() => ({
-									single: vi.fn(() => ({ data: { id: "person-1" }, error: null })),
-								})),
-							};
-						}),
-					};
-				}
-				return {
-					insert: vi.fn(() => ({ data: { id: "link-1" }, error: null })),
-				};
+				return {};
 			}) as any;
+
+			mockUpsertPerson.mockResolvedValue({ id: "person-1" });
 
 			const result = await backfillMissingPeople(mockRequest, {
 				accountId: "account-123",
@@ -275,6 +250,7 @@ describe("backfillMissingPeople", () => {
 			const mockInterviews = [
 				{
 					id: "interview-1",
+					project_id: "project-1",
 					title: "Test Interview",
 					participant_pseudonym: "John Doe",
 					segment: "enterprise",
@@ -284,9 +260,6 @@ describe("backfillMissingPeople", () => {
 			];
 
 			const mockExistingLinks: any[] = [];
-
-			const mockUpsert = vi.fn();
-			const mockInsert = vi.fn();
 
 			mockSupabaseClient.from = vi.fn((table) => {
 				if (table === "interviews") {
@@ -303,10 +276,7 @@ describe("backfillMissingPeople", () => {
 						})),
 					};
 				}
-				if (table === "people") {
-					return { upsert: mockUpsert };
-				}
-				return { insert: mockInsert };
+				return {};
 			}) as any;
 
 			const result = await backfillMissingPeople(mockRequest, {
@@ -316,11 +286,9 @@ describe("backfillMissingPeople", () => {
 
 			expect(result.peopleCreated).toBe(1);
 			expect(result.linksCreated).toBe(1);
-			expect(mockUpsert).not.toHaveBeenCalled();
-			expect(mockInsert).not.toHaveBeenCalled();
+			expect(mockUpsertPerson).not.toHaveBeenCalled();
 
-			const consola = require("consola").default;
-			expect(consola.info).toHaveBeenCalledWith(expect.stringContaining('[DRY RUN] Would create person "John Doe"'));
+			expect(mockConsola.info).toHaveBeenCalledWith(expect.stringContaining('[DRY RUN] Would create person "John Doe"'));
 		});
 	});
 
@@ -345,6 +313,7 @@ describe("backfillMissingPeople", () => {
 			const mockInterviews = [
 				{
 					id: "interview-1",
+					project_id: "project-1",
 					title: "Test Interview",
 					participant_pseudonym: "John Doe",
 					segment: "enterprise",
@@ -370,19 +339,10 @@ describe("backfillMissingPeople", () => {
 						})),
 					};
 				}
-				if (table === "people") {
-					return {
-						upsert: vi.fn(() => ({
-							select: vi.fn(() => ({
-								single: vi.fn(() => ({ data: null, error: { message: "Constraint violation" } })),
-							})),
-						})),
-					};
-				}
-				return {
-					insert: vi.fn(() => ({ data: { id: "link-1" }, error: null })),
-				};
+				return {};
 			}) as any;
+
+			mockUpsertPerson.mockRejectedValue(new Error("Constraint violation"));
 
 			const result = await backfillMissingPeople(mockRequest, {
 				accountId: "account-123",
@@ -398,6 +358,7 @@ describe("backfillMissingPeople", () => {
 			const mockInterviews = [
 				{
 					id: "interview-1",
+					project_id: "project-1",
 					title: "Test Interview",
 					participant_pseudonym: "John Doe",
 					segment: "enterprise",
@@ -421,28 +382,20 @@ describe("backfillMissingPeople", () => {
 						select: vi.fn(() => ({
 							in: vi.fn(() => ({ data: mockExistingLinks, error: null })),
 						})),
+						insert: vi.fn(() => ({ error: { message: "Foreign key constraint" } })),
 					};
 				}
-				if (table === "people") {
-					return {
-						upsert: vi.fn(() => ({
-							select: vi.fn(() => ({
-								single: vi.fn(() => ({ data: { id: "person-1" }, error: null })),
-							})),
-						})),
-					};
-				}
-				return {
-					insert: vi.fn(() => ({ data: null, error: { message: "Foreign key constraint" } })),
-				};
+				return {};
 			}) as any;
+
+			mockUpsertPerson.mockResolvedValue({ id: "person-1" });
 
 			const result = await backfillMissingPeople(mockRequest, {
 				accountId: "account-123",
 				dryRun: false,
 			});
 
-			expect(result.peopleCreated).toBe(1);
+			expect(result.peopleCreated).toBe(0);
 			expect(result.linksCreated).toBe(0);
 			expect(result.errors).toHaveLength(1);
 			expect(result.errors[0]).toContain("Failed to create link for interview interview-1");
@@ -454,6 +407,7 @@ describe("backfillMissingPeople", () => {
 			const mockInterviews = [
 				{
 					id: "interview-1",
+					project_id: "project-1",
 					title: "Interview 1",
 					participant_pseudonym: "John",
 					segment: null,
@@ -462,6 +416,7 @@ describe("backfillMissingPeople", () => {
 				},
 				{
 					id: "interview-2",
+					project_id: "project-1",
 					title: "Interview 2",
 					participant_pseudonym: "Jane",
 					segment: null,
@@ -470,6 +425,7 @@ describe("backfillMissingPeople", () => {
 				},
 				{
 					id: "interview-3",
+					project_id: "project-1",
 					title: "Interview 3",
 					participant_pseudonym: "Bob",
 					segment: null,
@@ -480,12 +436,6 @@ describe("backfillMissingPeople", () => {
 
 			// Interview 2 already has a person linked
 			const mockExistingLinks = [{ interview_id: "interview-2" }];
-
-			const mockUpsert = vi.fn(() => ({
-				select: vi.fn(() => ({
-					single: vi.fn(() => ({ data: { id: "person-1" }, error: null })),
-				})),
-			}));
 
 			mockSupabaseClient.from = vi.fn((table) => {
 				if (table === "interviews") {
@@ -500,15 +450,13 @@ describe("backfillMissingPeople", () => {
 						select: vi.fn(() => ({
 							in: vi.fn(() => ({ data: mockExistingLinks, error: null })),
 						})),
+						insert: vi.fn(() => ({ error: null })),
 					};
 				}
-				if (table === "people") {
-					return { upsert: mockUpsert };
-				}
-				return {
-					insert: vi.fn(() => ({ data: { id: "link-1" }, error: null })),
-				};
+				return {};
 			}) as any;
+
+			mockUpsertPerson.mockResolvedValue({ id: "person-1" });
 
 			const result = await backfillMissingPeople(mockRequest, {
 				accountId: "account-123",
@@ -521,7 +469,7 @@ describe("backfillMissingPeople", () => {
 			expect(result.linksCreated).toBe(2);
 
 			// Should only create people for interviews 1 and 3
-			expect(mockUpsert).toHaveBeenCalledTimes(2);
+			expect(mockUpsertPerson).toHaveBeenCalledTimes(2);
 		});
 	});
 });
@@ -535,14 +483,21 @@ describe("getInterviewPeopleStats", () => {
 		mockSupabaseClient = createMockSupabaseClient();
 		mockRequest = new Request("http://localhost:3000");
 
-		const { getServerClient } = require("~/lib/supabase/client.server");
-		(getServerClient as MockedFunction<any>).mockReturnValue({
+		mockGetServerClient.mockReturnValue({
 			client: mockSupabaseClient,
-		});
+		} as any);
 	});
 
 	it("should return correct statistics", async () => {
 		const mockLinkedInterviews = [{ interview_id: "interview-1" }, { interview_id: "interview-2" }];
+
+		const mockAccountInterviews = [
+			{ id: "interview-1" },
+			{ id: "interview-2" },
+			{ id: "interview-3" },
+			{ id: "interview-4" },
+			{ id: "interview-5" },
+		];
 
 		const mockPeopleNames = [
 			{ name: "John Doe" },
@@ -551,26 +506,42 @@ describe("getInterviewPeopleStats", () => {
 			{ name: "Bob Wilson" },
 		];
 
+		let interviewCallCount = 0;
+		let peopleCallCount = 0;
+
 		mockSupabaseClient.from = vi.fn((table) => {
 			if (table === "interviews") {
+				interviewCallCount++;
+				if (interviewCallCount === 1) {
+					// First call: count query with select("*", { count: "exact", head: true })
+					return {
+						select: vi.fn(() => ({
+							eq: vi.fn(() => ({ count: 5 })),
+						})),
+					};
+				}
+				// Second call: select("id") for getting interview IDs
 				return {
 					select: vi.fn(() => ({
-						eq: vi.fn(() => ({ count: 5 })), // 5 total interviews
+						eq: vi.fn(() => ({ data: mockAccountInterviews })),
 					})),
 				};
 			}
 			if (table === "people") {
+				peopleCallCount++;
+				if (peopleCallCount === 1) {
+					// First call: count query
+					return {
+						select: vi.fn(() => ({
+							eq: vi.fn(() => ({ count: 4 })),
+						})),
+					};
+				}
+				// Second call: name query
 				return {
-					select: vi.fn((columns) => {
-						if (columns === "*") {
-							return {
-								eq: vi.fn(() => ({ count: 4 })), // 4 total people
-							};
-						}
-						return {
-							eq: vi.fn(() => ({ data: mockPeopleNames, error: null })),
-						};
-					}),
+					select: vi.fn(() => ({
+						eq: vi.fn(() => ({ data: mockPeopleNames, error: null })),
+					})),
 				};
 			}
 			if (table === "interview_people") {

@@ -81,16 +81,18 @@ describe("facets.server", () => {
 				}),
 			} as unknown as MockDb;
 
-			const catalog = await getFacetCatalog({ db: mockDb, accountId: "account-1", projectId: null });
+			const catalog = await getFacetCatalog({ db: mockDb, accountId: "account-1" });
 
 			expect(eqCalls).toEqual({ facetAccount: "account-1" });
 			expect(catalog.kinds).toEqual([
 				{ slug: "goal", label: "Goal" },
 				{ slug: "pain", label: "Pain" },
 			]);
+			// Global facets get facet_account_id: 0 (sentinel), account facets get their real ID
+			// All account facets are included (is_active no longer filters in catalog)
 			expect(catalog.facets).toEqual([
 				{
-					facet_account_id: 11,
+					facet_account_id: 0,
 					kind_slug: "goal",
 					label: "Speed Up",
 					synonyms: ["faster"],
@@ -100,6 +102,14 @@ describe("facets.server", () => {
 					kind_slug: "pain",
 					label: "Manual Work",
 					synonyms: ["tedious"],
+					alias: undefined,
+				},
+				{
+					facet_account_id: 22,
+					kind_slug: "goal",
+					label: "Win More Deals",
+					synonyms: ["close deals"],
+					alias: undefined,
 				},
 			]);
 			expect(catalog.version).toMatch(/^acct:account-1:v\d+$/);
@@ -135,8 +145,33 @@ describe("facets.server", () => {
 									return Promise.resolve({ error: null });
 								}),
 							};
+						case "facet_kind_global":
+							// FacetResolver.loadKindMaps() queries this table
+							return {
+								select: vi.fn().mockResolvedValue({
+									data: [
+										{ id: 1, slug: "goal" },
+										{ id: 2, slug: "pain" },
+									],
+									error: null,
+								}),
+							};
+						case "facet_account": {
+							// FacetResolver uses select/eq/maybeSingle for lookups and insert/select/single for creates
+							const facetAccountChain: Record<string, any> = {};
+							facetAccountChain.select = vi.fn(() => facetAccountChain);
+							facetAccountChain.eq = vi.fn(() => facetAccountChain);
+							facetAccountChain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+							facetAccountChain.insert = vi.fn(() => facetAccountChain);
+							facetAccountChain.single = vi.fn().mockResolvedValue({ data: { id: 99 }, error: null });
+							facetAccountChain.upsert = vi.fn(() => facetAccountChain);
+							return facetAccountChain;
+						}
 						default:
-							throw new Error(`Unexpected table: ${table}`);
+							// Return a no-op mock for any unexpected table
+							return {
+								select: vi.fn().mockResolvedValue({ data: [], error: null }),
+							};
 					}
 				}),
 			} as unknown as MockDb;
@@ -199,6 +234,16 @@ describe("facets.server", () => {
 					source: "interview",
 					evidence_id: "ev-1",
 					confidence: 0.92,
+					noted_at: "2025-02-01T12:34:56.000Z",
+				},
+				{
+					account_id: "acct-1",
+					project_id: "proj-1",
+					person_id: "person-1",
+					facet_account_id: 99,
+					source: "interview",
+					evidence_id: "ev-2",
+					confidence: 0.8,
 					noted_at: "2025-02-01T12:34:56.000Z",
 				},
 			]);

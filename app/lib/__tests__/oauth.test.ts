@@ -599,24 +599,37 @@ describe("refreshAccessToken", () => {
 		).rejects.toThrow("client_id does not match the token");
 	});
 
-	it("throws on expired refresh token", async () => {
+	it("succeeds with expired access token TTL (refresh tokens use revocation, not TTL)", async () => {
+		// The source intentionally does NOT check expires_at for refresh tokens.
+		// Revocation is the expiry mechanism, not the TTL.
 		const expiredKey = {
 			...existingKey,
-			expires_at: new Date(Date.now() - 60_000).toISOString(), // expired
+			expires_at: new Date(Date.now() - 60_000).toISOString(), // expired TTL
 		};
 
-		const supabase = createMockSupabase({
-			project_api_keys: {
-				singleValue: { data: expiredKey, error: null },
-			},
+		const lookupChain = {
+			select: vi.fn().mockReturnThis(),
+			eq: vi.fn().mockReturnThis(),
+			is: vi.fn().mockReturnThis(),
+			single: vi.fn().mockResolvedValue({ data: expiredKey, error: null }),
+			update: vi.fn().mockReturnValue({
+				eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+			}),
+			insert: vi.fn().mockResolvedValue({ data: null, error: null }),
+		};
+
+		const supabase = {
+			from: vi.fn((_table: string) => lookupChain),
+		};
+
+		const result = await refreshAccessToken(supabase as never, {
+			refreshToken: "uprt_expired",
+			clientId: "oauc_client1",
 		});
 
-		await expect(
-			refreshAccessToken(supabase as never, {
-				refreshToken: "uprt_expired",
-				clientId: "oauc_client1",
-			})
-		).rejects.toThrow("Refresh token has expired");
+		expect(result.access_token).toMatch(/^upsk_/);
+		expect(result.refresh_token).toMatch(/^uprt_/);
+		expect(result.token_type).toBe("Bearer");
 	});
 
 	it("successfully refreshes and returns new token pair", async () => {

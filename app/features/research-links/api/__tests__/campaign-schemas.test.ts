@@ -84,7 +84,7 @@ describe("CreateCampaignSchema", () => {
 // ============================================================================
 
 describe("AddToCampaignSchema", () => {
-	const validUuid = "00000000-0000-0000-0000-000000000001";
+	const validUuid = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
 
 	it("accepts valid input with default goal", () => {
 		const result = AddToCampaignSchema.safeParse({
@@ -110,7 +110,7 @@ describe("AddToCampaignSchema", () => {
 	});
 
 	it("accepts multiple person IDs", () => {
-		const ids = Array.from({ length: 10 }, (_, i) => `0000000${i}-0000-0000-0000-000000000001`);
+		const ids = Array.from({ length: 10 }, (_, i) => `a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5${i}`);
 		const result = AddToCampaignSchema.safeParse({
 			campaignId: validUuid,
 			personIds: ids,
@@ -152,7 +152,7 @@ describe("AddToCampaignSchema", () => {
 // ============================================================================
 
 describe("GenerateQuestionsSchema", () => {
-	const validUuid = "00000000-0000-0000-0000-000000000001";
+	const validUuid = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
 
 	it("accepts minimal input with defaults", () => {
 		const result = GenerateQuestionsSchema.safeParse({

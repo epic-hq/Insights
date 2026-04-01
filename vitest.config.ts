@@ -6,7 +6,13 @@ export default defineConfig({
   test: {
     globals: true,
     css: true,
-    exclude: ["**/node_modules/**", "**/dist/**", "**/.claude/worktrees/**"],
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/.claude/worktrees/**",
+      // Integration tests that require a running Supabase instance
+      "app/features/annotations/__tests__/annotations.test.ts",
+    ],
     env: {
       // Load test environment variables from .env file
       // Vitest doesn't automatically load .env files, so we need to ensure

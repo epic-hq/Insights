@@ -97,14 +97,8 @@ describe("Person Name Generation", () => {
 					fileName,
 					interviewDate: "2025-01-25",
 				});
-				// Note: Current implementation doesn't filter generic names, so expect transformed filename
-				if (fileName === "rec.mp3") {
-					expect(result).toBe("Participant (Rec)");
-				} else if (fileName === "recording.wav") {
-					expect(result).toBe("Participant (Recording)");
-				} else {
-					expect(result).toBe("Participant (2025-01-25)");
-				}
+				// Generic filenames are filtered by the regex check, so all fall through to date
+				expect(result).toBe("Participant (2025-01-25)");
 			}
 		});
 
