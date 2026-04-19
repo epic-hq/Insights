@@ -4,9 +4,9 @@ concurrency:
   cancel-in-progress: true
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   pull_request:
-    branches: [main]
+    branches: [main, staging]
 permissions:
   actions: write
   contents: read
@@ -23,9 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip lint]') }}
     steps:
-     - uses: actions/checkout@v4
-     - uses: biomejs/setup-biome@v2
-     - run: biome ci . --reporter=github --error-on-warnings=false || true
+      - uses: actions/checkout@v4
+      - uses: biomejs/setup-biome@v2
+      - run: biome ci . --reporter=github --error-on-warnings=false || true
 
   typecheck:
     name: 🔎 Type check
@@ -112,3 +112,27 @@ jobs:
               body: `**Commit:** \`${commit}\` by @${context.actor}\n**Message:** ${context.payload.head_commit?.message?.split('\n')[0] || 'N/A'}\n**Logs:** ${runUrl}`,
               labels: ['ci-failure'],
             });
+
+  validation-gate:
+    name: validation-gate
+    needs: [lint, typecheck, check-unused, build, vitest]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce required validation checks
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          node -e '
+            const needs = JSON.parse(process.env.NEEDS_JSON);
+            const failed = Object.entries(needs).filter(
+              ([, value]) => value.result === "failure" || value.result === "cancelled",
+            );
+
+            if (failed.length > 0) {
+              console.error("Validation gate failed:", failed.map(([name, value]) => `${name}=${value.result}`).join(", "));
+              process.exit(1);
+            }
+
+            console.log("Validation gate passed:", Object.entries(needs).map(([name, value]) => `${name}=${value.result}`).join(", "));
+          '
